@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -71,6 +71,11 @@ public final class TaskExecutor {
     return taskGroup.invokeAll(executor);
   }
 
+  @Override
+  public String toString() {
+    return "TaskExecutor(" + "executor=" + executor + ')';
+  }
+
   /**
    * Holds all the sub-tasks that a certain operation gets split into as it gets parallelized and
    * exposes the ability to invoke such tasks and wait for them all to complete their execution and
@@ -96,43 +101,45 @@ public final class TaskExecutor {
       this.futures = Collections.unmodifiableCollection(tasks);
     }
 
-    private FutureTask<T> createTask(Callable<T> callable) {
-      AtomicBoolean started = new AtomicBoolean(false);
-      return new FutureTask<>(callable) {
-        @Override
-        public void run() {
-          if (started.compareAndSet(false, true)) {
-            try {
-              Integer counter = numberOfRunningTasksInCurrentThread.get();
-              numberOfRunningTasksInCurrentThread.set(counter + 1);
-              super.run();
-            } finally {
-              Integer counter = numberOfRunningTasksInCurrentThread.get();
-              numberOfRunningTasksInCurrentThread.set(counter - 1);
+    FutureTask<T> createTask(Callable<T> callable) {
+      // -1: cancelled; 0: not yet started; 1: started
+      AtomicInteger taskState = new AtomicInteger(0);
+      return new FutureTask<>(
+          () -> {
+            if (taskState.compareAndSet(0, 1)) {
+              try {
+                Integer counter = numberOfRunningTasksInCurrentThread.get();
+                numberOfRunningTasksInCurrentThread.set(counter + 1);
+                return callable.call();
+              } catch (Throwable t) {
+                cancelAll();
+                throw t;
+              } finally {
+                Integer counter = numberOfRunningTasksInCurrentThread.get();
+                numberOfRunningTasksInCurrentThread.set(counter - 1);
+              }
             }
-          } else {
             // task is cancelled hence it has no results to return. That's fine: they would be
             // ignored anyway.
-            set(null);
-          }
-        }
-
-        @Override
-        protected void setException(Throwable t) {
-          cancelAll();
-          super.setException(t);
-        }
-
+            return null;
+          }) {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
-          assert mayInterruptIfRunning == false;
+          assert mayInterruptIfRunning == false
+              : "cancelling tasks that have started is not supported";
           /*
-          Future#get (called in invokeAll) throws CancellationException for a cancelled task when invoked but leaves the task running.
-          We rather want to make sure that invokeAll does not leave any running tasks behind when it returns.
+          Future#get (called in invokeAll) throws CancellationException when invoked against a running task that has been cancelled but
+          leaves the task running. We rather want to make sure that invokeAll does not leave any running tasks behind when it returns.
           Overriding cancel ensures that tasks that are already started will complete normally once cancelled, and Future#get will
-          wait for them to finish instead of throwing CancellationException. Tasks that are cancelled before they are started won't start.
+          wait for them to finish instead of throwing CancellationException. A cleaner way would have been to override FutureTask#get and
+          make it wait for cancelled tasks, but FutureTask#awaitDone is private. Tasks that are cancelled before they are started will be no-op.
            */
-          return started.compareAndSet(false, true);
+          return taskState.compareAndSet(0, -1);
+        }
+
+        @Override
+        public boolean isCancelled() {
+          return taskState.get() == -1;
         }
       };
     }
@@ -187,10 +194,5 @@ public final class TaskExecutor {
         future.cancel(false);
       }
     }
-  }
-
-  @Override
-  public String toString() {
-    return "TaskExecutor(" + "executor=" + executor + ')';
   }
 }

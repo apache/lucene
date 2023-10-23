@@ -233,7 +233,16 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testInvokeAllDoesNotLeaveTasksBehind() {
-    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksStarted = new AtomicInteger(0);
+    TaskExecutor taskExecutor =
+        new TaskExecutor(
+            command -> {
+              executorService.execute(
+                  () -> {
+                    tasksStarted.incrementAndGet();
+                    command.run();
+                  });
+            });
     AtomicInteger tasksExecuted = new AtomicInteger(0);
     List<Callable<Void>> callables = new ArrayList<>();
     callables.add(
@@ -256,7 +265,8 @@ public class TestTaskExecutor extends LuceneTestCase {
     } else {
       MatcherAssert.assertThat(tasksExecuted.get(), Matchers.greaterThanOrEqualTo(1));
     }
-    assertEquals(0, ((ThreadPoolExecutor) executorService).getActiveCount());
+    // the callables are technically all run, but the cancelled ones will be no-op
+    assertEquals(100, tasksStarted.get());
   }
 
   /**
