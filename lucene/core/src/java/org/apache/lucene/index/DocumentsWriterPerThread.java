@@ -164,6 +164,7 @@ final class DocumentsWriterPerThread implements Accountable {
             segmentName,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -250,6 +251,9 @@ final class DocumentsWriterPerThread implements Accountable {
           }
         }
         allDocsIndexed = true;
+        if (numDocsInRAM - docsInRamBefore > 1) {
+          segmentInfo.setHasBlocks();
+        }
         return finishDocuments(deleteNode, docsInRamBefore);
       } finally {
         if (!allDocsIndexed && !aborted) {
@@ -641,7 +645,7 @@ final class DocumentsWriterPerThread implements Accountable {
     return "DocumentsWriterPerThread [pendingDeletes="
         + pendingUpdates
         + ", segment="
-        + (segmentInfo != null ? segmentInfo.name : "null")
+        + segmentInfo.name
         + ", aborted="
         + aborted
         + ", numDocsInRAM="

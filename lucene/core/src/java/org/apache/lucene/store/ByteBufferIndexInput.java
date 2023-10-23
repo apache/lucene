@@ -99,9 +99,16 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
   }
 
-  // the unused parameter is just to silence javac about unused variables
-  AlreadyClosedException alreadyClosed(RuntimeException unused) {
-    return new AlreadyClosedException("Already closed: " + this);
+  AlreadyClosedException alreadyClosed(NullPointerException npe) {
+    // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
+    // we check the "is closed" condition explicitly by checking that our "buffers" are null or
+    // the guard was invalidated.
+    if (this.buffers == null || this.curBuf == null || guard.isInvalidated()) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // otherwise rethrow unmodified NPE (as it possibly a bug with passing a null parameter to the
+    // IndexInput method):
+    throw npe;
   }
 
   @Override
@@ -459,7 +466,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   protected ByteBufferIndexInput buildSlice(String sliceDescription, long offset, long length) {
-    if (buffers == null) {
+    if (buffers == null || guard.isInvalidated()) {
       throw alreadyClosed(null);
     }
 
