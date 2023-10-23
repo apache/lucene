@@ -943,6 +943,7 @@ public final class BPIndexReorderer {
   static class ForwardIndexSorter {
 
     private static final int BUFFER_SIZE = 8192;
+    private static final int BUFFER_BYTES = BUFFER_SIZE * Long.BYTES;
     private final Directory directory;
     private final Bucket[] buckets = new Bucket[256];
 
@@ -966,7 +967,7 @@ public final class BPIndexReorderer {
           finalBlockSize = bufferUsed;
         }
         long fp = output.getFilePointer();
-        fps.writeVLong(fp - lastFp);
+        fps.writeVLong(encode(fp - lastFp));
         lastFp = fp;
         for (int i = 0; i < bufferUsed; i++) {
           output.writeLong(buffer[i]);
@@ -982,6 +983,23 @@ public final class BPIndexReorderer {
         blockNum = 0;
         lastFp = 0;
         fps.reset();
+      }
+    }
+
+    private static long encode(long fpDelta) {
+      assert (fpDelta & 0x07) == 0 : "fpDelta should be multiple of 8";
+      if (fpDelta % BUFFER_BYTES == 0) {
+        return  ((fpDelta / BUFFER_BYTES) << 1) | 1;
+      } else {
+        return fpDelta;
+      }
+    }
+
+    private static long decode(long fpDelta) {
+      if ((fpDelta & 1) == 1) {
+        return (fpDelta >>> 1) * BUFFER_BYTES;
+      } else {
+        return fpDelta;
       }
     }
 
@@ -1009,13 +1027,13 @@ public final class BPIndexReorderer {
         for (int i = 0; i < buckets.length; i++) {
           int blockNum = index.readVInt();
           int finalBlockSize = index.readVInt();
-          long fp = index.readVLong();
+          long fp = decode(index.readVLong());
           for (int block = 0; block < blockNum - 1; block++) {
             value.seek(fp);
             for (int j = 0; j < BUFFER_SIZE; j++) {
               consumer.accept(value.readLong());
             }
-            fp += index.readVLong();
+            fp += decode(index.readVLong());
           }
           value.seek(fp);
           for (int j = 0; j < finalBlockSize; j++) {

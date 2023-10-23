@@ -260,7 +260,6 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   public void testForwardIndexSorter() throws IOException {
     try (Directory directory = newDirectory()) {
       for (int bits = 2; bits < 32; bits++) {
-        System.out.println("bits: " + bits);
         int maxDoc = (1 << bits) - 1;
         int termNum = atLeast(1000);
         String fileName;
