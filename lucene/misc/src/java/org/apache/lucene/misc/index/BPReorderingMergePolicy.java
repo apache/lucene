@@ -17,6 +17,7 @@
 package org.apache.lucene.misc.index;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterMergePolicy;
@@ -35,6 +36,9 @@ import org.apache.lucene.store.Directory;
  * BPIndexReorderer#setRAMBudgetMB(double)}.
  */
 public final class BPReorderingMergePolicy extends FilterMergePolicy {
+
+  /** Whether a segment has been reordered. */
+  static final String REORDERED = "bp.reordered";
 
   private final BPIndexReorderer reorderer;
   private int minNaturalMergeNumDocs = 1;
@@ -112,8 +116,12 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
 
     MergeSpecification newSpec = new MergeSpecification();
     for (OneMerge oneMerge : spec.merges) {
+
       newSpec.add(
           new OneMerge(oneMerge) {
+
+            private boolean reordered = false;
+
             @Override
             public CodecReader wrapForMerge(CodecReader reader) throws IOException {
               return oneMerge.wrapForMerge(reader);
@@ -124,14 +132,24 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
               if (reader.numDocs() < minNumDocs) {
                 return null;
               }
+
               try {
-                return reorderer.computeDocMap(reader, dir);
+                Sorter.DocMap docMap = reorderer.computeDocMap(reader, dir);
+                reordered = true;
+                return docMap;
               } catch (
                   @SuppressWarnings("unused")
                   NotEnoughRAMException e) {
                 // skip reordering, we don't have enough RAM anyway
                 return null;
               }
+            }
+
+            @Override
+            public void setMergeInfo(SegmentCommitInfo info) {
+              info.info.addDiagnostics(
+                  Collections.singletonMap("bp.reordered", Boolean.toString(reordered)));
+              super.setMergeInfo(info);
             }
           });
     }

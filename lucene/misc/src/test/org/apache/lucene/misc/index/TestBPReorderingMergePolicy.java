@@ -27,6 +27,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -111,6 +112,11 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
       previousId = id;
     }
     assertTrue(reordered);
+
+    SegmentReader sr = (SegmentReader) reader2.leaves().get(0).reader();
+    final String reorderedString =
+        sr.getSegmentInfo().info.getDiagnostics().get(BPReorderingMergePolicy.REORDERED);
+    assertEquals(Boolean.TRUE.toString(), reorderedString);
 
     IOUtils.close(reader1, reader2, w1, w2, dir1, dir2);
   }
@@ -204,6 +210,11 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
       previousId = id;
     }
     assertTrue(reordered);
+
+    SegmentReader sr = (SegmentReader) reader2.leaves().get(0).reader();
+    final String reorderedString =
+        sr.getSegmentInfo().info.getDiagnostics().get(BPReorderingMergePolicy.REORDERED);
+    assertEquals(Boolean.TRUE.toString(), reorderedString);
 
     IOUtils.close(reader1, reader2, w1, w2, dir1, dir2);
   }

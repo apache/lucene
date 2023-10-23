@@ -385,11 +385,7 @@ public abstract class MergePolicy {
      * not indicate the number of documents after the merge.
      */
     public int totalNumDocs() {
-      int total = 0;
-      for (SegmentCommitInfo info : segments) {
-        total += info.info.maxDoc();
-      }
-      return total;
+      return totalMaxDoc;
     }
 
     /** Return {@link MergeInfo} describing this merge. */

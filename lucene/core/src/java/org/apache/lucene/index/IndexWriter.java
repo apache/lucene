@@ -3470,6 +3470,8 @@ public class IndexWriter
       merge.getMergeInfo().info.setUseCompoundFile(true);
     }
 
+    merge.setMergeInfo(merge.info);
+
     // Have codec write SegmentInfo.  Must do this after
     // creating CFS so that 1) .si isn't slurped into CFS,
     // and 2) .si reflects useCompoundFile=true change
@@ -5361,6 +5363,8 @@ public class IndexWriter
         // clause below:
         success = false;
       }
+
+      merge.setMergeInfo(merge.info);
 
       // Have codec write SegmentInfo.  Must do this after
       // creating CFS so that 1) .si isn't slurped into CFS,
