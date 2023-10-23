@@ -142,4 +142,178 @@ public class TestByteSlicePool extends LuceneTestCase {
 
     assertArrayEquals(randomData, readData);
   }
+
+  static class SliceWriter {
+    boolean hasStarted = false;
+
+    ByteBlockPool blockPool;
+    ByteSlicePool slicePool;
+
+    int size;
+    byte[] randomData;
+    int dataOffset;
+
+    int sliceLength;
+    int sliceOffset;
+
+    int firstSliceOffset;
+    byte[] firstSlice;
+
+    SliceWriter(ByteSlicePool slicePool ) {
+      this.slicePool = slicePool;
+      this.blockPool = slicePool.pool;
+
+      if (random().nextBoolean()) {
+        // size < ByteBlockPool.BYTE_BLOCK_SIZE
+        size = TestUtil.nextInt(random(), 100, 1000);
+      } else {
+        // size > ByteBlockPool.BYTE_BLOCK_SIZE
+        size = TestUtil.nextInt(random(), 50000, 100000);
+      }
+      randomData = new byte[size];
+      random().nextBytes(randomData);
+    }
+
+    boolean writeSlice() {
+      // The first slice is special
+      if (hasStarted == false) {
+        dataOffset = 0; // Offset into the data buffer
+        sliceLength = ByteSlicePool.FIRST_LEVEL_SIZE;
+        sliceOffset = slicePool.newSlice(sliceLength);
+        firstSliceOffset = sliceOffset; // We will need this later
+        firstSlice = blockPool.buffer;  // We will need this later
+        int writeLength = Math.min(size, sliceLength - 1);
+        System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
+        dataOffset += writeLength;
+
+        hasStarted = true;
+        return true;
+      }
+      // Have we written everything?
+      if (dataOffset == size) {
+        return false;
+      }
+      // No, write more
+      int offsetAndLength = slicePool.allocKnownSizeSlice(blockPool.buffer, sliceOffset + sliceLength - 1);
+      sliceLength = offsetAndLength & 0xff;
+      sliceOffset = offsetAndLength >> 8;
+      int writeLength = Math.min(size - dataOffset, sliceLength - 1);
+      System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
+      dataOffset += writeLength;
+      return true;
+    }
+  }
+
+  static class SliceReader {
+    boolean hasStarted = false;
+
+    ByteBlockPool blockPool;
+    ByteSlicePool slicePool;
+
+    int size;
+    byte[] readData;
+    int dataOffset;
+
+    int sliceLength;
+    int sliceOffset;
+
+    byte[] slice;
+    int sliceSizeIdx;
+
+    SliceReader(ByteSlicePool slicePool, int size, int firstSliceOffset, byte[] firstSlice) {
+      this.slicePool = slicePool;
+      this.blockPool = slicePool.pool;
+      this.size = size;
+      this.sliceOffset = firstSliceOffset;
+      this.slice = firstSlice;
+      readData = new byte[size];
+    }
+
+    boolean readSlice() {
+      // The first slice is special
+      if (hasStarted == false) {
+        dataOffset = 0;
+        sliceSizeIdx = 0; // Index into LEVEL_SIZE_ARRAY, allowing us to find the size of the current slice
+
+        sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4; // 4 bytes are for the offset to the next slice
+        int readLength;
+        if (dataOffset + sliceLength + 3 >= size) {
+          // We are reading the last slice, there is no more offset, just a byte for the level
+          readLength = size - dataOffset;
+        } else {
+          readLength = sliceLength;
+        }
+        System.arraycopy(slice, sliceOffset, readData, dataOffset, readLength);
+        dataOffset += readLength;
+        sliceSizeIdx = Math.min(sliceSizeIdx + 1, ByteSlicePool.LEVEL_SIZE_ARRAY.length - 1);
+
+        hasStarted = true;
+        return true;
+      }
+      // Have we read everything?
+      if (dataOffset == size) {
+        return false;
+      }
+      // No, read more
+      int globalSliceOffset = (int) BitUtil.VH_LE_INT.get(slice, sliceOffset + sliceLength);
+      slice = blockPool.getBuffer(globalSliceOffset / ByteBlockPool.BYTE_BLOCK_SIZE);
+      sliceOffset = globalSliceOffset % ByteBlockPool.BYTE_BLOCK_SIZE;
+      sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4;
+      int readLength;
+      if (dataOffset + sliceLength + 3 >= size) {
+        // We are reading the last slice, there is no more offset, just a byte for the level
+        readLength = size - dataOffset;
+      } else {
+        readLength = sliceLength;
+      }
+      System.arraycopy(slice, sliceOffset, readData, dataOffset, readLength);
+      dataOffset += readLength;
+      sliceSizeIdx = Math.min(sliceSizeIdx + 1, ByteSlicePool.LEVEL_SIZE_ARRAY.length - 1);
+      return true;
+    }
+  }
+
+  public void testRandomInterleavedSlices() {
+    ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+    ByteSlicePool slicePool = new ByteSlicePool(blockPool);
+
+    int n = random().nextInt(2, 4); // 2 or 3 writers and readers
+    SliceWriter[] sliceWriters = new SliceWriter[n];
+    SliceReader[] sliceReaders = new SliceReader[n];
+
+    for (int i = 0; i < n; i++) {
+      sliceWriters[i] = new SliceWriter(slicePool);
+    }
+
+    while (true) {
+      int i = random().nextInt(n);
+      boolean succeeded = sliceWriters[i].writeSlice();
+      if (succeeded == false) {
+        for (int j = 0; j < n; j++) {
+          while (sliceWriters[j].writeSlice());
+        }
+        break;
+      }
+    }
+
+    for (int i = 0; i < n; i++) {
+      sliceReaders[i] = new SliceReader(slicePool, sliceWriters[i].size,
+              sliceWriters[i].firstSliceOffset, sliceWriters[i].firstSlice);
+    }
+
+    while (true) {
+      int i = random().nextInt(n);
+      boolean succeeded = sliceReaders[i].readSlice();
+      if (succeeded == false) {
+        for (int j = 0; j < n; j++) {
+          while (sliceReaders[j].readSlice());
+        }
+        break;
+      }
+    }
+
+    for (int i = 0; i < n; i++) {
+      assertArrayEquals(sliceWriters[i].randomData, sliceReaders[i].readData);
+    }
+  }
 }
