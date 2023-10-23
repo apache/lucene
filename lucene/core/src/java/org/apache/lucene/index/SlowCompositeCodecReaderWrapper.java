@@ -76,6 +76,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
     int majorVersion = -1;
     Version minVersion = null;
+    boolean hasBlocks = false;
     for (CodecReader reader : codecReaders) {
       LeafMetaData readerMeta = reader.getMetaData();
       if (majorVersion == -1) {
@@ -89,8 +90,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       } else if (minVersion.onOrAfter(readerMeta.getMinVersion())) {
         minVersion = readerMeta.getMinVersion();
       }
+      hasBlocks |= readerMeta.hasBlocks();
     }
-    meta = new LeafMetaData(majorVersion, minVersion, null);
+    meta = new LeafMetaData(majorVersion, minVersion, null, hasBlocks);
     MultiReader multiReader = new MultiReader(codecReaders.toArray(CodecReader[]::new));
     fieldInfos = FieldInfos.getMergedFieldInfos(multiReader);
     liveDocs = MultiBits.getLiveDocs(multiReader);
