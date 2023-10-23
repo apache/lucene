@@ -281,7 +281,6 @@ final class DocumentsWriterPerThread implements Accountable {
       seqNo = deleteQueue.add(deleteNode, deleteSlice);
       assert deleteSlice.isTail(deleteNode) : "expected the delete term as the tail item";
       deleteSlice.apply(pendingUpdates, docIdUpTo);
-      return seqNo;
     } else {
       seqNo = deleteQueue.updateSlice(deleteSlice);
       if (seqNo < 0) {
