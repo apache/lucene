@@ -26,7 +26,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 // TODO: merge with PagedBytes, except PagedBytes doesn't
 // let you read while writing which FST needs
 
-class BytesStore extends DataOutput implements FSTWriter {
+class BytesStore extends DataOutput implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(BytesStore.class)

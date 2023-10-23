@@ -19,7 +19,7 @@ package org.apache.lucene.util.fst;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 
-/** A type of FSTWriter which needs data to be initialized before use */
-public interface FSTStore extends FSTWriter {
+/** A type of {@link FSTReader} which needs data to be initialized before use */
+public interface FSTStore extends FSTReader {
   void init(DataInput in, long numBytes) throws IOException;
 }

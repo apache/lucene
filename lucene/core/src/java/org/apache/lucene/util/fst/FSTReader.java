@@ -20,8 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
 
-/** Abstraction for reading/writing bytes necessary for FST. */
-public interface FSTWriter extends Accountable {
+/** Abstraction for reading bytes necessary for FST. */
+public interface FSTReader extends Accountable {
 
   /**
    * The raw size in bytes of the FST
