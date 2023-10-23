@@ -24,35 +24,19 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
+
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.SortingCodecReader;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.TrackingDirectoryWrapper;
+import org.apache.lucene.store.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.OfflineSorter;
-import org.apache.lucene.util.OfflineSorter.BufferSize;
+import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
@@ -654,9 +638,7 @@ public final class BPIndexReorderer {
         for (int doc = postings.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = postings.nextDoc()) {
-          // reverse bytes so that byte order matches natural order
-          postingsOut.writeInt(Integer.reverseBytes(doc));
-          postingsOut.writeInt(Integer.reverseBytes(termID));
+          postingsOut.writeLong(Integer.toUnsignedLong(termID) << 32 | Integer.toUnsignedLong(doc));
         }
       }
     }
@@ -665,107 +647,60 @@ public final class BPIndexReorderer {
 
   private ForwardIndex buildForwardIndex(
       Directory tempDir, String postingsFileName, int maxDoc, int maxTerm) throws IOException {
-    String sortedPostingsFile =
-        new OfflineSorter(
-            tempDir,
-            "forward-index",
-            // Implement BytesRefComparator to make OfflineSorter use radix sort
-            new BytesRefComparator(2 * Integer.BYTES) {
-              @Override
-              protected int byteAt(BytesRef ref, int i) {
-                return ref.bytes[ref.offset + i] & 0xFF;
-              }
-
-              @Override
-              public int compare(BytesRef o1, BytesRef o2, int k) {
-                assert o1.length == 2 * Integer.BYTES;
-                assert o2.length == 2 * Integer.BYTES;
-                return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
-              }
-            },
-            BufferSize.megabytes((long) (ramBudgetMB / getParallelism())),
-            OfflineSorter.MAX_TEMPFILES,
-            2 * Integer.BYTES,
-            forkJoinPool,
-            getParallelism()) {
-
-          @Override
-          protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
-              throws IOException {
-            return new ByteSequencesReader(in, postingsFileName) {
-              {
-                ref.grow(2 * Integer.BYTES);
-                ref.setLength(2 * Integer.BYTES);
-              }
-
-              @Override
-              public BytesRef next() throws IOException {
-                if (in.getFilePointer() >= end) {
-                  return null;
-                }
-                // optimized read of 8 bytes
-                in.readBytes(ref.bytes(), 0, 2 * Integer.BYTES);
-                return ref.get();
-              }
-            };
-          }
-
-          @Override
-          protected ByteSequencesWriter getWriter(IndexOutput out, long itemCount)
-              throws IOException {
-            return new ByteSequencesWriter(out) {
-              @Override
-              public void write(byte[] bytes, int off, int len) throws IOException {
-                assert len == 2 * Integer.BYTES;
-                // optimized read of 8 bytes
-                out.writeBytes(bytes, off, len);
-              }
-            };
-          }
-        }.sort(postingsFileName);
 
     String termIDsFileName;
     String startOffsetsFileName;
-    int prevDoc = -1;
-    try (IndexInput sortedPostings = tempDir.openInput(sortedPostingsFile, IOContext.READONCE);
-        IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
+    try (IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
         IndexOutput startOffsets =
             tempDir.createTempOutput("start-offsets", "", IOContext.DEFAULT)) {
       termIDsFileName = termIDs.getName();
       startOffsetsFileName = startOffsets.getName();
-      final long end = sortedPostings.length() - CodecUtil.footerLength();
       int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
-      int bufferLen = 0;
-      while (sortedPostings.getFilePointer() < end) {
-        final int doc = Integer.reverseBytes(sortedPostings.readInt());
-        final int termID = Integer.reverseBytes(sortedPostings.readInt());
-        if (doc != prevDoc) {
-          if (bufferLen != 0) {
-            writeMonotonicInts(buffer, bufferLen, termIDs);
-            bufferLen = 0;
-          }
+      new ForwardIndexSorter(tempDir)
+          .sortAndConsume(
+              postingsFileName,
+              maxDoc,
+              new LongConsumer() {
 
-          assert doc > prevDoc;
-          for (int d = prevDoc + 1; d <= doc; ++d) {
-            startOffsets.writeLong(termIDs.getFilePointer());
-          }
-          prevDoc = doc;
-        }
-        assert termID < maxTerm : termID + " " + maxTerm;
-        if (bufferLen == buffer.length) {
-          writeMonotonicInts(buffer, bufferLen, termIDs);
-          bufferLen = 0;
-        }
-        buffer[bufferLen++] = termID;
-      }
-      if (bufferLen != 0) {
-        writeMonotonicInts(buffer, bufferLen, termIDs);
-      }
-      for (int d = prevDoc + 1; d <= maxDoc; ++d) {
-        startOffsets.writeLong(termIDs.getFilePointer());
-      }
-      CodecUtil.writeFooter(termIDs);
-      CodecUtil.writeFooter(startOffsets);
+                int prevDoc = -1;
+                int bufferLen = 0;
+
+                @Override
+                public void accept(long value) throws IOException {
+                  int doc = (int) value;
+                  int termID = (int) (value >>> 32);
+                  if (doc != prevDoc) {
+                    if (bufferLen != 0) {
+                      writeMonotonicInts(buffer, bufferLen, termIDs);
+                      bufferLen = 0;
+                    }
+
+                    assert doc > prevDoc;
+                    for (int d = prevDoc + 1; d <= doc; ++d) {
+                      startOffsets.writeLong(termIDs.getFilePointer());
+                    }
+                    prevDoc = doc;
+                  }
+                  assert termID < maxTerm : termID + " " + maxTerm;
+                  if (bufferLen == buffer.length) {
+                    writeMonotonicInts(buffer, bufferLen, termIDs);
+                    bufferLen = 0;
+                  }
+                  buffer[bufferLen++] = termID;
+                }
+
+                @Override
+                public void onFinish() throws IOException {
+                  if (bufferLen != 0) {
+                    writeMonotonicInts(buffer, bufferLen, termIDs);
+                  }
+                  for (int d = prevDoc + 1; d <= maxDoc; ++d) {
+                    startOffsets.writeLong(termIDs.getFilePointer());
+                  }
+                  CodecUtil.writeFooter(termIDs);
+                  CodecUtil.writeFooter(startOffsets);
+                }
+              });
     }
 
     IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.READ);
@@ -990,5 +925,134 @@ public final class BPIndexReorderer {
       in.readInts(ints, 0, len);
     }
     return len;
+  }
+
+  static class ForwardIndexSorter {
+
+    private static final int BUFFER_SIZE = 8192;
+    private final Directory directory;
+    private final Bucket[] buckets = new Bucket[256];
+
+    private static class Bucket {
+      int bufferUsed;
+      int blockNum;
+      long lastFp;
+      final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
+      final long[] buffer = new long[BUFFER_SIZE];
+      int finalBlockSize;
+
+      void addEntry(long l, IndexOutput output) throws IOException {
+        buffer[bufferUsed++] = l;
+        if (bufferUsed == BUFFER_SIZE) {
+          flush(output, false);
+        }
+      }
+
+      void flush(IndexOutput output, boolean isFinal) throws IOException {
+        if (isFinal) {
+          finalBlockSize = bufferUsed;
+        }
+        long fp = output.getFilePointer();
+        fps.writeVLong(fp - lastFp);
+        lastFp = fp;
+        for (int i = 0; i < bufferUsed; i++) {
+          output.writeLong(buffer[i]);
+        }
+        lastFp = fp;
+        blockNum++;
+        bufferUsed = 0;
+      }
+
+      void reset() {
+        finalBlockSize = 0;
+        bufferUsed = 0;
+        blockNum = 0;
+        lastFp = 0;
+        fps.reset();
+      }
+    }
+
+    ForwardIndexSorter(Directory directory) {
+      this.directory = directory;
+      for (int i = 0; i < buckets.length; i++) {
+        buckets[i] = new Bucket();
+      }
+    }
+
+    void consume(String fileName, LongConsumer consumer) throws IOException {
+      try (IndexInput in = directory.openInput(fileName, IOContext.READONCE)) {
+        final long end = in.length() - CodecUtil.footerLength();
+        while (in.getFilePointer() < end) {
+          consumer.accept(in.readLong());
+        }
+      }
+      consumer.onFinish();
+    }
+
+    void consume(String fileName, long indexFP, LongConsumer consumer) throws IOException {
+      try (IndexInput index = directory.openInput(fileName, IOContext.READONCE);
+          IndexInput value = directory.openInput(fileName, IOContext.READONCE)) {
+        index.seek(indexFP);
+        for (int i = 0; i < buckets.length; i++) {
+          int blockNum = index.readVInt();
+          int finalBlockSize = index.readVInt();
+          long fp = index.readVLong();
+          for (int block = 0; block < blockNum - 1; block++) {
+            value.seek(fp);
+            for (int j = 0; j < BUFFER_SIZE; j++) {
+              consumer.accept(value.readLong());
+            }
+            fp += index.readVLong();
+          }
+          value.seek(fp);
+          for (int j = 0; j < finalBlockSize; j++) {
+            consumer.accept(value.readLong());
+          }
+        }
+        consumer.onFinish();
+      }
+    }
+
+    LongConsumer consumer(int shift, IndexOutput output) {
+      return value -> {
+        int b = (int) ((value >>> shift) & 0xFF);
+        Bucket bucket = buckets[b];
+        bucket.addEntry(value, output);
+      };
+    }
+
+    void sortAndConsume(String fileName, int maxDoc, LongConsumer consumer) throws IOException {
+      int bitsRequired = PackedInts.bitsRequired(maxDoc);
+      String sourceFileName = fileName;
+      long indexFP = -1;
+      for (int shift = 0; shift < bitsRequired; shift += 8) {
+        try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.DEFAULT)) {
+          if (shift == 0) {
+            consume(sourceFileName, consumer(shift, output));
+          } else {
+            consume(sourceFileName, indexFP, consumer(shift, output));
+          }
+          for (Bucket bucket : buckets) {
+            bucket.flush(output, true);
+          }
+          indexFP = output.getFilePointer();
+          for (Bucket bucket : buckets) {
+            output.writeVInt(bucket.blockNum);
+            output.writeVInt(bucket.finalBlockSize);
+            bucket.fps.copyTo(output);
+            bucket.reset();
+          }
+          CodecUtil.writeFooter(output);
+          sourceFileName = output.getName();
+        }
+      }
+      consume(sourceFileName, indexFP, consumer);
+    }
+  }
+
+  interface LongConsumer {
+    void accept(long value) throws IOException;
+
+    default void onFinish() throws IOException {}
   }
 }
