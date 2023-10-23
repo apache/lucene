@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.document.Field;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Version;
 
@@ -29,9 +31,10 @@ public final class LeafMetaData {
   private final int createdVersionMajor;
   private final Version minVersion;
   private final Sort sort;
+  private final boolean hasBlocks;
 
   /** Expert: Sole constructor. Public for use by custom {@link LeafReader} impls. */
-  public LeafMetaData(int createdVersionMajor, Version minVersion, Sort sort) {
+  public LeafMetaData(int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
     this.createdVersionMajor = createdVersionMajor;
     if (createdVersionMajor > Version.LATEST.major) {
       throw new IllegalArgumentException(
@@ -46,6 +49,7 @@ public final class LeafMetaData {
     }
     this.minVersion = minVersion;
     this.sort = sort;
+    this.hasBlocks = hasBlocks;
   }
 
   /**
@@ -71,5 +75,20 @@ public final class LeafMetaData {
    */
   public Sort getSort() {
     return sort;
+  }
+
+  /**
+   * Returns <code>true</code> iff this index contains blocks created with {@link
+   * IndexWriter#addDocument(Iterable)} or it's corresponding update methods with at least 2 or more
+   * documents per call. Note: This property was not recorded before {@link Version#LUCENE_9_9_0}
+   * this method will return false for all leaves written before {@link Version#LUCENE_9_9_0}
+   *
+   * @see IndexWriter#updateDocuments(Term, Iterable)
+   * @see IndexWriter#updateDocuments(Query, Iterable)
+   * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
+   * @see IndexWriter#addDocuments(Iterable)
+   */
+  public boolean hasBlocks() {
+    return hasBlocks;
   }
 }
