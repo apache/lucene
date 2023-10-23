@@ -631,7 +631,8 @@ public class Dictionary {
 
   private FST<IntsRef> affixFST(TreeMap<String, List<Integer>> affixes) throws IOException {
     IntSequenceOutputs outputs = IntSequenceOutputs.getSingleton();
-    FSTCompiler<IntsRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+    FSTCompiler<IntsRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     for (Map.Entry<String, List<Integer>> entry : affixes.entrySet()) {
       Util.toUTF32(entry.getKey(), scratch);

@@ -770,7 +770,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testSingleString() throws Exception {
     final Outputs<Object> outputs = NoOutputs.getSingleton();
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("foobar"), new IntsRefBuilder()), outputs.getNoOutput());
     final BytesRefFSTEnum<Object> fstEnum = new BytesRefFSTEnum<>(fstCompiler.compile());
@@ -781,7 +782,8 @@ public class TestFSTs extends LuceneTestCase {
   public void testDuplicateFSAString() throws Exception {
     String str = "foobar";
     final Outputs<Object> outputs = NoOutputs.getSingleton();
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     IntsRefBuilder ints = new IntsRefBuilder();
     for (int i = 0; i < 10; i++) {
       fstCompiler.add(Util.toIntsRef(newBytesRef(str), ints), outputs.getNoOutput());
@@ -850,7 +852,8 @@ public class TestFSTs extends LuceneTestCase {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
 
     // Build an FST mapping BytesRef -> Long
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final BytesRef a = newBytesRef("a");
     final BytesRef b = newBytesRef("b");
@@ -1089,7 +1092,8 @@ public class TestFSTs extends LuceneTestCase {
       FST<Object> compile(String[] lines) throws IOException {
         final NoOutputs outputs = NoOutputs.getSingleton();
         final Object nothing = outputs.getNoOutput();
-        final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Object> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         int line = 0;
         final BytesRefBuilder term = new BytesRefBuilder();
@@ -1180,7 +1184,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testInternalFinalState() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("stat"), new IntsRefBuilder()), outputs.getNoOutput());
     fstCompiler.add(
@@ -1202,7 +1207,8 @@ public class TestFSTs extends LuceneTestCase {
   // Make sure the FST can be saved and loaded with different DataOutput for metadata
   public void testSaveDifferentMetaOut() throws Exception {
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     // first build the FST from scratch
     final IntsRefBuilder scratch = new IntsRefBuilder();
@@ -1244,7 +1250,8 @@ public class TestFSTs extends LuceneTestCase {
   public void testNonFinalStopNode() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
     final Long nothing = outputs.getNoOutput();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     final FST<Long> fst = fstCompiler.fst;
 
     final FSTCompiler.UnCompiledNode<Long> rootNode =
@@ -1319,7 +1326,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testShortestPaths() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
@@ -1352,7 +1360,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testRejectNoLimits() throws IOException {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
@@ -1418,7 +1427,7 @@ public class TestFSTs extends LuceneTestCase {
             );
 
     final FSTCompiler<Pair<Long, Long>> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), outputs.newPair(22L, 57L));
@@ -1461,7 +1470,8 @@ public class TestFSTs extends LuceneTestCase {
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     final IntsRefBuilder scratch = new IntsRefBuilder();
 
     for (int i = 0; i < numWords; i++) {
@@ -1583,7 +1593,7 @@ public class TestFSTs extends LuceneTestCase {
             PositiveIntOutputs.getSingleton() // output
             );
     final FSTCompiler<Pair<Long, Long>> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     final IntsRefBuilder scratch = new IntsRefBuilder();
 
     Random random = random();
@@ -1672,7 +1682,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testLargeOutputsOnArrayArcs() throws Exception {
     final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-    final FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<BytesRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final byte[] bytes = new byte[300];
     final IntsRefBuilder input = new IntsRefBuilder();
@@ -1717,7 +1728,8 @@ public class TestFSTs extends LuceneTestCase {
     Collections.sort(termsList);
 
     ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-    FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<BytesRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     IntsRefBuilder input = new IntsRefBuilder();
     for (BytesRef term : termsList) {
@@ -1749,7 +1761,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testSimpleDepth() throws Exception {
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     BytesRef ab = newBytesRef("ab");
     BytesRef ac = newBytesRef("ac");
