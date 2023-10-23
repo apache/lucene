@@ -101,7 +101,7 @@ public final class TaskExecutor {
       this.futures = Collections.unmodifiableCollection(tasks);
     }
 
-    FutureTask<T> createTask(Callable<T> callable) {
+    RunnableFuture<T> createTask(Callable<T> callable) {
       // -1: cancelled; 0: not yet started; 1: started
       AtomicInteger taskState = new AtomicInteger(0);
       return new FutureTask<>(
