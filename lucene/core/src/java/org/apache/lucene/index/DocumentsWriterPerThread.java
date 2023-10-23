@@ -232,7 +232,7 @@ final class DocumentsWriterPerThread implements Accountable {
       boolean allDocsIndexed = false;
       try {
         for (Iterable<? extends IndexableField> doc : docs) {
-          if (indexWriterConfig.getIndexSort() != null && docsInRamBefore != numDocsInRAM) {
+          if (docsInRamBefore != numDocsInRAM && indexWriterConfig.getIndexSort() != null) {
             throw new IllegalStateException(
                 "Can't use index API with multiple documents when index sorting is used. Sort: "
                     + indexWriterConfig.getIndexSort());
@@ -251,9 +251,6 @@ final class DocumentsWriterPerThread implements Accountable {
           }
         }
         allDocsIndexed = true;
-        if (numDocsInRAM - docsInRamBefore > 1) {
-          segmentInfo.setHasBlocks();
-        }
         return finishDocuments(deleteNode, docsInRamBefore);
       } finally {
         if (!allDocsIndexed && !aborted) {
@@ -294,7 +291,9 @@ final class DocumentsWriterPerThread implements Accountable {
         deleteSlice.reset();
       }
     }
-
+    if (numDocsInRAM - docIdUpTo > 1) {
+      segmentInfo.setHasBlocks();
+    }
     return seqNo;
   }
 
