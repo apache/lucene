@@ -394,13 +394,14 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
+    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
-    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    writerWithMergePolicy.commit(); // Do merge on commit.
+    TestIndexWriter.addDoc(writerWithMergePolicy);
+    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
 
     DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy);
@@ -409,8 +410,8 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      assertEquals(5, reader.numDocs());
-      assertEquals(5, searcher.count(new MatchAllDocsQuery()));
+      assertEquals(6, reader.numDocs());
+      assertEquals(6, searcher.count(new MatchAllDocsQuery()));
     }
 
     writerWithMergePolicy.close();
@@ -444,14 +445,16 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setIndexWriterEventListener(eventListener);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
+    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
-    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
+    TestIndexWriter.addDoc(writerWithMergePolicy);
+
     assertFalse(eventListener.isEventsRecorded());
-    writerWithMergePolicy.commit(); // Do merge on commit.
+    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
     assertTrue(eventListener.isEventsRecorded());
 

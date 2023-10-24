@@ -3680,7 +3680,7 @@ public class IndexWriter
               // merge completes which would otherwise have
               // removed the files we are now syncing.
               deleter.incRef(toCommit.files(false));
-              if (maxCommitMergeWaitMillis > 0) {
+              if (anyChanges && maxCommitMergeWaitMillis > 0) {
                 // we can safely call preparePointInTimeMerge since writeReaderPool(true) above
                 // wrote all
                 // necessary files to disk and checkpointed them.
@@ -4232,6 +4232,7 @@ public class IndexWriter
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
+          ;
           docWriter.finishFullFlush(flushSuccess);
           processEvents(false);
         }
