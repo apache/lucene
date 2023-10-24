@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.backward_codecs.lucene86;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.index.CorruptIndexException;
@@ -39,7 +38,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Version;
 
 /**
- * Lucene 8.6 Segment info format.
+ * Lucene 9.0 Segment info format.
  *
  * <p>Files:
  *
@@ -82,24 +81,23 @@ import org.apache.lucene.util.Version;
  * @see SegmentInfos
  * @lucene.experimental
  */
-public class Lucene86SegmentInfoFormat extends SegmentInfoFormat {
+public class Lucene90SegmentInfoFormat extends SegmentInfoFormat {
 
   /** File extension used to store {@link SegmentInfo}. */
   public static final String SI_EXTENSION = "si";
 
-  static final String CODEC_NAME = "Lucene86SegmentInfo";
+  static final String CODEC_NAME = "Lucene90SegmentInfo";
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor. */
-  public Lucene86SegmentInfoFormat() {}
+  public Lucene90SegmentInfoFormat() {}
 
   @Override
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
       throws IOException {
     final String fileName = IndexFileNames.segmentFileName(segment, "", SI_EXTENSION);
-    try (ChecksumIndexInput input =
-        EndiannessReverserUtil.openChecksumInput(dir, fileName, context)) {
+    try (ChecksumIndexInput input = dir.openChecksumInput(fileName)) {
       Throwable priorE = null;
       SegmentInfo si = null;
       try {
