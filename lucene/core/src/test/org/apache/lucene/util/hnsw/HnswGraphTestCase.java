@@ -38,8 +38,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -175,7 +175,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene95HnswVectorsFormat(M, beamWidth);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
                         }
                       };
                     }
@@ -247,7 +247,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene95HnswVectorsFormat(M, beamWidth);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
                         }
                       };
                     }
@@ -276,7 +276,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
-              ((Lucene95HnswVectorsReader)
+              ((Lucene99HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
@@ -308,7 +308,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene95HnswVectorsFormat(M, beamWidth);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
                       }
                     };
                   }
@@ -322,7 +322,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene95HnswVectorsFormat(M, beamWidth);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
                       }
                     };
                   }
