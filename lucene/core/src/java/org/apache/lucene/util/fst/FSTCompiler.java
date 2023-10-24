@@ -123,7 +123,7 @@ public class FSTCompiler<T> {
    * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
    * tuning and tweaking, see {@link Builder}.
    *
-   * @deprecated Use FSTCompiler.Builder instead. This method will be private in an upcoming major
+   * @deprecated Use FSTCompiler.Builder instead. This method will be removed in an upcoming major
    *     release.
    */
   @Deprecated
