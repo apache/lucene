@@ -190,6 +190,8 @@ Improvements
 * GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
   in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
+* GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
