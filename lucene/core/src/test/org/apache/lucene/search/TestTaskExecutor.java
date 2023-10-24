@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +32,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -228,11 +230,21 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testInvokeAllDoesNotLeaveTasksBehind() {
-    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksStarted = new AtomicInteger(0);
+    TaskExecutor taskExecutor =
+        new TaskExecutor(
+            command -> {
+              executorService.execute(
+                  () -> {
+                    tasksStarted.incrementAndGet();
+                    command.run();
+                  });
+            });
     AtomicInteger tasksExecuted = new AtomicInteger(0);
     List<Callable<Void>> callables = new ArrayList<>();
     callables.add(
         () -> {
+          tasksExecuted.incrementAndGet();
           throw new RuntimeException();
         });
     int tasksWithNormalExit = 99;
@@ -244,7 +256,9 @@ public class TestTaskExecutor extends LuceneTestCase {
           });
     }
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
-    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+    assertEquals(1, tasksExecuted.get());
+    // the callables are technically all run, but the cancelled ones will be no-op
+    assertEquals(100, tasksStarted.get());
   }
 
   /**
@@ -252,37 +266,81 @@ public class TestTaskExecutor extends LuceneTestCase {
    * as suppressed exceptions to the first one caught.
    */
   public void testInvokeAllCatchesMultipleExceptions() {
-    TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    AtomicInteger tasksExecuted = new AtomicInteger(0);
-    List<Callable<Void>> callables = new ArrayList<>();
-    callables.add(
-        () -> {
-          throw new RuntimeException("exception A");
-        });
-    int tasksWithNormalExit = 50;
-    for (int i = 0; i < tasksWithNormalExit; i++) {
+    // this test requires multiple threads, while all the other tests in this class rely on a single
+    // threaded executor
+    ExecutorService multiThreadedExecutor =
+        Executors.newFixedThreadPool(
+            2, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
+    try {
+      TaskExecutor taskExecutor = new TaskExecutor(multiThreadedExecutor);
+      List<Callable<Void>> callables = new ArrayList<>();
+      // if we have multiple threads, make sure both are started before an exception is thrown,
+      // otherwise there may or may not be a suppressed exception
+      CountDownLatch latchA = new CountDownLatch(1);
+      CountDownLatch latchB = new CountDownLatch(1);
       callables.add(
           () -> {
-            tasksExecuted.incrementAndGet();
+            latchA.countDown();
+            latchB.await();
+            throw new RuntimeException("exception A");
+          });
+      callables.add(
+          () -> {
+            latchB.countDown();
+            latchA.await();
+            throw new IllegalStateException("exception B");
+          });
+
+      RuntimeException exc =
+          expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+      Throwable[] suppressed = exc.getSuppressed();
+
+      assertEquals(1, suppressed.length);
+      if (exc.getMessage().equals("exception A")) {
+        assertEquals("exception B", suppressed[0].getMessage());
+      } else {
+        assertEquals("exception A", suppressed[0].getMessage());
+        assertEquals("exception B", exc.getMessage());
+      }
+    } finally {
+      TestUtil.shutdownExecutorService(multiThreadedExecutor);
+    }
+  }
+
+  public void testCancelTasksOnException() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    final int numTasks = TestUtil.nextInt(random(), 10, 50);
+    final int throwingTask = random().nextInt(numTasks);
+    boolean error = random().nextBoolean();
+    List<Callable<Void>> tasks = new ArrayList<>(numTasks);
+    AtomicInteger executedTasks = new AtomicInteger(0);
+    for (int i = 0; i < numTasks; i++) {
+      final int index = i;
+      tasks.add(
+          () -> {
+            if (index == throwingTask) {
+              if (error) {
+                throw new OutOfMemoryError();
+              } else {
+                throw new RuntimeException();
+              }
+            }
+            if (index > throwingTask) {
+              // with a single thread we are sure that the last task to run is the one that throws,
+              // following ones must not run
+              throw new AssertionError("task should not have started");
+            }
+            executedTasks.incrementAndGet();
             return null;
           });
     }
-    callables.add(
-        () -> {
-          throw new IllegalStateException("exception B");
-        });
-
-    RuntimeException exc =
-        expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
-    Throwable[] suppressed = exc.getSuppressed();
-    assertEquals(1, suppressed.length);
-    if (exc.getMessage().equals("exception A")) {
-      assertEquals("exception B", suppressed[0].getMessage());
+    Throwable throwable;
+    if (error) {
+      throwable = expectThrows(OutOfMemoryError.class, () -> taskExecutor.invokeAll(tasks));
     } else {
-      assertEquals("exception A", suppressed[0].getMessage());
-      assertEquals("exception B", exc.getMessage());
+      throwable = expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(tasks));
     }
-
-    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+    assertEquals(0, throwable.getSuppressed().length);
+    assertEquals(throwingTask, executedTasks.get());
   }
 }
