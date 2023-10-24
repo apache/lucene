@@ -134,8 +134,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
       } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
         // The first half of the window would match a single clause. Let's collect this single
-        // clause
-        // until the next doc ID of the next clause.
+        // clause until the next doc ID of the next clause.
         scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
       } else {
         scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
