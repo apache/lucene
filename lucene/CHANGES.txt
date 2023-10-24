@@ -214,7 +214,7 @@ Optimizations
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
 
-* GITHUB#12712: Speed up sort of postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
+* GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
