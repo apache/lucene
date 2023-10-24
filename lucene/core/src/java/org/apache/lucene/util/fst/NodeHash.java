@@ -183,7 +183,8 @@ final class NodeHash<T> {
         h += 17;
       }
     }
-
+    // Here we multiply the hash with the gold constant BitMixer#PHI_C64
+    // This makes a real difference in the evenness of the value distribution
     return h * BitMixer.PHI_C64;
   }
 
@@ -207,7 +208,8 @@ final class NodeHash<T> {
       }
       fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
-
+    // Here we multiply the hash with the gold constant BitMixer#PHI_C64
+    // This makes a real difference in the evenness of the value distribution
     return h * BitMixer.PHI_C64;
   }
 
