@@ -16,9 +16,20 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.Throughput)
@@ -33,11 +44,15 @@ public class VectorUtilBenchmark {
   private float[] floatsA;
   private float[] floatsB;
 
+  private Directory dir;
+  private RandomAccessVectorValues<float[]> floatValuesA;
+  private RandomAccessVectorValues<float[]> floatValuesB;
+
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
 
   @Setup(Level.Trial)
-  public void init() {
+  public void init() throws IOException {
     ThreadLocalRandom random = ThreadLocalRandom.current();
 
     // random byte arrays for binary methods
@@ -53,6 +68,14 @@ public class VectorUtilBenchmark {
       floatsA[i] = random.nextFloat();
       floatsB[i] = random.nextFloat();
     }
+
+    dir = new MMapDirectory(Files.createTempDirectory("benchmark-floats"));
+    var aIndex = inputForFloats(floatsA, 0, 1, dir, "vector-a");
+    var bIndex = inputForFloats(floatsB, 0, 3, dir, "vector-b");
+    floatValuesA =
+        newDenseOffHeapFloatVectorValues(floatsA.length, 1, aIndex, floatsA.length * Float.BYTES);
+    floatValuesB =
+        newDenseOffHeapFloatVectorValues(floatsB.length, 1, bIndex, floatsB.length * Float.BYTES);
   }
 
   @Benchmark
@@ -121,8 +144,25 @@ public class VectorUtilBenchmark {
   @Fork(
       value = 1,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float floatDotProductVector() {
-    return VectorUtil.dotProduct(floatsA, floatsB);
+  public float floatDotProductVector() throws IOException {
+    // REVERT/REMOVE - this change is required to ensure fair comparison with MS1 and MS2
+    return VectorUtil.dotProduct(floatValuesA.vectorValue(0), floatValuesB.vectorValue(0));
+  }
+
+  @Benchmark
+  @Fork(
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float floatDotProductVectorMS1() throws IOException {
+    return VectorUtil.dotProduct(floatValuesA.vectorValue(0), floatValuesB, 0);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float floatDotProductVectorMS2() throws IOException {
+    return VectorUtil.dotProduct(floatValuesA, 0, floatValuesB, 0);
   }
 
   @Benchmark
@@ -137,5 +177,36 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatSquareVector() {
     return VectorUtil.squareDistance(floatsA, floatsB);
+  }
+
+  // ---
+
+  public static RandomAccessVectorValues<float[]> newDenseOffHeapFloatVectorValues(
+      int dimension, int size, IndexInput slice, int byteSize) {
+    return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(dimension, size, slice, byteSize);
+  }
+
+  static IndexInput inputForFloats(
+      float[] vector, int vectorPosition, int initialBytes, Directory dir, String name)
+      throws IOException {
+    int vectorLenBytes = vector.length * Float.BYTES;
+    try (var out = dir.createOutput(name + ".data", IOContext.DEFAULT)) {
+      if (initialBytes != 0) {
+        out.writeBytes(new byte[initialBytes], initialBytes);
+      }
+      if (vectorPosition != 0) {
+        out.writeBytes(new byte[vectorPosition * vectorLenBytes], vectorPosition * vectorLenBytes);
+      }
+      writeFloat32(vector, out);
+    }
+    var in = dir.openInput(name + ".data", IOContext.DEFAULT);
+    return in.slice(name, initialBytes, (long) (vectorPosition + 1) * vectorLenBytes);
+  }
+
+  static void writeFloat32(float[] arr, IndexOutput out) throws IOException {
+    int lenBytes = arr.length * Float.BYTES;
+    final ByteBuffer buffer = ByteBuffer.allocate(lenBytes).order(ByteOrder.LITTLE_ENDIAN);
+    buffer.asFloatBuffer().put(arr);
+    out.writeBytes(buffer.array(), lenBytes);
   }
 }

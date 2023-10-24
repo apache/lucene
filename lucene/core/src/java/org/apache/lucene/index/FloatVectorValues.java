@@ -34,6 +34,11 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
   /** Return the dimension of the vectors */
   public abstract int dimension();
 
+  /** Return the number of bytes per individual vector. */
+  public int byteSize() {
+    return dimension() * Float.BYTES;
+  }
+
   /**
    * Return the number of vectors for this field.
    *

@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 
 /**
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
@@ -30,6 +31,9 @@ public interface RandomAccessVectorValues<T> {
   /** Return the number of vector values */
   int size();
 
+  /** Return the number of bytes per individual vector. */
+  int byteSize();
+
   /** Return the dimension of the returned vector values */
   int dimension();
 
@@ -39,6 +43,10 @@ public interface RandomAccessVectorValues<T> {
    * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
    */
   T vectorValue(int targetOrd) throws IOException;
+
+  default IndexInput getIndexInput() {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to

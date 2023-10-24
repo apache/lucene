@@ -58,13 +58,19 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   @Override
   public float[] vectorValue(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return value;
-    }
+    // REVERT/REMOVE - hack for bench, to ensure fair comparison with MS1 and MS2
+    // if (lastOrd == targetOrd) {
+    //  return value;
+    // }
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
     lastOrd = targetOrd;
     return value;
+  }
+
+  @Override
+  public IndexInput getIndexInput() {
+    return slice;
   }
 
   public static OffHeapFloatVectorValues load(
@@ -90,7 +96,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   abstract Bits getAcceptOrds(Bits acceptDocs);
 
-  static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  // REVERT/REMOVE - hack for bench, to ensure fair comparison with MS1 and MS2
+  /** Stub doc to keep build happy. */
+  public static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
 
     private int doc = -1;
 

@@ -17,8 +17,10 @@
 
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
@@ -38,6 +40,32 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     float r = IMPL.dotProduct(a, b);
+    assert Float.isFinite(r);
+    return r;
+  }
+
+  public static float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOffset)
+      throws IOException {
+    if (a.length != b.dimension()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.dimension());
+    }
+    float r = IMPL.dotProduct(a, b, bOffset);
+    assert Float.isFinite(r);
+    return r;
+  }
+
+  public static float dotProduct(
+      RandomAccessVectorValues<float[]> a,
+      int aOffset,
+      RandomAccessVectorValues<float[]> b,
+      int bOffset)
+      throws IOException {
+    if (a.dimension() != b.dimension()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.dimension() + "!=" + b.dimension());
+    }
+    float r = IMPL.dotProduct(a, aOffset, b, bOffset);
     assert Float.isFinite(r);
     return r;
   }

@@ -88,6 +88,11 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   @Override
+  public int byteSize() {
+    return vectorDimension * Float.BYTES;
+  }
+
+  @Override
   public RandomAccessVectorValues<float[]> copy() throws IOException {
     return new Word2VecModel(
         this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);

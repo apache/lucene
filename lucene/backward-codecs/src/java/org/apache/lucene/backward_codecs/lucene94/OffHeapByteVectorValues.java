@@ -233,6 +233,11 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
+    public int byteSize() {
+      return 0;
+    }
+
+    @Override
     public byte[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
     }

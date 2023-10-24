@@ -51,9 +51,7 @@ public interface RandomVectorScorerSupplier {
     final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
     return queryOrd ->
         (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+            cand -> similarityFunction.compare(vectors, queryOrd, vectorsCopy, cand);
   }
 
   /**
@@ -78,6 +76,6 @@ public interface RandomVectorScorerSupplier {
         (RandomVectorScorer)
             cand ->
                 similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand)); // TODO bytes
   }
 }

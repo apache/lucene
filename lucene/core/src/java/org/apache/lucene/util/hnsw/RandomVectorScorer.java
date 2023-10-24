@@ -53,7 +53,7 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    return node -> similarityFunction.compare(query, vectors, node);
   }
 
   /**
@@ -79,6 +79,8 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    return node ->
+        similarityFunction.compare(
+            query, vectors.vectorValue(node)); // TODO: update when bytes is done
   }
 }

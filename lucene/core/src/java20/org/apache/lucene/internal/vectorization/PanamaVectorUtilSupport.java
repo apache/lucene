@@ -21,6 +21,10 @@ import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.S2I;
 
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteOrder;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -28,7 +32,9 @@ import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
+import org.apache.lucene.store.MemorySegmentIndexInput;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * VectorUtil methods implemented with Panama incubating vector API.
@@ -43,6 +49,10 @@ import org.apache.lucene.util.Constants;
  * Setting these properties will make this code run EXTREMELY slow!
  */
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
+
+  static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
+
+  static final ValueLayout.OfFloat LAYOUT_LE_FLOAT = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LE);
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
@@ -136,6 +146,160 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
+  }
+
+  @Override
+  public float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOrd)
+      throws IOException {
+    assert b.dimension() == a.length;
+    try {
+      if (b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+        final int vecByteSize = b.byteSize();
+        final long bOffset = (long) bOrd * vecByteSize;
+        var ms = bIndex.getSegmentFor(bOffset, vecByteSize);
+        return dotProduct(a, ms, bIndex.maskedPosition(bOffset));
+      }
+    } catch (UnsupportedOperationException e) {
+      // take the slower path for values ranging over multiple segment slices
+    }
+    return dotProduct(a, b.vectorValue(bOrd));
+  }
+
+  private float dotProduct(float[] a, MemorySegment b, long bOffset) {
+    int i = 0;
+    int j = 0;
+    // vector loop is unrolled 4x (4 accumulators in parallel)
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc4 = FloatVector.zero(FLOAT_SPECIES);
+    int limit = FLOAT_SPECIES.loopBound(a.length);
+    int unrolledLimit = limit - 3 * FLOAT_SPECIES.length();
+    for (;
+        i < unrolledLimit;
+        i += 4 * FLOAT_SPECIES.length(), j += 4 * FLOAT_SPECIES.vectorByteSize()) {
+      // one
+      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
+      FloatVector vb = FloatVector.fromMemorySegment(FLOAT_SPECIES, b, bOffset + j, LE);
+      acc1 = acc1.add(va.mul(vb));
+      // two
+      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i + FLOAT_SPECIES.length());
+      FloatVector vd =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + j + FLOAT_SPECIES.vectorByteSize(), LE);
+      acc2 = acc2.add(vc.mul(vd));
+      // three
+      FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i + 2 * FLOAT_SPECIES.length());
+      FloatVector vf =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + j + 2 * FLOAT_SPECIES.vectorByteSize(), LE);
+      acc3 = acc3.add(ve.mul(vf));
+      // four
+      FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i + 3 * FLOAT_SPECIES.length());
+      FloatVector vh =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + j + 3 * FLOAT_SPECIES.vectorByteSize(), LE);
+      acc4 = acc4.add(vg.mul(vh));
+    }
+    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    for (; i < limit; i += FLOAT_SPECIES.length(), j += FLOAT_SPECIES.vectorByteSize()) {
+      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
+      FloatVector vb = FloatVector.fromMemorySegment(FLOAT_SPECIES, b, bOffset + j, LE);
+      acc1 = acc1.add(va.mul(vb));
+    }
+    // reduce
+    FloatVector res1 = acc1.add(acc2);
+    FloatVector res2 = acc3.add(acc4);
+    float res = res1.add(res2).reduceLanes(ADD);
+
+    for (; i < a.length; i++, j += Float.BYTES) {
+      res += a[i] * b.get(LAYOUT_LE_FLOAT, bOffset + j);
+    }
+    return res;
+  }
+
+  @Override
+  public float dotProduct(
+      RandomAccessVectorValues<float[]> a, int aOrd, RandomAccessVectorValues<float[]> b, int bOrd)
+      throws IOException {
+    assert a.dimension() == b.dimension();
+    try {
+      if (a.getIndexInput() instanceof MemorySegmentIndexInput aIndex
+          && b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+        final int vecByteSize = a.byteSize();
+        final long aOffset = (long) aOrd * vecByteSize;
+        final long bOffset = (long) bOrd * vecByteSize;
+        var msa = aIndex.getSegmentFor(aOffset, vecByteSize);
+        var msb = bIndex.getSegmentFor(bOffset, vecByteSize);
+        return dotProduct(
+            msa,
+            aIndex.maskedPosition(aOffset),
+            msb,
+            bIndex.maskedPosition(bOffset),
+            a.dimension());
+      }
+    } catch (UnsupportedOperationException e) {
+      // take the slower path for values ranging over multiple segment slices
+    }
+    return dotProduct(a.vectorValue(aOrd), b.vectorValue(bOrd));
+  }
+
+  private float dotProduct(
+      MemorySegment a, long aOffset, MemorySegment b, long bOffset, int length) {
+    int i = 0;
+    // vector loop is unrolled 4x (4 accumulators in parallel)
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc4 = FloatVector.zero(FLOAT_SPECIES);
+    int limit = length * Float.BYTES; // limit, in bytes
+    int vecLimit = FLOAT_SPECIES.loopBound(length) * Float.BYTES; // vector limit, in bytes
+    int unrolledLimit = vecLimit - 3 * FLOAT_SPECIES.vectorByteSize();
+    for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES.vectorByteSize()) {
+      // one
+      FloatVector va = FloatVector.fromMemorySegment(FLOAT_SPECIES, a, aOffset + i, LE);
+      FloatVector vb = FloatVector.fromMemorySegment(FLOAT_SPECIES, b, bOffset + i, LE);
+      acc1 = acc1.add(va.mul(vb));
+      // two
+      FloatVector vc =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, a, aOffset + i + FLOAT_SPECIES.vectorByteSize(), LE);
+      FloatVector vd =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + i + FLOAT_SPECIES.vectorByteSize(), LE);
+      acc2 = acc2.add(vc.mul(vd));
+      // three
+      FloatVector ve =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, a, aOffset + i + 2 * FLOAT_SPECIES.vectorByteSize(), LE);
+      FloatVector vf =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + i + 2 * FLOAT_SPECIES.vectorByteSize(), LE);
+      acc3 = acc3.add(ve.mul(vf));
+      // four
+      FloatVector vg =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, a, aOffset + i + 3 * FLOAT_SPECIES.vectorByteSize(), LE);
+      FloatVector vh =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, b, bOffset + i + 3 * FLOAT_SPECIES.vectorByteSize(), LE);
+      acc4 = acc4.add(vg.mul(vh));
+    }
+    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    for (; i < vecLimit; i += FLOAT_SPECIES.vectorByteSize()) {
+      FloatVector va = FloatVector.fromMemorySegment(FLOAT_SPECIES, a, aOffset + i, LE);
+      FloatVector vb = FloatVector.fromMemorySegment(FLOAT_SPECIES, b, bOffset + i, LE);
+      acc1 = acc1.add(va.mul(vb));
+    }
+    // reduce
+    FloatVector res1 = acc1.add(acc2);
+    FloatVector res2 = acc3.add(acc4);
+    float res = res1.add(res2).reduceLanes(ADD);
+
+    for (; i < limit; i += Float.BYTES) {
+      res += a.get(LAYOUT_LE_FLOAT, aOffset + i) * b.get(LAYOUT_LE_FLOAT, bOffset + i);
+    }
+    return res;
   }
 
   @Override
