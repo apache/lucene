@@ -942,15 +942,15 @@ public final class BPIndexReorderer {
 
   static class ForwardIndexSorter {
 
+    private static final int HISTOGRAM_SIZE = 256;
     private static final int BUFFER_SIZE = 8192;
     private static final int BUFFER_BYTES = BUFFER_SIZE * Long.BYTES;
     private final Directory directory;
-    private final Bucket[] buckets = new Bucket[256];
+    private final Bucket[] buckets = new Bucket[HISTOGRAM_SIZE];
     private final double ramBudgetMB;
 
     /** Fork of {@link org.apache.lucene.util.LSBRadixSorter} to sort longs. */
     private static class MemorySorter {
-      private static final int HISTOGRAM_SIZE = 256;
       private final int[] histogram = new int[HISTOGRAM_SIZE];
 
       private static void buildHistogram(long[] array, int len, int[] histogram, int shift) {
@@ -1123,6 +1123,7 @@ public final class BPIndexReorderer {
       int bitsRequired = PackedInts.bitsRequired(maxDoc);
 
       long total = (directory.fileLength(fileName) - CodecUtil.footerLength());
+      // Use a memory sorter if ram budget is enough
       if (total * 2 < ramBudgetMB * 1024 * 1024) {
         assert total % Long.BYTES == 0;
         long[] entries = new long[(int) (total / Long.BYTES)];
@@ -1133,7 +1134,8 @@ public final class BPIndexReorderer {
         return;
       }
 
-      for (int i = 0; i < buckets.length; i++) {
+      // sort offline
+      for (int i = 0; i < HISTOGRAM_SIZE; i++) {
         buckets[i] = new Bucket();
       }
       String sourceFileName = fileName;
