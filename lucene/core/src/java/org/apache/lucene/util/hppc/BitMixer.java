@@ -88,7 +88,7 @@ public final class BitMixer {
    */
 
   private static final int PHI_C32 = 0x9e3779b9;
-  private static final long PHI_C64 = 0x9e3779b97f4a7c15L;
+  public static final long PHI_C64 = 0x9e3779b97f4a7c15L;
 
   public static int mixPhi(byte k) {
     final int h = k * PHI_C32;

@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import org.apache.lucene.util.hppc.BitMixer;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
@@ -183,7 +184,7 @@ final class NodeHash<T> {
       }
     }
 
-    return h;
+    return h * BitMixer.PHI_C64;
   }
 
   // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
@@ -207,7 +208,7 @@ final class NodeHash<T> {
       fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
 
-    return h;
+    return h * BitMixer.PHI_C64;
   }
 
   /**
