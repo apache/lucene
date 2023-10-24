@@ -1062,6 +1062,7 @@ public final class BPIndexReorderer {
             consume(sourceFileName, consumer(shift, output));
           } else {
             consume(sourceFileName, indexFP, consumer(shift, output));
+            directory.deleteFile(sourceFileName);
           }
           for (Bucket bucket : buckets) {
             bucket.flush(output, true);
