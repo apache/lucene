@@ -261,7 +261,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       for (int bits = 2; bits < 32; bits++) {
         int maxDoc = (1 << bits) - 1;
-        int termNum = atLeast(1000);
+        int termNum = atLeast(100);
         String fileName;
         try (IndexOutput out =
             directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.DEFAULT)) {
@@ -277,30 +277,35 @@ public class TestBPIndexReorderer extends LuceneTestCase {
           }
           fileName = out.getName();
         }
-        new BPIndexReorderer.ForwardIndexSorter(directory)
-            .sortAndConsume(
-                fileName,
-                maxDoc,
-                new BPIndexReorderer.LongConsumer() {
 
-                  long lastValue = -1;
+        for (double ramBudget : new double[] {0, Double.MAX_VALUE}) {
+          new BPIndexReorderer.ForwardIndexSorter(directory, ramBudget)
+              .sortAndConsume(
+                  fileName,
+                  maxDoc,
+                  new BPIndexReorderer.LongConsumer() {
 
-                  @Override
-                  public void accept(long value) {
-                    if (lastValue != -1) {
-                      int doc = (int) value;
-                      int term = (int) (value >>> 32);
-                      int lastDoc = (int) lastValue;
-                      int lastTerm = (int) (lastValue >>> 32);
-                      assertTrue("last doc: " + lastDoc + ", current doc: " + doc, lastDoc <= doc);
-                      if (lastDoc == doc) {
+                    long lastValue = -1;
+
+                    @Override
+                    public void accept(long value) {
+                      if (lastValue != -1) {
+                        int doc = (int) value;
+                        int term = (int) (value >>> 32);
+                        int lastDoc = (int) lastValue;
+                        int lastTerm = (int) (lastValue >>> 32);
                         assertTrue(
-                            "last term: " + lastTerm + ", current term: " + term, lastTerm <= term);
+                            "last doc: " + lastDoc + ", current doc: " + doc, lastDoc <= doc);
+                        if (lastDoc == doc) {
+                          assertTrue(
+                              "last term: " + lastTerm + ", current term: " + term,
+                              lastTerm <= term);
+                        }
                       }
+                      lastValue = value;
                     }
-                    lastValue = value;
-                  }
-                });
+                  });
+        }
       }
     }
   }
