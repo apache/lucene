@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -263,7 +262,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   }
 
   public void testForwardIndexSorter() throws IOException {
-    class Entry implements Comparable<Entry>{
+    class Entry implements Comparable<Entry> {
       final int docId;
       final int termId;
 
