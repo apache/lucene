@@ -304,32 +304,29 @@ public class TestBPIndexReorderer extends LuceneTestCase {
           fileName = out.getName();
         }
         Collections.sort(entryList);
+        new BPIndexReorderer.ForwardIndexSorter(directory)
+            .sortAndConsume(
+                fileName,
+                maxDoc,
+                new BPIndexReorderer.LongConsumer() {
 
-        for (double ramBudget : new double[] {0, Double.MAX_VALUE}) {
-          new BPIndexReorderer.ForwardIndexSorter(directory, ramBudget)
-              .sortAndConsume(
-                  fileName,
-                  maxDoc,
-                  new BPIndexReorderer.LongConsumer() {
+                  int total = 0;
 
-                    int total = 0;
+                  @Override
+                  public void accept(long value) {
+                    int doc = (int) value;
+                    int term = (int) (value >>> 32);
+                    Entry entry = entryList.get(total);
+                    assertEquals(entry.docId, doc);
+                    assertEquals(entry.termId, term);
+                    total++;
+                  }
 
-                    @Override
-                    public void accept(long value) {
-                      int doc = (int) value;
-                      int term = (int) (value >>> 32);
-                      Entry entry = entryList.get(total);
-                      assertEquals(entry.docId, doc);
-                      assertEquals(entry.termId, term);
-                      total++;
-                    }
-
-                    @Override
-                    public void onFinish() {
-                      assertEquals(entryList.size(), total);
-                    }
-                  });
-        }
+                  @Override
+                  public void onFinish() {
+                    assertEquals(entryList.size(), total);
+                  }
+                });
       }
     }
   }

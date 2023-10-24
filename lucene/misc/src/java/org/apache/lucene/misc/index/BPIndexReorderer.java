@@ -669,7 +669,7 @@ public final class BPIndexReorderer {
       termIDsFileName = termIDs.getName();
       startOffsetsFileName = startOffsets.getName();
       int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
-      new ForwardIndexSorter(tempDir, ramBudgetMB)
+      new ForwardIndexSorter(tempDir)
           .sortAndConsume(
               postingsFileName,
               maxDoc,
@@ -947,64 +947,6 @@ public final class BPIndexReorderer {
     private static final int BUFFER_BYTES = BUFFER_SIZE * Long.BYTES;
     private final Directory directory;
     private final Bucket[] buckets = new Bucket[HISTOGRAM_SIZE];
-    private final double ramBudgetMB;
-
-    /** Fork of {@link org.apache.lucene.util.LSBRadixSorter} to sort longs. */
-    private static class MemorySorter {
-      private final int[] histogram = new int[HISTOGRAM_SIZE];
-
-      private static void buildHistogram(long[] array, int len, int[] histogram, int shift) {
-        for (int i = 0; i < len; ++i) {
-          final int b = (int) ((array[i] >>> shift) & 0xFFL);
-          histogram[b] += 1;
-        }
-      }
-
-      private static void sumHistogram(int[] histogram) {
-        int accum = 0;
-        for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
-          final int count = histogram[i];
-          histogram[i] = accum;
-          accum += count;
-        }
-      }
-
-      private static void reorder(long[] array, int len, int[] histogram, int shift, long[] dest) {
-        for (int i = 0; i < len; ++i) {
-          final long v = array[i];
-          final int b = (int) ((v >>> shift) & 0xFF);
-          dest[histogram[b]++] = v;
-        }
-      }
-
-      private static boolean sort(long[] array, int len, int[] histogram, int shift, long[] dest) {
-        Arrays.fill(histogram, 0);
-        buildHistogram(array, len, histogram, shift);
-        if (histogram[0] == len) {
-          return false;
-        }
-        sumHistogram(histogram);
-        reorder(array, len, histogram, shift, dest);
-        return true;
-      }
-
-      public void sortAndConsume(int numBits, long[] array, int len, LongConsumer consumer)
-          throws IOException {
-        long[] buffer = new long[len];
-        for (int shift = 0; shift < numBits; shift += 8) {
-          if (sort(array, len, histogram, shift, buffer)) {
-            // swap arrays
-            long[] tmp = array;
-            array = buffer;
-            buffer = tmp;
-          }
-        }
-        for (int i = 0; i < len; i++) {
-          consumer.accept(array[i]);
-        }
-        consumer.onFinish();
-      }
-    }
 
     private static class Bucket {
       int bufferUsed;
@@ -1062,9 +1004,11 @@ public final class BPIndexReorderer {
       }
     }
 
-    ForwardIndexSorter(Directory directory, double ramBudgetMB) {
+    ForwardIndexSorter(Directory directory) {
       this.directory = directory;
-      this.ramBudgetMB = ramBudgetMB;
+      for (int i = 0; i < HISTOGRAM_SIZE; i++) {
+        buckets[i] = new Bucket();
+      }
     }
 
     void consume(String fileName, LongConsumer consumer) throws IOException {
@@ -1121,23 +1065,6 @@ public final class BPIndexReorderer {
 
     void sortAndConsume(String fileName, int maxDoc, LongConsumer consumer) throws IOException {
       int bitsRequired = PackedInts.bitsRequired(maxDoc);
-
-      long total = (directory.fileLength(fileName) - CodecUtil.footerLength());
-      // Use a memory sorter if ram budget is enough
-      if (total * 2 < ramBudgetMB * 1024 * 1024) {
-        assert total % Long.BYTES == 0;
-        long[] entries = new long[(int) (total / Long.BYTES)];
-        try (IndexInput in = directory.openInput(fileName, IOContext.READONCE)) {
-          in.readLongs(entries, 0, entries.length);
-          new MemorySorter().sortAndConsume(bitsRequired, entries, entries.length, consumer);
-        }
-        return;
-      }
-
-      // sort offline
-      for (int i = 0; i < HISTOGRAM_SIZE; i++) {
-        buckets[i] = new Bucket();
-      }
       String sourceFileName = fileName;
       long indexFP = -1;
       for (int shift = 0; shift < bitsRequired; shift += 8) {
