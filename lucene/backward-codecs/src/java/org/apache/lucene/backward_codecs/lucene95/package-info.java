@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.1 file format.
+ * Lucene 9.5 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -141,11 +141,11 @@
  * <p>Each segment index maintains the following:
  *
  * <ul>
- *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat Segment info}.
- *       This contains metadata about a segment, such as the number of documents, what files it
- *       uses, and information about how the segment is sorted
- *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90FieldInfosFormat Field names}.
- *       This contains metadata about the set of named fields used in the index.
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat info}. This
+ *       contains metadata about a segment, such as the number of documents, what files it uses, and
+ *       information about how the segment is sorted
+ *   <li>{@link org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat Field names}. This
+ *       contains metadata about the set of named fields used in the index.
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat Stored Field values}.
  *       This contains, for each document, a list of attribute-value pairs, where the attributes are
  *       field names. These are used to store auxiliary information about the document, such as its
@@ -180,8 +180,8 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat Vector values}.
- *       The vector format stores numeric vectors in a format optimized for random access and
+ *   <li>{@link org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat Vector values}. The
+ *       vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
  *
@@ -240,7 +240,7 @@
  * systems that frequently run out of file handles.</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90FieldInfosFormat Fields}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat Fields}</td>
  * <td>.fnm</td>
  * <td>Stores information about the fields</td>
  * </tr>
@@ -310,7 +310,7 @@
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat Vector values}</td>
  * <td>.vec, .vem</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>
@@ -403,6 +403,11 @@
  *       smaller stored fields.
  *   <li>In version 9.0, vector-valued fields were added.
  *   <li>In version 9.1, vector-valued fields were modified to add a graph hierarchy.
+ *   <li>In version 9.2, docs of vector-valued fields were moved from .vem to .vec and encoded by
+ *       IndexDISI. ordToDoc mappings was added to .vem.
+ *   <li>In version 9.5, HNSW graph connections were changed to be delta-encoded with vints.
+ *       Additionally, metadata file size improvements were made by delta-encoding nodes by graph
+ *       layer and not writing the node ids for the zeroth layer.
  * </ul>
  *
  * <a id="Limitations"></a>
@@ -417,4 +422,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.backward_codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene95;
