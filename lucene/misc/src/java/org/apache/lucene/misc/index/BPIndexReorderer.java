@@ -1002,6 +1002,7 @@ public final class BPIndexReorderer {
         for (int i = 0; i < len; i++) {
           consumer.accept(array[i]);
         }
+        consumer.onFinish();
       }
     }
 
