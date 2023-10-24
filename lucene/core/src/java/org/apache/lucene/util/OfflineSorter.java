@@ -53,6 +53,7 @@ public class OfflineSorter {
 
   /** Convenience constant for megabytes */
   public static final long MB = 1024 * 1024;
+
   /** Convenience constant for gigabytes */
   public static final long GB = MB * 1024;
 
@@ -138,18 +139,25 @@ public class OfflineSorter {
   public class SortInfo {
     /** number of temporary files created when merging partitions */
     public int tempMergeFiles;
+
     /** number of partition merges */
     public int mergeRounds;
+
     /** number of lines of data read */
     public long lineCount;
+
     /** time spent merging sorted partitions (in milliseconds) */
     public final AtomicLong mergeTimeMS = new AtomicLong();
+
     /** time spent sorting data (in milliseconds) */
     public final AtomicLong sortTimeMS = new AtomicLong();
+
     /** total time spent (in milliseconds) */
     public long totalTimeMS;
+
     /** time spent in i/o read (in milliseconds) */
     public long readTimeMS;
+
     /** read buffer size (in bytes) */
     public final long bufferSize = ramBufferSize.bytes;
 
@@ -561,7 +569,7 @@ public class OfflineSorter {
     protected final String name;
     protected final ChecksumIndexInput in;
     protected final long end;
-    private final BytesRefBuilder ref = new BytesRefBuilder();
+    protected final BytesRefBuilder ref = new BytesRefBuilder();
 
     /** Constructs a ByteSequencesReader from the provided IndexInput */
     public ByteSequencesReader(ChecksumIndexInput in, String name) {

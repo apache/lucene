@@ -33,6 +33,7 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
   public ByteWritesTrackingDirectoryWrapper(Directory in) {
     this(in, false);
   }
+
   /**
    * Constructor with option to track tempOutput
    *

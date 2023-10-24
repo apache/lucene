@@ -58,6 +58,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
     reader = null;
     writer = null;
   }
+
   /******************** Tests for getHighFreqTerms **********************************/
 
   // test without specifying field (i.e. if we pass in field=null it should examine all fields)

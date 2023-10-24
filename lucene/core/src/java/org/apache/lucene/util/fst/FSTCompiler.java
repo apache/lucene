@@ -16,8 +16,21 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
+import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
+import static org.apache.lucene.util.fst.FST.BIT_ARC_HAS_FINAL_OUTPUT;
+import static org.apache.lucene.util.fst.FST.BIT_ARC_HAS_OUTPUT;
+import static org.apache.lucene.util.fst.FST.BIT_FINAL_ARC;
+import static org.apache.lucene.util.fst.FST.BIT_LAST_ARC;
+import static org.apache.lucene.util.fst.FST.BIT_STOP_NODE;
+import static org.apache.lucene.util.fst.FST.BIT_TARGET_NEXT;
+import static org.apache.lucene.util.fst.FST.FINAL_END_NODE;
+import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
+import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
+
 import java.io.IOException;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -46,23 +59,35 @@ public class FSTCompiler<T> {
 
   static final float DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR = 1f;
 
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
+  static final int FIXED_LENGTH_ARC_SHALLOW_DEPTH = 3; // 0 => only root node.
+
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
+  static final int FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS = 5;
+
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
+  static final int FIXED_LENGTH_ARC_DEEP_NUM_ARCS = 10;
+
+  /**
+   * Maximum oversizing factor allowed for direct addressing compared to binary search when
+   * expansion credits allow the oversizing. This factor prevents expansions that are obviously too
+   * costly even if there are sufficient credits.
+   *
+   * @see #shouldExpandNodeWithDirectAddressing
+   */
+  private static final float DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR = 1.66f;
+
   private final NodeHash<T> dedupHash;
   final FST<T> fst;
   private final T NO_OUTPUT;
 
   // private static final boolean DEBUG = true;
-
-  // simplistic pruning: we prune node (and all following
-  // nodes) if less than this number of terms go through it:
-  private final int minSuffixCount1;
-
-  // better pruning: we prune node (and all following
-  // nodes) if the prior node has less than this number of
-  // terms go through it:
-  private final int minSuffixCount2;
-
-  private final boolean doShareNonSingletonNodes;
-  private final int shareMaxTailLength;
 
   private final IntsRefBuilder lastInput = new IntsRefBuilder();
 
@@ -98,32 +123,27 @@ public class FSTCompiler<T> {
    * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
    * tuning and tweaking, see {@link Builder}.
    */
+  // TODO: remove this?  Builder API should be the only entry point?
   public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    this(inputType, 0, 0, true, true, Integer.MAX_VALUE, outputs, true, 15, 1f);
+    this(inputType, 32.0, outputs, true, 15, 1f);
   }
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      int minSuffixCount1,
-      int minSuffixCount2,
-      boolean doShareSuffix,
-      boolean doShareNonSingletonNodes,
-      int shareMaxTailLength,
+      double suffixRAMLimitMB,
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
       float directAddressingMaxOversizingFactor) {
-    this.minSuffixCount1 = minSuffixCount1;
-    this.minSuffixCount2 = minSuffixCount2;
-    this.doShareNonSingletonNodes = doShareNonSingletonNodes;
-    this.shareMaxTailLength = shareMaxTailLength;
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     fst = new FST<>(inputType, outputs, bytesPageBits);
     bytes = fst.bytes;
     assert bytes != null;
-    if (doShareSuffix) {
-      dedupHash = new NodeHash<>(fst, bytes.getReverseReader(false));
+    if (suffixRAMLimitMB < 0) {
+      throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
+    } else if (suffixRAMLimitMB > 0) {
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -147,11 +167,7 @@ public class FSTCompiler<T> {
 
     private final INPUT_TYPE inputType;
     private final Outputs<T> outputs;
-    private int minSuffixCount1;
-    private int minSuffixCount2;
-    private boolean shouldShareSuffix = true;
-    private boolean shouldShareNonSingletonNodes = true;
-    private int shareMaxTailLength = Integer.MAX_VALUE;
+    private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
@@ -170,59 +186,26 @@ public class FSTCompiler<T> {
     }
 
     /**
-     * If pruning the input graph during construction, this threshold is used for telling if a node
-     * is kept or pruned. If transition_count(node) &gt;= minSuffixCount1, the node is kept.
+     * The approximate maximum amount of RAM (in MB) to use holding the suffix cache, which enables
+     * the FST to share common suffixes. Pass {@link Double#POSITIVE_INFINITY} to keep all suffixes
+     * and create an exactly minimal FST. In this case, the amount of RAM actually used will be
+     * bounded by the number of unique suffixes. If you pass a value smaller than the builder would
+     * use, the least recently used suffixes will be discarded, thus reducing suffix sharing and
+     * creating a non-minimal FST. In this case, the larger the limit, the closer the FST will be to
+     * its true minimal size, with diminishing returns as you increase the limit. Pass {@code 0} to
+     * disable suffix sharing entirely, but note that the resulting FST can be substantially larger
+     * than the minimal FST.
      *
-     * <p>Default = 0.
-     */
-    public Builder<T> minSuffixCount1(int minSuffixCount1) {
-      this.minSuffixCount1 = minSuffixCount1;
-      return this;
-    }
-
-    /**
-     * Better pruning: we prune node (and all following nodes) if the prior node has less than this
-     * number of terms go through it.
+     * <p>Note that this is not a precise limit. The current implementation uses hash tables to map
+     * the suffixes, and approximates the rough overhead (unused slots) in the hash table.
      *
-     * <p>Default = 0.
+     * <p>Default = {@code 32.0} MB.
      */
-    public Builder<T> minSuffixCount2(int minSuffixCount2) {
-      this.minSuffixCount2 = minSuffixCount2;
-      return this;
-    }
-
-    /**
-     * If {@code true}, the shared suffixes will be compacted into unique paths. This requires an
-     * additional RAM-intensive hash map for lookups in memory. Setting this parameter to {@code
-     * false} creates a single suffix path for all input sequences. This will result in a larger
-     * FST, but requires substantially less memory and CPU during building.
-     *
-     * <p>Default = {@code true}.
-     */
-    public Builder<T> shouldShareSuffix(boolean shouldShareSuffix) {
-      this.shouldShareSuffix = shouldShareSuffix;
-      return this;
-    }
-
-    /**
-     * Only used if {@code shouldShareSuffix} is true. Set this to true to ensure FST is fully
-     * minimal, at cost of more CPU and more RAM during building.
-     *
-     * <p>Default = {@code true}.
-     */
-    public Builder<T> shouldShareNonSingletonNodes(boolean shouldShareNonSingletonNodes) {
-      this.shouldShareNonSingletonNodes = shouldShareNonSingletonNodes;
-      return this;
-    }
-
-    /**
-     * Only used if {@code shouldShareSuffix} is true. Set this to Integer.MAX_VALUE to ensure FST
-     * is fully minimal, at cost of more CPU and more RAM during building.
-     *
-     * <p>Default = {@link Integer#MAX_VALUE}.
-     */
-    public Builder<T> shareMaxTailLength(int shareMaxTailLength) {
-      this.shareMaxTailLength = shareMaxTailLength;
+    public Builder<T> suffixRAMLimitMB(double mb) {
+      if (mb < 0) {
+        throw new IllegalArgumentException("suffixRAMLimitMB must be >= 0; got: " + mb);
+      }
+      this.suffixRAMLimitMB = mb;
       return this;
     }
 
@@ -272,11 +255,7 @@ public class FSTCompiler<T> {
       FSTCompiler<T> fstCompiler =
           new FSTCompiler<>(
               inputType,
-              minSuffixCount1,
-              minSuffixCount2,
-              shouldShareSuffix,
-              shouldShareNonSingletonNodes,
-              shareMaxTailLength,
+              suffixRAMLimitMB,
               outputs,
               allowFixedLengthArcs,
               bytesPageBits,
@@ -309,17 +288,15 @@ public class FSTCompiler<T> {
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn, int tailLength) throws IOException {
     final long node;
     long bytesPosStart = bytes.getPosition();
-    if (dedupHash != null
-        && (doShareNonSingletonNodes || nodeIn.numArcs <= 1)
-        && tailLength <= shareMaxTailLength) {
+    if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
-        node = fst.addNode(this, nodeIn);
+        node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(this, nodeIn);
+        node = dedupHash.add(nodeIn);
       }
     } else {
-      node = fst.addNode(this, nodeIn);
+      node = addNode(nodeIn);
     }
     assert node != -2;
 
@@ -337,113 +314,400 @@ public class FSTCompiler<T> {
     return fn;
   }
 
-  private void freezeTail(int prefixLenPlus1) throws IOException {
-    // System.out.println("  compileTail " + prefixLenPlus1);
-    final int downTo = Math.max(1, prefixLenPlus1);
-    for (int idx = lastInput.length(); idx >= downTo; idx--) {
+  // serializes new node by appending its bytes to the end
+  // of the current byte[]
+  long addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
+    T NO_OUTPUT = fst.outputs.getNoOutput();
 
-      boolean doPrune = false;
-      boolean doCompile = false;
+    // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
+    if (nodeIn.numArcs == 0) {
+      if (nodeIn.isFinal) {
+        return FINAL_END_NODE;
+      } else {
+        return NON_FINAL_END_NODE;
+      }
+    }
+    final long startAddress = bytes.getPosition();
+    // System.out.println("  startAddr=" + startAddress);
+
+    final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(nodeIn);
+    if (doFixedLengthArcs) {
+      // System.out.println("  fixed length arcs");
+      if (numBytesPerArc.length < nodeIn.numArcs) {
+        numBytesPerArc = new int[ArrayUtil.oversize(nodeIn.numArcs, Integer.BYTES)];
+        numLabelBytesPerArc = new int[numBytesPerArc.length];
+      }
+    }
+
+    arcCount += nodeIn.numArcs;
+
+    final int lastArc = nodeIn.numArcs - 1;
+
+    long lastArcStart = bytes.getPosition();
+    int maxBytesPerArc = 0;
+    int maxBytesPerArcWithoutLabel = 0;
+    for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
+      final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
+      final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
+      int flags = 0;
+      // System.out.println("  arc " + arcIdx + " label=" + arc.label + " -> target=" +
+      // target.node);
+
+      if (arcIdx == lastArc) {
+        flags += BIT_LAST_ARC;
+      }
+
+      if (lastFrozenNode == target.node && !doFixedLengthArcs) {
+        // TODO: for better perf (but more RAM used) we
+        // could avoid this except when arc is "near" the
+        // last arc:
+        flags += BIT_TARGET_NEXT;
+      }
+
+      if (arc.isFinal) {
+        flags += BIT_FINAL_ARC;
+        if (arc.nextFinalOutput != NO_OUTPUT) {
+          flags += BIT_ARC_HAS_FINAL_OUTPUT;
+        }
+      } else {
+        assert arc.nextFinalOutput == NO_OUTPUT;
+      }
+
+      boolean targetHasArcs = target.node > 0;
+
+      if (!targetHasArcs) {
+        flags += BIT_STOP_NODE;
+      }
+
+      if (arc.output != NO_OUTPUT) {
+        flags += BIT_ARC_HAS_OUTPUT;
+      }
+
+      bytes.writeByte((byte) flags);
+      long labelStart = bytes.getPosition();
+      writeLabel(bytes, arc.label);
+      int numLabelBytes = (int) (bytes.getPosition() - labelStart);
+
+      // System.out.println("  write arc: label=" + (char) arc.label + " flags=" + flags + "
+      // target=" + target.node + " pos=" + bytes.getPosition() + " output=" +
+      // outputs.outputToString(arc.output));
+
+      if (arc.output != NO_OUTPUT) {
+        fst.outputs.write(arc.output, bytes);
+        // System.out.println("    write output");
+      }
+
+      if (arc.nextFinalOutput != NO_OUTPUT) {
+        // System.out.println("    write final output");
+        fst.outputs.writeFinalOutput(arc.nextFinalOutput, bytes);
+      }
+
+      if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
+        assert target.node > 0;
+        // System.out.println("    write target");
+        bytes.writeVLong(target.node);
+      }
+
+      // just write the arcs "like normal" on first pass, but record how many bytes each one took
+      // and max byte size:
+      if (doFixedLengthArcs) {
+        int numArcBytes = (int) (bytes.getPosition() - lastArcStart);
+        numBytesPerArc[arcIdx] = numArcBytes;
+        numLabelBytesPerArc[arcIdx] = numLabelBytes;
+        lastArcStart = bytes.getPosition();
+        maxBytesPerArc = Math.max(maxBytesPerArc, numArcBytes);
+        maxBytesPerArcWithoutLabel =
+            Math.max(maxBytesPerArcWithoutLabel, numArcBytes - numLabelBytes);
+        // System.out.println("    arcBytes=" + numArcBytes + " labelBytes=" + numLabelBytes);
+      }
+    }
+
+    // TODO: try to avoid wasteful cases: disable doFixedLengthArcs in that case
+    /*
+     *
+     * LUCENE-4682: what is a fair heuristic here?
+     * It could involve some of these:
+     * 1. how "busy" the node is: nodeIn.inputCount relative to frontier[0].inputCount?
+     * 2. how much binSearch saves over scan: nodeIn.numArcs
+     * 3. waste: numBytes vs numBytesExpanded
+     *
+     * the one below just looks at #3
+    if (doFixedLengthArcs) {
+      // rough heuristic: make this 1.25 "waste factor" a parameter to the phd ctor????
+      int numBytes = lastArcStart - startAddress;
+      int numBytesExpanded = maxBytesPerArc * nodeIn.numArcs;
+      if (numBytesExpanded > numBytes*1.25) {
+        doFixedLengthArcs = false;
+      }
+    }
+    */
+
+    if (doFixedLengthArcs) {
+      assert maxBytesPerArc > 0;
+      // 2nd pass just "expands" all arcs to take up a fixed byte size
+
+      int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
+      assert labelRange > 0;
+      if (shouldExpandNodeWithDirectAddressing(
+          nodeIn, maxBytesPerArc, maxBytesPerArcWithoutLabel, labelRange)) {
+        writeNodeForDirectAddressing(nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange);
+        directAddressingNodeCount++;
+      } else {
+        writeNodeForBinarySearch(nodeIn, startAddress, maxBytesPerArc);
+        binarySearchNodeCount++;
+      }
+    }
+
+    final long thisNodeAddress = bytes.getPosition() - 1;
+    bytes.reverse(startAddress, thisNodeAddress);
+    nodeCount++;
+    return thisNodeAddress;
+  }
+
+  private void writeLabel(DataOutput out, int v) throws IOException {
+    assert v >= 0 : "v=" + v;
+    if (fst.inputType == INPUT_TYPE.BYTE1) {
+      assert v <= 255 : "v=" + v;
+      out.writeByte((byte) v);
+    } else if (fst.inputType == INPUT_TYPE.BYTE2) {
+      assert v <= 65535 : "v=" + v;
+      out.writeShort((short) v);
+    } else {
+      out.writeVInt(v);
+    }
+  }
+
+  /**
+   * Returns whether the given node should be expanded with fixed length arcs. Nodes will be
+   * expanded depending on their depth (distance from the root node) and their number of arcs.
+   *
+   * <p>Nodes with fixed length arcs use more space, because they encode all arcs with a fixed
+   * number of bytes, but they allow either binary search or direct addressing on the arcs (instead
+   * of linear scan) on lookup by arc label.
+   */
+  private boolean shouldExpandNodeWithFixedLengthArcs(FSTCompiler.UnCompiledNode<T> node) {
+    return allowFixedLengthArcs
+        && ((node.depth <= FIXED_LENGTH_ARC_SHALLOW_DEPTH
+                && node.numArcs >= FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
+            || node.numArcs >= FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+  }
+
+  /**
+   * Returns whether the given node should be expanded with direct addressing instead of binary
+   * search.
+   *
+   * <p>Prefer direct addressing for performance if it does not oversize binary search byte size too
+   * much, so that the arcs can be directly addressed by label.
+   *
+   * @see FSTCompiler#getDirectAddressingMaxOversizingFactor()
+   */
+  private boolean shouldExpandNodeWithDirectAddressing(
+      FSTCompiler.UnCompiledNode<T> nodeIn,
+      int numBytesPerArc,
+      int maxBytesPerArcWithoutLabel,
+      int labelRange) {
+    // Anticipate precisely the size of the encodings.
+    int sizeForBinarySearch = numBytesPerArc * nodeIn.numArcs;
+    int sizeForDirectAddressing =
+        getNumPresenceBytes(labelRange)
+            + numLabelBytesPerArc[0]
+            + maxBytesPerArcWithoutLabel * nodeIn.numArcs;
+
+    // Determine the allowed oversize compared to binary search.
+    // This is defined by a parameter of FST Builder (default 1: no oversize).
+    int allowedOversize = (int) (sizeForBinarySearch * getDirectAddressingMaxOversizingFactor());
+    int expansionCost = sizeForDirectAddressing - allowedOversize;
+
+    // Select direct addressing if either:
+    // - Direct addressing size is smaller than binary search.
+    //   In this case, increment the credit by the reduced size (to use it later).
+    // - Direct addressing size is larger than binary search, but the positive credit allows the
+    // oversizing.
+    //   In this case, decrement the credit by the oversize.
+    // In addition, do not try to oversize to a clearly too large node size
+    // (this is the DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR parameter).
+    if (expansionCost <= 0
+        || (directAddressingExpansionCredit >= expansionCost
+            && sizeForDirectAddressing
+                <= allowedOversize * DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR)) {
+      directAddressingExpansionCredit -= expansionCost;
+      return true;
+    }
+    return false;
+  }
+
+  private void writeNodeForBinarySearch(
+      FSTCompiler.UnCompiledNode<T> nodeIn, long startAddress, int maxBytesPerArc) {
+    // Build the header in a buffer.
+    // It is a false/special arc which is in fact a node header with node flags followed by node
+    // metadata.
+    fixedLengthArcsBuffer
+        .resetPosition()
+        .writeByte(ARCS_FOR_BINARY_SEARCH)
+        .writeVInt(nodeIn.numArcs)
+        .writeVInt(maxBytesPerArc);
+    int headerLen = fixedLengthArcsBuffer.getPosition();
+
+    // Expand the arcs in place, backwards.
+    long srcPos = bytes.getPosition();
+    long destPos = startAddress + headerLen + nodeIn.numArcs * (long) maxBytesPerArc;
+    assert destPos >= srcPos;
+    if (destPos > srcPos) {
+      bytes.skipBytes((int) (destPos - srcPos));
+      for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
+        destPos -= maxBytesPerArc;
+        int arcLen = numBytesPerArc[arcIdx];
+        srcPos -= arcLen;
+        if (srcPos != destPos) {
+          assert destPos > srcPos
+              : "destPos="
+                  + destPos
+                  + " srcPos="
+                  + srcPos
+                  + " arcIdx="
+                  + arcIdx
+                  + " maxBytesPerArc="
+                  + maxBytesPerArc
+                  + " arcLen="
+                  + arcLen
+                  + " nodeIn.numArcs="
+                  + nodeIn.numArcs;
+          bytes.copyBytes(srcPos, destPos, arcLen);
+        }
+      }
+    }
+
+    // Write the header.
+    bytes.writeBytes(startAddress, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+  }
+
+  private void writeNodeForDirectAddressing(
+      FSTCompiler.UnCompiledNode<T> nodeIn,
+      long startAddress,
+      int maxBytesPerArcWithoutLabel,
+      int labelRange) {
+    // Expand the arcs backwards in a buffer because we remove the labels.
+    // So the obtained arcs might occupy less space. This is the reason why this
+    // whole method is more complex.
+    // Drop the label bytes since we can infer the label based on the arc index,
+    // the presence bits, and the first label. Keep the first label.
+    int headerMaxLen = 11;
+    int numPresenceBytes = getNumPresenceBytes(labelRange);
+    long srcPos = bytes.getPosition();
+    int totalArcBytes = numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
+    int bufferOffset = headerMaxLen + numPresenceBytes + totalArcBytes;
+    byte[] buffer = fixedLengthArcsBuffer.ensureCapacity(bufferOffset).getBytes();
+    // Copy the arcs to the buffer, dropping all labels except first one.
+    for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
+      bufferOffset -= maxBytesPerArcWithoutLabel;
+      int srcArcLen = numBytesPerArc[arcIdx];
+      srcPos -= srcArcLen;
+      int labelLen = numLabelBytesPerArc[arcIdx];
+      // Copy the flags.
+      bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
+      // Skip the label, copy the remaining.
+      int remainingArcLen = srcArcLen - 1 - labelLen;
+      if (remainingArcLen != 0) {
+        bytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+      }
+      if (arcIdx == 0) {
+        // Copy the label of the first arc only.
+        bufferOffset -= labelLen;
+        bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+      }
+    }
+    assert bufferOffset == headerMaxLen + numPresenceBytes;
+
+    // Build the header in the buffer.
+    // It is a false/special arc which is in fact a node header with node flags followed by node
+    // metadata.
+    fixedLengthArcsBuffer
+        .resetPosition()
+        .writeByte(ARCS_FOR_DIRECT_ADDRESSING)
+        .writeVInt(labelRange) // labelRange instead of numArcs.
+        .writeVInt(
+            maxBytesPerArcWithoutLabel); // maxBytesPerArcWithoutLabel instead of maxBytesPerArc.
+    int headerLen = fixedLengthArcsBuffer.getPosition();
+
+    // Prepare the builder byte store. Enlarge or truncate if needed.
+    long nodeEnd = startAddress + headerLen + numPresenceBytes + totalArcBytes;
+    long currentPosition = bytes.getPosition();
+    if (nodeEnd >= currentPosition) {
+      bytes.skipBytes((int) (nodeEnd - currentPosition));
+    } else {
+      bytes.truncate(nodeEnd);
+    }
+    assert bytes.getPosition() == nodeEnd;
+
+    // Write the header.
+    long writeOffset = startAddress;
+    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+    writeOffset += headerLen;
+
+    // Write the presence bits
+    writePresenceBits(nodeIn, writeOffset, numPresenceBytes);
+    writeOffset += numPresenceBytes;
+
+    // Write the first label and the arcs.
+    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+  }
+
+  private void writePresenceBits(
+      FSTCompiler.UnCompiledNode<T> nodeIn, long dest, int numPresenceBytes) {
+    long bytePos = dest;
+    byte presenceBits = 1; // The first arc is always present.
+    int presenceIndex = 0;
+    int previousLabel = nodeIn.arcs[0].label;
+    for (int arcIdx = 1; arcIdx < nodeIn.numArcs; arcIdx++) {
+      int label = nodeIn.arcs[arcIdx].label;
+      assert label > previousLabel;
+      presenceIndex += label - previousLabel;
+      while (presenceIndex >= Byte.SIZE) {
+        bytes.writeByte(bytePos++, presenceBits);
+        presenceBits = 0;
+        presenceIndex -= Byte.SIZE;
+      }
+      // Set the bit at presenceIndex to flag that the corresponding arc is present.
+      presenceBits |= 1 << presenceIndex;
+      previousLabel = label;
+    }
+    assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
+    assert presenceBits != 0; // The last byte is not 0.
+    assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
+    bytes.writeByte(bytePos++, presenceBits);
+    assert bytePos - dest == numPresenceBytes;
+  }
+
+  private void freezeTail(int prefixLenPlus1) throws IOException {
+
+    final int downTo = Math.max(1, prefixLenPlus1);
+
+    for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parent = frontier[idx - 1];
 
-      if (node.inputCount < minSuffixCount1) {
-        doPrune = true;
-        doCompile = true;
-      } else if (idx > prefixLenPlus1) {
-        // prune if parent's inputCount is less than suffixMinCount2
-        if (parent.inputCount < minSuffixCount2
-            || (minSuffixCount2 == 1 && parent.inputCount == 1 && idx > 1)) {
-          // my parent, about to be compiled, doesn't make the cut, so
-          // I'm definitely pruned
+      final T nextFinalOutput = node.output;
 
-          // if minSuffixCount2 is 1, we keep only up
-          // until the 'distinguished edge', ie we keep only the
-          // 'divergent' part of the FST. if my parent, about to be
-          // compiled, has inputCount 1 then we are already past the
-          // distinguished edge.  NOTE: this only works if
-          // the FST outputs are not "compressible" (simple
-          // ords ARE compressible).
-          doPrune = true;
-        } else {
-          // my parent, about to be compiled, does make the cut, so
-          // I'm definitely not pruned
-          doPrune = false;
-        }
-        doCompile = true;
-      } else {
-        // if pruning is disabled (count is 0) we can always
-        // compile current node
-        doCompile = minSuffixCount2 == 0;
-      }
+      // We "fake" the node as being final if it has no
+      // outgoing arcs; in theory we could leave it
+      // as non-final (the FST can represent this), but
+      // FSTEnum, Util, etc., have trouble w/ non-final
+      // dead-end states:
 
-      // System.out.println("    label=" + ((char) lastInput.ints[lastInput.offset+idx-1]) + " idx="
-      // + idx + " inputCount=" + frontier[idx].inputCount + " doCompile=" + doCompile + " doPrune="
-      // + doPrune);
+      // TODO: is node.numArcs == 0 always false?  we no longer prune any nodes from FST:
+      final boolean isFinal = node.isFinal || node.numArcs == 0;
 
-      if (node.inputCount < minSuffixCount2
-          || (minSuffixCount2 == 1 && node.inputCount == 1 && idx > 1)) {
-        // drop all arcs
-        for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
-          @SuppressWarnings({"rawtypes", "unchecked"})
-          final UnCompiledNode<T> target = (UnCompiledNode<T>) node.arcs[arcIdx].target;
-          target.clear();
-        }
-        node.numArcs = 0;
-      }
-
-      if (doPrune) {
-        // this node doesn't make it -- deref it
-        node.clear();
-        parent.deleteLast(lastInput.intAt(idx - 1), node);
-      } else {
-
-        if (minSuffixCount2 != 0) {
-          compileAllTargets(node, lastInput.length() - idx);
-        }
-        final T nextFinalOutput = node.output;
-
-        // We "fake" the node as being final if it has no
-        // outgoing arcs; in theory we could leave it
-        // as non-final (the FST can represent this), but
-        // FSTEnum, Util, etc., have trouble w/ non-final
-        // dead-end states:
-        final boolean isFinal = node.isFinal || node.numArcs == 0;
-
-        if (doCompile) {
-          // this node makes it and we now compile it.  first,
-          // compile any targets that were previously
-          // undecided:
-          parent.replaceLast(
-              lastInput.intAt(idx - 1),
-              compileNode(node, 1 + lastInput.length() - idx),
-              nextFinalOutput,
-              isFinal);
-        } else {
-          // replaceLast just to install
-          // nextFinalOutput/isFinal onto the arc
-          parent.replaceLast(lastInput.intAt(idx - 1), node, nextFinalOutput, isFinal);
-          // this node will stay in play for now, since we are
-          // undecided on whether to prune it.  later, it
-          // will be either compiled or pruned, so we must
-          // allocate a new node:
-          frontier[idx] = new UnCompiledNode<>(this, idx);
-        }
-      }
+      // this node makes it and we now compile it.  first,
+      // compile any targets that were previously
+      // undecided:
+      parent.replaceLast(
+          lastInput.intAt(idx - 1),
+          compileNode(node, 1 + lastInput.length() - idx),
+          nextFinalOutput,
+          isFinal);
     }
   }
-
-  // for debugging
-  /*
-  private String toString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      return b.toString();
-    }
-  }
-  */
 
   /**
    * Add the next input/output pair. The provided input must be sorted after the previous one
@@ -586,41 +850,17 @@ public class FSTCompiler<T> {
 
     // minimize nodes in the last word's suffix
     freezeTail(0);
-    if (root.inputCount < minSuffixCount1
-        || root.inputCount < minSuffixCount2
-        || root.numArcs == 0) {
+    if (root.numArcs == 0) {
       if (fst.emptyOutput == null) {
         return null;
-      } else if (minSuffixCount1 > 0 || minSuffixCount2 > 0) {
-        // empty string got pruned
-        return null;
-      }
-    } else {
-      if (minSuffixCount2 != 0) {
-        compileAllTargets(root, lastInput.length());
       }
     }
+
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
     fst.finish(compileNode(root, lastInput.length()).node);
 
     return fst;
-  }
-
-  private void compileAllTargets(UnCompiledNode<T> node, int tailLength) throws IOException {
-    for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
-      final Arc<T> arc = node.arcs[arcIdx];
-      if (!arc.target.isCompiled()) {
-        // not yet compiled
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        final UnCompiledNode<T> n = (UnCompiledNode<T>) arc.target;
-        if (n.numArcs == 0) {
-          // System.out.println("seg=" + segment + "        FORCE final arc=" + (char) arc.label);
-          arc.isFinal = n.isFinal = true;
-        }
-        arc.target = compileNode(n, tailLength - 1);
-      }
-    }
   }
 
   /** Expert: holds a pending (seen but not yet serialized) arc. */
@@ -664,6 +904,9 @@ public class FSTCompiler<T> {
     // code here...
     T output;
     boolean isFinal;
+
+    // TODO: remove this tracking?  we used to use it for confusingly pruning NodeHash, but
+    // we switched to LRU by RAM usage instead:
     long inputCount;
 
     /** This node's depth, starting from the automaton root. */

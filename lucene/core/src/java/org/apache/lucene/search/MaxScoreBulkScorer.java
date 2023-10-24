@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
@@ -37,7 +38,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // Index of the first essential scorer, ie. essentialQueue contains all scorers from
   // allScorers[firstEssentialScorer:]. All scorers below this index are non-essential.
   private int firstEssentialScorer;
-  private final MaxScoreSumPropagator maxScorePropagator;
   private final long cost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
@@ -59,7 +59,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
-    maxScorePropagator = new MaxScoreSumPropagator(scorers);
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
@@ -77,12 +76,32 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int outerWindowMin = min;
     outer:
     while (outerWindowMin < max) {
-      int outerWindowMax = updateMaxWindowScores(outerWindowMin);
+      int outerWindowMax = computeOuterWindowMax(outerWindowMin);
       outerWindowMax = Math.min(outerWindowMax, max);
-      if (partitionScorers() == false) {
-        // No matches in this window
-        outerWindowMin = outerWindowMax;
-        continue;
+
+      while (true) {
+        updateMaxWindowScores(outerWindowMin, outerWindowMax);
+        if (partitionScorers() == false) {
+          // No matches in this window
+          outerWindowMin = outerWindowMax;
+          continue outer;
+        }
+
+        // There is a dependency between windows and maximum scores, as we compute windows based on
+        // maximum scores and maximum scores based on windows.
+        // So the approach consists of starting by computing a window based on the set of essential
+        // scorers from the _previous_ window and then iteratively recompute maximum scores and
+        // windows as long as the window size decreases.
+        // In general the set of essential scorers is rather stable over time so this would exit
+        // after a single iteration, but there is a change that some scorers got swapped between the
+        // set of essential and non-essential scorers, in which case there may be multiple
+        // iterations of this loop.
+
+        int newOuterWindowMax = computeOuterWindowMax(outerWindowMin);
+        if (newOuterWindowMax >= outerWindowMax) {
+          break;
+        }
+        outerWindowMax = newOuterWindowMax;
       }
 
       DisiWrapper top = essentialQueue.top();
@@ -192,42 +211,47 @@ final class MaxScoreBulkScorer extends BulkScorer {
     }
   }
 
-  private int updateMaxWindowScores(int windowMin) throws IOException {
+  private int computeOuterWindowMax(int windowMin) throws IOException {
     // Only use essential scorers to compute the window's max doc ID, in order to avoid constantly
     // recomputing max scores over small windows
     final int firstWindowLead = Math.min(firstEssentialScorer, allScorers.length - 1);
-    for (int i = 0; i < firstWindowLead; ++i) {
-      final DisiWrapper scorer = allScorers[i];
-      if (scorer.doc < windowMin) {
-        scorer.scorer.advanceShallow(windowMin);
-      }
-    }
     int windowMax = DocIdSetIterator.NO_MORE_DOCS;
     for (int i = firstWindowLead; i < allScorers.length; ++i) {
       final DisiWrapper scorer = allScorers[i];
       final int upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
+
     // Score at least an entire inner window of docs
     windowMax =
         Math.max(
             windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
 
+    return windowMax;
+  }
+
+  private void updateMaxWindowScores(int windowMin, int windowMax) throws IOException {
     for (DisiWrapper scorer : allScorers) {
       if (scorer.doc < windowMax) {
+        if (scorer.doc < windowMin) {
+          // Make sure to advance shallow if necessary to get as good score upper bounds as
+          // possible.
+          scorer.scorer.advanceShallow(windowMin);
+        }
         scorer.maxWindowScore = scorer.scorer.getMaxScore(windowMax - 1);
       } else {
+        // This scorer has no documents in the considered window.
         scorer.maxWindowScore = 0;
       }
     }
-    return windowMax;
   }
 
   private void scoreNonEssentialClauses(LeafCollector collector, int doc, double essentialScore)
       throws IOException {
     double score = essentialScore;
     for (int i = firstEssentialScorer - 1; i >= 0; --i) {
-      float maxPossibleScore = maxScorePropagator.scoreSumUpperBound(score + maxScoreSums[i]);
+      float maxPossibleScore =
+          (float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length);
       if (maxPossibleScore < minCompetitiveScore) {
         // Hit is not competitive.
         return;
@@ -268,7 +292,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
+          (float) MathUtil.sumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
       if (maxScoreSumFloat < minCompetitiveScore) {
         maxScoreSum = newMaxScoreSum;
         allScorers[firstEssentialScorer] = w;
@@ -324,7 +348,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       MaxScoreBulkScorer.this.minCompetitiveScore = minScore;
-      maxScorePropagator.setMinCompetitiveScore(minScore);
       minCompetitiveScoreUpdated = true;
     }
   }

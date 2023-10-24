@@ -297,8 +297,10 @@ class ClassicTokenizerImpl {
 
   /** Error code for "Unknown internal scanner error". */
   private static final int ZZ_UNKNOWN_ERROR = 0;
+
   /** Error code for "could not match input". */
   private static final int ZZ_NO_MATCH = 1;
+
   /** Error code for "pushback value was too large". */
   private static final int ZZ_PUSHBACK_2BIG = 2;
 

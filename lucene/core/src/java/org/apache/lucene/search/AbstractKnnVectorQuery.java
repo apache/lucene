@@ -24,8 +24,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -81,36 +80,19 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    TopDocs[] perLeafResults =
-        (taskExecutor == null)
-            ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
+    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(() -> searchLeaf(context, filterWeight));
+    }
+    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 
     // Merge sort the results
-    TopDocs topK = TopDocs.merge(k, perLeafResults);
+    TopDocs topK = mergeLeafResults(perLeafResults);
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
     return createRewrittenQuery(reader, topK);
-  }
-
-  private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
-    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-    for (LeafReaderContext ctx : leafReaderContexts) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
-    }
-    return perLeafResults;
-  }
-
-  private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
-      throws IOException {
-    List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
-    for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
-    }
-    return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
@@ -216,6 +198,22 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
     return new TopDocs(totalHits, topScoreDocs);
+  }
+
+  /**
+   * Merges all segment-level kNN results to get the index-level kNN results.
+   *
+   * <p>The default implementation delegates to {@link TopDocs#merge(int, TopDocs[])} to find the
+   * overall top {@link #k}, which requires input results to be sorted.
+   *
+   * <p>This method is useful for reading and / or modifying the final results as needed.
+   *
+   * @param perLeafResults array of segment-level kNN results.
+   * @return index-level kNN results (no constraint on their ordering).
+   * @lucene.experimental
+   */
+  protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+    return TopDocs.merge(k, perLeafResults);
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {

@@ -42,6 +42,7 @@ public class PathQueryNode extends QueryNodeImpl {
   /** Term text with a beginning and end position */
   public static class QueryText implements Cloneable {
     CharSequence value = null;
+
     /** != null The term's begin position. */
     int begin;
 

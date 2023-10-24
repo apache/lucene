@@ -50,8 +50,7 @@ public class TestBytesRefHash extends LuceneTestCase {
   private ByteBlockPool newPool() {
     return random().nextBoolean() && pool != null
         ? pool
-        : new ByteBlockPool(
-            new RecyclingByteBlockAllocator(ByteBlockPool.BYTE_BLOCK_SIZE, random().nextInt(25)));
+        : new ByteBlockPool(new RecyclingByteBlockAllocator(random().nextInt(25)));
   }
 
   private BytesRefHash newHash(ByteBlockPool blockPool) {

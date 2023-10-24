@@ -22,6 +22,10 @@ pluginManagement {
     }
 }
 
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+}
+
 rootProject.name = "lucene-root"
 
 includeBuild("dev-tools/missing-doclet")
@@ -39,6 +43,7 @@ include "lucene:analysis:stempel"
 include "lucene:analysis.tests"
 include "lucene:backward-codecs"
 include "lucene:benchmark"
+include "lucene:benchmark-jmh"
 include "lucene:classification"
 include "lucene:codecs"
 include "lucene:core"

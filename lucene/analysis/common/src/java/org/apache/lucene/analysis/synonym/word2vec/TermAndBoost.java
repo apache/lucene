@@ -22,6 +22,7 @@ import org.apache.lucene.util.BytesRef;
 public class TermAndBoost {
   /** the term */
   public final BytesRef term;
+
   /** the boost */
   public final float boost;
 
