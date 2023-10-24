@@ -101,6 +101,9 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
