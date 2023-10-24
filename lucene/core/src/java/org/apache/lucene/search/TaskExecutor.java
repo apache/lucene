@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -103,10 +103,10 @@ public final class TaskExecutor {
 
     RunnableFuture<T> createTask(Callable<T> callable) {
       // -1: cancelled; 0: not yet started; 1: started
-      AtomicInteger taskState = new AtomicInteger(0);
+      AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
       return new FutureTask<>(
           () -> {
-            if (taskState.compareAndSet(0, 1)) {
+            if (startedOrCancelled.compareAndSet(false, true)) {
               try {
                 Integer counter = numberOfRunningTasksInCurrentThread.get();
                 numberOfRunningTasksInCurrentThread.set(counter + 1);
@@ -126,7 +126,7 @@ public final class TaskExecutor {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
           assert mayInterruptIfRunning == false
-              : "cancelling tasks that have started is not supported";
+              : "cancelling tasks that are running is not supported";
           /*
           Future#get (called in invokeAll) throws CancellationException when invoked against a running task that has been cancelled but
           leaves the task running. We rather want to make sure that invokeAll does not leave any running tasks behind when it returns.
@@ -134,12 +134,7 @@ public final class TaskExecutor {
           wait for them to finish instead of throwing CancellationException. A cleaner way would have been to override FutureTask#get and
           make it wait for cancelled tasks, but FutureTask#awaitDone is private. Tasks that are cancelled before they are started will be no-op.
            */
-          return taskState.compareAndSet(0, -1);
-        }
-
-        @Override
-        public boolean isCancelled() {
-          return taskState.get() == -1;
+          return startedOrCancelled.compareAndSet(false, true);
         }
       };
     }
