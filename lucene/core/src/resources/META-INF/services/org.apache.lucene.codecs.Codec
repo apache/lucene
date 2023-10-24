@@ -13,4 +13,4 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-org.apache.lucene.codecs.lucene95.Lucene95Codec
+org.apache.lucene.codecs.lucene99.Lucene99Codec

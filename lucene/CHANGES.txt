@@ -154,8 +154,12 @@ API Changes
 
 New Features
 ---------------------
+
 * GITHUB#12548: Added similarityToQueryVector API to compute vector similarity scores
   with DoubleValuesSource. (Shubham Chaudhary)
+
+* GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
+  segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
 
 Improvements
 ---------------------
@@ -183,8 +187,8 @@ Improvements
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
-* GITHUB#12705: Improve handling of NullPointerException in MMapDirectory's IndexInputs.
-  (Uwe Schindler, Michael Sokolov)
+* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
+  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
 Optimizations
 ---------------------
@@ -214,6 +218,9 @@ Optimizations
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
 
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
+
 * GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
 
 Changes in runtime behavior
@@ -233,6 +240,8 @@ Bug Fixes
 * GITHUB#12698: Fix IndexOutOfBoundsException when saving FSTStore-backed FST with different DataOutput for metadata (Anh Dung Bui)
 
 * GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
+
+* GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
 
 Build
 ---------------------

@@ -223,6 +223,7 @@ public class TestDoc extends LuceneTestCase {
             merged,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
