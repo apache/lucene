@@ -1063,6 +1063,10 @@ public final class BPIndexReorderer {
       };
     }
 
+    /**
+     * Use a LSB Radix Sorter to sort the (docID, termID) entries. We only need to compare docIds
+     * because LSB Radix Sorter is stable and termIDs already sorted.
+     */
     void sortAndConsume(String fileName, int maxDoc, LongConsumer consumer) throws IOException {
       int bitsRequired = PackedInts.bitsRequired(maxDoc);
       String sourceFileName = fileName;
