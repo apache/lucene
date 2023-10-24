@@ -436,13 +436,10 @@ final class ReadersAndUpdates {
                       long[] onDiskUniqueValues = null;
                       if (onDiskDocValues != null) {
                         onDiskUniqueValues = onDiskDocValues.uniqueValues();
+                        if (onDiskUniqueValues == null) return false;
+                        if (onDiskUniqueValues.length != 1) return false;
                       }
-                      if (onDiskUniqueValues != null && onDiskUniqueValues.length != 1) {
-                        return false;
-                      }
-                      if (onDiskUniqueValues == null && updateHasSingleValue == null) {
-                        return false;
-                      }
+                      if (onDiskUniqueValues == null && updateHasSingleValue == null) return false;
                       if (onDiskUniqueValues != null && updateHasSingleValue != null) {
                         return onDiskDocValues.uniqueValues()[0] == updateHasSingleValue[0];
                       }

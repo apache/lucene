@@ -185,7 +185,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
-  private long[] writeValuesSingleValue(FieldInfo field, SortedNumericDocValues values)
+  private long[] writeValuesSingleValue(long min, SortedNumericDocValues values)
       throws IOException {
     // we use IndexedDISI to cover numDocsWithValue == maxDoc (isFullyDeleted)
     long offset = data.getFilePointer();
@@ -199,7 +199,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeInt(-1); // tablesize
 
     meta.writeByte((byte) 0); // numBitsPerValue
-    meta.writeLong(1); // min
+    meta.writeLong(min); // min
     meta.writeLong(1); // gcd
     long startOffset = data.getFilePointer();
     meta.writeLong(startOffset); // valueOffset
@@ -221,7 +221,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
     values = valuesProducer.getSortedNumeric(field);
     if (hasValue && DocValues.unwrapSingleton(values) != null && values.hasSingleValue()) {
-      return writeValuesSingleValue(field, values);
+      return writeValuesSingleValue(firstValue, values);
     }
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
