@@ -1054,7 +1054,7 @@ public final class BPIndexReorderer {
       }
     }
 
-    LongConsumer consumer(int shift, IndexOutput output) {
+    LongConsumer consumer(int shift) {
       return new LongConsumer() {
         @Override
         public void accept(long value) throws IOException {
