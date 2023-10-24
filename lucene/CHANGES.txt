@@ -214,6 +214,8 @@ Optimizations
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
 
+* GITHUB#12712: Use an offline radix sorter to build forward index in BPIndexReader. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
