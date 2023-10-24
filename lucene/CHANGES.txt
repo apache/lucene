@@ -190,7 +190,7 @@ Improvements
 * GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
   in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
-* GITHUB#12716: Improve hash mixing in FST's double-barrel LRU hash. (Shubham Chaudhary)
+* GITHUB#12716: Making FST compilation faster and more RAM-efficient using hash mixing. (Shubham Chaudhary)
 
 Optimizations
 ---------------------

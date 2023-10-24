@@ -88,6 +88,8 @@ public final class BitMixer {
    */
 
   private static final int PHI_C32 = 0x9e3779b9;
+
+  // https://softwareengineering.stackexchange.com/questions/402542/where-do-magic-hashing-constants-like-0x9e3779b9-and-0x9e3779b1-come-from
   public static final long PHI_C64 = 0x9e3779b97f4a7c15L;
 
   public static int mixPhi(byte k) {

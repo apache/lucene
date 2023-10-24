@@ -80,7 +80,6 @@ final class NodeHash<T> {
       return 0;
     }
     long pos = hash & fallbackTable.mask;
-    int c = 0;
     while (true) {
       long node = fallbackTable.get(pos);
       if (node == 0) {
@@ -91,8 +90,8 @@ final class NodeHash<T> {
         return node;
       }
 
-      // quadratic probe (but is it, really?)
-      pos = (pos + (++c)) & fallbackTable.mask;
+      // simple linear probing
+      pos = (pos + 1) & fallbackTable.mask;
     }
   }
 
@@ -101,7 +100,6 @@ final class NodeHash<T> {
     long hash = hash(nodeIn);
 
     long pos = hash & primaryTable.mask;
-    int c = 0;
 
     while (true) {
 
@@ -149,8 +147,8 @@ final class NodeHash<T> {
           // TODO: we could clear & reuse the previous fallbackTable, instead of allocating a new
           //       to reduce GC load
           primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
-        } else if (primaryTable.count > primaryTable.entries.size() * (2f / 3)) {
-          // rehash at 2/3 occupancy
+        } else if (primaryTable.count > primaryTable.entries.size() * (3f / 4)) {
+          // rehash at 3/4 occupancy
           primaryTable.rehash(node);
         }
 
@@ -161,8 +159,8 @@ final class NodeHash<T> {
         return node;
       }
 
-      // quadratic probe (but is it, really?)
-      pos = (pos + (++c)) & primaryTable.mask;
+      // simple linear probing
+      pos = (pos + 1) & primaryTable.mask;
     }
   }
 
@@ -317,15 +315,14 @@ final class NodeHash<T> {
         long address = entries.get(idx);
         if (address != 0) {
           long pos = hash(address) & newMask;
-          int c = 0;
           while (true) {
             if (newEntries.get(pos) == 0) {
               newEntries.set(pos, address);
               break;
             }
 
-            // quadratic probe
-            pos = (pos + (++c)) & newMask;
+            // simple linear probing
+            pos = (pos + 1) & newMask;
           }
         }
       }
