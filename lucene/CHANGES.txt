@@ -101,9 +101,6 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
-* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
-  competitive score requires multiple clauses to match. (Adrien Grand)
-
 Bug Fixes
 ---------------------
 
@@ -220,6 +217,9 @@ Optimizations
 * GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
+
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
 
 Changes in runtime behavior
 ---------------------
