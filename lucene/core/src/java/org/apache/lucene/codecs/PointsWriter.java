@@ -60,11 +60,11 @@ public abstract class PointsWriter implements Closeable {
           PointValues values = pointsReader.getValues(fieldInfo.name);
           if (values != null) {
             maxPointCount += values.size();
-          }
-          if (mergeState.liveDocs[i] != null) {
-            totDocCount = BKDWriter.UNKNOWN_DOC_COUNT;
-          } else if (totDocCount != BKDWriter.UNKNOWN_DOC_COUNT) {
-            totDocCount += values.getDocCount();
+            if (mergeState.liveDocs[i] != null) {
+              totDocCount = BKDWriter.UNKNOWN_DOC_COUNT;
+            } else if (totDocCount != BKDWriter.UNKNOWN_DOC_COUNT) {
+              totDocCount += values.getDocCount();
+            }
           }
         }
       }
