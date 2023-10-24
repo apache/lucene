@@ -940,6 +940,13 @@ public final class BPIndexReorderer {
     return len;
   }
 
+  /**
+   * Use a LSB Radix Sorter to sort the (docID, termID) entries. We only need to compare docIds
+   * because LSB Radix Sorter is stable and termIDs already sorted.
+   *
+   * <p>This sorter will require at least 16MB ({@link #BUFFER_BYTES} * {@link #HISTOGRAM_SIZE})
+   * RAM.
+   */
   static class ForwardIndexSorter {
 
     private static final int HISTOGRAM_SIZE = 256;
@@ -960,11 +967,11 @@ public final class BPIndexReorderer {
       void addEntry(long l) throws IOException {
         buffer[bufferUsed++] = l;
         if (bufferUsed == BUFFER_SIZE) {
-          flush(output, false);
+          flush(false);
         }
       }
 
-      void flush(IndexOutput output, boolean isFinal) throws IOException {
+      void flush(boolean isFinal) throws IOException {
         if (isFinal) {
           finalBlockSize = bufferUsed;
         }
@@ -1059,16 +1066,12 @@ public final class BPIndexReorderer {
         @Override
         public void onFinish() throws IOException {
           for (Bucket bucket : buckets) {
-            bucket.flush(output, true);
+            bucket.flush(true);
           }
         }
       };
     }
 
-    /**
-     * Use a LSB Radix Sorter to sort the (docID, termID) entries. We only need to compare docIds
-     * because LSB Radix Sorter is stable and termIDs already sorted.
-     */
     void sortAndConsume(String fileName, int maxDoc, LongConsumer consumer) throws IOException {
       int bitsRequired = PackedInts.bitsRequired(maxDoc);
       String sourceFileName = fileName;
