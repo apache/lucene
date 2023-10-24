@@ -25,7 +25,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -35,8 +34,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -48,8 +45,7 @@ public class TestTaskExecutor extends LuceneTestCase {
   public static void createExecutor() {
     executorService =
         Executors.newFixedThreadPool(
-            1,
-            new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
+            1, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
   }
 
   @AfterClass
@@ -270,41 +266,44 @@ public class TestTaskExecutor extends LuceneTestCase {
    * as suppressed exceptions to the first one caught.
    */
   public void testInvokeAllCatchesMultipleExceptions() {
-    //this test requires multiple threads, while all the other tests in this class rely on a single threaded executor
-    ExecutorService multiThreadedExecutor = Executors.newFixedThreadPool(2);
+    // this test requires multiple threads, while all the other tests in this class rely on a single
+    // threaded executor
+    ExecutorService multiThreadedExecutor =
+        Executors.newFixedThreadPool(
+            2, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
     try {
-        TaskExecutor taskExecutor = new TaskExecutor(multiThreadedExecutor);
-        List<Callable<Void>> callables = new ArrayList<>();
-        // if we have multiple threads, make sure both are started before an exception is thrown,
-        // otherwise there may or may not be a suppressed exception
-        CountDownLatch latchA = new CountDownLatch(1);
-        CountDownLatch latchB = new CountDownLatch(1);
-        callables.add(
-                () -> {
-                    latchA.countDown();
-                    latchB.await();
-                    throw new RuntimeException("exception A");
-                });
-        callables.add(
-                () -> {
-                    latchB.countDown();
-                    latchA.await();
-                    throw new IllegalStateException("exception B");
-                });
+      TaskExecutor taskExecutor = new TaskExecutor(multiThreadedExecutor);
+      List<Callable<Void>> callables = new ArrayList<>();
+      // if we have multiple threads, make sure both are started before an exception is thrown,
+      // otherwise there may or may not be a suppressed exception
+      CountDownLatch latchA = new CountDownLatch(1);
+      CountDownLatch latchB = new CountDownLatch(1);
+      callables.add(
+          () -> {
+            latchA.countDown();
+            latchB.await();
+            throw new RuntimeException("exception A");
+          });
+      callables.add(
+          () -> {
+            latchB.countDown();
+            latchA.await();
+            throw new IllegalStateException("exception B");
+          });
 
-        RuntimeException exc =
-                expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
-        Throwable[] suppressed = exc.getSuppressed();
+      RuntimeException exc =
+          expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+      Throwable[] suppressed = exc.getSuppressed();
 
-        assertEquals(1, suppressed.length);
-        if (exc.getMessage().equals("exception A")) {
-            assertEquals("exception B", suppressed[0].getMessage());
-        } else {
-            assertEquals("exception A", suppressed[0].getMessage());
-            assertEquals("exception B", exc.getMessage());
-        }
+      assertEquals(1, suppressed.length);
+      if (exc.getMessage().equals("exception A")) {
+        assertEquals("exception B", suppressed[0].getMessage());
+      } else {
+        assertEquals("exception A", suppressed[0].getMessage());
+        assertEquals("exception B", exc.getMessage());
+      }
     } finally {
-        TestUtil.shutdownExecutorService(multiThreadedExecutor);
+      TestUtil.shutdownExecutorService(multiThreadedExecutor);
     }
   }
 
@@ -327,7 +326,8 @@ public class TestTaskExecutor extends LuceneTestCase {
               }
             }
             if (index > throwingTask) {
-                //with a single thread we are sure that the last task to run is the one that throws, following ones must not run
+              // with a single thread we are sure that the last task to run is the one that throws,
+              // following ones must not run
               throw new AssertionError("task should not have started");
             }
             executedTasks.incrementAndGet();
