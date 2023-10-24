@@ -27,6 +27,9 @@ jobs:
         # Test JVMs.
         java: [ '17' ]
 
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
     steps:
     - uses: actions/checkout@v3
 
@@ -57,6 +60,9 @@ jobs:
         os: [ubuntu-latest]
         # Test JVMs.
         java: [ '17' ]
+
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3
