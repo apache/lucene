@@ -1102,10 +1102,20 @@ public final class BPIndexReorderer {
     }
 
     LongConsumer consumer(int shift, IndexOutput output) {
-      return value -> {
-        int b = (int) ((value >>> shift) & 0xFF);
-        Bucket bucket = buckets[b];
-        bucket.addEntry(value, output);
+      return new LongConsumer() {
+        @Override
+        public void accept(long value) throws IOException {
+          int b = (int) ((value >>> shift) & 0xFF);
+          Bucket bucket = buckets[b];
+          bucket.addEntry(value, output);
+        }
+
+        @Override
+        public void onFinish() throws IOException {
+          for (Bucket bucket : buckets) {
+            bucket.flush(output, true);
+          }
+        }
       };
     }
 
@@ -1135,9 +1145,6 @@ public final class BPIndexReorderer {
           } else {
             consume(sourceFileName, indexFP, consumer(shift, output));
             directory.deleteFile(sourceFileName);
-          }
-          for (Bucket bucket : buckets) {
-            bucket.flush(output, true);
           }
           indexFP = output.getFilePointer();
           for (Bucket bucket : buckets) {
