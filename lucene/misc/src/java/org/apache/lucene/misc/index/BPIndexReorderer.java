@@ -949,14 +949,15 @@ public final class BPIndexReorderer {
     private final Bucket[] buckets = new Bucket[HISTOGRAM_SIZE];
 
     private static class Bucket {
+      final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
+      final long[] buffer = new long[BUFFER_SIZE];
+      IndexOutput output;
       int bufferUsed;
       int blockNum;
       long lastFp;
-      final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
-      final long[] buffer = new long[BUFFER_SIZE];
       int finalBlockSize;
 
-      void addEntry(long l, IndexOutput output) throws IOException {
+      void addEntry(long l) throws IOException {
         buffer[bufferUsed++] = l;
         if (bufferUsed == BUFFER_SIZE) {
           flush(output, false);
@@ -978,7 +979,8 @@ public final class BPIndexReorderer {
         bufferUsed = 0;
       }
 
-      void reset() {
+      void reset(IndexOutput resetOutput) {
+        output = resetOutput;
         finalBlockSize = 0;
         bufferUsed = 0;
         blockNum = 0;
@@ -1051,7 +1053,7 @@ public final class BPIndexReorderer {
         public void accept(long value) throws IOException {
           int b = (int) ((value >>> shift) & 0xFF);
           Bucket bucket = buckets[b];
-          bucket.addEntry(value, output);
+          bucket.addEntry(value);
         }
 
         @Override
@@ -1073,6 +1075,7 @@ public final class BPIndexReorderer {
       long indexFP = -1;
       for (int shift = 0; shift < bitsRequired; shift += 8) {
         try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.DEFAULT)) {
+          Arrays.stream(buckets).forEach(b -> b.reset(output));
           if (shift == 0) {
             consume(sourceFileName, consumer(shift, output));
           } else {
@@ -1084,7 +1087,6 @@ public final class BPIndexReorderer {
             output.writeVInt(bucket.blockNum);
             output.writeVInt(bucket.finalBlockSize);
             bucket.fps.copyTo(output);
-            bucket.reset();
           }
           CodecUtil.writeFooter(output);
           sourceFileName = output.getName();
