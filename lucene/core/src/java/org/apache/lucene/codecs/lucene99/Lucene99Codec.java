@@ -20,7 +20,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.*;
 import org.apache.lucene.codecs.lucene90.*;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -101,7 +100,7 @@ public class Lucene99Codec extends Codec {
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene95HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene99HnswVectorsFormat();
   }
 
   @Override
