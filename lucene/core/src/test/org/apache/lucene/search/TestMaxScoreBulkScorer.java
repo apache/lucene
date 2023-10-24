@@ -21,14 +21,19 @@ import java.util.Arrays;
 import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
 
 // These basic tests are similar to some of the tests in TestWANDScorer, and may not need to be kept
 public class TestMaxScoreBulkScorer extends LuceneTestCase {
@@ -431,6 +436,102 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     public String toString() {
       return toString;
     }
+  }
+
+  public void testDeletes() throws IOException {
+
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc1 = new Document();
+    doc1.add(new StringField("field", "foo", Store.NO));
+    doc1.add(new StringField("field", "bar", Store.NO));
+    doc1.add(new StringField("field", "quux", Store.NO));
+    Document doc2 = new Document();
+    Document doc3 = new Document();
+    for (IndexableField field : doc1) {
+      doc2.add(field);
+      doc3.add(field);
+    }
+    doc1.add(new StringField("id", "1", Store.NO));
+    doc2.add(new StringField("id", "2", Store.NO));
+    doc3.add(new StringField("id", "3", Store.NO));
+    w.addDocument(doc1);
+    w.addDocument(doc2);
+    w.addDocument(doc3);
+
+    w.forceMerge(1);
+
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(
+                new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("field", "foo"))), 1f),
+                Occur.SHOULD)
+            .add(
+                new BoostQuery(
+                    new ConstantScoreQuery(new TermQuery(new Term("field", "bar"))), 1.5f),
+                Occur.SHOULD)
+            .add(
+                new BoostQuery(
+                    new ConstantScoreQuery(new TermQuery(new Term("field", "quux"))), 0.1f),
+                Occur.SHOULD)
+            .build();
+
+    IndexSearcher searcher = newSearcher(reader);
+    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1f);
+
+    Bits liveDocs =
+        new Bits() {
+          @Override
+          public boolean get(int index) {
+            return index == 1;
+          }
+
+          @Override
+          public int length() {
+            return 3;
+          }
+        };
+
+    // Test min competitive scores that exercise different execution modes
+    for (float minCompetitiveScore :
+        new float[] {
+          0f, // 3 essential clauses
+          1f, // 2 essential clauses
+          1.2f, // 1 essential clause
+          2f // two required clauses
+        }) {
+      BulkScorer scorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+      LeafCollector collector =
+          new LeafCollector() {
+
+            int i = 0;
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {
+              scorer.setMinCompetitiveScore(minCompetitiveScore);
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              assertEquals(1, doc);
+              assertEquals(0, i++);
+            }
+
+            @Override
+            public void finish() throws IOException {
+              assertEquals(1, i);
+            }
+          };
+      scorer.score(collector, liveDocs);
+      collector.finish();
+    }
+
+    reader.close();
+    dir.close();
   }
 
   // This test simulates what happens over time for the query `the quick fox` as collection

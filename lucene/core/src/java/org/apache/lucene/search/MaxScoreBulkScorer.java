@@ -175,6 +175,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
     outer:
     while (lead1.doc < max) {
 
+      if (acceptDocs != null && acceptDocs.get(lead1.doc) == false) {
+        lead1.doc = lead1.iterator.nextDoc();
+        continue;
+      }
+
       double score = lead1.scorer.score();
 
       // We specialize handling the second best scorer, which seems to help a bit with performance.
