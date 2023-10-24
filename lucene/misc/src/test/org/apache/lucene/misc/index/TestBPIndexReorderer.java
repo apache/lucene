@@ -19,9 +19,14 @@ package org.apache.lucene.misc.index;
 import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -258,10 +263,30 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   }
 
   public void testForwardIndexSorter() throws IOException {
+    class Entry implements Comparable<Entry>{
+      final int docId;
+      final int termId;
+
+      Entry(int docId, int termId) {
+        this.docId = docId;
+        this.termId = termId;
+      }
+
+      @Override
+      public int compareTo(Entry o) {
+        if (docId == o.docId) {
+          return Integer.compare(termId, o.termId);
+        } else {
+          return Integer.compare(docId, o.docId);
+        }
+      }
+    }
+
     try (Directory directory = newDirectory()) {
       for (int bits = 2; bits < 32; bits++) {
         int maxDoc = (1 << bits) - 1;
         int termNum = atLeast(100);
+        List<Entry> entryList = new ArrayList<>();
         String fileName;
         try (IndexOutput out =
             directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.DEFAULT)) {
@@ -269,14 +294,17 @@ public class TestBPIndexReorderer extends LuceneTestCase {
             int docNum = 0;
             int doc = 0;
             while (docNum < 100 && doc < maxDoc - 1) {
-              doc = random().nextInt(doc, maxDoc);
+              doc = random().nextInt(doc + 1, maxDoc);
               assertTrue(doc >= 0);
               docNum++;
+              entryList.add(new Entry(doc, termId));
               out.writeLong((Integer.toUnsignedLong(termId) << 32) | Integer.toUnsignedLong(doc));
             }
           }
+          CodecUtil.writeFooter(out);
           fileName = out.getName();
         }
+        Collections.sort(entryList);
 
         for (double ramBudget : new double[] {0, Double.MAX_VALUE}) {
           new BPIndexReorderer.ForwardIndexSorter(directory, ramBudget)
@@ -285,24 +313,21 @@ public class TestBPIndexReorderer extends LuceneTestCase {
                   maxDoc,
                   new BPIndexReorderer.LongConsumer() {
 
-                    long lastValue = -1;
+                    int total = 0;
 
                     @Override
                     public void accept(long value) {
-                      if (lastValue != -1) {
-                        int doc = (int) value;
-                        int term = (int) (value >>> 32);
-                        int lastDoc = (int) lastValue;
-                        int lastTerm = (int) (lastValue >>> 32);
-                        assertTrue(
-                            "last doc: " + lastDoc + ", current doc: " + doc, lastDoc <= doc);
-                        if (lastDoc == doc) {
-                          assertTrue(
-                              "last term: " + lastTerm + ", current term: " + term,
-                              lastTerm <= term);
-                        }
-                      }
-                      lastValue = value;
+                      int doc = (int) value;
+                      int term = (int) (value >>> 32);
+                      Entry entry = entryList.get(total);
+                      assertEquals(entry.docId, doc);
+                      assertEquals(entry.termId, term);
+                      total++;
+                    }
+
+                    @Override
+                    public void onFinish() {
+                      assertEquals(entryList.size(), total);
                     }
                   });
         }

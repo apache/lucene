@@ -988,22 +988,19 @@ public final class BPIndexReorderer {
         return true;
       }
 
-      public void sortAndConsume(int numBits, final long[] array, int len, LongConsumer consumer)
+      public void sortAndConsume(int numBits, long[] array, int len, LongConsumer consumer)
           throws IOException {
-        long[] buffer = new long[array.length];
-        long[] arr = array;
-        long[] buf = buffer;
+        long[] buffer = new long[len];
         for (int shift = 0; shift < numBits; shift += 8) {
-          if (sort(arr, len, histogram, shift, buf)) {
+          if (sort(array, len, histogram, shift, buffer)) {
             // swap arrays
-            long[] tmp = arr;
-            arr = buf;
-            buf = tmp;
+            long[] tmp = array;
+            array = buffer;
+            buffer = tmp;
           }
         }
-
         for (int i = 0; i < len; i++) {
-          consumer.accept(arr[i]);
+          consumer.accept(array[i]);
         }
       }
     }
@@ -1116,6 +1113,7 @@ public final class BPIndexReorderer {
 
       long total = (directory.fileLength(fileName) - CodecUtil.footerLength());
       if (total * 2 < ramBudgetMB * 1024 * 1024) {
+        assert total % Long.BYTES == 0;
         long[] entries = new long[(int) (total / Long.BYTES)];
         try (IndexInput in = directory.openInput(fileName, IOContext.READONCE)) {
           in.readLongs(entries, 0, entries.length);
