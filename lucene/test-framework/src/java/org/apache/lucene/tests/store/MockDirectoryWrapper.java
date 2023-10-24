@@ -46,6 +46,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoDeletionPolicy;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
@@ -970,7 +971,12 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           DirectoryReader ir1 = DirectoryReader.open(this);
           int numDocs1 = ir1.numDocs();
           ir1.close();
-          new IndexWriter(this, new IndexWriterConfig(null)).close();
+          // Use a serial merge scheduler, otherwise merges may be scheduled on a different thread
+          // and will deadlock since the lock on `this` is already taken by close(), so
+          // createOutput() won't be able to take it.
+          new IndexWriter(
+                  this, new IndexWriterConfig(null).setMergeScheduler(new SerialMergeScheduler()))
+              .close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
           ir2.close();
