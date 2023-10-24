@@ -1080,9 +1080,9 @@ public final class BPIndexReorderer {
         try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.DEFAULT)) {
           Arrays.stream(buckets).forEach(b -> b.reset(output));
           if (shift == 0) {
-            consume(sourceFileName, consumer(shift, output));
+            consume(sourceFileName, consumer(shift));
           } else {
-            consume(sourceFileName, indexFP, consumer(shift, output));
+            consume(sourceFileName, indexFP, consumer(shift));
             directory.deleteFile(sourceFileName);
           }
           indexFP = output.getFilePointer();
