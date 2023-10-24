@@ -38,7 +38,7 @@ public abstract class SortedNumericDocValues extends DocValuesIterator {
 
   /**
    * An optional attribute for low cardinality: the table[] or minValue if all values are the same,
-   * otherwise return null
+   * otherwise return null. Currently only used by {@link SingletonSortedNumericDocValues}.
    *
    * @return dictionary for low cardinality or null
    */
@@ -48,7 +48,7 @@ public abstract class SortedNumericDocValues extends DocValuesIterator {
 
   /**
    * Return if all the doc values has same value. This is An optional method(unimplemented by all
-   * subclasses.)
+   * subclasses.) Currently only used by {@link SingletonSortedNumericDocValues}.
    *
    * @return true if the doc values has single value
    */
