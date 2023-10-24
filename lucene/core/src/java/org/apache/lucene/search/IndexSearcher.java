@@ -115,10 +115,10 @@ public class IndexSearcher {
   protected final List<LeafReaderContext> leafContexts;
 
   /**
-   * used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
+   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
    * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. This is {@code null} if no executor is
-   * provided
+   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
+   * executor is provided or not.
    */
   private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
@@ -425,11 +425,12 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns the leaf slices used for concurrent searching
+   * Returns the leaf slices used for concurrent searching. Override {@link #slices(List)} to
+   * customize how slices are created.
    *
    * @lucene.experimental
    */
-  public LeafSlice[] getSlices() {
+  public final LeafSlice[] getSlices() {
     return leafSlicesSupplier.get();
   }
 
