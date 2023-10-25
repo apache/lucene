@@ -183,7 +183,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, Lucene99ScalarQuantizedVectorsFormat scalarQuantize) {
-    this(maxConn, beamWidth, null, DEFAULT_NUM_MERGE_WORKER, null);
+    this(maxConn, beamWidth, scalarQuantize, DEFAULT_NUM_MERGE_WORKER, null);
   }
 
   /**
