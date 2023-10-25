@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.SortingCodecReader;
@@ -725,7 +726,7 @@ public final class BPIndexReorderer {
    * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
    * consecutive documents in postings, which usually helps improve space efficiency and query
    * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
-   * be used in a call to {@link org.apache.lucene.index.IndexWriter#addIndexes(CodecReader...)}.
+   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
    *
    * @throws NotEnoughRAMException if not enough RAM is provided
    */
