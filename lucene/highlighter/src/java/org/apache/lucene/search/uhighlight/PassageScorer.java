@@ -112,7 +112,7 @@ public class PassageScorer {
   }
 
   public float score(Passage passage, int contentLength) {
-    float score = 0;
+    double score = 0d;
     BytesRefHash termsHash = new BytesRefHash();
     int hitCount = passage.getNumMatches();
     int[] termFreqsInPassage = new int[hitCount]; // maximum size
@@ -134,6 +134,6 @@ public class PassageScorer {
           tf(termFreqsInPassage[i], passage.getLength()) * weight(contentLength, termFreqsInDoc[i]);
     }
     score *= norm(passage.getStartOffset());
-    return score;
+    return (float) score;
   }
 }
