@@ -128,7 +128,7 @@ public class PimIndexInfo {
   public IndexInput getFieldFileInput(IndexInput in, int dpuId) throws IOException {
 
     seekToDpu(in, dpuId);
-    in.readByte(); // nb DPU segments
+    skipSegmentInfo(in);
     long fieldSize = in.readVLong();
     if (fieldSize == 0) {
       // empty DPU, no docs were added
@@ -150,7 +150,7 @@ public class PimIndexInfo {
   public IndexInput getBlockTableFileInput(IndexInput in, int dpuId) throws IOException {
 
     seekToDpu(in, dpuId);
-    in.readByte(); // nb DPU segments
+    skipSegmentInfo(in);
     long blockTableOffset = in.readVLong();
     if (blockTableOffset == 0) {
       // empty DPU, no docs were added
@@ -172,7 +172,7 @@ public class PimIndexInfo {
   public IndexInput getBlocksFileInput(IndexInput in, int dpuId) throws IOException {
 
     seekToDpu(in, dpuId);
-    in.readByte(); // nb segments
+    skipSegmentInfo(in);
     in.readVLong();
     long blockListOffset = in.readVLong();
     if (blockListOffset == 0) {
@@ -194,7 +194,7 @@ public class PimIndexInfo {
   public IndexInput getPostingsFileInput(IndexInput in, int dpuId) throws IOException {
 
     seekToDpu(in, dpuId);
-    in.readByte(); // nb segments
+    skipSegmentInfo(in);
     in.readVLong();
     in.readVLong();
     long postingsOffset = in.readVLong();
@@ -300,6 +300,13 @@ public class PimIndexInfo {
       in.readBytes(info.segmentCommitId[i], 0, info.segmentCommitId[i].length);
     }
     return info;
+  }
+
+  private void skipSegmentInfo(IndexInput in) throws IOException {
+    in.readByte(); // nb DPU segments
+    in.readByte(); // nb lucene segments
+    int nbBytesMaxDoc = in.readVInt();
+    in.skipBytes(nbBytesMaxDoc);
   }
 
   public static final String DPU_INDEX_COMPOUND_EXTENSION = "dpuc";

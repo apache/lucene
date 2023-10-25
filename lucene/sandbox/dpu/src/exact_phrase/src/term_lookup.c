@@ -217,8 +217,13 @@ bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_ad
     decoder_t* decoder = decoder_pool_get_one();
     initialize_decoder(decoder, index);
 
-    // read index offsets
+    // read number of segments
     nr_segments = 1 << decode_byte_from(decoder);
+    // bypass lucene segments info
+    int nr_lucene_segments = decode_byte_from(decoder);
+    int nr_bytes_lucene_segments = decode_vint_from(decoder);
+    skip_bytes_decoder(decoder, nr_bytes_lucene_segments);
+    // read index offsets
     block_table_offset = decode_vint_from(decoder);
     block_list_offset = decode_vint_from(decoder);
     postings_offset = decode_vint_from(decoder);

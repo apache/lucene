@@ -76,6 +76,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
               + DpuConstants.nrDpus);
     }
 
+    if (pimIndexInfo.getNumSegments() > DpuConstants.dpuMaxNbLuceneSegments) {
+      throw new DpuException(
+              "ERROR: index contains too many Lucene segments "
+                      + pimIndexInfo.getNumSegments()
+                      + " > "
+                      + DpuConstants.dpuMaxNbLuceneSegments);
+    }
+
     // TODO Debug further parallel load. It crashes in the jni layer of the DPU load API
     if (PARALLEL_INDEX_LOAD) {
 

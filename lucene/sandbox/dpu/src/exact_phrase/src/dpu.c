@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <alloc.h>
 #include <string.h>
+#include <mram_unaligned.h>
 #include "common.h"
 #include "matcher.h"
 #include "decoder.h"
@@ -36,8 +37,9 @@ __host uint32_t query_offset_in_batch[DPU_MAX_BATCH_SIZE];
 __mram_noinit uint8_t results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
 __mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
 __host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
-__mram_noinit uint64_t results_segment_offset[DPU_MAX_BATCH_SIZE][MAX_NR_SEGMENTS];
-__dma_aligned uint64_t segment_offset_cache[NR_TASKLETS][8];
+__mram_noinit uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS];
+__mram_noinit uint32_t results_segment_offset[DPU_MAX_BATCH_SIZE * MAX_NR_SEGMENTS];
+__dma_aligned uint32_t segment_offset_cache[NR_TASKLETS][8];
 
 /* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
@@ -50,6 +52,11 @@ uint8_t queries_nb_terms[DPU_MAX_BATCH_SIZE];
 /* WRAM cache for postings info */
 #define POSTINGS_CACHE_SIZE (MAX_NR_TERMS > MAX_NR_SEGMENTS ? MAX_NR_TERMS : MAX_NR_SEGMENTS)
 __dma_aligned postings_info_t postings_cache_wram[NR_TASKLETS][POSTINGS_CACHE_SIZE];
+
+/* Lucene segments maxDoc */
+uint16_t nr_lucene_segments;
+uint32_t lucene_segment_maxdoc[DPU_MAX_NR_LUCENE_SEGMENTS];
+uint16_t current_segment[NR_TASKLETS];
 
 uint8_t nr_segments_log2 = 0;
 uintptr_t dpu_index = 0;
@@ -72,9 +79,11 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment_id, did_matcher_t *matchers, uint32_t nr_terms);
 static void init_results_cache(uint32_t query_id, uint32_t buffer_id, uint8_t segment_id);
 static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id);
+static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz);
 static void sort_query_results();
 static void flush_query_buffer();
-static uint8_t get_nr_segments_log2(uintptr_t);
+static void get_segments_info(uintptr_t);
+static void adder(int *i, void *args) { *i += 1; }
 
 int main() {
 
@@ -107,8 +116,9 @@ int main() {
 #else
         dpu_index = (uintptr_t)DPU_MRAM_HEAP_POINTER;
 #endif
-        nr_segments_log2 = get_nr_segments_log2(dpu_index);
+        get_segments_info(dpu_index);
         assert(nr_segments_log2 >=0 && nr_segments_log2 < 8);
+        assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
     }
     barrier_wait(&barrier);
 
@@ -117,6 +127,7 @@ int main() {
     for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
             lookup_postings_info_for_query(dpu_index, i);
             results_index[i] = 0;
+            memset(&results_index_lucene_segments[i * nr_lucene_segments], 0, nr_lucene_segments);
     }
     //TODO avoid a barrier here ? Load balancing of lookup postings operation is not very good
     barrier_wait(&barrier);
@@ -134,6 +145,7 @@ int main() {
         uint32_t segment_id = batch_num_tasklet - (query_id << nr_segments_log2);
         uint8_t nr_terms = queries_nb_terms[query_id];
         uint64_t nr_results = 0;
+        current_segment[me()] = 0;
 
         /*printf("tid:%d start query %d segment %d nr_terms %d\n", me(), query_id, segment_id, nr_terms);*/
 
@@ -167,7 +179,7 @@ int main() {
 #ifdef DEBUG
         printf("tid %d nr_results for query %d:%d = %lu\n", me(), query_id, segment_id, nr_results);
 #endif
-        mram_write(&nr_results, &results_segment_offset[query_id][segment_id], 8);
+        mram_write_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id], nr_results);
     }
 
     barrier_wait(&barrier);
@@ -178,23 +190,10 @@ int main() {
             results_index[i] += results_index[i-1];
         }
     }
-    for(int i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
-        // read the segment offsets for this query and prefix sum the values and write it back
-        // values are loaded 8 by 8 for more efficient MRAM access
-        uint32_t curr = 0;
-        for(int j = 0; j < ((1 << nr_segments_log2) + 7) >> 3; ++j) {
-            int nbElem = 8;
-            if((1 << nr_segments_log2) - (j * 8) < 8)
-              nbElem = (1 << nr_segments_log2) - (j * 8);
-            mram_read(results_segment_offset[i] + j * 8, segment_offset_cache[me()], nbElem * 8);
-            segment_offset_cache[me()][0] += curr;
-            for(int k = 1; k < nbElem; ++k) {
-                segment_offset_cache[me()][k] += segment_offset_cache[me()][k-1];
-            }
-            curr = segment_offset_cache[me()][7];
-            mram_write(segment_offset_cache[me()], results_segment_offset[i] + j * 8, nbElem * 8);
-        }
-    }
+    // read the segment offsets for this query and prefix sum the values and write it back
+    prefix_sum_each_query(results_segment_offset, 1 << nr_segments_log2);
+    // read the lucene segment offsets for this query and prefix sum the values and write it back
+    prefix_sum_each_query(results_index_lucene_segments, nr_lucene_segments);
 
     barrier_wait(&barrier);
 
@@ -212,6 +211,10 @@ int main() {
             uint64_t res;
             mram_read(&results_batch_sorted[j * 8], &res, 8);
             printf("doc:%u freq:%u\n", *((uint32_t*)&res), *((uint32_t*)(&res) + 1));
+        }
+        printf("\nnb results per lucene segments:\n");
+        for(int j = 0; j < nr_lucene_segments; ++j) {
+            printf("segment%d: %d\n", j, results_index_lucene_segments[i * nr_lucene_segments + j]);
         }
        }
     }
@@ -360,6 +363,16 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     buffer_size = ++results_cache[me()][0].info.buffer_size;
     results_cache[me()][buffer_size].result.doc_id = did;
     results_cache[me()][buffer_size].result.freq = 1;
+
+    // update lucene segment for the current did, then add 1 to the count of results per lucene segment
+    while(did > lucene_segment_maxdoc[current_segment[me()]] && current_segment[me()] < nr_lucene_segments) {
+       current_segment[me()]++;
+    }
+    assert(current_segment[me()] < nr_lucene_segments);
+
+    // atomic increment of the results per lucene segments info
+    mram_update_int_atomic(&results_index_lucene_segments[query_id * nr_lucene_segments + current_segment[me()]],
+                            adder, 0);
 }
 
 static void sort_query_results() {
@@ -376,7 +389,7 @@ static void sort_query_results() {
         uint32_t offset = 0;
         uint32_t segment_offset = 0;
         if(query_id) offset = results_index[query_id - 1];
-        if(segment_id) segment_offset = results_segment_offset[query_id][segment_id - 1];
+        if(segment_id) segment_offset = results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id - 1];
         uint32_t mram_index = (offset + segment_offset + buffer_id * (DPU_RESULTS_CACHE_SIZE - 1))
                                 * sizeof(query_buffer_elem_t);
 
@@ -434,14 +447,46 @@ end:
     release_query_parser(&query_parser);
 }
 
-static uint8_t get_nr_segments_log2(uintptr_t index) {
+static void get_segments_info(uintptr_t index) {
 
     // get a decoder from the pool
     decoder_t* decoder = decoder_pool_get_one();
     initialize_decoder(decoder, index);
 
     // read the number of segments (log2 encoding)
-    uint8_t val = decode_byte_from(decoder);
+    nr_segments_log2 = decode_byte_from(decoder);
+    // read number of lucene segments
+    nr_lucene_segments = decode_byte_from(decoder);
+    decode_vint_from(decoder); // number of bytes, used to skip
+    // read lucene segments max doc info
+    for(int i = 0; i < nr_lucene_segments; ++i)
+        lucene_segment_maxdoc[i] = decode_vint_from(decoder);
+
     decoder_pool_release_one(decoder);
-    return val;
+}
+
+#define NB_ELEM_TRANSFER 8
+static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz) {
+
+    for(int i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
+        // values are loaded 8 by 8 for more efficient MRAM access
+        uint32_t curr = 0;
+        for(int j = 0; j < (sz + NB_ELEM_TRANSFER - 1) / NB_ELEM_TRANSFER; ++j) {
+            int nbElem = NB_ELEM_TRANSFER;
+            if(sz - (j * NB_ELEM_TRANSFER) < NB_ELEM_TRANSFER)
+              nbElem = sz - (j * NB_ELEM_TRANSFER);
+
+            uint32_t *cache = mram_read_unaligned(&array[i * sz + j * NB_ELEM_TRANSFER], segment_offset_cache[me()],
+                                                    nbElem * sizeof(uint32_t));
+
+            cache[0] += curr;
+            for(int k = 1; k < nbElem; ++k) {
+                cache[k] += cache[k-1];
+            }
+            curr = segment_offset_cache[me()][NB_ELEM_TRANSFER - 1];
+
+            mram_write_unaligned(cache, &array[i * sz + j * NB_ELEM_TRANSFER],
+                                    nbElem * sizeof(uint32_t));
+        }
+    }
 }

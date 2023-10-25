@@ -32,7 +32,7 @@ class DpuConstants {
   static final String dpuIndexLoadedVarName = "index_loaded";
   static final int dpuQueryMaxBatchSize = 256;
   static final int dpuQueryBatchByteSize = 1 << 18;
-  static final int dpuResultsMaxByteSize = 1 << 20;
+  static final int dpuMaxNbLuceneSegments = 128;
   static final int nrDpus = 64;
   static final String dpuProgramPath =
       System.getProperty("lucene.pim.dir") + "/lucene/sandbox/dpu/build/dpu_program_exact_phrase";

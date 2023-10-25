@@ -31,6 +31,10 @@
  */
 #define MAX_NR_SEGMENTS 32
 /**
+ * Maximum number of lucene segments supported
+ */
+#define DPU_MAX_NR_LUCENE_SEGMENTS 128
+/**
  * Number of decoders allocated at init in the decoder pool
  * When not enough decoders are available left in the pool,
  * the thread handling the query will be stopped and resumed
