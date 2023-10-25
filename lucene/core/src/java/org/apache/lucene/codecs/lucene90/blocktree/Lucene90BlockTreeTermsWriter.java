@@ -521,7 +521,10 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).bytesPageBits(pageBits).build();
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
+              .suffixRAMLimitMB(0d)
+              .bytesPageBits(pageBits)
+              .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
       // }
