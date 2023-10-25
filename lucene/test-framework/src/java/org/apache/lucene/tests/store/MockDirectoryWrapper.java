@@ -975,7 +975,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // and will deadlock since the lock on `this` is already taken by close(), so
           // createOutput() won't be able to take it.
           new IndexWriter(
-                  this, new IndexWriterConfig(null).setMergeScheduler(new SerialMergeScheduler()))
+                  this, new IndexWriterConfig(null).setCommitOnClose(false))
               .close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
