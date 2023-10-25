@@ -190,6 +190,8 @@ Improvements
 * GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
   in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
+* GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -220,6 +222,8 @@ Optimizations
 
 * GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
   competitive score requires multiple clauses to match. (Adrien Grand)
+
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
 
 * GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
 
