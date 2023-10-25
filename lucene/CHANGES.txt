@@ -229,6 +229,8 @@ Optimizations
 
 * GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
 
+* GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
