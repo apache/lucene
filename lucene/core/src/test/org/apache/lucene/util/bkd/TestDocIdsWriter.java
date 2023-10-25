@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -118,7 +119,11 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      docIdsWriter.readInts(in, ints.length, read);
+      DocIdSetIterator iterator = docIdsWriter.readInts(in, ints.length, read);
+      int docId, pos = 0;
+      while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        read[pos++] = docId;
+      }
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }

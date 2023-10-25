@@ -216,7 +216,7 @@ public class BKDReader extends PointValues {
         scratchMinIndexPackedValue,
         scratchMaxIndexPackedValue;
     private final int[] commonPrefixLengths;
-    private final BKDReaderDocIDSetIterator scratchIterator;
+    private final BKDReaderDocIDSet scratch;
     private final DocIdsWriter docIdsWriter;
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
@@ -243,7 +243,7 @@ public class BKDReader extends PointValues {
           1,
           minPackedValue,
           maxPackedValue,
-          new BKDReaderDocIDSetIterator(config.maxPointsInLeafNode),
+          new BKDReaderDocIDSet(config.maxPointsInLeafNode),
           new byte[config.packedBytesLength],
           new byte[config.packedIndexBytesLength],
           new byte[config.packedIndexBytesLength],
@@ -264,7 +264,7 @@ public class BKDReader extends PointValues {
         int level,
         byte[] minPackedValue,
         byte[] maxPackedValue,
-        BKDReaderDocIDSetIterator scratchIterator,
+        BKDReaderDocIDSet scratch,
         byte[] scratchDataPackedValue,
         byte[] scratchMinIndexPackedValue,
         byte[] scratchMaxIndexPackedValue,
@@ -299,12 +299,12 @@ public class BKDReader extends PointValues {
           lastLeafNodePointCount == 0 ? config.maxPointsInLeafNode : lastLeafNodePointCount;
       // scratch objects, reused between clones so NN search are not creating those objects
       // in every clone.
-      this.scratchIterator = scratchIterator;
+      this.scratch = scratch;
       this.commonPrefixLengths = commonPrefixLengths;
       this.scratchDataPackedValue = scratchDataPackedValue;
       this.scratchMinIndexPackedValue = scratchMinIndexPackedValue;
       this.scratchMaxIndexPackedValue = scratchMaxIndexPackedValue;
-      this.docIdsWriter = scratchIterator.docIdsWriter;
+      this.docIdsWriter = scratch.docIdsWriter;
     }
 
     @Override
@@ -321,7 +321,7 @@ public class BKDReader extends PointValues {
               level,
               minPackedValue,
               maxPackedValue,
-              scratchIterator,
+              scratch,
               scratchDataPackedValue,
               scratchMinIndexPackedValue,
               scratchMaxIndexPackedValue,
@@ -605,7 +605,7 @@ public class BKDReader extends PointValues {
 
     private void visitDocValues(PointValues.IntersectVisitor visitor, long fp) throws IOException {
       // Leaf node; scan and filter all points in this block:
-      int count = readDocIDs(leafNodes, fp, scratchIterator);
+      DocIdSetIterator iterator = readDocIDs(leafNodes, fp, scratch);
       if (version >= BKDWriter.VERSION_LOW_CARDINALITY_LEAVES) {
         visitDocValuesWithCardinality(
             commonPrefixLengths,
@@ -613,8 +613,8 @@ public class BKDReader extends PointValues {
             scratchMinIndexPackedValue,
             scratchMaxIndexPackedValue,
             leafNodes,
-            scratchIterator,
-            count,
+            iterator,
+            scratch.getCount(),
             visitor);
       } else {
         visitDocValuesNoCardinality(
@@ -623,21 +623,20 @@ public class BKDReader extends PointValues {
             scratchMinIndexPackedValue,
             scratchMaxIndexPackedValue,
             leafNodes,
-            scratchIterator,
-            count,
+            iterator,
+            scratch.getCount(),
             visitor);
       }
     }
 
-    private int readDocIDs(IndexInput in, long blockFP, BKDReaderDocIDSetIterator iterator)
+    private DocIdSetIterator readDocIDs(IndexInput in, long blockFP, BKDReaderDocIDSet scratch)
         throws IOException {
       in.seek(blockFP);
       // How many points are stored in this leaf cell:
       int count = in.readVInt();
-
-      docIdsWriter.readInts(in, count, iterator.docIDs);
-
-      return count;
+      scratch.setCount(count);
+      DocIdSetIterator iterator = docIdsWriter.readInts(in, count, scratch.docIDs);
+      return iterator;
     }
 
     // for assertions
@@ -731,7 +730,7 @@ public class BKDReader extends PointValues {
         byte[] scratchMinIndexPackedValue,
         byte[] scratchMaxIndexPackedValue,
         IndexInput in,
-        BKDReaderDocIDSetIterator scratchIterator,
+        DocIdSetIterator iterator,
         int count,
         PointValues.IntersectVisitor visitor)
         throws IOException {
@@ -757,9 +756,7 @@ public class BKDReader extends PointValues {
         }
         visitor.grow(count);
         if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
-          for (int i = 0; i < count; ++i) {
-            visitor.visit(scratchIterator.docIDs[i]);
-          }
+          visitor.visit(iterator);
           return;
         }
       } else {
@@ -769,13 +766,13 @@ public class BKDReader extends PointValues {
       int compressedDim = readCompressedDim(in);
 
       if (compressedDim == -1) {
-        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, visitor);
+        visitUniqueRawDocValues(scratchDataPackedValue, iterator, visitor);
       } else {
         visitCompressedDocValues(
             commonPrefixLengths,
             scratchDataPackedValue,
             in,
-            scratchIterator,
+            iterator,
             count,
             visitor,
             compressedDim);
@@ -788,7 +785,7 @@ public class BKDReader extends PointValues {
         byte[] scratchMinIndexPackedValue,
         byte[] scratchMaxIndexPackedValue,
         IndexInput in,
-        BKDReaderDocIDSetIterator scratchIterator,
+        DocIdSetIterator iterator,
         int count,
         PointValues.IntersectVisitor visitor)
         throws IOException {
@@ -798,7 +795,7 @@ public class BKDReader extends PointValues {
       if (compressedDim == -1) {
         // all values are the same
         visitor.grow(count);
-        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, visitor);
+        visitUniqueRawDocValues(scratchDataPackedValue, iterator, visitor);
       } else {
         if (config.numIndexDims != 1) {
           byte[] minPackedValue = scratchMinIndexPackedValue;
@@ -823,7 +820,7 @@ public class BKDReader extends PointValues {
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
             for (int i = 0; i < count; ++i) {
-              visitor.visit(scratchIterator.docIDs[i]);
+              visitor.visit(iterator);
             }
             return;
           }
@@ -834,14 +831,14 @@ public class BKDReader extends PointValues {
         if (compressedDim == -2) {
           // low cardinality values
           visitSparseRawDocValues(
-              commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+              commonPrefixLengths, scratchDataPackedValue, in, iterator, count, visitor);
         } else {
           // high cardinality
           visitCompressedDocValues(
               commonPrefixLengths,
               scratchDataPackedValue,
               in,
-              scratchIterator,
+              iterator,
               count,
               visitor,
               compressedDim);
@@ -866,7 +863,7 @@ public class BKDReader extends PointValues {
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
         IndexInput in,
-        BKDReaderDocIDSetIterator scratchIterator,
+        DocIdSetIterator iterator,
         int count,
         PointValues.IntersectVisitor visitor)
         throws IOException {
@@ -878,8 +875,9 @@ public class BKDReader extends PointValues {
           in.readBytes(
               scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
         }
-        scratchIterator.reset(i, length);
-        visitor.visit(scratchIterator, scratchPackedValue);
+        for (int j = 0; j < length; j++) {
+          visitor.visit(iterator.nextDoc(), scratchPackedValue);
+        }
         i += length;
       }
       if (i != count) {
@@ -891,19 +889,17 @@ public class BKDReader extends PointValues {
     // point is under commonPrefix
     private void visitUniqueRawDocValues(
         byte[] scratchPackedValue,
-        BKDReaderDocIDSetIterator scratchIterator,
-        int count,
+        DocIdSetIterator iterator,
         PointValues.IntersectVisitor visitor)
         throws IOException {
-      scratchIterator.reset(0, count);
-      visitor.visit(scratchIterator, scratchPackedValue);
+      visitor.visit(iterator, scratchPackedValue);
     }
 
     private void visitCompressedDocValues(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
         IndexInput in,
-        BKDReaderDocIDSetIterator scratchIterator,
+        DocIdSetIterator iterator,
         int count,
         PointValues.IntersectVisitor visitor,
         int compressedDim)
@@ -923,7 +919,7 @@ public class BKDReader extends PointValues {
             in.readBytes(
                 scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
           }
-          visitor.visit(scratchIterator.docIDs[i + j], scratchPackedValue);
+          visitor.visit(iterator.nextDoc(), scratchPackedValue);
         }
         i += runLen;
       }
@@ -997,18 +993,41 @@ public class BKDReader extends PointValues {
   }
 
   /** Reusable {@link DocIdSetIterator} to handle low cardinality leaves. */
-  private static class BKDReaderDocIDSetIterator extends DocIdSetIterator {
+  static class BKDReaderDocIDSet {
 
-    private int idx;
-    private int length;
-    private int offset;
-    private int docID;
+    int count;
     final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
-    public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
+    public BKDReaderDocIDSet(int maxPointsInLeafNode) {
       this.docIDs = new int[maxPointsInLeafNode];
       this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
+    }
+
+    public void setCount(int count) {
+      this.count = count;
+    }
+
+    public int getCount() {
+      return count;
+    }
+  }
+
+  static class IntArrayIterator  extends DocIdSetIterator {
+
+    final int[] docIDs;
+    private int offset;
+    private int length;
+    private int idx;
+    private int docID;
+
+    public IntArrayIterator(int maxLen) {
+      this.docIDs = new int[maxLen];
+    }
+
+    public IntArrayIterator(int[] docIDs, int length) {
+      this.docIDs = docIDs;
+      reset(0, length);
     }
 
     @Override

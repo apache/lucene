@@ -162,27 +162,25 @@ final class DocIdsWriter {
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
-  void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
+  DocIdSetIterator readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
-        readContinuousIds(in, count, docIDs);
-        break;
+        return readContinuousIdsIterator(in, count);
       case BITSET_IDS:
-        readBitSet(in, count, docIDs);
-        break;
+        return readBitSetIterator(in, count);
       case DELTA_BPV_16:
         readDelta16(in, count, docIDs);
-        break;
+        return new BKDReader.IntArrayIterator(docIDs, count);
       case BPV_24:
         readInts24(in, count, docIDs);
-        break;
+        return new BKDReader.IntArrayIterator(docIDs, count);
       case BPV_32:
         readInts32(in, count, docIDs);
-        break;
+        return new BKDReader.IntArrayIterator(docIDs, count);
       case LEGACY_DELTA_VINT:
         readLegacyDeltaVInts(in, count, docIDs);
-        break;
+        return new BKDReader.IntArrayIterator(docIDs, count);
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
@@ -195,6 +193,16 @@ final class DocIdsWriter {
     in.readLongs(bits, 0, longLen);
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
+  }
+
+  private static DocIdSetIterator readContinuousIdsIterator(IndexInput in, int count) throws IOException {
+    int start = in.readVInt();
+    int extra = start & 63;
+    int offset = start - extra;
+    int numBits = count + extra;
+    FixedBitSet bitSet = new FixedBitSet(numBits);
+    bitSet.set(extra, numBits);
+    return new DocBaseBitSetIterator(bitSet, count, offset);
   }
 
   private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
