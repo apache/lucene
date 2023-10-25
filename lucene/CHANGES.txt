@@ -218,6 +218,8 @@ Optimizations
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
 
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
