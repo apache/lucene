@@ -522,6 +522,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
+              // Disable suffixes sharing for block tree index because suffixes are mostly dropped
+              // from the FST index and left in the term blocks.
               .suffixRAMLimitMB(0d)
               .bytesPageBits(pageBits)
               .build();

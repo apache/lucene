@@ -227,6 +227,8 @@ Optimizations
 
 * GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
 
+* GITHUB#12702: Disable suffix sharing for block tree index. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
