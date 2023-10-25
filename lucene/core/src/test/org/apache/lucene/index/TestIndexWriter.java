@@ -1767,43 +1767,45 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testCarryOverHasBlocks() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
 
-    final List<Document> docs = new ArrayList<>();
-    docs.add(new Document());
-    w.updateDocuments(new Term("foo", "bar"), docs);
-    w.commit();
-    try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      SegmentCommitInfo segmentInfo =
-          ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
-      assertFalse(segmentInfo.info.getHasBlocks());
-    }
+        final List<Document> docs = new ArrayList<>();
+        docs.add(new Document());
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(segmentInfo.info.getHasBlocks());
+        }
 
-    docs.add(new Document()); // now we have 2 docs
-    w.updateDocuments(new Term("foo", "bar"), docs);
-    w.commit();
-    try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      assertEquals(2, reader.leaves().size());
-      SegmentCommitInfo segmentInfo =
-          ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
-      assertFalse(
-          "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
-      segmentInfo = ((SegmentReader) reader.leaves().get(1).reader()).getSegmentInfo();
-      assertTrue(
-          "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        docs.add(new Document()); // now we have 2 docs
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(2, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+          segmentInfo = ((SegmentReader) reader.leaves().get(1).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.forceMerge(1, true);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.commit();
+      }
     }
-    w.forceMerge(1, true);
-    w.commit();
-    try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      assertEquals(1, reader.leaves().size());
-      SegmentCommitInfo segmentInfo =
-          ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
-      assertTrue(
-          "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
-    }
-    w.commit();
-    dir.close();
   }
 
   // LUCENE-3872
