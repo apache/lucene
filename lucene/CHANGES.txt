@@ -227,6 +227,8 @@ Optimizations
 * GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
   competitive score requires multiple clauses to match. (Adrien Grand)
 
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
