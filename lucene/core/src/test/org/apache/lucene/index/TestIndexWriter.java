@@ -117,7 +117,6 @@ import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.junit.Ignore;
-import org.junit.Test;
 
 public class TestIndexWriter extends LuceneTestCase {
 
