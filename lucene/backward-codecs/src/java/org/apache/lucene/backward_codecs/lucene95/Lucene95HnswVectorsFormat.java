@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene95;
+package org.apache.lucene.backward_codecs.lucene95;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -96,7 +96,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
+public class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene95HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene95HnswVectorsFormatData";
@@ -105,8 +105,8 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
-  public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_START = 0;
+  static final int VERSION_CURRENT = 1;
 
   /**
    * A maximum configurable maximum max conn.
@@ -137,14 +137,14 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene95HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
-  private final int maxConn;
+  final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
    * node. Defaults to to {@link Lucene95HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
-  private final int beamWidth;
+  final int beamWidth;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene95HnswVectorsFormat() {
@@ -179,7 +179,7 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene95HnswVectorsWriter(state, maxConn, beamWidth);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override
