@@ -956,22 +956,22 @@ public final class BPIndexReorderer {
     private final Bucket[] buckets = new Bucket[HISTOGRAM_SIZE];
 
     private static class Bucket {
-      final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
-      final long[] buffer = new long[BUFFER_SIZE];
-      IndexOutput output;
-      int bufferUsed;
-      int blockNum;
-      long lastFp;
-      int finalBlockSize;
+      private final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
+      private final long[] buffer = new long[BUFFER_SIZE];
+      private IndexOutput output;
+      private int bufferUsed;
+      private int blockNum;
+      private long lastFp;
+      private int finalBlockSize;
 
-      void addEntry(long l) throws IOException {
+      private void addEntry(long l) throws IOException {
         buffer[bufferUsed++] = l;
         if (bufferUsed == BUFFER_SIZE) {
           flush(false);
         }
       }
 
-      void flush(boolean isFinal) throws IOException {
+      private void flush(boolean isFinal) throws IOException {
         if (isFinal) {
           finalBlockSize = bufferUsed;
         }
@@ -986,7 +986,7 @@ public final class BPIndexReorderer {
         bufferUsed = 0;
       }
 
-      void reset(IndexOutput resetOutput) {
+      private void reset(IndexOutput resetOutput) {
         output = resetOutput;
         finalBlockSize = 0;
         bufferUsed = 0;
@@ -1020,7 +1020,7 @@ public final class BPIndexReorderer {
       }
     }
 
-    void consume(String fileName, LongConsumer consumer) throws IOException {
+    private void consume(String fileName, LongConsumer consumer) throws IOException {
       try (IndexInput in = directory.openInput(fileName, IOContext.READONCE)) {
         final long end = in.length() - CodecUtil.footerLength();
         while (in.getFilePointer() < end) {
@@ -1030,7 +1030,7 @@ public final class BPIndexReorderer {
       consumer.onFinish();
     }
 
-    void consume(String fileName, long indexFP, LongConsumer consumer) throws IOException {
+    private void consume(String fileName, long indexFP, LongConsumer consumer) throws IOException {
       try (IndexInput index = directory.openInput(fileName, IOContext.READONCE);
           IndexInput value = directory.openInput(fileName, IOContext.READONCE)) {
         index.seek(indexFP);
@@ -1054,7 +1054,7 @@ public final class BPIndexReorderer {
       }
     }
 
-    LongConsumer consumer(int shift) {
+    private LongConsumer consumer(int shift) {
       return new LongConsumer() {
         @Override
         public void accept(long value) throws IOException {
