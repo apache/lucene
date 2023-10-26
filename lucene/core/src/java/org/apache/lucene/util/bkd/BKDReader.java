@@ -819,9 +819,7 @@ public class BKDReader extends PointValues {
           visitor.grow(count);
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
-            for (int i = 0; i < count; ++i) {
-              visitor.visit(iterator);
-            }
+            visitor.visit(iterator);
             return;
           }
         } else {
