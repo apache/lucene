@@ -103,12 +103,8 @@ Java_org_apache_lucene_sandbox_pim_TestPimNativeInterface_getNrOfDpus(JNIEnv *en
 typedef uint32_t index_t;
 typedef uint8_t result_t;
 
-// TODO(sbrocard): use compound literals
-typedef struct sg_xfer_context {
-    index_t *metadata;
-    result_t **queries_addresses;
-    jint nr_queries;
-} sg_xfer_context;
+typedef struct segment_offset_xfer_context {
+} segment_offset_xfer_context;
 
 #define MAX(a, b)                                                                                                                \
     ({                                                                                                                           \
@@ -123,7 +119,8 @@ get_metadata(JNIEnv *env,
     uint32_t nr_dpus,
     jint nr_queries,
     size_t *max_nr_results,
-    size_t *total_nr_results)
+    size_t *total_nr_results,
+    uint64_t *results_segment_offset)
 {
     index_t(*metadata)[nr_dpus][nr_queries] = malloc(sizeof(index_t[nr_dpus][nr_queries]));
 
@@ -143,6 +140,13 @@ get_metadata(JNIEnv *env,
 
     return (index_t *)metadata;
 }
+
+// TODO(sbrocard): use compound literals
+typedef struct sg_xfer_context {
+    index_t *metadata;
+    result_t **queries_addresses;
+    jint nr_queries;
+} sg_xfer_context;
 
 static void
 compute_block_addresses(const struct sg_xfer_context *sc_args, const jbyte *dpu_results, uint32_t nr_dpus)
@@ -193,15 +197,9 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     dpu_get_nr_dpus(set, &nr_dpus);
     size_t total_nr_results = 0;
     size_t max_nr_results = 0;
-    index_t *metadata = get_metadata(env, set, nr_dpus, nr_queries, &max_nr_results, &total_nr_results);
+    uint64_t *result_segment_offset = NULL;
+    index_t *metadata = get_metadata(env, set, nr_dpus, nr_queries, &max_nr_results, &total_nr_results, result_segment_offset);
     size_t transfer_size = get_transfer_size(metadata);
-
-    // TODO(sbrocard): check if we can create a ByteBuffer here and return it
-    // ANSWER: yes we can but the underlying memory can't be freed by the GC so we pass a ByteBuffer from the Java side as an out
-    // parameter instead
-    // CORRECTION: actually we can just call ByteBuffer.allocateDirect from here so let's just get a ByteBuffer from the Java side
-
-    // allocate direct buffer
 
     // Allocate a Java direct buffer
     jclass byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
