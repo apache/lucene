@@ -156,6 +156,8 @@ API Changes
 * GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
   between FST and FSTCompiler (Anh Dung Bui)
 
+* GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
+
 New Features
 ---------------------
 
