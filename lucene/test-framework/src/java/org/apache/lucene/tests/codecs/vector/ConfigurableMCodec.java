@@ -18,7 +18,7 @@ package org.apache.lucene.tests.codecs.vector;
 
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
@@ -32,12 +32,12 @@ public class ConfigurableMCodec extends FilterCodec {
 
   public ConfigurableMCodec() {
     super("ConfigurableMCodec", TestUtil.getDefaultCodec());
-    knnVectorsFormat = new Lucene95HnswVectorsFormat(128, 100);
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(128, 100, null);
   }
 
   public ConfigurableMCodec(int maxConn) {
     super("ConfigurableMCodec", TestUtil.getDefaultCodec());
-    knnVectorsFormat = new Lucene95HnswVectorsFormat(maxConn, 100);
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(maxConn, 100, null);
   }
 
   @Override
