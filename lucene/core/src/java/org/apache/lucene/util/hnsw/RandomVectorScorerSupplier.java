@@ -50,10 +50,13 @@ public interface RandomVectorScorerSupplier {
     // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
     return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+        new RandomVectorScorer.AbstractRandomVectorScorer<>(vectorsCopy) {
+          @Override
+          public float score(int cand) throws IOException {
+            return similarityFunction.compare(
+                vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+          }
+        };
   }
 
   /**
@@ -75,9 +78,12 @@ public interface RandomVectorScorerSupplier {
     // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<byte[]> vectorsCopy = vectors.copy();
     return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+        new RandomVectorScorer.AbstractRandomVectorScorer<>(vectorsCopy) {
+          @Override
+          public float score(int cand) throws IOException {
+            return similarityFunction.compare(
+                vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+          }
+        };
   }
 }

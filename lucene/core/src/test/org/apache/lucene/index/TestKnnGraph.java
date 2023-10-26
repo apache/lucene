@@ -31,7 +31,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
@@ -84,10 +86,10 @@ public class TestKnnGraph extends LuceneTestCase {
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     vectorEncoding = randomVectorEncoding();
 
-    Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat =
+    FlatVectorsFormat flatVectorsFormat =
         vectorEncoding.equals(VectorEncoding.FLOAT32) && randomBoolean()
             ? new Lucene99ScalarQuantizedVectorsFormat(1f)
-            : null;
+            : new Lucene99FlatVectorsFormat();
 
     codec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
@@ -97,13 +99,13 @@ public class TestKnnGraph extends LuceneTestCase {
               @Override
               public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                 return new Lucene99HnswVectorsFormat(
-                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, flatVectorsFormat);
               }
             };
           }
         };
 
-    if (vectorEncoding == VectorEncoding.FLOAT32 && scalarQuantizedVectorsFormat == null) {
+    if (vectorEncoding == VectorEncoding.FLOAT32) {
       float32Codec = codec;
     } else {
       float32Codec =
@@ -114,7 +116,7 @@ public class TestKnnGraph extends LuceneTestCase {
                 @Override
                 public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                   return new Lucene99HnswVectorsFormat(
-                      M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
+                      M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, flatVectorsFormat);
                 }
               };
             }

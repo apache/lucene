@@ -98,8 +98,6 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
   }
 
-  abstract Bits getAcceptOrds(Bits acceptDocs);
-
   static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     private int doc = -1;
@@ -138,7 +136,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
   }
@@ -196,7 +194,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       if (acceptDocs == null) {
         return null;
       }
@@ -268,7 +266,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return null;
     }
   }

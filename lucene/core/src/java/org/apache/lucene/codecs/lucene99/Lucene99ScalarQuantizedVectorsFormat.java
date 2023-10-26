@@ -17,20 +17,29 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.FlatVectorsFormat;
+import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
+
 /**
  * Format supporting vector quantization, storage, and retrieval
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsFormat {
+public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsData";
-  static final String QUANTIZED_VECTOR_DATA_EXTENSION = "veq";
+  static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
+  static final String META_EXTENSION = "vemq";
+  static final String VECTOR_DATA_EXTENSION = "veq";
 
   /** The minimum quantile */
   private static final float MINIMUM_QUANTILE = 0.9f;
@@ -44,6 +53,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
    */
   final Float quantile;
 
+  final FlatVectorsFormat rawVectorFormat;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
     this(null);
@@ -56,6 +67,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
    *     based on the vector field dimensions.
    */
   public Lucene99ScalarQuantizedVectorsFormat(Float quantile) {
+    super(NAME);
     if (quantile != null && (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE)) {
       throw new IllegalArgumentException(
           "quantile must be between "
@@ -65,6 +77,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
               + "; quantile="
               + quantile);
     }
+    this.rawVectorFormat = new Lucene99FlatVectorsFormat();
     this.quantile = quantile;
   }
 
@@ -74,6 +87,28 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
 
   @Override
   public String toString() {
-    return NAME + "(name=" + NAME + ", quantile=" + quantile + ")";
+    return NAME
+        + "(name="
+        + NAME
+        + ", quantile="
+        + quantile
+        + ", rawVectorFormat="
+        + rawVectorFormat
+        + ")";
+  }
+
+  @Override
+  public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsWriter(state, quantile, rawVectorFormat);
+  }
+
+  @Override
+  public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsReader(state);
+  }
+
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return 1024;
   }
 }

@@ -20,12 +20,22 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene99FlatVectorsFormat extends BaseKnnVectorsFormatTestCase {
+
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene99Codec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return new Lucene99FlatVectorsFormat();
+      }
+    };
+  }
+
+  @Override
+  protected boolean approximateIndex() {
+    return false;
   }
 
   public void testToString() {
@@ -33,20 +43,10 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99HnswVectorsFormat(10, 20);
+            return new Lucene99FlatVectorsFormat();
           }
         };
-    String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat())";
+    String expectedString = "Lucene99FlatVectorsFormat()";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
-  }
-
-  public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
   }
 }

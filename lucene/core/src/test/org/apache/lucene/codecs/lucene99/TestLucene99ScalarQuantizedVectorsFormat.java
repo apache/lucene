@@ -18,10 +18,23 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.ScalarQuantizer;
 
-public class TestLucene99ScalarQuantizedVectorsFormat extends LuceneTestCase {
+public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+
+  @Override
+  protected Codec getCodec() {
+    return new Lucene99Codec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return new Lucene99ScalarQuantizedVectorsFormat();
+      }
+    };
+  }
 
   public void testDefaultQuantile() {
     float defaultQuantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(99);
@@ -75,5 +88,23 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends LuceneTestCase {
     assertEquals(0.2333333f, merged.getLowerQuantile(), 1e-5);
     assertEquals(0.3333333f, merged.getUpperQuantile(), 1e-5);
     assertEquals(0.1f, merged.getConfiguredQuantile(), 1e-5);
+  }
+
+  @Override
+  protected boolean approximateIndex() {
+    return false;
+  }
+
+  public void testToString() {
+    FilterCodec customCodec =
+        new FilterCodec("foo", Codec.getDefault()) {
+          @Override
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new Lucene99ScalarQuantizedVectorsFormat(0.9f);
+          }
+        };
+    String expectedString =
+        "Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9, rawVectorFormat=Lucene99FlatVectorsFormat())";
+    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 }
