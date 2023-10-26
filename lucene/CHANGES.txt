@@ -18,9 +18,6 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
-  (Anh Dung Bui via Alan Woodward)
-
 * GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
 
 * GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
@@ -31,6 +28,12 @@ API Changes
   FacetLabel at once. (Egor Potemkin)
 
 * GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
+
+* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
+  between FST and FSTCompiler (Anh Dung Bui)
+
+* GITHUB#12709 Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
 
 New Features
 ---------------------
@@ -108,7 +111,7 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
-  
+
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
 * GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
@@ -123,7 +126,7 @@ Optimizations
 
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
-  
+
 * GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
