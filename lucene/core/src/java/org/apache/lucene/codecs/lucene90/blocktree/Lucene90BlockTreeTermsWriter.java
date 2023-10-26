@@ -522,7 +522,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-              .shouldShareNonSingletonNodes(false)
+              // Disable suffixes sharing for block tree index because suffixes are mostly dropped
+              // from the FST index and left in the term blocks.
+              .shouldShareSuffix(false)
               .bytesPageBits(pageBits)
               .build();
       // if (DEBUG) {
