@@ -886,9 +886,7 @@ public class BKDReader extends PointValues {
 
     // point is under commonPrefix
     private void visitUniqueRawDocValues(
-        byte[] scratchPackedValue,
-        DocIdSetIterator iterator,
-        PointValues.IntersectVisitor visitor)
+        byte[] scratchPackedValue, DocIdSetIterator iterator, PointValues.IntersectVisitor visitor)
         throws IOException {
       visitor.visit(iterator, scratchPackedValue);
     }
@@ -1011,17 +1009,13 @@ public class BKDReader extends PointValues {
     }
   }
 
-  static class IntArrayIterator  extends DocIdSetIterator {
+  static class IntArrayIterator extends DocIdSetIterator {
 
     final int[] docIDs;
     private int offset;
     private int length;
     private int idx;
     private int docID;
-
-    public IntArrayIterator(int maxLen) {
-      this.docIDs = new int[maxLen];
-    }
 
     public IntArrayIterator(int[] docIDs, int length) {
       this.docIDs = docIDs;

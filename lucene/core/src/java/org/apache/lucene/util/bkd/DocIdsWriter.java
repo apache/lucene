@@ -195,7 +195,8 @@ final class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
-  private static DocIdSetIterator readContinuousIdsIterator(IndexInput in, int count) throws IOException {
+  private static DocIdSetIterator readContinuousIdsIterator(IndexInput in, int count)
+      throws IOException {
     int start = in.readVInt();
     int extra = start & 63;
     int offset = start - extra;
