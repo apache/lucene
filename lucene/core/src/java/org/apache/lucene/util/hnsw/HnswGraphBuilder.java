@@ -169,24 +169,18 @@ public class HnswGraphBuilder implements IHnswGraphBuilder {
     return hnsw;
   }
 
+  /** add vectors in range [minOrd, maxOrd) */
   protected void addVectors(int minOrd, int maxOrd) throws IOException {
     long start = System.nanoTime(), t = start;
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
     }
-    //    System.out.println("addVectors [" + minOrd + " " + maxOrd + ") initialized.size=" +
-    // initializedNodes.size());
     for (int node = minOrd; node < maxOrd; node++) {
-      // System.out.println("add node " + node + " t=" + Thread.currentThread().getName());
       addGraphNode(node);
-      // System.out.println("entry node " + hnsw.entryNode());
-      // System.out.println("node " + node + " nbrs.size()=" + hnsw.getNeighbors(0, node).size());
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
     }
-    //    System.out.println("addVectors [" + minOrd + " " + maxOrd + ") done + graph.size=" +
-    // hnsw.size());
   }
 
   private void addVectors(int maxOrd) throws IOException {
