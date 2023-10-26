@@ -14,38 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene95;
+package org.apache.lucene.backward_codecs.lucene95;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene95RWCodec();
   }
 
   public void testToString() {
-    Lucene95Codec customCodec =
-        new Lucene95Codec() {
+    Lucene95RWCodec customCodec =
+        new Lucene95RWCodec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(10, 20);
+            return new Lucene95RWHnswVectorsFormat(10, 20);
           }
         };
     String expectedString =
-        "Lucene95HnswVectorsFormat(name=Lucene95HnswVectorsFormat, maxConn=10, beamWidth=20)";
+        "Lucene95RWHnswVectorsFormat(name=Lucene95RWHnswVectorsFormat, maxConn=10, beamWidth=20)";
     assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
-  }
-
-  public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(-1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(0, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 0));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, -1));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(512 + 1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 3201));
   }
 }

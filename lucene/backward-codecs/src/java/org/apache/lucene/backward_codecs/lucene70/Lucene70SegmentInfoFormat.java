@@ -307,6 +307,7 @@ public class Lucene70SegmentInfoFormat extends SegmentInfoFormat {
             segment,
             docCount,
             isCompoundFile,
+            false,
             null,
             diagnostics,
             segmentID,

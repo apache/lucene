@@ -88,9 +88,13 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
   }
 
-  abstract Bits getAcceptOrds(Bits acceptDocs);
+  public abstract Bits getAcceptOrds(Bits acceptDocs);
 
-  static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  /**
+   * Dense vector values that are stored off-heap. This is the most common case when every doc has a
+   * vector.
+   */
+  public static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
 
     private int doc = -1;
 
@@ -128,7 +132,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
   }
@@ -197,7 +201,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       if (acceptDocs == null) {
         return null;
       }
@@ -269,7 +273,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return null;
     }
   }

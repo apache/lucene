@@ -88,7 +88,7 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return new ReverseBytesReader(bytesArray);
     } else {
-      return bytes.getReverseReader();
+      return bytes.getReverseBytesReader();
     }
   }
 
