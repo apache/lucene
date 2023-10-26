@@ -104,6 +104,8 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#12696: Change Postings back to using FOR in Lucene99PostingsFormat. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 

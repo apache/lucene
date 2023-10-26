@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
@@ -48,7 +48,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>In VInt blocks, integers are encoded as {@link DataOutput#writeVInt VInt}: the block
  *       size is variable.
  *   <li><b>Block structure</b>:
- *       <p>When the postings are long enough, Lucene90PostingsFormat will try to encode most
+ *       <p>When the postings are long enough, Lucene99PostingsFormat will try to encode most
  *       integer data as a packed block.
  *       <p>Take a term with 259 documents as an example, the first 256 document ids are encoded as
  *       two packed blocks, while the remaining 3 are encoded as one VInt block.
@@ -137,7 +137,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *             total number of positions i.e. totalTermFreq is less or equal to PackedBlockSize).
  *         <li>SkipFPDelta determines the position of this term's SkipData within the .doc file. In
  *             particular, it is the length of the TermFreq data. SkipDelta is only stored if
- *             DocFreq is not smaller than SkipMinimum (i.e. 128 in Lucene90PostingsFormat).
+ *             DocFreq is not smaller than SkipMinimum (i.e. 128 in Lucene99PostingsFormat).
  *         <li>SingletonDocID is an optimization when a term only appears in one document. In this
  *             case, instead of writing a file pointer to the .doc file (DocFPDelta), and then a
  *             VIntBlock at that location, the single document ID is written to the term dictionary.
@@ -215,7 +215,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *             trick since the definition of skip entry is a little different from base interface.
  *             In {@link MultiLevelSkipListWriter}, skip data is assumed to be saved for
  *             skipInterval<sup>th</sup>, 2*skipInterval<sup>th</sup> ... posting in the list.
- *             However, in Lucene90PostingsFormat, the skip data is saved for
+ *             However, in Lucene99PostingsFormat, the skip data is saved for
  *             skipInterval+1<sup>th</sup>, 2*skipInterval+1<sup>th</sup> ... posting
  *             (skipInterval==PackedBlockSize in this case). When DocFreq is multiple of
  *             PackedBlockSize, MultiLevelSkipListWriter will expect one more skip data than
@@ -338,7 +338,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene90PostingsFormat extends PostingsFormat {
+public final class Lucene99PostingsFormat extends PostingsFormat {
 
   /**
    * Filename extension for document number, frequencies, and skip data. See chapter: <a
@@ -376,22 +376,22 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
 
-  /** Creates {@code Lucene90PostingsFormat} with default settings. */
-  public Lucene90PostingsFormat() {
+  /** Creates {@code Lucene99PostingsFormat} with default settings. */
+  public Lucene99PostingsFormat() {
     this(
         Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
         Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
   }
 
   /**
-   * Creates {@code Lucene90PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * Creates {@code Lucene99PostingsFormat} with custom values for {@code minBlockSize} and {@code
    * maxBlockSize} passed to block terms dictionary.
    *
    * @see
    *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
    */
-  public Lucene90PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
-    super("Lucene90");
+  public Lucene99PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+    super("Lucene99");
     Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
     this.minTermBlockSize = minTermBlockSize;
     this.maxTermBlockSize = maxTermBlockSize;
@@ -404,7 +404,7 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
     boolean success = false;
     try {
       FieldsConsumer ret =
@@ -421,7 +421,7 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene90PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
     boolean success = false;
     try {
       FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
@@ -435,7 +435,7 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Holds all state required for {@link Lucene90PostingsReader} to produce a {@link
+   * Holds all state required for {@link Lucene99PostingsReader} to produce a {@link
    * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
    *
    * @lucene.internal

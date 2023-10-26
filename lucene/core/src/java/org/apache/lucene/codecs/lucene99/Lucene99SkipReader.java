@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -48,7 +48,7 @@ import org.apache.lucene.store.IndexInput;
  *
  * <p>Therefore, we'll trim df before passing it to the interface. see trim(int)
  */
-class Lucene90SkipReader extends MultiLevelSkipListReader {
+public class Lucene99SkipReader extends MultiLevelSkipListReader {
   private long[] docPointer;
   private long[] posPointer;
   private long[] payPointer;
@@ -61,7 +61,7 @@ class Lucene90SkipReader extends MultiLevelSkipListReader {
   private long lastDocPointer;
   private int lastPosBufferUpto;
 
-  public Lucene90SkipReader(
+  public Lucene99SkipReader(
       IndexInput skipStream,
       int maxSkipLevels,
       boolean hasPos,
