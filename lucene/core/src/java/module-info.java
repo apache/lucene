@@ -35,7 +35,6 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene95;
   exports org.apache.lucene.codecs.lucene90.blocktree;
   exports org.apache.lucene.codecs.lucene90.compressing;
-  exports org.apache.lucene.codecs.lucene90.radomaccess;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.document;
   exports org.apache.lucene.geo;

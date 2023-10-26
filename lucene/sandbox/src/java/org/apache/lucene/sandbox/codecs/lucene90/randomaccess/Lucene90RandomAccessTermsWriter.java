@@ -14,11 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
-package org.apache.lucene.codecs.lucene90.radomaccess;
+import java.io.IOException;
+import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.index.Fields;
 
-import org.apache.lucene.util.fst.FST;
+class Lucene90RandomAccessTermsWriter extends FieldsConsumer {
+  @Override
+  public void write(Fields fields, NormsProducer norms) throws IOException {}
 
-
-record TermsIndex(FST<Long> fst) {
+  @Override
+  public void close() throws IOException {}
 }

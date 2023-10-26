@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90.radomaccess;
+package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
 import java.io.IOException;
 import java.util.Iterator;
