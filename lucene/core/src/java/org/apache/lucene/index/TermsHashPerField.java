@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.ByteSlicePool;
 import org.apache.lucene.util.BytesRef;

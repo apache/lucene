@@ -69,9 +69,7 @@ public class TestByteSlicePool extends LuceneTestCase {
         () -> slicePool.newSlice(ByteBlockPool.BYTE_BLOCK_SIZE + 1));
   }
 
-  /**
-   * Create a random byte array and write it to a {@link ByteSlicePool} one slice at a time.
-   */
+  /** Create a random byte array and write it to a {@link ByteSlicePool} one slice at a time. */
   static class SliceWriter {
     boolean hasStarted = false;
 
@@ -89,7 +87,7 @@ public class TestByteSlicePool extends LuceneTestCase {
     int firstSliceOffset;
     byte[] firstSlice;
 
-    SliceWriter(ByteSlicePool slicePool ) {
+    SliceWriter(ByteSlicePool slicePool) {
       this.slicePool = slicePool;
       this.blockPool = slicePool.pool;
 
@@ -116,7 +114,7 @@ public class TestByteSlicePool extends LuceneTestCase {
         sliceLength = ByteSlicePool.FIRST_LEVEL_SIZE;
         sliceOffset = slicePool.newSlice(sliceLength);
         firstSliceOffset = sliceOffset; // We will need this later
-        firstSlice = blockPool.buffer;  // We will need this later
+        firstSlice = blockPool.buffer; // We will need this later
         slice = firstSlice;
         int writeLength = Math.min(size, sliceLength - 1);
         System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
@@ -141,9 +139,7 @@ public class TestByteSlicePool extends LuceneTestCase {
     }
   }
 
-  /**
-   * Read a sequence of slices into a byte array.
-   */
+  /** Read a sequence of slices into a byte array. */
   static class SliceReader {
     boolean hasStarted = false;
 
@@ -178,9 +174,10 @@ public class TestByteSlicePool extends LuceneTestCase {
       // The first slice is special
       if (hasStarted == false) {
         dataOffset = 0;
-        sliceSizeIdx = 0; // Index into LEVEL_SIZE_ARRAY, allowing us to find the size of the current slice
-
-        sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4; // 4 bytes are for the offset to the next slice
+        // Index into LEVEL_SIZE_ARRAY, allowing us to find the size of the current slice
+        sliceSizeIdx = 0;
+        // 4 bytes are for the offset to the next slice, we can't use them for data
+        sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4;
         int readLength;
         if (dataOffset + sliceLength + 3 >= size) {
           // We are reading the last slice, there is no more offset, just a byte for the level
@@ -219,8 +216,8 @@ public class TestByteSlicePool extends LuceneTestCase {
   }
 
   /**
-   * Run multiple slice writers, creating interleaved slices.
-   * Read the slices afterwards and check that we read back the same data we wrote.
+   * Run multiple slice writers, creating interleaved slices. Read the slices afterwards and check
+   * that we read back the same data we wrote.
    */
   public void testRandomInterleavedSlices() {
     ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
@@ -241,7 +238,8 @@ public class TestByteSlicePool extends LuceneTestCase {
       boolean succeeded = sliceWriters[i].writeSlice();
       if (succeeded == false) {
         for (int j = 0; j < n; j++) {
-          while (sliceWriters[j].writeSlice());
+          while (sliceWriters[j].writeSlice())
+            ;
         }
         break;
       }
@@ -249,8 +247,12 @@ public class TestByteSlicePool extends LuceneTestCase {
 
     // Init slice readers
     for (int i = 0; i < n; i++) {
-      sliceReaders[i] = new SliceReader(slicePool, sliceWriters[i].size,
-              sliceWriters[i].firstSliceOffset, sliceWriters[i].firstSlice);
+      sliceReaders[i] =
+          new SliceReader(
+              slicePool,
+              sliceWriters[i].size,
+              sliceWriters[i].firstSliceOffset,
+              sliceWriters[i].firstSlice);
     }
 
     // Read slices
@@ -259,7 +261,8 @@ public class TestByteSlicePool extends LuceneTestCase {
       boolean succeeded = sliceReaders[i].readSlice();
       if (succeeded == false) {
         for (int j = 0; j < n; j++) {
-          while (sliceReaders[j].readSlice());
+          while (sliceReaders[j].readSlice())
+            ;
         }
         break;
       }
