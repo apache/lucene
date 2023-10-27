@@ -61,3 +61,7 @@ CheckOptions:
     value: camelBack
   - key: readability-identifier-naming.StructCase
     value: lower_case
+  - key: readability-identifier-length.IgnoredParameterNames
+    value: 'vm'
+  - key: readability-identifier-length.IgnoredVariableNames
+    value: '^_'
