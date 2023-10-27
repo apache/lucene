@@ -167,9 +167,12 @@ New Features
 * GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
   segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
 
+* GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
+  storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+
 * GITHUB#12729: Add new Lucene99FlatVectorsFormat for writing vectors in a flat format and refactor
-                Lucene99ScalarQuantizedVectorsFormat & Lucene99HnswVectorsFormat to reuse the flat formats.
-                Additionally, this allows flat formats to be pluggable independent of HNSW. (Ben Trent)
+  Lucene99ScalarQuantizedVectorsFormat & Lucene99HnswVectorsFormat to reuse the flat formats.
+  Additionally, this allows flat formats to be pluggable independent of HNSW. (Ben Trent)
 
 Improvements
 ---------------------
