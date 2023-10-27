@@ -179,6 +179,16 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
+   */
+  public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
+    this(maxConn, beamWidth, null);
+  }
+
+  /**
+   * Constructs a format using the given graph construction parameters and scalar quantization.
+   *
+   * @param maxConn the maximum number of connections to a node in the HNSW graph
+   * @param beamWidth the size of the queue maintained during graph construction.
    * @param scalarQuantize the scalar quantization format
    */
   public Lucene99HnswVectorsFormat(

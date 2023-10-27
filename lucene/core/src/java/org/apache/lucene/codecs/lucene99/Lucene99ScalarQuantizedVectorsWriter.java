@@ -233,7 +233,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
               fieldInfo, mergeState, mergedQuantizationState);
-      writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
+      DocsWithFieldSet docsWithField =
+          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
@@ -253,7 +254,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
               fieldInfo.getVectorSimilarityFunction(),
               mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(), byteVectorValues.size(), quantizationDataInput)));
+                  fieldInfo.getVectorDimension(),
+                  docsWithField.cardinality(),
+                  quantizationDataInput)));
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(quantizationDataInput);

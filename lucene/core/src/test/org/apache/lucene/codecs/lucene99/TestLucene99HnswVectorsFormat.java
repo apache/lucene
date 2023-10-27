@@ -33,7 +33,7 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99HnswVectorsFormat(10, 20, null);
+            return new Lucene99HnswVectorsFormat(10, 20);
           }
         };
     String expectedString =
@@ -42,13 +42,11 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   }
 
   public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1, null));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20, null));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201, null));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
   }
 }
