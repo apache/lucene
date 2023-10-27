@@ -91,16 +91,18 @@ public class TestByteSlicePool extends LuceneTestCase {
     int sliceOffset = slicePool.newSlice(sliceLength);
     final int firstSliceOffset = sliceOffset;   // We will need this later
     final byte[] firstSlice = blockPool.buffer; // We will need this later
+    byte[] slice = firstSlice;
     int writeLength = Math.min(size, sliceLength - 1);
     System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
     dataOffset += writeLength;
 
     while (dataOffset < size) {
-      int offsetAndLength = slicePool.allocKnownSizeSlice(blockPool.buffer, sliceOffset + sliceLength - 1);
+      int offsetAndLength = slicePool.allocKnownSizeSlice(slice, sliceOffset + sliceLength - 1);
+      slice = blockPool.buffer;
       sliceLength = offsetAndLength & 0xff;
       sliceOffset = offsetAndLength >> 8;
       writeLength = Math.min(size - dataOffset, sliceLength - 1);
-      System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
+      System.arraycopy(randomData, dataOffset, slice, sliceOffset, writeLength);
       dataOffset += writeLength;
     }
 
@@ -110,7 +112,7 @@ public class TestByteSlicePool extends LuceneTestCase {
     byte[] readData = new byte[size];
     int sliceSizeIdx = 0; // Index into LEVEL_SIZE_ARRAY, allowing us to find the size of the current slice
 
-    byte[] slice = firstSlice;
+    slice = firstSlice;
     sliceOffset = firstSliceOffset;
     sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4; // 4 bytes are for the offset to the next slice
     int readLength;
@@ -153,6 +155,7 @@ public class TestByteSlicePool extends LuceneTestCase {
     byte[] randomData;
     int dataOffset;
 
+    byte[] slice;
     int sliceLength;
     int sliceOffset;
 
@@ -182,6 +185,7 @@ public class TestByteSlicePool extends LuceneTestCase {
         sliceOffset = slicePool.newSlice(sliceLength);
         firstSliceOffset = sliceOffset; // We will need this later
         firstSlice = blockPool.buffer;  // We will need this later
+        slice = firstSlice;
         int writeLength = Math.min(size, sliceLength - 1);
         System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
         dataOffset += writeLength;
@@ -194,11 +198,12 @@ public class TestByteSlicePool extends LuceneTestCase {
         return false;
       }
       // No, write more
-      int offsetAndLength = slicePool.allocKnownSizeSlice(blockPool.buffer, sliceOffset + sliceLength - 1);
+      int offsetAndLength = slicePool.allocKnownSizeSlice(slice, sliceOffset + sliceLength - 1);
+      slice = blockPool.buffer;
       sliceLength = offsetAndLength & 0xff;
       sliceOffset = offsetAndLength >> 8;
       int writeLength = Math.min(size - dataOffset, sliceLength - 1);
-      System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
+      System.arraycopy(randomData, dataOffset, slice, sliceOffset, writeLength);
       dataOffset += writeLength;
       return true;
     }
@@ -270,6 +275,12 @@ public class TestByteSlicePool extends LuceneTestCase {
       dataOffset += readLength;
       sliceSizeIdx = Math.min(sliceSizeIdx + 1, ByteSlicePool.LEVEL_SIZE_ARRAY.length - 1);
       return true;
+    }
+  }
+
+  public void testRepeat() {
+    for (int i = 0; i < 100000; i++) {
+      testRandomInterleavedSlices();
     }
   }
 

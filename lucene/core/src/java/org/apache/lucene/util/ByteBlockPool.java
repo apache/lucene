@@ -24,7 +24,7 @@ import java.util.Arrays;
  * This class enables the allocation of fixed-size buffers and their management as part of a buffer
  * array. Allocation is done through the use of an {@link Allocator} which can be customized, e.g.
  * to allow recycling old buffers. There are methods for writing ({@link #append(BytesRef)} and
- * reading from the buffers (e.g. {@link #readBytes(int, byte[], int, int)}, which handle read/write
+ * reading from the buffers (e.g. {@link #readBytes(long, byte[], int, int)}, which handle read/write
  * operations across buffer boundaries.
  *
  * @lucene.internal
