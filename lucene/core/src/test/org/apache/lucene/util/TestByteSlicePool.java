@@ -69,82 +69,9 @@ public class TestByteSlicePool extends LuceneTestCase {
         () -> slicePool.newSlice(ByteBlockPool.BYTE_BLOCK_SIZE + 1));
   }
 
-  public void testRandomSlices() {
-    ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
-    ByteSlicePool slicePool = new ByteSlicePool(blockPool);
-
-    int size;
-    if (random().nextBoolean()) {
-      // size < ByteBlockPool.BYTE_BLOCK_SIZE
-      size = TestUtil.nextInt(random(), 100, 1000);
-    } else {
-      // size > ByteBlockPool.BYTE_BLOCK_SIZE
-      size = TestUtil.nextInt(random(), 50000, 100000);
-    }
-    byte[] randomData = new byte[size];
-    random().nextBytes(randomData);
-
-    // Write randomData to slices
-
-    int dataOffset = 0; // Offset into the data buffer
-    int sliceLength = ByteSlicePool.FIRST_LEVEL_SIZE;
-    int sliceOffset = slicePool.newSlice(sliceLength);
-    final int firstSliceOffset = sliceOffset;   // We will need this later
-    final byte[] firstSlice = blockPool.buffer; // We will need this later
-    byte[] slice = firstSlice;
-    int writeLength = Math.min(size, sliceLength - 1);
-    System.arraycopy(randomData, dataOffset, blockPool.buffer, sliceOffset, writeLength);
-    dataOffset += writeLength;
-
-    while (dataOffset < size) {
-      int offsetAndLength = slicePool.allocKnownSizeSlice(slice, sliceOffset + sliceLength - 1);
-      slice = blockPool.buffer;
-      sliceLength = offsetAndLength & 0xff;
-      sliceOffset = offsetAndLength >> 8;
-      writeLength = Math.min(size - dataOffset, sliceLength - 1);
-      System.arraycopy(randomData, dataOffset, slice, sliceOffset, writeLength);
-      dataOffset += writeLength;
-    }
-
-    // Read the slices back into readData
-
-    dataOffset = 0;
-    byte[] readData = new byte[size];
-    int sliceSizeIdx = 0; // Index into LEVEL_SIZE_ARRAY, allowing us to find the size of the current slice
-
-    slice = firstSlice;
-    sliceOffset = firstSliceOffset;
-    sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4; // 4 bytes are for the offset to the next slice
-    int readLength;
-    if (dataOffset + sliceLength + 3 >= size) {
-      // We are reading the last slice, there is no more offset, just a byte for the level
-      readLength = size - dataOffset;
-    } else {
-      readLength = sliceLength;
-    }
-    System.arraycopy(slice, sliceOffset, readData, dataOffset, readLength);
-    dataOffset += readLength;
-    sliceSizeIdx = Math.min(sliceSizeIdx + 1, ByteSlicePool.LEVEL_SIZE_ARRAY.length - 1);
-
-    while (dataOffset < size) {
-      int globalSliceOffset = (int) BitUtil.VH_LE_INT.get(slice, sliceOffset + sliceLength);
-      slice = blockPool.getBuffer(globalSliceOffset / ByteBlockPool.BYTE_BLOCK_SIZE);
-      sliceOffset = globalSliceOffset % ByteBlockPool.BYTE_BLOCK_SIZE;
-      sliceLength = ByteSlicePool.LEVEL_SIZE_ARRAY[sliceSizeIdx] - 4;
-      if (dataOffset + sliceLength + 3 >= size) {
-        // We are reading the last slice, there is no more offset, just a byte for the level
-        readLength = size - dataOffset;
-      } else {
-        readLength = sliceLength;
-      }
-      System.arraycopy(slice, sliceOffset, readData, dataOffset, readLength);
-      dataOffset += readLength;
-      sliceSizeIdx = Math.min(sliceSizeIdx + 1, ByteSlicePool.LEVEL_SIZE_ARRAY.length - 1);
-    }
-
-    assertArrayEquals(randomData, readData);
-  }
-
+  /**
+   * Create a random byte array and write it to a {@link ByteSlicePool} one slice at a time.
+   */
   static class SliceWriter {
     boolean hasStarted = false;
 
@@ -177,6 +104,11 @@ public class TestByteSlicePool extends LuceneTestCase {
       random().nextBytes(randomData);
     }
 
+    /**
+     * Write the next slice of data.
+     *
+     * @return true if we wrote a slice and false if we're out of data to write
+     */
     boolean writeSlice() {
       // The first slice is special
       if (hasStarted == false) {
@@ -209,6 +141,9 @@ public class TestByteSlicePool extends LuceneTestCase {
     }
   }
 
+  /**
+   * Read a sequence of slices into a byte array.
+   */
   static class SliceReader {
     boolean hasStarted = false;
 
@@ -234,6 +169,11 @@ public class TestByteSlicePool extends LuceneTestCase {
       readData = new byte[size];
     }
 
+    /**
+     * Read the next slice of data.
+     *
+     * @return true if we read a slice and false if we'd already read the entire sequence of slices
+     */
     boolean readSlice() {
       // The first slice is special
       if (hasStarted == false) {
@@ -278,12 +218,10 @@ public class TestByteSlicePool extends LuceneTestCase {
     }
   }
 
-  public void testRepeat() {
-    for (int i = 0; i < 100000; i++) {
-      testRandomInterleavedSlices();
-    }
-  }
-
+  /**
+   * Run multiple slice writers, creating interleaved slices.
+   * Read the slices afterwards and check that we read back the same data we wrote.
+   */
   public void testRandomInterleavedSlices() {
     ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     ByteSlicePool slicePool = new ByteSlicePool(blockPool);
@@ -292,10 +230,12 @@ public class TestByteSlicePool extends LuceneTestCase {
     SliceWriter[] sliceWriters = new SliceWriter[n];
     SliceReader[] sliceReaders = new SliceReader[n];
 
+    // Init slice writers
     for (int i = 0; i < n; i++) {
       sliceWriters[i] = new SliceWriter(slicePool);
     }
 
+    // Write slices
     while (true) {
       int i = random().nextInt(n);
       boolean succeeded = sliceWriters[i].writeSlice();
@@ -307,11 +247,13 @@ public class TestByteSlicePool extends LuceneTestCase {
       }
     }
 
+    // Init slice readers
     for (int i = 0; i < n; i++) {
       sliceReaders[i] = new SliceReader(slicePool, sliceWriters[i].size,
               sliceWriters[i].firstSliceOffset, sliceWriters[i].firstSlice);
     }
 
+    // Read slices
     while (true) {
       int i = random().nextInt(n);
       boolean succeeded = sliceReaders[i].readSlice();
@@ -323,6 +265,7 @@ public class TestByteSlicePool extends LuceneTestCase {
       }
     }
 
+    // Compare written data with read data
     for (int i = 0; i < n; i++) {
       assertArrayEquals(sliceWriters[i].randomData, sliceReaders[i].readData);
     }
