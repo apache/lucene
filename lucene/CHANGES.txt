@@ -256,6 +256,8 @@ Bug Fixes
 
 * GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
 
+* GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
+
 Build
 ---------------------
 
