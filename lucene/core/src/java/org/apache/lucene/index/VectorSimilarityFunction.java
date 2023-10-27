@@ -52,7 +52,11 @@ public enum VectorSimilarityFunction {
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return (1 + dotProduct(v1, v2)) / 2;
+      double dotProduct = dotProduct(v1, v2) + 1.0;
+      if (dotProduct < 0) {
+        return 0;
+      }
+      return (float) (dotProduct / 2.0);
     }
 
     @Override
@@ -70,7 +74,11 @@ public enum VectorSimilarityFunction {
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return (1 + cosine(v1, v2)) / 2;
+      double cosine = cosine(v1, v2) + 1.0;
+      if (cosine < 0) {
+        return 0;
+      }
+      return (float) (cosine / 2.0);
     }
 
     @Override
