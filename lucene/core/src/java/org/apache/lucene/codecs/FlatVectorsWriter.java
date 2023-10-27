@@ -25,6 +25,7 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 
 /**
  * Vectors' writer for a field that allows additional indexing logic to be implemented by the caller
+ *
  * @lucene.experimental
  */
 public abstract class FlatVectorsWriter extends KnnVectorsWriter {

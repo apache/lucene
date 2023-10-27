@@ -30,9 +30,9 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph
- * connecting the documents having values. The graph is used to power HNSW search. The format
- * consists of two files, and requires a {@link FlatVectorsFormat} to store the actual vectors:
+ * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
+ * the documents having values. The graph is used to power HNSW search. The format consists of two
+ * files, and requires a {@link FlatVectorsFormat} to store the actual vectors:
  *
  * <h2>.vex (vector index)</h2>
  *
@@ -78,7 +78,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
  * </ul>
- *
  *
  * @lucene.experimental
  */

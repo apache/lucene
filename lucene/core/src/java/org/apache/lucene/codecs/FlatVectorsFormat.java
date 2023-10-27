@@ -23,8 +23,9 @@ import org.apache.lucene.index.SegmentWriteState;
 
 /**
  * Encodes/decodes per-document vectors
+ *
  * @lucene.experimental
- * */
+ */
 public abstract class FlatVectorsFormat extends KnnVectorsFormat {
 
   /** Sole constructor */

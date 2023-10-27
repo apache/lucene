@@ -26,13 +26,15 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 /**
  * Reads vectors from an index. When searching this reader, it iterates every vector in the index
  * and scores them
- * <p> This class is useful when:
+ *
+ * <p>This class is useful when:
  *
  * <ul>
  *   <li>the number of vectors is small
  *   <li>when used along side some additional indexing structure that can be used to better search
  *       the vectors (like HNSW).
  * </ul>
+ *
  * @lucene.experimental
  */
 public abstract class FlatVectorsReader extends KnnVectorsReader {
