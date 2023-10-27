@@ -206,13 +206,6 @@ final class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offset);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
-    int start = in.readVInt();
-    for (int i = 0; i < count; i++) {
-      docIDs[i] = start + i;
-    }
-  }
-
   private static void readLegacyDeltaVInts(IndexInput in, int count, int[] docIDs)
       throws IOException {
     int doc = 0;
@@ -220,15 +213,6 @@ final class DocIdsWriter {
       doc += in.readVInt();
       docIDs[i] = doc;
     }
-  }
-
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
-    DocIdSetIterator iterator = readBitSetIterator(in, count);
-    int docId, pos = 0;
-    while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      docIDs[pos++] = docId;
-    }
-    assert pos == count : "pos: " + pos + "count: " + count;
   }
 
   private static void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
