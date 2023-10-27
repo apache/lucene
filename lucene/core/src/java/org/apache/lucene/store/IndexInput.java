@@ -134,6 +134,11 @@ public abstract class IndexInput extends DataInput implements Closeable {
     }
   }
 
+  /** Returns the backing storage for a given position, ensuring that length. */
+  public <T> T getBackingStorageFor(long pos, int length) throws IOException {
+    return null;
+  }
+
   /**
    * Creates a random-access slice of this index input, with the given offset and length.
    *

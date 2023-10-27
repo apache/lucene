@@ -280,17 +280,19 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
 
   /**
    * Returns the segment that backs the given position, iff the segment size is at least length
-   * greater than the give position, when adjusted for chunking. Otherwise, throws
-   * UnsupportedOperationException, since the position and length will span across segments.
+   * greater than the give position, when adjusted for chunking. Otherwise, returns null, since the
+   * position and length will span across segments.
    */
-  public MemorySegment getSegmentFor(long pos, int length) throws IOException {
+  @Override
+  @SuppressWarnings("unchecked")
+  public MemorySegment getBackingStorageFor(long pos, int length) throws IOException {
     final int si = (int) (pos >> chunkSizePower);
     final MemorySegment seg = segments[si];
     try {
       Objects.checkIndex((pos & chunkSizeMask) + length, seg.byteSize() + 1);
       return seg;
     } catch (IndexOutOfBoundsException e) {
-      throw new UnsupportedOperationException("segment boundary");
+      return null;
     }
   }
 
@@ -518,12 +520,13 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     }
 
     @Override
-    public MemorySegment getSegmentFor(long pos, int length) throws IOException {
+    @SuppressWarnings("unchecked")
+    public MemorySegment getBackingStorageFor(long pos, int length) throws IOException {
       try {
         Objects.checkIndex(pos + length, this.length + 1);
         return curSegment;
       } catch (IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE(e, "getSegmentFor", pos);
+        throw handlePositionalIOOBE(e, "getBackingStorageFor", pos);
       }
     }
 
@@ -622,8 +625,10 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       super.seek(pos + offset);
     }
 
-    public MemorySegment getSegmentFor(long pos, int length) throws IOException {
-      return super.getSegmentFor(pos + offset, length);
+    @Override
+    @SuppressWarnings("unchecked")
+    public MemorySegment getBackingStorageFor(long pos, int length) throws IOException {
+      return super.getBackingStorageFor(pos + offset, length);
     }
 
     public long maskedPosition(long pos) {

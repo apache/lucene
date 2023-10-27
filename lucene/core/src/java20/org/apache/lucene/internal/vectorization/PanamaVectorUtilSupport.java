@@ -152,15 +152,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   public float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOrd)
       throws IOException {
     assert b.dimension() == a.length;
-    try {
-      if (b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
-        final int vecByteSize = b.byteSize();
-        final long bOffset = (long) bOrd * vecByteSize;
-        var ms = bIndex.getSegmentFor(bOffset, vecByteSize);
+    if (b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+      final int vecByteSize = b.byteSize();
+      final long bOffset = (long) bOrd * vecByteSize;
+      var ms = bIndex.getBackingStorageFor(bOffset, vecByteSize);
+      if (ms != null) {
         return dotProduct(a, ms, bIndex.maskedPosition(bOffset));
       }
-    } catch (UnsupportedOperationException e) {
-      // take the slower path for values ranging over multiple segment slices
     }
     return dotProduct(a, b.vectorValue(bOrd));
   }
@@ -223,14 +221,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       RandomAccessVectorValues<float[]> a, int aOrd, RandomAccessVectorValues<float[]> b, int bOrd)
       throws IOException {
     assert a.dimension() == b.dimension();
-    try {
-      if (a.getIndexInput() instanceof MemorySegmentIndexInput aIndex
-          && b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
-        final int vecByteSize = a.byteSize();
-        final long aOffset = (long) aOrd * vecByteSize;
-        final long bOffset = (long) bOrd * vecByteSize;
-        var msa = aIndex.getSegmentFor(aOffset, vecByteSize);
-        var msb = bIndex.getSegmentFor(bOffset, vecByteSize);
+    if (a.getIndexInput() instanceof MemorySegmentIndexInput aIndex // This variant is most popular?
+        && b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+      final int vecByteSize = a.byteSize();
+      final long aOffset = (long) aOrd * vecByteSize;
+      final long bOffset = (long) bOrd * vecByteSize;
+      MemorySegment msa = aIndex.getBackingStorageFor(aOffset, vecByteSize);
+      MemorySegment msb = bIndex.getBackingStorageFor(bOffset, vecByteSize);
+      if (msa != null && msb != null) {
         return dotProduct(
             msa,
             aIndex.maskedPosition(aOffset),
@@ -238,8 +236,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
             bIndex.maskedPosition(bOffset),
             a.dimension());
       }
-    } catch (UnsupportedOperationException e) {
-      // take the slower path for values ranging over multiple segment slices
     }
     return dotProduct(a.vectorValue(aOrd), b.vectorValue(bOrd));
   }

@@ -44,8 +44,9 @@ public interface RandomAccessVectorValues<T> {
    */
   T vectorValue(int targetOrd) throws IOException;
 
+  /** Returns the index input, or null */
   default IndexInput getIndexInput() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   /**
