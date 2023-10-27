@@ -19,7 +19,7 @@ package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
 
-interface TermStateCodecComponent {
+abstract class TermStateCodecComponent {
 
   static byte getBitWidth(IntBlockTermState[] termStates, TermStateCodecComponent component) {
     assert termStates.length > 0;
@@ -31,13 +31,18 @@ interface TermStateCodecComponent {
     return (byte) (64 - Long.numberOfLeadingZeros(maxValSeen));
   }
 
-  boolean isMonotonicallyIncreasing();
+  abstract boolean isMonotonicallyIncreasing();
 
-  long getTargetValue(IntBlockTermState termState);
+  abstract long getTargetValue(IntBlockTermState termState);
 
-  void setTargetValue(IntBlockTermState termState, long value);
+  abstract void setTargetValue(IntBlockTermState termState, long value);
 
-  final class SingletonDocId implements TermStateCodecComponent {
+  /** Below are the relevant IntBlockTermState components * */
+  static final class SingletonDocId extends TermStateCodecComponent {
+    public static SingletonDocId INSTANCE = new SingletonDocId();
+
+    private SingletonDocId() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return false;
@@ -57,8 +62,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  /** Below are the relevant IntBlockTermState components * */
-  final class DocFreq implements TermStateCodecComponent {
+  static final class DocFreq extends TermStateCodecComponent {
+    public static DocFreq INSTANCE = new DocFreq();
+
+    private DocFreq() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return false;
@@ -78,7 +86,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class TotalTermFreq implements TermStateCodecComponent {
+  static final class TotalTermFreq extends TermStateCodecComponent {
+    public static TotalTermFreq INSTANCE = new TotalTermFreq();
+
+    private TotalTermFreq() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return false;
@@ -95,7 +107,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class DocStartFP implements TermStateCodecComponent {
+  static final class DocStartFP extends TermStateCodecComponent {
+    public static DocStartFP INSTANCE = new DocStartFP();
+
+    private DocStartFP() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return true;
@@ -112,7 +128,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class PositionStartFP implements TermStateCodecComponent {
+  static final class PositionStartFP extends TermStateCodecComponent {
+    public static PositionStartFP INSTANCE = new PositionStartFP();
+
+    private PositionStartFP() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return true;
@@ -129,7 +149,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class PayloadStartFP implements TermStateCodecComponent {
+  static final class PayloadStartFP extends TermStateCodecComponent {
+    public static PayloadStartFP INSTANCE = new PayloadStartFP();
+
+    private PayloadStartFP() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return true;
@@ -146,7 +170,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class SkipOffset implements TermStateCodecComponent {
+  static final class SkipOffset extends TermStateCodecComponent {
+    public static SkipOffset INSTANCE = new SkipOffset();
+
+    private SkipOffset() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return false;
@@ -163,7 +191,11 @@ interface TermStateCodecComponent {
     }
   }
 
-  final class LastPositionBlockOffset implements TermStateCodecComponent {
+  static final class LastPositionBlockOffset extends TermStateCodecComponent {
+    public static LastPositionBlockOffset INSTANCE = new LastPositionBlockOffset();
+
+    private LastPositionBlockOffset() {}
+
     @Override
     public boolean isMonotonicallyIncreasing() {
       return false;

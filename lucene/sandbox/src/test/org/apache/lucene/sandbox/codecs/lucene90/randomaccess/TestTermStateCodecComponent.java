@@ -37,7 +37,7 @@ public class TestTermStateCodecComponent extends LuceneTestCase {
                 })
             .toArray(IntBlockTermState[]::new);
     byte bitWidth =
-        TermStateCodecComponent.getBitWidth(termStates, new TermStateCodecComponent.DocFreq());
+        TermStateCodecComponent.getBitWidth(termStates, TermStateCodecComponent.DocFreq.INSTANCE);
     assertTrue(bitWidth <= expectedMaxBits);
   }
 }
