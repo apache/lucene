@@ -505,9 +505,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             throw new IllegalArgumentException(
                 "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
         }
-        HnswGraphBuilder hnswGraphBuilder = merger.createBuilder(mergedVectorIterator);
-        hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-        graph = hnswGraphBuilder.build(docsWithField.cardinality());
+        graph =
+            merger.merge(
+                mergedVectorIterator, segmentWriteState.infoStream, docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
