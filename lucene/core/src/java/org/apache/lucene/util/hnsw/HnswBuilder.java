@@ -23,9 +23,9 @@ import org.apache.lucene.util.InfoStream;
 /**
  * Interface for builder building the {@link OnHeapHnswGraph}
  *
- * @lucene.experimental nocommit: change the name
+ * @lucene.experimental
  */
-public interface IHnswGraphBuilder {
+public interface HnswBuilder {
 
   /**
    * Adds all nodes to the graph up to the provided {@code maxOrd}.

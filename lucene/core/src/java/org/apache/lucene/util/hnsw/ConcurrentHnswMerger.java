@@ -46,7 +46,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   }
 
   @Override
-  protected IHnswGraphBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
+  protected HnswBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
       throws IOException {
     if (initReader == null) {
       return new HnswConcurrentMergeBuilder(

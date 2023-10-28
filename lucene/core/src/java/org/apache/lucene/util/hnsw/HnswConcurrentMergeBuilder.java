@@ -36,7 +36,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
  * once. It will spawn a thread for each worker and the workers will pick the work in batches.
  */
-public class HnswConcurrentMergeBuilder implements IHnswGraphBuilder {
+public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
@@ -124,7 +124,7 @@ public class HnswConcurrentMergeBuilder implements IHnswGraphBuilder {
   @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
-    for (IHnswGraphBuilder worker : workers) {
+    for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
     }
   }

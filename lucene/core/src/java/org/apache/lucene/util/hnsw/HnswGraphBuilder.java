@@ -33,7 +33,7 @@ import org.apache.lucene.util.InfoStream;
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyper-parameters.
  */
-public class HnswGraphBuilder implements IHnswGraphBuilder {
+public class HnswGraphBuilder implements HnswBuilder {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;

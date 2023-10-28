@@ -114,7 +114,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * @return HnswGraphBuilder
    * @throws IOException If an error occurs while reading from the merge state
    */
-  protected IHnswGraphBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
+  protected HnswBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
       throws IOException {
     if (initReader == null) {
       return HnswGraphBuilder.create(
@@ -139,7 +139,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   @Override
   public OnHeapHnswGraph merge(
       DocIdSetIterator mergedVectorIterator, InfoStream infoStream, int maxOrd) throws IOException {
-    IHnswGraphBuilder builder = createBuilder(mergedVectorIterator, maxOrd);
+    HnswBuilder builder = createBuilder(mergedVectorIterator, maxOrd);
     builder.setInfoStream(infoStream);
     return builder.build(maxOrd);
   }
