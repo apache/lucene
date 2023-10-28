@@ -17,14 +17,28 @@
 
 package org.apache.lucene.util.hnsw;
 
-import java.io.Closeable;
+import java.io.IOException;
+import org.apache.lucene.util.InfoStream;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
+ * Interface for builder building the {@link OnHeapHnswGraph}
  *
- * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
- * closeable
+ * @lucene.experimental
  */
-public interface CloseableRandomVectorScorerSupplier
-    extends Closeable, RandomVectorScorerSupplier {}
+public interface HnswBuilder {
+
+  /**
+   * Adds all nodes to the graph up to the provided {@code maxOrd}.
+   *
+   * @param maxOrd The maximum ordinal (excluded) of the nodes to be added.
+   */
+  OnHeapHnswGraph build(int maxOrd) throws IOException;
+
+  /** Inserts a doc with vector value to the graph */
+  void addGraphNode(int node) throws IOException;
+
+  /** Set info-stream to output debugging information */
+  void setInfoStream(InfoStream infoStream);
+
+  OnHeapHnswGraph getGraph();
+}
