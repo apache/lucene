@@ -169,6 +169,9 @@ New Features
 
 * GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
   storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+  
+* GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
+  (Patrick Zhai)
 
 Improvements
 ---------------------
