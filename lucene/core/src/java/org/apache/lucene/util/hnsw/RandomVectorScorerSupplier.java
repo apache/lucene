@@ -69,7 +69,8 @@ public interface RandomVectorScorerSupplier {
     return new ByteScoringSupplier(vectors, similarityFunction);
   }
 
-  class ByteScoringSupplier implements RandomVectorScorerSupplier {
+  /** RandomVectorScorerSupplier for bytes vector */
+  final class ByteScoringSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessVectorValues<byte[]> vectors;
     private final RandomAccessVectorValues<byte[]> vectors1;
     private final RandomAccessVectorValues<byte[]> vectors2;
@@ -96,7 +97,8 @@ public interface RandomVectorScorerSupplier {
     }
   }
 
-  class FloatScoringSupplier implements RandomVectorScorerSupplier {
+  /** RandomVectorScorerSupplier for Float vector */
+  final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessVectorValues<float[]> vectors;
     private final RandomAccessVectorValues<float[]> vectors1;
     private final RandomAccessVectorValues<float[]> vectors2;
