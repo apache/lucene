@@ -107,7 +107,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // true if we know FMA is supported, to deliver less error
-  private static final boolean HAS_FAST_FMA = hasFastFMA();
+  static final boolean HAS_FAST_FMA = hasFastFMA();
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
