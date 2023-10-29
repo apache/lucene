@@ -105,7 +105,7 @@ public class TestDaciukMihovAutomatonBuilder extends LuceneTestCase {
             .startsWith(
                 "This builder doesn't allow terms that are larger than "
                     + Automata.MAX_STRING_UNION_TERM_LENGTH
-                    + " characters"));
+                    + " UTF-8 bytes"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
     build(Collections.singleton(new BytesRef(b1k)), false); // no exception
