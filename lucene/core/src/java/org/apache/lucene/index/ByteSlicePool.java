@@ -14,7 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.index;
+
+import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.ByteBlockPool;
 
 /**
  * Class that Posting and PostingVector use to write interleaved byte streams into shared fixed-size
@@ -29,7 +32,7 @@ package org.apache.lucene.util;
  *
  * @lucene.internal
  */
-public final class ByteSlicePool {
+final class ByteSlicePool {
   /**
    * The underlying structure consists of fixed-size blocks. We overlay variable-length slices on
    * top. Each slice is contiguous in memory, i.e. it does not straddle multiple blocks.

@@ -14,10 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.index;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.util.Counter;
 
 public class TestByteSlicePool extends LuceneTestCase {
   public void testAllocKnownSizeSlice() {

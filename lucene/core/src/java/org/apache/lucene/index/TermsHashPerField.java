@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.ByteSlicePool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.BytesStartArray;
