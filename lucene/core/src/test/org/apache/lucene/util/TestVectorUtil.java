@@ -119,14 +119,12 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testExtremeNumerics() {
     float[] v1 = new float[1536];
     float[] v2 = new float[1536];
-    float[] v3 = new float[1536];
     for (int i = 0; i < 1536; i++) {
-      v1[i] = -0.888888f;
-      v2[i] = 0.888888f;
-      v3[i] = -0.777777f;
+      v1[i] = 0.888888f;
+      v2[i] = -0.777777f;
     }
     for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
-      float v = vectorSimilarityFunction.compare(v2, v3);
+      float v = vectorSimilarityFunction.compare(v1, v2);
       assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
     }
   }
