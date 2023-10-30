@@ -242,6 +242,8 @@ Optimizations
 * GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
   and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
 
+* GITHUB#12726: Return the same input vector if its a unit vector in VectorUtil#l2normalize. (Shubham Chaudhary)
+
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
@@ -264,6 +266,8 @@ Bug Fixes
 * GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
 
 * GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
+
+* GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
 
 Build
 ---------------------

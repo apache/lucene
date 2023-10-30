@@ -170,8 +170,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
       KnnVectorsFormat format1 =
-          new KnnVectorsFormatMaxDims32(new Lucene99HnswVectorsFormat(16, 100, null));
-      KnnVectorsFormat format2 = new Lucene99HnswVectorsFormat(16, 100, null);
+          new KnnVectorsFormatMaxDims32(new Lucene99HnswVectorsFormat(16, 100));
+      KnnVectorsFormat format2 = new Lucene99HnswVectorsFormat(16, 100);
       iwc.setCodec(
           new AssertingCodec() {
             @Override
