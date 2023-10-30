@@ -18,7 +18,6 @@ package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import org.apache.lucene.util.ArrayUtil;
@@ -31,13 +30,12 @@ import org.apache.lucene.util.UnicodeUtil;
  * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings. The algorithm
  * requires sorted input data, but is very fast (nearly linear with the input size).
  *
- * @see #build(Collection)
- * @see Automata#makeStringUnion(Collection)
- * @see Automata#makeBinaryStringUnion(Collection)
+ * @see Automata#makeStringUnion(Iterable)
+ * @see Automata#makeBinaryStringUnion(Iterable)
  * @see Automata#makeStringUnion(BytesRefIterator)
  * @see Automata#makeBinaryStringUnion(BytesRefIterator)
  * @deprecated Visibility of this class will be reduced in a future release. Users can access this
- *     functionality directly through {@link Automata#makeStringUnion(Collection)}
+ *     functionality directly through {@link Automata#makeStringUnion(Iterable)}
  */
 @Deprecated
 public final class DaciukMihovAutomatonBuilder {
@@ -244,10 +242,10 @@ public final class DaciukMihovAutomatonBuilder {
    * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
    * strings in UTF-8. These strings must be binary-sorted.
    *
-   * @deprecated Please see {@link Automata#makeStringUnion(Collection)} instead
+   * @deprecated Please see {@link Automata#makeStringUnion(Iterable)} instead
    */
   @Deprecated
-  public static Automaton build(Collection<BytesRef> input) {
+  public static Automaton build(Iterable<BytesRef> input) {
     return build(input, false);
   }
 
@@ -255,7 +253,7 @@ public final class DaciukMihovAutomatonBuilder {
    * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
    * strings in UTF-8. These strings must be binary-sorted.
    */
-  static Automaton build(Collection<BytesRef> input, boolean asBinary) {
+  static Automaton build(Iterable<BytesRef> input, boolean asBinary) {
     final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
 
     for (BytesRef b : input) {
@@ -290,9 +288,11 @@ public final class DaciukMihovAutomatonBuilder {
               + current);
     }
     assert stateRegistry != null : "Automaton already built.";
-    assert previous == null || previous.get().compareTo(current) <= 0
-        : "Input must be in sorted UTF-8 order: " + previous.get() + " >= " + current;
-    assert setPrevious(current);
+    if (previous != null && previous.get().compareTo(current) > 0) {
+      throw new IllegalArgumentException(
+          "Input must be in sorted UTF-8 order: " + previous.get() + " >= " + current);
+    }
+    setPrevious(current);
 
     // Reusable codepoint information if we're building a non-binary based automaton
     UnicodeUtil.UTF8CodePoint codePoint = null;

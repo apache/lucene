@@ -43,8 +43,8 @@ import org.apache.lucene.util.StringHelper;
  */
 public final class Automata {
   /**
-   * {@link #makeStringUnion(Collection)} limits terms of this max length to ensure the stack
-   * doesn't overflow while building, since our algorithm currently relies on recursion.
+   * {@link #makeStringUnion(Iterable)} limits terms of this max length to ensure the stack doesn't
+   * overflow while building, since our algorithm currently relies on recursion.
    */
   public static final int MAX_STRING_UNION_TERM_LENGTH = 1000;
 
@@ -576,8 +576,8 @@ public final class Automata {
    * @return An {@link Automaton} accepting all input strings. The resulting automaton is codepoint
    *     based (full unicode codepoints on transitions).
    */
-  public static Automaton makeStringUnion(Collection<BytesRef> utf8Strings) {
-    if (utf8Strings.isEmpty()) {
+  public static Automaton makeStringUnion(Iterable<BytesRef> utf8Strings) {
+    if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
       return DaciukMihovAutomatonBuilder.build(utf8Strings, false);
@@ -593,8 +593,8 @@ public final class Automata {
    * @return An {@link Automaton} accepting all input strings. The resulting automaton is binary
    *     based (UTF-8 encoded byte transition labels).
    */
-  public static Automaton makeBinaryStringUnion(Collection<BytesRef> utf8Strings) {
-    if (utf8Strings.isEmpty()) {
+  public static Automaton makeBinaryStringUnion(Iterable<BytesRef> utf8Strings) {
+    if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
       return DaciukMihovAutomatonBuilder.build(utf8Strings, true);
