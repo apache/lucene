@@ -269,7 +269,7 @@ final class StringsToAutomaton {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than "
               + Automata.MAX_STRING_UNION_TERM_LENGTH
-              + " characters, got "
+              + " UTF-8 bytes, got "
               + current);
     }
     assert stateRegistry != null : "Automaton already built.";

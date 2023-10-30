@@ -486,6 +486,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return supplier.copy();
+    }
+
+    @Override
     public void close() throws IOException {
       onClose.close();
     }

@@ -115,8 +115,7 @@ public class TestKnnGraph extends LuceneTestCase {
               return new PerFieldKnnVectorsFormat() {
                 @Override
                 public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                  return new Lucene99HnswVectorsFormat(
-                      M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, flatVectorsFormat);
+                  return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
                 }
               };
             }
