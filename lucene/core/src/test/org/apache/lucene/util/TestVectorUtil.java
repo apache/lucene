@@ -17,7 +17,6 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
-
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -116,7 +115,6 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] v = {0, 0, 0};
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
-
 
   public void testExtremeNumerics() {
     float[] v1 = new float[1536];
