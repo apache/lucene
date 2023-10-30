@@ -242,6 +242,9 @@ Optimizations
 * GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
   and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
 
+* GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
+  specialized bulk scorer. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
