@@ -77,10 +77,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     similarityFunction = randomSimilarity();
   }
 
-  protected boolean approximateIndex() {
-    return true;
-  }
-
   @Override
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
@@ -1027,7 +1023,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
    * meant to define a strict requirement on behavior.
    */
   public void testSearchWithVisitedLimit() throws Exception {
-    assumeTrue("requires an approximate searching index", approximateIndex());
     IndexWriterConfig iwc = newIndexWriterConfig();
     String fieldName = "field";
     try (Directory dir = newDirectory();

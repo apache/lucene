@@ -41,6 +41,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
+  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
+
   /** The minimum quantile */
   private static final float MINIMUM_QUANTILE = 0.9f;
 
@@ -52,8 +54,6 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    * `1-1/(vector_dimensions + 1)`
    */
   final Float quantile;
-
-  final FlatVectorsFormat rawVectorFormat;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -67,7 +67,6 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    *     based on the vector field dimensions.
    */
   public Lucene99ScalarQuantizedVectorsFormat(Float quantile) {
-    super(NAME);
     if (quantile != null && (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE)) {
       throw new IllegalArgumentException(
           "quantile must be between "
@@ -77,7 +76,6 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
               + "; quantile="
               + quantile);
     }
-    this.rawVectorFormat = new Lucene99FlatVectorsFormat();
     this.quantile = quantile;
   }
 
@@ -99,16 +97,12 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsWriter(state, quantile, rawVectorFormat);
+    return new Lucene99ScalarQuantizedVectorsWriter(
+        state, quantile, rawVectorFormat.fieldsWriter(state));
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsReader(state);
-  }
-
-  @Override
-  public int getMaxDimensions(String fieldName) {
-    return 1024;
+    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
   }
 }

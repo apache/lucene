@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -66,7 +65,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final IndexOutput meta, vectorIndex;
   private final int M;
   private final int beamWidth;
-  private final String flatVectorFormatName;
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
   private final ExecutorService mergeExec;
@@ -78,13 +76,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
-      FlatVectorsFormat flatVectorsFormat,
+      FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
       ExecutorService mergeExec)
       throws IOException {
     this.M = M;
-    this.flatVectorFormatName = flatVectorsFormat.getName();
-    this.flatVectorWriter = flatVectorsFormat.fieldsWriter(state);
+    this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
@@ -156,8 +153,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     if (meta != null) {
       // write end of fields marker
       meta.writeInt(-1);
-      // write flat vector format name for the reader
-      meta.writeString(flatVectorFormatName);
       CodecUtil.writeFooter(meta);
     }
     if (vectorIndex != null) {

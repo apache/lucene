@@ -26,18 +26,14 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsFormat extends KnnVectorsFormat {
+public abstract class FlatVectorsFormat {
 
   /** Sole constructor */
-  protected FlatVectorsFormat(String name) {
-    super(name);
-  }
+  protected FlatVectorsFormat() {}
 
   /** Returns a {@link FlatVectorsWriter} to write the vectors to the index. */
-  @Override
   public abstract FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
 
   /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
-  @Override
   public abstract FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 }

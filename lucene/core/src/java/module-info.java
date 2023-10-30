@@ -69,9 +69,8 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
+      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with

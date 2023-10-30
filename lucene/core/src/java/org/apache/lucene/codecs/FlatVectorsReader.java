@@ -17,10 +17,12 @@
 
 package org.apache.lucene.codecs;
 
+import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
@@ -37,7 +39,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsReader extends KnnVectorsReader {
+public abstract class FlatVectorsReader implements Closeable, Accountable {
 
   /** Sole constructor */
   protected FlatVectorsReader() {}
@@ -64,42 +66,27 @@ public abstract class FlatVectorsReader extends KnnVectorsReader {
   public abstract RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
       throws IOException;
 
-  @Override
-  public final void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    search(knnCollector, getRandomVectorScorer(field, target), acceptDocs);
-  }
-
-  @Override
-  public final void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    search(knnCollector, getRandomVectorScorer(field, target), acceptDocs);
-  }
-
-  private void search(KnnCollector knnCollector, RandomVectorScorer scorer, Bits acceptDocs)
-      throws IOException {
-    if (scorer == null) {
-      return;
-    }
-    knnCollector = new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    acceptDocs = scorer.getAcceptOrds(acceptDocs);
-    for (int i = 0; i < scorer.maxOrd(); i++) {
-      if (acceptDocs != null && acceptDocs.get(i) == false) {
-        continue;
-      }
-      float score = scorer.score(i);
-      knnCollector.collect(i, score);
-    }
-  }
+  /**
+   * Checks consistency of this reader.
+   *
+   * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
+   * against large data files.
+   *
+   * @lucene.internal
+   */
+  public abstract void checkIntegrity() throws IOException;
 
   /**
-   * Returns an instance optimized for merging. This instance may only be consumed in the thread
-   * that called {@link #getMergeInstance()}.
-   *
-   * <p>The default implementation returns {@code this}
+   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
    */
-  @Override
-  public FlatVectorsReader getMergeInstance() {
-    return this;
-  }
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
+  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 }

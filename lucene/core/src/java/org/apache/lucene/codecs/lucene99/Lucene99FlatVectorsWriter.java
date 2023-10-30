@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -244,9 +245,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     DocsWithFieldSet docsWithField =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> writeByteVectorData(
-              vectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              vectorData,
+              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
           case FLOAT32 -> writeVectorData(
-              vectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+              vectorData,
+              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
@@ -271,9 +274,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       DocsWithFieldSet docsWithField =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> writeByteVectorData(
-                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+                tempVectorData,
+                KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
             case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+                tempVectorData,
+                KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);

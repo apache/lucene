@@ -17,9 +17,12 @@
 
 package org.apache.lucene.codecs;
 
+import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 
@@ -28,7 +31,7 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsWriter extends KnnVectorsWriter {
+public abstract class FlatVectorsWriter implements Accountable, Closeable {
 
   /** Sole constructor */
   protected FlatVectorsWriter() {}
@@ -45,11 +48,6 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   public abstract FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException;
 
-  @Override
-  public final KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    return addField(fieldInfo, null);
-  }
-
   /**
    * Write the field for merging, providing a scorer over the newly merged flat vectors. This way
    * any additional merging logic can be implemented by the user of this class.
@@ -64,8 +62,13 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo, MergeState mergeState) throws IOException;
 
   /** Write field for merging */
-  @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     IOUtils.close(mergeOneFieldToIndex(fieldInfo, mergeState));
   }
+
+  /** Called once at the end before close */
+  public abstract void finish() throws IOException;
+
+  /** Flush all buffered data on disk * */
+  public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 }

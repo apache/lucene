@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatFieldVectorsWriter;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -94,11 +93,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final IndexOutput meta, quantizedVectorData;
   private final Float quantile;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final String rawVectorDelegateName;
   private boolean finished;
 
   Lucene99ScalarQuantizedVectorsWriter(
-      SegmentWriteState state, Float quantile, FlatVectorsFormat rawVectorFormat)
+      SegmentWriteState state, Float quantile, FlatVectorsWriter rawVectorDelegate)
       throws IOException {
     this.quantile = quantile;
     segmentWriteState = state;
@@ -113,9 +111,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             state.segmentInfo.name,
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
-    this.rawVectorDelegate = rawVectorFormat.fieldsWriter(state);
-    this.rawVectorDelegateName = rawVectorFormat.getName();
-
+    this.rawVectorDelegate = rawVectorDelegate;
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -160,6 +156,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
     // the vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
@@ -189,11 +186,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           mergedQuantizationState.getLowerQuantile(),
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
-      return;
     }
-    // We only merge the delegate, since the field type isn't float32, quantization wasn't
-    // supported, so bypass it.
-    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
   }
 
   @Override
@@ -235,8 +228,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     if (meta != null) {
       // write end of fields marker
       meta.writeInt(-1);
-      // Write the raw vector delegate name for the reader
-      meta.writeString(rawVectorDelegateName);
       CodecUtil.writeFooter(meta);
     }
     if (quantizedVectorData != null) {
@@ -769,6 +760,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           // Either our quantization parameters are way different than the merged ones
           // Or we have never been quantized.
           if (reader == null
+              || reader.getQuantizationState(fieldInfo.name) == null
               || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
             sub =
                 new QuantizedByteVectorValueSub(

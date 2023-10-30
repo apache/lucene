@@ -24,10 +24,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.FlatVectorsReader;
 import org.apache.lucene.codecs.HnswGraphProvider;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -70,13 +68,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final IndexInput vectorIndex;
   private final FlatVectorsReader flatVectorsReader;
 
-  Lucene99HnswVectorsReader(SegmentReadState state) throws IOException {
+  Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+      throws IOException {
+    this.flatVectorsReader = flatVectorsReader;
+    boolean success = false;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    String flatVectorsReaderName = null;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -89,18 +89,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
-        flatVectorsReaderName = meta.readString();
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
-        CodecUtil.checkFooter(meta, priorE);
+        try {
+          CodecUtil.checkFooter(meta, priorE);
+          success = true;
+        } finally {
+          if (success == false) {
+            IOUtils.close(flatVectorsReader);
+          }
+        }
       }
     }
-    KnnVectorsFormat delegateFormat = KnnVectorsFormat.forName(flatVectorsReaderName);
-    assert delegateFormat instanceof FlatVectorsFormat;
-    flatVectorsReader = ((FlatVectorsFormat) delegateFormat).fieldsReader(state);
-
-    boolean success = false;
+    success = false;
     try {
       vectorIndex =
           openDataInput(

@@ -21,9 +21,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -58,7 +56,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
+  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
+      throws IOException {
     int versionMeta = -1;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -66,7 +65,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.META_EXTENSION);
     boolean success = false;
-    String delegateName = null;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -79,16 +77,21 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
-        delegateName = meta.readString();
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
-        CodecUtil.checkFooter(meta, priorE);
+        try {
+          CodecUtil.checkFooter(meta, priorE);
+          success = true;
+        } finally {
+          if (success == false) {
+            IOUtils.close(rawVectorsReader);
+          }
+        }
       }
     }
-    KnnVectorsFormat delegateFormat = KnnVectorsFormat.forName(delegateName);
-    assert delegateFormat instanceof FlatVectorsFormat;
-    rawVectorsReader = ((FlatVectorsFormat) delegateFormat).fieldsReader(state);
+    success = false;
+    this.rawVectorsReader = rawVectorsReader;
     try {
       quantizedVectorData =
           openDataInput(

@@ -78,7 +78,7 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
   /** Constructs a format */
   public Lucene99FlatVectorsFormat() {
-    super("Lucene99FlatVectorsFormat");
+    super();
   }
 
   @Override
@@ -89,11 +89,6 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene99FlatVectorsReader(state);
-  }
-
-  @Override
-  public int getMaxDimensions(String fieldName) {
-    return 1024;
   }
 
   @Override
