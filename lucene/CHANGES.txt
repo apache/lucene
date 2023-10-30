@@ -244,6 +244,9 @@ Optimizations
 
 * GITHUB#12726: Return the same input vector if its a unit vector in VectorUtil#l2normalize. (Shubham Chaudhary)
 
+* GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
+  specialized bulk scorer. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 

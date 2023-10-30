@@ -36,6 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingScorable;
+import org.apache.lucene.tests.search.DisablingBulkScorerQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -203,7 +204,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
 
     for (final Set<String> occur : occurList) {
       Map<Integer, Map<Query, Float>> docCounts =
-          s.search(query.build(), new CountingCollectorManager(occur));
+          s.search(
+              new DisablingBulkScorerQuery(query.build()), new CountingCollectorManager(occur));
       final int maxDocs = s.getIndexReader().maxDoc();
       assertEquals(maxDocs, docCounts.size());
       boolean includeOptional = occur.contains("SHOULD");
