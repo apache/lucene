@@ -25,8 +25,11 @@ abstract class TermStateCodecComponent {
     assert termStates.length > 0;
 
     long maxValSeen = -1;
+    long referenceValue =
+        component.isMonotonicallyIncreasing() ? component.getTargetValue(termStates[0]) : 0;
+
     for (var termState : termStates) {
-      maxValSeen = Math.max(maxValSeen, component.getTargetValue(termState));
+      maxValSeen = Math.max(maxValSeen, component.getTargetValue(termState) - referenceValue);
     }
     return (byte) (64 - Long.numberOfLeadingZeros(maxValSeen));
   }

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
+import java.util.stream.LongStream;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -25,19 +26,49 @@ public class TestTermStateCodecComponent extends LuceneTestCase {
   public void testGetBitWidth() {
     int expectedMaxBits = random().nextInt(31) + 1;
     int bitMask = 0xFFFFFFFF >>> (32 - expectedMaxBits);
+    int highestBit = (bitMask >>> 1) + 1;
+
     IntBlockTermState[] termStates =
         random()
-            .ints()
-            .limit(100)
+            .ints(256)
             .mapToObj(
                 docFreq -> {
                   var x = new IntBlockTermState();
-                  x.docFreq = docFreq & bitMask;
+                  x.docFreq = (docFreq & bitMask) | highestBit;
                   return x;
                 })
             .toArray(IntBlockTermState[]::new);
+
     byte bitWidth =
         TermStateCodecComponent.getBitWidth(termStates, TermStateCodecComponent.DocFreq.INSTANCE);
-    assertTrue(bitWidth <= expectedMaxBits);
+    assertEquals(expectedMaxBits, bitWidth);
+  }
+
+  public void testGetBitWidthWithIncreasingValues() {
+    long baseValue = random().nextLong(Long.MAX_VALUE >> 1);
+    int expectedMaxBits = random().nextInt(63) + 1;
+    long bitMask = 0xFFFFFFFF_FFFFFFFFL >>> (64 - expectedMaxBits);
+    long highestBit = (bitMask >>> 1) + 1;
+
+    var randomLongs =
+        random()
+            .longs(256, 0, Long.MAX_VALUE - baseValue)
+            .map(x -> baseValue + ((x & bitMask) | highestBit))
+            .sorted();
+
+    IntBlockTermState[] termStates =
+        LongStream.concat(LongStream.of(baseValue), randomLongs)
+            .mapToObj(
+                docStartFP -> {
+                  var x = new IntBlockTermState();
+                  x.docStartFP = docStartFP;
+                  return x;
+                })
+            .toArray(IntBlockTermState[]::new);
+
+    byte bitWidth =
+        TermStateCodecComponent.getBitWidth(
+            termStates, TermStateCodecComponent.DocStartFP.INSTANCE);
+    assertEquals(expectedMaxBits, bitWidth);
   }
 }
