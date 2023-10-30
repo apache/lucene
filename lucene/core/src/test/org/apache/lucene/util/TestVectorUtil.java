@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
+
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -113,6 +115,22 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testNormalizeZeroThrows() {
     float[] v = {0, 0, 0};
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
+  }
+
+
+  public void testExtremeNumerics() {
+    float[] v1 = new float[1536];
+    float[] v2 = new float[1536];
+    float[] v3 = new float[1536];
+    for (int i = 0; i < 1536; i++) {
+      v1[i] = -0.888888f;
+      v2[i] = 0.888888f;
+      v3[i] = -0.777777f;
+    }
+    for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
+      float v = vectorSimilarityFunction.compare(v2, v3);
+      assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
+    }
   }
 
   private static float l2(float[] v) {
