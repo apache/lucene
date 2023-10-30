@@ -62,6 +62,9 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
+* GITHUB#12709 Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -150,7 +153,10 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
+* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
+  between FST and FSTCompiler (Anh Dung Bui)
+
+* GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
 
 New Features
 ---------------------
@@ -160,6 +166,12 @@ New Features
 
 * GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
   segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
+
+* GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
+  storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+  
+* GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
+  (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -190,6 +202,8 @@ Improvements
 * GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
   in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
+* GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -198,7 +212,7 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
-  
+
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
 * GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
@@ -213,10 +227,20 @@ Optimizations
 
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
-  
+
 * GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 * GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
+
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
+
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
+
+* GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
+
+* GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
+  and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
 
 Changes in runtime behavior
 ---------------------

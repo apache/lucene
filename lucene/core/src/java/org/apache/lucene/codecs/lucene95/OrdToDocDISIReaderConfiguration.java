@@ -23,6 +23,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -190,5 +191,49 @@ public class OrdToDocDISIReaderConfiguration implements Accountable {
   @Override
   public long ramBytesUsed() {
     return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
+  }
+
+  /**
+   * @param dataIn the dataIn
+   * @return the IndexedDISI for sparse values
+   * @throws IOException thrown when reading data fails
+   */
+  public IndexedDISI getIndexedDISI(IndexInput dataIn) throws IOException {
+    assert docsWithFieldOffset > -1;
+    return new IndexedDISI(
+        dataIn,
+        docsWithFieldOffset,
+        docsWithFieldLength,
+        jumpTableEntryCount,
+        denseRankPower,
+        size);
+  }
+
+  /**
+   * @param dataIn the dataIn
+   * @return the DirectMonotonicReader for sparse values
+   * @throws IOException thrown when reading data fails
+   */
+  public DirectMonotonicReader getDirectMonotonicReader(IndexInput dataIn) throws IOException {
+    assert docsWithFieldOffset > -1;
+    final RandomAccessInput addressesData =
+        dataIn.randomAccessSlice(addressesOffset, addressesLength);
+    return DirectMonotonicReader.getInstance(meta, addressesData);
+  }
+
+  /**
+   * @return If true, the field is empty, no vector values. If false, the field is either dense or
+   *     sparse.
+   */
+  public boolean isEmpty() {
+    return docsWithFieldOffset == -2;
+  }
+
+  /**
+   * @return If true, the field is dense, all documents have values for a field. If false, the field
+   *     is sparse, some documents missing values.
+   */
+  public boolean isDense() {
+    return docsWithFieldOffset == -1;
   }
 }

@@ -21,6 +21,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -33,8 +35,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   private static final int INIT_SIZE = 128;
 
-  private int numLevels; // the current number of levels in the graph
-  private int entryNode; // the current graph entry node on the top level. -1 if not set
+  private final AtomicReference<EntryNode> entryNode;
 
   // the internal graph representation where the first dimension is node id and second dimension is
   // level
@@ -47,11 +48,13 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int
       lastFreezeSize; // remember the size we are at last time to freeze the graph and generate
   // levelToNodes
-  private int size; // graph size, which is number of nodes in level 0
-  private int
-      nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0, for now it
+  private final AtomicInteger size =
+      new AtomicInteger(0); // graph size, which is number of nodes in level 0
+  private final AtomicInteger nonZeroLevelSize =
+      new AtomicInteger(
+          0); // total number of NeighborArrays created that is not on level 0, for now it
   // is only used to account memory usage
-  private int maxNodeId;
+  private final AtomicInteger maxNodeId = new AtomicInteger(-1);
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
   private final boolean
@@ -69,11 +72,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    *     growing itself (you cannot add a node with has id >= numNodes)
    */
   OnHeapHnswGraph(int M, int numNodes) {
-    this.numLevels = 1; // Implicitly start the graph with a single level
-    this.entryNode = -1; // Entry node should be negative until a node is added
+    this.entryNode = new AtomicReference<>(new EntryNode(-1, 1));
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
-    this.maxNodeId = -1;
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
     noGrowth = numNodes != -1;
@@ -96,7 +97,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public int size() {
-    return size;
+    return size.get();
   }
 
   /**
@@ -107,7 +108,16 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public int maxNodeId() {
-    return maxNodeId;
+    if (noGrowth) {
+      // we know the eventual graph size and the graph can possibly
+      // being concurrently modified
+      return graph.length - 1;
+    } else {
+      // The graph cannot be concurrently modified (and searched) if
+      // we don't know the size beforehand, so it's safe to return the
+      // actual maxNodeId
+      return maxNodeId.get();
+    }
   }
 
   /**
@@ -120,9 +130,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
-    if (entryNode == -1) {
-      entryNode = node;
-    }
 
     if (node >= graph.length) {
       if (noGrowth) {
@@ -132,25 +139,20 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
-    if (level >= numLevels) {
-      numLevels = level + 1;
-      entryNode = node;
-    }
-
     assert graph[node] == null || graph[node].length > level
         : "node must be inserted from the top level";
     if (graph[node] == null) {
       graph[node] =
           new NeighborArray[level + 1]; // assumption: we always call this function from top level
-      size++;
+      size.incrementAndGet();
     }
     if (level == 0) {
       graph[node][level] = new NeighborArray(nsize0, true);
     } else {
       graph[node][level] = new NeighborArray(nsize, true);
-      nonZeroLevelSize++;
+      nonZeroLevelSize.incrementAndGet();
     }
-    maxNodeId = Math.max(maxNodeId, node);
+    maxNodeId.accumulateAndGet(node, Math::max);
   }
 
   @Override
@@ -174,7 +176,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public int numLevels() {
-    return numLevels;
+    return entryNode.get().level + 1;
   }
 
   /**
@@ -185,7 +187,41 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public int entryNode() {
-    return entryNode;
+    return entryNode.get().node;
+  }
+
+  /**
+   * Try to set the entry node if the graph does not have one
+   *
+   * @return True if the entry node is set to the provided node. False if the entry node already
+   *     exists
+   */
+  public boolean trySetNewEntryNode(int node, int level) {
+    EntryNode current = entryNode.get();
+    if (current.node == -1) {
+      return entryNode.compareAndSet(current, new EntryNode(node, level));
+    }
+    return false;
+  }
+
+  /**
+   * Try to promote the provided node to the entry node
+   *
+   * @param level should be larger than expectedOldLevel
+   * @param expectOldLevel is the old entry node level the caller expect to be, the actual graph
+   *     level can be different due to concurrent modification
+   * @return True if the entry node is set to the provided node. False if expectOldLevel is not the
+   *     same as the current entry node level. Even if the provided node's level is still higher
+   *     than the current entry node level, the new entry node will not be set and false will be
+   *     returned.
+   */
+  public boolean tryPromoteNewEntryNode(int node, int level, int expectOldLevel) {
+    assert level > expectOldLevel;
+    EntryNode currentEntry = entryNode.get();
+    if (currentEntry.level == expectOldLevel) {
+      return entryNode.compareAndSet(currentEntry, new EntryNode(node, level));
+    }
+    return false;
   }
 
   /**
@@ -212,12 +248,12 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private void generateLevelToNodes() {
-    if (lastFreezeSize == size) {
+    if (lastFreezeSize == size()) {
       return;
     }
-
-    levelToNodes = new List[numLevels];
-    for (int i = 1; i < numLevels; i++) {
+    int maxLevels = numLevels();
+    levelToNodes = new List[maxLevels];
+    for (int i = 1; i < maxLevels; i++) {
       levelToNodes[i] = new ArrayList<>();
     }
     int nonNullNode = 0;
@@ -230,38 +266,44 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       for (int i = 1; i < graph[node].length; i++) {
         levelToNodes[i].add(node);
       }
-      if (nonNullNode == size) {
+      if (nonNullNode == size()) {
         break;
       }
     }
-    lastFreezeSize = size;
+    lastFreezeSize = size();
   }
 
   @Override
   public long ramBytesUsed() {
     long neighborArrayBytes0 =
         (long) nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
     long neighborArrayBytes =
         (long) nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
     long total = 0;
     total +=
-        size * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+        size() * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // for graph and level 0;
-    total += nonZeroLevelSize * neighborArrayBytes; // for non-zero level
-    total += 8 * Integer.BYTES; // all int fields
+    total += nonZeroLevelSize.get() * neighborArrayBytes; // for non-zero level
+    total += 4 * Integer.BYTES; // all int fields
+    total += 1; // field: noGrowth
+    total +=
+        RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+            + 2 * Integer.BYTES; // field: entryNode
+    total += 3L * (Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER); // 3 AtomicInteger
     total += RamUsageEstimator.NUM_BYTES_OBJECT_REF; // field: cur
     total += RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes
     if (levelToNodes != null) {
       total +=
-          (long) (numLevels - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
+          (long) (numLevels() - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
       total +=
-          (long) nonZeroLevelSize
+          (long) nonZeroLevelSize.get()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
                   + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
                   + Integer.BYTES);
@@ -274,9 +316,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return "OnHeapHnswGraph(size="
         + size()
         + ", numLevels="
-        + numLevels
+        + numLevels()
         + ", entryNode="
-        + entryNode
+        + entryNode()
         + ")";
   }
+
+  private record EntryNode(int node, int level) {}
 }
