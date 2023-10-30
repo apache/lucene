@@ -33,6 +33,7 @@
 #define JNI_VERSION JNI_VERSION_1_1
 
 // cached JNI lookups
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static JNIEnv *env;
 
 static jclass exClass;
@@ -45,6 +46,7 @@ static jfieldID dpuSystemField;
 
 static jclass byteBufferClass;
 static jmethodID allocateDirectMethod;
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 static struct dpu_set_t
 build_native_set(JNIEnv *env, jobject object)

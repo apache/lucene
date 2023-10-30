@@ -55,6 +55,8 @@ CheckOptions:
     value: _t
   - key: readability-identifier-naming.VariableCase
     value: lower_case
+  - key: readability-identifier-naming.VariableIgnoredRegexp
+    value: "(.*(Class|Field|Method|ID)$|^nativePointer$|^isSingleDpu$|^nrRanks$|^dpuSystem$|^nativeDpuSet$|^byteBuffer$)"
   - key: readability-identifier-naming.IgnoreMainLikeFunctions
     value: 1
   - key: readability-identifier-naming.MethodCase
