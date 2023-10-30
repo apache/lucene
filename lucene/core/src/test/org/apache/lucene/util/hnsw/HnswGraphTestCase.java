@@ -175,7 +175,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth);
                         }
                       };
                     }
@@ -247,7 +247,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth);
                         }
                       };
                     }
@@ -308,7 +308,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth);
                       }
                     };
                   }
@@ -322,7 +322,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth);
                       }
                     };
                   }
