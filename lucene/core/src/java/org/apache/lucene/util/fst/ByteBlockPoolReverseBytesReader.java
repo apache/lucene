@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
-import org.apache.lucene.util.ByteBlockPool;
-
 import java.io.IOException;
+import org.apache.lucene.util.ByteBlockPool;
 
 /** Reads in reverse from a ByteBlockPool. */
 final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {

@@ -193,7 +193,8 @@ final class NodeHash<T> {
   // node!
   private long hash(long node) throws IOException {
     long offset = primaryTable.copiedOffsets.get(node).offset;
-    FST.BytesReader in = new ByteBlockPoolReverseBytesReader(primaryTable.copiedNodes, node - offset);
+    FST.BytesReader in =
+        new ByteBlockPoolReverseBytesReader(primaryTable.copiedNodes, node - offset);
 
     final int PRIME = 31;
 
@@ -319,8 +320,10 @@ final class NodeHash<T> {
       // here we need double copying
       OffsetAndLength offsetAndLength = copiedOffsets.get(index);
       byte[] bytes = new byte[offsetAndLength.length];
-      // offset is the last offset of the node, hence subtract by (length - 1) to get the first offset
-      copiedNodes.readBytes(offsetAndLength.offset - offsetAndLength.length + 1, bytes, 0, offsetAndLength.length);
+      // offset is the last offset of the node, hence subtract by (length - 1) to get the first
+      // offset
+      copiedNodes.readBytes(
+          offsetAndLength.offset - offsetAndLength.length + 1, bytes, 0, offsetAndLength.length);
       return bytes;
     }
 

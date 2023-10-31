@@ -258,6 +258,7 @@ public final class ByteBlockPool implements Accountable {
 
   /**
    * Read a single byte at the given offset
+   *
    * @param offset the offset to read
    * @return the byte
    */
