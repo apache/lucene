@@ -887,9 +887,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorData, vectorIndex, quantizedVectorData);
-    if (mergeExec != null) {
-      mergeExec.shutdownNow();
-    }
   }
 
   private abstract static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
