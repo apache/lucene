@@ -2401,11 +2401,12 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.deleteDocuments(new Term("id", "xyz"));
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
-    writer.commit();
+    // Must commit and wait for merges as long as the commit triggers merges to be certain that
+    // hasUncommittedChanges returns false
+    do {
+      writer.waitForMerges();
+      writer.commit();
+    } while (writer.hasPendingMerges());
     assertFalse(writer.hasUncommittedChanges());
     writer.close();
 
