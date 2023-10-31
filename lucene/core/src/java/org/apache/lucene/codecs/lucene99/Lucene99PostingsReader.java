@@ -1369,7 +1369,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true);
@@ -1549,7 +1549,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsEverythingEnum extends ImpactsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final ForUtil forUtil = new ForUtil();
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1758,7 +1760,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         if (indexHasFreq) {
           isFreqsRead =
               false; // freq block will be loaded lazily when necessary, we don't load it here
