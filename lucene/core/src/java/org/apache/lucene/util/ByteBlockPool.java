@@ -256,6 +256,17 @@ public final class ByteBlockPool implements Accountable {
     }
   }
 
+  /**
+   * Read a single byte at the given offset
+   * @param offset the offset to read
+   * @return the byte
+   */
+  public byte readByte(final long offset) {
+    int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
+    int pos = (int) (offset & BYTE_BLOCK_MASK);
+    return buffers[bufferIndex][pos];
+  }
+
   @Override
   public long ramBytesUsed() {
     long size = BASE_RAM_BYTES;

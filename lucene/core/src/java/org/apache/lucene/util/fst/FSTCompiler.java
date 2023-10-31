@@ -145,7 +145,7 @@ public class FSTCompiler<T> {
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
     } else {
       dedupHash = null;
     }
@@ -292,13 +292,13 @@ public class FSTCompiler<T> {
     long bytesPosStart = bytes.getPosition();
     if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
-        node = addNode(nodeIn);
+        node = addNode(nodeIn).nodeAddress;
         lastFrozenNode = node;
       } else {
         node = dedupHash.add(nodeIn);
       }
     } else {
-      node = addNode(nodeIn);
+      node = addNode(nodeIn).nodeAddress;
     }
     assert node != -2;
 
@@ -318,13 +318,13 @@ public class FSTCompiler<T> {
 
   // serializes new node by appending its bytes to the end
   // of the current byte[]
-  long addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
+  NodeAndBuffer addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
     if (nodeIn.numArcs == 0) {
       if (nodeIn.isFinal) {
-        return FINAL_END_NODE;
+        return new NodeAndBuffer(FINAL_END_NODE, null);
       } else {
-        return NON_FINAL_END_NODE;
+        return new NodeAndBuffer(NON_FINAL_END_NODE, null);
       }
     }
     final long startAddress = bytes.getPosition();
@@ -461,8 +461,13 @@ public class FSTCompiler<T> {
     final long thisNodeAddress = bytes.getPosition() - 1;
     bytes.reverse(startAddress, thisNodeAddress);
     nodeCount++;
-    return thisNodeAddress;
+    // nocommit: this is non-optimal, we should write the BytesStore to the ByteBlockPool directly
+    byte[] buf = new byte[Math.toIntExact(thisNodeAddress - startAddress + 1)];
+    bytes.copyBytes(startAddress, buf, 0, buf.length);
+    return new NodeAndBuffer(thisNodeAddress, buf);
   }
+
+  record NodeAndBuffer(long nodeAddress, byte[] bytes) {}
 
   private void writeLabel(DataOutput out, int v) throws IOException {
     assert v >= 0 : "v=" + v;
