@@ -20,7 +20,7 @@ CheckOptions:
   - key: readability-identifier-naming.EnumConstantCase
     value: UPPER_CASE
   - key: readability-identifier-naming.EnumConstantPrefix
-    value: ''
+    value: ""
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
   - key: readability-identifier-naming.FunctionIgnoredRegexp
@@ -56,7 +56,7 @@ CheckOptions:
   - key: readability-identifier-naming.VariableCase
     value: lower_case
   - key: readability-identifier-naming.VariableIgnoredRegexp
-    value: "(.*(Class|Field|Method|ID)$|^nativePointer$|^isSingleDpu$|^nrRanks$|^dpuSystem$|^nativeDpuSet$|^byteBuffer$)"
+    value: "(.*(Class|Field|Method|ID|Constructor)$|^nativePointer$|^isSingleDpu$|^nrRanks$|^dpuSystem$|^nativeDpuSet$|^byteBuffer$)"
   - key: readability-identifier-naming.IgnoreMainLikeFunctions
     value: 1
   - key: readability-identifier-naming.MethodCase
@@ -64,6 +64,6 @@ CheckOptions:
   - key: readability-identifier-naming.StructCase
     value: lower_case
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'vm'
+    value: "vm"
   - key: readability-identifier-length.IgnoredVariableNames
-    value: '^_'
+    value: "^_"

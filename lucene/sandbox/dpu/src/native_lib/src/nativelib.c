@@ -46,6 +46,12 @@ static jfieldID dpuSystemField;
 
 static jclass byteBufferClass;
 static jmethodID allocateDirectMethod;
+
+static jclass SGReturnClass;
+static jmethodID SGReturnConstructor;
+static jfieldID SGReturnByteBufferField;
+static jfieldID SGReturnQueriesIndicesField;
+static jfieldID SGReturnSegmentsIndicesField;
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 static struct dpu_set_t
@@ -136,7 +142,7 @@ struct metadata_t {
     index_t *results_size_lucene_segments;
     size_t max_nr_results;
     size_t total_nr_results;
-} static get_metadata(JNIEnv *env, struct dpu_set_t set, uint32_t nr_dpus, jint nr_queries, jint nr_segments)
+} static get_metadata(JNIEnv *env, struct dpu_set_t set, const uint32_t nr_dpus, const jint nr_queries, const jint nr_segments)
 {
     /* Transfer and postprocess the results_index from the DPU */
     index_t(*results_size)[nr_dpus][nr_queries] = malloc(sizeof(index_t[nr_dpus][nr_queries]));
@@ -187,12 +193,18 @@ typedef struct sg_xfer_context {
 /**
  * Computes the block addresses where the results will be transferred.
  *
- * @param sc_args The scatter-gather transfer context.
+ * @param[in,out] sc_args The scatter-gather transfer context.
  * @param dpu_results The base address of the DPU results.
  * @param nr_dpus The number of DPUs.
+ * @param[out] queries_indices The queries indices.
+ * @param[out] segments_indices The segments indices.
  */
 static void
-compute_block_addresses(struct sg_xfer_context *sc_args, const jbyte *dpu_results, uint32_t nr_dpus)
+compute_block_addresses(struct sg_xfer_context *sc_args,
+    const jbyte *dpu_results,
+    const uint32_t nr_dpus,
+    jbyte *queries_indices,
+    jbyte *segments_indices)
 {
     /* Unpack the arguments */
     const jint nr_queries = sc_args->nr_queries;
@@ -202,14 +214,19 @@ compute_block_addresses(struct sg_xfer_context *sc_args, const jbyte *dpu_result
     index_t(*results_size_lucene_segments)[nr_dpus][nr_queries][nr_segments]
         = (index_t(*)[nr_dpus][nr_queries][nr_segments])sc_args->results_size_lucene_segments;
 
-    /* Compute the block addresses */
+    jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])queries_indices;
+    jint(*segments_indices_table)[nr_queries][nr_segments] = (jint(*)[nr_queries][nr_segments])segments_indices;
+
+    /* Compute the block addresses, queries indices and segments indices */
     result_t *curr_blk_addr = (result_t *)dpu_results;
     for (jint i_qu = 0; i_qu < nr_queries; ++i_qu) {
         for (jint i_seg = 0; i_seg < nr_segments; ++i_seg) {
             for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
                 (*block_addresses)[i_dpu][i_qu][i_seg] = curr_blk_addr;
                 curr_blk_addr += (*results_size_lucene_segments)[i_dpu][i_qu][i_seg];
+                (*segments_indices_table)[i_qu][i_seg] = (jint)(curr_blk_addr - (result_t *)dpu_results);
             }
+            (*queries_indices_table)[i_qu] = (jint)(curr_blk_addr - (result_t *)dpu_results);
         }
     }
 }
@@ -217,7 +234,7 @@ compute_block_addresses(struct sg_xfer_context *sc_args, const jbyte *dpu_result
 /**
  * Callback function to retrieve a block from a DPU.
  *
- * @param out Pointer to the sg_block_info struct showing where the retrieved block will be stored.
+ * @param[out] out Pointer to the sg_block_info struct showing where the retrieved block will be stored.
  * @param i_dpu The index of the DPU to retrieve the block from.
  * @param i_query The index of the query to retrieve the block for.
  * @param args The scatter-gather transfer context.
@@ -247,6 +264,16 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
 }
 
 JNIEXPORT jobject JNICALL
+/**
+ * Transfers the results of a set of queries executed on a set of segments from the DPU to the host.
+ *
+ * @param env The JNI environment.
+ * @param this The Java object calling this native method.
+ * @param nr_queries The number of queries executed.
+ * @param nr_segments The number of segments queried.
+ *
+ * @return The results of the queries.
+ */
 Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, jobject this, jint nr_queries, jint nr_segments)
 {
     jobject dpuSystem = (*env)->GetObjectField(env, this, dpuSystemField);
@@ -259,19 +286,25 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     size_t max_nr_results = 0;
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);
 
-    // Allocate a Java direct buffer
+    // Allocate Java direct buffers
     jobject byteBuffer
         = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(result_t[total_nr_results]));
+    jobject byteBufferQueriesIndices
+        = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(jint[nr_queries]));
+    jobject byteBufferSegmentsIndices
+        = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(jint[nr_queries][nr_segments]));
 
     // Get the address of the direct buffer
     jbyte *dpu_results = (*env)->GetDirectBufferAddress(env, byteBuffer);
+    jbyte *queries_indices = (*env)->GetDirectBufferAddress(env, byteBufferQueriesIndices);
+    jbyte *segments_indices = (*env)->GetDirectBufferAddress(env, byteBufferSegmentsIndices);
 
     result_t **block_addresses = malloc(sizeof(result_t *[nr_dpus][nr_queries][nr_segments]));
 
     sg_xfer_context sc_args = { .results_size = metadata.results_size, .block_addresses = block_addresses };
     get_block_t get_block_info = { .f = &get_block, .args = &sc_args, .args_size = sizeof(sc_args) };
 
-    compute_block_addresses(&sc_args, dpu_results, nr_dpus);
+    compute_block_addresses(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
 
     // TODO(sbrocard): use callback to make transfer per rank to not share the max transfer size
     THROW_ON_ERROR(dpu_push_sg_xfer(set,
@@ -282,11 +315,18 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
         &get_block_info,
         DPU_SG_XFER_DISABLE_LENGTH_CHECK));
 
+    // Build output object
+    jobject result = (*env)->NewObject(env, SGReturnClass, SGReturnConstructor);
+
+    (*env)->SetObjectField(env, result, SGReturnByteBufferField, byteBuffer);
+    (*env)->SetObjectField(env, result, SGReturnQueriesIndicesField, byteBufferQueriesIndices);
+    (*env)->SetObjectField(env, result, SGReturnSegmentsIndicesField, byteBufferSegmentsIndices);
+
     free(metadata.results_size);
     free(metadata.results_size_lucene_segments);
     free(block_addresses);
 
-    return byteBuffer;
+    return result;
 }
 
 /**
@@ -305,6 +345,12 @@ cache_callback(JNIEnv *env)
 
     byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
     allocateDirectMethod = (*env)->GetStaticMethodID(env, byteBufferClass, "allocateDirect", "(I)Ljava/nio/ByteBuffer;");
+
+    SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/JNIReturn");
+    SGReturnConstructor = (*env)->GetMethodID(env, SGReturnClass, "<init>", "()V");
+    SGReturnByteBufferField = (*env)->GetFieldID(env, SGReturnClass, "byteBuffer", "Ljava/nio/ByteBuffer;");
+    SGReturnQueriesIndicesField = (*env)->GetFieldID(env, SGReturnClass, "metadata", "Ljava/nio/ByteBuffer;");
+    SGReturnSegmentsIndicesField = (*env)->GetFieldID(env, SGReturnClass, "segmentsIndices", "Ljava/nio/ByteBuffer;");
 }
 
 /**
@@ -326,11 +372,18 @@ release_callback(JNIEnv *env)
     (*env)->DeleteGlobalRef(env, byteBufferClass);
     byteBufferClass = NULL;
 
+    (*env)->DeleteGlobalRef(env, SGReturnClass);
+    SGReturnClass = NULL;
+
     // jmethodIDs are safe to keep without an explicit global reference, for this reason, we don't need to delete the reference
     // either.
     dpuSystemField = NULL;
     nativeDpuSetField = NULL;
     allocateDirectMethod = NULL;
+    SGReturnConstructor = NULL;
+    SGReturnByteBufferField = NULL;
+    SGReturnQueriesIndicesField = NULL;
+    SGReturnSegmentsIndicesField = NULL;
 }
 
 JNIEXPORT jint
