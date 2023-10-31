@@ -98,8 +98,17 @@ public final class Constants {
       if (hotSpotBean != null) {
         final var getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
         final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "UseFMA");
-        return Boolean.parseBoolean(
-            vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
+        boolean hasFMA =
+            Boolean.parseBoolean(
+                vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
+        if (hasFMA) {
+          // we've got FMA, but detect if its AMD and avoid it in that case
+          final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseXmmI2F");
+          hasFMA =
+              !Boolean.parseBoolean(
+                  vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString());
+        }
+        return hasFMA;
       }
       return false;
     } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
