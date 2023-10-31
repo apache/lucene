@@ -29,6 +29,7 @@ import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * VectorUtil methods implemented with Panama incubating vector API.
@@ -86,6 +87,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
+  private static float fma(float a, float b, float c) {
+    if (Constants.HAS_FAST_FMA) {
+      return Math.fma(a, b, c);
+    } else {
+      return a * b + c;
+    }
+  }
+
   @Override
   public float dotProduct(float[] a, float[] b) {
     int i = 0;
@@ -99,7 +109,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // scalar tail
     for (; i < a.length; i++) {
-      res += b[i] * a[i];
+      res = fma(a[i], b[i], res);
     }
     return res;
   }
@@ -165,11 +175,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // scalar tail
     for (; i < a.length; i++) {
-      float elem1 = a[i];
-      float elem2 = b[i];
-      sum += elem1 * elem2;
-      norm1 += elem1 * elem1;
-      norm2 += elem2 * elem2;
+      sum = fma(a[i], b[i], sum);
+      norm1 = fma(a[i], a[i], norm1);
+      norm2 = fma(b[i], b[i], norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
@@ -230,7 +238,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // scalar tail
     for (; i < a.length; i++) {
       float diff = a[i] - b[i];
-      res += diff * diff;
+      res = fma(diff, diff, res);
     }
     return res;
   }
