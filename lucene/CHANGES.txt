@@ -273,6 +273,8 @@ Bug Fixes
 
 * GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
 
+* GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
+
 Build
 ---------------------
 
