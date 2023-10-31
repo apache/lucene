@@ -17,10 +17,10 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
@@ -117,14 +117,14 @@ final class NodeHash<T> {
           // not in fallback either -- freeze & add the incoming node
 
           // freeze & add
-          FSTCompiler.NodeAndBuffer nodeAndBuffer = fstCompiler.addNode(nodeIn);
-          node = nodeAndBuffer.nodeAddress();
+          FSTCompiler.NodeAndBuffer nodeAndBuffer = fstCompiler.addNode(nodeIn, true);
+          node = nodeAndBuffer.nodeAddress;
 
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
           assert node != 0;
 
-          primaryTable.set(pos, node, nodeAndBuffer.bytes());
+          primaryTable.set(pos, node, nodeAndBuffer.bytes);
 
           // confirm frozen hash and unfrozen hash are the same
           assert hash(node) == hash : "mismatch frozenHash=" + hash(node) + " vs hash=" + hash;
@@ -192,9 +192,7 @@ final class NodeHash<T> {
   // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
   // node!
   private long hash(long node) throws IOException {
-    long offset = primaryTable.copiedOffsets.get(node).offset;
-    FST.BytesReader in =
-        new ByteBlockPoolReverseBytesReader(primaryTable.copiedNodes, node - offset);
+    FST.BytesReader in = getBytesReader(primaryTable, node);
 
     final int PRIME = 31;
 
@@ -224,8 +222,7 @@ final class NodeHash<T> {
   private boolean nodesEqual(
       PagedGrowableHash table, FSTCompiler.UnCompiledNode<T> node, long address)
       throws IOException {
-    long offset = table.copiedOffsets.get(address).offset;
-    FST.BytesReader in = new ByteBlockPoolReverseBytesReader(table.copiedNodes, address - offset);
+    FST.BytesReader in = getBytesReader(table, address);
     fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
 
     // fail fast for a node with fixed length arcs
@@ -280,8 +277,11 @@ final class NodeHash<T> {
     return false;
   }
 
-  // nocommit: change this to just offset and somehow find the length
-  record OffsetAndLength(long offset, int length) {}
+  private static <T> FST.BytesReader getBytesReader(
+      NodeHash<T>.PagedGrowableHash table, long address) {
+    byte[] bytes = table.getBytes(address);
+    return new RelativeReverseBytesReader(bytes, address - bytes.length + 1);
+  }
 
   /** Inner class because it needs access to hash function and FST bytes. */
   private class PagedGrowableHash {
@@ -289,11 +289,10 @@ final class NodeHash<T> {
     // nocommit: use PagedGrowableWriter? there was some size overflow issue with
     // PagedGrowableWriter
     // mapping from FST real address to copiedNodes offsets & length
-    private Map<Long, OffsetAndLength> copiedOffsets;
+    private Map<Long, Integer> copiedOffsets;
     long count;
-    long currentOffsets = -1;
     private long mask;
-    private final ByteBlockPool copiedNodes;
+    private final List<byte[]> copiedNodes;
 
     // 256K blocks, but note that the final block is sized only as needed so it won't use the full
     // block size when just a few elements were written to it
@@ -303,7 +302,7 @@ final class NodeHash<T> {
       entries = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       copiedOffsets = new HashMap<>();
       mask = 15;
-      copiedNodes = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+      copiedNodes = new ArrayList<>();
     }
 
     public PagedGrowableHash(long lastNodeAddress, long size) {
@@ -313,19 +312,11 @@ final class NodeHash<T> {
       copiedOffsets = new HashMap<>();
       mask = size - 1;
       assert (mask & size) == 0 : "size must be a power-of-2; got size=" + size + " mask=" + mask;
-      copiedNodes = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+      copiedNodes = new ArrayList<>();
     }
 
-    public byte[] getBytes(long index) {
-      // nocommit: find a more efficient way to copy from fallback table to primary table
-      // here we need double copying
-      OffsetAndLength offsetAndLength = copiedOffsets.get(index);
-      byte[] bytes = new byte[offsetAndLength.length];
-      // offset is the last offset of the node, hence subtract by (length - 1) to get the first
-      // offset
-      copiedNodes.readBytes(
-          offsetAndLength.offset - offsetAndLength.length + 1, bytes, 0, offsetAndLength.length);
-      return bytes;
+    public byte[] getBytes(long node) {
+      return copiedNodes.get(copiedOffsets.get(node));
     }
 
     public long get(long index) {
@@ -334,11 +325,9 @@ final class NodeHash<T> {
 
     public void set(long index, long pointer, byte[] bytes) {
       entries.set(index, pointer);
-      copiedNodes.append(new BytesRef(bytes));
-      count += 3;
-      currentOffsets += bytes.length;
-      // offsets is the last offset of the node, as we are reading in backward
-      copiedOffsets.put(pointer, new OffsetAndLength(currentOffsets, bytes.length));
+      copiedNodes.add(bytes);
+      copiedOffsets.put(pointer, copiedNodes.size() - 1);
+      count += 2;
     }
 
     private void rehash(long lastNodeAddress) throws IOException {

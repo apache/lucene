@@ -292,13 +292,13 @@ public class FSTCompiler<T> {
     long bytesPosStart = bytes.getPosition();
     if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
-        node = addNode(nodeIn).nodeAddress;
+        node = addNode(nodeIn, false).nodeAddress;
         lastFrozenNode = node;
       } else {
         node = dedupHash.add(nodeIn);
       }
     } else {
-      node = addNode(nodeIn).nodeAddress;
+      node = addNode(nodeIn, false).nodeAddress;
     }
     assert node != -2;
 
@@ -318,7 +318,7 @@ public class FSTCompiler<T> {
 
   // serializes new node by appending its bytes to the end
   // of the current byte[]
-  NodeAndBuffer addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
+  NodeAndBuffer addNode(FSTCompiler.UnCompiledNode<T> nodeIn, boolean needCopy) throws IOException {
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
     if (nodeIn.numArcs == 0) {
       if (nodeIn.isFinal) {
@@ -461,13 +461,24 @@ public class FSTCompiler<T> {
     final long thisNodeAddress = bytes.getPosition() - 1;
     bytes.reverse(startAddress, thisNodeAddress);
     nodeCount++;
-    // nocommit: this is non-optimal, we should write the BytesStore to the ByteBlockPool directly
-    byte[] buf = new byte[Math.toIntExact(thisNodeAddress - startAddress + 1)];
-    bytes.copyBytes(startAddress, buf, 0, buf.length);
-    return new NodeAndBuffer(thisNodeAddress, buf);
+    if (needCopy) {
+      byte[] buf = new byte[Math.toIntExact(thisNodeAddress - startAddress + 1)];
+      bytes.copyBytes(startAddress, buf, 0, buf.length);
+      return new NodeAndBuffer(thisNodeAddress, buf);
+    }
+    return new NodeAndBuffer(thisNodeAddress, null);
   }
 
-  record NodeAndBuffer(long nodeAddress, byte[] bytes) {}
+  class NodeAndBuffer {
+
+    final long nodeAddress;
+    final byte[] bytes;
+
+    NodeAndBuffer(long nodeAddress, byte[] bytes) {
+      this.nodeAddress = nodeAddress;
+      this.bytes = bytes;
+    }
+  }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
     assert v >= 0 : "v=" + v;
