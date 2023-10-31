@@ -75,12 +75,4 @@ public class ForDeltaUtil {
       forUtil.decodeAndPrefixSum(bitsPerValue, in, base, longs);
     }
   }
-
-  /** Skip a sequence of 128 longs. */
-  void skip(DataInput in) throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
-    if (bitsPerValue != 0) {
-      in.skipBytes(forUtil.numBytes(bitsPerValue));
-    }
-  }
 }

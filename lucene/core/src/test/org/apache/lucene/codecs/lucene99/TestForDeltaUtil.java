@@ -66,10 +66,6 @@ public class TestForDeltaUtil extends LuceneTestCase {
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
       for (int i = 0; i < iterations; ++i) {
-        if (random().nextInt(5) == 0) {
-          forDeltaUtil.skip(in);
-          continue;
-        }
         long base = 0;
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
         forDeltaUtil.decodeAndPrefixSum(in, base, restored);
