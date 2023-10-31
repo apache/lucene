@@ -346,10 +346,10 @@ cache_callback(JNIEnv *env)
     byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
     allocateDirectMethod = (*env)->GetStaticMethodID(env, byteBufferClass, "allocateDirect", "(I)Ljava/nio/ByteBuffer;");
 
-    SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/JNIReturn");
+    SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
     SGReturnConstructor = (*env)->GetMethodID(env, SGReturnClass, "<init>", "()V");
     SGReturnByteBufferField = (*env)->GetFieldID(env, SGReturnClass, "byteBuffer", "Ljava/nio/ByteBuffer;");
-    SGReturnQueriesIndicesField = (*env)->GetFieldID(env, SGReturnClass, "metadata", "Ljava/nio/ByteBuffer;");
+    SGReturnQueriesIndicesField = (*env)->GetFieldID(env, SGReturnClass, "queriesIndices", "Ljava/nio/ByteBuffer;");
     SGReturnSegmentsIndicesField = (*env)->GetFieldID(env, SGReturnClass, "segmentsIndices", "Ljava/nio/ByteBuffer;");
 }
 
