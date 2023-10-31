@@ -98,6 +98,8 @@ public final class FST<T> implements Accountable {
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
+  static final byte ARCS_FOR_CONTINUOUS = ARCS_FOR_DIRECT_ADDRESSING + ARCS_FOR_BINARY_SEARCH;
+
   // Increment version to change it
   private static final String FILE_FORMAT_NAME = "FST";
   private static final int VERSION_START = 6;
@@ -243,7 +245,10 @@ public final class FST<T> implements Accountable {
             .append(numArcs())
             .append(")")
             .append("(")
-            .append(nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING ? "da" : "bs")
+            .append(
+                nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING
+                    ? "da"
+                    : nodeFlags() == ARCS_FOR_CONTINUOUS ? "cs" : "bs")
             .append(")");
       }
       return b.toString();
@@ -285,8 +290,8 @@ public final class FST<T> implements Accountable {
 
     /**
      * Node header flags. Only meaningful to check if the value is either {@link
-     * #ARCS_FOR_BINARY_SEARCH} or {@link #ARCS_FOR_DIRECT_ADDRESSING} (other value when bytesPerArc
-     * == 0).
+     * #ARCS_FOR_BINARY_SEARCH} or {@link #ARCS_FOR_DIRECT_ADDRESSING} or {@link
+     * #ARCS_FOR_CONTINUOUS} (other value when bytesPerArc == 0).
      */
     public byte nodeFlags() {
       return nodeFlags;
@@ -318,7 +323,7 @@ public final class FST<T> implements Accountable {
 
     /**
      * First label of a direct addressing node. Only valid if nodeFlags == {@link
-     * #ARCS_FOR_DIRECT_ADDRESSING}.
+     * #ARCS_FOR_DIRECT_ADDRESSING} or {@link #ARCS_FOR_CONTINUOUS}.
      */
     int firstLabel() {
       return firstLabel;
@@ -653,7 +658,9 @@ public final class FST<T> implements Accountable {
     } else {
       in.setPosition(follow.target());
       byte flags = arc.nodeFlags = in.readByte();
-      if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
+      if (flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS) {
         // Special arc which is actually a node header for fixed length arcs.
         // Jump straight to end to find the last arc.
         arc.numArcs = in.readVInt();
@@ -664,10 +671,14 @@ public final class FST<T> implements Accountable {
           arc.firstLabel = readLabel(in);
           arc.posArcsStart = in.getPosition();
           readLastArcByDirectAddressing(arc, in);
-        } else {
+        } else if (flags == ARCS_FOR_BINARY_SEARCH) {
           arc.arcIdx = arc.numArcs() - 2;
           arc.posArcsStart = in.getPosition();
           readNextRealArc(arc, in);
+        } else {
+          arc.firstLabel = readLabel(in);
+          arc.posArcsStart = in.getPosition();
+          readLastArcByContinuous(arc, in);
         }
       } else {
         arc.flags = flags;
@@ -740,7 +751,9 @@ public final class FST<T> implements Accountable {
     in.setPosition(nodeAddress);
 
     byte flags = arc.nodeFlags = in.readByte();
-    if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
+    if (flags == ARCS_FOR_BINARY_SEARCH
+        || flags == ARCS_FOR_DIRECT_ADDRESSING
+        || flags == ARCS_FOR_CONTINUOUS) {
       // Special arc which is actually a node header for fixed length arcs.
       arc.numArcs = in.readVInt();
       arc.bytesPerArc = in.readVInt();
@@ -749,6 +762,8 @@ public final class FST<T> implements Accountable {
         readPresenceBytes(arc, in);
         arc.firstLabel = readLabel(in);
         arc.presenceIndex = -1;
+      } else if (flags == ARCS_FOR_CONTINUOUS) {
+        arc.firstLabel = readLabel(in);
       }
       arc.posArcsStart = in.getPosition();
     } else {
@@ -773,7 +788,9 @@ public final class FST<T> implements Accountable {
     } else {
       in.setPosition(follow.target());
       byte flags = in.readByte();
-      return flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING;
+      return flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS;
     }
   }
 
@@ -801,16 +818,18 @@ public final class FST<T> implements Accountable {
 
       in.setPosition(arc.nextArc());
       byte flags = in.readByte();
-      if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
+      if (flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS) {
         // System.out.println("    nextArc fixed length arc");
         // Special arc which is actually a node header for fixed length arcs.
         int numArcs = in.readVInt();
         in.readVInt(); // Skip bytesPerArc.
         if (flags == ARCS_FOR_BINARY_SEARCH) {
           in.readByte(); // Skip arc flags.
-        } else {
+        } else if (flags == ARCS_FOR_DIRECT_ADDRESSING) {
           in.skipBytes(getNumPresenceBytes(numArcs));
-        }
+        } // Nothing to do for ARCS_FOR_CONTINUOUS
       }
     } else {
       switch (arc.nodeFlags()) {
@@ -826,6 +845,8 @@ public final class FST<T> implements Accountable {
           int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
           assert nextIndex != -1;
           return arc.firstLabel() + nextIndex;
+        case ARCS_FOR_CONTINUOUS:
+          return arc.firstLabel() + arc.arcIdx() + 1;
         default:
           // Variable length arcs - linear search.
           assert arc.bytesPerArc() == 0;
@@ -845,6 +866,20 @@ public final class FST<T> implements Accountable {
     assert idx >= 0 && idx < arc.numArcs();
     in.setPosition(arc.posArcsStart() - idx * (long) arc.bytesPerArc());
     arc.arcIdx = idx;
+    arc.flags = in.readByte();
+    return readArc(arc, in);
+  }
+
+  /**
+   * Reads a Continuous node arc, with the provided index in the label range.
+   *
+   * @param rangeIndex The index of the arc in the label range. It must be within the label range.
+   */
+  public Arc<T> readArcByContinuous(Arc<T> arc, final BytesReader in, int rangeIndex)
+      throws IOException {
+    assert rangeIndex >= 0 && rangeIndex < arc.numArcs();
+    in.setPosition(arc.posArcsStart() - rangeIndex * (long) arc.bytesPerArc());
+    arc.arcIdx = rangeIndex;
     arc.flags = in.readByte();
     return readArc(arc, in);
   }
@@ -888,6 +923,10 @@ public final class FST<T> implements Accountable {
     return readArcByDirectAddressing(arc, in, arc.numArcs() - 1, presenceIndex);
   }
 
+  public Arc<T> readLastArcByContinuous(Arc<T> arc, final BytesReader in) throws IOException {
+    return readArcByContinuous(arc, in, arc.numArcs() - 1);
+  }
+
   /** Never returns null, but you should never call this if arc.isLast() is true. */
   public Arc<T> readNextRealArc(Arc<T> arc, final BytesReader in) throws IOException {
 
@@ -896,6 +935,7 @@ public final class FST<T> implements Accountable {
 
     switch (arc.nodeFlags()) {
       case ARCS_FOR_BINARY_SEARCH:
+      case ARCS_FOR_CONTINUOUS:
         assert arc.bytesPerArc() > 0;
         arc.arcIdx++;
         assert arc.arcIdx() >= 0 && arc.arcIdx() < arc.numArcs();
@@ -924,7 +964,7 @@ public final class FST<T> implements Accountable {
    * positioned just after the arc flags byte.
    */
   private Arc<T> readArc(Arc<T> arc, BytesReader in) throws IOException {
-    if (arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING) {
+    if (arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING || arc.nodeFlags() == ARCS_FOR_CONTINUOUS) {
       arc.label = arc.firstLabel() + arc.arcIdx();
     } else {
       arc.label = readLabel(in);
@@ -1067,6 +1107,17 @@ public final class FST<T> implements Accountable {
         }
       }
       return null;
+    } else if (flags == ARCS_FOR_CONTINUOUS) {
+      arc.numArcs = in.readVInt();
+      arc.bytesPerArc = in.readVInt();
+      arc.firstLabel = readLabel(in);
+      arc.posArcsStart = in.getPosition();
+      int arcIndex = labelToMatch - arc.firstLabel();
+      if (arcIndex < 0 || arcIndex >= arc.numArcs()) {
+        return null; // Before or after label range.
+      }
+      arc.arcIdx = arcIndex - 1;
+      return readNextRealArc(arc, in);
     }
 
     // Linear scan

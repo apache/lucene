@@ -137,7 +137,9 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 directAddressingMemoryIncreasePercent));
     System.out.println("num nodes = " + fstCompiler.nodeCount);
     long fixedLengthArcNodeCount =
-        fstCompiler.directAddressingNodeCount + fstCompiler.binarySearchNodeCount;
+        fstCompiler.directAddressingNodeCount
+            + fstCompiler.binarySearchNodeCount
+            + fstCompiler.continuousNodeCount;
     System.out.println(
         "num fixed-length-arc nodes = "
             + fixedLengthArcNodeCount
@@ -161,6 +163,13 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 ((double) (fstCompiler.directAddressingNodeCount)
                     / fixedLengthArcNodeCount
                     * 100)));
+    System.out.println(
+        "num continuous-arcs nodes = "
+            + (fstCompiler.continuousNodeCount)
+            + String.format(
+                Locale.ENGLISH,
+                " (%.2f %% of fixed-length-arc nodes)",
+                ((double) (fstCompiler.continuousNodeCount) / fixedLengthArcNodeCount * 100)));
   }
 
   private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor) {
@@ -211,18 +220,25 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
     DataInput in = new ByteArrayDataInput(buf);
     FST<BytesRef> fst = new FST<>(in, in, ByteSequenceOutputs.getSingleton());
     BytesRefFSTEnum<BytesRef> fstEnum = new BytesRefFSTEnum<>(fst);
-    int binarySearchArcCount = 0, directAddressingArcCount = 0, listArcCount = 0;
+    int binarySearchArcCount = 0,
+        directAddressingArcCount = 0,
+        listArcCount = 0,
+        continuousArcCount = 0;
     while (fstEnum.next() != null) {
       if (fstEnum.arcs[fstEnum.upto].bytesPerArc() == 0) {
         listArcCount++;
       } else if (fstEnum.arcs[fstEnum.upto].nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING) {
         directAddressingArcCount++;
+      } else if (fstEnum.arcs[fstEnum.upto].nodeFlags() == FST.ARCS_FOR_CONTINUOUS) {
+        continuousArcCount++;
       } else {
         binarySearchArcCount++;
       }
     }
     System.out.println(
-        "direct addressing arcs = "
+        "continuous arcs = "
+            + continuousArcCount
+            + ", direct addressing arcs = "
             + directAddressingArcCount
             + ", binary search arcs = "
             + binarySearchArcCount
