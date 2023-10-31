@@ -87,7 +87,7 @@ final class NodeHash<T> {
       if (node == 0) {
         // not found
         return 0;
-      } else if (nodesEqual(fallbackTable, nodeIn, node)) {
+      } else if (fallbackTable.nodesEqual(nodeIn, node)) {
         // frozen version of this node is already here
         return node;
       }
@@ -158,7 +158,7 @@ final class NodeHash<T> {
 
         return node;
 
-      } else if (nodesEqual(primaryTable, nodeIn, node)) {
+      } else if (primaryTable.nodesEqual(nodeIn, node)) {
         // same node (in frozen form) is already in primary table
         return node;
       }
@@ -192,7 +192,7 @@ final class NodeHash<T> {
   // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
   // node!
   private long hash(long node) throws IOException {
-    FST.BytesReader in = getBytesReader(primaryTable, node);
+    FST.BytesReader in = primaryTable.getBytesReader(node);
 
     final int PRIME = 31;
 
@@ -213,74 +213,6 @@ final class NodeHash<T> {
     }
 
     return h;
-  }
-
-  /**
-   * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long),
-   * returning true if they are equal.
-   */
-  private boolean nodesEqual(
-      PagedGrowableHash table, FSTCompiler.UnCompiledNode<T> node, long address)
-      throws IOException {
-    FST.BytesReader in = getBytesReader(table, address);
-    fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
-
-    // fail fast for a node with fixed length arcs
-    if (scratchArc.bytesPerArc() != 0) {
-      assert node.numArcs > 0;
-      // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be
-      // sparse or dense
-      switch (scratchArc.nodeFlags()) {
-        case FST.ARCS_FOR_BINARY_SEARCH:
-          // sparse
-          if (node.numArcs != scratchArc.numArcs()) {
-            return false;
-          }
-          break;
-        case FST.ARCS_FOR_DIRECT_ADDRESSING:
-          // dense -- compare both the number of labels allocated in the array (some of which may
-          // not actually be arcs), and the number of arcs
-          if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
-              || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
-            return false;
-          }
-          break;
-        default:
-          throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
-      }
-    }
-
-    // compare arc by arc to see if there is a difference
-    for (int arcUpto = 0; arcUpto < node.numArcs; arcUpto++) {
-      final FSTCompiler.Arc<T> arc = node.arcs[arcUpto];
-      if (arc.label != scratchArc.label()
-          || arc.output.equals(scratchArc.output()) == false
-          || ((FSTCompiler.CompiledNode) arc.target).node != scratchArc.target()
-          || arc.nextFinalOutput.equals(scratchArc.nextFinalOutput()) == false
-          || arc.isFinal != scratchArc.isFinal()) {
-        return false;
-      }
-
-      if (scratchArc.isLast()) {
-        if (arcUpto == node.numArcs - 1) {
-          return true;
-        } else {
-          return false;
-        }
-      }
-
-      fstCompiler.fst.readNextRealArc(scratchArc, in);
-    }
-
-    // unfrozen node has fewer arcs than frozen node
-
-    return false;
-  }
-
-  private static <T> FST.BytesReader getBytesReader(
-      NodeHash<T>.PagedGrowableHash table, long address) {
-    byte[] bytes = table.getBytes(address);
-    return new RelativeReverseBytesReader(bytes, address - bytes.length + 1);
   }
 
   /** Inner class because it needs access to hash function and FST bytes. */
@@ -358,6 +290,72 @@ final class NodeHash<T> {
 
       mask = newMask;
       entries = newEntries;
+    }
+
+    /**
+     * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long),
+     * returning true if they are equal.
+     */
+    private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address)
+        throws IOException {
+      FST.BytesReader in = getBytesReader(address);
+      fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
+
+      // fail fast for a node with fixed length arcs
+      if (scratchArc.bytesPerArc() != 0) {
+        assert node.numArcs > 0;
+        // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be
+        // sparse or dense
+        switch (scratchArc.nodeFlags()) {
+          case FST.ARCS_FOR_BINARY_SEARCH:
+            // sparse
+            if (node.numArcs != scratchArc.numArcs()) {
+              return false;
+            }
+            break;
+          case FST.ARCS_FOR_DIRECT_ADDRESSING:
+            // dense -- compare both the number of labels allocated in the array (some of which may
+            // not actually be arcs), and the number of arcs
+            if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
+                || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
+              return false;
+            }
+            break;
+          default:
+            throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
+        }
+      }
+
+      // compare arc by arc to see if there is a difference
+      for (int arcUpto = 0; arcUpto < node.numArcs; arcUpto++) {
+        final FSTCompiler.Arc<T> arc = node.arcs[arcUpto];
+        if (arc.label != scratchArc.label()
+            || arc.output.equals(scratchArc.output()) == false
+            || ((FSTCompiler.CompiledNode) arc.target).node != scratchArc.target()
+            || arc.nextFinalOutput.equals(scratchArc.nextFinalOutput()) == false
+            || arc.isFinal != scratchArc.isFinal()) {
+          return false;
+        }
+
+        if (scratchArc.isLast()) {
+          if (arcUpto == node.numArcs - 1) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+
+        fstCompiler.fst.readNextRealArc(scratchArc, in);
+      }
+
+      // unfrozen node has fewer arcs than frozen node
+
+      return false;
+    }
+
+    private <T> FST.BytesReader getBytesReader(long address) {
+      byte[] bytes = getBytes(address);
+      return new RelativeReverseBytesReader(bytes, address - bytes.length + 1);
     }
   }
 }
