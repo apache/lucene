@@ -280,6 +280,7 @@ final class NodeHash<T> {
     return false;
   }
 
+  // nocommit: change this to just offset and somehow find the length
   record OffsetAndLength(long offset, int length) {}
 
   /** Inner class because it needs access to hash function and FST bytes. */
