@@ -38,16 +38,8 @@ final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {
 
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
-    // first read the bytes as-is
-    buf.readBytes(pos, b, offset, len);
-    pos -= len;
-
-    // then revert the bytes
-    int limit = len / 2;
-    for (int i = 0; i < limit; i++) {
-      byte tmp = b[offset + i];
-      b[offset + i] = b[offset + len - i - 1];
-      b[offset + len - i - 1] = tmp;
+    for (int i = 0; i < len; i++) {
+      b[offset + i] = readByte();
     }
   }
 
