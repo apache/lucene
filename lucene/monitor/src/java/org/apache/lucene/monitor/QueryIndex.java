@@ -68,7 +68,7 @@ abstract class QueryIndex implements Closeable {
     search(
         new TermQuery(new Term(FIELDS.query_id, queryId)),
         (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return serializer.deserialize(bytesHolder[0]);
+    return bytesHolder[0] != null ? serializer.deserialize(bytesHolder[0]) : null;
   }
 
   public void scan(QueryCollector matcher) throws IOException {
