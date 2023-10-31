@@ -77,4 +77,36 @@ public final class Constants {
     }
     JRE_IS_64BIT = is64Bit;
   }
+
+  private static final String MANAGEMENT_FACTORY_CLASS = "java.lang.management.ManagementFactory";
+  private static final String HOTSPOT_BEAN_CLASS = "com.sun.management.HotSpotDiagnosticMXBean";
+
+  // best effort to see if FMA is fast (this is architecture-independent option)
+  private static boolean hasFastFMA() {
+    // on ARM cpus, FMA works fine but is a slight slowdown: don't use it.
+    if (Constants.OS_ARCH.equals("amd64") == false) {
+      return false;
+    }
+    try {
+      final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
+      // we use reflection for this, because the management factory is not part
+      // of Java 8's compact profile:
+      final Object hotSpotBean =
+          Class.forName(MANAGEMENT_FACTORY_CLASS)
+              .getMethod("getPlatformMXBean", Class.class)
+              .invoke(null, beanClazz);
+      if (hotSpotBean != null) {
+        final var getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
+        final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "UseFMA");
+        return Boolean.parseBoolean(
+            vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
+      }
+      return false;
+    } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
+      return false;
+    }
+  }
+
+  /** true if we know FMA is supported and fast, to deliver less error */
+  public static final boolean HAS_FAST_FMA = hasFastFMA();
 }
