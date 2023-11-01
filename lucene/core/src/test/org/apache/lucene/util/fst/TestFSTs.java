@@ -1257,7 +1257,7 @@ public class TestFSTs extends LuceneTestCase {
       node.isFinal = true;
       rootNode.addArc('a', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fstCompiler.addNode(node, false).nodeAddress;
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[0].nextFinalOutput = 17L;
       rootNode.arcs[0].isFinal = true;
       rootNode.arcs[0].output = nothing;
@@ -1270,13 +1270,13 @@ public class TestFSTs extends LuceneTestCase {
           new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
       rootNode.addArc('b', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fstCompiler.addNode(node, false).nodeAddress;
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[1].nextFinalOutput = nothing;
       rootNode.arcs[1].output = 42L;
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fstCompiler.addNode(rootNode, false).nodeAddress);
+    fst.finish(fstCompiler.addNode(rootNode));
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));

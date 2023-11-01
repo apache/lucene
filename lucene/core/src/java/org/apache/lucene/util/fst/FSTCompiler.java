@@ -292,13 +292,13 @@ public class FSTCompiler<T> {
     long bytesPosStart = bytes.getPosition();
     if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
-        node = addNode(nodeIn, false).nodeAddress;
+        node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
         node = dedupHash.add(nodeIn);
       }
     } else {
-      node = addNode(nodeIn, false).nodeAddress;
+      node = addNode(nodeIn);
     }
     assert node != -2;
 
@@ -318,13 +318,13 @@ public class FSTCompiler<T> {
 
   // serializes new node by appending its bytes to the end
   // of the current byte[]
-  NodeAndBuffer addNode(FSTCompiler.UnCompiledNode<T> nodeIn, boolean needCopy) throws IOException {
+  long addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
     if (nodeIn.numArcs == 0) {
       if (nodeIn.isFinal) {
-        return new NodeAndBuffer(FINAL_END_NODE, null);
+        return FINAL_END_NODE;
       } else {
-        return new NodeAndBuffer(NON_FINAL_END_NODE, null);
+        return NON_FINAL_END_NODE;
       }
     }
     final long startAddress = bytes.getPosition();
@@ -461,23 +461,7 @@ public class FSTCompiler<T> {
     final long thisNodeAddress = bytes.getPosition() - 1;
     bytes.reverse(startAddress, thisNodeAddress);
     nodeCount++;
-    if (needCopy) {
-      byte[] buf = new byte[Math.toIntExact(thisNodeAddress - startAddress + 1)];
-      bytes.copyBytes(startAddress, buf, 0, buf.length);
-      return new NodeAndBuffer(thisNodeAddress, buf);
-    }
-    return new NodeAndBuffer(thisNodeAddress, null);
-  }
-
-  class NodeAndBuffer {
-
-    final long nodeAddress;
-    final byte[] bytes;
-
-    NodeAndBuffer(long nodeAddress, byte[] bytes) {
-      this.nodeAddress = nodeAddress;
-      this.bytes = bytes;
-    }
+    return thisNodeAddress;
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
