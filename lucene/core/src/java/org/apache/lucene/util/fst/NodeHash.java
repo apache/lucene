@@ -18,9 +18,7 @@ package org.apache.lucene.util.fst;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
@@ -127,16 +125,18 @@ final class NodeHash<T> {
           primaryTable.set(pos, node, nodeAndBuffer.bytes);
 
           // confirm frozen hash and unfrozen hash are the same
-          assert hash(node) == hash : "mismatch frozenHash=" + hash(node) + " vs hash=" + hash;
+          assert primaryTable.hash(node) == hash
+              : "mismatch frozenHash=" + primaryTable.hash(node) + " vs hash=" + hash;
         }
 
         // how many bytes would be used if we had "perfect" hashing:
-        // x2 since we have two tables: entries for the node hash to node address and copiedOffsets
-        // for node address to copiedNodes index
+        // x3 since we have two tables:
+        //  - x1 for entries for the node hash to node address
+        //  - x2 for copiedOffsets for node address to copiedNodes index
         // note that some of the copiedNodes are shared between fallback and primary tables so this
         // computation is pessimistic
         long ramBytesUsed =
-            primaryTable.count * 2 * PackedInts.bitsRequired(node) / 8 + primaryTable.copiedBytes;
+            primaryTable.count * 3 * PackedInts.bitsRequired(node) / 8 + primaryTable.copiedBytes;
 
         // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
         // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
@@ -194,42 +194,17 @@ final class NodeHash<T> {
     return h;
   }
 
-  // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
-  // node!
-  private long hash(long node) throws IOException {
-    FST.BytesReader in = primaryTable.getBytesReader(node);
-
-    final int PRIME = 31;
-
-    long h = 0;
-    fstCompiler.fst.readFirstRealTargetArc(node, scratchArc, in);
-    while (true) {
-      h = PRIME * h + scratchArc.label();
-      h = PRIME * h + (int) (scratchArc.target() ^ (scratchArc.target() >> 32));
-      h = PRIME * h + scratchArc.output().hashCode();
-      h = PRIME * h + scratchArc.nextFinalOutput().hashCode();
-      if (scratchArc.isFinal()) {
-        h += 17;
-      }
-      if (scratchArc.isLast()) {
-        break;
-      }
-      fstCompiler.fst.readNextRealArc(scratchArc, in);
-    }
-
-    return h;
-  }
-
   /** Inner class because it needs access to hash function and FST bytes. */
   private class PagedGrowableHash {
     public long copiedBytes;
     private PagedGrowableWriter entries;
-    // nocommit: use PagedGrowableWriter? there was some size overflow issue with
-    // PagedGrowableWriter
-    // mapping from FST real address to copiedNodes offsets & length
-    private Map<Long, Integer> copiedOffsets;
-    long count;
+    // mapping from FST real address to copiedNodes offsets
+    private PagedGrowableWriter copiedOffsets;
+    private long count;
+    // mask for entries
     private long mask;
+    // mask for copiedOffsets
+    private long offsetMask;
     private final List<byte[]> copiedNodes;
 
     // 256K blocks, but note that the final block is sized only as needed so it won't use the full
@@ -238,8 +213,9 @@ final class NodeHash<T> {
 
     public PagedGrowableHash() {
       entries = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
-      copiedOffsets = new HashMap<>();
+      copiedOffsets = new PagedGrowableWriter(32, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       mask = 15;
+      offsetMask = 31;
       copiedNodes = new ArrayList<>();
     }
 
@@ -247,14 +223,28 @@ final class NodeHash<T> {
       entries =
           new PagedGrowableWriter(
               size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
-      copiedOffsets = new HashMap<>();
+      copiedOffsets =
+          new PagedGrowableWriter(
+              size * 2,
+              BLOCK_SIZE_BYTES,
+              PackedInts.bitsRequired(lastNodeAddress),
+              PackedInts.COMPACT);
       mask = size - 1;
+      offsetMask = size * 2 - 1;
       assert (mask & size) == 0 : "size must be a power-of-2; got size=" + size + " mask=" + mask;
       copiedNodes = new ArrayList<>();
     }
 
     public byte[] getBytes(long node) {
-      return copiedNodes.get(copiedOffsets.get(node));
+      long pos = offsetHash(node) & offsetMask;
+      while (true) {
+        long value = copiedOffsets.get(pos);
+        assert value != 0;
+        if (value == node) {
+          return copiedNodes.get(Math.toIntExact(copiedOffsets.get(pos + 1)));
+        }
+        pos = (pos + 2) & offsetMask;
+      }
     }
 
     public long get(long index) {
@@ -264,9 +254,25 @@ final class NodeHash<T> {
     public void set(long index, long pointer, byte[] bytes) {
       entries.set(index, pointer);
       copiedNodes.add(bytes);
-      copiedOffsets.put(pointer, copiedNodes.size() - 1);
+      setOffset(pointer);
       count++;
       copiedBytes += bytes.length;
+    }
+
+    private void setOffset(long pointer) {
+      long pos = offsetHash(pointer) & offsetMask;
+      // find an empty slot
+      while (copiedOffsets.get(pos) != 0) {
+        pos = (pos + 2) & offsetMask;
+      }
+      copiedOffsets.set(pos, pointer); // write the address
+      copiedOffsets.set(pos + 1, copiedNodes.size() - 1); // write the offsets
+    }
+
+    private long offsetHash(long pointer) {
+      int h = Long.hashCode(pointer);
+      // make sure it's even
+      return h - (h & 1);
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
@@ -297,6 +303,59 @@ final class NodeHash<T> {
 
       mask = newMask;
       entries = newEntries;
+
+      PagedGrowableWriter newCopiedOffsets =
+          new PagedGrowableWriter(
+              2 * copiedOffsets.size(),
+              BLOCK_SIZE_BYTES,
+              PackedInts.bitsRequired(lastNodeAddress),
+              PackedInts.COMPACT);
+      long newCopiedMask = newCopiedOffsets.size() - 1;
+      for (long idx = 0; idx < copiedOffsets.size(); idx += 2) {
+        long address = copiedOffsets.get(idx);
+        if (address != 0) {
+          long pos = offsetHash(address) & newCopiedMask;
+          while (true) {
+            if (newCopiedOffsets.get(pos) == 0) {
+              long offset = copiedOffsets.get(idx + 1);
+              newCopiedOffsets.set(pos, address);
+              newCopiedOffsets.set(pos + 1, offset);
+              break;
+            }
+
+            pos = (pos + 2) & newCopiedMask;
+          }
+        }
+      }
+
+      offsetMask = newCopiedMask;
+      copiedOffsets = newCopiedOffsets;
+    }
+
+    // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
+    // node!
+    private long hash(long node) throws IOException {
+      FST.BytesReader in = getBytesReader(node);
+
+      final int PRIME = 31;
+
+      long h = 0;
+      fstCompiler.fst.readFirstRealTargetArc(node, scratchArc, in);
+      while (true) {
+        h = PRIME * h + scratchArc.label();
+        h = PRIME * h + (int) (scratchArc.target() ^ (scratchArc.target() >> 32));
+        h = PRIME * h + scratchArc.output().hashCode();
+        h = PRIME * h + scratchArc.nextFinalOutput().hashCode();
+        if (scratchArc.isFinal()) {
+          h += 17;
+        }
+        if (scratchArc.isLast()) {
+          break;
+        }
+        fstCompiler.fst.readNextRealArc(scratchArc, in);
+      }
+
+      return h;
     }
 
     /**
