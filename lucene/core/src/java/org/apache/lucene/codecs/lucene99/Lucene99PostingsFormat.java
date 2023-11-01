@@ -36,7 +36,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
- * Lucene 5.0 postings format, which encodes postings in packed integer blocks for fast decode.
+ * Lucene 9.9 postings format, which encodes postings in packed integer blocks for fast decode.
  *
  * <p>Basic idea:
  *
@@ -219,7 +219,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *             skipInterval+1<sup>th</sup>, 2*skipInterval+1<sup>th</sup> ... posting
  *             (skipInterval==PackedBlockSize in this case). When DocFreq is multiple of
  *             PackedBlockSize, MultiLevelSkipListWriter will expect one more skip data than
- *             Lucene90SkipWriter.
+ *             Lucene99SkipWriter.
  *         <li>SkipDatum is the metadata of one skip entry. For the first block (no matter packed or
  *             VInt), it is omitted.
  *         <li>DocSkip records the document number of every PackedBlockSize<sup>th</sup> document
@@ -365,9 +365,9 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
   static final int MAX_SKIP_LEVELS = 10;
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
-  static final String DOC_CODEC = "Lucene90PostingsWriterDoc";
-  static final String POS_CODEC = "Lucene90PostingsWriterPos";
-  static final String PAY_CODEC = "Lucene90PostingsWriterPay";
+  static final String DOC_CODEC = "Lucene99PostingsWriterDoc";
+  static final String POS_CODEC = "Lucene99PostingsWriterPos";
+  static final String PAY_CODEC = "Lucene99PostingsWriterPay";
 
   // Increment version to change it
   static final int VERSION_START = 0;
