@@ -71,6 +71,20 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   @Fork(value = 1)
+  public float binaryCosineUnsignedScalar() {
+    return VectorUtil.cosineUnsigned(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float binaryCosineUnsignedVector() {
+    return VectorUtil.cosineUnsigned(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(value = 1)
   public int binaryDotProductScalar() {
     return VectorUtil.dotProduct(bytesA, bytesB);
   }
@@ -81,6 +95,20 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryDotProductVector() {
     return VectorUtil.dotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(value = 1)
+  public int binaryDotProductUnsignedScalar() {
+    return VectorUtil.dotProductUnsigned(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductUnsignedVector() {
+    return VectorUtil.dotProductUnsigned(bytesA, bytesB);
   }
 
   @Benchmark

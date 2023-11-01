@@ -65,6 +65,20 @@ public final class VectorUtil {
   }
 
   /**
+   * The cosine similarity between two vectors, computed over unsigned bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the cosine similarity of the two vectors
+   */
+  public static float cosineUnsigned(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.cosineUnsigned(a, b);
+  }
+
+  /**
    * Returns the sum of squared differences of the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
@@ -149,6 +163,20 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return IMPL.dotProduct(a, b);
+  }
+
+  /**
+   * Dot product computed over unsigned bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int dotProductUnsigned(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.dotProductUnsigned(a, b);
   }
 
   /**
