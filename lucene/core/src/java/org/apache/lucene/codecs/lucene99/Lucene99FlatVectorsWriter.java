@@ -324,7 +324,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           randomVectorScorerSupplier);
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(vectorDataInput);
+        IOUtils.closeWhileHandlingException(vectorDataInput, tempVectorData);
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempVectorData.getName());
       }

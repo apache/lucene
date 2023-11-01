@@ -161,10 +161,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // the vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      // Simply merge the underlying delegate, which just copies the raw vector data to a new
-      // segment file
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-
       ScalarQuantizer mergedQuantizationState = mergeQuantiles(fieldInfo, mergeState);
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
