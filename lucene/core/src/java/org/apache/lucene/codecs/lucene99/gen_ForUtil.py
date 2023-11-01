@@ -515,33 +515,6 @@ if __name__ == '__main__':
   f.write('    }\n')
   f.write('  }\n')
 
-  f.write("""
-  /**
-   * Decodes 128 integers into 64 {@code longs} such that each long contains two values, each
-   * represented with 32 bits. Values [0..63] are encoded in the high-order bits of {@code longs}
-   * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
-   * representation may allow subsequent operations to be performed on two values at a time.
-   */
-  void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
-    switch (bitsPerValue) {
-""")
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    next_primitive = 32
-    if bpv <= 8:
-      next_primitive = 8
-    elif bpv <= 16:
-      next_primitive = 16
-    f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(in, tmp, longs);\n' %bpv)
-    if next_primitive <= 16:
-      f.write('        expand%dTo32(longs);\n' %next_primitive)
-    f.write('        break;\n')
-  f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
-  f.write('        break;\n')
-  f.write('    }\n')
-  f.write('  }\n')
-
   f.write('\n')
   for i in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
     writeDecode(i, f)
