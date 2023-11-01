@@ -444,11 +444,7 @@ class BytesStore extends DataOutput implements FSTReader {
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    return getReverseReader(true);
-  }
-
-  FST.BytesReader getReverseReader(boolean allowSingle) {
-    if (allowSingle && blocks.size() == 1) {
+    if (blocks.size() == 1) {
       return new ReverseBytesReader(blocks.get(0));
     }
     return new FST.BytesReader() {

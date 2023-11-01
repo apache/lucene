@@ -17,41 +17,45 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import org.apache.lucene.util.ByteBlockPool;
 
-/** Same as ReverseBytesReader but acts upon a relative position */
-final class RelativeReverseBytesReader extends FST.BytesReader {
+/** Reads in reverse from a ByteBlockPool. */
+final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {
 
-  private final FST.BytesReader reader;
+  private final ByteBlockPool buf;
   private final long relativePos;
+  private long pos;
 
-  public RelativeReverseBytesReader(byte[] bytes, long relativePos) {
-    this.reader = new ReverseBytesReader(bytes);
+  public ByteBlockPoolReverseBytesReader(ByteBlockPool buf, long relativePos) {
+    this.buf = buf;
     this.relativePos = relativePos;
   }
 
   @Override
-  public byte readByte() throws IOException {
-    return reader.readByte();
+  public byte readByte() {
+    return buf.readByte(pos--);
   }
 
   @Override
-  public void readBytes(byte[] b, int offset, int len) throws IOException {
-    reader.readBytes(b, offset, len);
+  public void readBytes(byte[] b, int offset, int len) {
+    for (int i = 0; i < len; i++) {
+      b[offset + i] = buf.readByte(pos--);
+    }
   }
 
   @Override
-  public void skipBytes(long count) throws IOException {
-    reader.skipBytes(count);
+  public void skipBytes(long numBytes) throws IOException {
+    pos -= numBytes;
   }
 
   @Override
   public long getPosition() {
-    return reader.getPosition() + relativePos;
+    return pos + relativePos;
   }
 
   @Override
   public void setPosition(long pos) {
-    reader.setPosition(pos - relativePos);
+    this.pos = pos - relativePos;
   }
 
   @Override
