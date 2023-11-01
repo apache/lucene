@@ -419,7 +419,7 @@ final class NodeHash<T> {
       return false;
     }
 
-    private <T> FST.BytesReader getBytesReader(long address) {
+    private FST.BytesReader getBytesReader(long address) {
       byte[] bytes = getBytes(address);
       return new RelativeReverseBytesReader(bytes, address - bytes.length + 1);
     }
