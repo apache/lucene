@@ -87,7 +87,7 @@ final class NodeHash<T> {
         // not found
         return null;
       } else {
-        int length = fallbackTable.getMatchedNodeLength(nodeIn, node);
+        int length = fallbackTable.getMatchedNodeLength(nodeIn, node, pos);
         if (length != -1) {
           // frozen version of this node is already here
           return new NodeAddressAndLength(node, length);
@@ -126,7 +126,7 @@ final class NodeHash<T> {
           node = addressAndLength.address;
           // it was already in fallback -- promote to primary
           // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
-          primaryTable.set(pos, node, fallbackTable.getBytes(node, addressAndLength.length));
+          primaryTable.set(pos, node, fallbackTable.getBytes(pos, addressAndLength.length));
         } else {
           // not in fallback either -- freeze & add the incoming node
 
@@ -134,6 +134,7 @@ final class NodeHash<T> {
           // freeze & add
           node = fstCompiler.addNode(nodeIn);
 
+          // TODO: Write the bytes directly from BytesStore
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
           assert node != FST.FINAL_END_NODE && node != FST.NON_FINAL_END_NODE;
@@ -143,19 +144,18 @@ final class NodeHash<T> {
           primaryTable.set(pos, node, buf);
 
           // confirm frozen hash and unfrozen hash are the same
-          assert primaryTable.hash(node) == hash
-              : "mismatch frozenHash=" + primaryTable.hash(node) + " vs hash=" + hash;
+          assert primaryTable.hash(node, pos) == hash
+              : "mismatch frozenHash=" + primaryTable.hash(node, pos) + " vs hash=" + hash;
         }
 
         // how many bytes would be used if we had "perfect" hashing:
-        //  - x2 for entries for the node hash to FST node address
         //  - x2 for fstNodeAddress for FST node address
         //  - x2 for copiedNodeAddress for copied node address
         // each account for approximate hash table overhead halfway between 33.3%
         // note that some of the copiedNodes are shared between fallback and primary tables so this
         // computation is pessimistic
         long ramBytesUsed =
-            primaryTable.count * 4 * PackedInts.bitsRequired(node) / 8
+            primaryTable.count * 2 * PackedInts.bitsRequired(node) / 8
                 + primaryTable.count * 2 * PackedInts.bitsRequired(primaryTable.copiedBytes) / 8
                 + primaryTable.copiedBytes;
 
@@ -175,15 +175,15 @@ final class NodeHash<T> {
           // TODO: we could clear & reuse the previous fallbackTable, instead of allocating a new
           //       to reduce GC load
           primaryTable =
-              new PagedGrowableHash(node, Math.max(16, primaryTable.fstHashAddress.size()));
-        } else if (primaryTable.count > primaryTable.fstHashAddress.size() * (2f / 3)) {
+              new PagedGrowableHash(node, Math.max(16, primaryTable.fstNodeAddress.size()));
+        } else if (primaryTable.count > primaryTable.fstNodeAddress.size() * (2f / 3)) {
           // rehash at 2/3 occupancy
           primaryTable.rehash(node);
         }
 
         return node;
 
-      } else if (primaryTable.getMatchedNodeLength(nodeIn, node) != -1) {
+      } else if (primaryTable.getMatchedNodeLength(nodeIn, node, pos) != -1) {
         // same node (in frozen form) is already in primary table
         return node;
       }
@@ -218,13 +218,15 @@ final class NodeHash<T> {
   private class PagedGrowableHash {
     public long copiedBytes;
     // storing the FST node address where the position is the masked hash of the node arcs
-    private PagedGrowableWriter fstHashAddress;
-    // storing the local copiedNodes address
-    private PagedGrowableWriter copiedNodeAddress;
-    // storing the global FST nodes address in the same position as copiedNodeAddress
     private PagedGrowableWriter fstNodeAddress;
+    // storing the local copiedNodes address in the same position as fstNodeAddress
+    // here we are effectively storing a Map<Long, Long> from the FST node address to copiedNodes
+    // address
+    private PagedGrowableWriter copiedNodeAddress;
     private long count;
     private long mask;
+    // storing the byte slice from the FST for nodes we added to the hash so that we don't need to
+    // look up from the FST itself. each node will be written subsequently
     private final ByteBlockPool copiedNodes;
 
     // 256K blocks, but note that the final block is sized only as needed so it won't use the full
@@ -232,7 +234,6 @@ final class NodeHash<T> {
     private static final int BLOCK_SIZE_BYTES = 1 << 18;
 
     public PagedGrowableHash() {
-      fstHashAddress = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       fstNodeAddress = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       copiedNodeAddress = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       mask = 15;
@@ -240,9 +241,6 @@ final class NodeHash<T> {
     }
 
     public PagedGrowableHash(long lastNodeAddress, long size) {
-      fstHashAddress =
-          new PagedGrowableWriter(
-              size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
       fstNodeAddress =
           new PagedGrowableWriter(
               size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
@@ -252,52 +250,32 @@ final class NodeHash<T> {
       copiedNodes = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     }
 
-    public long getCopiedNodeAddress(long node) {
-      long pos = Long.hashCode(node) & mask;
-      while (true) {
-        long address = fstNodeAddress.get(pos);
-        assert address != 0;
-        if (address == node) {
-          return copiedNodeAddress.get(pos);
-        }
-        pos = (pos + 1) & mask;
-      }
-    }
-
-    public byte[] getBytes(long node, int length) {
-      long copiedNodeAddress = getCopiedNodeAddress(node);
+    public byte[] getBytes(long pos, int length) {
+      long address = copiedNodeAddress.get(pos);
       byte[] buf = new byte[length];
-      copiedNodes.readBytes(copiedNodeAddress - length + 1, buf, 0, length);
+      copiedNodes.readBytes(address - length + 1, buf, 0, length);
       return buf;
     }
 
     public long get(long index) {
-      return fstHashAddress.get(index);
+      return fstNodeAddress.get(index);
     }
 
     public void set(long index, long pointer, byte[] bytes) {
-      fstHashAddress.set(index, pointer);
+      fstNodeAddress.set(index, pointer);
       count++;
-      setOffset(pointer, bytes);
-    }
-
-    private void setOffset(long pointer, byte[] bytes) {
-      // TODO: Write the bytes directly from BytesStore
       copiedNodes.append(new BytesRef(bytes));
       copiedBytes += bytes.length;
-      long pos = Long.hashCode(pointer) & mask;
-      // find an empty slot
-      while (fstNodeAddress.get(pos) != 0) {
-        pos = (pos + 1) & mask;
-      }
-      fstNodeAddress.set(pos, pointer); // write the address
       copiedNodeAddress.set(
-          pos, copiedBytes - 1); // write the offset, which is the last offset of the node
+          index, copiedBytes - 1); // write the offset, which is the last offset of the node
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
       // double hash table size on each rehash
-      long newSize = 2 * fstHashAddress.size();
+      long newSize = 2 * fstNodeAddress.size();
+      PagedGrowableWriter newCopiedOffsets =
+          new PagedGrowableWriter(
+              newSize, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(copiedBytes), PackedInts.COMPACT);
       PagedGrowableWriter newEntries =
           new PagedGrowableWriter(
               newSize,
@@ -305,14 +283,15 @@ final class NodeHash<T> {
               PackedInts.bitsRequired(lastNodeAddress),
               PackedInts.COMPACT);
       long newMask = newEntries.size() - 1;
-      for (long idx = 0; idx < fstHashAddress.size(); idx++) {
-        long address = fstHashAddress.get(idx);
+      for (long idx = 0; idx < fstNodeAddress.size(); idx++) {
+        long address = fstNodeAddress.get(idx);
         if (address != 0) {
-          long pos = hash(address) & newMask;
+          long pos = hash(address, idx) & newMask;
           int c = 0;
           while (true) {
             if (newEntries.get(pos) == 0) {
               newEntries.set(pos, address);
+              newCopiedOffsets.set(pos, copiedNodeAddress.get(idx));
               break;
             }
 
@@ -323,41 +302,14 @@ final class NodeHash<T> {
       }
 
       mask = newMask;
-      fstHashAddress = newEntries;
-
-      PagedGrowableWriter newCopiedOffsets =
-          new PagedGrowableWriter(
-              newSize, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(copiedBytes), PackedInts.COMPACT);
-      PagedGrowableWriter newFSTOffsets =
-          new PagedGrowableWriter(
-              newSize,
-              BLOCK_SIZE_BYTES,
-              PackedInts.bitsRequired(lastNodeAddress),
-              PackedInts.COMPACT);
-      for (long idx = 0; idx < fstNodeAddress.size(); idx++) {
-        long address = fstNodeAddress.get(idx);
-        if (address != 0) {
-          long pos = Long.hashCode(address) & newMask;
-          while (true) {
-            if (newFSTOffsets.get(pos) == 0) {
-              newFSTOffsets.set(pos, address);
-              newCopiedOffsets.set(pos, copiedNodeAddress.get(idx));
-              break;
-            }
-
-            pos = (pos + 1) & newMask;
-          }
-        }
-      }
-
-      fstNodeAddress = newFSTOffsets;
+      fstNodeAddress = newEntries;
       copiedNodeAddress = newCopiedOffsets;
     }
 
     // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
     // node!
-    private long hash(long node) throws IOException {
-      FST.BytesReader in = getBytesReader(node);
+    private long hash(long node, long pos) throws IOException {
+      FST.BytesReader in = getBytesReader(node, pos);
 
       final int PRIME = 31;
 
@@ -385,9 +337,9 @@ final class NodeHash<T> {
      * (long), returning the local copiedNodes start address if the two nodes are matched, or -1
      * otherwise
      */
-    private int getMatchedNodeLength(FSTCompiler.UnCompiledNode<T> node, long address)
+    private int getMatchedNodeLength(FSTCompiler.UnCompiledNode<T> node, long address, long pos)
         throws IOException {
-      FST.BytesReader in = getBytesReader(address);
+      FST.BytesReader in = getBytesReader(address, pos);
       fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
 
       // fail fast for a node with fixed length arcs
@@ -442,8 +394,8 @@ final class NodeHash<T> {
       return -1;
     }
 
-    private FST.BytesReader getBytesReader(long address) {
-      long localAddress = getCopiedNodeAddress(address);
+    private FST.BytesReader getBytesReader(long address, long pos) {
+      long localAddress = copiedNodeAddress.get(pos);
       return new ByteBlockPoolReverseBytesReader(copiedNodes, address - localAddress);
     }
   }
