@@ -131,7 +131,12 @@ final class NodeHash<T> {
         }
 
         // how many bytes would be used if we had "perfect" hashing:
-        long ramBytesUsed = primaryTable.count * PackedInts.bitsRequired(node) / 8;
+        // x2 since we have two tables: entries for the node hash to node address and copiedOffsets
+        // for node address to copiedNodes index
+        // note that some of the copiedNodes are shared between fallback and primary tables so this
+        // computation is pessimistic
+        long ramBytesUsed =
+            primaryTable.count * 2 * PackedInts.bitsRequired(node) / 8 + primaryTable.copiedBytes;
 
         // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
         // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
@@ -217,6 +222,7 @@ final class NodeHash<T> {
 
   /** Inner class because it needs access to hash function and FST bytes. */
   private class PagedGrowableHash {
+    public long copiedBytes;
     private PagedGrowableWriter entries;
     // nocommit: use PagedGrowableWriter? there was some size overflow issue with
     // PagedGrowableWriter
@@ -260,6 +266,7 @@ final class NodeHash<T> {
       copiedNodes.add(bytes);
       copiedOffsets.put(pointer, copiedNodes.size() - 1);
       count++;
+      copiedBytes += bytes.length;
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
