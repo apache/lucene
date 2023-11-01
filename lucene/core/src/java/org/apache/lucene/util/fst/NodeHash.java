@@ -117,7 +117,7 @@ final class NodeHash<T> {
           // not in fallback either -- freeze & add the incoming node
 
           // freeze & add
-          FSTCompiler.NodeAndBuffer nodeAndBuffer = fstCompiler.addNode(nodeIn, true);
+          FSTCompiler<T>.NodeAndBuffer nodeAndBuffer = fstCompiler.addNode(nodeIn, true);
           node = nodeAndBuffer.nodeAddress;
 
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
@@ -293,8 +293,8 @@ final class NodeHash<T> {
     }
 
     /**
-     * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long),
-     * returning true if they are equal.
+     * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address
+     * (long), returning true if they are equal.
      */
     private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address)
         throws IOException {
