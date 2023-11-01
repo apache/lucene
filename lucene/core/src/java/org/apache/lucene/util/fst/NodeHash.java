@@ -134,13 +134,11 @@ final class NodeHash<T> {
           // freeze & add
           node = fstCompiler.addNode(nodeIn);
 
+          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
+          // at 0:
           assert node != FST.FINAL_END_NODE && node != FST.NON_FINAL_END_NODE;
           byte[] buf = new byte[Math.toIntExact(node - startAddress + 1)];
           fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
-
-          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
-          // at 0:
-          assert node != 0;
 
           primaryTable.set(pos, node, buf);
 
