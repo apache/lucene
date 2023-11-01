@@ -130,13 +130,14 @@ final class NodeHash<T> {
         }
 
         // how many bytes would be used if we had "perfect" hashing:
-        // x3 since we have two tables:
-        //  - x1 for entries for the node hash to node address
-        //  - x2 for copiedOffsets for node address to copiedNodes index
+        // x5 since we have two tables:
+        //  - x2 for entries for the node hash to node address
+        //  - x3 for copiedOffsets for node address to copiedNodes index
+        // each account for approximate hash table overhead halfway between 33.3%
         // note that some of the copiedNodes are shared between fallback and primary tables so this
         // computation is pessimistic
         long ramBytesUsed =
-            primaryTable.count * 3 * PackedInts.bitsRequired(node) / 8 + primaryTable.copiedBytes;
+            primaryTable.count * 5 * PackedInts.bitsRequired(node) / 8 + primaryTable.copiedBytes;
 
         // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
         // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
@@ -146,9 +147,7 @@ final class NodeHash<T> {
         // in smaller FSTs, even if the precise RAM used is not always under the limit.
 
         // divide limit by 2 because fallback gets half the RAM and primary gets the other half
-        // divide by 2 again to account for approximate hash table overhead halfway between 33.3%
-        // and 66.7% occupancy = 50%
-        if (ramBytesUsed >= ramLimitBytes / (2 * 2)) {
+        if (ramBytesUsed >= ramLimitBytes / 2) {
           // time to fallback -- fallback is now used read-only to promote a node (suffix) to
           // primary if we encounter it again
           fallbackTable = primaryTable;
