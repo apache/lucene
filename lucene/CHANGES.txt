@@ -158,6 +158,10 @@ API Changes
 
 * GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
 
+* GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
+  Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
+  instead of relying on assert. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
@@ -272,6 +276,8 @@ Bug Fixes
 * GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
 
 * GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
+
+* GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
 
 Build
 ---------------------

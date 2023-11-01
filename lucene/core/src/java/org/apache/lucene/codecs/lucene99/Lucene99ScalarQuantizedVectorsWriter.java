@@ -429,7 +429,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   quantizationDataInput)));
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(quantizationDataInput);
+        IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempQuantizedVectorData.getName());
       }
