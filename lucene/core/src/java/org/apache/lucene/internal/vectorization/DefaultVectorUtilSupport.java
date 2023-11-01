@@ -144,7 +144,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     int upperBound = a.length & ~(2 - 1);
     for (; i < upperBound; i += 2) {
-      total += a[i] * b[i] + a[i+1] * b[i+1];
+      total += a[i] * b[i] + a[i + 1] * b[i + 1];
     }
     for (; i < a.length; i++) {
       total += a[i] * b[i];
