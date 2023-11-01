@@ -259,7 +259,7 @@ final class NodeHash<T> {
       entries.set(index, pointer);
       copiedNodes.add(bytes);
       copiedOffsets.put(pointer, copiedNodes.size() - 1);
-      count += 2;
+      count++;
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
