@@ -141,7 +141,12 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int dotProduct(byte[] a, byte[] b) {
     int total = 0;
-    for (int i = 0; i < a.length; i++) {
+    int i = 0;
+    int upperBound = a.length & ~(2 - 1);
+    for (; i < upperBound; i += 2) {
+      total += a[i] * b[i] + a[i+1] * b[i+1];
+    }
+    for (; i < a.length; i++) {
       total += a[i] * b[i];
     }
     return total;
