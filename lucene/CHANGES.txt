@@ -278,7 +278,11 @@ Bug Fixes
 Build
 ---------------------
 
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+  leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
+
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other
