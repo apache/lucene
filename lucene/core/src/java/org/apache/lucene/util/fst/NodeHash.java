@@ -51,6 +51,8 @@ final class NodeHash<T> {
 
   private final FSTCompiler<T> fstCompiler;
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
+  // store the last fallback table node length in getFallback()
+  private int lastFallbackNodeLength;
 
   /**
    * ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least
@@ -73,11 +75,10 @@ final class NodeHash<T> {
     this.fstCompiler = fstCompiler;
   }
 
-  private NodeAddressAndLength getFallback(FSTCompiler.UnCompiledNode<T> nodeIn, long hash)
-      throws IOException {
+  private long getFallback(FSTCompiler.UnCompiledNode<T> nodeIn, long hash) throws IOException {
     if (fallbackTable == null) {
       // no fallback yet (primary table is not yet large enough to swap)
-      return null;
+      return 0;
     }
     long pos = hash & fallbackTable.mask;
     int c = 0;
@@ -85,27 +86,19 @@ final class NodeHash<T> {
       long node = fallbackTable.get(pos);
       if (node == 0) {
         // not found
-        return null;
+        return 0;
       } else {
         int length = fallbackTable.getMatchedNodeLength(nodeIn, node, pos);
         if (length != -1) {
+          // store the node length for further use
+          this.lastFallbackNodeLength = length;
           // frozen version of this node is already here
-          return new NodeAddressAndLength(node, length);
+          return node;
         }
       }
 
       // quadratic probe (but is it, really?)
       pos = (pos + (++c)) & fallbackTable.mask;
-    }
-  }
-
-  static class NodeAddressAndLength {
-    private final long address;
-    private final int length;
-
-    NodeAddressAndLength(long address, int length) {
-      this.address = address;
-      this.length = length;
     }
   }
 
@@ -121,12 +114,11 @@ final class NodeHash<T> {
       long node = primaryTable.get(pos);
       if (node == 0) {
         // node is not in primary table; is it in fallback table?
-        NodeAddressAndLength addressAndLength = getFallback(nodeIn, hash);
-        if (addressAndLength != null) {
-          node = addressAndLength.address;
+        node = getFallback(nodeIn, hash);
+        if (node != 0) {
           // it was already in fallback -- promote to primary
           // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
-          primaryTable.set(pos, node, fallbackTable.getBytes(pos, addressAndLength.length));
+          primaryTable.set(pos, node, fallbackTable.getBytes(pos, lastFallbackNodeLength));
         } else {
           // not in fallback either -- freeze & add the incoming node
 
@@ -151,7 +143,7 @@ final class NodeHash<T> {
         // how many bytes would be used if we had "perfect" hashing:
         //  - x2 for fstNodeAddress for FST node address
         //  - x2 for copiedNodeAddress for copied node address
-        // each account for approximate hash table overhead halfway between 33.3%
+        // each account for approximate hash table overhead halfway between 33.3% and 66.6%
         // note that some of the copiedNodes are shared between fallback and primary tables so this
         // computation is pessimistic
         long ramBytesUsed =
@@ -266,11 +258,15 @@ final class NodeHash<T> {
       count++;
       copiedNodes.append(new BytesRef(bytes));
       copiedBytes += bytes.length;
-      copiedNodeAddress.set(
-          index, copiedBytes - 1); // write the offset, which is the last offset of the node
+      // write the offset, which is the last offset of the node
+      copiedNodeAddress.set(index, copiedBytes - 1);
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
+      // TODO: https://github.com/apache/lucene/issues/12744
+      // should we always use a small startBitsPerValue here (e.g 8) instead base off of
+      // lastNodeAddress?
+
       // double hash table size on each rehash
       long newSize = 2 * fstNodeAddress.size();
       PagedGrowableWriter newCopiedOffsets =
@@ -334,8 +330,7 @@ final class NodeHash<T> {
 
     /**
      * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address
-     * (long), returning the local copiedNodes start address if the two nodes are matched, or -1
-     * otherwise
+     * (long), returning the node length if the two nodes are matched, or -1 otherwise
      */
     private int getMatchedNodeLength(FSTCompiler.UnCompiledNode<T> node, long address, long pos)
         throws IOException {
