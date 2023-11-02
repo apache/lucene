@@ -23,12 +23,12 @@ import org.apache.lucene.util.ByteBlockPool;
 final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {
 
   private final ByteBlockPool buf;
-  private final long relativePos;
+  // the difference between the FST node address and the hash table copied node address
+  private long posDelta;
   private long pos;
 
-  public ByteBlockPoolReverseBytesReader(ByteBlockPool buf, long relativePos) {
+  public ByteBlockPoolReverseBytesReader(ByteBlockPool buf) {
     this.buf = buf;
-    this.relativePos = relativePos;
   }
 
   @Override
@@ -50,16 +50,20 @@ final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {
 
   @Override
   public long getPosition() {
-    return pos + relativePos;
+    return pos + posDelta;
   }
 
   @Override
   public void setPosition(long pos) {
-    this.pos = pos - relativePos;
+    this.pos = pos - posDelta;
   }
 
   @Override
   public boolean reversed() {
     return true;
+  }
+
+  public void setPosDelta(long posDelta) {
+    this.posDelta = posDelta;
   }
 }
