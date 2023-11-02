@@ -179,7 +179,6 @@ public class WeightedSpanTermExtractor {
         extract(clause, boost, terms);
       }
     } else if (query instanceof MultiPhraseQuery mpq) {
-      final MultiPhraseQuery mpq = (MultiPhraseQuery) query;
       final Term[][] termArrays = mpq.getTermArrays();
       final int[] positions = mpq.getPositions();
       if (positions.length > 0) {
