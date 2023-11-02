@@ -53,6 +53,8 @@ final class NodeHash<T> {
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   // store the last fallback table node length in getFallback()
   private int lastFallbackNodeLength;
+  // store the last fallback table hashtable position in getFallback()
+  private long lastFallbackPos;
 
   /**
    * ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least
@@ -92,6 +94,7 @@ final class NodeHash<T> {
         if (length != -1) {
           // store the node length for further use
           this.lastFallbackNodeLength = length;
+          this.lastFallbackPos = pos;
           // frozen version of this node is already here
           return node;
         }
@@ -118,7 +121,7 @@ final class NodeHash<T> {
         if (node != 0) {
           // it was already in fallback -- promote to primary
           // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
-          primaryTable.set(pos, node, fallbackTable.getBytes(pos, lastFallbackNodeLength));
+          primaryTable.set(pos, node, fallbackTable.getBytes(lastFallbackPos, lastFallbackNodeLength));
         } else {
           // not in fallback either -- freeze & add the incoming node
 
@@ -244,6 +247,7 @@ final class NodeHash<T> {
 
     public byte[] getBytes(long pos, int length) {
       long address = copiedNodeAddress.get(pos);
+      assert address - length + 1 >= 0;
       byte[] buf = new byte[length];
       copiedNodes.readBytes(address - length + 1, buf, 0, length);
       return buf;
@@ -375,7 +379,8 @@ final class NodeHash<T> {
 
         if (scratchArc.isLast()) {
           if (arcUpto == node.numArcs - 1) {
-            return Math.toIntExact(address - in.getPosition() + 1);
+            // position is 1 index past the starting address, as we are reading in backward
+            return Math.toIntExact(address - in.getPosition());
           } else {
             return -1;
           }
