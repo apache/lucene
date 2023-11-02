@@ -80,7 +80,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   @Override
   public Object add(Object prefix, Object output) {
     assert !(prefix instanceof List);
-    if (!(output instanceof List list)) {
+    if (!(output instanceof List<?> list)) {
       return outputs.add((T) prefix, (T) output);
     } else {
       List<T> outputList = (List<T>) list;
@@ -100,7 +100,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
 
   @Override
   public void writeFinalOutput(Object output, DataOutput out) throws IOException {
-    if (!(output instanceof List list)) {
+    if (!(output instanceof List<?> list)) {
       out.writeVInt(1);
       outputs.write((T) output, out);
     } else {
@@ -151,7 +151,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
 
   @Override
   public String outputToString(Object output) {
-    if (!(output instanceof List list)) {
+    if (!(output instanceof List<?> list)) {
       return outputs.outputToString((T) output);
     } else {
       List<T> outputList = (List<T>) list;
@@ -178,7 +178,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
     } else {
       outputList.addAll((List<T>) list);
     }
-    if (!(second instanceof List list)) {
+    if (!(second instanceof List<?> list)) {
       outputList.add((T) second);
     } else {
       outputList.addAll((List<T>) list);
