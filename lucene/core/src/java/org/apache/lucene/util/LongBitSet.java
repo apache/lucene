@@ -427,11 +427,18 @@ public final class LongBitSet implements Accountable {
   /** returns true if both sets have the same bits set */
   @Override
   public boolean equals(Object o) {
-    return this == o
-        || o instanceof LongBitSet other
-            && numBits == other.numBits
-            && Arrays.equals(bits, other.bits);
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof LongBitSet)) {
+      return false;
+    }
+    LongBitSet other = (LongBitSet) o;
+    if (numBits != other.numBits) {
+      return false;
+    }
     // Depends on the ghost bits being clear!
+    return Arrays.equals(bits, other.bits);
   }
 
   @Override

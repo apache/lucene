@@ -346,7 +346,9 @@ public class AttributeSource {
       return true;
     }
 
-    if (obj instanceof AttributeSource other) {
+    if (obj instanceof AttributeSource) {
+      AttributeSource other = (AttributeSource) obj;
+
       if (hasAttributes()) {
         if (!other.hasAttributes()) {
           return false;

@@ -256,12 +256,10 @@ final class Rectangle2D implements Component2D {
 
   @Override
   public boolean equals(Object o) {
-    return this == o
-        || o instanceof Rectangle2D that
-            && minX == that.minX
-            && maxX == that.maxX
-            && minY == that.minY
-            && maxY == that.maxY;
+    if (this == o) return true;
+    if (!(o instanceof Rectangle2D)) return false;
+    Rectangle2D that = (Rectangle2D) o;
+    return minX == that.minX && maxX == that.maxX && minY == that.minY && maxY == that.maxY;
   }
 
   @Override
