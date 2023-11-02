@@ -1,0 +1,5 @@
+{
+    "lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/WordBreakTestUnicode_12_1.java": "--",
+    "lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/generateJavaUnicodeWordBreakTest.pl": "1dd7148f4514976503a2be2e00be75c20ce784fb",
+    "property:unicodeVersion": "12.1"
+}

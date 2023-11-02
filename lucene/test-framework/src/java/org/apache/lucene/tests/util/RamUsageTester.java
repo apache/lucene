@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
@@ -159,7 +161,11 @@ public final class RamUsageTester {
 
     // Ignore JDK objects we can't access or handle properly.
     Predicate<Object> isIgnorable =
-        (clazz) -> (clazz instanceof CharsetEncoder) || (clazz instanceof CharsetDecoder);
+        (clazz) ->
+            (clazz instanceof CharsetEncoder)
+                || (clazz instanceof CharsetDecoder)
+                || (clazz instanceof ReentrantReadWriteLock)
+                || (clazz instanceof AtomicReference<?>);
     if (isIgnorable.test(ob)) {
       return accumulator.accumulateObject(ob, 0, Collections.emptyMap(), stack);
     }

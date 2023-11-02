@@ -24,8 +24,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -37,19 +38,22 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
@@ -133,6 +137,7 @@ public class QueryUtils {
         checkFirstSkipTo(q1, s);
         checkSkipTo(q1, s);
         checkBulkScorerSkipTo(random, q1, s);
+        checkCount(q1, s);
         if (wrap) {
           check(random, q1, wrapUnderlyingReader(random, s, -1), false);
           check(random, q1, wrapUnderlyingReader(random, s, 0), false);
@@ -223,15 +228,22 @@ public class QueryUtils {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
         return null;
       }
 
       @Override
-      public TopDocs searchNearestVectors(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return null;
       }
+
+      @Override
+      public void searchNearestVectors(
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+
+      @Override
+      public void searchNearestVectors(
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
       public FieldInfos getFieldInfos() {
@@ -254,8 +266,8 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public Fields getTermVectors(int docID) throws IOException {
-        return null;
+      public TermVectors termVectors() {
+        return TermVectors.EMPTY;
       }
 
       @Override
@@ -269,14 +281,19 @@ public class QueryUtils {
       }
 
       @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+      public StoredFields storedFields() {
+        return new StoredFields() {
+          @Override
+          public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+        };
+      }
 
       @Override
       protected void doClose() throws IOException {}
 
       @Override
       public LeafMetaData getMetaData() {
-        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
       }
 
       @Override
@@ -523,8 +540,10 @@ public class QueryUtils {
     s.search(
         q,
         new SimpleCollector() {
+          private final Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
           private Scorable scorer;
           private int leafPtr;
+          private long intervalTimes32 = 1 * 32;
 
           @Override
           public void setScorer(Scorable scorer) {
@@ -535,10 +554,11 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              long startNS = System.nanoTime();
-              for (int i = lastDoc[0] + 1; i <= doc; i++) {
-                Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                Scorer scorer = w.scorer(context.get(leafPtr));
+              // The intervalTimes32 trick helps contain the runtime of this check: first we check
+              // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
+              for (int i = lastDoc[0] + 1; i <= doc; i += intervalTimes32++ / 1024) {
+                ScorerSupplier supplier = w.scorerSupplier(context.get(leafPtr));
+                Scorer scorer = supplier.get(1L); // only checking one doc, so leadCost = 1
                 assertTrue(
                     "query collected " + doc + " but advance(" + i + ") says no more docs!",
                     scorer.iterator().advance(i) != DocIdSetIterator.NO_MORE_DOCS);
@@ -562,12 +582,6 @@ public class QueryUtils {
                     score,
                     advanceScore,
                     maxDiff);
-
-                // Hurry things along if they are going slow (eg
-                // if you got SimpleText codec this will kick in):
-                if (i < doc && System.nanoTime() - startNS > 5_000_000) {
-                  i = doc - 1;
-                }
               }
               lastDoc[0] = doc;
             } catch (IOException e) {
@@ -657,7 +671,15 @@ public class QueryUtils {
     query = searcher.rewrite(query);
     Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
     for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      final Scorer scorer = weight.scorer(context);
+      final Scorer scorer;
+      final ScorerSupplier scorerSupplier = weight.scorerSupplier(context);
+      if (scorerSupplier == null) {
+        scorer = null;
+      } else {
+        // For IndexOrDocValuesQuey, the bulk scorer will use the indexed structure query
+        // and the scorer with a lead cost of 0 will use the doc values query.
+        scorer = scorerSupplier.get(0);
+      }
       final BulkScorer bulkScorer = weight.bulkScorer(context);
       if (scorer == null && bulkScorer == null) {
         continue;
@@ -718,6 +740,73 @@ public class QueryUtils {
           break;
         }
       }
+    }
+  }
+
+  /**
+   * Check that counting hits through {@link DocIdStream#count()} yield the same result as counting
+   * naively.
+   */
+  public static void checkCount(Query query, final IndexSearcher searcher) throws IOException {
+    query = searcher.rewrite(query);
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      BulkScorer scorer = weight.bulkScorer(context);
+      if (scorer == null) {
+        continue;
+      }
+      int[] expectedCount = {0};
+      boolean[] docIdStream = {false};
+      scorer.score(
+          new LeafCollector() {
+            @Override
+            public void collect(DocIdStream stream) throws IOException {
+              // Don't use DocIdStream#count, we want to count the slow way here.
+              docIdStream[0] = true;
+              LeafCollector.super.collect(stream);
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              expectedCount[0]++;
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {}
+          },
+          context.reader().getLiveDocs(),
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      if (docIdStream[0] == false) {
+        // Don't spend cycles running the query one more time, it doesn't use the DocIdStream
+        // optimization.
+        continue;
+      }
+      scorer = weight.bulkScorer(context);
+      if (scorer == null) {
+        assertEquals(0, expectedCount[0]);
+        continue;
+      }
+      int[] actualCount = {0};
+      scorer.score(
+          new LeafCollector() {
+            @Override
+            public void collect(DocIdStream stream) throws IOException {
+              actualCount[0] += stream.count();
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              actualCount[0]++;
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {}
+          },
+          context.reader().getLiveDocs(),
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      assertEquals(expectedCount[0], actualCount[0]);
     }
   }
 }

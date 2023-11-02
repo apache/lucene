@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import java.util.List;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.Directory;
 
 /**
  * Instances of this reader type can only be used to get stored fields from the underlying
@@ -44,7 +44,7 @@ import org.apache.lucene.store.*;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract class CompositeReader extends IndexReader {
+public abstract non-sealed class CompositeReader extends IndexReader {
 
   private volatile CompositeReaderContext readerContext = null; // lazy init
 

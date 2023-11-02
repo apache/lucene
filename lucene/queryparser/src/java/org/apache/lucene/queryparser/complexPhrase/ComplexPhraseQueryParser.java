@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanNotQuery;
@@ -256,7 +255,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
       final Query contents = this.contents[0];
       // ArrayList spanClauses = new ArrayList();
       if (contents instanceof TermQuery
@@ -284,7 +283,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
         // HashSet bclauseterms=new HashSet();
         Query qc = clause.getQuery();
         // Rewrite this clause e.g one* becomes (one OR onerous)
-        qc = new IndexSearcher(reader).rewrite(qc);
+        qc = indexSearcher.rewrite(qc);
         if (clause.getOccur().equals(BooleanClause.Occur.MUST_NOT)) {
           numNegatives++;
         }

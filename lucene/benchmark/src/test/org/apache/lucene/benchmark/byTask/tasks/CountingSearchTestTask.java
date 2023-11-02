@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.benchmark.byTask.tasks;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 
 /** Test Search task which counts number of searches. */
@@ -47,6 +48,6 @@ public class CountingSearchTestTask extends SearchTask {
   }
 
   public long getElapsedMillis() {
-    return lastNanos - startNanos / 1_000_000;
+    return TimeUnit.NANOSECONDS.toMillis(lastNanos - startNanos);
   }
 }

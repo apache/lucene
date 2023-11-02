@@ -75,6 +75,56 @@ public class TestGeoPath extends LuceneTestCase {
   }
 
   @Test
+  public void test11956() {
+    // Geo3D:GeoStandardPath: {planetmodel=PlanetModel.SPHERE, width=1.1344640137963142(65.0),
+    //  points={[[lat=-1.289777264488089, lon=3.0020962766211765([X=-0.2746408902222561,
+    // Y=0.0385618624109501, Z=-0.96077331571257])],
+    // [lat=-1.50113114141284, lon=2.545709547022838([X=-0.057611985525967656,
+    // Y=0.03906726187412952, Z=-0.997574362227405])],
+    // [lat=1.079898704051346, lon=1.7302019835278628([X=-0.07482880413595766,
+    // Y=0.46544097200827866, Z=0.8819100587064257])],
+    // [lat=0.4651998030659944, lon=-1.731044309953635([X=-0.14260656697812318,
+    // Y=-0.8822812296622808, Z=0.44860138078290357])],
+    // [lat=-0.058395560871481914, lon=-1.467184843697817([X=0.10324990479626492,
+    // Y=-0.9929417354486986, Z=-0.058362377981787186])]]}}
+    // intersect Geo3D:GeoDegeneratePoint:
+    //   {planetmodel=PlanetModel.SPHERE, lat=0.7332272528281016(42.01082701102197),
+    // lon=0.7287424582438785(41.753867209362866)}
+    // 1> XYZBounds of PathNode inconsistent with isWithin of children!
+    // XYZBounds=XYZBounds: [xmin=-0.9626183326283182 xmax=0.8721428398024924
+    // ymin=-0.8870855520255307 ymax=0.47448488489820667 zmin=0.06959538905950932 zmax=1.000000001]
+    //  child1=CutoffDualCircleSegmentEndpoint: SegmentEndpoint ([lat=1.079898704051346,
+    // lon=1.7302019835278628([X=-0.07482880413595766, Y=0.46544097200827866,
+    // Z=0.8819100587064257])])
+    //  child2=PathSegment ([X=0.8628106851303438, Y=0.11314342359669693, Z=0.4927030417216086],
+    // [X=0.8341665648133144, Y=-0.4564285905826633, Z=0.30957888146040907], [X=-0.9547028437115205,
+    // Y=-0.2893077287099765, Z=0.06959539006148753], [X=-0.9260587233944911, Y=0.28026428546938364,
+    // Z=0.25271955032268706])
+    //  Point=[0.5543009381999603, 0.49479972312729714, 0.6692710242523532]
+    // 1> Child1: Bounds=XYZBounds: [xmin=-0.9260587243944911 xmax=0.8721428398024924
+    // ymin=-0.024137541083565 ymax=0.4654409730082787 zmin=0.25271954932268703
+    // zmax=0.8819100597064257] isWithin=true
+    // 1> Child2: Bounds=XYZBounds: [xmin=-0.9626183326283182 xmax=0.862810686131634
+    // ymin=-0.8870855520255307 ymax=0.47448488489820667 zmin=0.06959538905950932 zmax=1.000000001]
+    // isWithin=false
+
+    GeoStandardPath p;
+    p = new GeoStandardPath(PlanetModel.SPHERE, 1.1344640137963142);
+    p.addPoint(-1.289777264488089, 3.0020962766211765);
+    p.addPoint(-1.50113114141284, 2.545709547022838);
+    p.addPoint(1.079898704051346, 1.7302019835278628);
+    p.addPoint(0.4651998030659944, -1.731044309953635);
+    p.addPoint(-0.058395560871481914, -1.467184843697817);
+    p.done();
+    GeoPoint gp = new GeoPoint(0.5543009381999603, 0.49479972312729714, 0.6692710242523532);
+    assertTrue(PlanetModel.SPHERE.pointOnSurface(gp));
+    assertTrue(p.isWithin(gp));
+    // XYZBounds bounds = new XYZBounds();
+    // p.getBounds(bounds);
+    // assertTrue(bounds.isWithin(gp));
+  }
+
+  @Test
   public void testPathPointWithin() {
     // Tests whether we can properly detect whether a point is within a path or not
     GeoStandardPath p;
@@ -372,7 +422,14 @@ public class TestGeoPath extends LuceneTestCase {
     // Compute the inside distance using the legacy formula with the legacy shape
     final double oldFormulaLegacyDistance = legacyPath.computeDistance(DistanceStyle.ARC, carPoint);
 
-    // These should be about the same
+    // These should be about the same, but something is wrong with GeoDegeneratePath and they
+    // aren't.
+    // More research needed.
+    System.out.println(
+        "Zero width path nearestDistance = "
+            + distance
+            + ", standard path nearestDistance = "
+            + legacyDistance);
     assertEquals(legacyDistance, distance, 1e-12);
     assertEquals(oldFormulaLegacyDistance, oldFormulaDistance, 1e-12);
     // This isn't true because example search center is off of the path.

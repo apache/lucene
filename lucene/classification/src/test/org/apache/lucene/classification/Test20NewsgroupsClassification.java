@@ -63,6 +63,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Test;
 
@@ -131,7 +132,11 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
         long endIndex = System.nanoTime();
         System.out.println(
-            "Indexed " + docsIndexed + " docs in " + (endIndex - startIndex) / 1_000_000_000 + "s");
+            "Indexed "
+                + docsIndexed
+                + " docs in "
+                + TimeUnit.NANOSECONDS.toSeconds(endIndex - startIndex)
+                + "s");
 
         indexWriter.close();
       }
@@ -161,7 +166,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         reader.close();
         reader = DirectoryReader.open(train); // using the train index from now on
         long endSplit = System.nanoTime();
-        System.out.println("Splitting done in " + (endSplit - startSplit) / 1_000_000_000 + "s");
+        System.out.println(
+            "Splitting done in " + TimeUnit.NANOSECONDS.toSeconds(endSplit - startSplit) + "s");
       }
 
       classifiers.add(
@@ -325,22 +331,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       service.shutdown();
 
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
-      directory.close();
-      if (testReader != null) {
-        testReader.close();
-      }
-      if (test != null) {
-        test.close();
-      }
-      if (train != null) {
-        train.close();
-      }
-      if (cv != null) {
-        cv.close();
-      }
+      IOUtils.close(reader, directory, testReader, test, train, cv);
 
       for (Classifier<BytesRef> c : classifiers) {
         if (c instanceof Closeable) {
@@ -371,7 +362,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
                         ar, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
               }
               final long endTime = System.nanoTime();
-              final int elapse = (int) (endTime - startTime) / 1_000_000_000;
+              final int elapse = (int) TimeUnit.NANOSECONDS.toSeconds(endTime - startTime);
 
               return " * "
                   + classifier

@@ -207,7 +207,7 @@ public class TestBooleanOr extends LuceneTestCase {
 
   private static BulkScorer scorer(int... matches) {
     return new BulkScorer() {
-      final ScoreAndDoc scorer = new ScoreAndDoc();
+      final Score scorer = new Score();
       int i = 0;
 
       @Override
@@ -218,9 +218,9 @@ public class TestBooleanOr extends LuceneTestCase {
           i += 1;
         }
         while (i < matches.length && matches[i] < max) {
-          scorer.doc = matches[i];
-          if (acceptDocs == null || acceptDocs.get(scorer.doc)) {
-            collector.collect(scorer.doc);
+          int doc = matches[i];
+          if (acceptDocs == null || acceptDocs.get(doc)) {
+            collector.collect(doc);
           }
           i += 1;
         }

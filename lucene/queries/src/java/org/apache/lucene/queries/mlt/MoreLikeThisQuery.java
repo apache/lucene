@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
@@ -57,8 +57,8 @@ public class MoreLikeThisQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    MoreLikeThis mlt = new MoreLikeThis(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    MoreLikeThis mlt = new MoreLikeThis(indexSearcher.getIndexReader());
 
     mlt.setFieldNames(moreLikeFields);
     mlt.setAnalyzer(analyzer);

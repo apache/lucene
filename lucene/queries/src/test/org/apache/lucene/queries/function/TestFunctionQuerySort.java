@@ -134,7 +134,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     // Verify that sorting works in general
     int i = 0;
     for (ScoreDoc hit : hits.scoreDocs) {
-      int valueFromDoc = Integer.parseInt(reader.document(hit.doc).get("value"));
+      int valueFromDoc = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
       assertEquals(++i, valueFromDoc);
     }
 
@@ -149,7 +149,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     // Verify that hits are actually "after"
     int afterValue = ((Double) afterHit.fields[0]).intValue();
     for (ScoreDoc hit : hits.scoreDocs) {
-      int val = Integer.parseInt(reader.document(hit.doc).get("value"));
+      int val = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
       assertTrue(afterValue <= val);
       assertFalse(hit.doc == afterHit.doc);
     }

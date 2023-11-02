@@ -43,6 +43,7 @@ public final class RomanianAnalyzer extends StopwordAnalyzerBase {
 
   /** File containing default Romanian stopwords. */
   public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+
   /** The comment character in the stopwords file. All lines prefixed with this will be ignored. */
   private static final String STOPWORDS_COMMENT = "#";
 

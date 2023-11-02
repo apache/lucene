@@ -313,9 +313,10 @@ public class TestStressIndexing2 extends LuceneTestCase {
       // TODO: improve this
       LeafReader sub = ctx.reader();
       Bits liveDocs = sub.getLiveDocs();
+      StoredFields storedFields = sub.storedFields();
       System.out.println("  " + ((SegmentReader) sub).getSegmentInfo());
       for (int docID = 0; docID < sub.maxDoc(); docID++) {
-        Document doc = sub.document(docID);
+        Document doc = storedFields.document(docID);
         if (liveDocs == null || liveDocs.get(docID)) {
           System.out.println("    docID=" + docID + " id:" + doc.get("id"));
         } else {
@@ -415,20 +416,20 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
       // verify stored fields are equivalent
       try {
-        verifyEquals(r1.document(id1), r2.document(id2));
+        verifyEquals(r1.storedFields().document(id1), r2.storedFields().document(id2));
       } catch (Throwable t) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2 + " term=" + term);
-        System.out.println("  d1=" + r1.document(id1));
-        System.out.println("  d2=" + r2.document(id2));
+        System.out.println("  d1=" + r1.storedFields().document(id1));
+        System.out.println("  d2=" + r2.storedFields().document(id2));
         throw t;
       }
 
       try {
         // verify term vectors are equivalent
-        verifyEquals(r1.getTermVectors(id1), r2.getTermVectors(id2));
+        verifyEquals(r1.termVectors().get(id1), r2.termVectors().get(id2));
       } catch (Throwable e) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2);
-        Fields tv1 = r1.getTermVectors(id1);
+        Fields tv1 = r1.termVectors().get(id1);
         System.out.println("  d1=" + tv1);
         if (tv1 != null) {
           PostingsEnum dpEnum = null;
@@ -461,7 +462,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
           }
         }
 
-        Fields tv2 = r2.getTermVectors(id2);
+        Fields tv2 = r2.termVectors().get(id2);
         System.out.println("  d2=" + tv2);
         if (tv2 != null) {
           PostingsEnum dpEnum = null;

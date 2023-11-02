@@ -31,7 +31,7 @@ import org.apache.lucene.search.Weight;
 class QueryProfilerScorer extends Scorer {
 
   private final Scorer scorer;
-  private QueryProfilerWeight profileWeight;
+  private final QueryProfilerWeight profileWeight;
 
   private final QueryProfilerTimer scoreTimer,
       nextDocTimer,

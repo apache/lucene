@@ -24,7 +24,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -253,8 +252,8 @@ public class PointVectorStrategy extends SpatialStrategy {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query rewritten = inner.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query rewritten = inner.rewrite(indexSearcher);
       if (rewritten == inner) return this;
       return new DistanceRangeQuery(rewritten, distanceSource, limit);
     }

@@ -27,12 +27,16 @@ public interface DistanceStyle {
 
   /** Arc distance calculator */
   public static final ArcDistance ARC = ArcDistance.INSTANCE;
+
   /** Linear distance calculator */
   public static final LinearDistance LINEAR = LinearDistance.INSTANCE;
+
   /** Linear distance squared calculator */
   public static final LinearSquaredDistance LINEAR_SQUARED = LinearSquaredDistance.INSTANCE;
+
   /** Normal distance calculator */
   public static final NormalDistance NORMAL = NormalDistance.INSTANCE;
+
   /** Normal distance squared calculator */
   public static final NormalSquaredDistance NORMAL_SQUARED = NormalSquaredDistance.INSTANCE;
 
@@ -114,12 +118,15 @@ public interface DistanceStyle {
    * converted to aggregation form before aggregation is attempted, and they should be converted
    * back from aggregation form to yield a final result.
    *
-   * @param distance1 is the first aggregation form distance.
-   * @param distance2 is the second aggregation form distance.
+   * @param distances are the distances to aggregate.
    * @return the combined aggregation form distance.
    */
-  public default double aggregateDistances(final double distance1, final double distance2) {
-    return distance1 + distance2;
+  public default double aggregateDistances(final double... distances) {
+    double rval = 0.0;
+    for (final double distance : distances) {
+      rval += distance;
+    }
+    return rval;
   }
 
   /**

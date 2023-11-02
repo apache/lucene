@@ -26,7 +26,6 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -377,13 +376,6 @@ public class FieldType implements IndexableFieldType {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
-    }
-    if (numDimensions > VectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
-              + "); got "
-              + numDimensions);
     }
     this.vectorDimension = numDimensions;
     this.vectorSimilarityFunction = Objects.requireNonNull(similarity);

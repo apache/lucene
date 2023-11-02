@@ -215,7 +215,7 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
         SortedDocValues values,
         DocIdSetIterator approximationScorer,
         LongValues segmentOrdToGlobalOrdLookup) {
-      super(weight, values, approximationScorer);
+      super(weight, values, approximationScorer, 1);
       this.score = score;
       this.foundOrds = foundOrds;
       this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
@@ -255,7 +255,7 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
         LongBitSet foundOrds,
         SortedDocValues values,
         DocIdSetIterator approximationScorer) {
-      super(weight, values, approximationScorer);
+      super(weight, values, approximationScorer, 1);
       this.score = score;
       this.foundOrds = foundOrds;
     }

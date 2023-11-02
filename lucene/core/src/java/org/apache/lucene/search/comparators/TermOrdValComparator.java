@@ -475,7 +475,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
   private class CompetitiveIterator extends DocIdSetIterator {
 
-    private static final int MAX_TERMS = 128;
+    private static final int MAX_TERMS = 1024;
 
     private final LeafReaderContext context;
     private final int maxDoc;

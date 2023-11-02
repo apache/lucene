@@ -83,7 +83,11 @@ public final class SegmentReader extends CodecReader {
     this.si = si.clone();
     this.originalSi = si;
     this.metaData =
-        new LeafMetaData(createdVersionMajor, si.info.getMinVersion(), si.info.getIndexSort());
+        new LeafMetaData(
+            createdVersionMajor,
+            si.info.getMinVersion(),
+            si.info.getIndexSort(),
+            si.info.getHasBlocks());
 
     // We pull liveDocs/DV updates from disk:
     this.isNRT = false;
@@ -247,13 +251,17 @@ public final class SegmentReader extends CodecReader {
   @Override
   public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    return core.termVectorsLocal.get();
+    if (core.termVectorsReaderOrig == null) {
+      return null;
+    } else {
+      return core.termVectorsReaderOrig.clone();
+    }
   }
 
   @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
-    return core.fieldsReaderLocal.get();
+    return core.fieldsReaderOrig.clone();
   }
 
   @Override

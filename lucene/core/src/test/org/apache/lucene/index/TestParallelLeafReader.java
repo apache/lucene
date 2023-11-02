@@ -21,8 +21,14 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -138,7 +144,7 @@ public class TestParallelLeafReader extends LuceneTestCase {
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          pr.document(0);
+          pr.storedFields().document(0);
         });
 
     // noop:
@@ -194,10 +200,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
     // with overlapping
     ParallelLeafReader pr =
         new ParallelLeafReader(false, new LeafReader[] {ir1, ir2}, new LeafReader[] {ir1});
-    assertEquals("v1", pr.document(0).get("f1"));
-    assertEquals("v1", pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertEquals("v1", pr.storedFields().document(0).get("f1"));
+    assertEquals("v1", pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNotNull(pr.terms("f1"));
     assertNotNull(pr.terms("f2"));
@@ -207,10 +213,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
 
     // no stored fields at all
     pr = new ParallelLeafReader(false, new LeafReader[] {ir2}, new LeafReader[0]);
-    assertNull(pr.document(0).get("f1"));
-    assertNull(pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertNull(pr.storedFields().document(0).get("f1"));
+    assertNull(pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNull(pr.terms("f1"));
     assertNull(pr.terms("f2"));
@@ -220,10 +226,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
 
     // without overlapping
     pr = new ParallelLeafReader(true, new LeafReader[] {ir2}, new LeafReader[] {ir1});
-    assertEquals("v1", pr.document(0).get("f1"));
-    assertEquals("v1", pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertEquals("v1", pr.storedFields().document(0).get("f1"));
+    assertEquals("v1", pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNull(pr.terms("f1"));
     assertNull(pr.terms("f2"));
@@ -246,10 +252,12 @@ public class TestParallelLeafReader extends LuceneTestCase {
     ScoreDoc[] parallelHits = parallel.search(query, 1000).scoreDocs;
     ScoreDoc[] singleHits = single.search(query, 1000).scoreDocs;
     assertEquals(parallelHits.length, singleHits.length);
+    StoredFields parallelFields = parallel.storedFields();
+    StoredFields singleFields = single.storedFields();
     for (int i = 0; i < parallelHits.length; i++) {
       assertEquals(parallelHits[i].score, singleHits[i].score, 0.001f);
-      Document docParallel = parallel.doc(parallelHits[i].doc);
-      Document docSingle = single.doc(singleHits[i].doc);
+      Document docParallel = parallelFields.document(parallelHits[i].doc);
+      Document docSingle = singleFields.document(singleHits[i].doc);
       assertEquals(docParallel.get("f1"), docSingle.get("f1"));
       assertEquals(docParallel.get("f2"), docSingle.get("f2"));
       assertEquals(docParallel.get("f3"), docSingle.get("f3"));

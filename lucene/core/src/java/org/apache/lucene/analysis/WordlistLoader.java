@@ -40,9 +40,9 @@ public class WordlistLoader {
   private WordlistLoader() {}
 
   /**
-   * Reads lines from a Reader and adds every line as an entry to a CharArraySet (omitting leading
-   * and trailing whitespace). Every line of the Reader should contain only one word. The words need
-   * to be in lowercase if you make use of an Analyzer which uses LowerCaseFilter (like
+   * Reads lines from a Reader and adds every non-blank line as an entry to a CharArraySet (omitting
+   * leading and trailing whitespace). Every line of the Reader should contain only one word. The
+   * words need to be in lowercase if you make use of an Analyzer which uses LowerCaseFilter (like
    * StandardAnalyzer).
    *
    * @param reader Reader containing the wordlist
@@ -53,7 +53,10 @@ public class WordlistLoader {
     try (BufferedReader br = getBufferedReader(reader)) {
       String word = null;
       while ((word = br.readLine()) != null) {
-        result.add(word.trim());
+        word = word.trim();
+        // skip blank lines
+        if (word.isEmpty()) continue;
+        result.add(word);
       }
     }
     return result;
@@ -101,10 +104,10 @@ public class WordlistLoader {
   }
 
   /**
-   * Reads lines from a Reader and adds every non-comment line as an entry to a CharArraySet
-   * (omitting leading and trailing whitespace). Every line of the Reader should contain only one
-   * word. The words need to be in lowercase if you make use of an Analyzer which uses
-   * LowerCaseFilter (like StandardAnalyzer).
+   * Reads lines from a Reader and adds every non-blank non-comment line as an entry to a
+   * CharArraySet (omitting leading and trailing whitespace). Every line of the Reader should
+   * contain only one word. The words need to be in lowercase if you make use of an Analyzer which
+   * uses LowerCaseFilter (like StandardAnalyzer).
    *
    * @param reader Reader containing the wordlist
    * @param comment The string representing a comment.
@@ -117,7 +120,10 @@ public class WordlistLoader {
       String word = null;
       while ((word = br.readLine()) != null) {
         if (word.startsWith(comment) == false) {
-          result.add(word.trim());
+          word = word.trim();
+          // skip blank lines
+          if (word.isEmpty()) continue;
+          result.add(word);
         }
       }
     }

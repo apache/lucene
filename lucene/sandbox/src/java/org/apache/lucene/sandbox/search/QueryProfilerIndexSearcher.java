@@ -63,7 +63,7 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
       timer.stop();
       profiler.pollLast();
     }
-    return new QueryProfilerWeight(query, weight, profile);
+    return new QueryProfilerWeight(weight, profile);
   }
 
   /**

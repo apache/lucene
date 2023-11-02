@@ -30,6 +30,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -247,12 +248,13 @@ public class TestSearchAfter extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("  all.totalHits.value=" + all.totalHits.value);
       int upto = 0;
+      StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : all.scoreDocs) {
         System.out.println(
             "    hit "
                 + (upto++)
                 + ": id="
-                + searcher.doc(scoreDoc.doc).get("id")
+                + storedFields.document(scoreDoc.doc).get("id")
                 + " "
                 + scoreDoc);
       }
@@ -303,13 +305,16 @@ public class TestSearchAfter extends LuceneTestCase {
 
   void assertPage(int pageStart, TopDocs all, TopDocs paged) throws IOException {
     assertEquals(all.totalHits.value, paged.totalHits.value);
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < paged.scoreDocs.length; i++) {
       ScoreDoc sd1 = all.scoreDocs[pageStart + i];
       ScoreDoc sd2 = paged.scoreDocs[i];
       if (VERBOSE) {
         System.out.println("    hit " + (pageStart + i));
-        System.out.println("      expected id=" + searcher.doc(sd1.doc).get("id") + " " + sd1);
-        System.out.println("        actual id=" + searcher.doc(sd2.doc).get("id") + " " + sd2);
+        System.out.println(
+            "      expected id=" + storedFields.document(sd1.doc).get("id") + " " + sd1);
+        System.out.println(
+            "        actual id=" + storedFields.document(sd2.doc).get("id") + " " + sd2);
       }
       assertEquals(sd1.doc, sd2.doc);
       assertEquals(sd1.score, sd2.score, 0f);

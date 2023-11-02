@@ -40,8 +40,8 @@ import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
 
@@ -611,6 +611,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new int[] {1, 1, 3, 1, 2, 1, 1, 1},
         7);
   }
+
   // This graph can create a disconnected input node that is farther ahead in the output than its
   // subsequent input node.
   // Exceptions: Free too early or dropped tokens.
@@ -780,7 +781,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     acceptStrings.sort(Comparator.naturalOrder());
 
     acceptStrings = acceptStrings.stream().limit(wordCount).collect(Collectors.toList());
-    Automaton nonFlattenedAutomaton = DaciukMihovAutomatonBuilder.build(acceptStrings);
+    Automaton nonFlattenedAutomaton = Automata.makeStringUnion(acceptStrings);
 
     TokenStream ts = AutomatonToTokenStream.toTokenStream(nonFlattenedAutomaton);
     TokenStream flattenedTokenStream = new FlattenGraphFilter(ts);

@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.spatial.prefix;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
-import static org.locationtech.spatial4j.shape.SpatialRelation.*;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.locationtech.spatial4j.shape.SpatialRelation.CONTAINS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.DISJOINT;
+import static org.locationtech.spatial4j.shape.SpatialRelation.INTERSECTS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.WITHIN;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;

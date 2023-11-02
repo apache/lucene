@@ -970,7 +970,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           DirectoryReader ir1 = DirectoryReader.open(this);
           int numDocs1 = ir1.numDocs();
           ir1.close();
-          new IndexWriter(this, new IndexWriterConfig(null)).close();
+          // Don't commit on close, so that no merges will be scheduled.
+          new IndexWriter(this, new IndexWriterConfig(null).setCommitOnClose(false)).close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
           ir2.close();
@@ -1115,9 +1116,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
   // full checks. we randomly exercise "raw" directories anyway. We ensure default impls are used:
 
   @Override
-  public final ChecksumIndexInput openChecksumInput(String name, IOContext context)
-      throws IOException {
-    return super.openChecksumInput(name, context);
+  public final ChecksumIndexInput openChecksumInput(String name) throws IOException {
+    return super.openChecksumInput(name);
   }
 
   @Override

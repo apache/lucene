@@ -12,9 +12,14 @@ Run all unit tests:
 
 gradlew test
 
-Run all verification tasks, including tests:
+Run all(*) verification tasks, including tests:
 
 gradlew check
+
+(*) This step may omit certain validation tasks (errorprone, for example)
+    that are slow or require external resources. A pull request runs all 
+    those locally omitted tasks on the CI (jenkins, gh actions).
+    For this reason, it's a good idea to run patches via the CI.
 
 Run all verification tasks, excluding tests (-x is gradle's generic task
 exclusion mechanism):
@@ -126,6 +131,15 @@ to be dumped directly to the console. Run your verbose tests explicitly
 specifying the project and test task or a fully qualified task path. Example:
 
 gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
+
+
+Larger heap size
+--------------------------
+
+By default tests run with a 512 MB max heap.  But some tests (monster/nightly)
+need more heap.  Use "-Dtests.heapsize" for this:
+
+  gradlew -p lucene/core test --tests "Test2BFST" -Dtest.heapsize=32g
 
 
 Run GUI tests headlessly with Xvfb (Linux only)

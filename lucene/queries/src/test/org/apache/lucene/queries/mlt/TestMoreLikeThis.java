@@ -97,7 +97,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     mlt = this.getDefaultMoreLikeThis(reader);
   }
 
-  private MoreLikeThis getDefaultMoreLikeThis(IndexReader reader) {
+  private MoreLikeThis getDefaultMoreLikeThis(IndexReader reader) throws IOException {
     MoreLikeThis mlt = new MoreLikeThis(reader);
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
     mlt.setAnalyzer(analyzer);

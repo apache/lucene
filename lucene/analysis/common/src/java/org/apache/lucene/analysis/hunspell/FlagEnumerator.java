@@ -60,6 +60,17 @@ class FlagEnumerator {
     return new Lookup(result);
   }
 
+  static boolean hasFlagInSortedArray(char flag, char[] array, int start, int length) {
+    if (flag == Dictionary.FLAG_UNSET) return false;
+
+    for (int i = start; i < start + length; i++) {
+      char c = array[i];
+      if (c == flag) return true;
+      if (c > flag) return false;
+    }
+    return false;
+  }
+
   static class Lookup {
     private final char[] data;
 
@@ -68,15 +79,7 @@ class FlagEnumerator {
     }
 
     boolean hasFlag(int entryId, char flag) {
-      if (entryId < 0 || flag == Dictionary.FLAG_UNSET) return false;
-
-      int length = data[entryId];
-      for (int i = entryId + 1; i < entryId + 1 + length; i++) {
-        char c = data[i];
-        if (c == flag) return true;
-        if (c > flag) return false;
-      }
-      return false;
+      return entryId >= 0 && hasFlagInSortedArray(flag, data, entryId + 1, data[entryId]);
     }
 
     boolean hasAnyFlag(int entryId, char[] sortedFlags) {

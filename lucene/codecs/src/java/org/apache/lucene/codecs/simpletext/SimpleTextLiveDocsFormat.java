@@ -61,7 +61,7 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
     ChecksumIndexInput in = null;
     boolean success = false;
     try {
-      in = dir.openChecksumInput(fileName, context);
+      in = dir.openChecksumInput(fileName);
 
       SimpleTextUtil.readLine(in, scratch);
       assert StringHelper.startsWith(scratch.get(), SIZE);

@@ -79,7 +79,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, FIELD_INFOS_EXTENSION);
-    ChecksumIndexInput input = directory.openChecksumInput(fileName, iocontext);
+    ChecksumIndexInput input = directory.openChecksumInput(fileName);
     BytesRefBuilder scratch = new BytesRefBuilder();
 
     boolean success = false;

@@ -30,7 +30,7 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -168,7 +168,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
           doc.add(new BinaryDocValuesField("binary_dv", new BytesRef(Integer.toString(docId))));
           doc.add(
               new SortedSetDocValuesField("sorted_set_dv", new BytesRef(Integer.toString(docId))));
-          doc.add(new KnnVectorField("vector", new float[] {(float) docId}));
+          doc.add(new KnnFloatVectorField("vector", new float[] {(float) docId}));
           doc.add(new NumericDocValuesField("foo", random().nextInt(20)));
 
           FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);
@@ -238,7 +238,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 leaf.getSortedNumericDocValues("sorted_numeric_dv");
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-            VectorValues vectorValues = leaf.getVectorValues("vector");
+            FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
@@ -253,7 +253,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 sorted_numeric_dv = leaf.getSortedNumericDocValues("sorted_numeric_dv");
                 sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
                 binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-                vectorValues = leaf.getVectorValues("vector");
+                vectorValues = leaf.getFloatVectorValues("vector");
                 prevValue = -1;
               }
               assertTrue(prevValue + " < " + ids.longValue(), prevValue < ids.longValue());
@@ -278,13 +278,15 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 
-              Fields termVectors = leaf.getTermVectors(idNext);
+              Fields termVectors = leaf.termVectors().get(idNext);
               assertTrue(
                   termVectors
                       .terms("term_vectors")
                       .iterator()
                       .seekExact(new BytesRef("test" + ids.longValue())));
-              assertEquals(Long.toString(ids.longValue()), leaf.document(idNext).get("string_id"));
+              assertEquals(
+                  Long.toString(ids.longValue()),
+                  leaf.storedFields().document(idNext).get("string_id"));
               IndexSearcher searcher = new IndexSearcher(r);
               TopDocs result =
                   searcher.search(LongPoint.newExactQuery("point_id", ids.longValue()), 1);

@@ -76,6 +76,8 @@ grant {
   permission java.lang.RuntimePermission "shutdownHooks";
   // needed by jacoco to instrument classes
   permission java.lang.RuntimePermission "defineClass";
+  // needed by jacoco for God knows what.
+  permission java.lang.RuntimePermission "createClassLoader";
 };
 
 // Grant all permissions to Gradle test runner classes.

@@ -259,24 +259,34 @@ class Circle2D implements Component2D {
 
     /** check if the point is within a distance */
     boolean contains(double x, double y);
+
     /** check if the line is within a distance */
     boolean intersectsLine(double aX, double aY, double bX, double bY);
+
     /** Relates this calculator to the provided bounding box */
     Relation relate(double minX, double maxX, double minY, double maxY);
+
     /** check if the bounding box is disjoint with this calculator bounding box */
     boolean disjoint(double minX, double maxX, double minY, double maxY);
+
     /** check if the bounding box is contains this calculator bounding box */
     boolean within(double minX, double maxX, double minY, double maxY);
+
     /** get min X of this calculator */
     double getMinX();
+
     /** get max X of this calculator */
     double getMaxX();
+
     /** get min Y of this calculator */
     double getMinY();
+
     /** get max Y of this calculator */
     double getMaxY();
+
     /** get center X */
     double geX();
+
     /** get center Y */
     double getY();
   }
