@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.path;
 import static org.apache.lucene.analysis.path.PathHierarchyTokenizer.DEFAULT_DELIMITER;
 import static org.apache.lucene.analysis.path.PathHierarchyTokenizer.DEFAULT_SKIP;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Random;
@@ -29,6 +30,19 @@ import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
+
+  private Analyzer analyzer =
+      new Analyzer() {
+        @Override
+        protected TokenStreamComponents createComponents(String fieldName) {
+          Tokenizer tokenizer = new PathHierarchyTokenizer();
+          return new TokenStreamComponents(tokenizer);
+        }
+      };
+
+  public void testTokenizerViaAnalyzerOutput() throws IOException {
+    assertAnalyzesTo(analyzer, "/a/b/c", new String[] {"/a", "/a/b", "/a/b/c"});
+  }
 
   public void testBasic() throws Exception {
     String path = "/a/b/c";
