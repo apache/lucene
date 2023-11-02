@@ -121,7 +121,8 @@ final class NodeHash<T> {
         if (node != 0) {
           // it was already in fallback -- promote to primary
           // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
-          primaryTable.set(pos, node, fallbackTable.getBytes(lastFallbackPos, lastFallbackNodeLength));
+          primaryTable.set(
+              pos, node, fallbackTable.getBytes(lastFallbackPos, lastFallbackNodeLength));
         } else {
           // not in fallback either -- freeze & add the incoming node
 
