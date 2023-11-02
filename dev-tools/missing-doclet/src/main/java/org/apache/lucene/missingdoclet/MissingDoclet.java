@@ -336,7 +336,8 @@ public class MissingDoclet extends StandardDoclet {
     }
 
     // Check for methods up the types tree.
-    if (element instanceof ExecutableElement thisMethod) {
+    if (element instanceof ExecutableElement) {
+      ExecutableElement thisMethod = (ExecutableElement) element;
       Iterable<Element> superTypes =
           () -> superTypeForInheritDoc(thisMethod.getEnclosingElement()).iterator();
 
@@ -381,19 +382,19 @@ public class MissingDoclet extends StandardDoclet {
 
   /** Checks there is a corresponding "param" tag for each method parameter */
   private void checkParameters(Element element, DocCommentTree tree) {
-    if (element instanceof ExecutableElement executableElement) {
+    if (element instanceof ExecutableElement) {
       // record each @param that we see
       Set<String> seenParameters = new HashSet<>();
       if (tree != null) {
         for (var tag : tree.getBlockTags()) {
-          if (tag instanceof ParamTree paramTree) {
-            var name = paramTree.getName().getName().toString();
+          if (tag instanceof ParamTree) {
+            var name = ((ParamTree)tag).getName().getName().toString();
             seenParameters.add(name);
           }
         }
       }
       // now compare the method's formal parameter list against it
-      for (var param : executableElement.getParameters()) {
+      for (var param : ((ExecutableElement)element).getParameters()) {
         var name = param.getSimpleName().toString();
         if (!seenParameters.contains(name)) {
           error(element, "missing javadoc @param for parameter '" + name + "'");
