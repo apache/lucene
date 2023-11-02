@@ -44,4 +44,24 @@ interface TermStateCodec {
    */
   IntBlockTermState decodeWithinBlock(
       BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int index);
+
+  /**
+   * Decode out a {@link IntBlockTermState} with the provided bit-unpacker, metadata byte slice and
+   * data byte slice, starting at `startBitIndex`.
+   *
+   * <p>Note: The dataBytes should contain enough bits to decode out the term state. passing more
+   * bytes than needed is fine but excessive ones are not used.
+   *
+   * <p>e.g. we want to decode a term state which contains value x, y and z, that has 18 bits in
+   * total. Assume x takes 4 bit, y takes 4 bit and z takes 10 bits.
+   *
+   * <p>Here is the visualization wh en we decode with startBitIndex=7
+   *
+   * <pre>
+   *     Note: little-endian bit order
+   *     [x.......][zyyyyxxx][zzzzzzzz][.......z]
+   * </pre>
+   */
+  IntBlockTermState decodeAt(
+      BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int startBitIndex);
 }

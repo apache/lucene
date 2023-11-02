@@ -104,6 +104,15 @@ final class TermStateCodecImpl implements TermStateCodec {
     return extract(dataBytes, bitUnpacker, startBitIndex, metadata.metadataPerComponent);
   }
 
+  @Override
+  public IntBlockTermState decodeAt(
+      BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int startBitIndex) {
+    assert metadataBytes.length == this.metadataBytesLength;
+
+    var metadata = deserializedMetadata(metadataBytes);
+    return extract(dataBytes, bitUnpacker, startBitIndex, metadata.metadataPerComponent);
+  }
+
   private MetadataAndTotalBitsPerTermState deserializedMetadata(BytesRef metadataBytes) {
     Metadata[] metadataPerComponent = new Metadata[components.length];
     ByteArrayDataInput byteArrayDataInput =

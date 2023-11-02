@@ -61,9 +61,11 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     // 0: DocFreq.bitWidth,
     // 1: DocStartFP.bitWidth,
     // [2-10]: DocStartFP.referenceValue;
+    int expectedDocFreqBitWidth = 64 - Long.numberOfLeadingZeros(maxDocFreqSeen);
+    int expectedDocStartFPBitWidth = 64 - Long.numberOfLeadingZeros(maxDocStartFPDeltaSeen);
     assertEquals(10, metadata.length);
-    assertEquals(64 - Long.numberOfLeadingZeros(maxDocFreqSeen), metadata[0]);
-    assertEquals(64 - Long.numberOfLeadingZeros(maxDocStartFPDeltaSeen), metadata[1]);
+    assertEquals(expectedDocFreqBitWidth, metadata[0]);
+    assertEquals(expectedDocStartFPBitWidth, metadata[1]);
     ByteArrayDataInput byteArrayDataInput = new ByteArrayDataInput(metadata, 2, 8);
     assertEquals(docStartFPBase, byteArrayDataInput.readLong());
 
@@ -76,6 +78,19 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
       assertEquals(termStatesArray[i].docFreq, decoded.docFreq);
       assertEquals(termStatesArray[i].docStartFP, decoded.docStartFP);
     }
+
+    // Also test decoding that doesn't begin at the start of the block.
+    int pos = random().nextInt(termStatesArray.length);
+    int startBitIndex = random().nextInt(pos);
+    dataBytes =
+        new BytesRef(
+            bitPerBytePacker.getBytes(),
+            pos * (expectedDocFreqBitWidth + expectedDocStartFPBitWidth) - startBitIndex,
+            expectedDocFreqBitWidth + expectedDocStartFPBitWidth);
+    IntBlockTermState decoded =
+        codec.decodeAt(metadataBytes, dataBytes, bitPerBytePacker, startBitIndex);
+    assertEquals(termStatesArray[pos].docFreq, decoded.docFreq);
+    assertEquals(termStatesArray[pos].docStartFP, decoded.docStartFP);
   }
 }
 
