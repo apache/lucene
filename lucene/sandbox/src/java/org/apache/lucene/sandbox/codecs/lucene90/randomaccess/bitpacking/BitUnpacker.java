@@ -17,7 +17,9 @@
 
 package org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking;
 
+import org.apache.lucene.util.BytesRef;
+
 public interface BitUnpacker {
 
-  long unpack(byte[] data, int startBitIndex, int bitWidth);
+  long unpack(BytesRef bytesRef, int startBitIndex, int bitWidth);
 }

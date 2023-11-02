@@ -19,21 +19,27 @@ package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
 import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitPacker;
+import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitUnpacker;
 import org.apache.lucene.util.BytesRef;
 
 interface TermStateCodec {
 
   /**
-   * Encode the sequence of {@link IntBlockTermState}s with the given bitPacker
+   * Encode the sequence of {@link IntBlockTermState}s with the given bitPacker into a block of
+   * bytes.
    *
    * @return the metadata associated with the encoded bytes
    */
   byte[] encode(IntBlockTermState[] inputs, BitPacker bitPacker);
 
   /**
-   * Decode out a {@link IntBlockTermState} with provided metadata bye slice and data byte slice
+   * Decode out a {@link IntBlockTermState} with the provided bit-unpacker, metadata byte slice and
+   * data byte slice, at the given index within an encoded block.
+   *
+   * <p>Note: This method expects the dataBytes contains the bytes for the whole block.
    *
    * @return the decoded term state
    */
-  IntBlockTermState decode(BytesRef metadataBytes, BytesRef dataBytes);
+  IntBlockTermState decodeWithinBlock(
+      BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int index);
 }
