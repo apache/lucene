@@ -30,13 +30,15 @@ interface TermStateCodec {
    *
    * @return the metadata associated with the encoded bytes
    */
-  byte[] encode(IntBlockTermState[] inputs, BitPacker bitPacker);
+  byte[] encodeBlock(IntBlockTermState[] inputs, BitPacker bitPacker);
 
   /**
    * Decode out a {@link IntBlockTermState} with the provided bit-unpacker, metadata byte slice and
    * data byte slice, at the given index within an encoded block.
    *
-   * <p>Note: This method expects the dataBytes contains the bytes for the whole block.
+   * <p>Note: This method expects dataBytes that starts at the start of the block. Also, dataBytes
+   * should contain enough bytes (but not necessarily the whole block) to decode at the term state
+   * at `index`.
    *
    * @return the decoded term state
    */

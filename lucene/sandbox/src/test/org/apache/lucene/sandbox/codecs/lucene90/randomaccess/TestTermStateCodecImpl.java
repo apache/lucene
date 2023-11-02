@@ -55,7 +55,7 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     IntBlockTermState[] termStatesArray = termStates.toArray(IntBlockTermState[]::new);
 
     BitPerBytePacker bitPerBytePacker = new BitPerBytePacker();
-    byte[] metadata = codec.encode(termStatesArray, bitPerBytePacker);
+    byte[] metadata = codec.encodeBlock(termStatesArray, bitPerBytePacker);
 
     // For the metadata, we expect
     // 0: DocFreq.bitWidth,

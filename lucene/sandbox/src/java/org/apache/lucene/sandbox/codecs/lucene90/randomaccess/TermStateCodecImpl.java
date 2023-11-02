@@ -45,7 +45,7 @@ final class TermStateCodecImpl implements TermStateCodec {
   }
 
   @Override
-  public byte[] encode(IntBlockTermState[] inputs, BitPacker bitPacker) {
+  public byte[] encodeBlock(IntBlockTermState[] inputs, BitPacker bitPacker) {
     Metadata[] metadataPerComponent = getMetadataPerComponent(inputs);
     byte[] metadataBytes = serializeMetadata(metadataPerComponent);
 

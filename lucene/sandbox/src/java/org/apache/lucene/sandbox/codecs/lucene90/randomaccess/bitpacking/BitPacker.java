@@ -17,7 +17,9 @@
 
 package org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking;
 
+/** Interface for bit-packing */
 public interface BitPacker {
 
+  /** Pack the low `numBits` bits of `value` */
   void add(long value, int numBits);
 }
