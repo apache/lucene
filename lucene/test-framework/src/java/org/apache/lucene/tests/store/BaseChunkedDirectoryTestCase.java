@@ -22,12 +22,13 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
@@ -266,10 +267,6 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   private void assertChunking(Random random, int chunkSize) throws Exception {
     Path path = createTempDir("mmap" + chunkSize);
     Directory chunkedDir = getDirectory(path, chunkSize);
-    // we will map a lot, try to turn on the unmap hack
-    if (chunkedDir instanceof MMapDirectory && MMapDirectory.UNMAP_SUPPORTED) {
-      ((MMapDirectory) chunkedDir).setUseUnmap(true);
-    }
     MockDirectoryWrapper dir = new MockDirectoryWrapper(random, chunkedDir);
     RandomIndexWriter writer =
         new RandomIndexWriter(
@@ -291,13 +288,55 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     IndexReader reader = writer.getReader();
     writer.close();
 
+    StoredFields storedFields = reader.storedFields();
     int numAsserts = atLeast(100);
     for (int i = 0; i < numAsserts; i++) {
       int docID = random.nextInt(numDocs);
-      assertEquals("" + docID, reader.document(docID).get("docid"));
+      assertEquals("" + docID, storedFields.document(docID).get("docid"));
     }
     reader.close();
     dir.close();
+  }
+
+  public void testBytesCrossBoundary() throws Exception {
+    int num =
+        TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 1000) : TestUtil.nextInt(random(), 50, 100);
+    byte[] bytes = new byte[num];
+    random().nextBytes(bytes);
+    try (Directory dir = getDirectory(createTempDir("testBytesCrossBoundary"), 16)) {
+      try (IndexOutput out = dir.createOutput("bytesCrossBoundary", newIOContext(random()))) {
+        out.writeBytes(bytes, bytes.length);
+      }
+      try (IndexInput input = dir.openInput("bytesCrossBoundary", newIOContext(random()))) {
+        RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+        assertEquals(input.length(), slice.length());
+        assertBytes(slice, bytes, 0);
+
+        // subslices
+        for (int offset = 1; offset < bytes.length; offset++) {
+          RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+          assertEquals(input.length() - offset, subslice.length());
+          assertBytes(subslice, bytes, offset);
+        }
+
+        // with padding
+        for (int i = 1; i < 7; i++) {
+          String name = "bytes-" + i;
+          IndexOutput o = dir.createOutput(name, newIOContext(random()));
+          byte[] junk = new byte[i];
+          random().nextBytes(junk);
+          o.writeBytes(junk, junk.length);
+          input.seek(0);
+          o.copyBytes(input, input.length());
+          o.close();
+          IndexInput padded = dir.openInput(name, newIOContext(random()));
+          RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+          assertEquals(padded.length() - i, whole.length());
+          assertBytes(whole, bytes, 0);
+          padded.close();
+        }
+      }
+    }
   }
 
   public void testLittleEndianLongsCrossBoundary() throws Exception {

@@ -250,15 +250,15 @@ public final class SearchImpl extends LukeModel implements Search {
 
   @Override
   public Query mltQuery(int docid, MLTConfig mltConfig, Analyzer analyzer) {
-    MoreLikeThis mlt = new MoreLikeThis(reader);
-
-    mlt.setAnalyzer(analyzer);
-    mlt.setFieldNames(mltConfig.getFieldNames());
-    mlt.setMinDocFreq(mltConfig.getMinDocFreq());
-    mlt.setMaxDocFreq(mltConfig.getMaxDocFreq());
-    mlt.setMinTermFreq(mltConfig.getMinTermFreq());
-
     try {
+      MoreLikeThis mlt = new MoreLikeThis(reader);
+
+      mlt.setAnalyzer(analyzer);
+      mlt.setFieldNames(mltConfig.getFieldNames());
+      mlt.setMinDocFreq(mltConfig.getMinDocFreq());
+      mlt.setMaxDocFreq(mltConfig.getMaxDocFreq());
+      mlt.setMinTermFreq(mltConfig.getMinTermFreq());
+
       return mlt.like(docid);
     } catch (IOException e) {
       throw new LukeException("Failed to create MLT query for doc: " + docid, e);
@@ -343,7 +343,7 @@ public final class SearchImpl extends LukeModel implements Search {
 
     if (totalHits.value == 0
         || (totalHits.relation == TotalHits.Relation.EQUAL_TO
-            && currentPage * pageSize >= totalHits.value)) {
+            && currentPage * (long) pageSize >= totalHits.value)) {
       log.warning("No more next search results are available.");
       return Optional.empty();
     }

@@ -45,7 +45,6 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -668,7 +667,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.toIntExact(numLeaves * (1 + config.bytesPerDim))];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numLeaves, 1 + config.bytesPerDim)];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
     // 7)
@@ -841,7 +840,7 @@ final class SimpleTextBKDWriter implements Closeable {
     if (writer instanceof OfflinePointWriter) {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
-      try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+      try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
         CodecUtil.checkFooter(in, priorException);
       }
     }

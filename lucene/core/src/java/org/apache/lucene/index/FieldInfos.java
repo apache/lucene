@@ -244,7 +244,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasPointValues;
   }
 
-  /** Returns true if any fields have VectorValues */
+  /** Returns true if any fields have vector values */
   public boolean hasVectorValues() {
     return hasVectorValues;
   }

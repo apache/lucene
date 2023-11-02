@@ -90,7 +90,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.doc(sd[0].doc);
+    Document doc = searcher.storedFields().document(sd[0].doc);
     assertEquals("Should match most similar not most rare variant", "2", doc.get("id"));
   }
 
@@ -106,7 +106,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.doc(sd[0].doc);
+    Document doc = searcher.storedFields().document(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 
@@ -124,7 +124,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.doc(sd[0].doc);
+    Document doc = searcher.storedFields().document(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 
@@ -139,7 +139,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.doc(sd[0].doc);
+    Document doc = searcher.storedFields().document(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 

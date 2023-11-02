@@ -112,7 +112,7 @@ public class TestPKIndexSplitter extends LuceneTestCase {
     final Bits liveDocs = MultiBits.getLiveDocs(ir);
     for (int i = 0; i < ir.maxDoc(); i++) {
       if (liveDocs == null || liveDocs.get(i)) {
-        assertEquals(indexname, ir.document(i).get("indexname"));
+        assertEquals(indexname, ir.storedFields().document(i).get("indexname"));
       }
     }
   }

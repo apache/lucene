@@ -20,8 +20,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.SegmentInfoFormat;
@@ -41,6 +39,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -56,6 +55,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
   static final BytesRef SI_MIN_VERSION = new BytesRef("    min version ");
   static final BytesRef SI_DOCCOUNT = new BytesRef("    number of documents ");
   static final BytesRef SI_USECOMPOUND = new BytesRef("    uses compound file ");
+  static final BytesRef SI_HAS_BLOCKS = new BytesRef("    has blocks ");
   static final BytesRef SI_NUM_DIAG = new BytesRef("    diagnostics ");
   static final BytesRef SI_DIAG_KEY = new BytesRef("      key ");
   static final BytesRef SI_DIAG_VALUE = new BytesRef("      value ");
@@ -79,7 +79,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
     BytesRefBuilder scratch = new BytesRefBuilder();
     String segFileName =
         IndexFileNames.segmentFileName(segmentName, "", SimpleTextSegmentInfoFormat.SI_EXTENSION);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segFileName, context)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(segFileName)) {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_VERSION);
       final Version version;
@@ -115,9 +115,13 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
           Boolean.parseBoolean(readString(SI_USECOMPOUND.length, scratch));
 
       SimpleTextUtil.readLine(input, scratch);
+      assert StringHelper.startsWith(scratch.get(), SI_HAS_BLOCKS);
+      final boolean hasBlocks = Boolean.parseBoolean(readString(SI_HAS_BLOCKS.length, scratch));
+
+      SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_DIAG);
       int numDiag = Integer.parseInt(readString(SI_NUM_DIAG.length, scratch));
-      Map<String, String> diagnostics = new HashMap<>();
+      Map<String, String> diagnostics = CollectionUtil.newHashMap(numDiag);
 
       for (int i = 0; i < numDiag; i++) {
         SimpleTextUtil.readLine(input, scratch);
@@ -133,7 +137,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_ATT);
       int numAtt = Integer.parseInt(readString(SI_NUM_ATT.length, scratch));
-      Map<String, String> attributes = new HashMap<>(numAtt);
+      Map<String, String> attributes = CollectionUtil.newHashMap(numAtt);
 
       for (int i = 0; i < numAtt; i++) {
         SimpleTextUtil.readLine(input, scratch);
@@ -149,7 +153,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_FILES);
       int numFiles = Integer.parseInt(readString(SI_NUM_FILES.length, scratch));
-      Set<String> files = new HashSet<>();
+      Set<String> files = CollectionUtil.newHashSet(numFiles);
 
       for (int i = 0; i < numFiles; i++) {
         SimpleTextUtil.readLine(input, scratch);
@@ -205,6 +209,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
               segmentName,
               docCount,
               isCompoundFile,
+              hasBlocks,
               null,
               diagnostics,
               id,
@@ -248,6 +253,10 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
 
       SimpleTextUtil.write(output, SI_USECOMPOUND);
       SimpleTextUtil.write(output, Boolean.toString(si.getUseCompoundFile()), scratch);
+      SimpleTextUtil.writeNewline(output);
+
+      SimpleTextUtil.write(output, SI_HAS_BLOCKS);
+      SimpleTextUtil.write(output, Boolean.toString(si.getHasBlocks()), scratch);
       SimpleTextUtil.writeNewline(output);
 
       Map<String, String> diagnostics = si.getDiagnostics();

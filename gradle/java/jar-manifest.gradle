@@ -46,7 +46,7 @@ subprojects {
             if (snapshotBuild) {
               return "${project.version} ${gitRev} [snapshot build, details omitted]"
             } else {
-              return "${project.version} ${gitRev} - ${System.properties['user.name']} - ${buildDate} ${buildTime}"
+              return "${project.version} ${gitRev} - ${buildDate} ${buildTime}"
             }
           }
 

@@ -33,8 +33,10 @@ import static org.apache.lucene.geo.XYEncodingUtils.checkVal;
 public final class XYCircle extends XYGeometry {
   /** Center x */
   private final float x;
+
   /** Center y */
   private final float y;
+
   /** radius */
   private final float radius;
 

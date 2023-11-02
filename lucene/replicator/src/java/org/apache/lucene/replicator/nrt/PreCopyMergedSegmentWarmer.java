@@ -62,7 +62,7 @@ class PreCopyMergedSegmentWarmer implements IndexReaderWarmer {
             Locale.ROOT,
             "top: done warm merge " + info + ": took %.3f sec, %.1f MB",
             (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            info.sizeInBytes() / 1024 / 1024.));
+            info.sizeInBytes() / 1024. / 1024.));
     primary.finishedMergedFiles.addAll(filesMetaData.keySet());
   }
 }

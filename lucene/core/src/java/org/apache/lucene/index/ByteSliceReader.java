@@ -53,7 +53,7 @@ final class ByteSliceReader extends DataInput {
     buffer = pool.buffers[bufferUpto];
     upto = startIndex & ByteBlockPool.BYTE_BLOCK_MASK;
 
-    final int firstSize = ByteBlockPool.LEVEL_SIZE_ARRAY[0];
+    final int firstSize = TermsHashPerField.LEVEL_SIZE_ARRAY[0];
 
     if (startIndex + firstSize >= endIndex) {
       // There is only this one slice to read
@@ -97,8 +97,8 @@ final class ByteSliceReader extends DataInput {
     // Skip to our next slice
     final int nextIndex = (int) BitUtil.VH_LE_INT.get(buffer, limit);
 
-    level = ByteBlockPool.NEXT_LEVEL_ARRAY[level];
-    final int newSize = ByteBlockPool.LEVEL_SIZE_ARRAY[level];
+    level = TermsHashPerField.NEXT_LEVEL_ARRAY[level];
+    final int newSize = TermsHashPerField.LEVEL_SIZE_ARRAY[level];
 
     bufferUpto = nextIndex / ByteBlockPool.BYTE_BLOCK_SIZE;
     bufferOffset = bufferUpto * ByteBlockPool.BYTE_BLOCK_SIZE;

@@ -42,7 +42,8 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
    * in a BooleanQuery, and keeps the scores as computed by the query. Note that typically such
    * scores are meaningless to the user, and require non-trivial CPU to compute, so it's almost
-   * always better to use {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} instead.
+   * always better to use {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} or {@link
+   * MultiTermQuery#CONSTANT_SCORE_REWRITE} instead.
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.

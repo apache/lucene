@@ -31,8 +31,8 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
   public void testEmptyDir() throws Exception {
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
-    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
-    assertEquals(0.0, dir.getMergedBytes(), 0.0);
+    assertEquals(0, dir.getFlushedBytes());
+    assertEquals(0, dir.getMergedBytes());
   }
 
   public void testRandomOutput() throws Exception {
@@ -49,8 +49,8 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
       flushBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
-    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
-    assertEquals(0.0, dir.getMergedBytes(), 0.0);
+    assertEquals(0, dir.getFlushedBytes());
+    assertEquals(0, dir.getMergedBytes());
     output.close();
 
     // now merge bytes
@@ -61,12 +61,12 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
       mergeBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
-    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
-    assertEquals(0.0, dir.getMergedBytes(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes());
+    assertEquals(0, dir.getMergedBytes());
     output.close();
 
-    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
-    assertEquals(expectedMergeBytes, dir.getMergedBytes(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes());
+    assertEquals(expectedMergeBytes, dir.getMergedBytes());
   }
 
   public void testRandomTempOutput() throws Exception {
@@ -83,8 +83,8 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
       flushBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
-    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
-    assertEquals(0.0, dir.getMergedBytes(), 0.0);
+    assertEquals(0, dir.getFlushedBytes());
+    assertEquals(0, dir.getMergedBytes());
     output.close();
 
     // now merge bytes
@@ -96,12 +96,12 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
       mergeBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
-    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
-    assertEquals(0.0, dir.getMergedBytes(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes());
+    assertEquals(0, dir.getMergedBytes());
     output.close();
 
-    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
-    assertEquals(expectedMergeBytes, dir.getMergedBytes(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes());
+    assertEquals(expectedMergeBytes, dir.getMergedBytes());
   }
 
   @Override

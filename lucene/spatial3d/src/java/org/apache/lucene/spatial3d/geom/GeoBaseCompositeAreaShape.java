@@ -31,8 +31,10 @@ abstract class GeoBaseCompositeAreaShape<T extends GeoAreaShape>
 
   /** All edgepoints inside shape */
   protected static final int ALL_INSIDE = 0;
+
   /** Some edgepoints inside shape */
   protected static final int SOME_INSIDE = 1;
+
   /** No edgepoints inside shape */
   protected static final int NONE_INSIDE = 2;
 

@@ -17,11 +17,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CompositeReaderContext;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
@@ -32,6 +35,7 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
@@ -51,11 +55,12 @@ public class TestTermQuery extends LuceneTestCase {
     final CompositeReaderContext context;
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
+      IndexSearcher searcher = new IndexSearcher(context);
+      QueryUtils.checkEqual(
+          new TermQuery(new Term("foo", "bar")),
+          new TermQuery(
+              new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));
     }
-    QueryUtils.checkEqual(
-        new TermQuery(new Term("foo", "bar")),
-        new TermQuery(
-            new Term("foo", "bar"), TermStates.build(context, new Term("foo", "bar"), true)));
   }
 
   public void testCreateWeightDoesNotSeekIfScoresAreNotNeeded() throws IOException {
@@ -96,8 +101,7 @@ public class TestTermQuery extends LuceneTestCase {
     assertEquals(1, totalHits);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     totalHits = searcher.search(queryWithContext, DummyTotalHitCountCollector.createManager());
     assertEquals(1, totalHits);
 
@@ -156,11 +160,58 @@ public class TestTermQuery extends LuceneTestCase {
     w.addDocument(new Document());
 
     DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     assertNotNull(queryWithContext.getTermStates());
+    IOUtils.close(reader, w, dir);
+  }
+
+  public void testWithWithDifferentScoreModes() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+    // segment that contains the term
+    Document doc = new Document();
+    doc.add(new StringField("foo", "bar", Store.NO));
+    w.addDocument(doc);
+    w.getReader().close();
+    DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    Similarity existingSimilarity = searcher.getSimilarity();
+
+    for (ScoreMode scoreMode : ScoreMode.values()) {
+      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
+      final AtomicBoolean scorerCalled = new AtomicBoolean();
+      searcher.setSimilarity(
+          new Similarity() { // Wrapping existing similarity for testing
+            @Override
+            public long computeNorm(FieldInvertState state) {
+              return existingSimilarity.computeNorm(state);
+            }
+
+            @Override
+            public SimScorer scorer(
+                float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+              scorerCalled.set(true);
+              return existingSimilarity.scorer(boost, collectionStats, termStats);
+            }
+          });
+      TermQuery termQuery =
+          new TermQuery(new Term("foo", "bar")) {
+            @Override
+            public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+                throws IOException {
+              scoreModeInWeight.set(scoreMode);
+              return super.createWeight(searcher, scoreMode, boost);
+            }
+          };
+      termQuery.createWeight(searcher, scoreMode, 1f);
+      assertEquals(scoreMode, scoreModeInWeight.get());
+      assertEquals(scoreMode.needsScores(), scorerCalled.get());
+    }
     IOUtils.close(reader, w, dir);
   }
 

@@ -26,9 +26,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -67,8 +67,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public Fields getTermVectors(int doc) {
-        return null;
+      public TermVectors termVectors() {
+        return TermVectors.EMPTY;
       }
 
       @Override
@@ -107,28 +107,40 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) {
+      public FloatVectorValues getFloatVectorValues(String field) {
         return null;
       }
 
       @Override
-      public TopDocs searchNearestVectors(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public ByteVectorValues getByteVectorValues(String field) {
         return null;
       }
+
+      @Override
+      public void searchNearestVectors(
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+
+      @Override
+      public void searchNearestVectors(
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
       protected void doClose() {}
 
       @Override
-      public void document(int doc, StoredFieldVisitor visitor) {}
+      public StoredFields storedFields() {
+        return new StoredFields() {
+          @Override
+          public void document(int doc, StoredFieldVisitor visitor) {}
+        };
+      }
 
       @Override
       public void checkIntegrity() throws IOException {}
 
       @Override
       public LeafMetaData getMetaData() {
-        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
       }
 
       @Override

@@ -17,60 +17,19 @@
 package org.apache.lucene.backward_codecs.store;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
-import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IndexOutput;
 
 /** A {@link IndexOutput} wrapper that changes the endianness of the provided index output. */
-final class EndiannessReverserIndexOutput extends IndexOutput {
-
-  final IndexOutput out;
+final class EndiannessReverserIndexOutput extends FilterIndexOutput {
 
   EndiannessReverserIndexOutput(IndexOutput out) {
-    super("Endianness reverser Index Output wrapper", out.getName());
-    this.out = out;
-  }
-
-  @Override
-  public String getName() {
-    return out.getName();
-  }
-
-  /** Closes this stream to further operations. */
-  @Override
-  public void close() throws IOException {
-    out.close();
-  }
-
-  @Override
-  public long getFilePointer() {
-    return out.getFilePointer();
-  }
-
-  @Override
-  public long getChecksum() throws IOException {
-    return out.getChecksum();
+    super("Endianness reverser Index Output wrapper", out.getName(), out);
   }
 
   @Override
   public String toString() {
     return out.getName();
-  }
-
-  @Override
-  public void writeByte(byte b) throws IOException {
-    out.writeByte(b);
-  }
-
-  @Override
-  public void writeBytes(byte[] b, int length) throws IOException {
-    writeBytes(b, 0, length);
-  }
-
-  @Override
-  public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    out.writeBytes(b, offset, length);
   }
 
   @Override
@@ -86,25 +45,5 @@ final class EndiannessReverserIndexOutput extends IndexOutput {
   @Override
   public void writeLong(long i) throws IOException {
     out.writeLong(Long.reverseBytes(i));
-  }
-
-  @Override
-  public void writeString(String s) throws IOException {
-    out.writeString(s);
-  }
-
-  @Override
-  public void copyBytes(DataInput input, long numBytes) throws IOException {
-    out.copyBytes(input, numBytes);
-  }
-
-  @Override
-  public void writeMapOfStrings(Map<String, String> map) throws IOException {
-    out.writeMapOfStrings(map);
-  }
-
-  @Override
-  public void writeSetOfStrings(Set<String> set) throws IOException {
-    out.writeSetOfStrings(set);
   }
 }

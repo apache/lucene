@@ -33,7 +33,6 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.MemoryOrdinalMap;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
-import org.apache.lucene.facet.taxonomy.writercache.UTF8TaxonomyWriterCache;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -170,7 +169,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     // Verifies that if rollback is called, DTW is closed.
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter dtw = new DirectoryTaxonomyWriter(dir);
-    assertTrue(dtw.getCache() instanceof UTF8TaxonomyWriterCache);
+    assertTrue(dtw.getCache() instanceof LruTaxonomyWriterCache);
     dtw.addCategory(new FacetLabel("a"));
     dtw.rollback();
     // should not have succeeded to add a category following rollback.
@@ -300,8 +299,8 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     final double d = random().nextDouble();
     final TaxonomyWriterCache cache;
     if (d < 0.7) {
-      // this is the fastest, yet most memory consuming
-      cache = new UTF8TaxonomyWriterCache();
+      // same as LruTaxonomyWriterCache but with the default cache size
+      cache = DirectoryTaxonomyWriter.defaultTaxonomyWriterCache();
     } else if (TEST_NIGHTLY && d > 0.98) {
       // this is the slowest, but tests the writer concurrency when no caching is done.
       // only pick it during NIGHTLY tests, and even then, with very low chances.
@@ -506,8 +505,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Directory indexDir = newDirectory(), taxoDir = newDirectory();
     IndexWriter indexWriter =
         new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
-    DirectoryTaxonomyWriter taxoWriter =
-        new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE, new UTF8TaxonomyWriterCache());
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE);
     FacetsConfig config = new FacetsConfig();
 
     // Add one huge label:

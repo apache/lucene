@@ -1143,7 +1143,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       if (left >= BLOCK_SIZE) {
         pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         if (indexHasFreqs) {
-          pforUtil.decode(docIn, freqBuffer);
+          isFreqsRead = false;
         }
         blockUpto += BLOCK_SIZE;
       } else {
@@ -1183,13 +1183,23 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public Impacts getImpacts() throws IOException {
+      // nextDoc() doesn't advance skip lists, so it's important to do it here to make sure we're
+      // not returning impacts over a bigger range of doc IDs than necessary.
       advanceShallow(doc);
       return skipper.getImpacts();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return advance(doc + 1);
+      if (docBufferUpto == BLOCK_SIZE) {
+        if (seekTo >= 0) {
+          docIn.seek(seekTo);
+          isFreqsRead = true; // reset isFreqsRead
+          seekTo = -1;
+        }
+        refillDocs();
+      }
+      return this.doc = (int) docBuffer[docBufferUpto++];
     }
 
     @Override

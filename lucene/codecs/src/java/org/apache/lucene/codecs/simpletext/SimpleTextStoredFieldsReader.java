@@ -116,7 +116,7 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   }
 
   @Override
-  public void visitDocument(int n, StoredFieldVisitor visitor) throws IOException {
+  public void document(int n, StoredFieldVisitor visitor) throws IOException {
     in.seek(offsets[n]);
 
     while (true) {

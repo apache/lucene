@@ -87,7 +87,7 @@ public final class TestRateLimiter extends LuceneTestCase {
     }
     long endNS = System.nanoTime();
     double actualMBPerSec =
-        (totBytes.get() / 1024 / 1024.)
+        (totBytes.get() / 1024. / 1024.)
             / ((endNS - startNS) / (double) TimeUnit.SECONDS.toNanos(1));
 
     // TODO: this may false trip .... could be we can only assert that it never exceeds the max, so

@@ -17,7 +17,11 @@
 package org.apache.lucene.analysis.wikipedia;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
@@ -93,18 +97,22 @@ public final class WikipediaTokenizer extends Tokenizer {
 
   /** Only output tokens */
   public static final int TOKENS_ONLY = 0;
+
   /**
    * Only output untokenized tokens, which are tokens that would normally be split into several
    * tokens
    */
   public static final int UNTOKENIZED_ONLY = 1;
+
   /** Output the both the untokenized token and the splits */
   public static final int BOTH = 2;
+
   /**
    * This flag is used to indicate that the produced "Token" would, if {@link #TOKENS_ONLY} was
    * used, produce multiple tokens.
    */
   public static final int UNTOKENIZED_TOKEN_FLAG = 1;
+
   /** A private instance of the JFlex-constructed scanner */
   private final WikipediaTokenizerImpl scanner;
 

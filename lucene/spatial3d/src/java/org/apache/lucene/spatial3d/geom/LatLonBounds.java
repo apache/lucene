@@ -25,13 +25,16 @@ public class LatLonBounds implements Bounds {
 
   /** Set to true if no longitude bounds can be stated */
   private boolean noLongitudeBound = false;
+
   /** Set to true if no top latitude bound can be stated */
   private boolean noTopLatitudeBound = false;
+
   /** Set to true if no bottom latitude bound can be stated */
   private boolean noBottomLatitudeBound = false;
 
   /** If non-null, the minimum latitude bound */
   private Double minLatitude = null;
+
   /** If non-null, the maximum latitude bound */
   private Double maxLatitude = null;
 
@@ -94,6 +97,7 @@ public class LatLonBounds implements Bounds {
 
   /** If non-null, the left longitude bound */
   private Double leftLongitude = null;
+
   /** If non-null, the right longitude bound */
   private Double rightLongitude = null;
 
@@ -362,5 +366,18 @@ public class LatLonBounds implements Bounds {
       leftLongitude = null;
       rightLongitude = null;
     }
+  }
+
+  @Override
+  public String toString() {
+    return "LatLonBounds [minLat="
+        + (noBottomLatitudeBound ? "no bound" : (minLatitude == null ? "null" : minLatitude))
+        + ", maxLat="
+        + (noTopLatitudeBound ? "no bound" : (maxLatitude == null ? "null" : maxLatitude))
+        + ", leftLon="
+        + (noLongitudeBound ? "no bound" : (leftLongitude == null ? "null" : leftLongitude))
+        + ", rightLon="
+        + (noLongitudeBound ? "no bound" : (rightLongitude == null ? "null" : rightLongitude))
+        + "]";
   }
 }

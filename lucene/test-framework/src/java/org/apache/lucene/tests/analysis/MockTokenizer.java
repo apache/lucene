@@ -47,6 +47,7 @@ public class MockTokenizer extends Tokenizer {
       new CharacterRunAutomaton(
           Operations.determinize(
               new RegExp("[^ \t\r\n]+").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+
   /**
    * Acts Similar to KeywordTokenizer. TODO: Keyword returns an "empty" token for an empty reader...
    */
@@ -54,6 +55,7 @@ public class MockTokenizer extends Tokenizer {
       new CharacterRunAutomaton(
           Operations.determinize(
               new RegExp(".*").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+
   /** Acts like LetterTokenizer. */
   // the ugly regex below is incomplete Unicode 5.2 [:Letter:]
   public static final CharacterRunAutomaton SIMPLE =

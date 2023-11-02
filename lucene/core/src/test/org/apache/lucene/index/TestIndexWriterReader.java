@@ -155,9 +155,9 @@ public class TestIndexWriterReader extends LuceneTestCase {
     DirectoryReader r1 = DirectoryReader.open(writer);
     assertTrue(r1.isCurrent());
 
-    String id10 = r1.document(10).getField("id").stringValue();
+    String id10 = r1.storedFields().document(10).getField("id").stringValue();
 
-    Document newDoc = r1.document(10);
+    Document newDoc = r1.storedFields().document(10);
     newDoc.removeField("id");
     newDoc.add(new Field("id", Integer.toString(8000), DocHelper.STRING_TYPE_STORED_WITH_TVS));
     writer.updateDocument(new Term("id", id10), newDoc);
@@ -287,9 +287,9 @@ public class TestIndexWriterReader extends LuceneTestCase {
     assertEquals(100, index2df);
 
     // verify the docs are from different indexes
-    Document doc5 = r1.document(5);
+    Document doc5 = r1.storedFields().document(5);
     assertEquals("index1", doc5.get("indexname"));
-    Document doc150 = r1.document(150);
+    Document doc150 = r1.storedFields().document(150);
     assertEquals("index2", doc150.get("indexname"));
     r1.close();
     writer.close();
@@ -345,7 +345,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     // get a reader
     IndexReader r1 = DirectoryReader.open(writer);
 
-    String id10 = r1.document(10).getField("id").stringValue();
+    String id10 = r1.storedFields().document(10).getField("id").stringValue();
 
     // deleted IW docs should not show up in the next getReader
     writer.deleteDocuments(new Term("id", id10));
@@ -353,7 +353,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     assertEquals(1, count(new Term("id", id10), r1));
     assertEquals(0, count(new Term("id", id10), r2));
 
-    String id50 = r1.document(50).getField("id").stringValue();
+    String id50 = r1.storedFields().document(50).getField("id").stringValue();
     assertEquals(1, count(new Term("id", id50), r1));
 
     writer.deleteDocuments(new Term("id", id50));
@@ -362,7 +362,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     assertEquals(0, count(new Term("id", id10), r3));
     assertEquals(0, count(new Term("id", id50), r3));
 
-    String id75 = r1.document(75).getField("id").stringValue();
+    String id75 = r1.storedFields().document(75).getField("id").stringValue();
     writer.deleteDocuments(new TermQuery(new Term("id", id75)));
     IndexReader r4 = DirectoryReader.open(writer);
     assertEquals(1, count(new Term("id", id75), r3));
@@ -608,7 +608,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
    *
    * public static int deleteDocument(Term term, IndexWriter writer) throws
    * IOException { IndexReader reader = writer.getReader(); TermDocs td =
-   * reader.termDocs(term); int doc = -1; //if (td.next()) { // doc = td.doc();
+   * reader.termDocs(term); int doc = -1; //if (td.next()) { // doc = td.storedFields().document();
    * //} //writer.deleteDocuments(term); td.close(); return doc; }
    */
 

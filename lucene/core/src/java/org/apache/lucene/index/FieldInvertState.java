@@ -96,11 +96,19 @@ public final class FieldInvertState {
   void setAttributeSource(AttributeSource attributeSource) {
     if (this.attributeSource != attributeSource) {
       this.attributeSource = attributeSource;
-      termAttribute = attributeSource.getAttribute(TermToBytesRefAttribute.class);
-      termFreqAttribute = attributeSource.addAttribute(TermFrequencyAttribute.class);
-      posIncrAttribute = attributeSource.addAttribute(PositionIncrementAttribute.class);
-      offsetAttribute = attributeSource.addAttribute(OffsetAttribute.class);
-      payloadAttribute = attributeSource.getAttribute(PayloadAttribute.class);
+      if (attributeSource == null) {
+        termAttribute = null;
+        termFreqAttribute = null;
+        posIncrAttribute = null;
+        offsetAttribute = null;
+        payloadAttribute = null;
+      } else {
+        termAttribute = attributeSource.getAttribute(TermToBytesRefAttribute.class);
+        termFreqAttribute = attributeSource.addAttribute(TermFrequencyAttribute.class);
+        posIncrAttribute = attributeSource.addAttribute(PositionIncrementAttribute.class);
+        offsetAttribute = attributeSource.addAttribute(OffsetAttribute.class);
+        payloadAttribute = attributeSource.getAttribute(PayloadAttribute.class);
+      }
     }
   }
 

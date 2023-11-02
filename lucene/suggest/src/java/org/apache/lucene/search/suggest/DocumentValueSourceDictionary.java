@@ -40,8 +40,8 @@ import org.apache.lucene.search.LongValuesSource;
  * addition of two fields: <code>
  *    Expression expression = JavascriptCompiler.compile("f1 + f2");
  *    SimpleBindings bindings = new SimpleBindings();
- *    bindings.add(new SortField("f1", SortField.Type.LONG));
- *    bindings.add(new SortField("f2", SortField.Type.LONG));
+ *    bindings.add("f1", DoubleValuesSource.fromLongField("f1"));
+ *    bindings.add("f2", DoubleValuesSource.fromLongField("f2"));
  *    LongValuesSource valueSource = expression.getDoubleValuesSource(bindings).toLongValuesSource();
  *  </code>
  */
@@ -60,7 +60,8 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
       String field,
       LongValuesSource weightsValueSource,
       String payload,
-      String contexts) {
+      String contexts)
+      throws IOException {
     super(reader, field, null, payload, contexts);
     this.weightsValueSource = weightsValueSource;
   }
@@ -71,7 +72,8 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
    * weightsValueSource</code> supplied to determine the score.
    */
   public DocumentValueSourceDictionary(
-      IndexReader reader, String field, LongValuesSource weightsValueSource, String payload) {
+      IndexReader reader, String field, LongValuesSource weightsValueSource, String payload)
+      throws IOException {
     super(reader, field, null, payload);
     this.weightsValueSource = weightsValueSource;
   }
@@ -81,7 +83,7 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
    * and uses the <code>weightsValueSource</code> supplied to determine the score.
    */
   public DocumentValueSourceDictionary(
-      IndexReader reader, String field, LongValuesSource weightsValueSource) {
+      IndexReader reader, String field, LongValuesSource weightsValueSource) throws IOException {
     super(reader, field, null, null);
     this.weightsValueSource = weightsValueSource;
   }
@@ -94,10 +96,13 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
   final class DocumentValueSourceInputIterator extends DocumentDictionary.DocumentInputIterator {
 
     private LongValues currentWeightValues;
+
     /** leaves of the reader */
     private final List<LeafReaderContext> leaves;
+
     /** starting docIds of all the leaves */
     private final int[] starts;
+
     /** current leave index */
     private int currentLeafIndex = 0;
 

@@ -97,9 +97,9 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     return "NRTCachingDirectory("
         + in
         + "; maxCacheMB="
-        + (maxCachedBytes / 1024 / 1024.)
+        + (maxCachedBytes / 1024. / 1024.)
         + " maxMergeSizeMB="
-        + (maxMergeSizeBytes / 1024 / 1024.)
+        + (maxMergeSizeBytes / 1024. / 1024.)
         + ")";
   }
 

@@ -100,7 +100,7 @@ public class RegexpQuery extends AutomatonQuery {
         match_flags,
         DEFAULT_PROVIDER,
         determinizeWorkLimit,
-        CONSTANT_SCORE_REWRITE);
+        CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
@@ -116,7 +116,7 @@ public class RegexpQuery extends AutomatonQuery {
    */
   public RegexpQuery(
       Term term, int syntax_flags, AutomatonProvider provider, int determinizeWorkLimit) {
-    this(term, syntax_flags, 0, provider, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
+    this(term, syntax_flags, 0, provider, determinizeWorkLimit, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**

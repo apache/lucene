@@ -37,6 +37,10 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestSpellChecking extends LuceneTestCase {
 
+  public void testEmpty() throws Exception {
+    doTest("empty");
+  }
+
   public void testBase() throws Exception {
     doTest("base");
   }
@@ -199,6 +203,10 @@ public class TestSpellChecking extends LuceneTestCase {
 
   public void testGermanCompounding() throws Exception {
     doTest("germancompounding");
+  }
+
+  public void testGermanManualCase() throws Exception {
+    doTest("germanManualCase");
   }
 
   public void testApplyOconvToSuggestions() throws Exception {

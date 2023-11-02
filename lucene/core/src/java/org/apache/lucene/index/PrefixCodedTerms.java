@@ -200,6 +200,6 @@ public class PrefixCodedTerms implements Accountable {
     }
 
     PrefixCodedTerms other = (PrefixCodedTerms) obj;
-    return delGen == other.delGen && this.content.equals(other.content);
+    return delGen == other.delGen && size() == other.size() && this.content.equals(other.content);
   }
 }

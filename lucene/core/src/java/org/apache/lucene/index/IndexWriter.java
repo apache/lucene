@@ -230,10 +230,13 @@ public class IndexWriter
 
   /** Key for the source of a segment in the {@link SegmentInfo#getDiagnostics() diagnostics}. */
   public static final String SOURCE = "source";
+
   /** Source of a segment which results from a merge of other segments. */
   public static final String SOURCE_MERGE = "merge";
+
   /** Source of a segment which results from a flush. */
   public static final String SOURCE_FLUSH = "flush";
+
   /** Source of a segment which results from a call to {@link #addIndexes(CodecReader...)}. */
   public static final String SOURCE_ADDINDEXES_READERS = "addIndexes(CodecReader...)";
 
@@ -1521,6 +1524,19 @@ public class IndexWriter
         delTerm == null ? null : DocumentsWriterDeleteQueue.newNode(delTerm), docs);
   }
 
+  /**
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a query instead of a term to
+   * identify the documents to be updated
+   *
+   * @lucene.experimental
+   */
+  public long updateDocuments(
+      Query delQuery, Iterable<? extends Iterable<? extends IndexableField>> docs)
+      throws IOException {
+    return updateDocuments(
+        delQuery == null ? null : DocumentsWriterDeleteQueue.newNode(delQuery), docs);
+  }
+
   private long updateDocuments(
       final DocumentsWriterDeleteQueue.Node<?> delNode,
       Iterable<? extends Iterable<? extends IndexableField>> docs)
@@ -2201,10 +2217,11 @@ public class IndexWriter
     }
 
     final MergePolicy mergePolicy = config.getMergePolicy();
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
     boolean newMergesFound = false;
     synchronized (this) {
-      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, this);
+      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
       newMergesFound = spec != null;
       if (newMergesFound) {
         final int numMerges = spec.merges.size();
@@ -2314,6 +2331,7 @@ public class IndexWriter
     }
 
     final MergePolicy.MergeSpecification spec;
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     if (maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS) {
       assert trigger == MergeTrigger.EXPLICIT || trigger == MergeTrigger.MERGE_FINISHED
           : "Expected EXPLICT or MERGE_FINISHED as trigger even with maxNumSegments set but was: "
@@ -2321,7 +2339,10 @@ public class IndexWriter
 
       spec =
           mergePolicy.findForcedMerges(
-              segmentInfos, maxNumSegments, Collections.unmodifiableMap(segmentsToMerge), this);
+              segmentInfos,
+              maxNumSegments,
+              Collections.unmodifiableMap(segmentsToMerge),
+              cachingMergeContext);
       if (spec != null) {
         final int numMerges = spec.merges.size();
         for (int i = 0; i < numMerges; i++) {
@@ -2333,7 +2354,7 @@ public class IndexWriter
       switch (trigger) {
         case GET_READER:
         case COMMIT:
-          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, cachingMergeContext);
           break;
         case ADD_INDEXES:
           throw new IllegalStateException(
@@ -2345,7 +2366,7 @@ public class IndexWriter
         case SEGMENT_FLUSH:
         case CLOSING:
         default:
-          spec = mergePolicy.findMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findMerges(trigger, segmentInfos, cachingMergeContext);
       }
     }
     if (spec != null) {
@@ -3347,9 +3368,13 @@ public class IndexWriter
     String mergedName = newSegmentName();
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     int numSoftDeleted = 0;
+    boolean hasBlocks = false;
     for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
       CodecReader leaf = reader.codecReader;
       numDocs += leaf.numDocs();
+      for (LeafReaderContext context : reader.codecReader.leaves()) {
+        hasBlocks |= context.reader().getMetaData().hasBlocks();
+      }
       if (softDeletesEnabled) {
         Bits liveDocs = reader.hardLiveDocs;
         numSoftDeleted +=
@@ -3377,6 +3402,7 @@ public class IndexWriter
             mergedName,
             -1,
             false,
+            hasBlocks,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -3458,6 +3484,7 @@ public class IndexWriter
             segName,
             info.info.maxDoc(),
             info.info.getUseCompoundFile(),
+            info.info.getHasBlocks(),
             info.info.getCodec(),
             info.info.getDiagnostics(),
             info.info.getId(),
@@ -3653,7 +3680,7 @@ public class IndexWriter
               // merge completes which would otherwise have
               // removed the files we are now syncing.
               deleter.incRef(toCommit.files(false));
-              if (anyChanges && maxCommitMergeWaitMillis > 0) {
+              if (maxCommitMergeWaitMillis > 0) {
                 // we can safely call preparePointInTimeMerge since writeReaderPool(true) above
                 // wrote all
                 // necessary files to disk and checkpointed them.
@@ -4205,7 +4232,6 @@ public class IndexWriter
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
-          ;
           docWriter.finishFullFlush(flushSuccess);
           processEvents(false);
         }
@@ -4905,7 +4931,13 @@ public class IndexWriter
     if (readerPool.writeDocValuesUpdatesForMerge(merge.segments)) {
       checkpoint();
     }
-
+    boolean hasBlocks = false;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.getHasBlocks()) {
+        hasBlocks = true;
+        break;
+      }
+    }
     // Bind a new segment name here so even with
     // ConcurrentMergePolicy we keep deterministic segment
     // names.
@@ -4919,6 +4951,7 @@ public class IndexWriter
             mergeSegmentName,
             -1,
             false,
+            hasBlocks,
             config.getCodec(),
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -5210,7 +5243,10 @@ public class IndexWriter
         success = false;
 
         Collection<String> filesToRemove = merge.info.files();
-        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
+        // NOTE: Creation of the CFS file must be performed with the original
+        // directory rather than with the merging directory, so that it is not
+        // subject to merge throttling.
+        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
         try {
           createCompoundFile(
               infoStream, trackingCFSDir, merge.info.info, context, this::deleteNewFiles);
@@ -5295,7 +5331,7 @@ public class IndexWriter
                 Locale.ROOT,
                 "merged segment size=%.3f MB vs estimate=%.3f MB",
                 merge.info.sizeInBytes() / 1024. / 1024.,
-                merge.estimatedMergeBytes / 1024 / 1024.));
+                merge.estimatedMergeBytes / 1024. / 1024.));
       }
 
       final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
@@ -5341,11 +5377,6 @@ public class IndexWriter
   // For test purposes.
   final int getBufferedDeleteTermsSize() {
     return docWriter.getBufferedDeleteTermsSize();
-  }
-
-  // For test purposes.
-  final int getNumBufferedDeleteTerms() {
-    return docWriter.getNumBufferedDeleteTerms();
   }
 
   // utility routines for tests
@@ -5758,6 +5789,7 @@ public class IndexWriter
   private synchronized void deleteNewFiles(Collection<String> files) throws IOException {
     deleter.deleteNewFiles(files);
   }
+
   /** Cleans up residuals from a segment that could not be entirely flushed due to an error */
   private synchronized void flushFailed(SegmentInfo info) throws IOException {
     // TODO: this really should be a tragic

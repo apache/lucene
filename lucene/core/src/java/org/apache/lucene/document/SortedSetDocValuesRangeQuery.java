@@ -19,23 +19,24 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 
-abstract class SortedSetDocValuesRangeQuery extends Query {
+final class SortedSetDocValuesRangeQuery extends Query {
 
   private final String field;
   private final BytesRef lowerValue;
@@ -71,13 +72,7 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
 
   @Override
   public int hashCode() {
-    int h = classHash();
-    h = 31 * h + field.hashCode();
-    h = 31 * h + Objects.hashCode(lowerValue);
-    h = 31 * h + Objects.hashCode(upperValue);
-    h = 31 * h + Boolean.hashCode(lowerInclusive);
-    h = 31 * h + Boolean.hashCode(upperInclusive);
-    return h;
+    return Objects.hash(classHash(), field, lowerValue, upperValue, lowerInclusive, upperInclusive);
   }
 
   @Override
@@ -109,90 +104,113 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
     return super.rewrite(indexSearcher);
   }
 
-  abstract SortedSetDocValues getValues(LeafReader reader, String field) throws IOException;
-
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
+
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedSetDocValues values = getValues(context.reader(), field);
-        if (values == null) {
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
           return null;
         }
+        return scorerSupplier.get(Long.MAX_VALUE);
+      }
 
-        final long minOrd;
-        if (lowerValue == null) {
-          minOrd = 0;
-        } else {
-          final long ord = values.lookupTerm(lowerValue);
-          if (ord < 0) {
-            minOrd = -1 - ord;
-          } else if (lowerInclusive) {
-            minOrd = ord;
-          } else {
-            minOrd = ord + 1;
-          }
-        }
-
-        final long maxOrd;
-        if (upperValue == null) {
-          maxOrd = values.getValueCount() - 1;
-        } else {
-          final long ord = values.lookupTerm(upperValue);
-          if (ord < 0) {
-            maxOrd = -2 - ord;
-          } else if (upperInclusive) {
-            maxOrd = ord;
-          } else {
-            maxOrd = ord - 1;
-          }
-        }
-
-        if (minOrd > maxOrd) {
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Weight weight = this;
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
 
-        final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-        final TwoPhaseIterator iterator;
-        if (singleton != null) {
-          iterator =
-              new TwoPhaseIterator(singleton) {
-                @Override
-                public boolean matches() throws IOException {
-                  final long ord = singleton.ordValue();
-                  return ord >= minOrd && ord <= maxOrd;
-                }
+        // implement ScorerSupplier, since we do some expensive stuff to make a scorer
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
 
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        } else {
-          iterator =
-              new TwoPhaseIterator(values) {
-                @Override
-                public boolean matches() throws IOException {
-                  for (int i = 0; i < values.docValueCount(); i++) {
-                    long ord = values.nextOrd();
-                    if (ord < minOrd) {
-                      continue;
+            final long minOrd;
+            if (lowerValue == null) {
+              minOrd = 0;
+            } else {
+              final long ord = values.lookupTerm(lowerValue);
+              if (ord < 0) {
+                minOrd = -1 - ord;
+              } else if (lowerInclusive) {
+                minOrd = ord;
+              } else {
+                minOrd = ord + 1;
+              }
+            }
+
+            final long maxOrd;
+            if (upperValue == null) {
+              maxOrd = values.getValueCount() - 1;
+            } else {
+              final long ord = values.lookupTerm(upperValue);
+              if (ord < 0) {
+                maxOrd = -2 - ord;
+              } else if (upperInclusive) {
+                maxOrd = ord;
+              } else {
+                maxOrd = ord - 1;
+              }
+            }
+
+            // no terms matched in this segment
+            if (minOrd > maxOrd) {
+              return new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty());
+            }
+
+            final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+            final TwoPhaseIterator iterator;
+            if (singleton != null) {
+              iterator =
+                  new TwoPhaseIterator(singleton) {
+                    @Override
+                    public boolean matches() throws IOException {
+                      final long ord = singleton.ordValue();
+                      return ord >= minOrd && ord <= maxOrd;
                     }
-                    // Values are sorted, so the first ord that is >= minOrd is our best candidate
-                    return ord <= maxOrd;
-                  }
-                  return false; // all ords were < minOrd
-                }
 
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        }
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+                    @Override
+                    public float matchCost() {
+                      return 2; // 2 comparisons
+                    }
+                  };
+            } else {
+              iterator =
+                  new TwoPhaseIterator(values) {
+                    @Override
+                    public boolean matches() throws IOException {
+                      for (int i = 0; i < values.docValueCount(); i++) {
+                        long ord = values.nextOrd();
+                        if (ord < minOrd) {
+                          continue;
+                        }
+                        // Values are sorted, so the first ord that is >= minOrd is our best
+                        // candidate
+                        return ord <= maxOrd;
+                      }
+                      return false; // all ords were < minOrd
+                    }
+
+                    @Override
+                    public float matchCost() {
+                      return 2; // 2 comparisons
+                    }
+                  };
+            }
+            return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+          }
+
+          @Override
+          public long cost() {
+            return values.cost();
+          }
+        };
       }
 
       @Override

@@ -58,7 +58,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
+import org.apache.lucene.util.automaton.Automata;
 import org.junit.After;
 import org.junit.Before;
 
@@ -1032,7 +1032,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     String[] snippets = highlighter.highlight("body", query, hits);
     assertEquals(numDocs, snippets.length);
     for (int hit = 0; hit < numDocs; hit++) {
-      Document doc = searcher.doc(hits.scoreDocs[hit].doc);
+      Document doc = searcher.storedFields().document(hits.scoreDocs[hit].doc);
       int id = Integer.parseInt(doc.get("id"));
       String expected = "the <b>answer</b> is " + id;
       if ((id & 1) == 0) {
@@ -1671,12 +1671,11 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     Query query =
         new BooleanQuery.Builder()
             .add(
-                new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH))),
+                new TermQuery(new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH))),
                 BooleanClause.Occur.SHOULD)
             .add(
                 new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH + 1))),
+                    new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH + 1))),
                 BooleanClause.Occur.SHOULD)
             .add(new TermQuery(new Term("title", "title")), BooleanClause.Occur.SHOULD)
             .build();

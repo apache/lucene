@@ -38,7 +38,6 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
-import org.apache.lucene.facet.taxonomy.writercache.UTF8TaxonomyWriterCache;
 import org.apache.lucene.index.CorruptIndexException; // javadocs
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -85,6 +84,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public static final String INDEX_EPOCH = "index.epoch";
 
+  private static final int DEFAULT_CACHE_SIZE = 4000;
+
   private final Directory dir;
   private final IndexWriter indexWriter;
   private final TaxonomyWriterCache cache;
@@ -128,9 +129,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    *     APPEND_OR_CREATE</code> appends to an existing index if there is one, otherwise it creates
    *     a new index.
    * @param cache A {@link TaxonomyWriterCache} implementation which determines the in-memory
-   *     caching policy. See for example {@link LruTaxonomyWriterCache} and {@link
-   *     UTF8TaxonomyWriterCache}. If null or missing, {@link #defaultTaxonomyWriterCache()} is
-   *     used.
+   *     caching policy. See for example {@link LruTaxonomyWriterCache}. If null or missing, {@link
+   *     #defaultTaxonomyWriterCache()} is used.
    * @throws CorruptIndexException if the taxonomy is corrupted.
    * @throws LockObtainFailedException if the taxonomy is locked by another writer.
    * @throws IOException if another error occurred.
@@ -267,11 +267,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * Defines the default {@link TaxonomyWriterCache} to use in constructors which do not specify
    * one.
    *
-   * <p>The current default is {@link UTF8TaxonomyWriterCache}, i.e., the entire taxonomy is cached
-   * in memory while building it.
+   * <p>The current default is {@link LruTaxonomyWriterCache}
    */
   public static TaxonomyWriterCache defaultTaxonomyWriterCache() {
-    return new UTF8TaxonomyWriterCache();
+    return new LruTaxonomyWriterCache(DEFAULT_CACHE_SIZE);
   }
 
   /** Create this with {@code OpenMode.CREATE_OR_APPEND}. */

@@ -243,7 +243,7 @@ public abstract class LZ4TestCase extends LuceneTestCase {
   }
 
   public void testIncompressibleRandom() throws IOException {
-    byte[] b = new byte[TestUtil.nextInt(random(), 1, 1 << 32)];
+    byte[] b = new byte[TestUtil.nextInt(random(), 1, 1 << 18)];
     random().nextBytes(b);
     doTest(b, newHashTable());
     doTestWithDictionary(b, newHashTable());

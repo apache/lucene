@@ -48,6 +48,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LogMergePolicy;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.search.IndexSearcher;
@@ -858,9 +859,10 @@ class SimplePrimaryNode extends PrimaryNode {
                 + hitCount);
         TopDocs hits =
             searcher.search(new TermQuery(new Term("marker", "marker")), expectedAtLeastCount);
+        StoredFields storedFields = searcher.storedFields();
         List<Integer> seen = new ArrayList<>();
         for (ScoreDoc hit : hits.scoreDocs) {
-          Document doc = searcher.doc(hit.doc);
+          Document doc = storedFields.document(hit.doc);
           seen.add(Integer.parseInt(doc.get("docid").substring(1)));
         }
         Collections.sort(seen);

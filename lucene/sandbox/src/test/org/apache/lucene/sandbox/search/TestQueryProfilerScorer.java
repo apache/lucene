@@ -70,7 +70,7 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
         query.createWeight(new IndexSearcher(new MultiReader()), ScoreMode.TOP_SCORES, 1f);
     FakeScorer fakeScorer = new FakeScorer(weight);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
-    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(query, weight, profile);
+    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(weight, profile);
     QueryProfilerScorer queryProfilerScorer =
         new QueryProfilerScorer(queryProfilerWeight, fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);
@@ -83,7 +83,7 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
         query.createWeight(new IndexSearcher(new MultiReader()), ScoreMode.TOP_SCORES, 1f);
     FakeScorer fakeScorer = new FakeScorer(weight);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
-    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(query, weight, profile);
+    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(weight, profile);
     QueryProfilerScorer queryProfilerScorer =
         new QueryProfilerScorer(queryProfilerWeight, fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);

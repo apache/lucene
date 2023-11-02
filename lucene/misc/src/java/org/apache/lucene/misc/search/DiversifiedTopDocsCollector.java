@@ -17,9 +17,10 @@
 package org.apache.lucene.misc.search;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Stack;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.misc.search.DiversifiedTopDocsCollector.ScoreDocKey;
@@ -70,7 +71,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
   private int numHits;
   private Map<Long, ScoreDocKeyQueue> perKeyQueues;
   protected int maxNumPerKey;
-  private Stack<ScoreDocKeyQueue> sparePerKeyQueues = new Stack<>();
+  private Deque<ScoreDocKeyQueue> sparePerKeyQueues = new ArrayDeque<>();
 
   public DiversifiedTopDocsCollector(int numHits, int maxHitsPerKey) {
     super(new ScoreDocKeyQueue(numHits));

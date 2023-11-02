@@ -146,7 +146,7 @@ final class IntersectTermsEnumFrame {
       floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
       // Skip first long -- has redundant fp, hasTerms
       // flag, isFloor flag
-      final long code = floorDataReader.readVLong();
+      final long code = ite.fr.readVLongOutput(floorDataReader);
       if ((code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
