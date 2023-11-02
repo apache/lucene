@@ -214,8 +214,8 @@ public final class SortPaneProvider implements SortTabOperator {
         sortFields.stream()
             .map(
                 sf -> {
-                  if (sf instanceof SortedNumericSortField) {
-                    return ((SortedNumericSortField) sf).getNumericType().name();
+                  if (sf instanceof SortedNumericSortField sortedNumericSortField) {
+                    return sortedNumericSortField.getNumericType().name();
                   } else {
                     return sf.getType().name();
                   }

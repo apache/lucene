@@ -153,13 +153,13 @@ public class RecursivePrefixTreeStrategy extends PrefixTreeStrategy {
       }
     }
 
-    if (!(cell instanceof CellCanPrune)) {
+    if (!(cell instanceof CellCanPrune cellCanPrune)) {
       // Cannot prune so return false
       return false;
     }
 
     // can we prune?
-    if (leaves == ((CellCanPrune) cell).getSubCellsSize() && cell.getLevel() != 0) {
+    if (leaves == cellCanPrune.getSubCellsSize() && cell.getLevel() != 0) {
       // Optimization: substitute the parent as a leaf instead of adding all
       // children as leaves
 

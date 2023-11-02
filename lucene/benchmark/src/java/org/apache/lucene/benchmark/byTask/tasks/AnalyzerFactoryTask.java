@@ -434,21 +434,20 @@ public class AnalyzerFactoryTask extends PerfTask {
       } catch (Exception e) {
         throw new RuntimeException("Line #" + lineno(stok) + ": ", e);
       }
-      if (instance instanceof ResourceLoaderAware) {
+      if (instance instanceof ResourceLoaderAware resourceLoaderAware) {
         Path baseDir = Paths.get(getRunData().getConfig().get("work.dir", "work"));
         if (!Files.isDirectory(baseDir)) {
           baseDir = Paths.get(".");
         }
-        ((ResourceLoaderAware) instance)
-            .inform(
-                new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
+        resourceLoaderAware.inform(
+            new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
       }
-      if (CharFilterFactory.class.isAssignableFrom(clazz)) {
-        charFilterFactories.add((CharFilterFactory) instance);
-      } else if (TokenizerFactory.class.isAssignableFrom(clazz)) {
-        tokenizerFactory = (TokenizerFactory) instance;
-      } else if (TokenFilterFactory.class.isAssignableFrom(clazz)) {
-        tokenFilterFactories.add((TokenFilterFactory) instance);
+      if (instance instanceof CharFilterFactory charFilterFactory) {
+        charFilterFactories.add(charFilterFactory);
+      } else if (instance instanceof TokenizerFactory tokenizerFactory) {
+        this.tokenizerFactory = tokenizerFactory;
+      } else if (instance instanceof TokenFilterFactory tokenFilterFactory) {
+        tokenFilterFactories.add(tokenFilterFactory);
       }
     } catch (RuntimeException e) {
       if (e.getMessage().startsWith("Line #")) {

@@ -81,8 +81,7 @@ class QueryAnalyzer {
       }
       if (occur == BooleanClause.Occur.MUST_NOT) {
         // Check if we're in a pure negative disjunction
-        if (parent instanceof BooleanQuery) {
-          BooleanQuery bq = (BooleanQuery) parent;
+        if (parent instanceof BooleanQuery bq) {
           long positiveCount =
               bq.clauses().stream()
                   .filter(c -> c.getOccur() != BooleanClause.Occur.MUST_NOT)
@@ -95,8 +94,7 @@ class QueryAnalyzer {
       }
       // It's a disjunction clause.  If the parent has MUST or FILTER clauses, we can
       // ignore it
-      if (parent instanceof BooleanQuery) {
-        BooleanQuery bq = (BooleanQuery) parent;
+      if (parent instanceof BooleanQuery bq) {
         long requiredCount =
             bq.clauses().stream()
                 .filter(

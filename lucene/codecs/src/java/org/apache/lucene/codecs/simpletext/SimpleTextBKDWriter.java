@@ -837,9 +837,9 @@ final class SimpleTextBKDWriter implements Closeable {
     // right reader after recursing to children, and possibly within recursed children,
     // since all together they make a single pass through the file.  But this is a sizable re-org,
     // and would mean leaving readers (IndexInputs) open for longer:
-    if (writer instanceof OfflinePointWriter) {
+    if (writer instanceof OfflinePointWriter offlinePointWriter) {
       // We are reading from a temp file; go verify the checksum:
-      String tempFileName = ((OfflinePointWriter) writer).name;
+      String tempFileName = offlinePointWriter.name;
       try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
         CodecUtil.checkFooter(in, priorException);
       }

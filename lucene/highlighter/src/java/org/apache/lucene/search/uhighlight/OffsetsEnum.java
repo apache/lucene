@@ -190,10 +190,10 @@ public abstract class OffsetsEnum implements Comparable<OffsetsEnum>, Closeable 
         // we're done with the former head.  CachedOE's are one use only.
         // Look at the new head...
         OffsetsEnum newHeadOE = pendingQueue.peek();
-        if (newHeadOE instanceof OfMatchesIterator) {
+        if (newHeadOE instanceof OfMatchesIterator ofMatchesIterator) {
           // We found the matchesIterator.  Requires processing.
           // May or may not remove or re-queue itself
-          nextWhenMatchesIterator((OfMatchesIterator) newHeadOE);
+          nextWhenMatchesIterator(ofMatchesIterator);
         } // else new head is a CacheOE or no more.  Nothing to do with it.
       } else { // formerHeadOE is OfMatchesIterator; advance it
         OfMatchesIterator miOE = (OfMatchesIterator) formerHeadOE;

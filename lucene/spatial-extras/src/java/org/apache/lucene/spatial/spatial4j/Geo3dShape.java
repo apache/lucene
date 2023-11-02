@@ -54,12 +54,12 @@ public class Geo3dShape<T extends GeoAreaShape> implements Shape {
   @Override
   public SpatialRelation relate(Shape other) {
     int relationship;
-    if (other instanceof Geo3dShape<?>) {
-      relationship = relate((Geo3dShape<?>) other);
-    } else if (other instanceof Rectangle) {
-      relationship = relate((Rectangle) other);
-    } else if (other instanceof Point) {
-      relationship = relate((Point) other);
+    if (other instanceof Geo3dShape<?> geo3dShape) {
+      relationship = relate(geo3dShape);
+    } else if (other instanceof Rectangle rectangle) {
+      relationship = relate(rectangle);
+    } else if (other instanceof Point point) {
+      relationship = relate(point);
     } else {
       throw new RuntimeException(
           "Unimplemented shape relationship determination: " + other.getClass());

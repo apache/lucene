@@ -145,8 +145,8 @@ public final class QueryTermExtractor {
 
     @Override
     public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
-      if (parent instanceof BoostQuery) {
-        float newboost = boost * ((BoostQuery) parent).getBoost();
+      if (parent instanceof BoostQuery boostQuery) {
+        float newboost = boost * boostQuery.getBoost();
         return new BoostedTermExtractor(newboost, terms, includeProhibited, fieldSelector);
       }
       if (occur == BooleanClause.Occur.MUST_NOT && includeProhibited == false) {

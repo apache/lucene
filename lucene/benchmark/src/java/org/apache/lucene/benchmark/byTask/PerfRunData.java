@@ -177,8 +177,8 @@ public class PerfRunData implements Closeable {
     // close all perf objects that are closeable.
     ArrayList<Closeable> perfObjectsToClose = new ArrayList<>();
     for (Object obj : perfObjects.values()) {
-      if (obj instanceof Closeable) {
-        perfObjectsToClose.add((Closeable) obj);
+      if (obj instanceof Closeable closeable) {
+        perfObjectsToClose.add(closeable);
       }
     }
     IOUtils.close(perfObjectsToClose);

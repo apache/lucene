@@ -333,9 +333,9 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
 
     @Override
     public SpatialRelation relate(Shape shape) {
-      //      if (shape instanceof UnitNRShape)
-      //        return relate((UnitNRShape)shape);
-      if (shape instanceof SpanUnitsNRShape) return relate((SpanUnitsNRShape) shape);
+      //      if (shape instanceof UnitNRShape unitNRShape)
+      //        return relate(unitNRShape);
+      if (shape instanceof SpanUnitsNRShape spanUnitsNRShape) return relate(spanUnitsNRShape);
       return shape.relate(this).transpose(); // probably a UnitNRShape
     }
 
@@ -765,8 +765,7 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
       final UnitNRShape minLV;
       final UnitNRShape maxLV;
       final int lastLevelInCommon; // between minLV & maxLV
-      if (filter instanceof SpanUnitsNRShape) {
-        SpanUnitsNRShape spanShape = (SpanUnitsNRShape) iterFilter;
+      if (filter instanceof SpanUnitsNRShape spanShape) {
         minLV = spanShape.getMinUnit();
         maxLV = spanShape.getMaxUnit();
         lastLevelInCommon = spanShape.getLevelsInCommon();
@@ -903,8 +902,8 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
     public SpatialRelation relate(Shape shape) {
       assertDecoded();
       if (shape == iterFilter && cellShapeRel != null) return cellShapeRel;
-      if (shape instanceof UnitNRShape) return relate((UnitNRShape) shape);
-      if (shape instanceof SpanUnitsNRShape) return relate((SpanUnitsNRShape) shape);
+      if (shape instanceof UnitNRShape unitNRShape) return relate(unitNRShape);
+      if (shape instanceof SpanUnitsNRShape spanUnitsNRShape) return relate(spanUnitsNRShape);
       return shape.relate(this).transpose();
     }
 

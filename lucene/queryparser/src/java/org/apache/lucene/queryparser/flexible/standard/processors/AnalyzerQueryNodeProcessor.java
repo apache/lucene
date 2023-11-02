@@ -227,9 +227,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
                   if (!(currentQuery instanceof BooleanQueryNode)) {
                     QueryNode t = currentQuery;
                     currentQuery = new SynonymQueryNode(Collections.<QueryNode>emptyList());
-                    ((BooleanQueryNode) currentQuery).add(t);
+                    currentQuery.add(t);
                   }
-                  ((BooleanQueryNode) currentQuery).add(new FieldQueryNode(field, term, -1, -1));
+                  currentQuery.add(new FieldQueryNode(field, term, -1, -1));
                 } else {
                   if (currentQuery != null) {
                     if (this.defaultOperator == Operator.OR) {

@@ -1115,8 +1115,8 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     @Override
     public final PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
       final TVPostingsEnum docsEnum;
-      if (reuse != null && reuse instanceof TVPostingsEnum) {
-        docsEnum = (TVPostingsEnum) reuse;
+      if (reuse != null && reuse instanceof TVPostingsEnum tvPostingsEnum) {
+        docsEnum = tvPostingsEnum;
       } else {
         docsEnum = new TVPostingsEnum();
       }

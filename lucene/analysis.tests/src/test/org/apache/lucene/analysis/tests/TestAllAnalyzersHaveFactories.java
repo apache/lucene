@@ -117,8 +117,8 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
         try {
           instance = TokenizerFactory.forName(simpleName, args);
           assertNotNull(instance);
-          if (instance instanceof ResourceLoaderAware) {
-            ((ResourceLoaderAware) instance).inform(loader);
+          if (instance instanceof ResourceLoaderAware resourceLoaderAware) {
+            resourceLoaderAware.inform(loader);
           }
           assertSame(c, instance.create().getClass());
         } catch (
@@ -138,8 +138,8 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
         try {
           instance = TokenFilterFactory.forName(simpleName, args);
           assertNotNull(instance);
-          if (instance instanceof ResourceLoaderAware) {
-            ((ResourceLoaderAware) instance).inform(loader);
+          if (instance instanceof ResourceLoaderAware resourceLoaderAware) {
+            resourceLoaderAware.inform(loader);
           }
           Class<? extends TokenStream> createdClazz =
               instance.create(new KeywordTokenizer()).getClass();
@@ -162,8 +162,8 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
         try {
           instance = CharFilterFactory.forName(simpleName, args);
           assertNotNull(instance);
-          if (instance instanceof ResourceLoaderAware) {
-            ((ResourceLoaderAware) instance).inform(loader);
+          if (instance instanceof ResourceLoaderAware resourceLoaderAware) {
+            resourceLoaderAware.inform(loader);
           }
           Class<? extends Reader> createdClazz = instance.create(new StringReader("")).getClass();
           // only check instance if factory have wrapped at all!

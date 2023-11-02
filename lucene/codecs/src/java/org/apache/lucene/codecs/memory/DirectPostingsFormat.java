@@ -817,19 +817,21 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
       @Override
       public int docFreq() {
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          return ((LowFreqTerm) terms[termOrd]).docFreq;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          return lowFreqTerm.docFreq;
         } else {
-          return ((HighFreqTerm) terms[termOrd]).docIDs.length;
+          return ((HighFreqTerm) term).docIDs.length;
         }
       }
 
       @Override
       public long totalTermFreq() {
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          return ((LowFreqTerm) terms[termOrd]).totalTermFreq;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          return lowFreqTerm.totalTermFreq;
         } else {
-          return ((HighFreqTerm) terms[termOrd]).totalTermFreq;
+          return ((HighFreqTerm) term).totalTermFreq;
         }
       }
 
@@ -841,13 +843,13 @@ public final class DirectPostingsFormat extends PostingsFormat {
         // TODO: the logic of which enum impl to choose should be refactored to be simpler...
         if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
 
-          if (terms[termOrd] instanceof LowFreqTerm) {
-            final LowFreqTerm term = ((LowFreqTerm) terms[termOrd]);
-            final int[] postings = term.postings;
+          var term = terms[termOrd];
+          if (term instanceof LowFreqTerm lfTerm) {
+            final int[] postings = lfTerm.postings;
             if (hasFreq == false) {
               LowFreqDocsEnumNoTF docsEnum;
-              if (reuse instanceof LowFreqDocsEnumNoTF) {
-                docsEnum = (LowFreqDocsEnumNoTF) reuse;
+              if (reuse instanceof LowFreqDocsEnumNoTF lowFreqDocsEnumNoTF) {
+                docsEnum = lowFreqDocsEnumNoTF;
               } else {
                 docsEnum = new LowFreqDocsEnumNoTF();
               }
@@ -856,29 +858,30 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
             } else if (hasPos == false) {
               LowFreqDocsEnumNoPos docsEnum;
-              if (reuse instanceof LowFreqDocsEnumNoPos) {
-                docsEnum = (LowFreqDocsEnumNoPos) reuse;
+              if (reuse instanceof LowFreqDocsEnumNoPos lowFreqDocsEnumNoPos) {
+                docsEnum = lowFreqDocsEnumNoPos;
               } else {
                 docsEnum = new LowFreqDocsEnumNoPos();
               }
 
               return docsEnum.reset(postings);
             }
-            final byte[] payloads = term.payloads;
+            final byte[] payloads = lfTerm.payloads;
             return new LowFreqPostingsEnum(hasOffsets, hasPayloads).reset(postings, payloads);
           } else {
-            final HighFreqTerm term = (HighFreqTerm) terms[termOrd];
+            final HighFreqTerm hfTerm = (HighFreqTerm) term;
             if (hasPos == false) {
-              return new HighFreqDocsEnum().reset(term.docIDs, term.freqs);
+              return new HighFreqDocsEnum().reset(hfTerm.docIDs, hfTerm.freqs);
             } else {
               return new HighFreqPostingsEnum(hasOffsets)
-                  .reset(term.docIDs, term.freqs, term.positions, term.payloads);
+                  .reset(hfTerm.docIDs, hfTerm.freqs, hfTerm.positions, hfTerm.payloads);
             }
           }
         }
 
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          final int[] postings = ((LowFreqTerm) terms[termOrd]).postings;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          final int[] postings = lowFreqTerm.postings;
           if (hasFreq) {
             if (hasPos) {
               int posLen;
@@ -891,8 +894,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
                 posLen++;
               }
               LowFreqDocsEnum docsEnum;
-              if (reuse instanceof LowFreqDocsEnum) {
-                docsEnum = (LowFreqDocsEnum) reuse;
+              if (reuse instanceof LowFreqDocsEnum lowFreqDocsEnum) {
+                docsEnum = lowFreqDocsEnum;
                 if (!docsEnum.canReuse(posLen)) {
                   docsEnum = new LowFreqDocsEnum(posLen);
                 }
@@ -903,8 +906,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
               return docsEnum.reset(postings);
             } else {
               LowFreqDocsEnumNoPos docsEnum;
-              if (reuse instanceof LowFreqDocsEnumNoPos) {
-                docsEnum = (LowFreqDocsEnumNoPos) reuse;
+              if (reuse instanceof LowFreqDocsEnumNoPos lowFreqDocsEnumNoPos) {
+                docsEnum = lowFreqDocsEnumNoPos;
               } else {
                 docsEnum = new LowFreqDocsEnumNoPos();
               }
@@ -913,8 +916,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
             }
           } else {
             LowFreqDocsEnumNoTF docsEnum;
-            if (reuse instanceof LowFreqDocsEnumNoTF) {
-              docsEnum = (LowFreqDocsEnumNoTF) reuse;
+            if (reuse instanceof LowFreqDocsEnumNoTF lowFreqDocsEnumNoTF) {
+              docsEnum = lowFreqDocsEnumNoTF;
             } else {
               docsEnum = new LowFreqDocsEnumNoTF();
             }
@@ -922,18 +925,18 @@ public final class DirectPostingsFormat extends PostingsFormat {
             return docsEnum.reset(postings);
           }
         } else {
-          final HighFreqTerm term = (HighFreqTerm) terms[termOrd];
+          final HighFreqTerm highFreqTerm = (HighFreqTerm) term;
 
           HighFreqDocsEnum docsEnum;
-          if (reuse instanceof HighFreqDocsEnum) {
-            docsEnum = (HighFreqDocsEnum) reuse;
+          if (reuse instanceof HighFreqDocsEnum highFreqDocsEnum) {
+            docsEnum = highFreqDocsEnum;
           } else {
             docsEnum = new HighFreqDocsEnum();
           }
 
           // System.out.println("  DE for term=" + new BytesRef(terms[termOrd].term).utf8ToString()
           // + ": " + term.docIDs.length + " docs");
-          return docsEnum.reset(term.docIDs, term.freqs);
+          return docsEnum.reset(highFreqTerm.docIDs, highFreqTerm.freqs);
         }
       }
 
@@ -1447,19 +1450,21 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
       @Override
       public int docFreq() {
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          return ((LowFreqTerm) terms[termOrd]).docFreq;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          return lowFreqTerm.docFreq;
         } else {
-          return ((HighFreqTerm) terms[termOrd]).docIDs.length;
+          return ((HighFreqTerm) term).docIDs.length;
         }
       }
 
       @Override
       public long totalTermFreq() {
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          return ((LowFreqTerm) terms[termOrd]).totalTermFreq;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          return lowFreqTerm.totalTermFreq;
         } else {
-          return ((HighFreqTerm) terms[termOrd]).totalTermFreq;
+          return ((HighFreqTerm) term).totalTermFreq;
         }
       }
 
@@ -1470,20 +1475,26 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
         // TODO: the logic of which enum impl to choose should be refactored to be simpler...
         if (hasPos && PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
-          if (terms[termOrd] instanceof LowFreqTerm) {
-            final LowFreqTerm term = ((LowFreqTerm) terms[termOrd]);
-            final int[] postings = term.postings;
-            final byte[] payloads = term.payloads;
+          var term = terms[termOrd];
+          if (term instanceof LowFreqTerm) {
+            final LowFreqTerm lowFreqTerm = (LowFreqTerm) terms[termOrd];
+            final int[] postings = lowFreqTerm.postings;
+            final byte[] payloads = lowFreqTerm.payloads;
             return new LowFreqPostingsEnum(hasOffsets, hasPayloads).reset(postings, payloads);
           } else {
-            final HighFreqTerm term = (HighFreqTerm) terms[termOrd];
+            final HighFreqTerm highFreqTerm = (HighFreqTerm) terms[termOrd];
             return new HighFreqPostingsEnum(hasOffsets)
-                .reset(term.docIDs, term.freqs, term.positions, term.payloads);
+                .reset(
+                    highFreqTerm.docIDs,
+                    highFreqTerm.freqs,
+                    highFreqTerm.positions,
+                    highFreqTerm.payloads);
           }
         }
 
-        if (terms[termOrd] instanceof LowFreqTerm) {
-          final int[] postings = ((LowFreqTerm) terms[termOrd]).postings;
+        var term = terms[termOrd];
+        if (term instanceof LowFreqTerm lowFreqTerm) {
+          final int[] postings = lowFreqTerm.postings;
           if (hasFreq) {
             if (hasPos) {
               int posLen;
@@ -1503,10 +1514,10 @@ public final class DirectPostingsFormat extends PostingsFormat {
             return new LowFreqDocsEnumNoTF().reset(postings);
           }
         } else {
-          final HighFreqTerm term = (HighFreqTerm) terms[termOrd];
+          final HighFreqTerm highFreqTerm = (HighFreqTerm) term;
           //  System.out.println("DE for term=" + new BytesRef(terms[termOrd].term).utf8ToString() +
           // ": " + term.docIDs.length + " docs");
-          return new HighFreqDocsEnum().reset(term.docIDs, term.freqs);
+          return new HighFreqDocsEnum().reset(highFreqTerm.docIDs, highFreqTerm.freqs);
         }
       }
 

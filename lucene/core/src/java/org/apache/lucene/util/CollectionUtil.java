@@ -59,7 +59,6 @@ public final class CollectionUtil {
     final Comparator<? super T> comp;
 
     ListIntroSorter(List<T> list, Comparator<? super T> comp) {
-      super();
       if (!(list instanceof RandomAccess))
         throw new IllegalArgumentException(
             "CollectionUtil can only sort random access lists in-place.");

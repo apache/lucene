@@ -614,8 +614,8 @@ public class GeoTestUtil {
     double maxLon = Double.NEGATIVE_INFINITY;
     for (Object o : flattened) {
       final Rectangle r;
-      if (o instanceof Polygon) {
-        r = Rectangle.fromPolygon(new Polygon[] {(Polygon) o});
+      if (o instanceof Polygon polygon) {
+        r = Rectangle.fromPolygon(new Polygon[] {polygon});
         minLat = Math.min(minLat, r.minLat);
         maxLat = Math.max(maxLat, r.maxLat);
         minLon = Math.min(minLon, r.minLon);
@@ -662,8 +662,8 @@ public class GeoTestUtil {
       final Polygon gon;
       final String style;
       final String opacity;
-      if (o instanceof Rectangle) {
-        gon = boxPolygon((Rectangle) o);
+      if (o instanceof Rectangle rectangle) {
+        gon = boxPolygon(rectangle);
         style = "fill:lightskyblue;stroke:black;stroke-width:0.2%;stroke-dasharray:0.5%,1%;";
         opacity = "0.3";
       } else if (o instanceof double[]) {

@@ -230,8 +230,8 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
     if (indexHasPositions == false
         || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false) {
       BlockDocsEnum docsEnum;
-      if (reuse instanceof BlockDocsEnum) {
-        docsEnum = (BlockDocsEnum) reuse;
+      if (reuse instanceof BlockDocsEnum blockDocsEnum) {
+        docsEnum = blockDocsEnum;
         if (!docsEnum.canReuse(docIn, fieldInfo)) {
           docsEnum = new BlockDocsEnum(fieldInfo);
         }
@@ -241,8 +241,8 @@ public final class Lucene50PostingsReader extends PostingsReaderBase {
       return docsEnum.reset((IntBlockTermState) termState, flags);
     } else {
       EverythingEnum everythingEnum;
-      if (reuse instanceof EverythingEnum) {
-        everythingEnum = (EverythingEnum) reuse;
+      if (reuse instanceof EverythingEnum everythingEnumReuse) {
+        everythingEnum = everythingEnumReuse;
         if (!everythingEnum.canReuse(docIn, fieldInfo)) {
           everythingEnum = new EverythingEnum(fieldInfo);
         }

@@ -60,7 +60,7 @@ abstract class LegacyPrefixTree extends SpatialPrefixTree {
 
   @Override
   public CellIterator getTreeCellIterator(Shape shape, int detailLevel) {
-    if (!(shape instanceof Point)) return super.getTreeCellIterator(shape, detailLevel);
+    if (!(shape instanceof Point point)) return super.getTreeCellIterator(shape, detailLevel);
 
     // This specialization is here because the legacy implementations don't have a fast
     // implementation of
@@ -68,7 +68,7 @@ abstract class LegacyPrefixTree extends SpatialPrefixTree {
     // create
     // subcells from the bytesRef in a loop. This avoids an O(N^2) encode, and we have O(N) instead.
 
-    Cell cell = getCell((Point) shape, detailLevel);
+    Cell cell = getCell(point, detailLevel);
     assert cell instanceof LegacyCell;
     BytesRef fullBytes = cell.getTokenBytesNoLeaf(null);
     // fill in reverse order to be sorted

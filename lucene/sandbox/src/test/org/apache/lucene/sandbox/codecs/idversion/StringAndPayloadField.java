@@ -49,8 +49,8 @@ class StringAndPayloadField extends Field {
   @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
     SingleTokenWithPayloadTokenStream ts;
-    if (reuse instanceof SingleTokenWithPayloadTokenStream) {
-      ts = (SingleTokenWithPayloadTokenStream) reuse;
+    if (reuse instanceof SingleTokenWithPayloadTokenStream singleTokenReuse) {
+      ts = singleTokenReuse;
     } else {
       ts = new SingleTokenWithPayloadTokenStream();
     }

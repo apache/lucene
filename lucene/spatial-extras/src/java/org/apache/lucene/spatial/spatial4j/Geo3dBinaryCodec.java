@@ -55,8 +55,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Shape readShape(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoAreaShape) {
-      GeoAreaShape shape = (GeoAreaShape) serializableObject;
+    if (serializableObject instanceof GeoAreaShape shape) {
       return new Geo3dShape<>(shape, ctx);
     }
     throw new IllegalArgumentException(
@@ -65,8 +64,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
 
   @Override
   public void writeShape(DataOutput dataOutput, Shape s) throws IOException {
-    if (s instanceof Geo3dShape) {
-      Geo3dShape<?> geoAreaShape = (Geo3dShape<?>) s;
+    if (s instanceof Geo3dShape<?> geoAreaShape) {
       SerializableObject.writeObject((OutputStream) dataOutput, geoAreaShape.shape);
     } else {
       throw new IllegalArgumentException(
@@ -78,8 +76,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Point readPoint(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoPointShape) {
-      GeoPointShape shape = (GeoPointShape) serializableObject;
+    if (serializableObject instanceof GeoPointShape shape) {
       return new Geo3dPointShape(shape, ctx);
     }
     throw new IllegalArgumentException(

@@ -261,20 +261,20 @@ class SimpleGeoJSONPolygonParser {
             "elements of coordinates array must [lat, lon] array, but got wrong element count: "
                 + pointList);
       }
-      if (!(pointList.get(0) instanceof Double)) {
+      if (!(pointList.get(0) instanceof Double point0)) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but first element is not a Double: "
                 + pointList.get(0));
       }
-      if (!(pointList.get(1) instanceof Double)) {
+      if (!(pointList.get(1) instanceof Double point1)) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but second element is not a Double: "
                 + pointList.get(1));
       }
 
       // lon, lat ordering in GeoJSON!
-      lons[i] = ((Double) pointList.get(0)).doubleValue();
-      lats[i] = ((Double) pointList.get(1)).doubleValue();
+      lons[i] = point0;
+      lats[i] = point1;
     }
 
     return new double[][] {lats, lons};
