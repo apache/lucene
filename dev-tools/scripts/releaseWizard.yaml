@@ -300,7 +300,7 @@ groups:
     user_input: !UserInput
       prompt: Enter end date of feature freeze (YYYY-MM-DD)
       name: feature_freeze_date
-- !TodoGroupconflicts
+- !TodoGroup
   id: branching_versions
   title: Create branch (if needed) and update versions
   description: Here you'll do all the branching and version updates needed to prepare for the new release version
@@ -903,7 +903,7 @@ groups:
     vars:
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
       dist_stage_url: '{{ dist_url_base }}/{{ dist_folder}}'
-      dist_release_url: https://dist.apache.org/repos/dist/release/luceneconflicts
+      dist_release_url: https://dist.apache.org/repos/dist/release/lucene
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       confirm_each_command: false
