@@ -368,11 +368,6 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public long size() throws IOException {
-        return delegateTerms.size();
-     }
-
-      @Override
       public String toString() {
         return getClass().getSimpleName() + "(filter=" + filter.toString() + ")";
       }

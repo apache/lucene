@@ -128,15 +128,12 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private final BytesRefFSTEnum<
             PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
         fstEnum;
-    private final int termCount;
 
     public SimpleTextTermsEnum(
         FST<PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>> fst,
-        IndexOptions indexOptions,
-        int termCount) {
+        IndexOptions indexOptions) {
       this.indexOptions = indexOptions;
       fstEnum = new BytesRefFSTEnum<>(fst);
-      this.termCount = termCount;
     }
 
     @Override
@@ -272,11 +269,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
         return new SlowImpactsEnum(postings(null, flags));
       }
       return (ImpactsEnum) postings(null, flags);
-    }
-
-    @Override
-    public long size() throws IOException {
-      return termCount;
     }
   }
 
@@ -790,7 +782,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public TermsEnum iterator() throws IOException {
       if (fst != null) {
-        return new SimpleTextTermsEnum(fst, fieldInfo.getIndexOptions(), termCount);
+        return new SimpleTextTermsEnum(fst, fieldInfo.getIndexOptions());
       } else {
         return TermsEnum.EMPTY;
       }

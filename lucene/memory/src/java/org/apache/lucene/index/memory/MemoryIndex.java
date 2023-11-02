@@ -1847,11 +1847,6 @@ public class MemoryIndex {
         ts.ord = termUpto;
         return ts;
       }
-
-      @Override
-      public long size() throws IOException {
-        return info.terms.size();
-      }
     }
 
     private class MemoryPostingsEnum extends PostingsEnum {

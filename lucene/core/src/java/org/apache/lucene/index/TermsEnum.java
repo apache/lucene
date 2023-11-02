@@ -170,13 +170,6 @@ public abstract class TermsEnum implements BytesRefIterator {
   public abstract TermState termState() throws IOException;
 
   /**
-   * Returns the number of terms for this field, or -1 if this measure isn't stored by the codec.
-   * Note that, just like other term measures, this measure does not take deleted documents into
-   * account.
-   */
-  public abstract long size() throws IOException;
-
-  /**
    * An empty TermsEnum for quickly returning an empty instance e.g. in {@link
    * org.apache.lucene.search.MultiTermQuery}
    *
@@ -253,11 +246,6 @@ public abstract class TermsEnum implements BytesRefIterator {
         @Override
         public void seekExact(BytesRef term, TermState state) {
           throw new IllegalStateException("this method should never be called");
-        }
-
-        @Override
-        public long size() throws IOException {
-          return 0;
         }
       };
 }

@@ -586,11 +586,6 @@ public abstract class DocValuesConsumer implements Closeable {
     public TermState termState() throws IOException {
       throw new UnsupportedOperationException();
     }
-
-    @Override
-    public long size() throws IOException {
-      return -1;
-    }
   }
 
   /** Tracks state of one sorted sub-reader that we are merging */
@@ -659,9 +654,8 @@ public abstract class DocValuesConsumer implements Closeable {
             }
           }
         }
-        final long numTerms = bitset.cardinality();
-        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset, numTerms);
-        weights[sub] = numTerms;
+        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset);
+        weights[sub] = bitset.cardinality();
       }
     }
 
@@ -847,9 +841,8 @@ public abstract class DocValuesConsumer implements Closeable {
             }
           }
         }
-        final long numTerms = bitset.cardinality();
-        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset, numTerms);
-        weights[sub] = numTerms;
+        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset);
+        weights[sub] = bitset.cardinality();
       }
     }
 
@@ -988,14 +981,11 @@ public abstract class DocValuesConsumer implements Closeable {
   // TODO: seek-by-ord to nextSetBit
   static class BitsFilteredTermsEnum extends FilteredTermsEnum {
     final LongBitSet liveTerms;
-    final long numTerms;
 
-    BitsFilteredTermsEnum(TermsEnum in, LongBitSet liveTerms, long numTerms) {
+    BitsFilteredTermsEnum(TermsEnum in, LongBitSet liveTerms) {
       super(in, false); // <-- not passing false here wasted about 3 hours of my time!!!!!!!!!!!!!
       assert liveTerms != null;
       this.liveTerms = liveTerms;
-      this.numTerms = numTerms;
-      assert numTerms == liveTerms.cardinality();
     }
 
     @Override
@@ -1005,11 +995,6 @@ public abstract class DocValuesConsumer implements Closeable {
       } else {
         return AcceptStatus.NO;
       }
-    }
-
-    @Override
-    public long size() {
-      return numTerms;
     }
   }
 

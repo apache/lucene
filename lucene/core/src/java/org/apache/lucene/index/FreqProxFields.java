@@ -296,11 +296,6 @@ class FreqProxFields extends Fields {
         }
       };
     }
-
-    @Override
-    public long size() throws IOException {
-      return -1;
-    }
   }
 
   private static class FreqProxDocsEnum extends PostingsEnum {

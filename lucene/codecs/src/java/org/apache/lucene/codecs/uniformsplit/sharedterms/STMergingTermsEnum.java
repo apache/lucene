@@ -243,9 +243,4 @@ class STMergingTermsEnum extends TermsEnum {
       return 0; // Cost is not useful here.
     }
   }
-
-  @Override
-  public long size() throws IOException {
-    return -1;
-  }
 }

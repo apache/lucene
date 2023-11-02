@@ -39,33 +39,31 @@ class TermsEnumIndex {
    * the same long could still be different due to the fact that missing bytes are replaced with
    * zeroes, e.g. {@code [1, 0]} and {@code [1]} get mapped to the same long.
    */
-  static long prefix8ToComparableUnsignedLong(BytesRef term, int prefixLength) {
+  static long prefix8ToComparableUnsignedLong(BytesRef term) {
     // Use Big Endian so that longs are comparable
-    final int offset = term.offset + prefixLength;
-    final int length = term.length - prefixLength;
-
-    if (length >= Long.BYTES) {
-      return (long) BitUtil.VH_BE_LONG.get(term.bytes, offset);
+    if (term.length >= Long.BYTES) {
+      return (long) BitUtil.VH_BE_LONG.get(term.bytes, term.offset);
     } else {
       long l;
       int o;
-      if (Integer.BYTES <= length) {
-        l = (int) BitUtil.VH_BE_INT.get(term.bytes, offset);
+      if (Integer.BYTES <= term.length) {
+        l = (int) BitUtil.VH_BE_INT.get(term.bytes, term.offset);
         o = Integer.BYTES;
       } else {
         l = 0;
         o = 0;
       }
-      if (o + Short.BYTES <= length) {
+      if (o + Short.BYTES <= term.length) {
         l =
             (l << Short.SIZE)
-                | Short.toUnsignedLong((short) BitUtil.VH_BE_SHORT.get(term.bytes, offset + o));
+                | Short.toUnsignedLong(
+                    (short) BitUtil.VH_BE_SHORT.get(term.bytes, term.offset + o));
         o += Short.BYTES;
       }
-      if (o < length) {
-        l = (l << Byte.SIZE) | Byte.toUnsignedLong(term.bytes[offset + o]);
+      if (o < term.length) {
+        l = (l << Byte.SIZE) | Byte.toUnsignedLong(term.bytes[term.offset + o]);
       }
-      l <<= (Long.BYTES - length) << 3;
+      l <<= (Long.BYTES - term.length) << 3;
       return l;
     }
   }
@@ -73,10 +71,9 @@ class TermsEnumIndex {
   final int subIndex;
   TermsEnum termsEnum;
   private BytesRef currentTerm;
-  private int prefixLength;
   private long currentTermPrefix8;
 
-  TermsEnumIndex(TermsEnum termsEnum, int subIndex) throws IOException {
+  TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
     this.termsEnum = termsEnum;
     this.subIndex = subIndex;
   }
@@ -90,7 +87,7 @@ class TermsEnumIndex {
     if (currentTerm == null) {
       currentTermPrefix8 = 0;
     } else {
-      currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
+      currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm);
     }
   }
 
@@ -126,48 +123,32 @@ class TermsEnumIndex {
   }
 
   void reset(TermsEnumIndex tei) throws IOException {
-    prefixLength = tei.prefixLength;
     termsEnum = tei.termsEnum;
     currentTerm = tei.currentTerm;
     currentTermPrefix8 = tei.currentTermPrefix8;
   }
 
-  void setPrefixLength(int prefixLength) {
-    if (prefixLength != this.prefixLength) {
-      this.prefixLength = prefixLength;
-      currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
-    }
-  }
-
   int compareTermTo(TermsEnumIndex that) {
-    assert Arrays.equals(
-        currentTerm.bytes,
-        currentTerm.offset,
-        currentTerm.offset + prefixLength,
-        that.currentTerm.bytes,
-        that.currentTerm.offset,
-        that.currentTerm.offset + prefixLength);
-
     if (currentTermPrefix8 != that.currentTermPrefix8) {
       int cmp = Long.compareUnsigned(currentTermPrefix8, that.currentTermPrefix8);
       assert Integer.signum(cmp)
           == Integer.signum(
               Arrays.compareUnsigned(
                   currentTerm.bytes,
-                  currentTerm.offset + prefixLength,
+                  currentTerm.offset,
                   currentTerm.offset + currentTerm.length,
                   that.currentTerm.bytes,
-                  that.currentTerm.offset + prefixLength,
+                  that.currentTerm.offset,
                   that.currentTerm.offset + that.currentTerm.length));
       return cmp;
     }
 
     return Arrays.compareUnsigned(
         currentTerm.bytes,
-        currentTerm.offset + prefixLength,
+        currentTerm.offset,
         currentTerm.offset + currentTerm.length,
         that.currentTerm.bytes,
-        that.currentTerm.offset + prefixLength,
+        that.currentTerm.offset,
         that.currentTerm.offset + that.currentTerm.length);
   }
 
@@ -179,33 +160,24 @@ class TermsEnumIndex {
   /** Wrapper around a term that allows for quick equals comparisons. */
   static class TermState {
     private final BytesRefBuilder term = new BytesRefBuilder();
-    private int prefixLength;
     private long termPrefix8;
 
     void copyFrom(TermsEnumIndex tei) {
       term.copyBytes(tei.term());
-      prefixLength = tei.prefixLength;
       termPrefix8 = tei.currentTermPrefix8;
     }
   }
 
   boolean termEquals(TermState that) {
-    assert Arrays.equals(
-        currentTerm.bytes,
-        currentTerm.offset,
-        currentTerm.offset + prefixLength,
-        that.term.bytes(),
-        0,
-        that.prefixLength);
     if (currentTermPrefix8 != that.termPrefix8) {
       return false;
     }
     return Arrays.equals(
         currentTerm.bytes,
-        currentTerm.offset + prefixLength,
+        currentTerm.offset,
         currentTerm.offset + currentTerm.length,
         that.term.bytes(),
-        that.prefixLength,
+        0,
         that.term.length());
   }
 }

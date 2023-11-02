@@ -430,9 +430,4 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   public String toString() {
     return "MultiTermsEnum(" + Arrays.toString(subs) + ")";
   }
-
-  @Override
-  public long size() throws IOException {
-    return -1;
-  }
 }

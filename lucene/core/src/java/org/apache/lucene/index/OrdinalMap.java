@@ -22,17 +22,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.AttributeSource;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -51,8 +46,6 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
-  private static final int WINDOW_SIZE = 4096;
-
   private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
 
     TermsEnumPriorityQueue(int size) {
@@ -63,123 +56,6 @@ public class OrdinalMap implements Accountable {
     protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
       return a.compareTermTo(b) < 0;
     }
-  }
-
-  private static class PrefixFilteredTermsEnum extends TermsEnum {
-
-    private final TermsEnum in;
-    private int prefixLength;
-    private long maxOrd;
-    private final BytesRef term = new BytesRef(); 
-
-    PrefixFilteredTermsEnum(TermsEnum in, int prefixLength) throws IOException {
-      this.in = in;
-      this.prefixLength = prefixLength;
-      if (prefixLength == 0) {
-        maxOrd = Long.MAX_VALUE;
-      } else {
-        BytesRef currentTerm = in.term();
-        BytesRef prefix = BytesRef.deepCopyOf(currentTerm);
-        prefix.length = prefixLength;
-        BytesRef nextPrefix = BytesRef.deepCopyOf(prefix);
-        while (nextPrefix.length > 0 && nextPrefix.bytes[nextPrefix.offset + nextPrefix.length - 1] == (byte) 0xFF) {
-          nextPrefix.length--;
-        }
-        if (nextPrefix.length > 0) {
-          nextPrefix.bytes[nextPrefix.offset + nextPrefix.length - 1]++;
-        }
-        if (nextPrefix.length == 0) {
-          maxOrd = Long.MAX_VALUE;
-        } else {
-          long currentOrd = in.ord();
-          SeekStatus status = in.seekCeil(nextPrefix);
-          if (status == SeekStatus.END) {
-            maxOrd = Long.MAX_VALUE;
-          } else {
-            maxOrd = in.ord();
-          }
-          in.seekExact(currentOrd);
-        }
-      }
-    }
-
-    @Override
-    public BytesRef next() throws IOException {
-      BytesRef next = in.next();
-      if (next == null || in.ord() >= maxOrd) {
-        return null;
-      }
-      term.bytes = next.bytes;
-      term.offset = next.offset + prefixLength;
-      term.length = next.length - prefixLength;
-      return term;
-    }
-
-    @Override
-    public AttributeSource attributes() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean seekExact(BytesRef text) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public SeekStatus seekCeil(BytesRef text) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void seekExact(long ord) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void seekExact(BytesRef term, TermState state) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef term() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long ord() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docFreq() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long totalTermFreq() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public TermState termState() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long size() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
   }
 
   private static class SegmentMap implements Accountable {
@@ -291,23 +167,13 @@ public class OrdinalMap implements Accountable {
   public static OrdinalMap build(
       IndexReader.CacheKey owner, TermsEnum[] subs, long[] weights, float acceptableOverheadRatio)
       throws IOException {
-    return build(owner, subs, weights, acceptableOverheadRatio, WINDOW_SIZE);
-  }
-
-  static OrdinalMap build(
-      IndexReader.CacheKey owner,
-      TermsEnum[] subs,
-      long[] weights,
-      float acceptableOverheadRatio,
-      int windowSize)
-      throws IOException {
     if (subs.length != weights.length) {
       throw new IllegalArgumentException("subs and weights must have the same length");
     }
 
     // enums are not sorted, so let's sort to save memory
     final SegmentMap segmentMap = new SegmentMap(weights);
-    return new OrdinalMap(owner, subs, segmentMap, acceptableOverheadRatio, windowSize);
+    return new OrdinalMap(owner, subs, segmentMap, acceptableOverheadRatio);
   }
 
   private static final long BASE_RAM_BYTES_USED =
@@ -334,14 +200,8 @@ public class OrdinalMap implements Accountable {
       IndexReader.CacheKey owner,
       TermsEnum[] subs,
       SegmentMap segmentMap,
-      float acceptableOverheadRatio,
-      final int windowSize)
+      float acceptableOverheadRatio)
       throws IOException {
-    for (TermsEnum te : subs) {
-      if (te.size() < 0) {
-        throw new IllegalArgumentException("OrdinalMap requires terms enums whose size is known");
-      }
-    }
     // create the ordinal mappings by pulling a termsenum over each sub's
     // unique terms, and walking a multitermsenum over those
     this.owner = owner;
@@ -360,118 +220,71 @@ public class OrdinalMap implements Accountable {
     long[] ordDeltaBits = new long[subs.length];
     long[] segmentOrds = new long[subs.length];
 
-    TermsEnum[] subEnums = new TermsEnum[subs.length];
-    for (int i = 0; i < subs.length; ++i) {
-      TermsEnum te = subs[segmentMap.newToOld(i)];
-      if (te.next() != null) {
-        subEnums[i] = te;
+    // Just merge-sorts by term:
+    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
+
+    for (int i = 0; i < subs.length; i++) {
+      TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
+      if (sub.next() != null) {
+        queue.add(sub);
       }
     }
 
-    final TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
-    final BytesRefBuilder scratch = new BytesRefBuilder();
+    TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
 
     long globalOrd = 0;
-    while (true) {
-      // Compute a number of bytes that the next WINDOW_SIZE terms are guaranteed to share as a
-      // prefix with the current term
-      BytesRef min = null;
-      for (TermsEnum te : subEnums) {
-        if (te != null) {
-          if (min == null || te.term().compareTo(min) < 0) {
-            min = te.term();
-          }
+    while (queue.size() != 0) {
+      TermsEnumIndex top = queue.top();
+      topState.copyFrom(top);
+
+      int firstSegmentIndex = Integer.MAX_VALUE;
+      long globalOrdDelta = Long.MAX_VALUE;
+
+      // Advance past this term, recording the per-segment ord deltas:
+      while (true) {
+        long segmentOrd = top.termsEnum.ord();
+        long delta = globalOrd - segmentOrd;
+        int segmentIndex = top.subIndex;
+        // We compute the least segment where the term occurs. In case the
+        // first segment contains most (or better all) values, this will
+        // help save significant memory
+        if (segmentIndex < firstSegmentIndex) {
+          firstSegmentIndex = segmentIndex;
+          globalOrdDelta = delta;
         }
-      }
-      
-      if (min == null) {
-        // All enums are exhausted
-        break;
-      }
+        ordDeltaBits[segmentIndex] |= delta;
 
-      scratch.copyBytes(min);
-      int windowSharedPrefix = 0;
-      for (TermsEnum te : subEnums) {
-        if (te != null) {
-          long currentOrd = te.ord();
-          if (currentOrd + windowSize <= te.size()) {
-            te.seekExact(currentOrd + windowSize - 1);
-            int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), te.term());
-            windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
-            te.seekExact(currentOrd);
-          }
-        }
-      }
+        // for each per-segment ord, map it back to the global term; the while loop is needed
+        // in case the incoming TermsEnums don't have compact ordinals (some ordinal values
+        // are skipped), which can happen e.g. with a FilteredTermsEnum:
+        assert segmentOrds[segmentIndex] <= segmentOrd;
 
-      scratch.setLength(windowSharedPrefix);
-      BytesRef windowPrefix = scratch.get();
-      TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
-      for (int i = 0; i < subEnums.length; ++i) {
-        TermsEnum te = subEnums[i];
-        if (te != null) {
-          if (StringHelper.startsWith(te.term(), windowPrefix)) {
-            if (windowPrefix.length > 0) {
-              te = new PrefixFilteredTermsEnum(te, windowPrefix.length);
-            }
-            queue.add(new TermsEnumIndex(te, i));
-          }
-        }
-      }
+        // TODO: we could specialize this case (the while loop is not needed when the ords
+        // are compact)
+        do {
+          ordDeltas[segmentIndex].add(delta);
+          segmentOrds[segmentIndex]++;
+        } while (segmentOrds[segmentIndex] <= segmentOrd);
 
-      for (int i = 0; i < windowSize && queue.size() != 0; ++i) {
-        TermsEnumIndex top = queue.top();
-        topState.copyFrom(top);
-        int firstSegmentIndex = Integer.MAX_VALUE;
-        long globalOrdDelta = Long.MAX_VALUE;
-
-        // Advance past this term, recording the per-segment ord deltas:
-        while (true) {
-          top = queue.top();
-          long segmentOrd = top.termsEnum.ord();
-          long delta = globalOrd - segmentOrd;
-          int segmentIndex = top.subIndex;
-          // We compute the least segment where the term occurs. In case the
-          // first segment contains most (or better all) values, this will
-          // help save significant memory
-          if (segmentIndex < firstSegmentIndex) {
-            firstSegmentIndex = segmentIndex;
-            globalOrdDelta = delta;
-          }
-          ordDeltaBits[segmentIndex] |= delta;
-
-          // for each per-segment ord, map it back to the global term; the while loop is needed
-          // in case the incoming TermsEnums don't have compact ordinals (some ordinal values
-          // are skipped), which can happen e.g. with a FilteredTermsEnum:
-          assert segmentOrds[segmentIndex] <= segmentOrd;
-
-          // TODO: we could specialize this case (the while loop is not needed when the ords
-          // are compact)
-          do {
-            ordDeltas[segmentIndex].add(delta);
-            segmentOrds[segmentIndex]++;
-          } while (segmentOrds[segmentIndex] <= segmentOrd);
-
-          if (top.next() == null) {
-            queue.pop();
-            if (queue.size() == 0) {
-              break;
-            }
-            top = queue.top();
-          } else {
-            top = queue.updateTop();
-          }
-
-          if (top.termEquals(topState) == false) {
+        if (top.next() == null) {
+          queue.pop();
+          if (queue.size() == 0) {
             break;
           }
+          top = queue.top();
+        } else {
+          top = queue.updateTop();
         }
-
-        // for each unique term, just mark the first segment index/delta where it occurs
-        firstSegments.add(firstSegmentIndex);
-        firstSegmentBits |= firstSegmentIndex;
-        globalOrdDeltas.add(globalOrdDelta);
-        globalOrd++;
+        if (top.termEquals(topState) == false) {
+          break;
+        }
       }
+
+      // for each unique term, just mark the first segment index/delta where it occurs
+      firstSegments.add(firstSegmentIndex);
+      firstSegmentBits |= firstSegmentIndex;
+      globalOrdDeltas.add(globalOrdDelta);
+      globalOrd++;
     }
 
     long ramBytesUsed = BASE_RAM_BYTES_USED + segmentMap.ramBytesUsed();

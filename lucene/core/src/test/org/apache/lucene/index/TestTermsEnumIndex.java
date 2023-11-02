@@ -22,28 +22,27 @@ import org.apache.lucene.util.BytesRef;
 public class TestTermsEnumIndex extends LuceneTestCase {
 
   public void testPrefix8ToComparableUnsignedLong() {
-    byte[] b = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-    assertEquals(0L, TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 2), 2));
-    assertEquals(
-        4L << 56, TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 3), 2));
+    byte[] b = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    assertEquals(0L, TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 0)));
+    assertEquals(4L << 56, TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 1)));
     assertEquals(
         (4L << 56) | (5L << 48),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 4), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 2)));
     assertEquals(
         (4L << 56) | (5L << 48) | (6L << 40),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 5), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 3)));
     assertEquals(
         (4L << 56) | (5L << 48) | (6L << 40) | (7L << 32),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 6), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 4)));
     assertEquals(
         (4L << 56) | (5L << 48) | (6L << 40) | (7L << 32) | (8L << 24),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 7), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 5)));
     assertEquals(
         (4L << 56) | (5L << 48) | (6L << 40) | (7L << 32) | (8L << 24) | (9L << 16),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 8), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 6)));
     assertEquals(
         (4L << 56) | (5L << 48) | (6L << 40) | (7L << 32) | (8L << 24) | (9L << 16) | (10L << 8),
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 9), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 7)));
     assertEquals(
         (4L << 56)
             | (5L << 48)
@@ -53,6 +52,16 @@ public class TestTermsEnumIndex extends LuceneTestCase {
             | (9L << 16)
             | (10L << 8)
             | 11L,
-        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 1, 10), 2));
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 8)));
+    assertEquals(
+        (4L << 56)
+            | (5L << 48)
+            | (6L << 40)
+            | (7L << 32)
+            | (8L << 24)
+            | (9L << 16)
+            | (10L << 8)
+            | 11L,
+        TermsEnumIndex.prefix8ToComparableUnsignedLong(new BytesRef(b, 3, 9)));
   }
 }
