@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -31,6 +30,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -106,8 +106,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private Map<String, FileEntry> readEntries(
       byte[] segmentID, Directory dir, String entriesFileName) throws IOException {
     Map<String, FileEntry> mapping = null;
-    try (ChecksumIndexInput entriesStream =
-        dir.openChecksumInput(entriesFileName, IOContext.READONCE)) {
+    try (ChecksumIndexInput entriesStream = dir.openChecksumInput(entriesFileName)) {
       Throwable priorE = null;
       try {
         version =
@@ -132,7 +131,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
+    Map<String, FileEntry> mapping = CollectionUtil.newHashMap(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();

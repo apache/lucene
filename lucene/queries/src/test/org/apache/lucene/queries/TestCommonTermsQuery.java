@@ -88,9 +88,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.add(new Term("field", "right"));
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("2", r.document(search.scoreDocs[1].doc).get("id"));
-      assertEquals("3", r.document(search.scoreDocs[2].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[2].doc).get("id"));
     }
 
     { // only high freq
@@ -101,8 +101,8 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.add(new Term("field", "end"));
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 2);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("2", r.document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
     }
 
     { // low freq is mandatory
@@ -115,7 +115,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
 
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 1);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
     }
 
     { // low freq is mandatory
@@ -126,7 +126,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
 
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 1);
-      assertEquals("3", r.document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
     }
     IOUtils.close(r, w, dir, analyzer);
   }
@@ -223,7 +223,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.setLowFreqMinimumNumberShouldMatch(0.5f);
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 1);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
     }
     {
       CommonTermsQuery query =
@@ -237,7 +237,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.setLowFreqMinimumNumberShouldMatch(2.0f);
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 1);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
     }
 
     {
@@ -252,9 +252,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.setLowFreqMinimumNumberShouldMatch(0.49f);
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("2", r.document(search.scoreDocs[1].doc).get("id"));
-      assertEquals("3", r.document(search.scoreDocs[2].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[2].doc).get("id"));
     }
 
     {
@@ -269,9 +269,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.setLowFreqMinimumNumberShouldMatch(1.0f);
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("2", r.document(search.scoreDocs[1].doc).get("id"));
-      assertEquals("3", r.document(search.scoreDocs[2].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[2].doc).get("id"));
       assertTrue(search.scoreDocs[1].score >= search.scoreDocs[2].score);
     }
 
@@ -289,14 +289,14 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
       assertEquals(search.scoreDocs[1].score, search.scoreDocs[2].score, 0.0f);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
       // doc 2 and 3 only get a score from low freq terms
       assertEquals(
           new HashSet<>(Arrays.asList("2", "3")),
           new HashSet<>(
               Arrays.asList(
-                  r.document(search.scoreDocs[1].doc).get("id"),
-                  r.document(search.scoreDocs[2].doc).get("id"))));
+                  r.storedFields().document(search.scoreDocs[1].doc).get("id"),
+                  r.storedFields().document(search.scoreDocs[2].doc).get("id"))));
     }
 
     {
@@ -327,8 +327,8 @@ public class TestCommonTermsQuery extends LuceneTestCase {
           new HashSet<>(Arrays.asList("0", "2")),
           new HashSet<>(
               Arrays.asList(
-                  r.document(search.scoreDocs[0].doc).get("id"),
-                  r.document(search.scoreDocs[1].doc).get("id"))));
+                  r.storedFields().document(search.scoreDocs[0].doc).get("id"),
+                  r.storedFields().document(search.scoreDocs[1].doc).get("id"))));
     }
     IOUtils.close(r, w, dir, analyzer);
   }
@@ -385,9 +385,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.add(new Term("field", "right"));
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
-      assertEquals("0", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("2", r.document(search.scoreDocs[1].doc).get("id"));
-      assertEquals("3", r.document(search.scoreDocs[2].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[2].doc).get("id"));
     }
 
     {
@@ -403,9 +403,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       query.add(new Term("field", "right"));
       TopDocs search = s.search(query, 10);
       assertEquals(search.totalHits.value, 3);
-      assertEquals("2", r.document(search.scoreDocs[0].doc).get("id"));
-      assertEquals("3", r.document(search.scoreDocs[1].doc).get("id"));
-      assertEquals("0", r.document(search.scoreDocs[2].doc).get("id"));
+      assertEquals("2", r.storedFields().document(search.scoreDocs[0].doc).get("id"));
+      assertEquals("3", r.storedFields().document(search.scoreDocs[1].doc).get("id"));
+      assertEquals("0", r.storedFields().document(search.scoreDocs[2].doc).get("id"));
     }
     IOUtils.close(r, w, dir, analyzer);
   }

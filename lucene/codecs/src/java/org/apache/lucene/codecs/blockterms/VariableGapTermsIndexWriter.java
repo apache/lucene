@@ -74,6 +74,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
      * indexed
      */
     public abstract boolean isIndexTerm(BytesRef term, TermStats stats);
+
     /** Called when a new field is started. */
     public abstract void newField(FieldInfo fieldInfo);
   }

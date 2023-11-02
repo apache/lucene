@@ -32,8 +32,8 @@ configure(rootProject) {
     doFirst {
       scripts.each { file ->
         def content = new String(file.readBytes(), StandardCharsets.US_ASCII)
-        if (content.indexOf("Don't fork a daemon mode on initial run that generates local defaults") < 0) {
-          throw new GradleException("Launch script ${file} does not have a manual daemon tweak (see LUCENE-9232).")
+        if (content.indexOf("GradlePropertiesGenerator") < 0) {
+          throw new GradleException("Launch script ${file} does not have a tweak to generate gradle.properties.")
         }
       }
     }

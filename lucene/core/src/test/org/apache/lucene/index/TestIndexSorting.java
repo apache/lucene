@@ -62,6 +62,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -83,6 +84,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
@@ -1770,6 +1772,7 @@ public class TestIndexSorting extends LuceneTestCase {
 
     // Now check that the index is consistent
     IndexSearcher searcher = newSearcher(reader);
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numDocs; ++i) {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
@@ -1780,7 +1783,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.document(topDocs.scoreDocs[0].doc);
+        Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -1821,6 +1824,7 @@ public class TestIndexSorting extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(w);
     // Now check that the index is consistent
     IndexSearcher searcher = newSearcher(reader);
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numDocs; ++i) {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
@@ -1831,7 +1835,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.document(topDocs.scoreDocs[0].doc);
+        Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -2634,7 +2638,7 @@ public class TestIndexSorting extends LuceneTestCase {
     System.out.println("TEST: full index:");
     SortedDocValues docValues = MultiDocValues.getSortedValues(r2, "bytes");
     for(int i=0;i<r2.maxDoc();i++) {
-      System.out.println("  doc " + i + " id=" + r2.document(i).get("id") + " bytes=" + docValues.get(i));
+      System.out.println("  doc " + i + " id=" + r2.storedFields().document(i).get("id") + " bytes=" + docValues.get(i));
     }
     */
 
@@ -2665,10 +2669,13 @@ public class TestIndexSorting extends LuceneTestCase {
       }
 
       assertEquals(hits2.scoreDocs.length, hits1.scoreDocs.length);
+      StoredFields storedFields1 = r1.storedFields();
+      StoredFields storedFields2 = r2.storedFields();
       for (int i = 0; i < hits2.scoreDocs.length; i++) {
         ScoreDoc hit1 = hits1.scoreDocs[i];
         ScoreDoc hit2 = hits2.scoreDocs[i];
-        assertEquals(r1.document(hit1.doc).get("id"), r2.document(hit2.doc).get("id"));
+        assertEquals(
+            storedFields1.document(hit1.doc).get("id"), storedFields2.document(hit2.doc).get("id"));
         assertArrayEquals(((FieldDoc) hit1).fields, ((FieldDoc) hit2).fields);
       }
     }
@@ -2699,6 +2706,7 @@ public class TestIndexSorting extends LuceneTestCase {
     }
     w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
+    StoredFields storedFields = r.storedFields();
     for (int docID = 0; docID < 1000; docID++) {
       int expectedID;
       if (docID < 500) {
@@ -2706,7 +2714,8 @@ public class TestIndexSorting extends LuceneTestCase {
       } else {
         expectedID = docID - 500;
       }
-      assertEquals(expectedID, r.document(docID).getField("id").numericValue().intValue());
+      assertEquals(
+          expectedID, storedFields.document(docID).getField("id").numericValue().intValue());
     }
     IOUtils.close(r, w, dir);
   }
@@ -2879,6 +2888,7 @@ public class TestIndexSorting extends LuceneTestCase {
         if (values == null) {
           continue;
         }
+        StoredFields storedFields = leafCtx.reader().storedFields();
         for (int id = 0; id < leafCtx.reader().maxDoc(); id++) {
           if (liveDocs != null && liveDocs.get(id) == false) {
             continue;
@@ -2886,8 +2896,7 @@ public class TestIndexSorting extends LuceneTestCase {
           if (values.advanceExact(id) == false) {
             continue;
           }
-          int globalId =
-              Integer.parseInt(leafCtx.reader().document(id).getField("id").stringValue());
+          int globalId = Integer.parseInt(storedFields.document(id).getField("id").stringValue());
           assertTrue(values.advanceExact(id));
           assertEquals(expectedValues[globalId], values.longValue());
           docCount++;
@@ -2896,6 +2905,272 @@ public class TestIndexSorting extends LuceneTestCase {
       assertEquals(docCount, numDocs);
     }
     w.close();
+    dir.close();
+  }
+
+  public void testSortDocs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, config);
+    Document doc = new Document();
+    NumericDocValuesField sort = new NumericDocValuesField("sort", 0L);
+    doc.add(sort);
+    StringField field = new StringField("field", "a", Field.Store.NO);
+    doc.add(field);
+    w.addDocument(doc);
+    sort.setLongValue(1);
+    field.setStringValue("b");
+    w.addDocument(doc);
+    sort.setLongValue(-1);
+    field.setStringValue("a");
+    w.addDocument(doc);
+    sort.setLongValue(2);
+    field.setStringValue("a");
+    w.addDocument(doc);
+    sort.setLongValue(3);
+    field.setStringValue("b");
+    w.addDocument(doc);
+    w.forceMerge(1);
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    TermsEnum fieldTerms = leafReader.terms("field").iterator();
+    assertEquals(new BytesRef("a"), fieldTerms.next());
+    PostingsEnum postings = fieldTerms.postings(null, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(3, postings.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertEquals(new BytesRef("b"), fieldTerms.next());
+    postings = fieldTerms.postings(postings, PostingsEnum.ALL);
+    assertEquals(2, postings.nextDoc());
+    assertEquals(4, postings.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertNull(fieldTerms.next());
+    reader.close();
+    dir.close();
+  }
+
+  public void testSortDocsAndFreqs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, config);
+    FieldType ft = new FieldType();
+    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    ft.setTokenized(false);
+    ft.freeze();
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 0L));
+    doc.add(new Field("field", "a", ft));
+    doc.add(new Field("field", "a", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 1L));
+    doc.add(new Field("field", "b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", -1L));
+    doc.add(new Field("field", "a", ft));
+    doc.add(new Field("field", "a", ft));
+    doc.add(new Field("field", "a", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 2L));
+    doc.add(new Field("field", "a", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 3L));
+    doc.add(new Field("field", "b", ft));
+    doc.add(new Field("field", "b", ft));
+    doc.add(new Field("field", "b", ft));
+    w.addDocument(doc);
+    w.forceMerge(1);
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    TermsEnum fieldTerms = leafReader.terms("field").iterator();
+    assertEquals(new BytesRef("a"), fieldTerms.next());
+    PostingsEnum postings = fieldTerms.postings(null, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(3, postings.freq());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(2, postings.freq());
+    assertEquals(3, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertEquals(new BytesRef("b"), fieldTerms.next());
+    postings = fieldTerms.postings(postings, PostingsEnum.ALL);
+    assertEquals(2, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(4, postings.nextDoc());
+    assertEquals(3, postings.freq());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertNull(fieldTerms.next());
+    reader.close();
+    dir.close();
+  }
+
+  public void testSortDocsAndFreqsAndPositions() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
+    config.setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, config);
+    FieldType ft = new FieldType();
+    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    ft.setTokenized(true);
+    ft.freeze();
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 0L));
+    doc.add(new Field("field", "a a b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 1L));
+    doc.add(new Field("field", "b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", -1L));
+    doc.add(new Field("field", "b a b b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 2L));
+    doc.add(new Field("field", "a", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 3L));
+    doc.add(new Field("field", "b b", ft));
+    w.addDocument(doc);
+    w.forceMerge(1);
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    TermsEnum fieldTerms = leafReader.terms("field").iterator();
+    assertEquals(new BytesRef("a"), fieldTerms.next());
+    PostingsEnum postings = fieldTerms.postings(null, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(2, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(3, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertEquals(new BytesRef("b"), fieldTerms.next());
+    postings = fieldTerms.postings(postings, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(3, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(2, postings.nextPosition());
+    assertEquals(3, postings.nextPosition());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(2, postings.nextPosition());
+    assertEquals(2, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(4, postings.nextDoc());
+    assertEquals(2, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertNull(fieldTerms.next());
+    reader.close();
+    dir.close();
+  }
+
+  public void testSortDocsAndFreqsAndPositionsAndOffsets() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
+    config.setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, config);
+    FieldType ft = new FieldType();
+    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    ft.setTokenized(true);
+    ft.freeze();
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 0L));
+    doc.add(new Field("field", "a a b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 1L));
+    doc.add(new Field("field", "b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", -1L));
+    doc.add(new Field("field", "b a b b", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 2L));
+    doc.add(new Field("field", "a", ft));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new NumericDocValuesField("sort", 3L));
+    doc.add(new Field("field", "b b", ft));
+    w.addDocument(doc);
+    w.forceMerge(1);
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    TermsEnum fieldTerms = leafReader.terms("field").iterator();
+    assertEquals(new BytesRef("a"), fieldTerms.next());
+    PostingsEnum postings = fieldTerms.postings(null, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(2, postings.startOffset());
+    assertEquals(3, postings.endOffset());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(2, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(0, postings.startOffset());
+    assertEquals(1, postings.endOffset());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(2, postings.startOffset());
+    assertEquals(3, postings.endOffset());
+    assertEquals(3, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(0, postings.startOffset());
+    assertEquals(1, postings.endOffset());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertEquals(new BytesRef("b"), fieldTerms.next());
+    postings = fieldTerms.postings(postings, PostingsEnum.ALL);
+    assertEquals(0, postings.nextDoc());
+    assertEquals(3, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(0, postings.startOffset());
+    assertEquals(1, postings.endOffset());
+    assertEquals(2, postings.nextPosition());
+    assertEquals(4, postings.startOffset());
+    assertEquals(5, postings.endOffset());
+    assertEquals(3, postings.nextPosition());
+    assertEquals(6, postings.startOffset());
+    assertEquals(7, postings.endOffset());
+    assertEquals(1, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(2, postings.nextPosition());
+    assertEquals(4, postings.startOffset());
+    assertEquals(5, postings.endOffset());
+    assertEquals(2, postings.nextDoc());
+    assertEquals(1, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(0, postings.startOffset());
+    assertEquals(1, postings.endOffset());
+    assertEquals(4, postings.nextDoc());
+    assertEquals(2, postings.freq());
+    assertEquals(0, postings.nextPosition());
+    assertEquals(0, postings.startOffset());
+    assertEquals(1, postings.endOffset());
+    assertEquals(1, postings.nextPosition());
+    assertEquals(2, postings.startOffset());
+    assertEquals(3, postings.endOffset());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    assertNull(fieldTerms.next());
+    reader.close();
     dir.close();
   }
 }

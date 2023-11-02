@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
@@ -72,7 +73,9 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     if (currentDoc == -1) {
       return;
     }
-    Arrays.sort(currentValues, 0, currentUpto);
+    if (currentUpto > 1) {
+      Arrays.sort(currentValues, 0, currentUpto);
+    }
     for (int i = 0; i < currentUpto; i++) {
       pending.add(currentValues[i]);
     }
@@ -171,6 +174,20 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     } else {
       values = finalValues;
       valueCounts = finalValuesCount;
+    }
+
+    if (valueCounts == null) {
+      DocValuesProducer singleValueProducer =
+          NumericDocValuesWriter.getDocValuesProducer(fieldInfo, values, docsWithField, sortMap);
+      dvConsumer.addSortedNumericField(
+          fieldInfo,
+          new EmptyDocValuesProducer() {
+            @Override
+            public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfo) throws IOException {
+              return DocValues.singleton(singleValueProducer.getNumeric(fieldInfo));
+            }
+          });
+      return;
     }
 
     final LongValues sorted;

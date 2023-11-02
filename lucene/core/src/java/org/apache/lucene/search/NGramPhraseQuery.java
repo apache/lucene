@@ -18,14 +18,13 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 
 /**
  * This is a {@link PhraseQuery} which is optimized for n-gram phrase query. For example, when you
  * query "ABCD" on a 2-gram field, you may want to use NGramPhraseQuery rather than {@link
- * PhraseQuery}, because NGramPhraseQuery will {@link #rewrite(IndexReader)} the query to "AB/0
- * CD/2", while {@link PhraseQuery} will query "AB/0 BC/1 CD/2" (where term/position).
+ * PhraseQuery}, because NGramPhraseQuery will {@link Query#rewrite(IndexSearcher)} the query to
+ * "AB/0 CD/2", while {@link PhraseQuery} will query "AB/0 BC/1 CD/2" (where term/position).
  */
 public class NGramPhraseQuery extends Query {
 
@@ -44,7 +43,7 @@ public class NGramPhraseQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     final Term[] terms = phraseQuery.getTerms();
     final int[] positions = phraseQuery.getPositions();
 
@@ -63,7 +62,7 @@ public class NGramPhraseQuery extends Query {
     }
 
     if (isOptimizable == false) {
-      return phraseQuery.rewrite(reader);
+      return phraseQuery.rewrite(indexSearcher);
     }
 
     PhraseQuery.Builder builder = new PhraseQuery.Builder();

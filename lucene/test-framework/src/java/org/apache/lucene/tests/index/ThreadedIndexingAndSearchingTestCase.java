@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -450,9 +451,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                           // System.out.println(Thread.currentThread().getName() + " now search
                           // body:" + term.utf8ToString());
                           // }
-                          totHits.addAndGet(
-                              runQuery(
-                                  s, new TermQuery(new Term("body", BytesRef.deepCopyOf(term)))));
+                          totHits.addAndGet(runQuery(s, new TermQuery(new Term("body", term))));
                         }
                       }
                       // if (VERBOSE) {
@@ -529,9 +528,10 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           final Bits liveDocs = reader.getLiveDocs();
           int sum = 0;
           final int inc = Math.max(1, maxDoc / 50);
+          StoredFields storedFields = reader.storedFields();
           for (int docID = 0; docID < maxDoc; docID += inc) {
             if (liveDocs == null || liveDocs.get(docID)) {
-              final Document doc = reader.document(docID);
+              final Document doc = storedFields.document(docID);
               sum += doc.getFields().size();
             }
           }
@@ -583,7 +583,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           "TEST: DONE start "
               + NUM_INDEX_THREADS
               + " indexing threads ["
-              + (System.nanoTime() - t0) / 1_000_000
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
               + " ms]");
     }
 
@@ -594,7 +594,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     if (VERBOSE) {
       System.out.println(
-          "TEST: all searching done [" + (System.nanoTime() - t0) / 1_000_000 + " ms]");
+          "TEST: all searching done ["
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms]");
     }
 
     for (Thread thread : indexThreads) {
@@ -604,7 +606,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     if (VERBOSE) {
       System.out.println(
           "TEST: done join indexing threads ["
-              + (System.nanoTime() - t0) / 1_000_000
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
               + " ms]; addCount="
               + addCount
               + " delCount="
@@ -652,6 +654,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     // Verify: make sure each group of sub-docs are still in docID order:
     for (SubDocs subDocs : allSubDocs) {
       TopDocs hits = s.search(new TermQuery(new Term("packID", subDocs.packID)), 20);
+      StoredFields storedFields = s.storedFields();
       if (!subDocs.deleted) {
         // We sort by relevance but the scores should be identical so sort falls back to by docID:
         if (hits.totalHits.value != subDocs.subIDs.size()) {
@@ -674,7 +677,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               startDocID = docID;
             }
             lastDocID = docID;
-            final Document doc = s.doc(docID);
+            final Document doc = storedFields.document(docID);
             assertEquals(subDocs.packID, doc.get("packID"));
           }
 
@@ -765,7 +768,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     dir.close();
 
     if (VERBOSE) {
-      System.out.println("TEST: done [" + (System.nanoTime() - t0) / 1_000_000 + " ms]");
+      System.out.println(
+          "TEST: done [" + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms]");
     }
   }
 

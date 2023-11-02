@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
@@ -68,14 +69,15 @@ public class TestFeatureSort extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
+    StoredFields storedFields = searcher.storedFields();
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // numeric order
-    assertEquals("30.1", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("4.2", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("30.1", storedFields.document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("4.2", storedFields.document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("1.3", storedFields.document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -101,13 +103,14 @@ public class TestFeatureSort extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
+    StoredFields storedFields = searcher.storedFields();
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", storedFields.document(td.scoreDocs[1].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -134,13 +137,14 @@ public class TestFeatureSort extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
+    StoredFields storedFields = searcher.storedFields();
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", storedFields.document(td.scoreDocs[1].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -168,13 +172,14 @@ public class TestFeatureSort extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
+    StoredFields storedFields = searcher.storedFields();
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", storedFields.document(td.scoreDocs[1].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -208,17 +213,18 @@ public class TestFeatureSort extends LuceneTestCase {
 
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
+    StoredFields storedFields = searcher.storedFields();
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(7, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[3].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[4].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[5].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[6].doc).get("value"));
+    assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", storedFields.document(td.scoreDocs[1].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[2].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[3].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[4].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[5].doc).get("value"));
+    assertNull(storedFields.document(td.scoreDocs[6].doc).get("value"));
 
     ir.close();
     dir.close();

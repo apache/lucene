@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -24,6 +26,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 import org.junit.After;
 import org.junit.Before;
 
@@ -50,7 +53,7 @@ public class TestExceedMaxTermLength extends LuceneTestCase {
     dir = null;
   }
 
-  public void test() throws Exception {
+  public void testTokenStream() throws Exception {
 
     MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
     mockAnalyzer.setMaxTokenLength(Integer.MAX_VALUE);
@@ -81,6 +84,68 @@ public class TestExceedMaxTermLength extends LuceneTestCase {
             new Field(
                 TestUtil.randomSimpleString(random(), 1, 10),
                 TestUtil.randomSimpleString(random(), 1, 10),
+                ft));
+      }
+      doc.add(f);
+
+      IllegalArgumentException expected =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                w.addDocument(doc);
+              });
+      String maxLengthMsg = String.valueOf(IndexWriter.MAX_TERM_LENGTH);
+      String msg = expected.getMessage();
+      assertTrue(
+          "IllegalArgumentException didn't mention 'immense term': " + msg,
+          msg.contains("immense term"));
+      assertTrue(
+          "IllegalArgumentException didn't mention max length (" + maxLengthMsg + "): " + msg,
+          msg.contains(maxLengthMsg));
+      assertTrue(
+          "IllegalArgumentException didn't mention field name (" + name + "): " + msg,
+          msg.contains(name));
+      assertTrue(
+          "IllegalArgumentException didn't mention original message: " + msg,
+          msg.contains("bytes can be at most") && msg.contains("in length; got"));
+    } finally {
+      w.close();
+    }
+  }
+
+  public void testBinaryValue() throws Exception {
+
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    try {
+      final FieldType ft = new FieldType();
+      ft.setIndexOptions(
+          RandomPicks.randomFrom(
+              random(), Arrays.asList(IndexOptions.DOCS, IndexOptions.DOCS_AND_FREQS)));
+      ft.setStored(random().nextBoolean());
+      ft.setTokenized(false);
+      ft.freeze();
+
+      final Document doc = new Document();
+      if (random().nextBoolean()) {
+        // totally ok short field value
+        doc.add(
+            new Field(
+                TestUtil.randomSimpleString(random(), 1, 10),
+                TestUtil.randomBinaryTerm(random(), 10),
+                ft));
+      }
+      // problematic field
+      final String name = TestUtil.randomSimpleString(random(), 1, 50);
+      final BytesRef value =
+          TestUtil.randomBinaryTerm(
+              random(), TestUtil.nextInt(random(), minTestTermLength, maxTestTermLength));
+      final Field f = new Field(name, value, ft);
+      if (random().nextBoolean()) {
+        // totally ok short field value
+        doc.add(
+            new Field(
+                TestUtil.randomSimpleString(random(), 1, 10),
+                TestUtil.randomBinaryTerm(random(), 10),
                 ft));
       }
       doc.add(f);

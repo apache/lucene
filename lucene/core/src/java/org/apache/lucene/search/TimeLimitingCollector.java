@@ -33,9 +33,9 @@ public class TimeLimitingCollector implements Collector {
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
   public static class TimeExceededException extends RuntimeException {
-    private long timeAllowed;
-    private long timeElapsed;
-    private int lastDocCollected;
+    private final long timeAllowed;
+    private final long timeElapsed;
+    private final int lastDocCollected;
 
     private TimeExceededException(long timeAllowed, long timeElapsed, int lastDocCollected) {
       super(
@@ -48,14 +48,17 @@ public class TimeLimitingCollector implements Collector {
       this.timeElapsed = timeElapsed;
       this.lastDocCollected = lastDocCollected;
     }
+
     /** Returns allowed time (milliseconds). */
     public long getTimeAllowed() {
       return timeAllowed;
     }
+
     /** Returns elapsed time (milliseconds). */
     public long getTimeElapsed() {
       return timeElapsed;
     }
+
     /** Returns last doc (absolute doc id) that was collected when the search time exceeded. */
     public int getLastDocCollected() {
       return lastDocCollected;

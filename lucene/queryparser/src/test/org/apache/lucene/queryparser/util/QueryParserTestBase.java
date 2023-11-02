@@ -561,7 +561,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertQueryEquals("{ a TO z]", null, "{a TO z]");
 
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_REWRITE,
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
         ((TermRangeQuery) getQuery("[ a TO z]")).getRewriteMethod());
 
     CommonQueryParserConfiguration qp =

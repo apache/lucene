@@ -30,9 +30,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
@@ -40,13 +39,16 @@ import org.apache.lucene.util.SuppressForbidden;
 
 final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
+  private static final Logger LOG =
+      Logger.getLogger(MappedByteBufferIndexInputProvider.class.getName());
+
   private final BufferCleaner cleaner;
 
   private final boolean unmapSupported;
   private final String unmapNotSupportedReason;
 
   public MappedByteBufferIndexInputProvider() {
-    final Object hack = doPrivileged(MappedByteBufferIndexInputProvider::unmapHackImpl);
+    final Object hack = unmapHackImpl();
     if (hack instanceof BufferCleaner) {
       cleaner = (BufferCleaner) hack;
       unmapSupported = true;
@@ -55,13 +57,12 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
       cleaner = null;
       unmapSupported = false;
       unmapNotSupportedReason = hack.toString();
-      Logger.getLogger(getClass().getName()).warning(unmapNotSupportedReason);
+      LOG.warning(unmapNotSupportedReason);
     }
   }
 
   @Override
-  public IndexInput openInput(
-      Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
       throws IOException {
     if (chunkSizePower > 30) {
       throw new IllegalArgumentException(
@@ -77,7 +78,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
           map(resourceDescription, fc, chunkSizePower, preload, fileSize),
           fileSize,
           chunkSizePower,
-          new ByteBufferGuard(resourceDescription, useUnmapHack ? cleaner : null));
+          new ByteBufferGuard(resourceDescription, cleaner));
     }
   }
 
@@ -132,15 +133,29 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     return buffers;
   }
 
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
+  private static boolean checkUnmapHackSysprop() {
+    try {
+      return Optional.ofNullable(System.getProperty(MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP))
+          .map(Boolean::valueOf)
+          .orElse(Boolean.TRUE);
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
+      LOG.warning(
+          "Cannot read sysprop "
+              + MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP
+              + ", so buffer unmap hack will be enabled by default, if possible.");
+      return true;
+    }
   }
 
   @SuppressForbidden(reason = "Needs access to sun.misc.Unsafe to enable hack")
   private static Object unmapHackImpl() {
+    if (checkUnmapHackSysprop() == false) {
+      return "Unmapping was disabled by system property "
+          + MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP
+          + "=false";
+    }
     final Lookup lookup = lookup();
     try {
       // *** sun.misc.Unsafe unmapping (Java 9+) ***
@@ -180,18 +195,10 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
       if (!buffer.isDirect()) {
         throw new IllegalArgumentException("unmapping only works with direct buffers");
       }
-      final Throwable error =
-          doPrivileged(
-              () -> {
-                try {
-                  unmapper.invokeExact(buffer);
-                  return null;
-                } catch (Throwable t) {
-                  return t;
-                }
-              });
-      if (error != null) {
-        throw new IOException("Unable to unmap the mapped buffer: " + resourceDescription, error);
+      try {
+        unmapper.invokeExact(buffer);
+      } catch (Throwable t) {
+        throw new IOException("Unable to unmap the mapped buffer: " + resourceDescription, t);
       }
     };
   }

@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -154,7 +155,7 @@ public class Dictionary {
   boolean checkCompoundCase, checkCompoundDup, checkCompoundRep;
   boolean checkCompoundTriple, simplifiedTriple;
   int compoundMin = 3, compoundMax = Integer.MAX_VALUE;
-  List<CompoundRule> compoundRules; // nullable
+  CompoundRule[] compoundRules; // nullable
   List<CheckCompoundPattern> checkCompoundPatterns = new ArrayList<>();
 
   // ignored characters (dictionary, affix, inputs)
@@ -600,11 +601,11 @@ public class Dictionary {
     return parts;
   }
 
-  private List<CompoundRule> parseCompoundRules(LineNumberReader reader, int num)
+  private CompoundRule[] parseCompoundRules(LineNumberReader reader, int num)
       throws IOException, ParseException {
-    List<CompoundRule> compoundRules = new ArrayList<>();
+    CompoundRule[] compoundRules = new CompoundRule[num];
     for (int i = 0; i < num; i++) {
-      compoundRules.add(new CompoundRule(singleArgument(reader, reader.readLine()), this));
+      compoundRules[i] = new CompoundRule(singleArgument(reader, reader.readLine()), this);
     }
     return compoundRules;
   }
@@ -675,14 +676,26 @@ public class Dictionary {
     } catch (
         @SuppressWarnings("unused")
         NumberFormatException e) {
-      return;
+      if (tolerateAffixRuleCountMismatches()) {
+        return;
+      }
+      throw new ParseException("Affix rule header expected; got " + header, reader.getLineNumber());
     }
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
 
     for (int i = 0; i < numLines; i++) {
       String line = reader.readLine();
+      if (line == null) {
+        throw new ParseException("Premature end of rules for " + header, reader.getLineNumber());
+      }
+
       // from the manpage: PFX flag stripping prefix [condition [morphological_fields...]]
       String[] ruleArgs = splitBySpace(reader, line, 4, Integer.MAX_VALUE);
+
+      if (!ruleArgs[1].equals(args[1])) {
+        throw new ParseException(
+            "Affix rule mismatch. Header: " + header + "; rule: " + line, reader.getLineNumber());
+      }
 
       char flag = flagParsingStrategy.parseFlag(ruleArgs[1]);
       String strip = ruleArgs[2].equals("0") ? "" : ruleArgs[2];
@@ -991,7 +1004,7 @@ public class Dictionary {
           // if we haven't seen any custom morphological data, try to parse one
           if (!hasCustomMorphData) {
             int morphStart = line.indexOf(MORPH_SEPARATOR);
-            if (morphStart >= 0 && morphStart < line.length()) {
+            if (morphStart >= 0) {
               String data = line.substring(morphStart + 1);
               hasCustomMorphData =
                   splitMorphData(data).stream().anyMatch(s -> !s.startsWith("ph:"));
@@ -1131,10 +1144,12 @@ public class Dictionary {
 
     Map<String, Integer> morphIndices = new HashMap<>();
 
-    WordStorage.Builder builder = new WordStorage.Builder(wordCount, hasCustomMorphData, flags);
+    WordStorage.Builder builder =
+        new WordStorage.Builder(
+            wordCount, hashFactor(), hasCustomMorphData, flags, allNonSuggestibleFlags());
 
     try (ByteSequencesReader reader =
-        new ByteSequencesReader(tempDir.openChecksumInput(sorted, IOContext.READONCE), sorted)) {
+        new ByteSequencesReader(tempDir.openChecksumInput(sorted), sorted)) {
 
       // TODO: the flags themselves can be double-chars (long) or also numeric
       // either way the trick is to encode them as char... but they must be parsed differently
@@ -1187,7 +1202,12 @@ public class Dictionary {
 
       // finalize last entry
       success = true;
-      return builder.build();
+      return new WordStorage(builder) {
+        @Override
+        char caseFold(char c) {
+          return Dictionary.this.caseFold(c);
+        }
+      };
     } finally {
       if (success) {
         tempDir.deleteFile(sorted);
@@ -1195,6 +1215,31 @@ public class Dictionary {
         IOUtils.deleteFilesIgnoringExceptions(tempDir, sorted);
       }
     }
+  }
+
+  /**
+   * The factor determining the size of the internal hash table used for storing the entries. The
+   * table size is {@code entry_count * hashFactor}. The default factor is 1.0. If there are too
+   * many hash collisions, the factor can be increased, resulting in faster access, but more memory
+   * usage.
+   */
+  protected double hashFactor() {
+    return 1.0;
+  }
+
+  /**
+   * Whether incorrect PFX/SFX rule counts should be silently ignored. False by default: a {@link
+   * ParseException} will happen.
+   */
+  protected boolean tolerateAffixRuleCountMismatches() {
+    return false;
+  }
+
+  char[] allNonSuggestibleFlags() {
+    return Dictionary.toSortedCharArray(
+        Stream.of(HIDDEN_FLAG, noSuggest, forbiddenword, onlyincompound, subStandard)
+            .filter(c -> c != FLAG_UNSET)
+            .collect(Collectors.toSet()));
   }
 
   private List<String> readMorphFields(String word, String unparsed) {
@@ -1312,14 +1357,22 @@ public class Dictionary {
     if (morphData.isBlank()) {
       return Collections.emptyList();
     }
-    return Arrays.stream(morphData.split("\\s+"))
-        .filter(
-            s ->
-                s.length() > 3
-                    && Character.isLetter(s.charAt(0))
-                    && Character.isLetter(s.charAt(1))
-                    && s.charAt(2) == ':')
-        .collect(Collectors.toList());
+
+    List<String> result = null;
+    int start = 0;
+    for (int i = 0; i <= morphData.length(); i++) {
+      if (i == morphData.length() || Character.isWhitespace(morphData.charAt(i))) {
+        if (i - start > 3
+            && Character.isLetter(morphData.charAt(start))
+            && Character.isLetter(morphData.charAt(start + 1))
+            && morphData.charAt(start + 2) == ':') {
+          if (result == null) result = new ArrayList<>();
+          result.add(morphData.substring(start, i));
+        }
+        start = i + 1;
+      }
+    }
+    return result == null ? List.of() : result;
   }
 
   boolean hasFlag(IntsRef forms, char flag) {

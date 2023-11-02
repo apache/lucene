@@ -189,6 +189,22 @@ class NodeProcess implements Closeable {
     }
   }
 
+  // Simulate a replica holding a copy state open forever, by just leaking it.
+  public void leakCopyState() throws IOException {
+    try (Connection c = new Connection(tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_LEAK_COPY_STATE);
+      c.flush();
+    }
+  }
+
+  public void setRemoteCloseTimeoutMs(int timeoutMs) throws IOException {
+    try (Connection c = new Connection(tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_SET_CLOSE_WAIT_MS);
+      c.out.writeInt(timeoutMs);
+      c.flush();
+    }
+  }
+
   public void addOrUpdateDocument(Connection c, Document doc, boolean isUpdate) throws IOException {
     if (isPrimary == false) {
       throw new IllegalStateException("only primary can index");

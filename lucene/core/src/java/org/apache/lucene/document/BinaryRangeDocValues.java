@@ -21,14 +21,23 @@ import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
 
-class BinaryRangeDocValues extends BinaryDocValues {
+/** A binary representation of a range that wraps a BinaryDocValues field */
+public class BinaryRangeDocValues extends BinaryDocValues {
   private final BinaryDocValues in;
   private byte[] packedValue;
   private final int numDims;
   private final int numBytesPerDimension;
   private int docID = -1;
 
-  BinaryRangeDocValues(BinaryDocValues in, int numDims, int numBytesPerDimension) {
+  /**
+   * Constructor for BinaryRangeDocValues
+   *
+   * @param in the binary doc values source field
+   * @param numDims the number of dimensions in each doc values field
+   * @param numBytesPerDimension size of each dimension (2 * encoded value size)
+   */
+  public BinaryRangeDocValues(BinaryDocValues in, int numDims, int numBytesPerDimension) {
+    assert in != null;
     this.in = in;
     this.numBytesPerDimension = numBytesPerDimension;
     this.numDims = numDims;
@@ -81,6 +90,11 @@ class BinaryRangeDocValues extends BinaryDocValues {
     return in.binaryValue();
   }
 
+  /**
+   * Gets the packed value that represents this range
+   *
+   * @return the packed value that represents this range
+   */
   public byte[] getPackedValue() {
     return packedValue;
   }

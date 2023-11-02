@@ -32,7 +32,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     MMapDirectory m = new MMapDirectory(path);
-    m.setPreload(random().nextBoolean());
+    m.setPreload((file, context) -> random().nextBoolean());
     return m;
   }
 
@@ -48,12 +48,10 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
 
   public void testCorrectImplementation() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 19) {
+    if (runtimeVersion >= 19 && runtimeVersion <= 21) {
       assertTrue(
-          "on Java 19 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
+          "on Java 19, 20, and 21 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
           isMemorySegmentImpl());
-    } else if (runtimeVersion > 19) {
-      // TODO: We don't know how this is handled in later Java versions, so make no assumptions!
     } else {
       assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
     }
@@ -104,6 +102,19 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
       }
       t1.join();
       dir.close();
+    }
+  }
+
+  public void testNullParamsIndexInput() throws Exception {
+    try (Directory mmapDir = getDirectory(createTempDir("testNullParamsIndexInput"))) {
+      try (IndexOutput out = mmapDir.createOutput("bytes", newIOContext(random()))) {
+        out.alignFilePointer(16);
+      }
+      try (IndexInput in = mmapDir.openInput("bytes", IOContext.DEFAULT)) {
+        assertThrows(NullPointerException.class, () -> in.readBytes(null, 0, 1));
+        assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
+        assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
+      }
     }
   }
 }

@@ -100,12 +100,19 @@ public class TopSuggestDocsCollector extends SimpleCollector {
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
     docBase = context.docBase;
+  }
+
+  @Override
+  public void finish() throws IOException {
     if (seenSurfaceForms != null) {
-      seenSurfaceForms.clear();
       // NOTE: this also clears the priorityQueue:
       for (SuggestScoreDoc hit : priorityQueue.getResults()) {
         pendingResults.add(hit);
       }
+
+      // Deduplicate all hits: we already dedup'd efficiently within each segment by
+      // truncating the FST top paths search, but across segments there may still be dups:
+      seenSurfaceForms.clear();
     }
   }
 
@@ -136,15 +143,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
     SuggestScoreDoc[] suggestScoreDocs;
 
     if (seenSurfaceForms != null) {
-      // NOTE: this also clears the priorityQueue:
-      for (SuggestScoreDoc hit : priorityQueue.getResults()) {
-        pendingResults.add(hit);
-      }
-
-      // Deduplicate all hits: we already dedup'd efficiently within each segment by
-      // truncating the FST top paths search, but across segments there may still be dups:
-      seenSurfaceForms.clear();
-
+      assert seenSurfaceForms.isEmpty();
       // TODO: we could use a priority queue here to make cost O(N * log(num)) instead of O(N *
       // log(N)), where N = O(num *
       // numSegments), but typically numSegments is smallish and num is smallish so this won't

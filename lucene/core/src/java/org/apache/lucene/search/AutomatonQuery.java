@@ -48,6 +48,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   protected final Automaton automaton;
 
   protected final CompiledAutomaton compiled;
+
   /** term containing the field, and possibly some pattern structure */
   protected final Term term;
 
@@ -76,7 +77,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     UTF32ToUTF8 conversion
    */
   public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary) {
-    this(term, automaton, isBinary, CONSTANT_SCORE_REWRITE);
+    this(term, automaton, isBinary, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**

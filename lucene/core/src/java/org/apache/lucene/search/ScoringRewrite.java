@@ -42,7 +42,8 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
    * in a BooleanQuery, and keeps the scores as computed by the query. Note that typically such
    * scores are meaningless to the user, and require non-trivial CPU to compute, so it's almost
-   * always better to use {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} instead.
+   * always better to use {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} or {@link
+   * MultiTermQuery#CONSTANT_SCORE_REWRITE} instead.
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
@@ -86,8 +87,8 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
   public static final RewriteMethod CONSTANT_SCORE_BOOLEAN_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
-          final Query bq = SCORING_BOOLEAN_REWRITE.rewrite(reader, query);
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) throws IOException {
+          final Query bq = SCORING_BOOLEAN_REWRITE.rewrite(indexSearcher, query);
           // strip the scores off
           return new ConstantScoreQuery(bq);
         }
@@ -100,8 +101,9 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract void checkMaxClauseCount(int count) throws IOException;
 
   @Override
-  public final Query rewrite(final IndexReader reader, final MultiTermQuery query)
+  public final Query rewrite(IndexSearcher indexSearcher, final MultiTermQuery query)
       throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     final B builder = getTopLevelBuilder();
     final ParallelArraysTermCollector col = new ParallelArraysTermCollector();
     collectTerms(reader, query, col);

@@ -53,6 +53,7 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -629,6 +630,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < ys.length / 2; docID++) {
         float yDoc1 = ys[2 * docID];
         float xDoc1 = xs[2 * docID];
@@ -641,7 +643,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {
@@ -1330,6 +1332,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numQueries; i++) {
       XYCircle circle = ShapeTestUtil.nextCircle();
       float x = circle.getX();
@@ -1338,8 +1341,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
       BitSet expected = new BitSet();
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        float docX = reader.document(doc).getField("x").numericValue().floatValue();
-        float docY = reader.document(doc).getField("y").numericValue().floatValue();
+        float docX = storedFields.document(doc).getField("x").numericValue().floatValue();
+        float docY = storedFields.document(doc).getField("y").numericValue().floatValue();
         double distance = cartesianDistance(x, y, docX, docY);
         if (distance <= radius) {
           expected.set(doc);
@@ -1359,8 +1362,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       } catch (AssertionError e) {
         System.out.println("center: (" + x + "," + y + "), radius=" + radius);
         for (int doc = 0; doc < reader.maxDoc(); doc++) {
-          float docX = reader.document(doc).getField("x").numericValue().floatValue();
-          float docY = reader.document(doc).getField("y").numericValue().floatValue();
+          float docX = storedFields.document(doc).getField("x").numericValue().floatValue();
+          float docY = storedFields.document(doc).getField("y").numericValue().floatValue();
           double distance = cartesianDistance(x, y, docX, docY);
           System.out.println("" + doc + ": (" + x + "," + y + "), distance=" + distance);
         }

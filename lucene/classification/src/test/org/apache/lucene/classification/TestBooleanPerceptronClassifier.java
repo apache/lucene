@@ -25,6 +25,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Testcase for {@link org.apache.lucene.classification.BooleanPerceptronClassifier} */
@@ -42,9 +43,7 @@ public class TestBooleanPerceptronClassifier extends ClassificationTestBase<Bool
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, false);
       checkCorrectClassification(classifier, POLITICS_INPUT, true);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -60,9 +59,7 @@ public class TestBooleanPerceptronClassifier extends ClassificationTestBase<Bool
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, false);
       checkCorrectClassification(classifier, POLITICS_INPUT, true);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -79,9 +76,7 @@ public class TestBooleanPerceptronClassifier extends ClassificationTestBase<Bool
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, false);
       checkCorrectClassification(classifier, POLITICS_INPUT, true);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

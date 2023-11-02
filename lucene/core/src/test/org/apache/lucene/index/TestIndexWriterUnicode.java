@@ -255,7 +255,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
     w.close();
 
     IndexReader ir = DirectoryReader.open(dir);
-    Document doc2 = ir.document(0);
+    Document doc2 = ir.storedFields().document(0);
     for (int i = 0; i < count; i++) {
       assertEquals(
           "field " + i + " was not indexed correctly",
