@@ -83,10 +83,6 @@ public final class Constants {
 
   // best effort to see if FMA is fast (this is architecture-independent option)
   private static boolean hasFastFMA() {
-    // on ARM cpus, FMA works fine but is a slight slowdown: don't use it.
-    if (Constants.OS_ARCH.equals("amd64") == false) {
-      return false;
-    }
     try {
       final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
       // we use reflection for this, because the management factory is not part
@@ -102,11 +98,20 @@ public final class Constants {
             Boolean.parseBoolean(
                 vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
         if (hasFMA) {
-          // we've got FMA, but detect if its AMD and avoid it in that case
-          final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseXmmI2F");
-          hasFMA =
-              !Boolean.parseBoolean(
-                  vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString());
+          if (OS_ARCH.equals("amd64")) {
+            // we've got FMA, but detect if its AMD and avoid it in that case
+            final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseXmmI2F");
+            hasFMA =
+                !Boolean.parseBoolean(
+                    vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString());
+          } else if (OS_ARCH.equals("aarch64")) {
+            // we've got FMA, but its slower unless its a newer SVE-based chip
+            final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseSVE");
+            hasFMA =
+                Integer.parseInt(
+                        vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString())
+                    > 0;
+          }
         }
         return hasFMA;
       }
