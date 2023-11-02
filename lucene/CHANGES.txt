@@ -253,6 +253,8 @@ Optimizations
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
+* GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
