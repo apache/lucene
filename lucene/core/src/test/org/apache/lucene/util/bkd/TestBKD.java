@@ -1597,12 +1597,12 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
@@ -1689,6 +1689,10 @@ public class TestBKD extends LuceneTestCase {
     }
     MutablePointTree val =
         new MutablePointTree() {
+
+          final byte[][] tmpValues = new byte[numValues][];
+          final int[] tmpDocs = new int[numValues];
+
           @Override
           public void getValue(int i, BytesRef packedValue) {
             packedValue.bytes = pointValue[i];
@@ -1718,12 +1722,14 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            tmpValues[j] = pointValue[i];
+            tmpDocs[j] = docId[i];
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            System.arraycopy(tmpValues, i, pointValue, i, j - i);
+            System.arraycopy(tmpDocs, i, docId, i, j - i);
           }
 
           @Override

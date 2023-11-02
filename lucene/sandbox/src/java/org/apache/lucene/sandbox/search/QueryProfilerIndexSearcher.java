@@ -63,15 +63,19 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
       timer.stop();
       profiler.pollLast();
     }
-    return new QueryProfilerWeight(query, weight, profile);
+    return new QueryProfilerWeight(weight, profile);
   }
 
-  /** @return total time taken to rewrite all queries in this profile */
+  /**
+   * @return total time taken to rewrite all queries in this profile
+   */
   public long getRewriteTime() {
     return profiler.getRewriteTime();
   }
 
-  /** @return a hierarchical representation of the profiled tree */
+  /**
+   * @return a hierarchical representation of the profiled tree
+   */
   public List<QueryProfilerResult> getProfileResult() {
     return profiler.getTree();
   }

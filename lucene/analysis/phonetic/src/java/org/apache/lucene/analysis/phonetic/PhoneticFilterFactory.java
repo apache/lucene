@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.phonetic;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.codec.Encoder;
@@ -76,25 +75,24 @@ public class PhoneticFilterFactory extends TokenFilterFactory implements Resourc
 
   /** parameter name: either a short name or a full class name */
   public static final String ENCODER = "encoder";
+
   /** parameter name: true if encoded tokens should be added as synonyms */
   public static final String INJECT = "inject"; // boolean
+
   /** parameter name: restricts the length of the phonetic code */
   public static final String MAX_CODE_LENGTH = "maxCodeLength";
 
   private static final String PACKAGE_CONTAINING_ENCODERS = "org.apache.commons.codec.language.";
 
-  // Effectively constants; uppercase keys
-  private static final Map<String, Class<? extends Encoder>> registry = new HashMap<>(6);
-
-  static {
-    registry.put("DoubleMetaphone".toUpperCase(Locale.ROOT), DoubleMetaphone.class);
-    registry.put("Metaphone".toUpperCase(Locale.ROOT), Metaphone.class);
-    registry.put("Soundex".toUpperCase(Locale.ROOT), Soundex.class);
-    registry.put("RefinedSoundex".toUpperCase(Locale.ROOT), RefinedSoundex.class);
-    registry.put("Caverphone".toUpperCase(Locale.ROOT), Caverphone2.class);
-    registry.put("ColognePhonetic".toUpperCase(Locale.ROOT), ColognePhonetic.class);
-    registry.put("Nysiis".toUpperCase(Locale.ROOT), Nysiis.class);
-  }
+  private static final Map<String, Class<? extends Encoder>> registry =
+      Map.of(
+          "DoubleMetaphone".toUpperCase(Locale.ROOT), DoubleMetaphone.class,
+          "Metaphone".toUpperCase(Locale.ROOT), Metaphone.class,
+          "Soundex".toUpperCase(Locale.ROOT), Soundex.class,
+          "RefinedSoundex".toUpperCase(Locale.ROOT), RefinedSoundex.class,
+          "Caverphone".toUpperCase(Locale.ROOT), Caverphone2.class,
+          "ColognePhonetic".toUpperCase(Locale.ROOT), ColognePhonetic.class,
+          "Nysiis".toUpperCase(Locale.ROOT), Nysiis.class);
 
   final boolean inject; // accessed by the test
   private final String name;

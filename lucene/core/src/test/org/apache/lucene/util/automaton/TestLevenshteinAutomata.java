@@ -21,6 +21,7 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 public class TestLevenshteinAutomata extends LuceneTestCase {
 
@@ -73,8 +74,8 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
       assertNotNull(tautomata[n]);
       assertTrue(automata[n].isDeterministic());
       assertTrue(tautomata[n].isDeterministic());
-      assertTrue(Operations.isFinite(automata[n]));
-      assertTrue(Operations.isFinite(tautomata[n]));
+      assertTrue(AutomatonTestUtil.isFinite(automata[n]));
+      assertTrue(AutomatonTestUtil.isFinite(tautomata[n]));
       assertFalse(Operations.hasDeadStatesFromInitial(automata[n]));
       assertFalse(Operations.hasDeadStatesFromInitial(tautomata[n]));
       // check that the dfa for n-1 accepts a subset of the dfa for n

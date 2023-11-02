@@ -16,7 +16,13 @@
  */
 package org.apache.lucene.queries.spans;
 
-import static org.apache.lucene.queries.spans.SpanTestUtil.*;
+import static org.apache.lucene.queries.spans.SpanTestUtil.assertFinished;
+import static org.apache.lucene.queries.spans.SpanTestUtil.assertNext;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanContainingQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNearOrderedQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanWithinQuery;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

@@ -28,7 +28,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
@@ -132,9 +134,11 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
     if (query != null) {
       q.add(new BooleanClause(query, BooleanClause.Occur.MUST));
     }
+    TermVectors termVectors = indexReader.termVectors();
+    StoredFields storedFields = indexReader.storedFields();
     // run the search and use stored field values
     for (ScoreDoc scoreDoc : indexSearcher.search(q.build(), Integer.MAX_VALUE).scoreDocs) {
-      Document doc = indexSearcher.doc(scoreDoc.doc);
+      Document doc = storedFields.document(scoreDoc.doc);
 
       IndexableField textField = doc.getField(textFieldName);
 
@@ -147,10 +151,10 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
         Boolean assignedClass = classificationResult.getAssignedClass();
 
         Boolean correctClass = Boolean.valueOf(classField.stringValue());
-        long modifier = correctClass.compareTo(assignedClass);
-        if (modifier != 0) {
+        double modifier = Math.signum(correctClass.compareTo(assignedClass));
+        if (modifier != 0D) {
           updateWeights(
-              indexReader,
+              termVectors,
               scoreDoc.doc,
               assignedClass,
               weights,
@@ -164,7 +168,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
   }
 
   private void updateWeights(
-      IndexReader indexReader,
+      TermVectors termVectors,
       int docId,
       Boolean assignedClass,
       SortedMap<String, Double> weights,
@@ -174,7 +178,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
     TermsEnum cte = textTerms.iterator();
 
     // get the doc term vectors
-    Terms terms = indexReader.getTermVector(docId, textFieldName);
+    Terms terms = termVectors.get(docId, textFieldName);
 
     if (terms == null) {
       throw new IOException("term vectors must be stored for field " + textFieldName);

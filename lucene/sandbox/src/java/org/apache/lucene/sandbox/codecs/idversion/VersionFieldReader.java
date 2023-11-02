@@ -43,6 +43,7 @@ final class VersionFieldReader extends Terms {
   final VersionBlockTreeTermsReader parent;
 
   final FST<Pair<BytesRef, Long>> index;
+
   // private boolean DEBUG;
 
   VersionFieldReader(

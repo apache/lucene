@@ -68,7 +68,7 @@ public class TestLatLonLineShapeQueries extends BaseLatLonShapeTestCase {
     return new LineValidator(this.ENCODER);
   }
 
-  protected static class LineValidator extends Validator {
+  public static class LineValidator extends Validator {
     protected LineValidator(Encoder encoder) {
       super(encoder);
     }

@@ -18,7 +18,11 @@ package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
 import java.util.WeakHashMap;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.locationtech.spatial4j.shape.Shape;

@@ -47,12 +47,16 @@ public final class Polygon extends LatLonGeometry {
 
   /** minimum latitude of this polygon's bounding box area */
   public final double minLat;
+
   /** maximum latitude of this polygon's bounding box area */
   public final double maxLat;
+
   /** minimum longitude of this polygon's bounding box area */
   public final double minLon;
+
   /** maximum longitude of this polygon's bounding box area */
   public final double maxLon;
+
   /** winding order of the vertices */
   private final WindingOrder windingOrder;
 
@@ -66,9 +70,6 @@ public final class Polygon extends LatLonGeometry {
     }
     if (holes == null) {
       throw new IllegalArgumentException("holes must not be null");
-    }
-    if (polyLats.length != polyLons.length) {
-      throw new IllegalArgumentException("polyLats and polyLons must be equal length");
     }
     if (polyLats.length != polyLons.length) {
       throw new IllegalArgumentException("polyLats and polyLons must be equal length");

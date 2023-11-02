@@ -154,8 +154,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzer,
         "화학 이외의         것",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
   public void testPartOfSpeechs() throws IOException {
@@ -170,8 +170,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzer,
         "화학 이외의 것",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
   public void testPartOfSpeechsWithPunc() throws IOException {
@@ -195,10 +195,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.J, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
+          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.J, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
+          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
         });
   }
 
@@ -239,8 +239,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME,
           POS.Type.MORPHEME
         },
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
 
     assertAnalyzesTo(
         analyzerDecompound,
@@ -271,8 +271,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME,
           POS.Type.MORPHEME
         },
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
+        new POS.Tag[] {
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+        });
 
     assertPartsOfSpeech(
         analyzerDecompoundKeep,
@@ -287,10 +289,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
         });
   }
 
@@ -303,7 +305,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         "감싸여",
         new POS.Type[] {POS.Type.INFLECT},
         new POS.Tag[] {POS.Tag.VV},
-        new POS.Tag[] {POS.Tag.E});
+        new POS.Tag[] {POS.Tag.EC});
 
     assertAnalyzesTo(
         analyzerDecompound,
@@ -327,15 +329,15 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzerDecompound,
         "감싸여",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.E},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.E});
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.EC},
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.EC});
 
     assertPartsOfSpeech(
         analyzerDecompoundKeep,
         "감싸여",
         new POS.Type[] {POS.Type.INFLECT, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.VV, POS.Tag.E},
-        new POS.Tag[] {POS.Tag.E, POS.Tag.VV, POS.Tag.E});
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.VV, POS.Tag.EC},
+        new POS.Tag[] {POS.Tag.EC, POS.Tag.VV, POS.Tag.EC});
   }
 
   public void testUnknownWord() throws IOException {

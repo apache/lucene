@@ -152,8 +152,8 @@ public abstract class Directory implements Closeable {
    * @param name the name of an existing file.
    * @throws IOException in case of I/O error
    */
-  public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
-    return new BufferedChecksumIndexInput(openInput(name, context));
+  public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+    return new BufferedChecksumIndexInput(openInput(name, IOContext.READONCE));
   }
 
   /**

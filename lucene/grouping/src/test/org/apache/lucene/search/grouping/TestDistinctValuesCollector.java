@@ -462,7 +462,7 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     DirectoryReader reader = w.getReader();
     if (VERBOSE) {
       for (int docID = 0; docID < reader.maxDoc(); docID++) {
-        Document doc = reader.document(docID);
+        Document doc = reader.storedFields().document(docID);
         System.out.println(
             "docID="
                 + docID

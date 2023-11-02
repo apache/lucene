@@ -65,7 +65,7 @@ class VectorValuesConsumer {
     }
   }
 
-  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
+  public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     initKnnVectorsWriter(fieldInfo.name);
     return writer.addField(fieldInfo);
   }

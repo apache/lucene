@@ -22,12 +22,19 @@ import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsForm
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return new Lucene91RWCodec();
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    // Older formats only support float vectors
+    return VectorEncoding.FLOAT32;
   }
 
   public void testToString() {
@@ -49,5 +56,15 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     assertEquals(
         expectedString,
         ((Lucene91Codec) customCodec).getKnnVectorsFormatForField("bogus_field").toString());
+  }
+
+  @Override
+  public void testRandomBytes() throws Exception {
+    // unimplemented
+  }
+
+  @Override
+  public void testSortedIndexBytes() throws Exception {
+    // unimplemented
   }
 }

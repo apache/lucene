@@ -40,6 +40,7 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.codecs.ramonly;
   exports org.apache.lucene.tests.codecs.uniformsplit.sharedterms;
   exports org.apache.lucene.tests.codecs.uniformsplit;
+  exports org.apache.lucene.tests.codecs.vector;
   exports org.apache.lucene.tests.geo;
   exports org.apache.lucene.tests.index;
   exports org.apache.lucene.tests.mockfile;
@@ -58,7 +59,8 @@ module org.apache.lucene.test_framework {
       org.apache.lucene.tests.codecs.compressing.FastDecompressionCompressingCodec,
       org.apache.lucene.tests.codecs.compressing.HighCompressionCompressingCodec,
       org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec,
-      org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec;
+      org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec,
+      org.apache.lucene.tests.codecs.vector.ConfigurableMCodec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with

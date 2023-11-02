@@ -57,7 +57,9 @@ public abstract class DictEntry {
     return Objects.hash(stem, getFlags(), getMorphologicalData());
   }
 
-  /** @return the stem word in the dictionary */
+  /**
+   * @return the stem word in the dictionary
+   */
   public String getStem() {
     return stem;
   }

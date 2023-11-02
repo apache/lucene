@@ -55,8 +55,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'baz' comes before 'foo'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -85,8 +85,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'baz' comes before 'foo'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -120,10 +120,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null comes first
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     // 'baz' comes before 'foo'
-    assertEquals("3", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -157,10 +157,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // 'baz' comes before 'foo'
-    assertEquals("3", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     // null comes last
-    assertEquals("1", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -187,8 +187,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'bar' comes before 'baz'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -218,8 +218,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -249,8 +249,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -285,10 +285,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null comes first
-    assertEquals("3", searcher.doc(td.scoreDocs[0].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     // 'b' comes before 'c'
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -323,10 +323,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     // null comes last
-    assertEquals("3", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -353,8 +353,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'bar' comes before 'baz'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -384,8 +384,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -415,8 +415,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -451,10 +451,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null comes first
-    assertEquals("3", searcher.doc(td.scoreDocs[0].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     // 'b' comes before 'c'
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -489,10 +489,10 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // 'b' comes before 'c'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     // null comes last
-    assertEquals("3", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -519,8 +519,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'bar' comes before 'baz'
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();

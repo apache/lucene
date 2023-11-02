@@ -212,10 +212,11 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     FieldInfo dvInfo = fi.fieldInfo("dv");
     assertTrue(dvInfo.getDocValuesType() != DocValuesType.NONE);
     NumericDocValues dv = MultiDocValues.getNumericValues(r, "dv");
+    StoredFields storedFields = r.storedFields();
     for (int i = 0; i < 50; i++) {
       assertEquals(i, dv.nextDoc());
       assertEquals(i, dv.longValue());
-      Document d = r.document(i);
+      Document d = storedFields.document(i);
       // cannot use d.get("dv") due to another bug!
       assertNull(d.getField("dv"));
       assertEquals(Integer.toString(i), d.get("docId"));
@@ -879,17 +880,21 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+    FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);
     ft.setDocValuesType(DocValuesType.SORTED);
     ft.freeze();
-    Field field = new Field("test", "value", ft);
-    field.setTokenStream(
-        new TokenStream() {
+    Field field =
+        new Field("test", new BytesRef("value"), ft) {
           @Override
-          public boolean incrementToken() {
-            throw new RuntimeException("no");
+          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+            return new TokenStream() {
+              @Override
+              public boolean incrementToken() throws IOException {
+                throw new RuntimeException();
+              }
+            };
           }
-        });
+        };
     doc.add(field);
     expectThrows(
         RuntimeException.class,

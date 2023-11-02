@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.util.automaton;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -44,6 +45,9 @@ import org.apache.lucene.util.automaton.Transition;
 public class AutomatonTestUtil {
   /** Default maximum number of states that {@link Operations#determinize} should create. */
   public static final int DEFAULT_MAX_DETERMINIZED_STATES = 1000000;
+
+  /** Maximum level of recursion allowed in recursive operations. */
+  public static final int MAX_RECURSION_LEVEL = 1000;
 
   /** Returns random string, including full unicode range. */
   public static String randomRegexp(Random r) {
@@ -463,35 +467,40 @@ public class AutomatonTestUtil {
   }
 
   /**
-   * Returns true if the language of this automaton is finite.
-   *
-   * <p>WARNING: this method is slow, it will blow up if the automaton is large. this is only used
-   * to test the correctness of our faster implementation.
+   * Returns true if the language of this automaton is finite. The automaton must not have any dead
+   * states.
    */
-  public static boolean isFiniteSlow(Automaton a) {
+  public static boolean isFinite(Automaton a) {
     if (a.getNumStates() == 0) {
       return true;
     }
-    return isFiniteSlow(a, 0, new HashSet<Integer>());
+    return isFinite(
+        new Transition(), a, 0, new BitSet(a.getNumStates()), new BitSet(a.getNumStates()), 0);
   }
 
   /**
-   * Checks whether there is a loop containing s. (This is sufficient since there are never
+   * Checks whether there is a loop containing state. (This is sufficient since there are never
    * transitions to dead states.)
    */
   // TODO: not great that this is recursive... in theory a
-  // large automata could exceed java's stack
-  private static boolean isFiniteSlow(Automaton a, int s, HashSet<Integer> path) {
-    path.add(s);
-    Transition t = new Transition();
-    int count = a.initTransition(s, t);
-    for (int i = 0; i < count; i++) {
-      a.getNextTransition(t);
-      if (path.contains(t.dest) || !isFiniteSlow(a, t.dest, path)) {
+  // large automata could exceed java's stack so the maximum level of recursion is bounded to 1000
+  private static boolean isFinite(
+      Transition scratch, Automaton a, int state, BitSet path, BitSet visited, int level) {
+    if (level > MAX_RECURSION_LEVEL) {
+      throw new IllegalArgumentException("input automaton is too large: " + level);
+    }
+    path.set(state);
+    int numTransitions = a.initTransition(state, scratch);
+    for (int t = 0; t < numTransitions; t++) {
+      a.getTransition(state, t, scratch);
+      if (path.get(scratch.dest)
+          || (!visited.get(scratch.dest)
+              && !isFinite(scratch, a, scratch.dest, path, visited, level + 1))) {
         return false;
       }
     }
-    path.remove(s);
+    path.clear(state);
+    visited.set(state);
     return true;
   }
 

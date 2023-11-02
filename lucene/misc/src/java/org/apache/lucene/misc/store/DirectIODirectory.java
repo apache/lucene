@@ -130,7 +130,9 @@ public class DirectIODirectory extends FilterDirectory {
     this(delegate, DEFAULT_MERGE_BUFFER_SIZE, DEFAULT_MIN_BYTES_DIRECT);
   }
 
-  /** @return the underlying file system directory */
+  /**
+   * @return the underlying file system directory
+   */
   public Path getDirectory() {
     return ((FSDirectory) in).getDirectory();
   }

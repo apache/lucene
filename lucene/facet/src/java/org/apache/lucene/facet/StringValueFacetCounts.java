@@ -69,8 +69,9 @@ public class StringValueFacetCounts extends Facets {
   private final OrdinalMap ordinalMap;
   private final SortedSetDocValues docValues;
 
-  private final int[] denseCounts;
+  private int[] denseCounts;
   private final IntIntHashMap sparseCounts;
+  private boolean initialized;
 
   private final int cardinality;
   private int totalDocCount;
@@ -101,7 +102,9 @@ public class StringValueFacetCounts extends Facets {
     if (facetsCollector != null) {
       if (cardinality < 1024) { // count densely for low cardinality
         sparseCounts = null;
-        denseCounts = new int[cardinality];
+        denseCounts = null;
+        initialized = false;
+        count(facetsCollector);
       } else {
         int totalHits = 0;
         int totalDocs = 0;
@@ -110,22 +113,31 @@ public class StringValueFacetCounts extends Facets {
           totalDocs += matchingDocs.context.reader().maxDoc();
         }
 
-        // If our result set is < 10% of the index, we collect sparsely (use hash map). This
-        // heuristic is borrowed from IntTaxonomyFacetCounts:
-        if (totalHits < totalDocs / 10) {
-          sparseCounts = new IntIntHashMap();
-          denseCounts = null;
-        } else {
+        // No counting needed if there are no hits:
+        if (totalHits == 0) {
           sparseCounts = null;
-          denseCounts = new int[cardinality];
+          denseCounts = null;
+          initialized = true;
+        } else {
+          // If our result set is < 10% of the index, we collect sparsely (use hash map). This
+          // heuristic is borrowed from IntTaxonomyFacetCounts:
+          if (totalHits < totalDocs / 10) {
+            sparseCounts = new IntIntHashMap();
+            denseCounts = null;
+            initialized = true;
+          } else {
+            sparseCounts = null;
+            denseCounts = new int[cardinality];
+            initialized = true;
+          }
+          count(facetsCollector);
         }
       }
-
-      count(facetsCollector);
     } else {
       // Since we're counting all ordinals, count densely:
       sparseCounts = null;
       denseCounts = new int[cardinality];
+      initialized = true;
 
       countAll();
     }
@@ -170,17 +182,19 @@ public class StringValueFacetCounts extends Facets {
     TopOrdAndIntQueue q = null;
     TopOrdAndIntQueue.OrdAndValue reuse = null;
     int bottomCount = 0;
+    int bottomOrd = Integer.MAX_VALUE;
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
       for (IntIntCursor cursor : sparseCounts) {
         childCount++; // every count in sparseValues should be non-zero
+        int ord = cursor.key;
         int count = cursor.value;
-        if (count > bottomCount) {
+        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndIntQueue.OrdAndValue();
           }
-          reuse.ord = cursor.key;
+          reuse.ord = ord;
           reuse.value = count;
           if (q == null) {
             // Lazy init for sparse case:
@@ -189,6 +203,7 @@ public class StringValueFacetCounts extends Facets {
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomCount = q.top().value;
+            bottomOrd = q.top().ord;
           }
         }
       }
@@ -197,7 +212,7 @@ public class StringValueFacetCounts extends Facets {
         int count = denseCounts[i];
         if (count != 0) {
           childCount++;
-          if (count > bottomCount) {
+          if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -210,6 +225,7 @@ public class StringValueFacetCounts extends Facets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomCount = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }
@@ -290,6 +306,9 @@ public class StringValueFacetCounts extends Facets {
     if (matchingDocs.size() == 1) {
 
       FacetsCollector.MatchingDocs hits = matchingDocs.get(0);
+      if (hits.totalHits == 0) {
+        return;
+      }
 
       // Validate state before doing anything else:
       validateState(hits.context);
@@ -309,6 +328,10 @@ public class StringValueFacetCounts extends Facets {
         // a MultiSortedSetDocValues since we have more than one segment:
         assert ordinalMap != null;
         assert docValues instanceof MultiDocValues.MultiSortedSetDocValues;
+
+        if (hits.totalHits == 0) {
+          continue;
+        }
 
         MultiDocValues.MultiSortedSetDocValues multiValues =
             (MultiDocValues.MultiSortedSetDocValues) docValues;
@@ -364,6 +387,13 @@ public class StringValueFacetCounts extends Facets {
       FacetsCollector.MatchingDocs hits,
       Bits liveDocs)
       throws IOException {
+    if (initialized == false) {
+      assert denseCounts == null && sparseCounts == null;
+      // If the counters weren't initialized, we can assume the cardinality is low enough that
+      // dense counting will be preferrable:
+      denseCounts = new int[cardinality];
+      initialized = true;
+    }
 
     // It's slightly more efficient to work against SortedDocValues if the field is actually
     // single-valued (see: LUCENE-5309)

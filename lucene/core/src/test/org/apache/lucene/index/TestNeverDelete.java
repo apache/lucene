@@ -46,7 +46,7 @@ public class TestNeverDelete extends LuceneTestCase {
 
     w.commit();
     Thread[] indexThreads = new Thread[random().nextInt(4)];
-    final long stopTime = System.currentTimeMillis() + atLeast(1000);
+    final int stopIterations = atLeast(100);
     for (int x = 0; x < indexThreads.length; x++) {
       indexThreads[x] =
           new Thread() {
@@ -54,7 +54,7 @@ public class TestNeverDelete extends LuceneTestCase {
             public void run() {
               try {
                 int docCount = 0;
-                while (System.currentTimeMillis() < stopTime) {
+                while (docCount < stopIterations) {
                   final Document doc = new Document();
                   doc.add(newStringField("dc", "" + docCount, Field.Store.YES));
                   doc.add(newTextField("field", "here is some text", Field.Store.YES));
@@ -77,7 +77,8 @@ public class TestNeverDelete extends LuceneTestCase {
     final Set<String> allFiles = new HashSet<>();
 
     DirectoryReader r = DirectoryReader.open(d);
-    while (System.currentTimeMillis() < stopTime) {
+    int iterations = 0;
+    while (++iterations < stopIterations) {
       final IndexCommit ic = r.getIndexCommit();
       if (VERBOSE) {
         System.out.println("TEST: check files: " + ic.getFileNames());

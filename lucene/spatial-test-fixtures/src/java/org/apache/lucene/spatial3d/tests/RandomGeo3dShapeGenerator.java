@@ -79,7 +79,9 @@ public final class RandomGeo3dShapeGenerator {
   /** Static methods only. */
   private RandomGeo3dShapeGenerator() {}
 
-  /** @return Returns a private-use random forked from the current {@link RandomizedContext}. */
+  /**
+   * @return Returns a private-use random forked from the current {@link RandomizedContext}.
+   */
   private static Random random() {
     return new Random(RandomizedContext.current().getRandom().nextLong());
   }

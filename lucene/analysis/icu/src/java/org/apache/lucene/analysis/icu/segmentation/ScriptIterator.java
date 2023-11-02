@@ -62,7 +62,9 @@ final class ScriptIterator {
 
   private final boolean combineCJ;
 
-  /** @param combineCJ if true: Han,Hiragana,Katakana will all return as {@link UScript#JAPANESE} */
+  /**
+   * @param combineCJ if true: Han,Hiragana,Katakana will all return as {@link UScript#JAPANESE}
+   */
   ScriptIterator(boolean combineCJ) {
     this.combineCJ = combineCJ;
   }

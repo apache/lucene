@@ -147,6 +147,11 @@ public final class FixedBitSet extends BitSet {
     assert verifyGhostBitsClear();
   }
 
+  @Override
+  public void clear() {
+    Arrays.fill(bits, 0L);
+  }
+
   /**
    * Checks if the bits past numBits are clear. Some methods rely on this implicit assumption:
    * search for "Depends on the ghost bits being clear!"

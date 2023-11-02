@@ -17,8 +17,6 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.document.Document;
@@ -296,21 +294,45 @@ public class TestMultipleIndexFields extends FacetTestCase {
     assertEquals(
         "dim=Band path=[] value=5 childCount=2\n  Rock & Pop (4)\n  Punk (1)\n",
         facets.getTopChildren(10, "Band").toString());
-    assertEquals(
-        "dim=Band path=[] value=5 childCount=2\n  Punk (1)\n  Rock & Pop (4)\n",
-        sortAllChildren(facets.getAllChildren("Band")).toString());
+    assertFacetResult(
+        facets.getAllChildren("Band"),
+        "Band",
+        new String[0],
+        2,
+        5,
+        new LabelAndValue[] {
+          new LabelAndValue("Punk", 1), new LabelAndValue("Rock & Pop", 4),
+        });
     assertEquals(
         "dim=Band path=[Rock & Pop] value=4 childCount=4\n  The Beatles (1)\n  U2 (1)\n  REM (1)\n  Dave Matthews Band (1)\n",
         facets.getTopChildren(10, "Band", "Rock & Pop").toString());
-    assertEquals(
-        "dim=Band path=[Rock & Pop] value=4 childCount=4\n  Dave Matthews Band (1)\n  REM (1)\n  The Beatles (1)\n  U2 (1)\n",
-        sortAllChildren(facets.getAllChildren("Band", "Rock & Pop")).toString());
+    assertFacetResult(
+        facets.getAllChildren("Band", "Rock & Pop"),
+        "Band",
+        new String[] {"Rock & Pop"},
+        4,
+        4,
+        new LabelAndValue[] {
+          new LabelAndValue("Dave Matthews Band", 1),
+          new LabelAndValue("REM", 1),
+          new LabelAndValue("The Beatles", 1),
+          new LabelAndValue("U2", 1),
+        });
+
     assertEquals(
         "dim=Author path=[] value=3 childCount=3\n  Mark Twain (1)\n  Stephen King (1)\n  Kurt Vonnegut (1)\n",
         facets.getTopChildren(10, "Author").toString());
-    assertEquals(
-        "dim=Author path=[] value=3 childCount=3\n  Kurt Vonnegut (1)\n  Mark Twain (1)\n  Stephen King (1)\n",
-        sortAllChildren(facets.getAllChildren("Author")).toString());
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        3,
+        3,
+        new LabelAndValue[] {
+          new LabelAndValue("Kurt Vonnegut", 1),
+          new LabelAndValue("Mark Twain", 1),
+          new LabelAndValue("Stephen King", 1),
+        });
   }
 
   private FacetsCollector performSearch(TaxonomyReader tr, IndexReader ir, IndexSearcher searcher)
@@ -328,16 +350,5 @@ public class TestMultipleIndexFields extends FacetTestCase {
       doc.add(new TextField("content", "alpha", Field.Store.YES));
       iw.addDocument(config.build(tw, doc));
     }
-  }
-
-  // since we have no insight into the ordinals assigned to the values, we sort labels by value and
-  // count in
-  // ascending order in order to compare with expected results
-  private static FacetResult sortAllChildren(FacetResult allChildrenResult) {
-    Arrays.sort(
-        allChildrenResult.labelValues,
-        Comparator.comparing((LabelAndValue a) -> a.label)
-            .thenComparingLong(a -> a.value.longValue()));
-    return allChildrenResult;
   }
 }

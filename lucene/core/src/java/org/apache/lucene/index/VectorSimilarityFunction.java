@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.*;
+import static org.apache.lucene.util.VectorUtil.cosine;
+import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
+import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -31,18 +35,29 @@ public enum VectorSimilarityFunction {
     public float compare(float[] v1, float[] v2) {
       return 1 / (1 + squareDistance(v1, v2));
     }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return 1 / (1f + squareDistance(v1, v2));
+    }
   },
 
   /**
    * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
-   * similarity. In order to use it, all vectors must be of unit length, including both document and
-   * query vectors. Using dot product with vectors that are not unit length can result in errors or
-   * poor search results.
+   * similarity. In order to use it, all vectors must be normalized, including both document and
+   * query vectors. Using dot product with vectors that are not normalized can result in errors or
+   * poor search results. Floating point vectors must be normalized to be of unit length, while byte
+   * vectors should simply all have the same norm.
    */
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return (1 + dotProduct(v1, v2)) / 2;
+      return Math.max((1 + dotProduct(v1, v2)) / 2, 0);
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return dotProductScore(v1, v2);
     }
   },
 
@@ -55,7 +70,29 @@ public enum VectorSimilarityFunction {
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {
+      return Math.max((1 + cosine(v1, v2)) / 2, 0);
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
+    }
+  },
+
+  /**
+   * Maximum inner product. This is like {@link VectorSimilarityFunction#DOT_PRODUCT}, but does not
+   * require normalization of the inputs. Should be used when the embedding vectors store useful
+   * information within the vector magnitude
+   */
+  MAXIMUM_INNER_PRODUCT {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return scaleMaxInnerProductScore(dotProduct(v1, v2));
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
   };
 
@@ -68,4 +105,15 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(float[] v1, float[] v2);
+
+  /**
+   * Calculates a similarity score between the two vectors with a specified function. Higher
+   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
+   * dimension.
+   *
+   * @param v1 a vector
+   * @param v2 another vector, of the same dimension
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public abstract float compare(byte[] v1, byte[] v2);
 }

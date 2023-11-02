@@ -45,7 +45,9 @@ public class PayloadSpanCollector implements SpanCollector {
     payloads.clear();
   }
 
-  /** @return the collected payloads */
+  /**
+   * @return the collected payloads
+   */
   public Collection<byte[]> getPayloads() {
     return payloads;
   }

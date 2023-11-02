@@ -454,7 +454,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     int result = 0;
     HashMap<String, Integer> artistCounts = new HashMap<String, Integer>();
     for (int i = 0; i < sd.length; i++) {
-      Document doc = reader.document(sd[i].doc);
+      Document doc = reader.storedFields().document(sd[i].doc);
       Record record = parsedRecords.get(doc.get("id"));
       Integer count = artistCounts.get(record.artist);
       int newCount = 1;
@@ -499,12 +499,12 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query rewritten = query.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query rewritten = query.rewrite(indexSearcher);
       if (rewritten != query) {
         return new DocValueScoreQuery(rewritten, scoreField);
       }
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
 
     @Override

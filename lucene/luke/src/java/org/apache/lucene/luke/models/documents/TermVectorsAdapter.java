@@ -51,7 +51,7 @@ final class TermVectorsAdapter {
    * @throws IOException - if there is a low level IO error.
    */
   List<TermVectorEntry> getTermVector(int docid, String field) throws IOException {
-    Terms termVector = reader.getTermVector(docid, field);
+    Terms termVector = reader.termVectors().get(docid, field);
     if (termVector == null) {
       // no term vector available
       log.warning(

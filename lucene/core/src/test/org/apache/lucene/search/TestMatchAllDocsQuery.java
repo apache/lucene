@@ -56,9 +56,9 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
 
     hits = is.search(new MatchAllDocsQuery(), 1000).scoreDocs;
     assertEquals(3, hits.length);
-    assertEquals("one", is.doc(hits[0].doc).get("key"));
-    assertEquals("two", is.doc(hits[1].doc).get("key"));
-    assertEquals("three four", is.doc(hits[2].doc).get("key"));
+    assertEquals("one", is.storedFields().document(hits[0].doc).get("key"));
+    assertEquals("two", is.storedFields().document(hits[1].doc).get("key"));
+    assertEquals("three four", is.storedFields().document(hits[2].doc).get("key"));
 
     // some artificial queries to trigger the use of skipTo():
 

@@ -20,9 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -114,7 +112,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertTrue(((TaxonomyFacets) facets).siblingsLoaded());
     assertTrue(((TaxonomyFacets) facets).childrenLoaded());
 
-    // test getTopChildren(0, dim)
     Facets finalFacets = facets;
     expectThrows(
         IllegalArgumentException.class,
@@ -130,13 +127,28 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         facets.getTopChildren(10, "Author").toString());
 
-    // test getAllChildren
-    assertEquals(
-        "dim=Publish Date path=[] value=5 childCount=3\n  1999 (1)\n  2010 (2)\n  2012 (2)\n",
-        sortAllChildren(facets.getAllChildren("Publish Date")).toString());
-    assertEquals(
-        "dim=Author path=[] value=5 childCount=4\n  Bob (1)\n  Frank (1)\n  Lisa (2)\n  Susan (1)\n",
-        sortAllChildren(facets.getAllChildren("Author")).toString());
+    assertFacetResult(
+        facets.getAllChildren("Publish Date"),
+        "Publish Date",
+        new String[0],
+        3,
+        5,
+        new LabelAndValue[] {
+          new LabelAndValue("1999", 1), new LabelAndValue("2010", 2), new LabelAndValue("2012", 2),
+        });
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        4,
+        5,
+        new LabelAndValue[] {
+          new LabelAndValue("Bob", 1),
+          new LabelAndValue("Frank", 1),
+          new LabelAndValue("Lisa", 2),
+          new LabelAndValue("Susan", 1),
+        });
 
     // test getAllDims
     List<FacetResult> results = facets.getAllDims(10);
@@ -241,17 +253,17 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     List<FacetResult> top1results = facets.getAllDims(1);
 
     assertEquals(3, results.size());
-    assertEquals("dim=a path=[] value=3 childCount=3\n  foo3 (1)\n", top1results.get(0).toString());
-    assertEquals("dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", top1results.get(1).toString());
+    assertEquals("dim=a path=[] value=3 childCount=3\n  foo1 (1)\n", top1results.get(0).toString());
+    assertEquals("dim=b path=[] value=3 childCount=3\n  aar1 (1)\n", top1results.get(1).toString());
     assertEquals("dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", top1results.get(2).toString());
 
     // test default implementation of getTopDims
     List<FacetResult> topNDimsResult = facets.getTopDims(2, 1);
     assertEquals(2, topNDimsResult.size());
     assertEquals(
-        "dim=a path=[] value=3 childCount=3\n  foo3 (1)\n", topNDimsResult.get(0).toString());
+        "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n", topNDimsResult.get(0).toString());
     assertEquals(
-        "dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", topNDimsResult.get(1).toString());
+        "dim=b path=[] value=3 childCount=3\n  aar1 (1)\n", topNDimsResult.get(1).toString());
 
     // test getTopDims(10, 10) and expect same results from getAllDims(10)
     List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
@@ -475,9 +487,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=dim path=[] value=-1 childCount=2\n  test\u001Fone (1)\n  test\u001Etwo (1)\n",
         result.toString());
-    assertEquals(
-        "dim=dim path=[] value=-1 childCount=2\n  test\u001Etwo (1)\n  test\u001Fone (1)\n",
-        sortAllChildren(facets.getAllChildren("dim")).toString());
+
+    assertFacetResult(
+        facets.getAllChildren("dim"),
+        "dim",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue[] {
+          new LabelAndValue("test\u001Etwo", 1), new LabelAndValue("test\u001Fone", 1),
+        });
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
@@ -826,9 +845,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
         facets.getTopChildren(10, "Author").toString().trim());
-    assertEquals(
-        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
-        sortAllChildren(facets.getAllChildren("Author")).toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        2,
+        2,
+        new LabelAndValue[] {
+          new LabelAndValue("Bob", 1), new LabelAndValue("Lisa", 1),
+        });
 
     // -- delete to trigger liveDocs != null
     writer.deleteDocuments(new Term("id", "0"));
@@ -840,9 +866,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
         facets.getTopChildren(10, "Author").toString().trim());
-    assertEquals(
-        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
-        facets.getAllChildren("Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        1,
+        1,
+        new LabelAndValue[] {
+          new LabelAndValue("Lisa", 1),
+        });
 
     IOUtils.close(
         writer,
@@ -886,9 +919,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
         facets.getTopChildren(10, "Author").toString().trim());
-    assertEquals(
-        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
-        sortAllChildren(facets.getAllChildren("Author")).toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        2,
+        2,
+        new LabelAndValue[] {
+          new LabelAndValue("Bob", 1), new LabelAndValue("Lisa", 1),
+        });
 
     // -- delete to trigger liveDocs != null
     writer.deleteDocuments(new Term("id", "0"));
@@ -900,9 +940,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
         facets.getTopChildren(10, "Author").toString().trim());
-    assertEquals(
-        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
-        facets.getAllChildren("Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        1,
+        1,
+        new LabelAndValue[] {
+          new LabelAndValue("Lisa", 1),
+        });
 
     IOUtils.close(
         writer,
@@ -1142,16 +1189,5 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       return new FastTaxonomyFacetCounts(
           indexFieldName, searcher.getIndexReader(), taxoReader, config);
     }
-  }
-
-  // since we have no insight into the ordinals assigned to the values, we sort labels by value and
-  // count in
-  // ascending order in order to compare with expected results
-  private static FacetResult sortAllChildren(FacetResult allChildrenResult) {
-    Arrays.sort(
-        allChildrenResult.labelValues,
-        Comparator.comparing((LabelAndValue a) -> a.label)
-            .thenComparingLong(a -> a.value.longValue()));
-    return allChildrenResult;
   }
 }

@@ -90,7 +90,9 @@ public class UniformSplitTermsReader extends FieldsProducer {
         TERMS_DICTIONARY_EXTENSION);
   }
 
-  /** @see #UniformSplitTermsReader(PostingsReaderBase, SegmentReadState, BlockDecoder, boolean) */
+  /**
+   * @see #UniformSplitTermsReader(PostingsReaderBase, SegmentReadState, BlockDecoder, boolean)
+   */
   protected UniformSplitTermsReader(
       PostingsReaderBase postingsReader,
       SegmentReadState state,

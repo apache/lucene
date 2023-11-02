@@ -51,7 +51,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  */
 public abstract class MatchesTestBase extends LuceneTestCase {
 
-  /** @return an array of documents to be indexed */
+  /**
+   * @return an array of documents to be indexed
+   */
   protected abstract String[] getDocuments();
 
   protected IndexSearcher searcher;

@@ -21,6 +21,7 @@ import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,10 +41,13 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   final AssociationAggregationFunction aggregationFunction;
 
   /** Dense ordinal values. */
-  final int[] values;
+  int[] values;
 
   /** Sparse ordinal values. */
-  final IntIntHashMap sparseValues;
+  IntIntHashMap sparseValues;
+
+  /** Have value counters been initialized. */
+  boolean initialized;
 
   /** Sole constructor. */
   IntTaxonomyFacets(
@@ -53,14 +57,24 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       AssociationAggregationFunction aggregationFunction,
       FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config);
+    super(indexFieldName, taxoReader, config, fc);
     this.aggregationFunction = aggregationFunction;
+  }
 
+  @Override
+  boolean hasValues() {
+    return initialized;
+  }
+
+  void initializeValueCounters() {
+    if (initialized) {
+      return;
+    }
+    initialized = true;
+    assert sparseValues == null && values == null;
     if (useHashTable(fc, taxoReader)) {
       sparseValues = new IntIntHashMap();
-      values = null;
     } else {
-      sparseValues = null;
       values = new int[taxoReader.getSize()];
     }
   }
@@ -85,6 +99,10 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Rolls up any single-valued hierarchical dimensions. */
   void rollup() throws IOException {
+    if (initialized == false) {
+      return;
+    }
+
     // Rollup any necessary dims:
     int[] children = null;
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -161,7 +179,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     if (ord < 0) {
       return -1;
     }
-    return getValue(ord);
+    return initialized ? getValue(ord) : 0;
   }
 
   @Override
@@ -170,6 +188,10 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
     if (dimOrd == -1) {
+      return null;
+    }
+
+    if (initialized == false) {
       return null;
     }
 
@@ -239,6 +261,10 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
+    if (initialized == false) {
+      return null;
+    }
+
     TopChildrenForPath topChildrenForPath = getTopChildrenForPath(dimConfig, dimOrd, topN);
     return createFacetResult(topChildrenForPath, dim, path);
   }
@@ -251,6 +277,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
+    int bottomOrd = Integer.MAX_VALUE;
 
     int aggregatedValue = 0;
     int childCount = 0;
@@ -265,7 +292,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (parents[ord] == pathOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue) {
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -274,6 +301,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }
@@ -287,7 +315,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue) {
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -296,6 +324,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }
@@ -319,6 +348,10 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     if (topNDims <= 0 || topNChildren <= 0) {
       throw new IllegalArgumentException("topN must be > 0");
+    }
+
+    if (initialized == false) {
+      return Collections.emptyList();
     }
 
     // get children and siblings ordinal array from TaxonomyFacets

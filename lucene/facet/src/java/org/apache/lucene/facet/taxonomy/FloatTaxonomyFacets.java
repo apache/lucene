@@ -20,10 +20,12 @@ import com.carrotsearch.hppc.FloatArrayList;
 import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
@@ -39,22 +41,37 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   final AssociationAggregationFunction aggregationFunction;
 
   /** Per-ordinal value. */
-  final float[] values;
+  float[] values;
 
   /** Sole constructor. */
   FloatTaxonomyFacets(
       String indexFieldName,
       TaxonomyReader taxoReader,
       AssociationAggregationFunction aggregationFunction,
-      FacetsConfig config)
+      FacetsConfig config,
+      FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config);
+    super(indexFieldName, taxoReader, config, fc);
     this.aggregationFunction = aggregationFunction;
-    values = new float[taxoReader.getSize()];
+  }
+
+  @Override
+  boolean hasValues() {
+    return values != null;
+  }
+
+  void initializeValueCounters() {
+    if (values == null) {
+      values = new float[taxoReader.getSize()];
+    }
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
   void rollup() throws IOException {
+    if (values == null) {
+      return;
+    }
+
     // Rollup any necessary dims:
     int[] children = getChildren();
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -100,7 +117,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     if (ord < 0) {
       return -1;
     }
-    return values[ord];
+    return values == null ? 0 : values[ord];
   }
 
   @Override
@@ -109,6 +126,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
     if (dimOrd == -1) {
+      return null;
+    }
+
+    if (values == null) {
       return null;
     }
 
@@ -166,6 +187,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
+    if (values == null) {
+      return null;
+    }
+
     TopChildrenForPath topChildrenForPath = getTopChildrenForPath(dimConfig, dimOrd, topN);
     return createFacetResult(topChildrenForPath, dim, path);
   }
@@ -179,6 +204,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
     float bottomValue = 0;
+    int bottomOrd = Integer.MAX_VALUE;
 
     int[] children = getChildren();
     int[] siblings = getSiblings();
@@ -189,18 +215,20 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      if (values[ord] > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
+      float value = values[ord];
+      if (value > 0) {
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
         childCount++;
-        if (values[ord] > bottomValue) {
+        if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndFloatQueue.OrdAndValue();
           }
           reuse.ord = ord;
-          reuse.value = values[ord];
+          reuse.value = value;
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomValue = q.top().value;
+            bottomOrd = q.top().ord;
           }
         }
       }
@@ -260,6 +288,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     validateTopN(topNDims);
     validateTopN(topNChildren);
+
+    if (values == null) {
+      return Collections.emptyList();
+    }
 
     // get existing children and siblings ordinal array from TaxonomyFacets
     int[] children = getChildren();

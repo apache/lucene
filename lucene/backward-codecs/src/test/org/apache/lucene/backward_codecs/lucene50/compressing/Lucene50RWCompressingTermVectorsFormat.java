@@ -17,8 +17,8 @@
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;

@@ -133,7 +133,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(query));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -176,7 +176,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(query));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -220,7 +220,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -265,7 +265,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -292,7 +292,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     try {
       assertEquals(1, indexReader.numDocs());
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertNull(tokenStream);
     } finally {
       indexReader.close();
@@ -337,7 +337,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     assertEquals(1, reader.numDocs());
 
     TokenStream ts =
-        TokenSources.getTermVectorTokenStreamOrNull("field", reader.getTermVectors(0), -1);
+        TokenSources.getTermVectorTokenStreamOrNull("field", reader.termVectors().get(0), -1);
 
     CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
     PositionIncrementAttribute posIncAtt = ts.getAttribute(PositionIncrementAttribute.class);
@@ -421,7 +421,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     assertEquals(1, reader.numDocs());
 
     TokenStream vectorTokenStream =
-        TokenSources.getTermVectorTokenStreamOrNull("field", reader.getTermVectors(0), -1);
+        TokenSources.getTermVectorTokenStreamOrNull("field", reader.termVectors().get(0), -1);
 
     // sometimes check payloads
     PayloadAttribute payloadAttribute = null;
@@ -469,7 +469,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
       reader = writer.getReader();
     }
     try {
-      Fields tvFields = reader.getTermVectors(0);
+      Fields tvFields = reader.termVectors().get(0);
       for (int maxStartOffset = -1; maxStartOffset <= TEXT.length(); maxStartOffset++) {
         TokenStream tvStream =
             TokenSources.getTokenStream("fld_tv", tvFields, TEXT, analyzer, maxStartOffset);

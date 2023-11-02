@@ -44,6 +44,7 @@ public class FloatPointNearestNeighbor {
     final byte[] minPacked;
     final byte[] maxPacked;
     final PointTree index;
+
     /** The closest possible distance^2 of all points in this cell */
     final double distanceSquared;
 

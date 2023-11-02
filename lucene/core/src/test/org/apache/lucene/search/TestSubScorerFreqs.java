@@ -36,6 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingScorable;
+import org.apache.lucene.tests.search.DisablingBulkScorerQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -110,7 +111,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
   private static class CountingCollector extends FilterCollector {
     public final Map<Integer, Map<Query, Float>> docCounts = new HashMap<>();
 
-    private final Map<Query, Scorable> subScorers = new HashMap<>();
+    private final Map<Query, Scorer> subScorers = new HashMap<>();
     private final Set<String> relationships;
 
     public CountingCollector(Collector other) {
@@ -129,7 +130,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
           setSubScorers(child.child);
         }
       }
-      subScorers.put(((Scorer) scorer).getWeight().getQuery(), scorer);
+      subScorers.put(((Scorer) scorer).getWeight().getQuery(), (Scorer) scorer);
     }
 
     @Override
@@ -140,8 +141,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
         @Override
         public void collect(int doc) throws IOException {
           final Map<Query, Float> freqs = new HashMap<Query, Float>();
-          for (Map.Entry<Query, Scorable> ent : subScorers.entrySet()) {
-            Scorable value = ent.getValue();
+          for (Map.Entry<Query, Scorer> ent : subScorers.entrySet()) {
+            Scorer value = ent.getValue();
             int matchId = value.docID();
             freqs.put(ent.getKey(), matchId == doc ? value.score() : 0.0f);
           }
@@ -203,7 +204,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
 
     for (final Set<String> occur : occurList) {
       Map<Integer, Map<Query, Float>> docCounts =
-          s.search(query.build(), new CountingCollectorManager(occur));
+          s.search(
+              new DisablingBulkScorerQuery(query.build()), new CountingCollectorManager(occur));
       final int maxDocs = s.getIndexReader().maxDoc();
       assertEquals(maxDocs, docCounts.size());
       boolean includeOptional = occur.contains("SHOULD");

@@ -71,7 +71,7 @@ public class NearRealtimeReaderTask extends PerfTask {
       long waitForMsec = (pauseMSec - (System.currentTimeMillis() - t));
       if (waitForMsec > 0) {
         Thread.sleep(waitForMsec);
-        // System.out.println("NRT wait: " + waitForMsec + " msec");
+        // System.out.println("NRT wait: " + waitForMsec + " ms");
       }
 
       t = System.currentTimeMillis();

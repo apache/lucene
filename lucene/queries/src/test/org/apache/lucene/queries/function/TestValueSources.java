@@ -781,8 +781,8 @@ public class TestValueSources extends LuceneTestCase {
       }
 
       @Override
-      public Query rewrite(IndexReader reader) throws IOException {
-        var rewrite = in.rewrite(reader);
+      public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+        var rewrite = in.rewrite(indexSearcher);
         return rewrite == in ? this : new AssertScoreComputedOnceQuery(rewrite);
       }
 
@@ -830,7 +830,6 @@ public class TestValueSources extends LuceneTestCase {
         return new FloatDocValues(this) {
           @Override
           public float floatVal(int doc) throws IOException {
-            assertEquals(doc, scorer.docID());
             return scorer.score();
           }
         };
@@ -878,6 +877,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertAllExist(ValueSource vs) {
     assertExists(ALL_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>false</b>.
@@ -885,6 +885,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertNoneExist(ValueSource vs) {
     assertExists(NONE_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the <code>actual
    * </code> {@link ValueSource} matches the {@link FunctionValues#exists} value from the <code>
@@ -972,8 +973,13 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  /** @see ExistsValueSource */
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
-  /** @see ExistsValueSource */
+
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource NONE_EXIST_VS = new ExistsValueSource(false);
 }

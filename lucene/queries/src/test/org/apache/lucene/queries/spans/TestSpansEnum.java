@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.queries.spans;
 
-import static org.apache.lucene.queries.spans.SpanTestUtil.*;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;

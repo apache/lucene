@@ -89,6 +89,8 @@ import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.stempel.StempelStemmer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.analysis.synonym.word2vec.Word2VecModel;
+import org.apache.lucene.analysis.synonym.word2vec.Word2VecSynonymProvider;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
@@ -99,8 +101,10 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IgnoreRandomChains;
+import org.apache.lucene.util.TermAndVector;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
@@ -413,6 +417,27 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                           return s;
                         }
                       }
+                    }
+                  });
+              put(
+                  Word2VecSynonymProvider.class,
+                  random -> {
+                    final int numEntries = atLeast(10);
+                    final int vectorDimension = random.nextInt(99) + 1;
+                    Word2VecModel model = new Word2VecModel(numEntries, vectorDimension);
+                    for (int j = 0; j < numEntries; j++) {
+                      String s = TestUtil.randomSimpleString(random, 10, 20);
+                      float[] vec = new float[vectorDimension];
+                      for (int i = 0; i < vectorDimension; i++) {
+                        vec[i] = random.nextFloat();
+                      }
+                      model.addTermAndVector(new TermAndVector(new BytesRef(s), vec));
+                    }
+                    try {
+                      return new Word2VecSynonymProvider(model);
+                    } catch (IOException e) {
+                      Rethrow.rethrow(e);
+                      return null; // unreachable code
                     }
                   });
               put(

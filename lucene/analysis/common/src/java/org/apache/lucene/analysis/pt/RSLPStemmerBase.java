@@ -111,12 +111,16 @@ public abstract class RSLPStemmerBase {
       this.min = min;
     }
 
-    /** @return true if the word matches this rule. */
+    /**
+     * @return true if the word matches this rule.
+     */
     public boolean matches(char[] s, int len) {
       return (len - suffix.length >= min && endsWith(s, len, suffix));
     }
 
-    /** @return new valid length of the string after firing this rule. */
+    /**
+     * @return new valid length of the string after firing this rule.
+     */
     public int replace(char[] s, int len) {
       if (replacement.length > 0) {
         System.arraycopy(replacement, 0, s, len - suffix.length, replacement.length);
@@ -208,7 +212,9 @@ public abstract class RSLPStemmerBase {
       }
     }
 
-    /** @return new valid length of the string after applying the entire step. */
+    /**
+     * @return new valid length of the string after applying the entire step.
+     */
     public int apply(char[] s, int len) {
       if (len < min) return len;
 

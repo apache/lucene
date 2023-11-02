@@ -25,12 +25,28 @@ import org.apache.lucene.util.BitUtil; // javadocs
  */
 public interface RandomAccessInput {
 
+  /** The number of bytes in the file. */
+  public long length();
+
   /**
    * Reads a byte at the given position in the file
    *
    * @see DataInput#readByte
    */
   public byte readByte(long pos) throws IOException;
+
+  /**
+   * Reads a specified number of bytes starting at a given position into an array at the specified
+   * offset.
+   *
+   * @see DataInput#readBytes
+   */
+  default void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    for (int i = 0; i < length; i++) {
+      bytes[offset + i] = readByte(pos + i);
+    }
+  }
+
   /**
    * Reads a short (LE byte order) at the given position in the file
    *
@@ -38,6 +54,7 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_SHORT
    */
   public short readShort(long pos) throws IOException;
+
   /**
    * Reads an integer (LE byte order) at the given position in the file
    *
@@ -45,6 +62,7 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_INT
    */
   public int readInt(long pos) throws IOException;
+
   /**
    * Reads a long (LE byte order) at the given position in the file
    *

@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -711,7 +712,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
           nonCompoundCount++;
           if (nonCompoundCount % 1000000 == 0) {
             System.out.println(String.format("%.2f msec [pos=%d, %d, %d]",
-                                             (System.nanoTime()-startTimeNS)/1000000.0,
+                                             (System.nanoTime() - startTimeNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
                                              netOffset + offsetAtt.startOffset(),
                                              nonCompoundCount,
                                              compoundCount));
@@ -753,7 +754,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     */
 
-    long totalStart = System.currentTimeMillis();
+    long totalStart = System.nanoTime();
     for (int i = 0; i < numIterations; i++) {
       try (TokenStream ts = analyzer.tokenStream("ignored", line)) {
         ts.reset();
@@ -764,11 +765,12 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     String[] sentences = line.split("、|。");
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
+      System.out.println(
+          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
       System.out.println(
           "Test for Bocchan with pre-splitting sentences (" + sentences.length + " sentences)");
     }
-    totalStart = System.currentTimeMillis();
+    totalStart = System.nanoTime();
     for (int i = 0; i < numIterations; i++) {
       for (String sentence : sentences) {
         try (TokenStream ts = analyzer.tokenStream("ignored", sentence)) {
@@ -780,7 +782,8 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
       }
     }
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
+      System.out.println(
+          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
     }
   }
 

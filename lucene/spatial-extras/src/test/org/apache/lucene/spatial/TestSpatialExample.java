@@ -155,7 +155,7 @@ public class TestSpatialExample extends LuceneTestCase {
       assertDocMatchedIds(indexSearcher, docs, 2);
       // Now, lets get the distance for the 1st doc via computing from stored point value:
       // (this computation is usually not redundant)
-      Document doc1 = indexSearcher.doc(docs.scoreDocs[0].doc);
+      Document doc1 = indexSearcher.storedFields().document(docs.scoreDocs[0].doc);
       String doc1Str = doc1.getField(strategy.getFieldName()).stringValue();
       // assume doc1Str is "x y" as written in newSampleDocument()
       int spaceIdx = doc1Str.indexOf(' ');
@@ -200,7 +200,13 @@ public class TestSpatialExample extends LuceneTestCase {
     assert docs.totalHits.relation == Relation.EQUAL_TO;
     int[] gotIds = new int[Math.toIntExact(docs.totalHits.value)];
     for (int i = 0; i < gotIds.length; i++) {
-      gotIds[i] = indexSearcher.doc(docs.scoreDocs[i].doc).getField("id").numericValue().intValue();
+      gotIds[i] =
+          indexSearcher
+              .storedFields()
+              .document(docs.scoreDocs[i].doc)
+              .getField("id")
+              .numericValue()
+              .intValue();
     }
     assertArrayEquals(ids, gotIds);
   }

@@ -47,12 +47,16 @@ public class SpanPositionRangeQuery extends SpanPositionCheckQuery {
     return res;
   }
 
-  /** @return The minimum position permitted in a match */
+  /**
+   * @return The minimum position permitted in a match
+   */
   public int getStart() {
     return start;
   }
 
-  /** @return the maximum end position permitted in a match. */
+  /**
+   * @return the maximum end position permitted in a match.
+   */
   public int getEnd() {
     return end;
   }

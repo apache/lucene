@@ -97,7 +97,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
    * Creates this, with control over how missing values are sorted. Pass sortMissingLast=true to put
    * missing values at the end.
    */
-  public TermOrdValComparator(int numHits, String field, boolean sortMissingLast, boolean reverse) {
+  public TermOrdValComparator(
+      int numHits, String field, boolean sortMissingLast, boolean reverse, boolean enableSkipping) {
+    canSkipDocuments = enableSkipping;
     ords = new int[numHits];
     values = new BytesRef[numHits];
     tempBRs = new BytesRefBuilder[numHits];
@@ -249,7 +251,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           enableSkipping = false;
         } else {
           Terms terms = context.reader().terms(field);
-          dense = terms.getDocCount() == context.reader().maxDoc();
+          dense = terms != null && terms.getDocCount() == context.reader().maxDoc();
           if (dense || topValue != null) {
             enableSkipping = true;
           } else if (reverse == sortMissingLast) {
@@ -403,7 +405,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           minOrd = -1;
         }
 
-        if (bottomOrd == Integer.MAX_VALUE) {
+        if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
           if (singleSort) {
             // If there is no tie breaker, we can start ignoring missing values from now on.
@@ -421,7 +423,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
       } else {
 
-        if (bottomOrd == -1) {
+        if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
           if (singleSort) {
             // If there is no tie breaker, we can start ignoring missing values from now on.

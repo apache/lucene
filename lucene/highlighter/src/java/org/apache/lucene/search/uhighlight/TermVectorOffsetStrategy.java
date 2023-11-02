@@ -40,7 +40,7 @@ public class TermVectorOffsetStrategy extends FieldOffsetStrategy {
   @Override
   public OffsetsEnum getOffsetsEnum(LeafReader reader, int docId, String content)
       throws IOException {
-    Terms tvTerms = reader.getTermVector(docId, getField());
+    Terms tvTerms = reader.termVectors().get(docId, getField());
     if (tvTerms == null) {
       return OffsetsEnum.EMPTY;
     }

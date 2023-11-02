@@ -48,8 +48,9 @@ public class TestNorms extends LuceneTestCase {
     DirectoryReader open = DirectoryReader.open(dir);
     NumericDocValues normValues = MultiDocValues.getNormValues(open, BYTE_TEST_FIELD);
     assertNotNull(normValues);
+    StoredFields storedFields = open.storedFields();
     for (int i = 0; i < open.maxDoc(); i++) {
-      Document document = open.document(i);
+      Document document = storedFields.document(i);
       int expected = Integer.parseInt(document.get(BYTE_TEST_FIELD).split(" ")[0]);
       assertEquals(i, normValues.nextDoc());
       assertEquals(expected, normValues.longValue());

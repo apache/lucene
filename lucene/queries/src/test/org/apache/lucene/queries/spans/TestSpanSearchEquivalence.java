@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queries.spans;
 
-import static org.apache.lucene.queries.spans.SpanTestUtil.*;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanQuery;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;

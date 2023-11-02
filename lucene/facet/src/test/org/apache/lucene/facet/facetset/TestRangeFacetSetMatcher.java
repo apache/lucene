@@ -17,13 +17,19 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.LongRange;
 import org.apache.lucene.facet.*;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
@@ -389,6 +395,99 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     d.close();
   }
 
+  public void testLongRangeFacetSetMatchingWithFastMatchQuery() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    List<LongFacetSet> allSets = new ArrayList<>();
+    for (int manufacturerOrd : MANUFACTURER_ORDS) {
+      for (int year : YEARS) {
+        allSets.add(new LongFacetSet(manufacturerOrd, year));
+      }
+    }
+
+    int numFord2011_2013 = 0;
+    int numFord2010_2014 = 0;
+    int numFord2011_2014 = 0;
+    int numFord2010_2013 = 0;
+    int numMatchingDocs = 0;
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      int numSets = TestUtil.nextInt(random(), 1, 4);
+      Collections.shuffle(allSets, random());
+      LongFacetSet[] facetSets = allSets.subList(0, numSets).toArray(LongFacetSet[]::new);
+      boolean matchingDoc = false;
+      for (LongFacetSet facetSet : facetSets) {
+        if (FORD_ORD != facetSet.values[0]) {
+          continue;
+        }
+        long year = facetSet.values[1];
+        if (year > 2010 && year < 2014) {
+          ++numFord2010_2013;
+          ++numFord2010_2014;
+          ++numFord2011_2013;
+          ++numFord2011_2014;
+          matchingDoc = true;
+        } else if (year == 2014) {
+          ++numFord2010_2014;
+          ++numFord2011_2014;
+          matchingDoc = true;
+        } else if (year == 2010) {
+          ++numFord2010_2014;
+          ++numFord2010_2013;
+          matchingDoc = true;
+        }
+      }
+      numMatchingDocs += matchingDoc ? 1 : 0;
+      doc.add(FacetSetsField.create("field", facetSets));
+      // add fields for drill-down + fast matching
+      addFastMatchField("manufacturer", doc, facetSets, 0);
+      addFastMatchField("year", doc, facetSets, 1);
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Query fastMatchQuery =
+        new BooleanQuery.Builder()
+            .add(createFastMatchQuery("manufacturer", FORD_ORD, FORD_ORD), BooleanClause.Occur.MUST)
+            .add(createFastMatchQuery("year", 2010, 2014), BooleanClause.Occur.MUST)
+            .build();
+    Facets facets =
+        new MatchingFacetSetsCounts(
+            "field",
+            fc,
+            FacetSetDecoder::decodeLongs,
+            fastMatchQuery,
+            new RangeFacetSetMatcher(
+                "Ford [2010-2014]", singleLong(FORD_ORD), longRange(2010, true, 2014, true)),
+            new RangeFacetSetMatcher(
+                "Ford (2010-2014]", singleLong(FORD_ORD), longRange(2010, false, 2014, true)),
+            new RangeFacetSetMatcher(
+                "Ford [2010-2014)", singleLong(FORD_ORD), longRange(2010, true, 2014, false)),
+            new RangeFacetSetMatcher(
+                "Ford (2010-2014)", singleLong(FORD_ORD), longRange(2010, false, 2014, false)));
+
+    FacetResult result = facets.getAllChildren("field");
+
+    assertEquals("field", result.dim);
+    assertEquals(0, result.path.length);
+    assertEquals(numMatchingDocs, result.value);
+    assertEquals(4, result.childCount);
+
+    assertEquals(new LabelAndValue("Ford [2010-2014]", numFord2010_2014), result.labelValues[0]);
+    assertEquals(new LabelAndValue("Ford (2010-2014]", numFord2011_2014), result.labelValues[1]);
+    assertEquals(new LabelAndValue("Ford [2010-2014)", numFord2010_2013), result.labelValues[2]);
+    assertEquals(new LabelAndValue("Ford (2010-2014)", numFord2011_2013), result.labelValues[3]);
+
+    r.close();
+    d.close();
+  }
+
   private static DimRange singleLong(long value) {
     return DimRange.fromLongs(value, true, value, true);
   }
@@ -414,5 +513,18 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
   private static DimRange floatRange(
       float min, boolean minExclusive, float max, boolean maxExclusive) {
     return DimRange.fromFloats(min, minExclusive, max, maxExclusive);
+  }
+
+  private static Query createFastMatchQuery(String field, long min, long max) {
+    return LongRange.newIntersectsQuery(field, new long[] {min}, new long[] {max});
+  }
+
+  private static void addFastMatchField(
+      String field, Document doc, LongFacetSet[] facetSets, int index) {
+    long min =
+        Arrays.stream(facetSets).mapToLong(facetSet -> facetSet.values[index]).min().orElseThrow();
+    long max =
+        Arrays.stream(facetSets).mapToLong(facetSet -> facetSet.values[index]).max().orElseThrow();
+    doc.add(new LongPoint(field, min, max));
   }
 }

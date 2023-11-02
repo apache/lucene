@@ -236,7 +236,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, BytesRef frameData, int length)
       throws IOException {
     scratchReader.reset(frameData.bytes, frameData.offset, frameData.length);
-    final long code = scratchReader.readVLong();
+    final long code = fr.readVLongOutput(scratchReader);
     final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
@@ -980,7 +980,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           } else if (isSeekFrame && !f.isFloor) {
             final ByteArrayDataInput reader =
                 new ByteArrayDataInput(output.bytes, output.offset, output.length);
-            final long codeOrig = reader.readVLong();
+            final long codeOrig = fr.readVLongOutput(reader);
             final long code =
                 (f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
                     | (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)

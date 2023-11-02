@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -242,12 +241,12 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     boolean actuallyRewritten = false;
     List<SpanQuery> rewrittenClauses = new ArrayList<>();
     for (int i = 0; i < clauses.size(); i++) {
       SpanQuery c = clauses.get(i);
-      SpanQuery query = (SpanQuery) c.rewrite(reader);
+      SpanQuery query = (SpanQuery) c.rewrite(indexSearcher);
       actuallyRewritten |= query != c;
       rewrittenClauses.add(query);
     }
@@ -260,7 +259,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
         throw new AssertionError(e);
       }
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

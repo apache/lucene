@@ -243,6 +243,18 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertTrue(builder.multivalued);
   }
 
+  public void testCostIsCorrectAfterBitsetUpgrade() throws IOException {
+    final int maxDoc = 1000000;
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    // 1000000 >> 6 is greater than DocIdSetBuilder.threshold which is 1000000 >> 7
+    for (int i = 0; i < 1000000 >> 6; ++i) {
+      builder.add(DocIdSetIterator.range(i, i + 1));
+    }
+    DocIdSet result = builder.build();
+    assertTrue(result instanceof BitDocIdSet);
+    assertEquals(1000000 >> 6, result.iterator().cost());
+  }
+
   private static class DummyTerms extends Terms {
 
     private final int docCount;

@@ -156,7 +156,9 @@ public abstract class PerfTask implements Cloneable {
    */
   public abstract int doLogic() throws Exception;
 
-  /** @return Returns the name. */
+  /**
+   * @return Returns the name.
+   */
   public String getName() {
     if (params == null) {
       return name;
@@ -164,22 +166,30 @@ public abstract class PerfTask implements Cloneable {
     return new StringBuilder(name).append('(').append(params).append(')').toString();
   }
 
-  /** @param name The name to set. */
+  /**
+   * @param name The name to set.
+   */
   protected void setName(String name) {
     this.name = name;
   }
 
-  /** @return Returns the run data. */
+  /**
+   * @return Returns the run data.
+   */
   public PerfRunData getRunData() {
     return runData;
   }
 
-  /** @return Returns the depth. */
+  /**
+   * @return Returns the depth.
+   */
   public int getDepth() {
     return depth;
   }
 
-  /** @param depth The depth to set. */
+  /**
+   * @param depth The depth to set.
+   */
   public void setDepth(int depth) {
     this.depth = depth;
   }
@@ -209,7 +219,9 @@ public abstract class PerfTask implements Cloneable {
     return sb.toString();
   }
 
-  /** @return Returns the maxDepthLogStart. */
+  /**
+   * @return Returns the maxDepthLogStart.
+   */
   int getMaxDepthLogStart() {
     return maxDepthLogStart;
   }
@@ -285,7 +297,9 @@ public abstract class PerfTask implements Cloneable {
     this.params = params;
   }
 
-  /** @return Returns the Params. */
+  /**
+   * @return Returns the Params.
+   */
   public String getParams() {
     return params;
   }

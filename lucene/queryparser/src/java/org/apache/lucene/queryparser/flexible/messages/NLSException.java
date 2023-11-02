@@ -24,6 +24,8 @@ package org.apache.lucene.queryparser.flexible.messages;
  * <p>This Interface should be implemented by all exceptions that require translation
  */
 public interface NLSException {
-  /** @return a instance of a class that implements the Message interface */
+  /**
+   * @return a instance of a class that implements the Message interface
+   */
   public Message getMessageObject();
 }

@@ -36,6 +36,7 @@ public class LevenshteinAutomata {
    * @lucene.internal
    */
   public static final int MAXIMUM_SUPPORTED_DISTANCE = 2;
+
   /* input word */
   final int[] word;
   /* the automata alphabet. */
@@ -217,8 +218,9 @@ public class LevenshteinAutomata {
     }
 
     a.finishState();
-    assert a.isDeterministic();
-    return a;
+    Automaton automaton = Operations.removeDeadStates(a);
+    assert automaton.isDeterministic();
+    return automaton;
   }
 
   /**
@@ -357,7 +359,7 @@ public class LevenshteinAutomata {
         };
 
     protected int unpack(long[] data, int index, int bitsPerValue) {
-      final long bitLoc = bitsPerValue * index;
+      final long bitLoc = bitsPerValue * (long) index;
       final int dataLoc = (int) (bitLoc >> 6);
       final int bitStart = (int) (bitLoc & 63);
       // System.out.println("index=" + index + " dataLoc=" + dataLoc + " bitStart=" + bitStart + "

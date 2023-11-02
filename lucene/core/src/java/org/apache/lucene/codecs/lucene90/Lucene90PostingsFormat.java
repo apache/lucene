@@ -443,20 +443,31 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
   public static final class IntBlockTermState extends BlockTermState {
     /** file pointer to the start of the doc ids enumeration, in {@link #DOC_EXTENSION} file */
     public long docStartFP;
+
     /** file pointer to the start of the positions enumeration, in {@link #POS_EXTENSION} file */
     public long posStartFP;
+
     /** file pointer to the start of the payloads enumeration, in {@link #PAY_EXTENSION} file */
     public long payStartFP;
+
     /**
      * file offset for the start of the skip list, relative to docStartFP, if there are more than
      * {@link ForUtil#BLOCK_SIZE} docs; otherwise -1
      */
     public long skipOffset;
+
     /**
      * file offset for the last position in the last block, if there are more than {@link
      * ForUtil#BLOCK_SIZE} positions; otherwise -1
+     *
+     * <p>One might think to use total term frequency to track how many positions are left to read
+     * as we decode the blocks, and decode the last block differently when num_left_positions &lt;
+     * BLOCK_SIZE. Unfortunately this won't work since the tracking will be messed up when we skip
+     * blocks as the skipper will only tell us new position offset (start of block) and number of
+     * positions to skip for that block, without telling us how many positions it has skipped.
      */
     public long lastPosBlockOffset;
+
     /**
      * docid when there is a single pulsed posting, otherwise -1. freq is always implicitly
      * totalTermFreq in this case.
