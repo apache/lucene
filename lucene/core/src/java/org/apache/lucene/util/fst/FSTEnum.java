@@ -165,24 +165,8 @@ abstract class FSTEnum<T> {
       final FST.Arc<T> arc, final int targetLabel, final FST.BytesReader in) throws IOException {
     int targetIndex = targetLabel - arc.firstLabel();
     if (targetIndex >= arc.numArcs()) {
-      // Target is beyond the last arc, out of label range.
-      // Dead end (target is after the last arc);
-      // rollback to last fork then push
-      upto--;
-      while (true) {
-        if (upto == 0) {
-          return null;
-        }
-        final FST.Arc<T> prevArc = getArc(upto);
-        // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
-        // isLast?=" + prevArc.isLast());
-        if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
-          pushFirst();
-          return null;
-        }
-        upto--;
-      }
+      rollbackToLastForkThenPush();
+      return null;
     } else {
       if (targetIndex < 0) {
         fst.readArcByContinuous(arc, in, 0);
@@ -211,24 +195,8 @@ abstract class FSTEnum<T> {
 
     int targetIndex = targetLabel - arc.firstLabel();
     if (targetIndex >= arc.numArcs()) {
-      // Target is beyond the last arc, out of label range.
-      // Dead end (target is after the last arc);
-      // rollback to last fork then push
-      upto--;
-      while (true) {
-        if (upto == 0) {
-          return null;
-        }
-        final FST.Arc<T> prevArc = getArc(upto);
-        // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
-        // isLast?=" + prevArc.isLast());
-        if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
-          pushFirst();
-          return null;
-        }
-        upto--;
-      }
+      rollbackToLastForkThenPush();
+      return null;
     } else {
       if (targetIndex < 0) {
         targetIndex = -1;
@@ -455,6 +423,28 @@ abstract class FSTEnum<T> {
       assert arc.isLast() || fst.readNextArcLabel(arc, in) > targetLabel;
       pushLast();
       return null;
+    }
+  }
+
+  /**
+   * Target is beyond the last arc, out of label range. Dead end (target is after the last arc);
+   * rollback to last fork then push
+   */
+  private void rollbackToLastForkThenPush() throws IOException {
+    upto--;
+    while (true) {
+      if (upto == 0) {
+        return;
+      }
+      final FST.Arc<T> prevArc = getArc(upto);
+      // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
+      // isLast?=" + prevArc.isLast());
+      if (!prevArc.isLast()) {
+        fst.readNextArc(prevArc, fstReader);
+        pushFirst();
+        return;
+      }
+      upto--;
     }
   }
 

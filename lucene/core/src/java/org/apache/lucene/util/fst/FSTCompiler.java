@@ -447,8 +447,8 @@ public class FSTCompiler<T> {
 
       int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
       assert labelRange > 0;
-      boolean continuousLable = labelRange == nodeIn.numArcs;
-      if (continuousLable) {
+      boolean continuousLabel = labelRange == nodeIn.numArcs;
+      if (continuousLabel) {
         writeNodeForDirectAddressingOrContinuous(
             nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, true);
         continuousNodeCount++;

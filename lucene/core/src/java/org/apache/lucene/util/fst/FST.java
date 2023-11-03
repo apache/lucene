@@ -98,6 +98,11 @@ public final class FST<T> implements Accountable {
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
+  /**
+   * Value of the arc flags to declare a node with continuous arcs designed for pos the arc directly
+   * with labelToPos - firstLabel. like {@link #ARCS_FOR_BINARY_SEARCH} we use flag combinations
+   * that will not occur at the same time.
+   */
   static final byte ARCS_FOR_CONTINUOUS = ARCS_FOR_DIRECT_ADDRESSING + ARCS_FOR_BINARY_SEARCH;
 
   // Increment version to change it
@@ -923,6 +928,7 @@ public final class FST<T> implements Accountable {
     return readArcByDirectAddressing(arc, in, arc.numArcs() - 1, presenceIndex);
   }
 
+  /** Reads the last arc of a continuous node. */
   public Arc<T> readLastArcByContinuous(Arc<T> arc, final BytesReader in) throws IOException {
     return readArcByContinuous(arc, in, arc.numArcs() - 1);
   }
