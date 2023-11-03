@@ -53,28 +53,33 @@ public final class Constants {
   /** The value of <code>System.getProperty("java.vendor")</code>. */
   public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
-  /** True iff running on a 64bit JVM */
-  public static final boolean JRE_IS_64BIT;
+  /** True iff the Java runtime is a client runtime and C2 compiler is not enabled */
+  public static final boolean IS_CLIENT_VM =
+      System.getProperty("java.vm.info", "").contains("emulated-client");
 
-  static {
-    boolean is64Bit = false;
+  /** True iff running on a 64bit JVM */
+  public static final boolean JRE_IS_64BIT = is64Bit();
+
+  /** true iff we know fast FMA is supported, to deliver less error */
+  public static final boolean HAS_FAST_FMA =
+      (IS_CLIENT_VM == false)
+          && Constants.OS_ARCH.equals("amd64")
+          && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+
+  private static boolean is64Bit() {
     String datamodel = null;
     try {
       datamodel = System.getProperty("sun.arch.data.model");
       if (datamodel != null) {
-        is64Bit = datamodel.contains("64");
+        return datamodel.contains("64");
       }
     } catch (
         @SuppressWarnings("unused")
         SecurityException ex) {
     }
     if (datamodel == null) {
-      if (OS_ARCH != null && OS_ARCH.contains("64")) {
-        is64Bit = true;
-      } else {
-        is64Bit = false;
-      }
+      return (OS_ARCH != null && OS_ARCH.contains("64"));
     }
-    JRE_IS_64BIT = is64Bit;
+    return false;
   }
 }
