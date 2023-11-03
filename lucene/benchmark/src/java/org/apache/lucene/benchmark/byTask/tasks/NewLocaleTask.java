@@ -65,7 +65,7 @@ public class NewLocaleTask extends PerfTask {
       }
     }
 
-    return Locale.Builder().setLanguageTag(sb.toString()).build();
+    return new Locale.Builder().setLanguageTag(sb.toString()).build();
   }
 
   @Override
