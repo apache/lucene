@@ -199,7 +199,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
-    finish(collector, Collections.singleton(dim));
+    finish(Collections.singleton(dim));
   }
 
   /**
@@ -338,7 +338,7 @@ class DrillSidewaysScorer extends BulkScorer {
       docID = baseApproximation.nextDoc();
     }
 
-    finish(collector, sidewaysDims);
+    finish(sidewaysDims);
   }
 
   private static int advanceIfBehind(int docID, DocIdSetIterator iterator) throws IOException {
@@ -557,7 +557,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
       nextChunkStart += CHUNK;
     }
-    finish(collector, Arrays.asList(dims));
+    finish(Arrays.asList(dims));
   }
 
   private void doUnionScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
@@ -713,7 +713,7 @@ class DrillSidewaysScorer extends BulkScorer {
       nextChunkStart += CHUNK;
     }
 
-    finish(collector, Arrays.asList(dims));
+    finish(Arrays.asList(dims));
   }
 
   private void collectHit(LeafCollector collector, DocsAndCost[] dims) throws IOException {
@@ -765,8 +765,10 @@ class DrillSidewaysScorer extends BulkScorer {
     sidewaysCollector.collect(collectDocID);
   }
 
-  private void finish(LeafCollector collector, Collection<DocsAndCost> dims) throws IOException {
-    collector.finish();
+  private void finish(Collection<DocsAndCost> dims) throws IOException {
+    // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
+    // "main" collector. This is because IndexSearcher handles calling #finish on the main
+    // collector.
     if (drillDownLeafCollector != null) {
       drillDownLeafCollector.finish();
     }

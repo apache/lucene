@@ -92,6 +92,7 @@ public class IndexSearcher {
     final long maxRamBytesUsed = Math.min(1L << 25, Runtime.getRuntime().maxMemory() / 20);
     DEFAULT_QUERY_CACHE = new LRUQueryCache(maxCachedQueries, maxRamBytesUsed);
   }
+
   /**
    * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
@@ -114,10 +115,10 @@ public class IndexSearcher {
   protected final List<LeafReaderContext> leafContexts;
 
   /**
-   * used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
+   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
    * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. This is {@code null} if no executor is
-   * provided
+   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
+   * executor is provided or not.
    */
   private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
@@ -424,11 +425,12 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns the leaf slices used for concurrent searching
+   * Returns the leaf slices used for concurrent searching. Override {@link #slices(List)} to
+   * customize how slices are created.
    *
    * @lucene.experimental
    */
-  public LeafSlice[] getSlices() {
+  public final LeafSlice[] getSlices() {
     return leafSlicesSupplier.get();
   }
 
@@ -968,6 +970,7 @@ public class IndexSearcher {
     public TooManyClauses() {
       this("maxClauseCount is set to " + IndexSearcher.getMaxClauseCount());
     }
+
     /** The value of {@link IndexSearcher#getMaxClauseCount()} when this Exception was created */
     public int getMaxClauseCount() {
       return maxClauseCount;

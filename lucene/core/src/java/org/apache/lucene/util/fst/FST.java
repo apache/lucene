@@ -83,13 +83,16 @@ public final class FST<T> implements Accountable {
 
   static final int BIT_ARC_HAS_FINAL_OUTPUT = 1 << 5;
 
-  /** Value of the arc flags to declare a node with fixed length arcs designed for binary search. */
+  /**
+   * Value of the arc flags to declare a node with fixed length (sparse) arcs designed for binary
+   * search.
+   */
   // We use this as a marker because this one flag is illegal by itself.
   public static final byte ARCS_FOR_BINARY_SEARCH = BIT_ARC_HAS_FINAL_OUTPUT;
 
   /**
-   * Value of the arc flags to declare a node with fixed length arcs and bit table designed for
-   * direct addressing.
+   * Value of the arc flags to declare a node with fixed length dense arcs and bit table designed
+   * for direct addressing.
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
@@ -120,9 +123,7 @@ public final class FST<T> implements Accountable {
    * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
    * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
-  final BytesStore bytes;
-
-  private final FSTStore fstStore;
+  private final FSTReader fstReader;
 
   private long startNode = -1;
 
@@ -395,15 +396,11 @@ public final class FST<T> implements Accountable {
   }
 
   // make a new empty FST, for building; Builder invokes this
-  FST(INPUT_TYPE inputType, Outputs<T> outputs, int bytesPageBits) {
+  FST(INPUT_TYPE inputType, Outputs<T> outputs, FSTReader fstReader) {
     this.inputType = inputType;
     this.outputs = outputs;
-    fstStore = null;
-    bytes = new BytesStore(bytesPageBits);
-    // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    bytes.writeByte((byte) 0);
     emptyOutput = null;
+    this.fstReader = fstReader;
     this.version = VERSION_CURRENT;
   }
 
@@ -420,8 +417,6 @@ public final class FST<T> implements Accountable {
    */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
       throws IOException {
-    bytes = null;
-    this.fstStore = fstStore;
     this.outputs = outputs;
 
     // NOTE: only reads formats VERSION_START up to VERSION_CURRENT; we don't have
@@ -435,7 +430,7 @@ public final class FST<T> implements Accountable {
       emptyBytes.copyBytes(metaIn, numBytes);
 
       // De-serialize empty-string output:
-      BytesReader reader = emptyBytes.getReverseReader();
+      BytesReader reader = emptyBytes.getReverseBytesReader();
       // NoOutputs uses 0 bytes when writing its output,
       // so we have to check here else BytesStore gets
       // angry:
@@ -463,19 +458,13 @@ public final class FST<T> implements Accountable {
     startNode = metaIn.readVLong();
 
     long numBytes = metaIn.readVLong();
-    this.fstStore.init(in, numBytes);
+    fstStore.init(in, numBytes);
+    this.fstReader = fstStore;
   }
 
   @Override
   public long ramBytesUsed() {
-    long size = BASE_RAM_BYTES_USED;
-    if (this.fstStore != null) {
-      size += this.fstStore.ramBytesUsed();
-    } else {
-      size += bytes.ramBytesUsed();
-    }
-
-    return size;
+    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
   }
 
   @Override
@@ -484,7 +473,7 @@ public final class FST<T> implements Accountable {
   }
 
   void finish(long newStartNode) throws IOException {
-    assert newStartNode <= bytes.getPosition();
+    assert newStartNode <= fstReader.size();
     if (startNode != -1) {
       throw new IllegalStateException("already finished");
     }
@@ -492,11 +481,10 @@ public final class FST<T> implements Accountable {
       newStartNode = 0;
     }
     startNode = newStartNode;
-    bytes.finish();
   }
 
   public long numBytes() {
-    return bytes.getPosition();
+    return fstReader.size();
   }
 
   public T getEmptyOutput() {
@@ -552,14 +540,8 @@ public final class FST<T> implements Accountable {
     }
     metaOut.writeByte(t);
     metaOut.writeVLong(startNode);
-    if (bytes != null) {
-      long numBytes = bytes.getPosition();
-      metaOut.writeVLong(numBytes);
-      bytes.writeTo(out);
-    } else {
-      assert fstStore != null;
-      fstStore.writeTo(out);
-    }
+    metaOut.writeVLong(numBytes());
+    fstReader.writeTo(out);
   }
 
   /** Writes an automaton to a file. */
@@ -746,14 +728,12 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
+  private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in)
       throws IOException {
     in.setPosition(nodeAddress);
-    // System.out.println("   flags=" + arc.flags);
 
     byte flags = arc.nodeFlags = in.readByte();
     if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
-      // System.out.println("  fixed length arc");
       // Special arc which is actually a node header for fixed length arcs.
       arc.numArcs = in.readVInt();
       arc.bytesPerArc = in.readVInt();
@@ -764,13 +744,15 @@ public final class FST<T> implements Accountable {
         arc.presenceIndex = -1;
       }
       arc.posArcsStart = in.getPosition();
-      // System.out.println("  bytesPer=" + arc.bytesPerArc + " numArcs=" + arc.numArcs + "
-      // arcsStart=" + pos);
     } else {
       arc.nextArc = nodeAddress;
       arc.bytesPerArc = 0;
     }
+  }
 
+  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
+      throws IOException {
+    readFirstArcInfo(nodeAddress, arc, in);
     return readNextRealArc(arc, in);
   }
 
@@ -824,14 +806,12 @@ public final class FST<T> implements Accountable {
         }
       }
     } else {
-      if (arc.bytesPerArc() != 0) {
-        // System.out.println("    nextArc real array");
-        // Arcs have fixed length.
-        if (arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH) {
+      switch (arc.nodeFlags()) {
+        case ARCS_FOR_BINARY_SEARCH:
           // Point to next arc, -1 to skip arc flags.
           in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
-        } else {
-          assert arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING;
+          break;
+        case ARCS_FOR_DIRECT_ADDRESSING:
           // Direct addressing node. The label is not stored but rather inferred
           // based on first label and arc index in the range.
           assert BitTable.assertIsValid(arc, in);
@@ -839,12 +819,14 @@ public final class FST<T> implements Accountable {
           int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
           assert nextIndex != -1;
           return arc.firstLabel() + nextIndex;
-        }
-      } else {
-        // Arcs have variable length.
-        // System.out.println("    nextArc real list");
-        // Position to next arc, -1 to skip flags.
-        in.setPosition(arc.nextArc() - 1);
+        default:
+          // Variable length arcs - linear search.
+          assert arc.bytesPerArc() == 0;
+          // Arcs have variable length.
+          // System.out.println("    nextArc real list");
+          // Position to next arc, -1 to skip flags.
+          in.setPosition(arc.nextArc() - 1);
+          break;
       }
     }
     return readLabel(in);
@@ -1081,22 +1063,30 @@ public final class FST<T> implements Accountable {
     }
 
     // Linear scan
-    readFirstRealTargetArc(follow.target(), arc, in);
-
+    readFirstArcInfo(follow.target(), arc, in);
+    in.setPosition(arc.nextArc());
     while (true) {
-      // System.out.println("  non-bs cycle");
-      // TODO: we should fix this code to not have to create
-      // object for the output of every arc we scan... only
-      // for the matching arc, if found
-      if (arc.label() == labelToMatch) {
-        // System.out.println("    found!");
-        return arc;
-      } else if (arc.label() > labelToMatch) {
+      assert arc.bytesPerArc() == 0;
+      flags = arc.flags = in.readByte();
+      long pos = in.getPosition();
+      int label = readLabel(in);
+      if (label == labelToMatch) {
+        in.setPosition(pos);
+        return readArc(arc, in);
+      } else if (label > labelToMatch) {
         return null;
       } else if (arc.isLast()) {
         return null;
       } else {
-        readNextRealArc(arc, in);
+        if (flag(flags, BIT_ARC_HAS_OUTPUT)) {
+          outputs.skipOutput(in);
+        }
+        if (flag(flags, BIT_ARC_HAS_FINAL_OUTPUT)) {
+          outputs.skipFinalOutput(in);
+        }
+        if (flag(flags, BIT_STOP_NODE) == false && flag(flags, BIT_TARGET_NEXT) == false) {
+          readUnpackedNodeTarget(in);
+        }
       }
     }
   }
@@ -1116,7 +1106,7 @@ public final class FST<T> implements Accountable {
         outputs.skipFinalOutput(in);
       }
 
-      if (!flag(flags, BIT_STOP_NODE) && !flag(flags, BIT_TARGET_NEXT)) {
+      if (flag(flags, BIT_STOP_NODE) == false && flag(flags, BIT_TARGET_NEXT) == false) {
         readUnpackedNodeTarget(in);
       }
 
@@ -1128,11 +1118,7 @@ public final class FST<T> implements Accountable {
 
   /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
   public BytesReader getBytesReader() {
-    if (this.fstStore != null) {
-      return this.fstStore.getReverseBytesReader();
-    } else {
-      return bytes.getReverseReader();
-    }
+    return fstReader.getReverseBytesReader();
   }
 
   /** Reads bytes stored in an FST. */

@@ -79,6 +79,7 @@ public class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+
   /**
    * Default number of the size of the queue maintained while searching and the number of random
    * entry points to sample during a graph construction.

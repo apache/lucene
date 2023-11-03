@@ -14,23 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.benchmark.jmh.jmh_generated;
 
-package org.apache.lucene.codecs.lucene90;
-
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Version;
-
-public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
-
-  @Override
-  protected Version[] getVersions() {
-    return new Version[] {Version.LATEST};
-  }
-
-  @Override
-  protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
-  }
-}
+/** Just to keep the module descriptor happy (generated classes must be exported). */
+public class DummyExport {}

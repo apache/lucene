@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.backward_codecs.lucene94;
 
+import org.apache.lucene.backward_codecs.lucene90.Lucene90RWSegmentInfoFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 
 /** Implements the Lucene 9.4 index format for backwards compat testing */
@@ -31,6 +33,8 @@ public class Lucene94RWCodec extends Lucene94Codec {
         }
       };
 
+  private final SegmentInfoFormat segmentInfosFormat = new Lucene90RWSegmentInfoFormat();
+
   /** Instantiates a new codec. */
   public Lucene94RWCodec() {
     defaultKnnVectorsFormat =
@@ -42,5 +46,10 @@ public class Lucene94RWCodec extends Lucene94Codec {
   @Override
   public final KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
+  }
+
+  @Override
+  public SegmentInfoFormat segmentInfoFormat() {
+    return segmentInfosFormat;
   }
 }

@@ -15,28 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.SegmentInfoFormat;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexSorter;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.SortFieldProvider;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.*;
 import org.apache.lucene.util.Version;
 
 /**
@@ -83,7 +72,7 @@ import org.apache.lucene.util.Version;
  * @see SegmentInfos
  * @lucene.experimental
  */
-public class Lucene90SegmentInfoFormat extends SegmentInfoFormat {
+public class Lucene90RWSegmentInfoFormat extends SegmentInfoFormat {
 
   /** File extension used to store {@link SegmentInfo}. */
   public static final String SI_EXTENSION = "si";
@@ -93,7 +82,7 @@ public class Lucene90SegmentInfoFormat extends SegmentInfoFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor. */
-  public Lucene90SegmentInfoFormat() {}
+  public Lucene90RWSegmentInfoFormat() {}
 
   @Override
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
@@ -164,6 +153,7 @@ public class Lucene90SegmentInfoFormat extends SegmentInfoFormat {
             segment,
             docCount,
             isCompoundFile,
+            false,
             null,
             diagnostics,
             segmentID,

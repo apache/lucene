@@ -28,6 +28,7 @@ import java.io.OutputStream;
 class GeoWorld extends GeoBaseBBox {
   /** No points on the edge of the shape */
   protected static final GeoPoint[] edgePoints = new GeoPoint[0];
+
   /** Point in the middle of the world */
   protected final GeoPoint originPoint;
 

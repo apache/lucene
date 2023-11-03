@@ -19,7 +19,7 @@
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
-    for (jdkVersion : mrjarJavaVersions) {
+    mrjarJavaVersions.each { jdkVersion ->
       sourceSets.create("main${jdkVersion}") {
         java {
           srcDirs = ["src/java${jdkVersion}"]
@@ -46,7 +46,7 @@ configure(project(":lucene:core")) {
     }
     
     tasks.named('jar').configure {
-      for (jdkVersion : mrjarJavaVersions) {
+      mrjarJavaVersions.each { jdkVersion ->
         into("META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }
