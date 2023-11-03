@@ -2567,7 +2567,8 @@ public class IndexWriter
             closed = true;
             closing = false;
 
-            // So any "concurrently closing" threads wake up and see that the close has now completed:
+            // So any "concurrently closing" threads wake up and see that the close has now
+            // completed:
             notifyAll();
           }
         }
