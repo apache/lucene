@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /** Some useful constants. */
@@ -82,10 +83,10 @@ public final class Constants {
   private static boolean hasFastFMA() {
     boolean hasFMA = HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
     if (hasFMA) {
-      if (OS_ARCH.equals("amd64")) {
+      if (Objects.equals(OS_ARCH, "amd64")) {
         // we've got FMA, but detect if its AMD and avoid it in that case
         hasFMA = HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
-      } else if (OS_ARCH.equals("aarch64")) {
+      } else if (Objects.equals(OS_ARCH, "aarch64")) {
         // we've got FMA, but its slower unless its a newer SVE-based chip
         hasFMA = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
       }
