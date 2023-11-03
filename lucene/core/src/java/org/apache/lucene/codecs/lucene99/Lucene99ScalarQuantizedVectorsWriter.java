@@ -52,6 +52,7 @@ import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * Writes quantized vector values and metadata to index segments.
@@ -233,7 +234,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
               fieldInfo, mergeState, mergedQuantizationState);
-      writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
+      DocsWithFieldSet docsWithField =
+          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
@@ -253,10 +255,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
               fieldInfo.getVectorSimilarityFunction(),
               mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(), byteVectorValues.size(), quantizationDataInput)));
+                  fieldInfo.getVectorDimension(),
+                  docsWithField.cardinality(),
+                  quantizationDataInput)));
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(quantizationDataInput);
+        IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempQuantizedVectorData.getName());
       }
@@ -759,6 +763,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       return supplier.scorer(ord);
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return supplier.copy();
     }
 
     @Override

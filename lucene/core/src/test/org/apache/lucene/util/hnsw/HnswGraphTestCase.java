@@ -165,7 +165,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth);
                         }
                       };
                     }
@@ -237,7 +237,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                          return new Lucene99HnswVectorsFormat(M, beamWidth);
                         }
                       };
                     }
@@ -298,7 +298,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth);
                       }
                     };
                   }
@@ -312,7 +312,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     return new PerFieldKnnVectorsFormat() {
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth, null);
+                        return new Lucene99HnswVectorsFormat(M, beamWidth);
                       }
                     };
                   }
@@ -565,6 +565,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
+
+    // we cannot call getNodesOnLevel before the graph reaches the size it claimed, so here we
+    // create
+    // another graph to do the assertion
+    OnHeapHnswGraph graphAfterInit =
+        InitializedHnswGraphBuilder.initGraph(
+            10, initializerGraph, initializerOrdMap, initializerGraph.size());
+
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
@@ -578,7 +586,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             totalSize);
 
     // When offset is 0, the graphs should be identical before vectors are added
-    assertGraphEqual(initializerGraph, finalBuilder.getGraph());
+    assertGraphEqual(initializerGraph, graphAfterInit);
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
     assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
@@ -986,6 +994,33 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         actualDocs[j] = actual.scoreDocs[j].doc;
       }
       assertArrayEquals(expectedDocs, actualDocs);
+    }
+  }
+
+  /*
+   * A very basic test ensure the concurrent merge does not throw exceptions, it by no means guarantees the
+   * true correctness of the concurrent merge and that must be checked manually by running a KNN benchmark
+   * and comparing the recall
+   */
+  public void testConcurrentMergeBuilder() throws IOException {
+    int size = atLeast(1000);
+    int dim = atLeast(10);
+    AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    ExecutorService exec = Executors.newFixedThreadPool(4, new NamedThreadFactory("hnswMerge"));
+    HnswGraphBuilder.randSeed = random().nextLong();
+    HnswConcurrentMergeBuilder builder =
+        new HnswConcurrentMergeBuilder(
+            exec, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
+    builder.setBatchSize(100);
+    builder.build(size);
+    exec.shutdownNow();
+    OnHeapHnswGraph graph = builder.getGraph();
+    assertTrue(graph.entryNode() != -1);
+    assertEquals(size, graph.size());
+    assertEquals(size - 1, graph.maxNodeId());
+    for (int l = 0; l < graph.numLevels(); l++) {
+      assertNotNull(graph.getNodesOnLevel(l));
     }
   }
 

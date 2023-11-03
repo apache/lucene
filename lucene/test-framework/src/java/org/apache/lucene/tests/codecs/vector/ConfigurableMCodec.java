@@ -32,12 +32,12 @@ public class ConfigurableMCodec extends FilterCodec {
 
   public ConfigurableMCodec() {
     super("ConfigurableMCodec", TestUtil.getDefaultCodec());
-    knnVectorsFormat = new Lucene99HnswVectorsFormat(128, 100, null);
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(128, 100);
   }
 
   public ConfigurableMCodec(int maxConn) {
     super("ConfigurableMCodec", TestUtil.getDefaultCodec());
-    knnVectorsFormat = new Lucene99HnswVectorsFormat(maxConn, 100, null);
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(maxConn, 100);
   }
 
   @Override

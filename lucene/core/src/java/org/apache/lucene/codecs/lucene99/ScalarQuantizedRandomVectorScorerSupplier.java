@@ -39,11 +39,22 @@ final class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSco
     this.values = values;
   }
 
+  private ScalarQuantizedRandomVectorScorerSupplier(
+      ScalarQuantizedVectorSimilarity similarity, RandomAccessQuantizedByteVectorValues values) {
+    this.similarity = similarity;
+    this.values = values;
+  }
+
   @Override
   public RandomVectorScorer scorer(int ord) throws IOException {
     final RandomAccessQuantizedByteVectorValues vectorsCopy = values.copy();
     final byte[] queryVector = values.vectorValue(ord);
     final float queryOffset = values.getScoreCorrectionConstant();
     return new ScalarQuantizedRandomVectorScorer(similarity, vectorsCopy, queryVector, queryOffset);
+  }
+
+  @Override
+  public RandomVectorScorerSupplier copy() throws IOException {
+    return new ScalarQuantizedRandomVectorScorerSupplier(similarity, values.copy());
   }
 }

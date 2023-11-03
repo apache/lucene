@@ -790,9 +790,18 @@ public class TestAutomaton extends LuceneTestCase {
     return null;
   }
 
+  private static boolean hasMassiveTerm(Collection<BytesRef> terms) {
+    for (BytesRef term : terms) {
+      if (term.length > Automata.MAX_STRING_UNION_TERM_LENGTH) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private Automaton unionTerms(Collection<BytesRef> terms) {
     Automaton a;
-    if (random().nextBoolean()) {
+    if (random().nextBoolean() || hasMassiveTerm(terms)) {
       if (VERBOSE) {
         System.out.println("TEST: unionTerms: use union");
       }

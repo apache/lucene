@@ -32,12 +32,14 @@ public interface RandomVectorScorerSupplier {
   RandomVectorScorer scorer(int ord) throws IOException;
 
   /**
-   * Creates a {@link RandomVectorScorerSupplier} to compare float vectors.
-   *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
+   * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to
+   * be used in other threads.
+   */
+  RandomVectorScorerSupplier copy() throws IOException;
+
+  /**
+   * Creates a {@link RandomVectorScorerSupplier} to compare float vectors. The vectorValues passed
+   * in will be copied and the original copy will not be used.
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
@@ -48,21 +50,12 @@ public interface RandomVectorScorerSupplier {
       throws IOException {
     // We copy the provided random accessor just once during the supplier's initialization
     // and then reuse it consistently across all scorers for conducting vector comparisons.
-    final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
-    return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+    return new FloatScoringSupplier(vectors, similarityFunction);
   }
 
   /**
-   * Creates a {@link RandomVectorScorerSupplier} to compare byte vectors.
-   *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
+   * Creates a {@link RandomVectorScorerSupplier} to compare byte vectors. The vectorValues passed
+   * in will be copied and the original copy will not be used.
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
@@ -71,13 +64,64 @@ public interface RandomVectorScorerSupplier {
       final RandomAccessVectorValues<byte[]> vectors,
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
-    // We copy the provided random accessor just once during the supplier's initialization
+    // We copy the provided random accessor only during the supplier's initialization
     // and then reuse it consistently across all scorers for conducting vector comparisons.
-    final RandomAccessVectorValues<byte[]> vectorsCopy = vectors.copy();
-    return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+    return new ByteScoringSupplier(vectors, similarityFunction);
+  }
+
+  /** RandomVectorScorerSupplier for bytes vector */
+  final class ByteScoringSupplier implements RandomVectorScorerSupplier {
+    private final RandomAccessVectorValues<byte[]> vectors;
+    private final RandomAccessVectorValues<byte[]> vectors1;
+    private final RandomAccessVectorValues<byte[]> vectors2;
+    private final VectorSimilarityFunction similarityFunction;
+
+    private ByteScoringSupplier(
+        RandomAccessVectorValues<byte[]> vectors, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      this.vectors = vectors;
+      vectors1 = vectors.copy();
+      vectors2 = vectors.copy();
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      return cand ->
+          similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new ByteScoringSupplier(vectors, similarityFunction);
+    }
+  }
+
+  /** RandomVectorScorerSupplier for Float vector */
+  final class FloatScoringSupplier implements RandomVectorScorerSupplier {
+    private final RandomAccessVectorValues<float[]> vectors;
+    private final RandomAccessVectorValues<float[]> vectors1;
+    private final RandomAccessVectorValues<float[]> vectors2;
+    private final VectorSimilarityFunction similarityFunction;
+
+    private FloatScoringSupplier(
+        RandomAccessVectorValues<float[]> vectors, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      this.vectors = vectors;
+      vectors1 = vectors.copy();
+      vectors2 = vectors.copy();
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      return cand ->
+          similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new FloatScoringSupplier(vectors, similarityFunction);
+    }
   }
 }

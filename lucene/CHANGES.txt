@@ -62,8 +62,10 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
-* GITHUB#12709 Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
   of the two (Anh Dung Bui)
+
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
 New Features
 ---------------------
@@ -156,6 +158,12 @@ API Changes
 * GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
   between FST and FSTCompiler (Anh Dung Bui)
 
+* GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
+
+* GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
+  Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
+  instead of relying on assert. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
@@ -164,6 +172,12 @@ New Features
 
 * GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
   segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
+
+* GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
+  storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+  
+* GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
+  (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -186,7 +200,7 @@ Improvements
 * GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
   (Uwe Schindler)
 
-* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731: Speed up Panama vector support
   and test improvements. (Uwe Schindler, Robert Muir)
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
@@ -231,6 +245,19 @@ Optimizations
 
 * GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
 
+* GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
+  and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
+
+* GITHUB#12726: Return the same input vector if its a unit vector in VectorUtil#l2normalize. (Shubham Chaudhary)
+
+* GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
+  specialized bulk scorer. (Adrien Grand)
+
+* GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
+
+* GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
+
 Changes in runtime behavior
 ---------------------
 
@@ -251,10 +278,18 @@ Bug Fixes
 
 * GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
 
+* GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
+
+* GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
+
 Build
 ---------------------
 
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+  leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
+
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other
