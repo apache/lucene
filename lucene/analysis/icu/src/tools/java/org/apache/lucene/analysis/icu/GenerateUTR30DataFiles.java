@@ -158,7 +158,7 @@ public class GenerateUTR30DataFiles {
   private static void getNFKCDataFilesFromIcuProject(String releaseTag) throws IOException {
     URI icuTagsURI = URI.create(ICU_GIT_TAG_URL + "/");
     URI icuReleaseTagURI = icuTagsURI.resolve(releaseTag + "/");
-    URI norm2uri = icuReleaseTagURI.resolve( ICU_DATA_NORM2_PATH + "/");
+    URI norm2uri = icuReleaseTagURI.resolve(ICU_DATA_NORM2_PATH + "/");
 
     System.err.print("Downloading " + NFKC_TXT + " ... ");
     download(norm2uri.resolve(NFKC_TXT), NFKC_TXT);

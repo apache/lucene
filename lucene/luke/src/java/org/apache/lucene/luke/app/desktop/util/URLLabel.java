@@ -43,7 +43,7 @@ public final class URLLabel extends JLabel {
       throw new LukeException(e.getMessage(), e);
     }
 
-      setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
     addMouseListener(
         new MouseAdapter() {
