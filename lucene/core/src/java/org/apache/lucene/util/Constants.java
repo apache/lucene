@@ -106,7 +106,7 @@ public final class Constants {
 
   private static void logSecurityWarning(String property) {
     var log = Logger.getLogger(Constants.class.getName());
-    log.warning("SecurityManager prevented access to property: " + property);
+    log.warning("SecurityManager prevented access to system property: " + property);
   }
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
