@@ -85,7 +85,7 @@ public final class Constants {
     if (hasFMA) {
       if (Objects.equals(OS_ARCH, "amd64")) {
         // we've got FMA, but detect if its AMD and avoid it in that case
-        hasFMA = HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
+        hasFMA = !HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
       } else if (Objects.equals(OS_ARCH, "aarch64")) {
         // we've got FMA, but its slower unless its a newer SVE-based chip
         hasFMA = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
