@@ -94,6 +94,10 @@ public final class Constants {
 
   private static boolean hasFastFMA() {
     if (HAS_FMA) {
+      // for official police use only, who may slow vector performance 15% for 1 ulp precision :)
+      if (Boolean.parseBoolean(getSysProp("lucene.useSlowFMA", "false"))) {
+        return true;
+      }
       // newer Neoverse cores have their act together
       if (HAS_SVE > 0) {
         return true;
