@@ -68,7 +68,7 @@ public final class LZ4 {
   }
 
   private static int readInt(byte[] buf, int i) {
-    // According to LZ4's alogrithm the endianness does not matter at all:
+    // According to LZ4's algorithm the endianness does not matter at all:
     return (int) BitUtil.VH_NATIVE_INT.get(buf, i);
   }
 
