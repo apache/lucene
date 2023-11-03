@@ -68,7 +68,7 @@ public class TestNLS extends LuceneTestCase {
   }
 
   public void testNLSLoading_xx_XX() {
-    Locale locale = Locale.of("xx", "XX", "");
+    Locale locale = Locale.forLanguageTag("xx-XX");
     String message =
         NLS.getLocalizedMessage(
             MessagesTestBundle.Q0004E_INVALID_SYNTAX_ESCAPE_UNICODE_TRUNCATION, locale);

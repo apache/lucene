@@ -793,19 +793,19 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     // ROOT locale
     benchmark = execBenchmark(getLocaleConfig("ROOT"));
-    assertEquals(Locale.of(""), benchmark.getRunData().getLocale());
+    assertEquals(Locale.ROOT, benchmark.getRunData().getLocale());
 
     // specify just a language
     benchmark = execBenchmark(getLocaleConfig("de"));
-    assertEquals(Locale.of("de"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.forLanguageTag("de"), benchmark.getRunData().getLocale());
 
     // specify language + country
     benchmark = execBenchmark(getLocaleConfig("en,US"));
-    assertEquals(Locale.of("en", "US"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.forLanguageTag("en-US"), benchmark.getRunData().getLocale());
 
     // specify language + country + variant
     benchmark = execBenchmark(getLocaleConfig("no,NO,NY"));
-    assertEquals(Locale.of("no", "NO", "NY"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.forLanguageTag("no-NO-NY"), benchmark.getRunData().getLocale());
   }
 
   private String[] getLocaleConfig(String localeParam) {

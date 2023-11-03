@@ -38,7 +38,8 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
    */
   public static final boolean DBBI_AVAILABLE;
 
-  private static final BreakIterator proto = BreakIterator.getWordInstance(Locale.of("th"));
+  private static final BreakIterator proto =
+      BreakIterator.getWordInstance(Locale.forLanguageTag("th"));
 
   static {
     // check that we have a working dictionary-based break iterator for thai

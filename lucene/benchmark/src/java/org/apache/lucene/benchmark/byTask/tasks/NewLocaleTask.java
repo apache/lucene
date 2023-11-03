@@ -49,10 +49,23 @@ public class NewLocaleTask extends PerfTask {
   static Locale createLocale(String language, String country, String variant) {
     if (language == null || language.length() == 0) return null;
 
-    String lang = language;
-    if (lang.equalsIgnoreCase("ROOT")) lang = ""; // empty language is the root locale in the JDK
+    if (language.equalsIgnoreCase("ROOT")) {
+      return Locale.ROOT;
+    }
 
-    return Locale.of(lang, country, variant);
+    StringBuilder sb = new StringBuilder();
+    sb.append(language);
+    if (country.length() > 0) {
+      sb.append('-');
+      sb.append(country);
+
+      if (variant.length() > 0) {
+        sb.append('-');
+        sb.append(variant);
+      }
+    }
+
+    return Locale.forLanguageTag(sb.toString());
   }
 
   @Override

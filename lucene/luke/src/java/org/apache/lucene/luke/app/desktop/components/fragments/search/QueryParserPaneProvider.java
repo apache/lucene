@@ -421,7 +421,7 @@ public final class QueryParserPaneProvider implements QueryParserTabOperator {
         .fuzzyMinSim(fuzzyMinSimFloat)
         .fuzzyPrefixLength(fuzzyPrefLenInt)
         .dateResolution(DateTools.Resolution.valueOf((String) dateResCB.getSelectedItem()))
-        .locale(Locale.of(locationTF.getText()))
+        .locale(Locale.forLanguageTag(locationTF.getText()))
         .timeZone(TimeZone.getTimeZone(timezoneTF.getText()))
         .typeMap(typeMap)
         .build();
