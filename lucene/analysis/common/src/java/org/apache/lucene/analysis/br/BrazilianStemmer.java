@@ -20,7 +20,7 @@ import java.util.Locale;
 
 /** A stemmer for Brazilian Portuguese words. */
 class BrazilianStemmer {
-  private static final Locale locale = Locale.forLanguageTag("pt-BR");
+  private static final Locale locale = Locale.Builder().setLanguageTag("pt-BR").build();
 
   /** Changed term */
   private String TERM;
