@@ -38,6 +38,8 @@ public final class ByteBlockPool implements Accountable {
 
   /** Abstract class for allocating and freeing byte blocks. */
   public abstract static class Allocator {
+    // TODO: ByteBlockPool assume the blockSize is always {@link BYTE_BLOCK_SIZE}, but this class
+    // allow arbitrary value of blockSize. We should make them consistent.
     protected final int blockSize;
 
     protected Allocator(int blockSize) {
@@ -299,5 +301,10 @@ public final class ByteBlockPool implements Accountable {
       size += RamUsageEstimator.sizeOfObject(buf);
     }
     return size;
+  }
+
+  /** the current position (in absolute value) of this byte pool */
+  public long getPosition() {
+    return bufferUpto * allocator.blockSize + byteUpto;
   }
 }

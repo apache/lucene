@@ -155,13 +155,15 @@ final class NodeHash<T> {
         // how many bytes would be used if we had "perfect" hashing:
         //  - x2 for fstNodeAddress for FST node address
         //  - x2 for copiedNodeAddress for copied node address
+        //  - the bytes copied out FST to the hashtable copiedNodes
         // each account for approximate hash table overhead halfway between 33.3% and 66.6%
         // note that some of the copiedNodes are shared between fallback and primary tables so this
         // computation is pessimistic
+        long copiedBytes = primaryTable.copiedNodes.getPosition();
         long ramBytesUsed =
             primaryTable.count * 2 * PackedInts.bitsRequired(nodeAddress) / 8
-                + primaryTable.count * 2 * PackedInts.bitsRequired(primaryTable.copiedBytes) / 8
-                + primaryTable.copiedBytes;
+                + primaryTable.count * 2 * PackedInts.bitsRequired(copiedBytes) / 8
+                + copiedBytes;
 
         // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
         // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
@@ -220,8 +222,6 @@ final class NodeHash<T> {
 
   /** Inner class because it needs access to hash function and FST bytes. */
   private class PagedGrowableHash {
-    // total bytes copied out of the FST byte[] into this hash table ByteBlockPool for suffix nodes
-    private long copiedBytes;
     // storing the FST node address where the position is the masked hash of the node arcs
     private PagedGrowableWriter fstNodeAddress;
     // storing the local copiedNodes address in the same position as fstNodeAddress
@@ -296,13 +296,15 @@ final class NodeHash<T> {
      * @param bytes the node bytes to be copied
      */
     public void setNode(long hashSlot, long nodeAddress, byte[] bytes) {
+      assert fstNodeAddress.get(hashSlot) == 0;
       fstNodeAddress.set(hashSlot, nodeAddress);
       count++;
+
       copiedNodes.append(bytes);
-      copiedBytes += bytes.length;
       // write the offset, which points to the last byte of the node we copied since we later read
       // this node in reverse
-      copiedNodeAddress.set(hashSlot, copiedBytes - 1);
+      assert copiedNodeAddress.get(hashSlot) == 0;
+      copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
@@ -314,7 +316,10 @@ final class NodeHash<T> {
       long newSize = 2 * fstNodeAddress.size();
       PagedGrowableWriter newCopiedNodeAddress =
           new PagedGrowableWriter(
-              newSize, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(copiedBytes), PackedInts.COMPACT);
+              newSize,
+              BLOCK_SIZE_BYTES,
+              PackedInts.bitsRequired(copiedNodes.getPosition()),
+              PackedInts.COMPACT);
       PagedGrowableWriter newFSTNodeAddress =
           new PagedGrowableWriter(
               newSize,
@@ -437,6 +442,8 @@ final class NodeHash<T> {
     }
 
     private FST.BytesReader getBytesReader(long nodeAddress, long hashSlot) {
+      // make sure the nodeAddress and hashSlot is consistent
+      assert fstNodeAddress.get(hashSlot) == nodeAddress;
       long localAddress = copiedNodeAddress.get(hashSlot);
       bytesReader.setPosDelta(nodeAddress - localAddress);
       return bytesReader;
