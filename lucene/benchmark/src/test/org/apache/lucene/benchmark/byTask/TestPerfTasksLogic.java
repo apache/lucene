@@ -801,15 +801,9 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
         new Locale.Builder().setLanguageTag("de").build(), benchmark.getRunData().getLocale());
 
     // specify language + country
-    benchmark = execBenchmark(getLocaleConfig("en,US"));
+    benchmark = execBenchmark(getLocaleConfig("en-US"));
     assertEquals(
         new Locale.Builder().setLanguageTag("en-US").build(), benchmark.getRunData().getLocale());
-
-    // specify language + country + variant
-    benchmark = execBenchmark(getLocaleConfig("no,NO,NY"));
-    assertEquals(
-        new Locale.Builder().setLanguageTag("no-NO-NY").build(),
-        benchmark.getRunData().getLocale());
   }
 
   private String[] getLocaleConfig(String localeParam) {
@@ -847,17 +841,17 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country
-    benchmark = execBenchmark(getCollatorConfig("en,US", "impl:jdk"));
+    benchmark = execBenchmark(getCollatorConfig("en-US", "impl:jdk"));
     expected =
         new CollationKeyAnalyzer(
             Collator.getInstance(new Locale.Builder().setLanguageTag("en-US").build()));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country + variant
-    benchmark = execBenchmark(getCollatorConfig("no,NO,NY", "impl:jdk"));
+    benchmark = execBenchmark(getCollatorConfig("nn-NO", "impl:jdk"));
     expected =
         new CollationKeyAnalyzer(
-            Collator.getInstance(new Locale.Builder().setLanguageTag("no-NO-NY").build()));
+            Collator.getInstance(new Locale.Builder().setLanguageTag("nn-NO").build()));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
   }
 
