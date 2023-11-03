@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 /** Some useful constants. */
@@ -67,9 +66,6 @@ public final class Constants {
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = is64Bit();
 
-  /** true iff we know fast FMA is supported, to deliver less error */
-  public static final boolean HAS_FAST_FMA = (IS_CLIENT_VM == false) && hasFastFMA();
-
   private static boolean is64Bit() {
     final String datamodel = getSysProp("sun.arch.data.model");
     if (datamodel != null) {
@@ -79,19 +75,34 @@ public final class Constants {
     }
   }
 
-  // best effort to see if FMA is fast (this is architecture-independent option)
+  /** true if FMA likely means a cpu instruction and not BigDecimal logic */
+  private static final boolean HAS_FMA =
+      (IS_CLIENT_VM == false) && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+
+  /** true for an ARM cpu with SVE instructions */
+  private static final boolean HAS_SVE =
+      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+
+  /** true for an AMD cpu with SSE4a instructions */
+  private static final boolean HAS_SSE4A =
+      HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
+
+  /** true iff we know FMA has faster throughput than separate mul/add */
+  public static final boolean HAS_FAST_FMA = hasFastFMA();
+
   private static boolean hasFastFMA() {
-    boolean hasFMA = HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
-    if (hasFMA) {
-      if (Objects.equals(OS_ARCH, "amd64")) {
-        // we've got FMA, but detect if its AMD and avoid it in that case
-        hasFMA = !HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
-      } else if (Objects.equals(OS_ARCH, "aarch64")) {
-        // we've got FMA, but its slower unless its a newer SVE-based chip
-        hasFMA = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+    if (HAS_FMA) {
+      // newer Neoverse cores have their act together
+      if (HAS_SVE) {
+        return true;
+      }
+      // intel has their act together
+      if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
+        return true;
       }
     }
-    return hasFMA;
+    // everyone else is slow, until proven otherwise by benchmarks
+    return false;
   }
 
   private static String getSysProp(String property) {
