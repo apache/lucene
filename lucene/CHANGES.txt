@@ -285,7 +285,8 @@ Bug Fixes
 Build
 ---------------------
 
-* GITHUB#?: tests.multiplier could be omitted in test failure reproduce lines (esp. in nightly mode). (Dawid Weiss)
+* GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
+  nightly mode). (Dawid Weiss)
 
 * GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
