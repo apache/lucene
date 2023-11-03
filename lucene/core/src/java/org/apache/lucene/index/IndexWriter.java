@@ -2562,16 +2562,14 @@ public class IndexWriter
           // leaks)
           try {
             IOUtils.closeWhileHandlingException(readerPool, deleter, writeLock);
-          } catch (Throwable t) {
-            throwable.addSuppressed(t);
           } finally {
             writeLock = null;
             closed = true;
             closing = false;
-          }
 
-          // So any "concurrently closing" threads wake up and see that the close has now completed:
-          notifyAll();
+            // So any "concurrently closing" threads wake up and see that the close has now completed:
+            notifyAll();
+          }
         }
       } catch (Throwable t) {
         throwable.addSuppressed(t);
