@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.*;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.orderPoints;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
 
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
@@ -103,14 +105,12 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
 
   /** Test comparing different polygon (Big) technologies using random biased doubles. */
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8281")
   public void testCompareBigPolygons() {
     testComparePolygons(Math.PI);
   }
 
   /** Test comparing different polygon (Small) technologies using random biased doubles. */
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8281")
   public void testCompareSmallPolygons() {
     testComparePolygons(1e-4 * Math.PI);
   }

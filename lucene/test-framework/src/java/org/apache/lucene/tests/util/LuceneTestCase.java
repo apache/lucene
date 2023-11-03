@@ -17,6 +17,7 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -46,7 +47,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
-import com.carrotsearch.randomizedtesting.rules.StaticFieldsInvariantRule;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -63,6 +63,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -80,7 +81,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -92,6 +92,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -106,8 +107,49 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.CompositeReader;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.LiveIndexWriterConfig;
+import org.apache.lucene.index.LogByteSizeMergePolicy;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.LogMergePolicy;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.MergeScheduler;
+import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.ParallelCompositeReader;
+import org.apache.lucene.index.ParallelLeafReader;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.SimpleMergedSegmentWarmer;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -235,10 +277,14 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
 
   /** Annotation for tests that should only be run during nightly builds. */
@@ -571,24 +617,6 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Max 10mb of static data stored in a test suite class after the suite is complete. Prevents
-   * static data structures leaking and causing OOMs in subsequent tests.
-   */
-  private static final long STATIC_LEAK_THRESHOLD = 10 * 1024 * 1024;
-
-  /** By-name list of ignored types like loggers etc. */
-  private static final Set<String> STATIC_LEAK_IGNORED_TYPES =
-      Set.of(
-          "org.slf4j.Logger",
-          "org.apache.solr.SolrLogFormatter",
-          "java.io.File", // Solr sometimes refers to this in a static way, but it has a
-          // "java.nio.fs.Path" inside
-          Path.class
-              .getName(), // causes problems because interface is implemented by hidden classes
-          Class.class.getName(),
-          EnumSet.class.getName());
-
-  /**
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
@@ -605,26 +633,6 @@ public abstract class LuceneTestCase extends Assert {
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
             .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker));
-    // TODO LUCENE-7595: Java 9 does not allow to look into runtime classes, so we have to fix the
-    // RAM usage checker!
-    if (!Constants.JRE_IS_MINIMUM_JAVA9) {
-      r =
-          r.around(
-              new StaticFieldsInvariantRule(STATIC_LEAK_THRESHOLD, true) {
-                @Override
-                protected boolean accept(java.lang.reflect.Field field) {
-                  // Don't count known classes that consume memory once.
-                  if (STATIC_LEAK_IGNORED_TYPES.contains(field.getType().getName())) {
-                    return false;
-                  }
-                  // Don't count references from ourselves, we're top-level.
-                  if (field.getDeclaringClass() == LuceneTestCase.class) {
-                    return false;
-                  }
-                  return super.accept(field);
-                }
-              });
-    }
     classRules =
         r.around(new NoClassHooksShadowingRule())
             .around(
@@ -910,7 +918,7 @@ public abstract class LuceneTestCase extends Assert {
   /**
    * Convenience method for logging an array. Wraps the array in an iterator and delegates
    *
-   * @see #dumpIterator(String,Iterator,PrintStream)
+   * @see #dumpIterator(String, Iterator, PrintStream)
    */
   public static void dumpArray(String label, Object[] objs, PrintStream stream) {
     Iterator<?> iter = (null == objs) ? null : Arrays.asList(objs).iterator();
@@ -990,8 +998,6 @@ public abstract class LuceneTestCase extends Assert {
 
     c.setMergePolicy(newMergePolicy(r));
 
-    avoidPathologicalMerging(c);
-
     if (rarely(r)) {
       c.setMergedSegmentWarmer(new SimpleMergedSegmentWarmer(c.getInfoStream()));
     }
@@ -1004,72 +1010,23 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       c.setIndexWriterEventListener(new MockIndexWriterEventListener());
     }
+    switch (r.nextInt(3)) {
+      case 0:
+        // Disable merge on refresh
+        c.setMaxFullFlushMergeWaitMillis(0L);
+        break;
+      case 1:
+        // Very low timeout, merges will likely not be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1L);
+        break;
+      default:
+        // Very long timeout, merges will almost always be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1000L);
+        break;
+    }
 
     c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
     return c;
-  }
-
-  private static void avoidPathologicalMerging(IndexWriterConfig iwc) {
-    // Don't allow "tiny" flushed segments with "big" merge
-    // floor: this leads to pathological O(N^2) merge costs:
-    long estFlushSizeBytes = Long.MAX_VALUE;
-    if (iwc.getMaxBufferedDocs() != IndexWriterConfig.DISABLE_AUTO_FLUSH) {
-      // Gross estimation of 1 KB segment bytes for each doc indexed:
-      estFlushSizeBytes = Math.min(estFlushSizeBytes, iwc.getMaxBufferedDocs() * 1024);
-    }
-    if (iwc.getRAMBufferSizeMB() != IndexWriterConfig.DISABLE_AUTO_FLUSH) {
-      estFlushSizeBytes =
-          Math.min(estFlushSizeBytes, (long) (iwc.getRAMBufferSizeMB() * 1024 * 1024));
-    }
-    assert estFlushSizeBytes > 0;
-
-    MergePolicy mp = iwc.getMergePolicy();
-    if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
-      long floorSegBytes = (long) (tmp.getFloorSegmentMB() * 1024 * 1024);
-      if (floorSegBytes / estFlushSizeBytes > 10) {
-        double newValue = estFlushSizeBytes * 10.0 / 1024 / 1024;
-        if (VERBOSE) {
-          System.out.println(
-              "NOTE: LuceneTestCase: changing TieredMergePolicy.floorSegmentMB from "
-                  + tmp.getFloorSegmentMB()
-                  + " to "
-                  + newValue
-                  + " to avoid pathological merging");
-        }
-        tmp.setFloorSegmentMB(newValue);
-      }
-    } else if (mp instanceof LogByteSizeMergePolicy) {
-      LogByteSizeMergePolicy lmp = (LogByteSizeMergePolicy) mp;
-      if ((lmp.getMinMergeMB() * 1024 * 1024) / estFlushSizeBytes > 10) {
-        double newValue = estFlushSizeBytes * 10.0 / 1024 / 1024;
-        if (VERBOSE) {
-          System.out.println(
-              "NOTE: LuceneTestCase: changing LogByteSizeMergePolicy.minMergeMB from "
-                  + lmp.getMinMergeMB()
-                  + " to "
-                  + newValue
-                  + " to avoid pathological merging");
-        }
-        lmp.setMinMergeMB(newValue);
-      }
-    } else if (mp instanceof LogDocMergePolicy) {
-      LogDocMergePolicy lmp = (LogDocMergePolicy) mp;
-      assert estFlushSizeBytes / 1024 < Integer.MAX_VALUE / 10;
-      int estFlushDocs = Math.max(1, (int) (estFlushSizeBytes / 1024));
-      if (lmp.getMinMergeDocs() / estFlushDocs > 10) {
-        int newValue = estFlushDocs * 10;
-        if (VERBOSE) {
-          System.out.println(
-              "NOTE: LuceneTestCase: changing LogDocMergePolicy.minMergeDocs from "
-                  + lmp.getMinMergeDocs()
-                  + " to "
-                  + newValue
-                  + " to avoid pathological merging");
-        }
-        lmp.setMinMergeDocs(newValue);
-      }
-    }
   }
 
   public static MergePolicy newMergePolicy(Random r) {
@@ -1573,7 +1530,8 @@ public abstract class LuceneTestCase extends Assert {
             }
           }
         }
-        if (!newType.storeTermVectorOffsets()) {
+        // Check for strings as offsets are disallowed on binary fields
+        if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
 
@@ -1918,6 +1876,32 @@ public abstract class LuceneTestCase extends Assert {
     System.clearProperty(ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY);
   }
 
+  private static ExecutorService executor;
+
+  @BeforeClass
+  public static void setUpExecutorService() {
+    int threads = TestUtil.nextInt(random(), 1, 2);
+    executor =
+        new ThreadPoolExecutor(
+            threads,
+            threads,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("LuceneTestCase"));
+    // uncomment to intensify LUCENE-3840
+    // executor.prestartAllCoreThreads();
+    if (VERBOSE) {
+      System.out.println("NOTE: Created shared ExecutorService with " + threads + " threads");
+    }
+  }
+
+  @AfterClass
+  public static void shutdownExecutorService() {
+    TestUtil.shutdownExecutorService(executor);
+    executor = null;
+  }
+
   /** Create a new searcher over the reader. This searcher might randomly use threads. */
   public static IndexSearcher newSearcher(IndexReader r) {
     return newSearcher(r, true);
@@ -1936,7 +1920,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, rarely());
+    return newSearcher(r, maybeWrap, wrapWithAssertions, randomBoolean());
   }
 
   /**
@@ -1981,40 +1965,37 @@ public abstract class LuceneTestCase extends Assert {
       ret.setSimilarity(classEnvRule.similarity);
       return ret;
     } else {
-      int threads = 0;
-      final ThreadPoolExecutor ex;
-      if (r.getReaderCacheHelper() == null || random.nextBoolean()) {
+      final ExecutorService ex;
+      if (random.nextBoolean()) {
         ex = null;
       } else {
-        threads = TestUtil.nextInt(random, 1, 8);
-        ex =
-            new ThreadPoolExecutor(
-                threads,
-                threads,
-                0L,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(),
-                new NamedThreadFactory("LuceneTestCase"));
-        // uncomment to intensify LUCENE-3840
-        // ex.prestartAllCoreThreads();
-      }
-      if (ex != null) {
+        ex = executor;
         if (VERBOSE) {
-          System.out.println(
-              "NOTE: newSearcher using ExecutorService with " + threads + " threads");
+          System.out.println("NOTE: newSearcher using shared ExecutorService");
         }
-        r.getReaderCacheHelper()
-            .addClosedListener(cacheKey -> TestUtil.shutdownExecutorService(ex));
       }
       IndexSearcher ret;
+      int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
+      int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
       if (wrapWithAssertions) {
-        ret =
-            random.nextBoolean()
-                ? new AssertingIndexSearcher(random, r, ex)
-                : new AssertingIndexSearcher(random, r.getContext(), ex);
-      } else if (random.nextBoolean()) {
-        int maxDocPerSlice = 1 + random.nextInt(100000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(20);
+        if (random.nextBoolean()) {
+          ret =
+              new AssertingIndexSearcher(random, r, ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        } else {
+          ret =
+              new AssertingIndexSearcher(random, r.getContext(), ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        }
+      } else {
         ret =
             new IndexSearcher(r, ex) {
               @Override
@@ -2022,12 +2003,18 @@ public abstract class LuceneTestCase extends Assert {
                 return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
               }
             };
-      } else {
-        ret =
-            random.nextBoolean() ? new IndexSearcher(r, ex) : new IndexSearcher(r.getContext(), ex);
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
+      if (random().nextBoolean()) {
+        ret.setTimeout(
+            new QueryTimeout() {
+              @Override
+              public boolean shouldExit() {
+                return false;
+              }
+            });
+      }
       return ret;
     }
   }
@@ -2441,9 +2428,11 @@ public abstract class LuceneTestCase extends Assert {
   public void assertStoredFieldsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
+    StoredFields leftStoredFields = leftReader.storedFields();
+    StoredFields rightStoredFields = rightReader.storedFields();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Document leftDoc = leftReader.document(i);
-      Document rightDoc = rightReader.document(i);
+      Document leftDoc = leftStoredFields.document(i);
+      Document rightDoc = rightStoredFields.document(i);
 
       // TODO: I think this is bogus because we don't document what the order should be
       // from these iterators, etc. I think the codec/IndexReader should be free to order this stuff
@@ -2486,9 +2475,11 @@ public abstract class LuceneTestCase extends Assert {
   public void assertTermVectorsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
+    TermVectors leftVectors = leftReader.termVectors();
+    TermVectors rightVectors = rightReader.termVectors();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Fields leftFields = leftReader.getTermVectors(i);
-      Fields rightFields = rightReader.getTermVectors(i);
+      Fields leftFields = leftVectors.get(i);
+      Fields rightFields = rightVectors.get(i);
 
       // Fields could be null if there are no postings,
       // but then it must be null for both
@@ -2611,11 +2602,10 @@ public abstract class LuceneTestCase extends Assert {
             if (docID == NO_MORE_DOCS) {
               break;
             }
-            long ord;
-            while ((ord = leftValues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-              assertEquals(info, ord, rightValues.nextOrd());
+            assertEquals(info, leftValues.docValueCount(), rightValues.docValueCount());
+            for (int i = 0; i < leftValues.docValueCount(); i++) {
+              assertEquals(info, leftValues.nextOrd(), rightValues.nextOrd());
             }
-            assertEquals(info, SortedSetDocValues.NO_MORE_ORDS, rightValues.nextOrd());
           }
         } else {
           assertNull(info, leftValues);
@@ -3074,6 +3064,25 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static Path createTempFile() throws IOException {
     return createTempFile("tempFile", ".tmp");
+  }
+
+  /**
+   * Returns a set of JVM arguments to fork a JVM with the same class or module path (including any
+   * associated JVM options). The returned value may be empty. This method may throw an assertion
+   * error if fork options cannot be reliably acquired (at the moment they are collected and passed
+   * as an external file in gradle scripts).
+   *
+   * <p><b>JVM forking is strongly discouraged as it makes test slower and more resource-hungry.
+   * Consider all alternatives first.</b>
+   */
+  public static List<String> getJvmForkArguments() throws IOException {
+    String forkArgsFile = System.getProperty("tests.jvmForkArgsFile");
+    Path forkArgsPath;
+    if (forkArgsFile == null || !Files.isRegularFile(forkArgsPath = Paths.get(forkArgsFile))) {
+      throw new AssertionError("JVM fork arguments are not present.");
+    }
+
+    return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
   }
 
   /**

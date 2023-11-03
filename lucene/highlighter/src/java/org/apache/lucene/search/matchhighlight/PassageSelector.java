@@ -88,9 +88,13 @@ public class PassageSelector {
       return Collections.emptyList();
     }
 
+    // minimum priority queue size of 16 so that small maxPassages values don't
+    // return too few passages due to subsequent passage merges
+    int pqSize = Math.max(16, maxPassages);
+
     // Best passages so far.
     PriorityQueue<Passage> pq =
-        new PriorityQueue<>(maxPassages) {
+        new PriorityQueue<>(pqSize) {
           @Override
           protected boolean lessThan(Passage a, Passage b) {
             return passageScorer.compare(a, b) < 0;
@@ -215,6 +219,7 @@ public class PassageSelector {
     }
 
     // Remove nullified slots.
+    last = Math.min(last, maxPassages);
     if (passages.length != last) {
       passages = ArrayUtil.copyOfSubArray(passages, 0, last);
     }

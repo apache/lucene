@@ -20,6 +20,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -42,6 +44,15 @@ public class TestTotalHitCountCollector extends LuceneTestCase {
     TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
     int totalHits = searcher.search(new MatchAllDocsQuery(), collectorManager);
     assertEquals(5, totalHits);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "a1")), Occur.SHOULD)
+            .add(new TermQuery(new Term("string", "b3")), Occur.SHOULD)
+            .build();
+    totalHits = searcher.search(query, collectorManager);
+    assertEquals(2, totalHits);
+
     reader.close();
     indexStore.close();
   }

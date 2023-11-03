@@ -94,7 +94,7 @@ interface GenericTermsCollector extends Collector {
         }
 
         @Override
-        public long docValueCount() {
+        public int docValueCount() {
           return target.docValueCount();
         }
 

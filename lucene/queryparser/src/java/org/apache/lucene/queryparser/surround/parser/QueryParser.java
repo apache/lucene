@@ -603,8 +603,13 @@ float f;
   }
 
   @SuppressWarnings("serial")
-  static private final class LookaheadSuccess extends java.lang.Error { }
-  final private LookaheadSuccess jj_ls = new LookaheadSuccess();
+  static private final class LookaheadSuccess extends java.lang.Error {
+    @Override
+    public Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+  static private final LookaheadSuccess jj_ls = new LookaheadSuccess();
   private boolean jj_scan_token(int kind) {
      if (jj_scanpos == jj_lastpos) {
        jj_la--;
@@ -731,7 +736,6 @@ float f;
      return new ParseException(token, exptokseq, tokenImage);
   }
 
-  private int trace_indent = 0;
   private boolean trace_enabled;
 
 /** Trace enabled. */

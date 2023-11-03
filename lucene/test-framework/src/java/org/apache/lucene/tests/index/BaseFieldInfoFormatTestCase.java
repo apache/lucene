@@ -36,8 +36,8 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -279,7 +279,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
 
     for (String field : fieldNames) {
-      IndexableFieldType fieldType = randomFieldType(random());
+      IndexableFieldType fieldType = randomFieldType(random(), field);
       boolean storeTermVectors = false;
       boolean storePayloads = false;
       boolean omitNorms = false;
@@ -305,6 +305,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.pointIndexDimensionCount(),
               fieldType.pointNumBytes(),
               fieldType.vectorDimension(),
+              fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
               field.equals(softDeletesField));
       addAttributes(fi);
@@ -317,7 +318,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.close();
   }
 
-  private IndexableFieldType randomFieldType(Random r) {
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
+  }
+
+  private IndexableFieldType randomFieldType(Random r, String fieldName) {
     FieldType type = new FieldType();
 
     if (r.nextBoolean()) {
@@ -349,11 +354,12 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       type.setDimensions(dimension, indexDimension, dimensionNumBytes);
     }
 
-    if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
+    if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
+      int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
-      type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
+      VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
+      type.setVectorAttributes(dimension, encoding, similarityFunction);
     }
 
     return type;
@@ -395,6 +401,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         name,
         10000,
         false,
+        false,
         Codec.getDefault(),
         Collections.emptyMap(),
         StringHelper.randomId(),
@@ -422,6 +429,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         0,
+        VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false);
   }

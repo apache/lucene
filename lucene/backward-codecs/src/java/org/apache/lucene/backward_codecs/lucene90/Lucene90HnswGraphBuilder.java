@@ -21,12 +21,11 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link Lucene90OnHeapHnswGraph} for a gloss on the algorithm and the
@@ -38,6 +37,7 @@ public final class Lucene90HnswGraphBuilder {
 
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
+
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -49,19 +49,19 @@ public final class Lucene90HnswGraphBuilder {
   private final Lucene90NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final RandomAccessVectorValues vectorValues;
+  private final RandomAccessVectorValues<float[]> vectorValues;
   private final SplittableRandom random;
-  private final BoundsChecker bound;
+  private final Lucene90BoundsChecker bound;
   final Lucene90OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues buildVectors;
+  private final RandomAccessVectorValues<float[]> buildVectors;
 
   /**
-   * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
+   * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
@@ -73,14 +73,14 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.randomAccess();
-    buildVectors = vectors.randomAccess();
+    vectorValues = vectors.copy();
+    buildVectors = vectors.copy();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -91,20 +91,21 @@ public final class Lucene90HnswGraphBuilder {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.hnsw = new Lucene90OnHeapHnswGraph(maxConn);
-    bound = BoundsChecker.create(similarityFunction.reversed);
+    bound = Lucene90BoundsChecker.create(false);
     random = new SplittableRandom(seed);
     scratch = new Lucene90NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
   /**
-   * Reads all the vectors from two copies of a random access VectorValues. Providing two copies
-   * enables efficient retrieval without extra data copying, while avoiding collision of the
+   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
+   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public Lucene90OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public Lucene90OnHeapHnswGraph build(RandomAccessVectorValues<float[]> vectors)
+      throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -125,8 +126,8 @@ public final class Lucene90HnswGraphBuilder {
                   Locale.ROOT,
                   "built %d in %d/%d ms",
                   node,
-                  ((now - t) / 1_000_000),
-                  ((now - start) / 1_000_000)));
+                  TimeUnit.NANOSECONDS.toMillis(now - t),
+                  TimeUnit.NANOSECONDS.toMillis(now - start)));
           t = now;
         }
       }
@@ -183,10 +184,10 @@ public final class Lucene90HnswGraphBuilder {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node()[i];
-      Lucene90NeighborArray nbrNbr = hnsw.getNeighbors(nbr);
-      nbrNbr.add(node, neighbors.score()[i]);
-      if (nbrNbr.size() > maxConn) {
-        diversityUpdate(nbrNbr);
+      Lucene90NeighborArray nbrsOfNbr = hnsw.getNeighbors(nbr);
+      nbrsOfNbr.add(node, neighbors.score()[i]);
+      if (nbrsOfNbr.size() > maxConn) {
+        diversityUpdate(nbrsOfNbr);
       }
     }
   }
@@ -230,13 +231,13 @@ public final class Lucene90HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene90NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      RandomAccessVectorValues<float[]> vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
-      float diversityCheck =
+      float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node()[i]));
-      if (bound.check(diversityCheck) == false) {
+      if (bound.check(neighborSimilarity) == false) {
         return false;
       }
     }
@@ -267,13 +268,14 @@ public final class Lucene90HnswGraphBuilder {
     for (int i = neighbors.size() - 1; i >= 0; i--) {
       // check each neighbor against its better-scoring neighbors. If it fails diversity check with
       // them, drop it
-      int nbrNode = neighbors.node()[i];
+      int neighborId = neighbors.node()[i];
       bound.set(neighbors.score()[i]);
-      float[] nbrVector = vectorValues.vectorValue(nbrNode);
+      float[] neighborVector = vectorValues.vectorValue(neighborId);
       for (int j = maxConn; j > i; j--) {
-        float diversityCheck =
-            similarityFunction.compare(nbrVector, buildVectors.vectorValue(neighbors.node()[j]));
-        if (bound.check(diversityCheck) == false) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
+        if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
           return i;

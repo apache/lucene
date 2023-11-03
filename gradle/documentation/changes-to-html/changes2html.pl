@@ -25,7 +25,7 @@ use strict;
 use warnings;
 
 my $jira_url_prefix = 'http://issues.apache.org/jira/browse/';
-my $github_pull_request_prefix = 'https://github.com/apache/lucene/pull/';
+my $github_pull_request_prefix = 'https://github.com/apache/lucene/issues/';
 my $month_regex = &setup_month_regex;
 my %month_nums = &setup_month_nums;
 my %lucene_bugzilla_jira_map = &setup_lucene_bugzilla_jira_map;

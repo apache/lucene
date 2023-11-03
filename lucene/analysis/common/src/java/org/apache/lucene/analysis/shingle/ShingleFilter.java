@@ -532,7 +532,9 @@ public final class ShingleFilter extends TokenFilter {
       return value == minValue;
     }
 
-    /** @return the value this instance had before the last advance() call */
+    /**
+     * @return the value this instance had before the last advance() call
+     */
     public int getPreviousValue() {
       return previousValue;
     }

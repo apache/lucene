@@ -266,6 +266,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     checkMaxClauseLimitation(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
 
     checkNoMaxClauseLimitation(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    checkNoMaxClauseLimitation(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(1024));
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(1024));
   }

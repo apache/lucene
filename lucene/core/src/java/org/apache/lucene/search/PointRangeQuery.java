@@ -195,10 +195,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue)) {
-              int docID;
-              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                visit(docID);
-              }
+              adder.add(iterator);
             }
           }
 
@@ -235,10 +232,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue) == false) {
-              int docID;
-              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                visit(docID);
-              }
+              visit(iterator);
             }
           }
 
@@ -421,7 +415,7 @@ public abstract class PointRangeQuery extends Query {
           BiFunction<byte[], byte[], Relation> nodeComparator,
           Predicate<byte[]> leafComparator)
           throws IOException {
-        final int[] matchingNodeCount = {0};
+        final long[] matchingNodeCount = {0};
         // create a custom IntersectVisitor that records the number of leafNodes that matched
         final IntersectVisitor visitor =
             new IntersectVisitor() {
@@ -452,7 +446,7 @@ public abstract class PointRangeQuery extends Query {
       }
 
       private void pointCount(
-          IntersectVisitor visitor, PointValues.PointTree pointTree, int[] matchingNodeCount)
+          IntersectVisitor visitor, PointValues.PointTree pointTree, long[] matchingNodeCount)
           throws IOException {
         Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
         switch (r) {

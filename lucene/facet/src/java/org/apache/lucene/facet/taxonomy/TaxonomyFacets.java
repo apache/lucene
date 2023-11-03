@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
@@ -54,6 +55,9 @@ abstract class TaxonomyFacets extends Facets {
   /** {@code FacetsConfig} provided to the constructor. */
   final FacetsConfig config;
 
+  /** {@code FacetsCollector} provided to the constructor. */
+  final FacetsCollector fc;
+
   /** Maps parent ordinal to its child, or -1 if the parent is childless. */
   private int[] children;
 
@@ -64,11 +68,13 @@ abstract class TaxonomyFacets extends Facets {
   final int[] parents;
 
   /** Sole constructor. */
-  TaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
+  TaxonomyFacets(
+      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
     this.indexFieldName = indexFieldName;
     this.taxoReader = taxoReader;
     this.config = config;
+    this.fc = fc;
     parents = taxoReader.getParallelTaxonomyArrays().parents();
   }
 
@@ -139,6 +145,11 @@ abstract class TaxonomyFacets extends Facets {
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
     validateTopN(topN);
+
+    if (hasValues() == false) {
+      return Collections.emptyList();
+    }
+
     int[] children = getChildren();
     int[] siblings = getSiblings();
     int ord = children[TaxonomyReader.ROOT_ORDINAL];
@@ -156,7 +167,10 @@ abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    Collections.sort(results, BY_VALUE_THEN_DIM);
+    results.sort(BY_VALUE_THEN_DIM);
     return results;
   }
+
+  /** Were any values actually aggregated during counting? */
+  abstract boolean hasValues();
 }

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.search.highlight;
+
 /** Formats text with different color intensity depending on the score of the term. */
 public class GradientFormatter implements Formatter {
   private float maxScore;

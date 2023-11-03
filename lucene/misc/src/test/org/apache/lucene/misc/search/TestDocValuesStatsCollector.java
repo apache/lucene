@@ -301,8 +301,8 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
         if (stats.count() > 0) {
           DoubleSummaryStatistics sumStats =
               filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
-          assertEquals(sumStats.getMax(), stats.max().longValue(), 0.00001);
-          assertEquals(sumStats.getMin(), stats.min().longValue(), 0.00001);
+          assertEquals(sumStats.getMax(), stats.max(), 0.00001);
+          assertEquals(sumStats.getMin(), stats.min(), 0.00001);
           assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
           assertEquals(sumStats.getSum(), stats.sum().doubleValue(), 0.00001);
           assertEquals(sumStats.getCount(), stats.valuesCount());

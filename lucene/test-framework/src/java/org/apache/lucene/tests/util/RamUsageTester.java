@@ -39,12 +39,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -160,7 +161,11 @@ public final class RamUsageTester {
 
     // Ignore JDK objects we can't access or handle properly.
     Predicate<Object> isIgnorable =
-        (clazz) -> (clazz instanceof CharsetEncoder) || (clazz instanceof CharsetDecoder);
+        (clazz) ->
+            (clazz instanceof CharsetEncoder)
+                || (clazz instanceof CharsetDecoder)
+                || (clazz instanceof ReentrantReadWriteLock)
+                || (clazz instanceof AtomicReference<?>);
     if (isIgnorable.test(ob)) {
       return accumulator.accumulateObject(ob, 0, Collections.emptyMap(), stack);
     }
@@ -170,49 +175,44 @@ public final class RamUsageTester {
      * and accumulate this object's shallow size.
      */
     try {
-      if (Constants.JRE_IS_MINIMUM_JAVA9) {
-        long alignedShallowInstanceSize = RamUsageEstimator.shallowSizeOf(ob);
+      long alignedShallowInstanceSize = RamUsageEstimator.shallowSizeOf(ob);
 
-        Predicate<Class<?>> isJavaModule = (clazz) -> clazz.getName().startsWith("java.");
+      Predicate<Class<?>> isJavaModule = (clazz) -> clazz.getName().startsWith("java.");
 
-        // Java 9: Best guess for some known types, as we cannot precisely look into runtime
-        // classes:
-        final ToLongFunction<Object> func = SIMPLE_TYPES.get(obClazz);
-        if (func
-            != null) { // some simple type like String where the size is easy to get from public
-          // properties
-          return accumulator.accumulateObject(
-              ob, alignedShallowInstanceSize + func.applyAsLong(ob), Collections.emptyMap(), stack);
-        } else if (ob instanceof Enum) {
-          return alignedShallowInstanceSize;
-        } else if (ob instanceof ByteBuffer) {
-          // Approximate ByteBuffers with their underlying storage (ignores field overhead).
-          return byteArraySize(((ByteBuffer) ob).capacity());
-        } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
-          final List<Object> values =
-              ((Map<?, ?>) ob)
-                  .entrySet().stream()
-                      .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
-                      .collect(Collectors.toList());
-          return accumulator.accumulateArray(
-                  ob,
-                  alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
-                  values,
-                  stack)
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-        } else if (isJavaModule.test(obClazz) && ob instanceof Iterable) {
-          final List<Object> values =
-              StreamSupport.stream(((Iterable<?>) ob).spliterator(), false)
-                  .collect(Collectors.toList());
-          return accumulator.accumulateArray(
-                  ob,
-                  alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
-                  values,
-                  stack)
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-        } else {
-          // Fallback to reflective access.
-        }
+      // Java 9+: Best guess for some known types, as we cannot precisely look into runtime
+      // classes:
+      final ToLongFunction<Object> func = SIMPLE_TYPES.get(obClazz);
+      if (func != null) { // some simple type like String where the size is easy to get from public
+        // properties
+        return accumulator.accumulateObject(
+            ob, alignedShallowInstanceSize + func.applyAsLong(ob), Collections.emptyMap(), stack);
+      } else if (ob instanceof Enum) {
+        return alignedShallowInstanceSize;
+      } else if (ob instanceof ByteBuffer) {
+        // Approximate ByteBuffers with their underlying storage (ignores field overhead).
+        return byteArraySize(((ByteBuffer) ob).capacity());
+      } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
+        final List<Object> values =
+            ((Map<?, ?>) ob)
+                .entrySet().stream()
+                    .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+        return accumulator.accumulateArray(
+                ob,
+                alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
+                values,
+                stack)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+      } else if (isJavaModule.test(obClazz) && ob instanceof Iterable) {
+        final List<Object> values =
+            StreamSupport.stream(((Iterable<?>) ob).spliterator(), false)
+                .collect(Collectors.toList());
+        return accumulator.accumulateArray(
+                ob,
+                alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
+                values,
+                stack)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
       }
 
       ClassCache cachedInfo = classCache.get(obClazz);

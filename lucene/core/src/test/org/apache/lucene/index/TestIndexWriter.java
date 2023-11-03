@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -518,11 +519,10 @@ public class TestIndexWriter extends LuceneTestCase {
     doc.add(newField("field", "aaa", customType));
     for (int i = 0; i < 19; i++) writer.addDocument(doc);
     writer.flush(false, true);
-    writer.close();
-    SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     // Since we flushed w/o allowing merging we should now
     // have 10 segments
-    assertEquals(10, sis.size());
+    assertEquals(10, writer.getSegmentCount());
+    writer.close();
     dir.close();
   }
 
@@ -811,7 +811,7 @@ public class TestIndexWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    Terms tpv = r.getTermVectors(0).terms("field");
+    Terms tpv = r.termVectors().get(0).terms("field");
     TermsEnum termsEnum = tpv.iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
@@ -1166,41 +1166,44 @@ public class TestIndexWriter extends LuceneTestCase {
     FieldType customType = new FieldType(StoredField.TYPE);
     customType.setTokenized(true);
 
-    Field f = new Field("binary", b, 10, 17, customType);
+    final MockTokenizer field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    Field f =
+        new Field("binary", b, 10, 17, customType) {
+          @Override
+          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+            return field1;
+          }
+        };
     // TODO: this is evil, changing the type after creating the field:
     customType.setIndexOptions(IndexOptions.DOCS);
-    final MockTokenizer doc1field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc1field1.setReader(new StringReader("doc1field1"));
-    f.setTokenStream(doc1field1);
+    field1.setReader(new StringReader("doc1field1"));
 
     FieldType customType2 = new FieldType(TextField.TYPE_STORED);
 
-    Field f2 = newField("string", "value", customType2);
-    final MockTokenizer doc1field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc1field2.setReader(new StringReader("doc1field2"));
-    f2.setTokenStream(doc1field2);
+    final MockTokenizer field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    Field f2 =
+        new Field("string", "value", customType2) {
+          @Override
+          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+            return field2;
+          }
+        };
+
+    field2.setReader(new StringReader("doc1field2"));
     doc.add(f);
     doc.add(f2);
     w.addDocument(doc);
 
     // add 2 docs to test in-memory merging
-    final MockTokenizer doc2field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc2field1.setReader(new StringReader("doc2field1"));
-    f.setTokenStream(doc2field1);
-    final MockTokenizer doc2field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc2field2.setReader(new StringReader("doc2field2"));
-    f2.setTokenStream(doc2field2);
+    field1.setReader(new StringReader("doc2field1"));
+    field2.setReader(new StringReader("doc2field2"));
     w.addDocument(doc);
 
     // force segment flush so we can force a segment merge with doc3 later.
     w.commit();
 
-    final MockTokenizer doc3field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc3field1.setReader(new StringReader("doc3field1"));
-    f.setTokenStream(doc3field1);
-    final MockTokenizer doc3field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    doc3field2.setReader(new StringReader("doc3field2"));
-    f2.setTokenStream(doc3field2);
+    field1.setReader(new StringReader("doc3field1"));
+    field2.setReader(new StringReader("doc3field2"));
 
     w.addDocument(doc);
     w.commit();
@@ -1208,20 +1211,21 @@ public class TestIndexWriter extends LuceneTestCase {
     w.close();
 
     IndexReader ir = DirectoryReader.open(dir);
-    Document doc2 = ir.document(0);
+    StoredFields storedFields = ir.storedFields();
+    Document doc2 = storedFields.document(0);
     IndexableField f3 = doc2.getField("binary");
     b = f3.binaryValue().bytes;
     assertTrue(b != null);
     assertEquals(17, b.length, 17);
     assertEquals(87, b[0]);
 
-    assertTrue(ir.document(0).getField("binary").binaryValue() != null);
-    assertTrue(ir.document(1).getField("binary").binaryValue() != null);
-    assertTrue(ir.document(2).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(0).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(1).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(2).getField("binary").binaryValue() != null);
 
-    assertEquals("value", ir.document(0).get("string"));
-    assertEquals("value", ir.document(1).get("string"));
-    assertEquals("value", ir.document(2).get("string"));
+    assertEquals("value", storedFields.document(0).get("string"));
+    assertEquals("value", storedFields.document(1).get("string"));
+    assertEquals("value", storedFields.document(2).get("string"));
 
     // test that the terms were indexed.
     assertTrue(
@@ -1729,15 +1733,82 @@ public class TestIndexWriter extends LuceneTestCase {
     d.close();
   }
 
-  public void testOnlyUpdateDocuments() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+  public void testHasBlocksMergeFullyDelSegments() throws IOException {
+    Supplier<Document> documentSupplier =
+        () -> {
+          Document doc = new Document();
+          doc.add(new StringField("foo", "bar", Field.Store.NO));
+          return doc;
+        };
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        final List<Document> docs = new ArrayList<>();
+        docs.add(documentSupplier.get());
+        docs.add(documentSupplier.get());
+        writer.updateDocuments(new Term("foo", "bar"), docs);
+        writer.commit();
+        if (random().nextBoolean()) {
+          writer.updateDocuments(new Term("foo", "bar"), docs);
+          writer.commit(); // second segment
+        }
+        writer.updateDocument(new Term("foo", "bar"), documentSupplier.get());
+        if (random().nextBoolean()) {
+          writer.forceMergeDeletes(true);
+        } else {
+          writer.forceMerge(1, true);
+        }
+        writer.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          assertFalse(
+              "hasBlocks should be cleared",
+              reader.leaves().get(0).reader().getMetaData().hasBlocks());
+        }
+      }
+    }
+  }
 
-    final List<Document> docs = new ArrayList<>();
-    docs.add(new Document());
-    w.updateDocuments(new Term("foo", "bar"), docs);
-    w.close();
-    dir.close();
+  public void testCarryOverHasBlocks() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+
+        final List<Document> docs = new ArrayList<>();
+        docs.add(new Document());
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(segmentInfo.info.getHasBlocks());
+        }
+
+        docs.add(new Document()); // now we have 2 docs
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(2, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+          segmentInfo = ((SegmentReader) reader.leaves().get(1).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.forceMerge(1, true);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.commit();
+      }
+    }
   }
 
   // LUCENE-3872
@@ -2112,9 +2183,10 @@ public class TestIndexWriter extends LuceneTestCase {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
       int maxDoc = ar.maxDoc();
+      StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.document(i).get("id")));
+          assertTrue(liveIds.remove(storedFields.document(i).get("id")));
         }
       }
     }
@@ -2160,9 +2232,10 @@ public class TestIndexWriter extends LuceneTestCase {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
       int maxDoc = ar.maxDoc();
+      StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.document(i).get("id")));
+          assertTrue(liveIds.remove(storedFields.document(i).get("id")));
         }
       }
     }
@@ -2322,20 +2395,22 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.addDocument(doc);
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
-    writer.commit();
+    // Must commit and wait for merges as long as the commit triggers merges to be certain that
+    // hasUncommittedChanges returns false
+    do {
+      writer.waitForMerges();
+      writer.commit();
+    } while (writer.hasPendingMerges());
     assertFalse(writer.hasUncommittedChanges());
     writer.deleteDocuments(new Term("id", "xyz"));
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
-    writer.commit();
+    // Must commit and wait for merges as long as the commit triggers merges to be certain that
+    // hasUncommittedChanges returns false
+    do {
+      writer.waitForMerges();
+      writer.commit();
+    } while (writer.hasPendingMerges());
     assertFalse(writer.hasUncommittedChanges());
     writer.close();
 
@@ -3140,6 +3215,92 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
+  public void testApplyDeletesWithoutFlushes() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig indexWriterConfig = new IndexWriterConfig();
+      AtomicBoolean flushDeletes = new AtomicBoolean();
+      indexWriterConfig.setFlushPolicy(
+          new FlushPolicy() {
+            @Override
+            public void onChange(
+                DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
+              if (flushDeletes.get()) {
+                control.setApplyAllDeletes();
+              }
+            }
+          });
+      try (IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
+        assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());
+        w.deleteDocuments(new Term("foo", "bar"));
+        long bytesUsed = w.docWriter.flushControl.getDeleteBytesUsed();
+        assertTrue(bytesUsed + " > 0", bytesUsed > 0);
+        w.deleteDocuments(new Term("foo", "baz"));
+        bytesUsed = w.docWriter.flushControl.getDeleteBytesUsed();
+        assertTrue(bytesUsed + " > 0", bytesUsed > 0);
+        assertEquals(2, w.getBufferedDeleteTermsSize());
+        assertEquals(0, w.getFlushDeletesCount());
+        flushDeletes.set(true);
+        w.deleteDocuments(new Term("foo", "bar"));
+        assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());
+        assertEquals(1, w.getFlushDeletesCount());
+      }
+    }
+  }
+
+  public void testDeletesAppliedOnFlush() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+        Document doc = new Document();
+        doc.add(newField("id", "1", storedTextType));
+        w.addDocument(doc);
+        w.updateDocument(new Term("id", "1"), doc);
+        long deleteBytesUsed = w.docWriter.flushControl.getDeleteBytesUsed();
+        assertTrue("deletedBytesUsed: " + deleteBytesUsed, deleteBytesUsed > 0);
+        assertEquals(0, w.getFlushDeletesCount());
+        assertTrue(w.flushNextBuffer());
+        assertEquals(1, w.getFlushDeletesCount());
+        assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());
+        w.deleteAll();
+        w.commit();
+        assertEquals(2, w.getFlushDeletesCount());
+        if (random().nextBoolean()) {
+          w.deleteDocuments(new Term("id", "1"));
+        } else {
+          w.updateDocValues(new Term("id", "1"), new NumericDocValuesField("foo", 1l));
+        }
+        deleteBytesUsed = w.docWriter.flushControl.getDeleteBytesUsed();
+        assertTrue("deletedBytesUsed: " + deleteBytesUsed, deleteBytesUsed > 0);
+        doc = new Document();
+        doc.add(newField("id", "5", storedTextType));
+        w.addDocument(doc);
+        assertTrue(w.flushNextBuffer());
+        assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());
+        assertEquals(3, w.getFlushDeletesCount());
+      }
+      try (RandomIndexWriter w = new RandomIndexWriter(random(), dir, new IndexWriterConfig())) {
+        int numDocs = random().nextInt(1, 100);
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(newField("id", "" + i, storedTextType));
+          w.addDocument(doc);
+        }
+        for (int i = 0; i < numDocs; i++) {
+          if (random().nextBoolean()) {
+            Document doc = new Document();
+            doc.add(newField("id", "" + i, storedTextType));
+            w.updateDocument(new Term("id", "" + i), doc);
+          }
+        }
+
+        long deleteBytesUsed = w.w.docWriter.flushControl.getDeleteBytesUsed();
+        if (deleteBytesUsed > 0) {
+          assertTrue(w.w.flushNextBuffer());
+          assertEquals(0, w.w.docWriter.flushControl.getDeleteBytesUsed());
+        }
+      }
+    }
+  }
+
   public void testHoldLockOnLargestWriter() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
@@ -3346,7 +3507,7 @@ public class TestIndexWriter extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     TopDocs topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
     assertEquals(1, topDocs.totalHits.value);
-    Document document = reader.document(topDocs.scoreDocs[0].doc);
+    Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("2", document.get("version"));
 
     // update the on-disk version
@@ -3362,7 +3523,7 @@ public class TestIndexWriter extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
     assertEquals(1, topDocs.totalHits.value);
-    document = reader.document(topDocs.scoreDocs[0].doc);
+    document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("3", document.get("version"));
 
     // now delete it
@@ -3470,7 +3631,12 @@ public class TestIndexWriter extends LuceneTestCase {
                       Document doc = new Document();
                       doc.add(new StringField("id", id, Field.Store.YES));
                       if (mixDeletes && random().nextBoolean()) {
-                        writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
+                        if (random().nextBoolean()) {
+                          writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
+                        } else {
+                          writer.updateDocuments(
+                              new TermQuery(new Term("id", id)), Arrays.asList(doc, doc));
+                        }
                       } else {
                         writer.softUpdateDocuments(
                             new Term("id", id),

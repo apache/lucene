@@ -44,7 +44,7 @@ public class FilterSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
-  public long docValueCount() {
+  public int docValueCount() {
     return in.docValueCount();
   }
 

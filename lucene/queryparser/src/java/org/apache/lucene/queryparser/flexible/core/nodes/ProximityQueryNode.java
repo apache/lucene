@@ -198,7 +198,9 @@ public class ProximityQueryNode extends BooleanQueryNode {
     return clone;
   }
 
-  /** @return the distance */
+  /**
+   * @return the distance
+   */
   public int getDistance() {
     return this.distance;
   }
@@ -222,12 +224,16 @@ public class ProximityQueryNode extends BooleanQueryNode {
     else return this.field.toString();
   }
 
-  /** @param field the field to set */
+  /**
+   * @param field the field to set
+   */
   public void setField(CharSequence field) {
     this.field = field;
   }
 
-  /** @return terms must be matched in the specified order */
+  /**
+   * @return terms must be matched in the specified order
+   */
   public boolean isInOrder() {
     return this.inorder;
   }

@@ -43,6 +43,16 @@ public abstract class BitSet implements Bits, Accountable {
     return set;
   }
 
+  /**
+   * Clear all the bits of the set.
+   *
+   * <p>Depending on the implementation, this may be significantly faster than clear(0, length).
+   */
+  public void clear() {
+    // default implementation for compatibility
+    clear(0, length());
+  }
+
   /** Set the bit at <code>i</code>. */
   public abstract void set(int i);
 

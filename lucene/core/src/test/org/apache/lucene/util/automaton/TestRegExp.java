@@ -86,6 +86,17 @@ public class TestRegExp extends LuceneTestCase {
     }
   }
 
+  public void testParseIllegalRepeatExp() {
+    // out of order
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("a{99,11}");
+            });
+    assertTrue(expected.getMessage().contains("out of order"));
+  }
+
   static String randomDocValue(int minLength) {
     String charPalette = "AAAaaaBbbCccc123456 \t";
     StringBuilder sb = new StringBuilder();
@@ -244,5 +255,9 @@ public class TestRegExp extends LuceneTestCase {
           csBytesMatcher.run(br.bytes, br.offset, br.length));
     }
     return regexPattern;
+  }
+
+  public void testRegExpNoStackOverflow() {
+    new RegExp("(a)|".repeat(50000) + "(a)");
   }
 }

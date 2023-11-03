@@ -224,7 +224,7 @@ public class TestAutomaton extends LuceneTestCase {
     assertTrue(Operations.run(a, "mn"));
     assertTrue(Operations.run(a, "mone"));
     assertFalse(Operations.run(a, "m"));
-    assertFalse(Operations.isFinite(a));
+    assertFalse(AutomatonTestUtil.isFinite(a));
   }
 
   public void testUnion1() throws Exception {
@@ -790,9 +790,18 @@ public class TestAutomaton extends LuceneTestCase {
     return null;
   }
 
+  private static boolean hasMassiveTerm(Collection<BytesRef> terms) {
+    for (BytesRef term : terms) {
+      if (term.length > Automata.MAX_STRING_UNION_TERM_LENGTH) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private Automaton unionTerms(Collection<BytesRef> terms) {
     Automaton a;
-    if (random().nextBoolean()) {
+    if (random().nextBoolean() || hasMassiveTerm(terms)) {
       if (VERBOSE) {
         System.out.println("TEST: unionTerms: use union");
       }
@@ -1237,7 +1246,7 @@ public class TestAutomaton extends LuceneTestCase {
   private void assertSame(Collection<BytesRef> terms, Automaton a) {
 
     try {
-      assertTrue(Operations.isFinite(a));
+      assertTrue(AutomatonTestUtil.isFinite(a));
       assertFalse(Operations.isTotal(a));
 
       Automaton detA = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
@@ -1354,7 +1363,7 @@ public class TestAutomaton extends LuceneTestCase {
     byte[] zeros = new byte[3];
     Automaton a =
         makeBinaryInterval(newBytesRef(zeros, 0, 1), true, newBytesRef(zeros, 0, 2), true);
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertFalse(accepts(a, newBytesRef()));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
@@ -1362,7 +1371,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     // '' (incl) - 00 (incl)
     a = makeBinaryInterval(newBytesRef(), true, newBytesRef(zeros, 0, 2), true);
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertTrue(accepts(a, newBytesRef()));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
@@ -1370,7 +1379,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     // '' (excl) - 00 (incl)
     a = makeBinaryInterval(newBytesRef(), false, newBytesRef(zeros, 0, 2), true);
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertFalse(accepts(a, newBytesRef()));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
@@ -1378,7 +1387,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     // 0 (excl) - 00 (incl)
     a = makeBinaryInterval(newBytesRef(zeros, 0, 1), false, newBytesRef(zeros, 0, 2), true);
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertFalse(accepts(a, newBytesRef()));
     assertFalse(accepts(a, newBytesRef(zeros, 0, 1)));
     assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
@@ -1386,7 +1395,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     // 0 (excl) - 00 (excl)
     a = makeBinaryInterval(newBytesRef(zeros, 0, 1), false, newBytesRef(zeros, 0, 2), false);
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertFalse(accepts(a, newBytesRef()));
     assertFalse(accepts(a, newBytesRef(zeros, 0, 1)));
     assertFalse(accepts(a, newBytesRef(zeros, 0, 2)));
@@ -1420,7 +1429,7 @@ public class TestAutomaton extends LuceneTestCase {
           makeBinaryInterval(
               minTerm, minInclusive,
               maxTerm, maxInclusive);
-      assertTrue(Operations.isFinite(a));
+      assertTrue(AutomatonTestUtil.isFinite(a));
       int expectedCount = maxTerm.length - minTerm.length + 1;
       if (minInclusive == false) {
         expectedCount--;
@@ -1529,7 +1538,7 @@ public class TestAutomaton extends LuceneTestCase {
   public void testMakeBinaryIntervalEqual() throws Exception {
     Automaton a = Automata.makeBinaryInterval(newBytesRef("bar"), true, newBytesRef("bar"), true);
     assertTrue(Operations.run(a, intsRef("bar")));
-    assertTrue(Operations.isFinite(a));
+    assertTrue(AutomatonTestUtil.isFinite(a));
     assertEquals(1, TestOperations.getFiniteStrings(a).size());
   }
 

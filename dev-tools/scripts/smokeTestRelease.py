@@ -19,6 +19,7 @@ import argparse
 import codecs
 import datetime
 import filecmp
+import glob
 import hashlib
 import http.client
 import os
@@ -579,7 +580,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
                       'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']
   if isSrc:
-    expected_src_root_files = ['build.gradle', 'buildSrc', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
+    expected_src_root_files = ['build.gradle', 'buildSrc', 'CONTRIBUTING.md', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
                                'gradlew.bat', 'help', 'lucene', 'settings.gradle', 'versions.lock', 'versions.props']
     expected_src_lucene_files = ['build.gradle', 'documentation', 'distribution', 'dev-docs']
     is_in_list(in_root_folder, expected_src_root_files)
@@ -618,12 +619,12 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
     testDemo(java.run_java17, isSrc, version, '17')
 
-    if java.run_java18:
-      print("    run tests w/ Java 18 and testArgs='%s'..." % testArgs)
-      java.run_java18('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-      print("    compile jars w/ Java 18")
-      java.run_java18('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-      testDemo(java.run_java18, isSrc, version, '18')
+    if java.run_java19:
+      print("    run tests w/ Java 19 and testArgs='%s'..." % testArgs)
+      java.run_java19('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+      print("    compile jars w/ Java 19")
+      java.run_java19('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+      testDemo(java.run_java19, isSrc, version, '19')
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
     confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
@@ -633,8 +634,8 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     checkAllJARs(os.getcwd(), gitRevision, version)
 
     testDemo(java.run_java17, isSrc, version, '17')
-    if java.run_java18:
-      testDemo(java.run_java18, isSrc, version, '18')
+    if java.run_java19:
+      testDemo(java.run_java19, isSrc, version, '19')
 
   testChangesText('.', version)
 
@@ -910,7 +911,7 @@ def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
         sys.stdout.write('.')
 
 
-def make_java_config(parser, java18_home):
+def make_java_config(parser, java19_home):
   def _make_runner(java_home, version):
     print('Java %s JAVA_HOME=%s' % (version, java_home))
     if cygwin:
@@ -928,12 +929,12 @@ def make_java_config(parser, java18_home):
   if java17_home is None:
     parser.error('JAVA_HOME must be set')
   run_java17 = _make_runner(java17_home, '17')
-  run_java18 = None
-  if java18_home is not None:
-    run_java18 = _make_runner(java18_home, '18')
+  run_java19 = None
+  if java19_home is not None:
+    run_java19 = _make_runner(java19_home, '19')
 
-  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java18 java18_home')
-  return jc(run_java17, java17_home, run_java18, java18_home)
+  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java19 java19_home')
+  return jc(run_java17, java17_home, run_java19, java19_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev-([a-f\d]+)')
@@ -955,7 +956,7 @@ def parse_config():
                       help='GIT revision number that release was built with, defaults to that in URL')
   parser.add_argument('--version', metavar='X.Y.Z(-ALPHA|-BETA)?',
                       help='Version of the release, defaults to that in URL')
-  parser.add_argument('--test-java18', metavar='java18_home',
+  parser.add_argument('--test-java19', metavar='java19_home',
                       help='Path to Java home directory, to run tests with if specified')
   parser.add_argument('--download-only', action='store_true', default=False,
                       help='Only perform download and sha hash check steps')
@@ -983,7 +984,7 @@ def parse_config():
   if c.local_keys is not None and not os.path.exists(c.local_keys):
     parser.error('Local KEYS file "%s" not found' % c.local_keys)
 
-  c.java = make_java_config(parser, c.test_java18)
+  c.java = make_java_config(parser, c.test_java19)
 
   if c.tmp_dir:
     c.tmp_dir = os.path.abspath(c.tmp_dir)
@@ -1028,29 +1029,14 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   #for tup in allReleases:
   #  print('  %s' % '.'.join(str(x) for x in tup))
 
+  testedIndicesPaths = glob.glob('%s/lucene/backward-codecs/src/test/org/apache/lucene/backward_index/*-cfs.zip' % unpackPath)
   testedIndices = set()
 
-  os.chdir(unpackPath)
-
-  print('    run TestBackwardsCompatibility..')
-  command = './gradlew --no-daemon test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
-            '-Dtests.verbose=true '
-  p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  stdout, stderr = p.communicate()
-  if p.returncode != 0:
-    # Not good: the test failed!
-    raise RuntimeError('%s failed:\n%s' % (command, stdout))
-  stdout = stdout.decode('utf-8',errors='replace').replace('\r\n','\n')
-
-  if stderr is not None:
-    # Should not happen since we redirected stderr to stdout:
-    raise RuntimeError('stderr non-empty')
-
-  reIndexName = re.compile(r'TEST: index[\s*=\s*](.*?)(-cfs|-nocfs)$', re.MULTILINE)
-  for name, cfsPart in reIndexName.findall(stdout):
-    # Fragile: decode the inconsistent naming schemes we've used in TestBWC's indices:
-    #print('parse name %s' % name)
-    tup = tuple(name.split('.'))
+  reIndexName = re.compile(r'^[^.]*.(.*?)-cfs.zip')
+  for name in testedIndicesPaths:
+    basename = os.path.basename(name)
+    version = reIndexName.fullmatch(basename).group(1)
+    tup = tuple(version.split('.'))
     if len(tup) == 3:
       # ok
       tup = tuple(int(x) for x in tup)
@@ -1060,11 +1046,11 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
     elif tup == ('4', '0', '0', '2'):
       # CONFUSING: this is the 4.0.0-beta index??
       tup = 4, 0, 0, 1
-    elif name == '5x-with-4x-segments':
+    elif basename == 'unsupported.5x-with-4x-segments-cfs.zip':
       # Mixed version test case; ignore it for our purposes because we only
       # tally up the "tests single Lucene version" indices
       continue
-    elif name == '5.0.0.singlesegment':
+    elif basename == 'unsupported.5.0.0.singlesegment-cfs.zip':
       tup = 5, 0, 0
     else:
       raise RuntimeError('could not parse version %s' % name)
@@ -1131,6 +1117,9 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   # developer experience, but we enable them for smoke tests where we want good
   # coverage.
   testArgs = '-Dtests.nightly=true %s' % testArgs
+
+  # We also enable GUI tests in smoke tests (LUCENE-10531)
+  testArgs = '-Dtests.gui=true %s' % testArgs
 
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):

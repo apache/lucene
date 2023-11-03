@@ -44,6 +44,7 @@ public class TestByteBlockPool extends LuceneTestCase {
       }
       // verify
       long position = 0;
+      BytesRefBuilder builder = new BytesRefBuilder();
       for (BytesRef expected : list) {
         ref.grow(expected.length);
         ref.setLength(expected.length);
@@ -54,8 +55,7 @@ public class TestByteBlockPool extends LuceneTestCase {
             break;
           case 1:
             BytesRef scratch = new BytesRef();
-            scratch.length = ref.length();
-            pool.setRawBytesRef(scratch, position);
+            pool.setBytesRef(builder, scratch, position, ref.length());
             System.arraycopy(scratch.bytes, scratch.offset, ref.bytes(), 0, ref.length());
             break;
           default:
@@ -100,5 +100,38 @@ public class TestByteBlockPool extends LuceneTestCase {
       assertTrue(Arrays.equals(expected, actual));
       position += expected.length;
     }
+  }
+
+  public void testTooManyAllocs() {
+    // Use a mock allocator that doesn't waste memory
+    ByteBlockPool pool =
+        new ByteBlockPool(
+            new ByteBlockPool.Allocator(0) {
+              final byte[] buffer = new byte[0];
+
+              @Override
+              public void recycleByteBlocks(byte[][] blocks, int start, int end) {}
+
+              @Override
+              public byte[] getByteBlock() {
+                return buffer;
+              }
+            });
+    pool.nextBuffer();
+
+    boolean throwsException = false;
+    for (int i = 0; i < Integer.MAX_VALUE / ByteBlockPool.BYTE_BLOCK_SIZE + 1; i++) {
+      try {
+        pool.nextBuffer();
+      } catch (
+          @SuppressWarnings("unused")
+          ArithmeticException ignored) {
+        // The offset overflows on the last attempt to call nextBuffer()
+        throwsException = true;
+        break;
+      }
+    }
+    assertTrue(throwsException);
+    assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < pool.byteOffset);
   }
 }

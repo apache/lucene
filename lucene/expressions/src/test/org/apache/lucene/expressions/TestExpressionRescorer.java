@@ -88,9 +88,9 @@ public class TestExpressionRescorer extends LuceneTestCase {
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
     assertEquals(3, hits.totalHits.value);
-    assertEquals("3", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("2", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     // Now, rescore:
 
@@ -102,9 +102,9 @@ public class TestExpressionRescorer extends LuceneTestCase {
 
     hits = rescorer.rescore(searcher, hits, 10);
     assertEquals(3, hits.totalHits.value);
-    assertEquals("2", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("3", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     String expl =
         rescorer

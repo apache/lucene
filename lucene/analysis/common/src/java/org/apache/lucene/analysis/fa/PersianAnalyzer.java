@@ -121,8 +121,8 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
    *
    * @return {@link org.apache.lucene.analysis.Analyzer.TokenStreamComponents} built from a {@link
    *     StandardTokenizer} filtered with {@link LowerCaseFilter}, {@link DecimalDigitFilter},
-   *     {@link ArabicNormalizationFilter}, {@link PersianNormalizationFilter} and Persian Stop
-   *     words
+   *     {@link ArabicNormalizationFilter}, {@link PersianNormalizationFilter}, Persian Stop words,
+   *     and {@link PersianStemFilter}.
    */
   @Override
   protected TokenStreamComponents createComponents(String fieldName) {

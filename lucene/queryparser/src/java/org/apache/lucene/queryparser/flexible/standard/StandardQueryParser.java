@@ -19,7 +19,6 @@ package org.apache.lucene.queryparser.flexible.standard;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.TooManyListenersException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.DateTools.Resolution;
@@ -326,7 +325,9 @@ public class StandardQueryParser extends QueryParserHelper
     getQueryConfigHandler().set(ConfigurationKeys.ENABLE_POSITION_INCREMENTS, enabled);
   }
 
-  /** @see #setEnablePositionIncrements(boolean) */
+  /**
+   * @see #setEnablePositionIncrements(boolean)
+   */
   @Override
   public boolean getEnablePositionIncrements() {
     Boolean enablePositionsIncrements =
@@ -340,20 +341,14 @@ public class StandardQueryParser extends QueryParserHelper
     }
   }
 
-  /**
-   * By default, it uses {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} when creating a prefix,
-   * wildcard and range queries. This implementation is generally preferable because it a) Runs
-   * faster b) Does not have the scarcity of terms unduly influence score c) avoids any {@link
-   * TooManyListenersException} exception. However, if your application really needs to use the
-   * old-fashioned boolean queries expansion rewriting and the above points are not relevant then
-   * use this change the rewrite method.
-   */
   @Override
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method) {
     getQueryConfigHandler().set(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD, method);
   }
 
-  /** @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod) */
+  /**
+   * @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod)
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return getQueryConfigHandler().get(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD);
@@ -449,7 +444,9 @@ public class StandardQueryParser extends QueryParserHelper
     return getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     Boolean allowLeadingWildcard =

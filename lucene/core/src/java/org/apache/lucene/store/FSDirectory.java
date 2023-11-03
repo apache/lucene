@@ -286,7 +286,9 @@ public abstract class FSDirectory extends BaseDirectory {
     deletePendingFiles();
   }
 
-  /** @return the underlying filesystem directory */
+  /**
+   * @return the underlying filesystem directory
+   */
   public Path getDirectory() {
     ensureOpen();
     return directory;

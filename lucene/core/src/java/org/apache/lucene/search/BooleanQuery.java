@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause.Occur;
 
 /**
@@ -193,7 +192,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   // Utility method for rewriting BooleanQuery when scores are not needed.
   // This is called from ConstantScoreQuery#rewrite
-  BooleanQuery rewriteNoScoring(IndexReader reader) throws IOException {
+  BooleanQuery rewriteNoScoring() {
     boolean actuallyRewritten = false;
     BooleanQuery.Builder newQuery =
         new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
@@ -204,9 +203,18 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     for (BooleanClause clause : clauses) {
       Query query = clause.getQuery();
-      Query rewritten = new ConstantScoreQuery(query).rewrite(reader);
+      // NOTE: rewritingNoScoring() should not call rewrite(), otherwise this
+      // method could run in exponential time with the depth of the query as
+      // every new level would rewrite 2x more than its parent level.
+      Query rewritten = query;
+      if (rewritten instanceof BoostQuery) {
+        rewritten = ((BoostQuery) rewritten).getQuery();
+      }
       if (rewritten instanceof ConstantScoreQuery) {
         rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+      }
+      if (rewritten instanceof BooleanQuery) {
+        rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
       }
       BooleanClause.Occur occur = clause.getOccur();
       if (occur == Occur.SHOULD && keepShould == false) {
@@ -238,7 +246,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (clauses.size() == 0) {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
@@ -277,12 +285,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         Query rewritten;
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
-          rewritten = new ConstantScoreQuery(query).rewrite(reader);
+          rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
           if (rewritten instanceof ConstantScoreQuery) {
             rewritten = ((ConstantScoreQuery) rewritten).getQuery();
           }
         } else {
-          rewritten = query.rewrite(reader);
+          rewritten = query.rewrite(indexSearcher);
         }
         if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
@@ -533,7 +541,31 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    return super.rewrite(reader);
+    // SHOULD clause count less than or equal to minimumNumberShouldMatch
+    // Important(this can only be processed after nested clauses have been flattened)
+    {
+      final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);
+      if (shoulds.size() > 0) {
+        if (shoulds.size() < minimumNumberShouldMatch) {
+          return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
+        }
+
+        if (shoulds.size() == minimumNumberShouldMatch) {
+          BooleanQuery.Builder builder = new BooleanQuery.Builder();
+          for (BooleanClause clause : clauses) {
+            if (clause.getOccur() == Occur.SHOULD) {
+              builder.add(clause.getQuery(), Occur.MUST);
+            } else {
+              builder.add(clause);
+            }
+          }
+
+          return builder.build();
+        }
+      }
+    }
+
+    return super.rewrite(indexSearcher);
   }
 
   @Override

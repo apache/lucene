@@ -323,35 +323,7 @@ public class TestFlushByRamOrCountsPolicy extends LuceneTestCase {
     boolean hasMarkedPending = false;
 
     @Override
-    public void onDelete(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
-      final ArrayList<DocumentsWriterPerThread> pending = new ArrayList<>();
-      final ArrayList<DocumentsWriterPerThread> notPending = new ArrayList<>();
-      findPending(control, pending, notPending);
-      final boolean flushCurrent = perThread.isFlushPending();
-      final DocumentsWriterPerThread toFlush;
-      if (perThread.isFlushPending()) {
-        toFlush = perThread;
-      } else {
-        toFlush = null;
-      }
-      super.onDelete(control, perThread);
-      if (toFlush != null) {
-        if (flushCurrent) {
-          assertTrue(pending.remove(toFlush));
-        } else {
-          assertTrue(notPending.remove(toFlush));
-        }
-        assertTrue(toFlush.isFlushPending());
-        hasMarkedPending = true;
-      }
-
-      for (DocumentsWriterPerThread dwpt : notPending) {
-        assertFalse(dwpt.isFlushPending());
-      }
-    }
-
-    @Override
-    public void onInsert(DocumentsWriterFlushControl control, DocumentsWriterPerThread dwpt) {
+    public void onChange(DocumentsWriterFlushControl control, DocumentsWriterPerThread dwpt) {
       final ArrayList<DocumentsWriterPerThread> pending = new ArrayList<>();
       final ArrayList<DocumentsWriterPerThread> notPending = new ArrayList<>();
       findPending(control, pending, notPending);
@@ -370,7 +342,7 @@ public class TestFlushByRamOrCountsPolicy extends LuceneTestCase {
       } else {
         toFlush = null;
       }
-      super.onInsert(control, dwpt);
+      super.onChange(control, dwpt);
       if (toFlush != null) {
         if (flushCurrent) {
           assertTrue(pending.remove(toFlush));

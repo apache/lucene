@@ -34,7 +34,7 @@ public class BasicModelIne extends BasicModel {
   public final double score(BasicStats stats, double tfn, double aeTimes1pTfn) {
     long N = stats.getNumberOfDocuments();
     long F = stats.getTotalTermFreq();
-    double ne = N * (1 - Math.pow((N - 1) / (double) N, F));
+    double ne = N * (1 - Math.pow((N - 1) / (double) N, (double) F));
     double A = log2((N + 1) / (ne + 0.5));
 
     // basic model I(ne) should return A * tfn

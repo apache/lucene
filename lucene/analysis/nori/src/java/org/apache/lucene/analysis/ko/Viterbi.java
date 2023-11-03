@@ -348,8 +348,20 @@ final class Viterbi
     if (numSpaces > 0) {
       // TODO we should extract the penalty (left-space-penalty-factor) from the dicrc file.
       switch (leftPOS) {
-        case E:
-        case J:
+        case EP:
+        case EF:
+        case EC:
+        case ETN:
+        case ETM:
+        case JKS:
+        case JKC:
+        case JKG:
+        case JKO:
+        case JKB:
+        case JKV:
+        case JKQ:
+        case JX:
+        case JC:
         case VCP:
         case XSA:
         case XSN:

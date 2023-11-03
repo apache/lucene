@@ -144,7 +144,9 @@ public class FuzzyQuery extends MultiTermQuery {
     this(term, defaultMaxEdits);
   }
 
-  /** @return the maximum number of edit distances allowed for this query to match. */
+  /**
+   * @return the maximum number of edit distances allowed for this query to match.
+   */
   public int getMaxEdits() {
     return maxEdits;
   }

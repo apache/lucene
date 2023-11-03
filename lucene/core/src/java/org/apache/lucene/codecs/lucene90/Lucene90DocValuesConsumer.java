@@ -699,12 +699,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_NUMERIC);
-    doAddSortedNumericField(field, valuesProducer);
+    doAddSortedNumericField(field, valuesProducer, false);
   }
 
-  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
-      throws IOException {
-    long[] stats = writeValues(field, valuesProducer, false);
+  private void doAddSortedNumericField(
+      FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
+    long[] stats = writeValues(field, valuesProducer, ords);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
     assert numValues >= numDocsWithField;
@@ -739,9 +739,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     assert values.docID() == -1;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      final long firstOrd = values.nextOrd();
-      assert firstOrd != SortedSetDocValues.NO_MORE_ORDS;
-      if (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
+      int docValueCount = values.docValueCount();
+      assert docValueCount > 0;
+      if (docValueCount > 1) {
         return false;
       }
     }
@@ -804,12 +804,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               public int nextDoc() throws IOException {
                 int doc = values.nextDoc();
                 if (doc != NO_MORE_DOCS) {
-                  docValueCount = 0;
-                  for (long ord = values.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = values.nextOrd()) {
-                    ords = ArrayUtil.grow(ords, docValueCount + 1);
-                    ords[docValueCount++] = ord;
+                  docValueCount = values.docValueCount();
+                  ords = ArrayUtil.grow(ords, docValueCount);
+                  for (int j = 0; j < docValueCount; j++) {
+                    ords[j] = values.nextOrd();
                   }
                   i = 0;
                 }
@@ -827,7 +825,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               }
             };
           }
-        });
+        },
+        true);
 
     addTermsDict(valuesProducer.getSortedSet(field));
   }

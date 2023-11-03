@@ -371,11 +371,13 @@ public final class ShapeField {
     resolveTriangleType(triangle);
   }
 
-  private static void resolveTriangleType(DecodedTriangle triangle) {
+  static void resolveTriangleType(DecodedTriangle triangle) {
     if (triangle.aX == triangle.bX && triangle.aY == triangle.bY) {
       if (triangle.aX == triangle.cX && triangle.aY == triangle.cY) {
         triangle.type = DecodedTriangle.TYPE.POINT;
       } else {
+        // a and b are identical, remove ab, and merge bc and ca
+        triangle.ab = triangle.bc | triangle.ca;
         triangle.bX = triangle.cX;
         triangle.bY = triangle.cY;
         triangle.cX = triangle.aX;
@@ -383,8 +385,12 @@ public final class ShapeField {
         triangle.type = DecodedTriangle.TYPE.LINE;
       }
     } else if (triangle.aX == triangle.cX && triangle.aY == triangle.cY) {
+      // a and c are identical, remove ac, and merge ab and bc
+      triangle.ab = triangle.ab | triangle.bc;
       triangle.type = DecodedTriangle.TYPE.LINE;
     } else if (triangle.bX == triangle.cX && triangle.bY == triangle.cY) {
+      // b and c are identical, remove bc, and merge ab and ca
+      triangle.ab = triangle.ab | triangle.ca;
       triangle.cX = triangle.aX;
       triangle.cY = triangle.aY;
       triangle.type = DecodedTriangle.TYPE.LINE;
@@ -406,31 +412,42 @@ public final class ShapeField {
       /** all coordinates are different */
       TRIANGLE
     }
+
     /** x coordinate, vertex one */
     public int aX;
+
     /** y coordinate, vertex one */
     public int aY;
+
     /** x coordinate, vertex two */
     public int bX;
+
     /** y coordinate, vertex two */
     public int bY;
+
     /** x coordinate, vertex three */
     public int cX;
+
     /** y coordinate, vertex three */
     public int cY;
+
     /** represent if edge ab belongs to original shape */
     public boolean ab;
+
     /** represent if edge bc belongs to original shape */
     public boolean bc;
+
     /** represent if edge ca belongs to original shape */
     public boolean ca;
+
     /** triangle type */
     public TYPE type;
 
     /** default xtor */
     public DecodedTriangle() {}
 
-    private void setValues(
+    /** Sets the values of the DecodedTriangle */
+    protected void setValues(
         int aX, int aY, boolean ab, int bX, int bY, boolean bc, int cX, int cY, boolean ca) {
       this.aX = aX;
       this.aY = aY;

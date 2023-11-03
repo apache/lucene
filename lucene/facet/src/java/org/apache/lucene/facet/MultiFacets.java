@@ -41,6 +41,18 @@ public class MultiFacets extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    Facets facets = dimToFacets.get(dim);
+    if (facets == null) {
+      if (defaultFacets == null) {
+        throw new IllegalArgumentException("invalid dim \"" + dim + "\"");
+      }
+      facets = defaultFacets;
+    }
+    return facets.getAllChildren(dim, path);
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
     Facets facets = dimToFacets.get(dim);

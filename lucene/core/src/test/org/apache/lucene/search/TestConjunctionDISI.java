@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -213,9 +215,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
 
   private static FixedBitSet toBitSet(int maxDoc, DocIdSetIterator iterator) throws IOException {
     final FixedBitSet set = new FixedBitSet(maxDoc);
-    for (int doc = iterator.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = iterator.nextDoc()) {
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
       set.set(doc);
     }
     return set;
@@ -458,5 +458,30 @@ public class TestConjunctionDISI extends LuceneTestCase {
     // iterator
     AssertionError ex = expectThrows(AssertionError.class, () -> conjunction.nextDoc());
     assertEquals("Sub-iterators of ConjunctionDISI are not on the same document!", ex.getMessage());
+  }
+
+  public void testBitSetConjunctionDISIDocIDOnExhaust() throws IOException {
+    int numBitSetIterators = TestUtil.nextInt(random(), 2, 5);
+    DocIdSetIterator[] iterators = new DocIdSetIterator[numBitSetIterators + 1];
+
+    // Create sparse DocIdSetIterator with a single match that is greater than lengths of bitset
+    // iterators
+    int maxBitSetLength = 1000;
+    int minBitSetLength = 2;
+    int leadMaxDoc = maxBitSetLength + 1;
+    iterators[iterators.length - 1] = DocIdSetIterator.range(leadMaxDoc, leadMaxDoc + 1);
+
+    for (int i = 0; i < numBitSetIterators; i++) {
+      int bitSetLength = TestUtil.nextInt(random(), minBitSetLength, maxBitSetLength);
+      FixedBitSet bitSet = new FixedBitSet(bitSetLength);
+      bitSet.set(0, bitSetLength - 1);
+      iterators[i] = new BitDocIdSet(bitSet).iterator();
+    }
+
+    final DocIdSetIterator conjunction =
+        ConjunctionUtils.intersectIterators(Arrays.asList(iterators));
+
+    assertEquals(NO_MORE_DOCS, conjunction.nextDoc());
+    assertEquals(NO_MORE_DOCS, conjunction.docID());
   }
 }

@@ -17,7 +17,12 @@
 package org.apache.lucene.distribution;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.annotations.TestGroup;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -46,6 +51,19 @@ public abstract class AbstractLuceneDistributionTest extends RandomizedTest {
 
   /** Resolved and validated {@link #DISTRIBUTION_PROPERTY}. */
   private static Path distributionPath;
+
+  // --------------------------------------------------------------------
+  // Test groups, system properties and other annotations modifying tests
+  // --------------------------------------------------------------------
+
+  public static final String SYSPROP_REQUIRES_GUI = "tests.gui";
+
+  /** Annotation for tests that requires GUI (physical or virtual display). */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @TestGroup(enabled = false, sysProperty = SYSPROP_REQUIRES_GUI)
+  public @interface RequiresGUI {}
 
   /** Ensure Lucene classes are not directly visible. */
   @BeforeClass

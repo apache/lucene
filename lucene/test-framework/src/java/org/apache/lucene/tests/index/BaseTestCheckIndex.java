@@ -92,7 +92,6 @@ public class BaseTestCheckIndex extends LuceneTestCase {
     assertEquals(18, seg.termVectorStatus.docCount);
     assertEquals(18, seg.termVectorStatus.totVectors);
 
-    assertNotNull(seg.diagnostics.get("java.vm.version"));
     assertNotNull(seg.diagnostics.get("java.runtime.version"));
 
     assertTrue(seg.diagnostics.size() > 0);

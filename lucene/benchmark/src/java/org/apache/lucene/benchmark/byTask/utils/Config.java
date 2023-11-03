@@ -389,7 +389,9 @@ public class Config {
     return res;
   }
 
-  /** @return names of params set by round, for reports title */
+  /**
+   * @return names of params set by round, for reports title
+   */
   public String getColsNamesForValsByRound() {
     if (colForValByRound.size() == 0) {
       return "";
@@ -401,7 +403,9 @@ public class Config {
     return sb.toString();
   }
 
-  /** @return values of params set by round, for reports lines. */
+  /**
+   * @return values of params set by round, for reports lines.
+   */
   public String getColsValuesForValsByRound(int roundNum) {
     if (colForValByRound.size() == 0) {
       return "";
@@ -440,12 +444,16 @@ public class Config {
     return sb.toString();
   }
 
-  /** @return the round number. */
+  /**
+   * @return the round number.
+   */
   public int getRoundNumber() {
     return roundNumber;
   }
 
-  /** @return Returns the algorithmText. */
+  /**
+   * @return Returns the algorithmText.
+   */
   public String getAlgorithmText() {
     return algorithmText;
   }

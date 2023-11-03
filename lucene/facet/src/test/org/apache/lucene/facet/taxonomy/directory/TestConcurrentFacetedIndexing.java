@@ -27,7 +27,6 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
-import org.apache.lucene.facet.taxonomy.writercache.UTF8TaxonomyWriterCache;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
@@ -79,8 +78,8 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
   static TaxonomyWriterCache newTaxoWriterCache(int ndocs) {
     final double d = random().nextDouble();
     if (d < 0.7) {
-      // this is the fastest, yet most memory consuming
-      return new UTF8TaxonomyWriterCache();
+      // same as LruTaxonomyWriterCache but with the default cache size
+      return DirectoryTaxonomyWriter.defaultTaxonomyWriterCache();
     } else if (TEST_NIGHTLY && d > 0.98) {
       // this is the slowest, but tests the writer concurrency when no caching is done.
       // only pick it during NIGHTLY tests, and even then, with very low chances.

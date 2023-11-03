@@ -38,7 +38,6 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
-import org.apache.lucene.facet.taxonomy.writercache.UTF8TaxonomyWriterCache;
 import org.apache.lucene.index.CorruptIndexException; // javadocs
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -85,15 +84,18 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public static final String INDEX_EPOCH = "index.epoch";
 
+  private static final int DEFAULT_CACHE_SIZE = 4000;
+
   private final Directory dir;
   private final IndexWriter indexWriter;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
+  private final AtomicInteger nextID = new AtomicInteger(0);
+  private final Field fullPathField;
 
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
-  private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
 
@@ -108,14 +110,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * When the cache is <B>not</B> complete, and we can't find a category in the cache, we still need
    * to look for it in the on-disk index; Therefore when the cache is not complete, we need to open
    * a "reader" to the taxonomy index. The cache becomes incomplete if it was never filled with the
-   * existing categories, or if a put() to the cache ever returned true (meaning that some of the
-   * cached data was cleared).
+   * existing categories, or if a put() to the cache ever returned true (meaning that some cached
+   * data was cleared).
    */
   private volatile boolean cacheIsComplete;
 
   private volatile boolean isClosed = false;
   private volatile TaxonomyIndexArrays taxoArrays;
-  private volatile int nextID;
 
   /**
    * Construct a Taxonomy writer.
@@ -128,9 +129,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    *     APPEND_OR_CREATE</code> appends to an existing index if there is one, otherwise it creates
    *     a new index.
    * @param cache A {@link TaxonomyWriterCache} implementation which determines the in-memory
-   *     caching policy. See for example {@link LruTaxonomyWriterCache} and {@link
-   *     UTF8TaxonomyWriterCache}. If null or missing, {@link #defaultTaxonomyWriterCache()} is
-   *     used.
+   *     caching policy. See for example {@link LruTaxonomyWriterCache}. If null or missing, {@link
+   *     #defaultTaxonomyWriterCache()} is used.
    * @throws CorruptIndexException if the taxonomy is corrupted.
    * @throws LockObtainFailedException if the taxonomy is locked by another writer.
    * @throws IOException if another error occurred.
@@ -169,14 +169,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
 
-    nextID = indexWriter.getDocStats().maxDoc;
+    nextID.set(indexWriter.getDocStats().maxDoc);
 
     if (cache == null) {
       cache = defaultTaxonomyWriterCache();
     }
     this.cache = cache;
 
-    if (nextID == 0) {
+    if (nextID.get() == 0) {
       cacheIsComplete = true;
       // Make sure that the taxonomy always contain the root category
       // with category id 0.
@@ -267,11 +267,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * Defines the default {@link TaxonomyWriterCache} to use in constructors which do not specify
    * one.
    *
-   * <p>The current default is {@link UTF8TaxonomyWriterCache}, i.e., the entire taxonomy is cached
-   * in memory while building it.
+   * <p>The current default is {@link LruTaxonomyWriterCache}
    */
   public static TaxonomyWriterCache defaultTaxonomyWriterCache() {
-    return new UTF8TaxonomyWriterCache();
+    return new LruTaxonomyWriterCache(DEFAULT_CACHE_SIZE);
   }
 
   /** Create this with {@code OpenMode.CREATE_OR_APPEND}. */
@@ -424,9 +423,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     } else {
       parent = TaxonomyReader.INVALID_ORDINAL;
     }
-    int id = addCategoryDocument(cp, parent);
-
-    return id;
+    return addCategoryDocument(cp, parent);
   }
 
   /**
@@ -439,7 +436,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   /**
-   * Note that the methods calling addCategoryDocument() are synchornized, so this method is
+   * Note that the methods calling addCategoryDocument() are synchronized, so this method is
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
@@ -455,11 +452,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     d.add(fullPathField);
 
-    // Note that we do no pass an Analyzer here because the fields that are
-    // added to the Document are untokenized or contains their own TokenStream.
-    // Therefore the IndexWriter's Analyzer has no effect.
     indexWriter.addDocument(d);
-    int id = nextID++;
+    int id = nextID.getAndIncrement();
 
     // added a category document, mark that ReaderManager is not up-to-date
     shouldRefreshReaderManager = true;
@@ -491,7 +485,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // addCategoryDocument -- when this method returns, we must know that the
     // reader manager's state is current. also, it sets shouldRefresh to false,
     // and this cannot overlap with addCatDoc too.
-    // NOTE: since this method is sync'ed, it can call maybeRefresh, instead of
+    // NOTE: since this method is synced, it can call maybeRefresh, instead of
     // maybeRefreshBlocking. If ever this is changed, make sure to change the
     // call too.
     if (shouldRefreshReaderManager && initializedReaderManager) {
@@ -567,7 +561,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   @Override
   public int getSize() {
     ensureOpen();
-    return nextID;
+    return nextID.get();
   }
 
   /**
@@ -656,33 +650,33 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   private TaxonomyIndexArrays getTaxoArrays() throws IOException {
-    if (taxoArrays == null) {
+    // By copying to a local variable we only perform a volatile read once (if it's not null)
+    TaxonomyIndexArrays arrays = taxoArrays;
+    if (arrays == null) {
       synchronized (this) {
-        if (taxoArrays == null) {
+        arrays = taxoArrays;
+        if (arrays == null) {
           initReaderManager();
           DirectoryReader reader = readerManager.acquire();
           try {
-            // according to Java Concurrency, this might perform better on some
-            // JVMs, since the object initialization doesn't happen on the
-            // volatile member.
-            TaxonomyIndexArrays tmpArrays = new TaxonomyIndexArrays(reader);
-            taxoArrays = tmpArrays;
+            arrays = new TaxonomyIndexArrays(reader);
           } finally {
             readerManager.release(reader);
           }
+          taxoArrays = arrays;
         }
       }
     }
-    return taxoArrays;
+    return arrays;
   }
 
   @Override
   public int getParent(int ordinal) throws IOException {
     ensureOpen();
     // Note: the following if() just enforces that a user can never ask
-    // for the parent of a nonexistant category - even if the parent array
+    // for the parent of a nonexistent category - even if the parent array
     // was allocated bigger than it really needs to be.
-    Objects.checkIndex(ordinal, nextID);
+    Objects.checkIndex(ordinal, nextID.get());
 
     int[] parents = getTaxoArrays().parents();
     assert ordinal < parents.length
@@ -697,11 +691,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public void addTaxonomy(Directory taxoDir, OrdinalMap map) throws IOException {
     ensureOpen();
-    DirectoryReader r = DirectoryReader.open(taxoDir);
-    try {
+    try (DirectoryReader r = DirectoryReader.open(taxoDir)) {
       final int size = r.numDocs();
-      final OrdinalMap ordinalMap = map;
-      ordinalMap.setSize(size);
+      map.setSize(size);
       int base = 0;
       PostingsEnum docs = null;
       for (final LeafReaderContext ctx : r.leaves()) {
@@ -713,13 +705,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
           FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(te.term().utf8ToString()));
           final int ordinal = addCategory(cp);
           docs = te.postings(docs, PostingsEnum.NONE);
-          ordinalMap.addMapping(docs.nextDoc() + base, ordinal);
+          map.addMapping(docs.nextDoc() + base, ordinal);
         }
         base += ar.maxDoc(); // no deletions, so we're ok
       }
-      ordinalMap.addDone();
-    } finally {
-      r.close();
+      map.addDone();
     }
   }
 
@@ -736,22 +726,22 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * the same time, it is recommended to put the first taxonomy's map in memory, and all the rest on
    * disk (later to be automatically read into memory one by one, when needed).
    */
-  public static interface OrdinalMap {
+  public interface OrdinalMap {
     /**
      * Set the size of the map. This MUST be called before addMapping(). It is assumed (but not
      * verified) that addMapping() will then be called exactly 'size' times, with different
      * origOrdinals between 0 and size-1.
      */
-    public void setSize(int size) throws IOException;
+    void setSize(int size) throws IOException;
 
     /** Record a mapping. */
-    public void addMapping(int origOrdinal, int newOrdinal) throws IOException;
+    void addMapping(int origOrdinal, int newOrdinal) throws IOException;
 
     /**
      * Call addDone() to say that all addMapping() have been done. In some implementations this
      * might free some resources.
      */
-    public void addDone() throws IOException;
+    void addDone() throws IOException;
 
     /**
      * Return the map from the taxonomy's original (consecutive) ordinals to the new taxonomy's
@@ -760,7 +750,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
      * needed. Calling it will also free all resources that the map might be holding (such as
      * temporary disk space), other than the returned int[].
      */
-    public int[] getMap() throws IOException;
+    int[] getMap() throws IOException;
   }
 
   /** {@link OrdinalMap} maintained in memory */
@@ -793,13 +783,15 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   /** {@link OrdinalMap} maintained on file system */
   public static final class DiskOrdinalMap implements OrdinalMap {
-    Path tmpfile;
-    DataOutputStream out;
+    private final Path mapFile;
+
+    private int[] map = null;
+    private DataOutputStream out;
 
     /** Sole constructor. */
-    public DiskOrdinalMap(Path tmpfile) throws IOException {
-      this.tmpfile = tmpfile;
-      out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpfile)));
+    public DiskOrdinalMap(Path mapFile) throws IOException {
+      this.mapFile = mapFile;
+      out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(mapFile)));
     }
 
     @Override
@@ -821,8 +813,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       }
     }
 
-    int[] map = null;
-
     @Override
     public int[] getMap() throws IOException {
       if (map != null) {
@@ -830,20 +820,20 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       }
       addDone(); // in case this wasn't previously called
       try (DataInputStream in =
-          new DataInputStream(new BufferedInputStream(Files.newInputStream(tmpfile)))) {
+          new DataInputStream(new BufferedInputStream(Files.newInputStream(mapFile)))) {
         map = new int[in.readInt()];
-        // NOTE: The current code assumes here that the map is complete,
-        // i.e., every ordinal gets one and exactly one value. Otherwise,
-        // we may run into an EOF here, or vice versa, not read everything.
+        // NOTE: The current code assumes that the map is complete,
+        // i.e. that every ordinal gets exactly one value. Otherwise,
+        // we may run into an EOF here, or not read everything.
         for (int i = 0; i < map.length; i++) {
-          int origordinal = in.readInt();
-          int newordinal = in.readInt();
-          map[origordinal] = newordinal;
+          int origOrdinal = in.readInt();
+          int newOrdinal = in.readInt();
+          map[origOrdinal] = newOrdinal;
         }
       }
 
       // Delete the temporary file, which is no longer needed.
-      Files.delete(tmpfile);
+      Files.delete(mapFile);
 
       return map;
     }
@@ -863,8 +853,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   /**
    * Replaces the current taxonomy with the given one. This method should generally be called in
-   * conjunction with {@link IndexWriter#addIndexes(Directory...)} to replace both the taxonomy as
-   * well as the search index content.
+   * conjunction with {@link IndexWriter#addIndexes(Directory...)} to replace both the taxonomy and
+   * the search index content.
    */
   public synchronized void replaceTaxonomy(Directory taxoDir) throws IOException {
     // replace the taxonomy by doing IW optimized operations
@@ -873,7 +863,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     shouldRefreshReaderManager = true;
     initReaderManager(); // ensure that it's initialized
     refreshReaderManager();
-    nextID = indexWriter.getDocStats().maxDoc;
+    nextID.set(indexWriter.getDocStats().maxDoc);
     taxoArrays = null; // must nullify so that it's re-computed next time it's needed
 
     // need to clear the cache, so that addCategory won't accidentally return

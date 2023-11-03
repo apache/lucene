@@ -19,6 +19,39 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
+
+The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
+
+Instead, call storedFields()/termVectors() to return an instance which can fetch data for multiple documents,
+and will be garbage-collected as usual.
+
+For example:
+```java
+TopDocs hits = searcher.search(query, 10);
+StoredFields storedFields = reader.storedFields();
+for (ScoreDoc hit : hits.scoreDocs) {
+  Document doc = storedFields.document(hit.doc);
+}
+```
+
+Note that these StoredFields and TermVectors instances should only be consumed in the thread where
+they were acquired. For instance, it is illegal to share them across threads.
+
+### Field can no longer configure a TokenStream independently from a value
+
+Lucene 9.x and earlier versions allowed to set a TokenStream on Field instances
+independently from a string, binary or numeric value. This is no longer allowed
+on the base Field class. If you need to replicate this behavior, you need to
+either provide two fields, one with a TokenStream and another one with a value,
+or create a sub-class of Field that overrides `TokenStream
+tokenStream(Analyzer, TokenStream)` to return a custom TokenStream.
+
+### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
+
+PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
+behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own. 
+
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
@@ -29,6 +62,44 @@ behind the scenes. It is the responsibility of the caller to to call
 
 These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
 with the new one during object instantiation. 
+
+### Normalizer and stemmer classes are now package private (LUCENE-10561)
+
+Except for a few exceptions, almost all normalizer and stemmer classes are now package private. If your code depends on
+constants defined in them, copy the constant values and re-define them in your code.
+
+### LongRangeFacetCounts / DoubleRangeFacetCounts #getTopChildren behavior change (LUCENE-10614)
+
+The behavior of `LongRangeFacetCounts`/`DoubleRangeFacetCounts` `#getTopChildren` actually returns
+the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets` API) instead
+of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
+9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
+
+### SortedSetDocValues#NO_MORE_ORDS removed (LUCENE-10603)
+
+`SortedSetDocValues#nextOrd()` no longer returns `NO_MORE_ORDS` when ordinals are exhausted for the
+currently-positioned document. Callers should instead use `SortedSetDocValues#docValueCount()` to
+determine the number of valid ordinals for the currently-positioned document up-front. It is now
+illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
+for the currently-positioned document (doing so will result in undefined behavior).
+
+### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+
+`Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
+`IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
+Callers should remove the parameter when calling this method.
+
+
+### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
+
+The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
+Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
+
+### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580) 
+
+The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors 
+has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
+that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 
@@ -76,6 +147,18 @@ also when using the now deprecated ctors, so users are advised to upgrade to
 Lucene 9.2 or stay with 9.0.
 
 See LUCENE-10558 for more details and workarounds.
+
+### Removed Scorable#docID() (GITHUB#12407)
+
+This method has been removed in order to enable more search-time optimizations.
+Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
+collected.
+
+### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
+
+In order to adapt to the removal of `Scorable#docID()`,
+`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
+`Scorable`.
 
 ## Migration from Lucene 8.x to Lucene 9.0
 

@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.util.automaton;
 
-// import java.io.IOException;
-// import java.io.PrintWriter;
-
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -576,8 +573,6 @@ public class Automaton implements Accountable, TransitionAccessor {
    * visualizing the automaton.
    */
   public String toDot() {
-    // TODO: breadth first search so we can get layered output...
-
     StringBuilder b = new StringBuilder();
     b.append("digraph Automaton {\n");
     b.append("  rankdir = LR\n");
@@ -946,7 +941,7 @@ public class Automaton implements Accountable, TransitionAccessor {
         + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + (isAccept.size() / 8)
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
         + 3 * Integer.BYTES
         + 1;
   }

@@ -88,7 +88,9 @@ public abstract class FilteredIntervalsSource extends IntervalsSource {
     this.in = in;
   }
 
-  /** @return {@code false} if the current interval should be filtered out */
+  /**
+   * @return {@code false} if the current interval should be filtered out
+   */
   protected abstract boolean accept(IntervalIterator it);
 
   @Override

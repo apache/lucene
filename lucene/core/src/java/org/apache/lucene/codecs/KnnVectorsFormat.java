@@ -18,11 +18,11 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
@@ -31,6 +31,9 @@ import org.apache.lucene.util.NamedSPILoader;
  * nearest-neighbor search
  */
 public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
+
+  /** The maximum number of vector dimensions */
+  public static final int DEFAULT_MAX_DIMENSIONS = 1024;
 
   /**
    * This static holder class prevents classloading deadlock by delaying init of doc values formats
@@ -77,6 +80,17 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
+   * Returns the maximum number of vector dimensions supported by this codec for the given field
+   * name
+   *
+   * <p>Codecs implement this method to specify the maximum number of dimensions they support.
+   *
+   * @param fieldName the field name
+   * @return the maximum number of vector dimensions.
+   */
+  public abstract int getMaxDimensions(String fieldName);
+
+  /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not
    * support vectors.
    */
@@ -84,8 +98,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
       new KnnVectorsFormat("EMPTY") {
         @Override
         public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
-          throw new UnsupportedOperationException(
-              "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene92");
+          throw new UnsupportedOperationException("Attempt to write EMPTY vector values");
         }
 
         @Override
@@ -95,14 +108,25 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void checkIntegrity() {}
 
             @Override
-            public VectorValues getVectorValues(String field) {
-              return VectorValues.EMPTY;
+            public FloatVectorValues getFloatVectorValues(String field) {
+              throw new UnsupportedOperationException();
             }
 
             @Override
-            public TopDocs search(
-                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-              return TopDocsCollector.EMPTY_TOPDOCS;
+            public ByteVectorValues getByteVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void search(
+                String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void search(
+                String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+              throw new UnsupportedOperationException();
             }
 
             @Override
@@ -113,6 +137,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
               return 0;
             }
           };
+        }
+
+        @Override
+        public int getMaxDimensions(String fieldName) {
+          return 0;
         }
       };
 }

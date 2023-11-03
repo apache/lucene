@@ -494,8 +494,7 @@ public class AnalyzingSuggester extends Lookup {
 
       reader =
           new OfflineSorter.ByteSequencesReader(
-              tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE),
-              tempSortedFileName);
+              tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
 
       PairOutputs<Long, BytesRef> outputs =
           new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
@@ -876,9 +875,6 @@ public class AnalyzingSuggester extends Lookup {
 
     automaton = replaceSep(automaton);
     automaton = convertAutomaton(automaton);
-
-    // TODO: LUCENE-5660 re-enable this once we disallow massive suggestion strings
-    // assert SpecialOperations.isFinite(automaton);
 
     // Get all paths from the automaton (there can be
     // more than one path, eg if the analyzer created a

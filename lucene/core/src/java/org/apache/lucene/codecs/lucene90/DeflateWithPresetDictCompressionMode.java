@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -161,14 +162,14 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
   private static class DeflateWithPresetDictCompressor extends Compressor {
 
     final Deflater compressor;
-    final BugfixDeflater_JDK8252739 deflaterBugfix;
     byte[] compressed;
     boolean closed;
+    byte[] buffer;
 
     DeflateWithPresetDictCompressor(int level) {
       compressor = new Deflater(level, true);
-      deflaterBugfix = BugfixDeflater_JDK8252739.createBugfix(compressor);
       compressed = new byte[64];
+      buffer = BytesRef.EMPTY_BYTES;
     }
 
     private void doCompress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
@@ -200,22 +201,26 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) (buffersInput.size() - buffersInput.position());
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       out.writeVInt(dictLength);
       out.writeVInt(blockLength);
-      final int end = off + len;
 
       // Compress the dictionary first
       compressor.reset();
-      doCompress(bytes, off, dictLength, out);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
+      buffersInput.readBytes(buffer, 0, dictLength);
+      doCompress(buffer, 0, dictLength, out);
 
       // And then sub blocks
-      for (int start = off + dictLength; start < end; start += blockLength) {
+      for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
-        deflaterBugfix.setDictionary(bytes, off, dictLength);
-        doCompress(bytes, start, Math.min(blockLength, off + len - start), out);
+        compressor.setDictionary(buffer, 0, dictLength);
+        int l = Math.min(blockLength, len - start);
+        buffersInput.readBytes(buffer, dictLength, l);
+        doCompress(buffer, dictLength, l, out);
       }
     }
 

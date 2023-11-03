@@ -121,7 +121,7 @@ public class TestFSTsMisc extends LuceneTestCase {
           }
           return output1.equals(output2);
         }
-      }.doTest(false);
+      }.doTest();
     }
 
     // ListOfOutputs(PositiveIntOutputs), generally but not
@@ -157,7 +157,7 @@ public class TestFSTsMisc extends LuceneTestCase {
 
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(false);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
   }
 

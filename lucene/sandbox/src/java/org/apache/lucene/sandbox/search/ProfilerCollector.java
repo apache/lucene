@@ -24,6 +24,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Weight;
 
 /**
  * This class wraps a Collector and times the execution of: - setScorer() - collect() -
@@ -52,17 +53,23 @@ public class ProfilerCollector implements Collector {
     this.children = children;
   }
 
-  /** @return the profiled time for this collector (inclusive of children) */
+  /**
+   * @return the profiled time for this collector (inclusive of children)
+   */
   public long getTime() {
     return collector.getTime();
   }
 
-  /** @return a human readable "hint" about what this collector was used for */
+  /**
+   * @return a human readable "hint" about what this collector was used for
+   */
   public String getReason() {
     return this.reason;
   }
 
-  /** @return the lucene class name of the collector */
+  /**
+   * @return the lucene class name of the collector
+   */
   public String getName() {
     return this.collectorName;
   }
@@ -81,6 +88,11 @@ public class ProfilerCollector implements Collector {
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     return collector.getLeafCollector(context);
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    collector.setWeight(weight);
   }
 
   @Override

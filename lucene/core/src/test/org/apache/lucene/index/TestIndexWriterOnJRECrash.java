@@ -104,8 +104,7 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
     cmd.add("-DtempDir=" + tempDir);
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(random().nextLong()));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+    cmd.addAll(getJvmForkArguments());
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(getClass().getName());
     ProcessBuilder pb =

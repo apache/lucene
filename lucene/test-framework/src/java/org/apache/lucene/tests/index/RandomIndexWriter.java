@@ -39,6 +39,7 @@ import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -283,7 +284,12 @@ public class RandomIndexWriter implements Closeable {
           w.softUpdateDocuments(
               delTerm, docs, new NumericDocValuesField(config.getSoftDeletesField(), 1));
     } else {
-      seqNo = w.updateDocuments(delTerm, docs);
+      if (r.nextInt(10) < 3) {
+        // 30% chance
+        seqNo = w.updateDocuments(new TermQuery(delTerm), docs);
+      } else {
+        seqNo = w.updateDocuments(delTerm, docs);
+      }
     }
     maybeFlushOrCommit();
     return seqNo;

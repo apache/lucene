@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPPOSTaggerOp;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
@@ -33,65 +33,62 @@ import org.apache.lucene.util.IgnoreRandomChains;
 @IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPPOSFilter extends TokenFilter {
 
-  private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();
-  String[] tags = null;
   private int tokenNum = 0;
-  private boolean moreTokensAvailable = true;
-
   private final NLPPOSTaggerOp posTaggerOp;
-  private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final SentenceAttributeExtractor sentenceAttributeExtractor;
 
   public OpenNLPPOSFilter(TokenStream input, NLPPOSTaggerOp posTaggerOp) {
     super(input);
     this.posTaggerOp = posTaggerOp;
+    sentenceAttributeExtractor =
+        new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
-    if (!moreTokensAvailable) {
-      clear();
-      return false;
-    }
-    if (tokenNum
-        == sentenceTokenAttrs.size()) { // beginning of stream, or previous sentence exhausted
-      String[] sentenceTokens = nextSentence();
-      if (sentenceTokens == null) {
-        clear();
+  public boolean incrementToken() throws IOException {
+    List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
+    boolean isEndOfCurrentSentence = tokenNum >= sentenceTokenAttrs.size();
+    if (isEndOfCurrentSentence) {
+      boolean noSentencesLeft =
+          sentenceAttributeExtractor.allSentencesProcessed() || nextSentence().isEmpty();
+      if (noSentencesLeft) {
         return false;
       }
-      tags = posTaggerOp.getPOSTags(sentenceTokens);
-      tokenNum = 0;
     }
     clearAttributes();
-    sentenceTokenAttrs.get(tokenNum).copyTo(this);
-    typeAtt.setType(tags[tokenNum++]);
+    sentenceTokenAttrs.get(tokenNum++).copyTo(this);
     return true;
   }
 
-  private String[] nextSentence() throws IOException {
+  private List<AttributeSource> nextSentence() throws IOException {
+    tokenNum = 0;
     List<String> termList = new ArrayList<>();
-    sentenceTokenAttrs.clear();
-    boolean endOfSentence = false;
-    while (!endOfSentence && (moreTokensAvailable = input.incrementToken())) {
-      termList.add(termAtt.toString());
-      endOfSentence = 0 != (flagsAtt.getFlags() & OpenNLPTokenizer.EOS_FLAG_BIT);
-      sentenceTokenAttrs.add(input.cloneAttributes());
+    for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
+      termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
     }
-    return termList.size() > 0 ? termList.toArray(new String[termList.size()]) : null;
+    String[] sentenceTerms = termList.toArray(new String[0]);
+    assignTokenTypes(posTaggerOp.getPOSTags(sentenceTerms));
+    return sentenceAttributeExtractor.getSentenceAttributes();
+  }
+
+  private void assignTokenTypes(String[] tags) {
+    for (int i = 0; i < tags.length; ++i) {
+      sentenceAttributeExtractor
+          .getSentenceAttributes()
+          .get(i)
+          .getAttribute(TypeAttribute.class)
+          .setType(tags[i]);
+    }
   }
 
   @Override
   public void reset() throws IOException {
     super.reset();
-    moreTokensAvailable = true;
+    sentenceAttributeExtractor.reset();
     clear();
   }
 
   private void clear() {
-    sentenceTokenAttrs.clear();
-    tags = null;
     tokenNum = 0;
   }
 }

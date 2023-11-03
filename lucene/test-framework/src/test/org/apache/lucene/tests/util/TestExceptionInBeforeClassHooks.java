@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.tests.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Assert;

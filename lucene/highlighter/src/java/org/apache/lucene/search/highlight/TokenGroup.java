@@ -103,12 +103,16 @@ public class TokenGroup {
     return matchEndOffset;
   }
 
-  /** @return the number of tokens in this group */
+  /**
+   * @return the number of tokens in this group
+   */
   public int getNumTokens() {
     return numTokens;
   }
 
-  /** @return all tokens' scores summed up */
+  /**
+   * @return all tokens' scores summed up
+   */
   public float getTotalScore() {
     return tot;
   }

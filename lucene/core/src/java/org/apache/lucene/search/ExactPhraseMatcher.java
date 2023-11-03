@@ -67,12 +67,15 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     final ImpactsSource impactsSource =
         mergeImpacts(Arrays.stream(postings).map(p -> p.impacts).toArray(ImpactsEnum[]::new));
 
+    this.impactsApproximation =
+        new ImpactsDISI(approximation, new MaxScoreCache(impactsSource, scorer));
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      this.approximation =
-          this.impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
+      // TODO: only do this when this is the top-level scoring clause
+      // (ScorerSupplier#setTopLevelScoringClause) to save the overhead of wrapping with ImpactsDISI
+      // when it would not help
+      this.approximation = impactsApproximation;
     } else {
       this.approximation = approximation;
-      this.impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
     }
 
     List<PostingsAndPosition> postingsAndPositions = new ArrayList<>();
@@ -103,8 +106,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /**
-   * Advance the given pos enum to the first doc on or after {@code target}. Return {@code false} if
-   * the enum was exhausted before reaching {@code target} and {@code true} otherwise.
+   * Advance the given pos enum to the first position on or after {@code target}. Return {@code
+   * false} if the enum was exhausted before reaching {@code target} and {@code true} otherwise.
    */
   private static boolean advancePosition(PostingsAndPosition posting, int target)
       throws IOException {

@@ -48,6 +48,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   protected final Automaton automaton;
 
   protected final CompiledAutomaton compiled;
+
   /** term containing the field, and possibly some pattern structure */
   protected final Term term;
 
@@ -76,7 +77,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     UTF32ToUTF8 conversion
    */
   public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary) {
-    this(term, automaton, isBinary, CONSTANT_SCORE_REWRITE);
+    this(term, automaton, isBinary, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
@@ -95,8 +96,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
-    // TODO: we could take isFinite too, to save a bit of CPU in CompiledAutomaton ctor?:
-    this.compiled = new CompiledAutomaton(automaton, null, true, isBinary);
+    this.compiled = new CompiledAutomaton(automaton, false, true, isBinary);
 
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();

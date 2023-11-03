@@ -37,6 +37,11 @@ java.lang.Character#codePointAt(char[],int) @ Implicit end offset is error-prone
 java.io.File#delete() @ use Files.delete for real exception, IOUtils.deleteFilesIgnoringExceptions if you dont care
 
 java.util.Collections#shuffle(java.util.List) @ Use shuffle(List, Random) instead so that it can be reproduced
+java.util.Stack @ Use more modern java.util.ArrayDeque as it is not synchronized
+java.util.Vector @ Use more modern java.util.ArrayList as it is not synchronized
+
+# TODO (needs some fix in forbiddenapis): this also hits java.util.Properties:
+# java.util.Hashtable @ Use more modern java.util.HashMap as it is not synchronized
 
 java.util.Locale#forLanguageTag(java.lang.String) @ use new Locale.Builder().setLanguageTag(...).build() which has error handling
 java.util.Locale#toString() @ use Locale#toLanguageTag() for a standardized BCP47 locale name
@@ -55,6 +60,17 @@ java.lang.Double#<init>(**)
 java.io.ObjectInputStream
 java.io.ObjectOutputStream
 
-@defaultMessage Don't set a dictionary on a Deflater using a method that takes an offset or ByteBuffer (JDK-8252739)
-java.util.zip.Deflater#setDictionary(byte[],int,int)
-java.util.zip.Deflater#setDictionary(java.nio.ByteBuffer)
+@defaultMessage JNDI is RCE-in-a-box, avoid it.
+javax.naming.Context
+javax.management.remote.JMXConnectorFactory
+javax.management.remote.rmi.RMIConnector
+javax.naming.directory.InitialDirContext
+javax.naming.InitialContext
+javax.naming.spi.ContinuationContext
+javax.naming.spi.ContinuationDirContext
+javax.sql.rowset.spi.ProviderImpl
+javax.sql.rowset.spi.SyncFactory
+
+@defaultMessage Math.fma is insanely slow (2500x) in many environments (e.g. VMs). Use multiply/add and suffer the extra rounding
+java.lang.Math#fma(float,float,float)
+java.lang.Math#fma(double,double,double)

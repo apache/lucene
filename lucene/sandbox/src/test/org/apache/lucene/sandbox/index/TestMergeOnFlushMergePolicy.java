@@ -112,4 +112,9 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
       }
     }
   }
+
+  @Override
+  public void testNoPathologicalMerges() throws IOException {
+    // no-op: MergeOnFlushMergePolicy makes no effort to avoid O(n^2) merges
+  }
 }

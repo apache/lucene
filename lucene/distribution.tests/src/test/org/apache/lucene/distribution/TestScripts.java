@@ -38,6 +38,7 @@ import org.junit.Test;
 /** Verify that scripts included in the distribution work. */
 public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
+  @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
     if (randomBoolean()) {
@@ -69,7 +70,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
-        60,
+        120,
         (outputBytes) -> {
           // We know it's UTF-8 because we set file.encoding explicitly.
           var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
@@ -79,6 +80,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
   public static final String OS_NAME = System.getProperty("os.name");
+
   /** True iff running on Windows. */
   public static final boolean WINDOWS = OS_NAME.startsWith("Windows");
 

@@ -24,10 +24,7 @@ import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPLemmatizerOp;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
-import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.analysis.tokenattributes.*;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
 
@@ -46,37 +43,28 @@ import org.apache.lucene.util.IgnoreRandomChains;
 public class OpenNLPLemmatizerFilter extends TokenFilter {
   private final NLPLemmatizerOp lemmatizerOp;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
   private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();
   private Iterator<AttributeSource> sentenceTokenAttrsIter = null;
-  private boolean moreTokensAvailable = true;
-  private String[] sentenceTokens = null; // non-keyword tokens
-  private String[] sentenceTokenTypes = null; // types for non-keyword tokens
-  private String[] lemmas = null; // lemmas for non-keyword tokens
+  private final SentenceAttributeExtractor sentenceAttributeExtractor;
+  private String[] lemmas = new String[0]; // lemmas for non-keyword tokens
   private int lemmaNum = 0; // lemma counter
 
   public OpenNLPLemmatizerFilter(TokenStream input, NLPLemmatizerOp lemmatizerOp) {
     super(input);
     this.lemmatizerOp = lemmatizerOp;
+    sentenceAttributeExtractor =
+        new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
   public final boolean incrementToken() throws IOException {
-    if (!moreTokensAvailable) {
-      clear();
-      return false;
-    }
-    if (sentenceTokenAttrsIter == null || !sentenceTokenAttrsIter.hasNext()) {
-      nextSentence();
-      if (sentenceTokens == null) { // zero non-keyword tokens
-        clear();
+    boolean isEndOfCurrentSentence = lemmaNum >= lemmas.length;
+    if (isEndOfCurrentSentence) {
+      boolean noSentencesLeft =
+          sentenceAttributeExtractor.allSentencesProcessed() || nextSentence().isEmpty();
+      if (noSentencesLeft) {
         return false;
       }
-      lemmas = lemmatizerOp.lemmatize(sentenceTokens, sentenceTokenTypes);
-      lemmaNum = 0;
-      sentenceTokenAttrsIter = sentenceTokenAttrs.iterator();
     }
     clearAttributes();
     sentenceTokenAttrsIter.next().copyTo(this);
@@ -86,36 +74,35 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
     return true;
   }
 
-  private void nextSentence() throws IOException {
+  private List<AttributeSource> nextSentence() throws IOException {
+    lemmaNum = 0;
     List<String> tokenList = new ArrayList<>();
     List<String> typeList = new ArrayList<>();
-    sentenceTokenAttrs.clear();
-    boolean endOfSentence = false;
-    while (!endOfSentence && (moreTokensAvailable = input.incrementToken())) {
-      if (!keywordAtt.isKeyword()) {
-        tokenList.add(termAtt.toString());
-        typeList.add(typeAtt.type());
+    List<AttributeSource> sentenceAttributes =
+        sentenceAttributeExtractor.extractSentenceAttributes();
+    for (AttributeSource attributeSource : sentenceAttributes) {
+      if (!attributeSource.getAttribute(KeywordAttribute.class).isKeyword()) {
+        tokenList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
+        typeList.add(attributeSource.getAttribute(TypeAttribute.class).type());
       }
-      endOfSentence = 0 != (flagsAtt.getFlags() & OpenNLPTokenizer.EOS_FLAG_BIT);
-      sentenceTokenAttrs.add(input.cloneAttributes());
     }
-    sentenceTokens = tokenList.size() > 0 ? tokenList.toArray(new String[tokenList.size()]) : null;
-    sentenceTokenTypes = typeList.size() > 0 ? typeList.toArray(new String[typeList.size()]) : null;
+    String[] sentenceTokens = tokenList.toArray(new String[0]);
+    String[] sentenceTokenTypes = typeList.toArray(new String[0]);
+    lemmas = lemmatizerOp.lemmatize(sentenceTokens, sentenceTokenTypes);
+    sentenceTokenAttrsIter = sentenceAttributes.iterator();
+    return sentenceAttributeExtractor.getSentenceAttributes();
   }
 
   @Override
   public void reset() throws IOException {
     super.reset();
-    moreTokensAvailable = true;
+    sentenceAttributeExtractor.reset();
     clear();
   }
 
   private void clear() {
-    sentenceTokenAttrs.clear();
     sentenceTokenAttrsIter = null;
-    sentenceTokens = null;
-    sentenceTokenTypes = null;
-    lemmas = null;
+    lemmas = new String[0];
     lemmaNum = 0;
   }
 }

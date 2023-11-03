@@ -96,20 +96,17 @@ public class CompiledAutomaton implements Accountable {
   public final BytesRef commonSuffixRef;
 
   /**
-   * Indicates if the automaton accepts a finite set of strings. Null if this was not computed. Only
-   * valid for {@link AUTOMATON_TYPE#NORMAL}.
+   * Indicates if the automaton accepts a finite set of strings. Only valid for {@link
+   * AUTOMATON_TYPE#NORMAL}.
    */
-  public final Boolean finite;
+  public final boolean finite;
 
   /** Which state, if any, accepts all suffixes, else -1. */
   public final int sinkState;
 
-  /**
-   * Create this, passing simplify=true and finite=null, so that we try to simplify the automaton
-   * and determine if it is finite.
-   */
+  /** Create this, passing simplify=true, so that we try to simplify the automaton. */
   public CompiledAutomaton(Automaton automaton) {
-    this(automaton, null, true);
+    this(automaton, false, true);
   }
 
   /** Returns sink state, if present, else -1. */
@@ -139,21 +136,21 @@ public class CompiledAutomaton implements Accountable {
   }
 
   /**
-   * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
-   * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
-   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   * Create this. If simplify is true, we run possibly expensive operations to determine if the
+   * automaton is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. Set finite to true if
+   * the automaton is finite, otherwise set to false if infinite or you don't know.
    */
-  public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
+  public CompiledAutomaton(Automaton automaton, boolean finite, boolean simplify) {
     this(automaton, finite, simplify, false);
   }
 
   /**
-   * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
-   * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
-   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
+   * Create this. If simplify is true, we run possibly expensive operations to determine if the
+   * automaton is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. Set finite to true if
+   * the automaton is finite, otherwise set to false if infinite or you don't know.
    */
   public CompiledAutomaton(
-      Automaton automaton, Boolean finite, boolean simplify, boolean isBinary) {
+      Automaton automaton, boolean finite, boolean simplify, boolean isBinary) {
 
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
@@ -174,7 +171,7 @@ public class CompiledAutomaton implements Accountable {
         commonSuffixRef = null;
         runAutomaton = null;
         this.automaton = null;
-        this.finite = null;
+        this.finite = true;
         sinkState = -1;
         nfaRunAutomaton = null;
         return;
@@ -196,7 +193,7 @@ public class CompiledAutomaton implements Accountable {
         commonSuffixRef = null;
         runAutomaton = null;
         this.automaton = null;
-        this.finite = null;
+        this.finite = false;
         sinkState = -1;
         nfaRunAutomaton = null;
         return;
@@ -210,7 +207,7 @@ public class CompiledAutomaton implements Accountable {
         commonSuffixRef = null;
         runAutomaton = null;
         this.automaton = null;
-        this.finite = null;
+        this.finite = true;
 
         if (isBinary) {
           term = StringHelper.intsRefToBytesRef(singleton);
@@ -228,11 +225,7 @@ public class CompiledAutomaton implements Accountable {
     type = AUTOMATON_TYPE.NORMAL;
     term = null;
 
-    if (finite == null) {
-      this.finite = Operations.isFinite(automaton);
-    } else {
-      this.finite = finite;
-    }
+    this.finite = finite;
 
     Automaton binary;
     if (isBinary) {

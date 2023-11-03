@@ -91,8 +91,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
-    private final byte[] minValueAsBytes;
-    private final byte[] maxValueAsBytes;
+    private byte[] minValueAsBytes;
+    private byte[] maxValueAsBytes;
 
     private DocIdSetIterator competitiveIterator;
     private long iteratorCost = -1;
@@ -128,16 +128,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
-        this.maxValueAsBytes =
-            reverse == false ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
-        this.minValueAsBytes =
-            reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
-        this.maxValueAsBytes = null;
-        this.minValueAsBytes = null;
       }
     }
 
@@ -191,7 +185,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // update its iterator to include possibly only docs that are "stronger" than the current bottom
     // entry
     private void updateCompetitiveIterator() throws IOException {
-      if (enableSkipping == false || hitsThresholdReached == false || queueFull == false) return;
+      if (enableSkipping == false
+          || hitsThresholdReached == false
+          || (queueFull == false && topValueSet == false)) return;
       // if some documents have missing points, check that missing values prohibits optimization
       if ((pointValues.getDocCount() < maxDoc) && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
@@ -204,13 +200,21 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         return;
       }
       if (reverse == false) {
-        encodeBottom(maxValueAsBytes);
+        if (queueFull) { // bottom is avilable only when queue is full
+          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
+          encodeBottom(maxValueAsBytes);
+        }
         if (topValueSet) {
+          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
           encodeTop(minValueAsBytes);
         }
       } else {
-        encodeBottom(minValueAsBytes);
+        if (queueFull) { // bottom is avilable only when queue is full
+          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
+          encodeBottom(minValueAsBytes);
+        }
         if (topValueSet) {
+          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
           encodeTop(maxValueAsBytes);
         }
       }
@@ -305,6 +309,26 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
+    private boolean isMissingValueCompetitive() {
+      // if queue is full, always compare with bottom,
+      // if not, check if we can compare with topValue
+      if (queueFull) {
+        int result = compareMissingValueWithBottomValue();
+        // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
+        // in asc sort missingValue is competitive when it's smaller or equal to bottom
+        return reverse ? (result >= 0) : (result <= 0);
+      } else if (topValueSet) {
+        int result = compareMissingValueWithTopValue();
+        // in reverse (desc) sort missingValue is competitive when it's smaller or equal to
+        // topValue,
+        // in asc sort missingValue is competitive when it's greater or equal to topValue
+        return reverse ? (result <= 0) : (result >= 0);
+      } else {
+        // by default competitive
+        return true;
+      }
+    }
+
     @Override
     public DocIdSetIterator competitiveIterator() {
       if (enableSkipping == false) return null;
@@ -333,7 +357,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       };
     }
 
-    protected abstract boolean isMissingValueCompetitive();
+    protected abstract int compareMissingValueWithTopValue();
+
+    protected abstract int compareMissingValueWithBottomValue();
 
     protected abstract void encodeBottom(byte[] packedValue);
 

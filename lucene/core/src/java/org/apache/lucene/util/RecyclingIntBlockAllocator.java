@@ -69,7 +69,7 @@ public final class RecyclingIntBlockAllocator extends Allocator {
   @Override
   public int[] getIntBlock() {
     if (freeBlocks == 0) {
-      bytesUsed.addAndGet(blockSize * Integer.BYTES);
+      bytesUsed.addAndGet(blockSize * (long) Integer.BYTES);
       return new int[blockSize];
     }
     final int[] b = freeByteBlocks[--freeBlocks];
@@ -95,21 +95,27 @@ public final class RecyclingIntBlockAllocator extends Allocator {
     for (int i = stop; i < end; i++) {
       blocks[i] = null;
     }
-    bytesUsed.addAndGet(-(end - stop) * (blockSize * Integer.BYTES));
+    bytesUsed.addAndGet(-(end - stop) * ((long) blockSize * Integer.BYTES));
     assert bytesUsed.get() >= 0;
   }
 
-  /** @return the number of currently buffered blocks */
+  /**
+   * @return the number of currently buffered blocks
+   */
   public int numBufferedBlocks() {
     return freeBlocks;
   }
 
-  /** @return the number of bytes currently allocated by this {@link Allocator} */
+  /**
+   * @return the number of bytes currently allocated by this {@link Allocator}
+   */
   public long bytesUsed() {
     return bytesUsed.get();
   }
 
-  /** @return the maximum number of buffered byte blocks */
+  /**
+   * @return the maximum number of buffered byte blocks
+   */
   public int maxBufferedBlocks() {
     return maxBufferedBlocks;
   }
@@ -134,7 +140,7 @@ public final class RecyclingIntBlockAllocator extends Allocator {
     while (freeBlocks > stop) {
       freeByteBlocks[--freeBlocks] = null;
     }
-    bytesUsed.addAndGet(-count * blockSize * Integer.BYTES);
+    bytesUsed.addAndGet(-count * (long) blockSize * Integer.BYTES);
     assert bytesUsed.get() >= 0;
     return count;
   }

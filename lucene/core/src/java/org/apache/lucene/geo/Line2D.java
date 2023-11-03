@@ -29,12 +29,16 @@ final class Line2D implements Component2D {
 
   /** minimum Y of this geometry's bounding box area */
   private final double minY;
+
   /** maximum Y of this geometry's bounding box area */
   private final double maxY;
+
   /** minimum X of this geometry's bounding box area */
   private final double minX;
+
   /** maximum X of this geometry's bounding box area */
   private final double maxX;
+
   /** lines represented as a 2-d interval tree. */
   private final EdgeTree tree;
 

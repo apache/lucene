@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.randSeed;
@@ -29,26 +30,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92Codec;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -64,9 +66,11 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
   private Codec codec;
+  private Codec float32Codec;
+  private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
   @Before
@@ -76,21 +80,54 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
+    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
+    similarityFunction = VectorSimilarityFunction.values()[similarity];
+    vectorEncoding = randomVectorEncoding();
+
+    Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat =
+        vectorEncoding.equals(VectorEncoding.FLOAT32) && randomBoolean()
+            ? new Lucene99ScalarQuantizedVectorsFormat(1f)
+            : null;
+
     codec =
-        new Lucene92Codec() {
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene92HnswVectorsFormat(M, Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return new Lucene99HnswVectorsFormat(
+                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+              }
+            };
           }
         };
 
-    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
-    similarityFunction = VectorSimilarityFunction.values()[similarity];
+    if (vectorEncoding == VectorEncoding.FLOAT32 && scalarQuantizedVectorsFormat == null) {
+      float32Codec = codec;
+    } else {
+      float32Codec =
+          new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
+            @Override
+            public KnnVectorsFormat knnVectorsFormat() {
+              return new PerFieldKnnVectorsFormat() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+                }
+              };
+            }
+          };
+    }
+  }
+
+  private VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   @After
   public void cleanup() {
-    M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = HnswGraphBuilder.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -102,10 +139,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = new float[numDoc][];
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
       }
@@ -117,6 +151,14 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
+      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+        VectorUtil.l2normalize(values[0]);
+      }
+      if (vectorEncoding == VectorEncoding.BYTE) {
+        for (int i = 0; i < 3; i++) {
+          values[0][i] = (float) Math.floor(values[0][i] * 127);
+        }
+      }
       add(iw, 0, values[0]);
       assertConsistentGraph(iw, values);
       iw.commit();
@@ -133,11 +175,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = randomVectors(numDoc, dimension);
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
-          VectorUtil.l2normalize(values[i]);
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
         if (random().nextInt(10) == 3) {
@@ -151,21 +189,6 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
-  /**
-   * Verify that we get the *same* graph by indexing one segment as we do by indexing two segments
-   * and merging.
-   */
-  public void testMergeProducesSameGraph() throws Exception {
-    long seed = random().nextLong();
-    int numDoc = atLeast(100);
-    int dimension = atLeast(10);
-    float[][] values = randomVectors(numDoc, dimension);
-    int mergePoint = random().nextInt(numDoc);
-    int[][][] mergedGraph = getIndexedGraph(values, mergePoint, seed);
-    int[][][] singleSegmentGraph = getIndexedGraph(values, -1, seed);
-    assertGraphEquals(singleSegmentGraph, mergedGraph);
-  }
-
   /** Test writing and reading of multiple vector fields * */
   public void testMultipleVectorFields() throws Exception {
     int numVectorFields = randomIntBetween(2, 5);
@@ -176,7 +199,7 @@ public class TestKnnGraph extends LuceneTestCase {
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
       values[field] = randomVectors(numDoc, dims[field]);
-      fieldTypes[field] = KnnVectorField.createFieldType(dims[field], similarityFunction);
+      fieldTypes[field] = KnnFloatVectorField.createFieldType(dims[field], similarityFunction);
     }
 
     try (Directory dir = newDirectory();
@@ -186,7 +209,7 @@ public class TestKnnGraph extends LuceneTestCase {
         for (int field = 0; field < numVectorFields; field++) {
           float[] vector = values[field][docID];
           if (vector != null) {
-            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
+            doc.add(new KnnFloatVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
           }
         }
         String idString = Integer.toString(docID);
@@ -199,85 +222,28 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
-  private void assertGraphEquals(int[][][] expected, int[][][] actual) {
-    assertEquals("graph sizes differ", expected.length, actual.length);
-    for (int level = 0; level < expected.length; level++) {
-      for (int node = 0; node < expected[level].length; node++) {
-        assertArrayEquals("difference at ord=" + node, expected[level][node], actual[level][node]);
-      }
-    }
-  }
-
-  /**
-   * Return a naive representation of an HNSW graph as a 3 dimensional array: 1st dim represents a
-   * graph layer. Each layer contains an array of arrays – a list of nodes and for each node a list
-   * of the node's neighbours. 2nd dim represents a node on a layer, and contains the node's
-   * neighbourhood, or {@code null} if a node is not present on this layer. 3rd dim represents
-   * neighbours of a node.
-   */
-  private int[][][] getIndexedGraph(float[][] values, int mergePoint, long seed)
-      throws IOException {
-    HnswGraphBuilder.randSeed = seed;
-    int[][][] graph;
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig();
-      iwc.setMergePolicy(new LogDocMergePolicy()); // for predictable segment ordering when merging
-      iwc.setCodec(codec); // don't use SimpleTextCodec
-      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < values.length; i++) {
-          add(iw, i, values[i]);
-          if (i == mergePoint) {
-            // flush proactively to create a segment
-            iw.flush();
-          }
-        }
-        iw.forceMerge(1);
-      }
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
-            (PerFieldKnnVectorsFormat.FieldsReader)
-                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
-        Lucene92HnswVectorsReader vectorReader =
-            (Lucene92HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
-        graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
-      }
-    }
-    return graph;
-  }
-
   private float[][] randomVectors(int numDoc, int dimension) {
     float[][] values = new float[numDoc][];
     for (int i = 0; i < numDoc; i++) {
       if (random().nextBoolean()) {
-        values[i] = new float[dimension];
-        for (int j = 0; j < dimension; j++) {
-          values[i][j] = random().nextFloat();
-        }
-        VectorUtil.l2normalize(values[i]);
+        values[i] = randomVector(dimension);
       }
     }
     return values;
   }
 
-  int[][][] copyGraph(HnswGraph graphValues) throws IOException {
-    int[][][] graph = new int[graphValues.numLevels()][][];
-    int size = graphValues.size();
-    int[] scratch = new int[M * 2];
-
-    for (int level = 0; level < graphValues.numLevels(); level++) {
-      NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
-      graph[level] = new int[size][];
-      while (nodesItr.hasNext()) {
-        int node = nodesItr.nextInt();
-        graphValues.seek(level, node);
-        int n, count = 0;
-        while ((n = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
-          scratch[count++] = n;
-        }
-        graph[level][node] = ArrayUtil.copyOfSubArray(scratch, 0, count);
+  private float[] randomVector(int dimension) {
+    float[] value = new float[dimension];
+    for (int j = 0; j < dimension; j++) {
+      value[j] = random().nextFloat();
+    }
+    VectorUtil.l2normalize(value);
+    if (vectorEncoding == VectorEncoding.BYTE) {
+      for (int j = 0; j < dimension; j++) {
+        value[j] = (byte) (value[j] * 127);
       }
     }
-    return graph;
+    return value;
   }
 
   /** Verify that searching does something reasonable */
@@ -285,7 +251,7 @@ public class TestKnnGraph extends LuceneTestCase {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec); // test is not compatible with simpletext
+    config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, config)) {
       indexData(iw);
@@ -304,7 +270,7 @@ public class TestKnnGraph extends LuceneTestCase {
          * approximate KNN search algorithm
          */
         assertGraphSearch(new int[] {0, 15, 3, 18, 5}, new float[] {0f, 0.1f}, dr);
-        // Tiebreaking by docid must be done after VectorValues.search.
+        // Tiebreaking by docid must be done after search.
         // assertGraphSearch(new int[]{11, 1, 8, 14, 21}, new float[]{2, 2}, dr);
         assertGraphSearch(new int[] {15, 18, 0, 3, 5}, new float[] {0.3f, 0.8f}, dr);
       }
@@ -341,7 +307,7 @@ public class TestKnnGraph extends LuceneTestCase {
   public void testMultiThreadedSearch() throws Exception {
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec);
+    config.setCodec(float32Codec);
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, config);
     indexData(iw);
@@ -357,12 +323,13 @@ public class TestKnnGraph extends LuceneTestCase {
                   latch.await();
                   IndexSearcher searcher = manager.acquire();
                   try {
-                    KnnVectorQuery query = new KnnVectorQuery("vector", new float[] {0f, 0.1f}, 5);
+                    KnnFloatVectorQuery query =
+                        new KnnFloatVectorQuery("vector", new float[] {0f, 0.1f}, 5);
                     TopDocs results = searcher.search(query, 5);
+                    StoredFields storedFields = searcher.storedFields();
                     for (ScoreDoc doc : results.scoreDocs) {
                       // map docId to insertion id
-                      doc.doc =
-                          Integer.parseInt(searcher.getIndexReader().document(doc.doc).get("id"));
+                      doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
                     }
                     assertResults(new int[] {0, 15, 3, 18, 5}, results);
                   } finally {
@@ -385,9 +352,10 @@ public class TestKnnGraph extends LuceneTestCase {
   private void assertGraphSearch(int[] expected, float[] vector, IndexReader reader)
       throws IOException {
     TopDocs results = doKnnSearch(reader, vector, 5);
+    StoredFields storedFields = reader.storedFields();
     for (ScoreDoc doc : results.scoreDocs) {
       // map docId to insertion id
-      doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
+      doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
     }
     assertResults(expected, results);
   }
@@ -436,13 +404,13 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene92HnswVectorsReader vectorReader =
-            (Lucene92HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene99HnswVectorsReader vectorReader =
+            (Lucene99HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }
         HnswGraph graphValues = vectorReader.getGraph(vectorField);
-        VectorValues vectorValues = reader.getVectorValues(vectorField);
+        FloatVectorValues vectorValues = reader.getFloatVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
           continue;
@@ -451,24 +419,25 @@ public class TestKnnGraph extends LuceneTestCase {
         // assert vector values:
         // stored vector values are the same as original
         int nextDocWithVectors = 0;
+        StoredFields storedFields = reader.storedFields();
         for (int i = 0; i < reader.maxDoc(); i++) {
           nextDocWithVectors = vectorValues.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
-            int id = Integer.parseInt(reader.document(i).get("id"));
+            int id = Integer.parseInt(storedFields.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
             ++i;
           }
           if (nextDocWithVectors == NO_MORE_DOCS) {
             break;
           }
-          int id = Integer.parseInt(reader.document(i).get("id"));
+          int id = Integer.parseInt(storedFields.document(i).get("id"));
           // documents with KnnGraphValues have the expected vectors
           float[] scratch = vectorValues.vectorValue();
           assertArrayEquals(
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
               scratch,
-              0f);
+              0);
           numDocsWithVectors++;
         }
         // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
@@ -592,8 +561,8 @@ public class TestKnnGraph extends LuceneTestCase {
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      FieldType fieldType = KnnVectorField.createFieldType(vector.length, similarityFunction);
-      doc.add(new KnnVectorField(KNN_GRAPH_FIELD, vector, fieldType));
+      FieldType fieldType = KnnFloatVectorField.createFieldType(vector.length, similarityFunction);
+      doc.add(new KnnFloatVectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));

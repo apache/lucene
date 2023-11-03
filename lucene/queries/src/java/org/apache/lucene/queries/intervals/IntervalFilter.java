@@ -73,7 +73,9 @@ public abstract class IntervalFilter extends IntervalIterator {
     return in.matchCost();
   }
 
-  /** @return {@code true} if the wrapped iterator's interval should be passed on */
+  /**
+   * @return {@code true} if the wrapped iterator's interval should be passed on
+   */
   protected abstract boolean accept();
 
   @Override

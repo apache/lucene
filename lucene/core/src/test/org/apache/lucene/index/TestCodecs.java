@@ -112,6 +112,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     0,
                     0,
+                    VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
                     false));
       }
@@ -243,6 +244,7 @@ public class TestCodecs extends LuceneTestCase {
             SEGMENT,
             10000,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -320,6 +322,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),

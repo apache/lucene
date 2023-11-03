@@ -34,7 +34,7 @@ configure(project(":lucene:core")) {
       quietExec {
         workingDir genDir
         executable project.externalTool("python3")
-        args = []
+        args = [ '-B', genScript ]
       }
     }
   }
@@ -59,7 +59,7 @@ configure(project(":lucene:backward-codecs")) {
       quietExec {
         workingDir genDir
         executable project.externalTool("python3")
-        args = []
+        args = [ '-B', genScript ]
       }
     }
   }

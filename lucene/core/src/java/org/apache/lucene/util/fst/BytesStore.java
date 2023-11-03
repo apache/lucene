@@ -21,13 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 // TODO: merge with PagedBytes, except PagedBytes doesn't
 // let you read while writing which FST needs
 
-class BytesStore extends DataOutput implements Accountable {
+class BytesStore extends DataOutput implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(BytesStore.class)
@@ -47,30 +46,6 @@ class BytesStore extends DataOutput implements Accountable {
     blockSize = 1 << blockBits;
     blockMask = blockSize - 1;
     nextWrite = blockSize;
-  }
-
-  /** Pulls bytes from the provided IndexInput. */
-  public BytesStore(DataInput in, long numBytes, int maxBlockSize) throws IOException {
-    int blockSize = 2;
-    int blockBits = 1;
-    while (blockSize < numBytes && blockSize < maxBlockSize) {
-      blockSize *= 2;
-      blockBits++;
-    }
-    this.blockBits = blockBits;
-    this.blockSize = blockSize;
-    this.blockMask = blockSize - 1;
-    long left = numBytes;
-    while (left > 0) {
-      final int chunk = (int) Math.min(blockSize, left);
-      byte[] block = new byte[chunk];
-      in.readBytes(block, 0, block.length);
-      blocks.add(block);
-      left -= chunk;
-    }
-
-    // So .getPosition still works
-    nextWrite = blocks.get(blocks.size() - 1).length;
   }
 
   /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
@@ -175,6 +150,27 @@ class BytesStore extends DataOutput implements Accountable {
         blockIndex--;
         block = blocks.get(blockIndex);
         downTo = blockSize;
+      }
+    }
+  }
+
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    assert numBytes >= 0 : "numBytes=" + numBytes;
+    assert input != null;
+    long len = numBytes;
+    while (len > 0) {
+      int chunk = blockSize - nextWrite;
+      int l = (int) Math.min(chunk, len);
+      if (l > 0) {
+        assert current != null;
+        input.readBytes(current, nextWrite, l);
+        nextWrite += l;
+        len -= l;
+      } else {
+        current = new byte[blockSize];
+        blocks.add(current);
+        nextWrite = 0;
       }
     }
   }
@@ -336,6 +332,11 @@ class BytesStore extends DataOutput implements Accountable {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
+  @Override
+  public long size() {
+    return getPosition();
+  }
+
   /**
    * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
    * this!
@@ -368,6 +369,7 @@ class BytesStore extends DataOutput implements Accountable {
   }
 
   /** Writes all of our bytes to the target {@link DataOutput}. */
+  @Override
   public void writeTo(DataOutput out) throws IOException {
     for (byte[] block : blocks) {
       out.writeBytes(block, 0, block.length);
@@ -440,7 +442,8 @@ class BytesStore extends DataOutput implements Accountable {
     };
   }
 
-  public FST.BytesReader getReverseReader() {
+  @Override
+  public FST.BytesReader getReverseBytesReader() {
     return getReverseReader(true);
   }
 

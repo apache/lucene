@@ -128,6 +128,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             "org.apache.lucene.analysis.stempel",
             "org.apache.lucene.backward_codecs",
             "org.apache.lucene.benchmark",
+            "org.apache.lucene.benchmark.jmh",
             "org.apache.lucene.classification",
             "org.apache.lucene.codecs",
             "org.apache.lucene.core",
@@ -178,6 +179,48 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
                       "org.apache.lucene.demo.SearchFiles",
                       "org.apache.lucene.index.CheckIndex")) {
                 Assertions.assertThat(layer.findLoader(demoModuleId).loadClass(className))
+                    .isNotNull();
+              }
+            });
+  }
+
+  /** Checks that Lucene Core is a MR-JAR and has Panama foreign classes */
+  @Test
+  public void testMultiReleaseJar() {
+    ModuleLayer bootLayer = ModuleLayer.boot();
+    Assertions.assertThatNoException()
+        .isThrownBy(
+            () -> {
+              String coreModuleId = "org.apache.lucene.core";
+
+              Configuration configuration =
+                  bootLayer
+                      .configuration()
+                      .resolve(
+                          luceneCoreAndThirdPartyModulesFinder,
+                          ModuleFinder.of(),
+                          List.of(coreModuleId));
+
+              ModuleLayer layer =
+                  bootLayer.defineModulesWithOneLoader(
+                      configuration, ClassLoader.getSystemClassLoader());
+
+              ClassLoader loader = layer.findLoader(coreModuleId);
+
+              final Set<Integer> jarVersions = Set.of(19, 20, 21);
+              for (var v : jarVersions) {
+                Assertions.assertThat(
+                        loader.getResource(
+                            "META-INF/versions/"
+                                + v
+                                + "/org/apache/lucene/store/MemorySegmentIndexInput.class"))
+                    .isNotNull();
+              }
+
+              final int runtimeVersion = Runtime.version().feature();
+              if (jarVersions.contains(Integer.valueOf(runtimeVersion))) {
+                Assertions.assertThat(
+                        loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
                     .isNotNull();
               }
             });

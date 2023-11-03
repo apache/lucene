@@ -218,7 +218,6 @@ public class TestXYZSolid extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8457")
   public void testLUCENE8457() {
     GeoShape shape =
         GeoBBoxFactory.makeGeoBBox(

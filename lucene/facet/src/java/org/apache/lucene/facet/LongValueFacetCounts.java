@@ -42,18 +42,22 @@ import org.apache.lucene.util.PriorityQueue;
  * {@link Facets} implementation that computes counts for all unique long values, more efficiently
  * counting small values (0-1023) using an int array, and switching to a <code>HashMap</code> for
  * values above 1023. Retrieve all facet counts, in value order, with {@link
- * #getAllChildrenSortByValue}, or get the topN values sorted by count with {@link
- * #getTopChildrenSortByCount}.
+ * #getAllChildrenSortByValue}, or get all children with no ordering requirements with {@link
+ * #getAllChildren(String, String...)}, or get the topN values sorted by count with {@link
+ * #getTopChildren(int, String, String...)}.
  *
  * @lucene.experimental
  */
 public class LongValueFacetCounts extends Facets {
 
   /** Used for all values that are < 1K. */
-  private final int[] counts = new int[1024];
+  private int[] counts;
 
   /** Used for all values that are >= 1K. */
-  private final LongIntHashMap hashCounts = new LongIntHashMap();
+  private LongIntHashMap hashCounts;
+
+  /** Whether-or-not counters have been initialized. */
+  private boolean initialized;
 
   /** Field being counted. */
   private final String field;
@@ -124,6 +128,7 @@ public class LongValueFacetCounts extends Facets {
   public LongValueFacetCounts(String field, LongValuesSource valueSource, IndexReader reader)
       throws IOException {
     this.field = field;
+    initializeCounters();
     if (valueSource != null) {
       countAll(reader, valueSource);
     } else {
@@ -140,6 +145,7 @@ public class LongValueFacetCounts extends Facets {
   public LongValueFacetCounts(String field, MultiLongValuesSource valuesSource, IndexReader reader)
       throws IOException {
     this.field = field;
+    initializeCounters();
     if (valuesSource != null) {
       LongValuesSource singleValued = MultiLongValuesSource.unwrapSingleton(valuesSource);
       if (singleValued != null) {
@@ -152,11 +158,25 @@ public class LongValueFacetCounts extends Facets {
     }
   }
 
+  private void initializeCounters() {
+    if (initialized) {
+      return;
+    }
+    assert counts == null && hashCounts == null;
+    initialized = true;
+    counts = new int[1024];
+    hashCounts = new LongIntHashMap();
+  }
+
   /** Counts from the provided valueSource. */
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       LongValues fv = valueSource.getValues(hits.context, null);
 
@@ -182,6 +202,10 @@ public class LongValueFacetCounts extends Facets {
   private void count(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       MultiLongValues multiValues = valuesSource.getValues(hits.context);
 
@@ -212,6 +236,10 @@ public class LongValueFacetCounts extends Facets {
   /** Counts from the field's indexed doc values. */
   private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
@@ -347,26 +375,49 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
+
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
+
+    List<LabelAndValue> labelValues = new ArrayList<>();
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
+      }
+    }
+    if (hashCounts.size() != 0) {
+      for (LongIntCursor c : hashCounts) {
+        int count = c.value;
+        if (count != 0) {
+          labelValues.add(new LabelAndValue(Long.toString(c.key), c.value));
+        }
+      }
+    }
+
+    return new FacetResult(
+        field,
+        new String[0],
+        totCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
-    return getTopChildrenSortByCount(topN);
-  }
+    validateDimAndPathForGetChildren(dim, path);
 
-  /** Reusable hash entry to hold long facet value and int count. */
-  private static class Entry {
-    int count;
-    long value;
-  }
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
 
-  /** Returns the specified top number of facets, sorted by count. */
-  public FacetResult getTopChildrenSortByCount(int topN) {
     PriorityQueue<Entry> pq =
         new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
           @Override
@@ -414,8 +465,27 @@ public class LongValueFacetCounts extends Facets {
     return new FacetResult(field, new String[0], totCount, results, childCount);
   }
 
-  /** Returns all unique values seen, sorted by value. */
+  /** Reusable hash entry to hold long facet value and int count. */
+  private static class Entry {
+    int count;
+    long value;
+  }
+
+  /**
+   * Returns all unique values seen, sorted by value. This functionality is very similar to {@link
+   * #getAllChildren(String, String...)}, but it guarantees the returned values will be sorted by
+   * value (while {@code #getAllChildren} doesn't guarantee any sort order).
+   *
+   * <p>Note: If you don't care about the order of children returned, it may be slightly more
+   * efficient to use {@link #getAllChildren(String, String...)}.
+   */
   public FacetResult getAllChildrenSortByValue() {
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
+
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     // compact & sort hash table's arrays by value
@@ -482,6 +552,16 @@ public class LongValueFacetCounts extends Facets {
     }
   }
 
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+  }
+
   @Override
   public Number getSpecificValue(String dim, String... path) {
     // TODO: should we impl this?
@@ -499,25 +579,27 @@ public class LongValueFacetCounts extends Facets {
     StringBuilder b = new StringBuilder();
     b.append("LongValueFacetCounts totCount=");
     b.append(totCount);
-    b.append(":\n");
-    for (int i = 0; i < counts.length; i++) {
-      if (counts[i] != 0) {
-        b.append("  ");
-        b.append(i);
-        b.append(" -> count=");
-        b.append(counts[i]);
-        b.append('\n');
-      }
-    }
-
-    if (hashCounts.size() != 0) {
-      for (LongIntCursor c : hashCounts) {
-        if (c.value != 0) {
+    if (initialized) {
+      b.append(":\n");
+      for (int i = 0; i < counts.length; i++) {
+        if (counts[i] != 0) {
           b.append("  ");
-          b.append(c.key);
+          b.append(i);
           b.append(" -> count=");
-          b.append(c.value);
+          b.append(counts[i]);
           b.append('\n');
+        }
+      }
+
+      if (hashCounts.size() != 0) {
+        for (LongIntCursor c : hashCounts) {
+          if (c.value != 0) {
+            b.append("  ");
+            b.append(c.key);
+            b.append(" -> count=");
+            b.append(c.value);
+            b.append('\n');
+          }
         }
       }
     }

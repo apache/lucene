@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * This implements the WAND (Weak AND) algorithm for dynamic pruning described in "Efficient Query
@@ -121,6 +122,8 @@ final class WANDScorer extends Scorer {
   // scaled min competitive score
   private long minCompetitiveScore = 0;
 
+  private final Scorer[] allScorers;
+
   // list of scorers which 'lead' the iteration and are currently
   // positioned on 'doc'. This is sometimes called the 'pivot' in
   // some descriptions of WAND (Weak AND).
@@ -139,7 +142,6 @@ final class WANDScorer extends Scorer {
   int tailSize;
 
   final long cost;
-  final MaxScoreSumPropagator maxScorePropagator;
 
   int upTo; // upper bound for which max scores are valid
 
@@ -156,6 +158,7 @@ final class WANDScorer extends Scorer {
       throw new IllegalArgumentException("minShouldMatch should be < the number of scorers");
     }
 
+    allScorers = scorers.toArray(Scorer[]::new);
     this.minCompetitiveScore = 0;
 
     assert minShouldMatch >= 0 : "minShouldMatch should not be negative, but got " + minShouldMatch;
@@ -185,12 +188,10 @@ final class WANDScorer extends Scorer {
         float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
         maxScoreSumDouble += maxScore;
       }
-      this.maxScorePropagator = new MaxScoreSumPropagator(scorers);
-      final float maxScoreSum = maxScorePropagator.scoreSumUpperBound(maxScoreSumDouble);
+      final float maxScoreSum = (float) MathUtil.sumUpperBound(maxScoreSumDouble, scorers.size());
       this.scalingFactor = scalingFactor(maxScoreSum);
     } else {
       this.scalingFactor = 0;
-      this.maxScorePropagator = null;
     }
 
     for (Scorer scorer : scorers) {
@@ -211,14 +212,14 @@ final class WANDScorer extends Scorer {
       long maxScoreSum = 0;
       for (int i = 0; i < tailSize; ++i) {
         assert tail[i].doc < doc;
-        maxScoreSum = Math.addExact(maxScoreSum, tail[i].maxScore);
+        maxScoreSum = Math.addExact(maxScoreSum, tail[i].scaledMaxScore);
       }
       assert maxScoreSum == tailMaxScore : maxScoreSum + " " + tailMaxScore;
 
       maxScoreSum = 0;
       for (DisiWrapper w = lead; w != null; w = w.next) {
         assert w.doc == doc;
-        maxScoreSum = Math.addExact(maxScoreSum, w.maxScore);
+        maxScoreSum = Math.addExact(maxScoreSum, w.scaledMaxScore);
       }
       assert maxScoreSum == leadMaxScore : maxScoreSum + " " + leadMaxScore;
 
@@ -245,7 +246,6 @@ final class WANDScorer extends Scorer {
     long scaledMinScore = scaleMinScore(minScore, scalingFactor);
     assert scaledMinScore >= minCompetitiveScore;
     minCompetitiveScore = scaledMinScore;
-    maxScorePropagator.setMinCompetitiveScore(minScore);
   }
 
   @Override
@@ -336,7 +336,7 @@ final class WANDScorer extends Scorer {
   private void addLead(DisiWrapper lead) {
     lead.next = this.lead;
     this.lead = lead;
-    leadMaxScore += lead.maxScore;
+    leadMaxScore += lead.scaledMaxScore;
     freq += 1;
   }
 
@@ -402,7 +402,7 @@ final class WANDScorer extends Scorer {
       for (DisiWrapper w : head) {
         if (w.doc <= newUpTo) {
           newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-          w.maxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+          w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
         }
       }
       upTo = newUpTo;
@@ -412,9 +412,9 @@ final class WANDScorer extends Scorer {
     for (int i = 0; i < tailSize; ++i) {
       DisiWrapper w = tail[i];
       w.scorer.advanceShallow(target);
-      w.maxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+      w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
       upHeapMaxScore(tail, i); // the heap might need to be reordered
-      tailMaxScore += w.maxScore;
+      tailMaxScore += w.scaledMaxScore;
     }
 
     // We need to make sure that entries in 'tail' alone cannot match
@@ -480,7 +480,7 @@ final class WANDScorer extends Scorer {
     // pop all documents which are on this doc
     lead = head.pop();
     lead.next = null;
-    leadMaxScore = lead.maxScore;
+    leadMaxScore = lead.scaledMaxScore;
     freq = 1;
     doc = lead.doc;
     while (head.size() > 0 && head.top().doc == doc) {
@@ -532,7 +532,11 @@ final class WANDScorer extends Scorer {
   @Override
   public int advanceShallow(int target) throws IOException {
     // Propagate to improve score bounds
-    maxScorePropagator.advanceShallow(target);
+    for (Scorer scorer : allScorers) {
+      if (scorer.docID() < target) {
+        scorer.advanceShallow(target);
+      }
+    }
     if (target <= upTo) {
       return upTo;
     }
@@ -542,7 +546,13 @@ final class WANDScorer extends Scorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return maxScorePropagator.getMaxScore(upTo);
+    double maxScoreSum = 0;
+    for (Scorer scorer : allScorers) {
+      if (scorer.docID() <= upTo) {
+        maxScoreSum += scorer.getMaxScore(upTo);
+      }
+    }
+    return (float) MathUtil.sumUpperBound(maxScoreSum, allScorers.length);
   }
 
   @Override
@@ -552,10 +562,10 @@ final class WANDScorer extends Scorer {
 
   /** Insert an entry in 'tail' and evict the least-costly scorer if full. */
   private DisiWrapper insertTailWithOverFlow(DisiWrapper s) {
-    if (tailMaxScore + s.maxScore < minCompetitiveScore || tailSize + 1 < minShouldMatch) {
+    if (tailMaxScore + s.scaledMaxScore < minCompetitiveScore || tailSize + 1 < minShouldMatch) {
       // we have free room for this new entry
       addTail(s);
-      tailMaxScore += s.maxScore;
+      tailMaxScore += s.scaledMaxScore;
       return null;
     } else if (tailSize == 0) {
       return s;
@@ -567,7 +577,7 @@ final class WANDScorer extends Scorer {
       // Swap top and s
       tail[0] = s;
       downHeapMaxScore(tail, tailSize);
-      tailMaxScore = tailMaxScore - top.maxScore + s.maxScore;
+      tailMaxScore = tailMaxScore - top.scaledMaxScore + s.scaledMaxScore;
       return top;
     }
   }
@@ -585,7 +595,7 @@ final class WANDScorer extends Scorer {
     final DisiWrapper result = tail[0];
     tail[0] = tail[--tailSize];
     downHeapMaxScore(tail, tailSize);
-    tailMaxScore -= result.maxScore;
+    tailMaxScore -= result.scaledMaxScore;
     return result;
   }
 
@@ -631,9 +641,9 @@ final class WANDScorer extends Scorer {
    * further.
    */
   private static boolean greaterMaxScore(DisiWrapper w1, DisiWrapper w2) {
-    if (w1.maxScore > w2.maxScore) {
+    if (w1.scaledMaxScore > w2.scaledMaxScore) {
       return true;
-    } else if (w1.maxScore < w2.maxScore) {
+    } else if (w1.scaledMaxScore < w2.scaledMaxScore) {
       return false;
     } else {
       return w1.cost < w2.cost;

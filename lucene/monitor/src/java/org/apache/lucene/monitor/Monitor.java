@@ -110,7 +110,9 @@ public class Monitor implements Closeable {
     queryIndex.addListener(listener);
   }
 
-  /** @return Statistics for the internal query index and cache */
+  /**
+   * @return Statistics for the internal query index and cache
+   */
   public QueryCacheStats getQueryCacheStats() throws IOException {
     return new QueryCacheStats(
         queryIndex.numDocs(), queryIndex.cacheSize(), queryIndex.getLastPurged());
@@ -264,7 +266,9 @@ public class Monitor implements Closeable {
     return queryIndex.getQuery(queryId);
   }
 
-  /** @return the number of queries (after decomposition) stored in this Monitor */
+  /**
+   * @return the number of queries (after decomposition) stored in this Monitor
+   */
   public int getDisjunctCount() throws IOException {
     return queryIndex.numDocs();
   }
@@ -373,8 +377,9 @@ public class Monitor implements Closeable {
     @Override
     public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues)
         throws IOException {
-      Weight w = ((Scorer) dataValues.scorer).getWeight();
-      Matches matches = w.matches(dataValues.ctx, dataValues.scorer.docID());
+      Scorer scorer = ((Scorer) dataValues.scorer);
+      Weight w = scorer.getWeight();
+      Matches matches = w.matches(dataValues.ctx, scorer.docID());
       for (String field : matches) {
         MatchesIterator mi = matches.getMatches(field);
         while (mi.next()) {

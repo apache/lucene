@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -82,7 +83,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     query1.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
 
     // Single clauses rewrite to a term query
-    final Query rewritten1 = query1.build().rewrite(reader);
+    final Query rewritten1 = query1.build().rewrite(searcher);
     assertTrue(rewritten1 instanceof BoostQuery);
     assertEquals(0f, ((BoostQuery) rewritten1).getBoost(), 0f);
 
@@ -320,6 +321,75 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .build();
 
     assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq2));
+  }
+
+  public void testDeeplyNestedBooleanRewriteShouldClauses() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    Function<Integer, TermQuery> termQueryFunction =
+        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+    int depth = TestUtil.nextInt(random(), 10, 30);
+    TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
+    TestRewriteQuery rewriteQuery = new TestRewriteQuery();
+    Query expectedQuery =
+        new BooleanQuery.Builder().add(rewriteQueryExpected, Occur.FILTER).build();
+    Query deepBuilder =
+        new BooleanQuery.Builder()
+            .add(rewriteQuery, Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    for (int i = depth; i > 0; i--) {
+      TermQuery tq = termQueryFunction.apply(i);
+      BooleanQuery.Builder bq =
+          new BooleanQuery.Builder()
+              .setMinimumNumberShouldMatch(2)
+              .add(tq, Occur.SHOULD)
+              .add(deepBuilder, Occur.SHOULD);
+      deepBuilder = bq.build();
+      BooleanQuery.Builder expectedBq = new BooleanQuery.Builder().add(tq, Occur.FILTER);
+      if (i == depth) {
+        expectedBq.add(rewriteQuery, Occur.FILTER);
+      } else {
+        expectedBq.add(expectedQuery, Occur.FILTER);
+      }
+      expectedQuery = expectedBq.build();
+    }
+    BooleanQuery bq = new BooleanQuery.Builder().add(deepBuilder, Occur.FILTER).build();
+    expectedQuery = new BoostQuery(new ConstantScoreQuery(expectedQuery), 0.0f);
+    Query rewritten = searcher.rewrite(bq);
+    assertEquals(expectedQuery, rewritten);
+    // the SHOULD clauses cause more rewrites because they incrementally change to `MUST` and then
+    // `FILTER`
+    assertEquals("Depth=" + depth, depth + 1, rewriteQuery.numRewrites);
+  }
+
+  public void testDeeplyNestedBooleanRewrite() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    Function<Integer, TermQuery> termQueryFunction =
+        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+    int depth = TestUtil.nextInt(random(), 10, 30);
+    TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
+    TestRewriteQuery rewriteQuery = new TestRewriteQuery();
+    Query expectedQuery =
+        new BooleanQuery.Builder().add(rewriteQueryExpected, Occur.FILTER).build();
+    Query deepBuilder = new BooleanQuery.Builder().add(rewriteQuery, Occur.MUST).build();
+    for (int i = depth; i > 0; i--) {
+      TermQuery tq = termQueryFunction.apply(i);
+      BooleanQuery.Builder bq =
+          new BooleanQuery.Builder().add(tq, Occur.MUST).add(deepBuilder, Occur.MUST);
+      deepBuilder = bq.build();
+      BooleanQuery.Builder expectedBq = new BooleanQuery.Builder().add(tq, Occur.FILTER);
+      if (i == depth) {
+        expectedBq.add(rewriteQuery, Occur.FILTER);
+      } else {
+        expectedBq.add(expectedQuery, Occur.FILTER);
+      }
+      expectedQuery = expectedBq.build();
+    }
+    BooleanQuery bq = new BooleanQuery.Builder().add(deepBuilder, Occur.FILTER).build();
+    expectedQuery = new BoostQuery(new ConstantScoreQuery(expectedQuery), 0.0f);
+    Query rewritten = searcher.rewrite(bq);
+    assertEquals(expectedQuery, rewritten);
+    assertEquals("Depth=" + depth, 1, rewriteQuery.numRewrites);
   }
 
   public void testRemoveMatchAllFilter() throws IOException {
@@ -604,7 +674,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(inner, Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .build();
-    assertSame(query, searcher.rewrite(query));
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
 
     inner =
         new BooleanQuery.Builder()
@@ -782,5 +852,116 @@ public class TestBooleanRewrites extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
                 .build());
     assertEquals(expected, searcher.rewrite(query));
+  }
+
+  public void testShouldClausesLessThanOrEqualToMinimumNumberShouldMatch() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    // The only one SHOULD clause is MatchNoDocsQuery
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(0)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    // Meaningful SHOULD clause count is less than MinimumNumberShouldMatch
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "a")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    // Meaningful SHOULD clause count is equal to MinimumNumberShouldMatch
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    BooleanQuery expected =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "b")), Occur.MUST)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.MUST)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+
+    // Invalid Inner query get removed after rewrite
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "a")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+  }
+
+  // Test query to count number of rewrites for its lifetime.
+  private static final class TestRewriteQuery extends Query {
+
+    private int numRewrites = 0;
+
+    @Override
+    public String toString(String field) {
+      return "TestRewriteQuery{rewrites=" + numRewrites + "}";
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher indexSearcher) {
+      numRewrites++;
+      return this;
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof TestRewriteQuery;
+    }
+
+    @Override
+    public int hashCode() {
+      return TestRewriteQuery.class.hashCode();
+    }
   }
 }

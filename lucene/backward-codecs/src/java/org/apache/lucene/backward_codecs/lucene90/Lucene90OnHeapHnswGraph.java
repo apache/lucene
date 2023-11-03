@@ -23,13 +23,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
-import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
@@ -75,19 +74,19 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       float[] query,
       int topK,
       int numSeed,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,
-      int visitedLimit,
+      long visitedLimit,
       SplittableRandom random)
       throws IOException {
     int size = graphValues.size();
 
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
+    NeighborQueue candidates = new NeighborQueue(numSeed, true);
 
     int numVisited = 0;
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
@@ -114,13 +113,13 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
     // to exceed this bound
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    Lucene90BoundsChecker bound = Lucene90BoundsChecker.create(false);
     bound.set(results.topScore());
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
+      float topCandidateSimilarity = candidates.topScore();
       if (results.size() >= topK) {
-        if (bound.check(topCandidateScore)) {
+        if (bound.check(topCandidateSimilarity)) {
           break;
         }
       }
@@ -138,11 +137,11 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
 
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < numSeed || bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        if (results.size() < numSeed || bound.check(friendSimilarity) == false) {
+          candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            results.insertWithOverflow(friendOrd, score);
+            results.insertWithOverflow(friendOrd, friendSimilarity);
             bound.set(results.topScore());
           }
         }

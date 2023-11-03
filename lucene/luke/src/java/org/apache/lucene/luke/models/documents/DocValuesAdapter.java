@@ -143,9 +143,8 @@ final class DocValuesAdapter {
     if (ssvalues.advanceExact(docid)) {
       List<BytesRef> values = new ArrayList<>();
 
-      long ord;
-      while ((ord = ssvalues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-        values.add(BytesRef.deepCopyOf(ssvalues.lookupOrd(ord)));
+      for (int i = 0; i < ssvalues.docValueCount(); i++) {
+        values.add(BytesRef.deepCopyOf(ssvalues.lookupOrd(ssvalues.nextOrd())));
       }
 
       DocValues dv = DocValues.of(dvType, values, Collections.emptyList());

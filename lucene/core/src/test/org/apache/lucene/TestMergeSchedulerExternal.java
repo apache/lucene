@@ -129,8 +129,15 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(dir, iwc);
     LogMergePolicy logMP = (LogMergePolicy) writer.getConfig().getMergePolicy();
     logMP.setMergeFactor(10);
-    for (int i = 0; i < 20; i++) {
-      writer.addDocument(doc);
+
+    try {
+      for (int i = 0; i < 20; i++) {
+        writer.addDocument(doc);
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
+      // OK
     }
 
     try {

@@ -19,10 +19,25 @@ package org.apache.lucene.monitor;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiPredicate;
-import org.apache.lucene.index.*;
-import org.apache.lucene.search.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
@@ -53,7 +68,7 @@ abstract class QueryIndex implements Closeable {
     search(
         new TermQuery(new Term(FIELDS.query_id, queryId)),
         (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return serializer.deserialize(bytesHolder[0]);
+    return bytesHolder[0] != null ? serializer.deserialize(bytesHolder[0]) : null;
   }
 
   public void scan(QueryCollector matcher) throws IOException {
@@ -110,7 +125,6 @@ abstract class QueryIndex implements Closeable {
     LeafReaderContext ctx;
 
     void advanceTo(int doc) throws IOException {
-      assert scorer.docID() == doc;
       queryId.advanceExact(doc);
       cacheId.advanceExact(doc);
       if (mq != null) {

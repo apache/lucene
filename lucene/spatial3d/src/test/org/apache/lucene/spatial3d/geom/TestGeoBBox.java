@@ -503,6 +503,15 @@ public class TestGeoBBox extends LuceneTestCase {
   }
 
   @Test
+  public void testBBoxLatDegenerate() {
+    double minX = Geo3DUtil.fromDegrees(-180.0);
+    double maxX = Geo3DUtil.fromDegrees(-174.37500008381903);
+    double minY = Geo3DUtil.fromDegrees(89.99999765306711);
+    double maxY = Geo3DUtil.fromDegrees(89.99999794643372);
+    assertNotNull(GeoAreaFactory.makeGeoArea(PlanetModel.SPHERE, maxY, minY, minX, maxX));
+  }
+
+  @Test
   public void testBBoxRandomLatDegenerate() {
     for (int i = 0; i < 100; i++) {
       double minX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());

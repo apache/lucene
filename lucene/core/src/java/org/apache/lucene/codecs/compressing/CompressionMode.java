@@ -21,6 +21,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -155,8 +156,11 @@ public abstract class CompressionMode {
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
-      LZ4.compress(bytes, off, len, out, ht);
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) buffersInput.size();
+      byte[] bytes = new byte[len];
+      buffersInput.readBytes(bytes, 0, len);
+      LZ4.compress(bytes, 0, len, out, ht);
     }
 
     @Override
@@ -174,8 +178,11 @@ public abstract class CompressionMode {
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
-      LZ4.compress(bytes, off, len, out, ht);
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) buffersInput.size();
+      byte[] bytes = new byte[len];
+      buffersInput.readBytes(bytes, 0, len);
+      LZ4.compress(bytes, 0, len, out, ht);
     }
 
     @Override
@@ -257,9 +264,13 @@ public abstract class CompressionMode {
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) buffersInput.size();
+
+      byte[] bytes = new byte[len];
+      buffersInput.readBytes(bytes, 0, len);
       compressor.reset();
-      compressor.setInput(bytes, off, len);
+      compressor.setInput(bytes, 0, len);
       compressor.finish();
 
       if (compressor.needsInput()) {

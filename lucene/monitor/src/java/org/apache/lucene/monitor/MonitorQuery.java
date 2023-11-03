@@ -66,22 +66,30 @@ public class MonitorQuery {
     }
   }
 
-  /** @return this MonitorQuery's ID */
+  /**
+   * @return this MonitorQuery's ID
+   */
   public String getId() {
     return id;
   }
 
-  /** @return this MonitorQuery's query */
+  /**
+   * @return this MonitorQuery's query
+   */
   public Query getQuery() {
     return query;
   }
 
-  /** @return this MonitorQuery's string representation */
+  /**
+   * @return this MonitorQuery's string representation
+   */
   public String getQueryString() {
     return queryString;
   }
 
-  /** @return this MonitorQuery's metadata */
+  /**
+   * @return this MonitorQuery's metadata
+   */
   public Map<String, String> getMetadata() {
     return metadata;
   }
