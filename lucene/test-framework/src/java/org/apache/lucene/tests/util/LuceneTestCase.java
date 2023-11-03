@@ -479,7 +479,7 @@ public abstract class LuceneTestCase extends Assert {
       systemPropertyAsInt("tests.multiplier", defaultRandomMultiplier());
 
   /** Compute the default value of the random multiplier (based on {@link #TEST_NIGHTLY}). */
-  private static int defaultRandomMultiplier() {
+  static int defaultRandomMultiplier() {
     return TEST_NIGHTLY ? 2 : 1;
   }
 
