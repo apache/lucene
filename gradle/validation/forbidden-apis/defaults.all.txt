@@ -43,7 +43,7 @@ java.util.Vector @ Use more modern java.util.ArrayList as it is not synchronized
 # TODO (needs some fix in forbiddenapis): this also hits java.util.Properties:
 # java.util.Hashtable @ Use more modern java.util.HashMap as it is not synchronized
 
-java.util.Locale#forLanguageTag(java.lang.String) @ use new Locale.Builder.setLanguageTag(...).build() which has error handling
+java.util.Locale#forLanguageTag(java.lang.String) @ use new Locale.Builder().setLanguageTag(...).build() which has error handling
 java.util.Locale#toString() @ use Locale#toLanguageTag() for a standardized BCP47 locale name
 
 @defaultMessage Constructors for wrapper classes of Java primitives should be avoided in favor of the public static methods available or autoboxing
