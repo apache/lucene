@@ -254,7 +254,7 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
   }
 
   void showAnalysisChainDialog() {
-    if (getCurrentAnalyzer() instanceof CustomAnalyzer customAnalyzer) {
+    if (getCurrentAnalyzer() instanceof CustomAnalyzer analyzer) {
       new DialogOpener<>(analysisChainDialogFactory)
           .open(
               "Analysis chain",
