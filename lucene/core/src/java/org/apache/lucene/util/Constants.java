@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 /** Some useful constants. */
@@ -68,10 +67,7 @@ public final class Constants {
   public static final boolean JRE_IS_64BIT = is64Bit();
 
   /** true iff we know fast FMA is supported, to deliver less error */
-  public static final boolean HAS_FAST_FMA =
-      (IS_CLIENT_VM == false)
-          && Objects.equals(OS_ARCH, "amd64")
-          && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+  public static final boolean HAS_FAST_FMA = (IS_CLIENT_VM == false) && hasFastFMA();
 
   private static boolean is64Bit() {
     final String datamodel = getSysProp("sun.arch.data.model");
@@ -80,6 +76,21 @@ public final class Constants {
     } else {
       return (OS_ARCH != null && OS_ARCH.contains("64"));
     }
+  }
+
+  // best effort to see if FMA is fast (this is architecture-independent option)
+  private static boolean hasFastFMA() {
+    boolean hasFMA = HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+    if (hasFMA) {
+      if (OS_ARCH.equals("amd64")) {
+        // we've got FMA, but detect if its AMD and avoid it in that case
+        hasFMA = HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
+      } else if (OS_ARCH.equals("aarch64")) {
+        // we've got FMA, but its slower unless its a newer SVE-based chip
+        hasFMA = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+      }
+    }
+    return hasFMA;
   }
 
   private static String getSysProp(String property) {
@@ -115,50 +126,4 @@ public final class Constants {
   private static <T> T doPrivileged(PrivilegedAction<T> action) {
     return AccessController.doPrivileged(action);
   }
-
-  private static final String MANAGEMENT_FACTORY_CLASS = "java.lang.management.ManagementFactory";
-  private static final String HOTSPOT_BEAN_CLASS = "com.sun.management.HotSpotDiagnosticMXBean";
-
-  // best effort to see if FMA is fast (this is architecture-independent option)
-  private static boolean hasFastFMA() {
-    try {
-      final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
-      // we use reflection for this, because the management factory is not part
-      // of Java 8's compact profile:
-      final Object hotSpotBean =
-          Class.forName(MANAGEMENT_FACTORY_CLASS)
-              .getMethod("getPlatformMXBean", Class.class)
-              .invoke(null, beanClazz);
-      if (hotSpotBean != null) {
-        final var getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
-        final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "UseFMA");
-        boolean hasFMA =
-            Boolean.parseBoolean(
-                vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-        if (hasFMA) {
-          if (OS_ARCH.equals("amd64")) {
-            // we've got FMA, but detect if its AMD and avoid it in that case
-            final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseXmmI2F");
-            hasFMA =
-                !Boolean.parseBoolean(
-                    vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString());
-          } else if (OS_ARCH.equals("aarch64")) {
-            // we've got FMA, but its slower unless its a newer SVE-based chip
-            final Object vmOption2 = getVMOptionMethod.invoke(hotSpotBean, "UseSVE");
-            hasFMA =
-                Integer.parseInt(
-                        vmOption2.getClass().getMethod("getValue").invoke(vmOption2).toString())
-                    > 0;
-          }
-        }
-        return hasFMA;
-      }
-      return false;
-    } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
-      return false;
-    }
-  }
-
-  /** true if we know FMA is supported and fast, to deliver less error */
-  public static final boolean HAS_FAST_FMA = hasFastFMA();
 }
