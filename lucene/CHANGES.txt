@@ -255,6 +255,9 @@ Optimizations
 
 * GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
 
+* GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
+
 Changes in runtime behavior
 ---------------------
 
