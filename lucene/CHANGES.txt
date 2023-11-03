@@ -210,6 +210,9 @@ Improvements
 
 * GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
 
+* GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
+  if SecurityManager prevents access.  (Uwe Schindler)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -253,7 +256,10 @@ Optimizations
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
+* GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
+
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
 
 Changes in runtime behavior
 ---------------------
@@ -281,6 +287,9 @@ Bug Fixes
 
 Build
 ---------------------
+
+* GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
+  nightly mode). (Dawid Weiss)
 
 * GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
