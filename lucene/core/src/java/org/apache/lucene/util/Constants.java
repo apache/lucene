@@ -79,9 +79,11 @@ public final class Constants {
   private static final boolean HAS_FMA =
       (IS_CLIENT_VM == false) && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
 
-  /** true for an ARM cpu with SVE instructions */
-  private static final boolean HAS_SVE =
-      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+  /** nonzero for an ARM cpu with SVE instructions */
+  private static final int HAS_SVE = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0);
+
+  /** nonzero for an x86 cpu with AVX instructions */
+  private static final int HAS_AVX = HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0);
 
   /** true for an AMD cpu with SSE4a instructions */
   private static final boolean HAS_SSE4A =
@@ -93,7 +95,11 @@ public final class Constants {
   private static boolean hasFastFMA() {
     if (HAS_FMA) {
       // newer Neoverse cores have their act together
-      if (HAS_SVE) {
+      if (HAS_SVE > 0) {
+        return true;
+      }
+      // newer AMD cores with AVX-512 have their act together
+      if (HAS_AVX >= 3) {
         return true;
       }
       // intel has their act together
