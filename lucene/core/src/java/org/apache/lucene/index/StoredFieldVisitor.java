@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
+import org.apache.lucene.store.DataInput;
 
 /**
  * Expert: provides a low-level means of accessing the stored field values in an index. See {@link
@@ -38,6 +39,19 @@ public abstract class StoredFieldVisitor {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected StoredFieldVisitor() {}
+
+  /**
+   * Expert: Process a binary field directly from the {@link DataInput}. Implementors of this method
+   * must read {@code length} bytes from the given {@link DataInput}. The default implementation
+   * reads all byes in a newly created byte array and calls {@link #binaryField(FieldInfo, byte[])}.
+   *
+   * @param value newly allocated byte array with the binary contents.
+   */
+  public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+    final byte[] data = new byte[length];
+    value.readBytes(data, 0, length);
+    binaryField(fieldInfo, data);
+  }
 
   /**
    * Process a binary field.

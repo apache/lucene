@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
@@ -29,20 +30,21 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
-  private final DisiWrapper[] allScorers;
+  final DisiWrapper[] allScorers;
   private final DisiWrapper[] scratch;
   // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
   // have a competitive score.
   private final DisiPriorityQueue essentialQueue;
   // Index of the first essential scorer, ie. essentialQueue contains all scorers from
   // allScorers[firstEssentialScorer:]. All scorers below this index are non-essential.
-  private int firstEssentialScorer;
-  private final MaxScoreSumPropagator maxScorePropagator;
+  int firstEssentialScorer;
+  // Index of the first scorer that is required, this scorer and all following scorers are required
+  // for a document to match.
+  int firstRequiredScorer;
   private final long cost;
-  private float minCompetitiveScore;
-  private boolean minCompetitiveScoreUpdated;
+  float minCompetitiveScore;
   private Score scorable = new Score();
-  private final double[] maxScoreSums;
+  final double[] maxScoreSums;
 
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
@@ -59,7 +61,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
-    maxScorePropagator = new MaxScoreSumPropagator(scorers);
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
@@ -77,12 +78,32 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int outerWindowMin = min;
     outer:
     while (outerWindowMin < max) {
-      int outerWindowMax = updateMaxWindowScores(outerWindowMin);
+      int outerWindowMax = computeOuterWindowMax(outerWindowMin);
       outerWindowMax = Math.min(outerWindowMax, max);
-      if (partitionScorers() == false) {
-        // No matches in this window
-        outerWindowMin = outerWindowMax;
-        continue;
+
+      while (true) {
+        updateMaxWindowScores(outerWindowMin, outerWindowMax);
+        if (partitionScorers() == false) {
+          // No matches in this window
+          outerWindowMin = outerWindowMax;
+          continue outer;
+        }
+
+        // There is a dependency between windows and maximum scores, as we compute windows based on
+        // maximum scores and maximum scores based on windows.
+        // So the approach consists of starting by computing a window based on the set of essential
+        // scorers from the _previous_ window and then iteratively recompute maximum scores and
+        // windows as long as the window size decreases.
+        // In general the set of essential scorers is rather stable over time so this would exit
+        // after a single iteration, but there is a change that some scorers got swapped between the
+        // set of essential and non-essential scorers, in which case there may be multiple
+        // iterations of this loop.
+
+        int newOuterWindowMax = computeOuterWindowMax(outerWindowMin);
+        if (newOuterWindowMax >= outerWindowMax) {
+          break;
+        }
+        outerWindowMax = newOuterWindowMax;
       }
 
       DisiWrapper top = essentialQueue.top();
@@ -94,25 +115,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
         top = essentialQueue.top();
-
-        if (minCompetitiveScoreUpdated) {
-          minCompetitiveScoreUpdated = false;
-          if (partitionScorers() == false) {
-            outerWindowMin = outerWindowMax;
-            continue outer;
-          } else {
-            // Partitioning may have swapped essential and non-essential scorers, and some of the
-            // non-essential scorers may be behind the last scored doc. So let's advance to the next
-            // candidate match.
-            final int nextCandidateMatch = top.doc;
-            top = essentialQueue.top();
-            while (top.doc < nextCandidateMatch) {
-              top.doc = top.iterator.advance(nextCandidateMatch);
-              top = essentialQueue.updateTop();
-            }
-          }
-        }
       }
+
       outerWindowMin = outerWindowMax;
     }
 
@@ -121,17 +125,20 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void scoreInnerWindow(LeafCollector collector, Bits acceptDocs, int max)
       throws IOException {
-    DisiWrapper top = essentialQueue.top();
-
-    DisiWrapper top2 = essentialQueue.top2();
-    if (top2 == null) {
-      scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
-    } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
-      // The first half of the window would match a single clause. Let's collect this single clause
-      // until the next doc ID of the next clause.
-      scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
+    if (allScorers.length - firstRequiredScorer >= 2) {
+      scoreInnerWindowAsConjunction(collector, acceptDocs, max);
     } else {
-      scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
+      DisiWrapper top = essentialQueue.top();
+      DisiWrapper top2 = essentialQueue.top2();
+      if (top2 == null) {
+        scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
+      } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
+        // The first half of the window would match a single clause. Let's collect this single
+        // clause until the next doc ID of the next clause.
+        scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
+      } else {
+        scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
+      }
     }
   }
 
@@ -145,15 +152,77 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
-      scoreNonEssentialClauses(collector, doc, top.scorer.score());
-      if (minCompetitiveScoreUpdated) {
-        // force scorers to be partitioned again before collecting more hits
-        top.iterator.nextDoc();
-        break;
-      }
+      scoreNonEssentialClauses(collector, doc, top.scorer.score(), firstEssentialScorer);
     }
     top.doc = top.iterator.docID();
     essentialQueue.updateTop();
+  }
+
+  private void scoreInnerWindowAsConjunction(LeafCollector collector, Bits acceptDocs, int max)
+      throws IOException {
+    assert firstEssentialScorer == allScorers.length - 1;
+    assert firstRequiredScorer <= allScorers.length - 2;
+    DisiWrapper lead1 = allScorers[allScorers.length - 1];
+    assert essentialQueue.size() == 1;
+    assert lead1 == essentialQueue.top();
+    DisiWrapper lead2 = allScorers[allScorers.length - 2];
+    if (lead1.doc < lead2.doc) {
+      lead1.doc = lead1.iterator.advance(Math.min(lead2.doc, max));
+    }
+    // maximum score contribution of all scorers but the lead
+    double maxScoreSumAtLead2 = maxScoreSums[allScorers.length - 2];
+
+    outer:
+    while (lead1.doc < max) {
+
+      if (acceptDocs != null && acceptDocs.get(lead1.doc) == false) {
+        lead1.doc = lead1.iterator.nextDoc();
+        continue;
+      }
+
+      double score = lead1.scorer.score();
+
+      // We specialize handling the second best scorer, which seems to help a bit with performance.
+      // But this is the exact same logic as in the below for loop.
+      if ((float) MathUtil.sumUpperBound(score + maxScoreSumAtLead2, allScorers.length)
+          < minCompetitiveScore) {
+        // a competitive match is not possible according to max scores, skip to the next candidate
+        lead1.doc = lead1.iterator.nextDoc();
+        continue;
+      }
+
+      if (lead2.doc < lead1.doc) {
+        lead2.doc = lead2.iterator.advance(lead1.doc);
+      }
+      if (lead2.doc != lead1.doc) {
+        lead1.doc = lead1.iterator.advance(Math.min(lead2.doc, max));
+        continue;
+      }
+
+      score += lead2.scorer.score();
+
+      for (int i = allScorers.length - 3; i >= firstRequiredScorer; --i) {
+        if ((float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length)
+            < minCompetitiveScore) {
+          // a competitive match is not possible according to max scores, skip to the next candidate
+          lead1.doc = lead1.iterator.nextDoc();
+          continue outer;
+        }
+
+        DisiWrapper w = allScorers[i];
+        if (w.doc < lead1.doc) {
+          w.doc = w.iterator.advance(lead1.doc);
+        }
+        if (w.doc != lead1.doc) {
+          lead1.doc = lead1.iterator.advance(Math.min(w.doc, max));
+          continue outer;
+        }
+        score += w.scorer.score();
+      }
+
+      scoreNonEssentialClauses(collector, lead1.doc, score, firstRequiredScorer);
+      lead1.doc = lead1.iterator.nextDoc();
+    }
   }
 
   private void scoreInnerWindowMultipleEssentialClauses(
@@ -187,47 +256,53 @@ final class MaxScoreBulkScorer extends BulkScorer {
         double score = windowScores[index];
         windowScores[index] = 0d;
 
-        scoreNonEssentialClauses(collector, doc, score);
+        scoreNonEssentialClauses(collector, doc, score, firstEssentialScorer);
       }
     }
   }
 
-  private int updateMaxWindowScores(int windowMin) throws IOException {
+  private int computeOuterWindowMax(int windowMin) throws IOException {
     // Only use essential scorers to compute the window's max doc ID, in order to avoid constantly
     // recomputing max scores over small windows
     final int firstWindowLead = Math.min(firstEssentialScorer, allScorers.length - 1);
-    for (int i = 0; i < firstWindowLead; ++i) {
-      final DisiWrapper scorer = allScorers[i];
-      if (scorer.doc < windowMin) {
-        scorer.scorer.advanceShallow(windowMin);
-      }
-    }
     int windowMax = DocIdSetIterator.NO_MORE_DOCS;
     for (int i = firstWindowLead; i < allScorers.length; ++i) {
       final DisiWrapper scorer = allScorers[i];
       final int upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
+
     // Score at least an entire inner window of docs
     windowMax =
         Math.max(
             windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
 
-    for (DisiWrapper scorer : allScorers) {
-      if (scorer.doc < windowMax) {
-        scorer.maxWindowScore = scorer.scorer.getMaxScore(windowMax - 1);
-      } else {
-        scorer.maxWindowScore = 0;
-      }
-    }
     return windowMax;
   }
 
-  private void scoreNonEssentialClauses(LeafCollector collector, int doc, double essentialScore)
+  void updateMaxWindowScores(int windowMin, int windowMax) throws IOException {
+    for (DisiWrapper scorer : allScorers) {
+      if (scorer.doc < windowMax) {
+        if (scorer.doc < windowMin) {
+          // Make sure to advance shallow if necessary to get as good score upper bounds as
+          // possible.
+          scorer.scorer.advanceShallow(windowMin);
+        }
+        scorer.maxWindowScore = scorer.scorer.getMaxScore(windowMax - 1);
+      } else {
+        // This scorer has no documents in the considered window.
+        scorer.maxWindowScore = 0;
+      }
+    }
+  }
+
+  private void scoreNonEssentialClauses(
+      LeafCollector collector, int doc, double essentialScore, int numNonEssentialClauses)
       throws IOException {
     double score = essentialScore;
-    for (int i = firstEssentialScorer - 1; i >= 0; --i) {
-      float maxPossibleScore = maxScorePropagator.scoreSumUpperBound(score + maxScoreSums[i]);
+    for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
+      float maxPossibleScore =
+          (float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length);
       if (maxPossibleScore < minCompetitiveScore) {
         // Hit is not competitive.
         return;
@@ -246,7 +321,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     collector.collect(doc);
   }
 
-  private boolean partitionScorers() {
+  boolean partitionScorers() {
     // Partitioning scorers is an optimization problem: the optimal set of non-essential scorers is
     // the subset of scorers whose sum of max window scores is less than the minimum competitive
     // score that maximizes the sum of costs.
@@ -268,7 +343,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
+          (float) MathUtil.sumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
       if (maxScoreSumFloat < minCompetitiveScore) {
         maxScoreSum = newMaxScoreSum;
         allScorers[firstEssentialScorer] = w;
@@ -279,6 +354,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
     }
 
+    firstRequiredScorer = allScorers.length;
+
     if (firstEssentialScorer == allScorers.length) {
       return false;
     }
@@ -287,6 +364,33 @@ final class MaxScoreBulkScorer extends BulkScorer {
     for (int i = firstEssentialScorer; i < allScorers.length; ++i) {
       essentialQueue.add(allScorers[i]);
     }
+
+    if (firstEssentialScorer == allScorers.length - 1) { // single essential clause
+      // If there is a single essential clause and matching it plus all non-essential clauses but
+      // the best one is not enough to yield a competitive match, the we know that hits must match
+      // both the essential clause and the best non-essential clause. Here are some examples when
+      // this optimization would kick in:
+      //   `quick fox`  when maxscore(quick) = 1, maxscore(fox) = 1, minCompetitiveScore = 1.5
+      //   `the quick fox` when maxscore (the) = 0.1, maxscore(quick) = 1, maxscore(fox) = 1,
+      //       minCompetitiveScore = 1.5
+      firstRequiredScorer = allScorers.length - 1;
+      double maxRequiredScore = allScorers[firstEssentialScorer].maxWindowScore;
+
+      while (firstRequiredScorer > 0) {
+        double maxPossibleScoreWithoutPreviousClause = maxRequiredScore;
+        if (firstRequiredScorer > 1) {
+          maxPossibleScoreWithoutPreviousClause += maxScoreSums[firstRequiredScorer - 2];
+        }
+        if ((float) maxPossibleScoreWithoutPreviousClause >= minCompetitiveScore) {
+          break;
+        }
+        // The sum of maximum scores ignoring the previous clause is less than the minimum
+        // competitive
+        --firstRequiredScorer;
+        maxRequiredScore += allScorers[firstRequiredScorer].maxWindowScore;
+      }
+    }
+
     return true;
   }
 
@@ -324,8 +428,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       MaxScoreBulkScorer.this.minCompetitiveScore = minScore;
-      maxScorePropagator.setMinCompetitiveScore(minScore);
-      minCompetitiveScoreUpdated = true;
     }
   }
 }

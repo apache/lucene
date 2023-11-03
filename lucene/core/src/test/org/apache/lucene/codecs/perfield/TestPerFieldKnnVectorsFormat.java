@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -170,8 +170,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
       KnnVectorsFormat format1 =
-          new KnnVectorsFormatMaxDims32(new Lucene95HnswVectorsFormat(16, 100));
-      KnnVectorsFormat format2 = new Lucene95HnswVectorsFormat(16, 100);
+          new KnnVectorsFormatMaxDims32(new Lucene99HnswVectorsFormat(16, 100));
+      KnnVectorsFormat format2 = new Lucene99HnswVectorsFormat(16, 100);
       iwc.setCodec(
           new AssertingCodec() {
             @Override

@@ -39,6 +39,7 @@ import org.apache.lucene.search.grouping.GroupDocs;
 import org.apache.lucene.search.grouping.GroupingSearch;
 import org.apache.lucene.search.grouping.TopGroups;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Utility class for creating training / test / cross validation indexes from the original index.
@@ -174,10 +175,7 @@ public class DatasetSplitter {
       throw new IOException(e);
     } finally {
       // close IWs
-      testWriter.close();
-      cvWriter.close();
-      trainingWriter.close();
-      originalIndex.close();
+      IOUtils.close(testWriter, cvWriter, trainingWriter, originalIndex);
     }
   }
 

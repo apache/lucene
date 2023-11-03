@@ -106,21 +106,21 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = 0.0f;
-    int dim = v.length;
-    for (float x : v) {
-      squareSum += x * x;
-    }
-    if (squareSum == 0) {
+    double l1norm = IMPL.dotProduct(v, v);
+    if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    double length = Math.sqrt(squareSum);
+    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
     for (int i = 0; i < dim; i++) {
-      v[i] /= length;
+      v[i] /= (float) l2norm;
     }
     return v;
   }
@@ -162,6 +162,17 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  /**
+   * @param vectorDotProductSimilarity the raw similarity between two vectors
+   * @return A scaled score preventing negative scores for maximum-inner-product
+   */
+  public static float scaleMaxInnerProductScore(float vectorDotProductSimilarity) {
+    if (vectorDotProductSimilarity < 0) {
+      return 1 / (1 + -1 * vectorDotProductSimilarity);
+    }
+    return vectorDotProductSimilarity + 1;
   }
 
   /**

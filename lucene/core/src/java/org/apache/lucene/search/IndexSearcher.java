@@ -24,10 +24,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
@@ -94,6 +92,7 @@ public class IndexSearcher {
     final long maxRamBytesUsed = Math.min(1L << 25, Runtime.getRuntime().maxMemory() / 20);
     DEFAULT_QUERY_CACHE = new LRUQueryCache(maxCachedQueries, maxRamBytesUsed);
   }
+
   /**
    * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
@@ -116,15 +115,12 @@ public class IndexSearcher {
   protected final List<LeafReaderContext> leafContexts;
 
   /**
-   * used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
+   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
    * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. This is {@code null} if no executor is
-   * provided
+   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
+   * executor is provided or not.
    */
-  private final CachingLeafSlicesSupplier leafSlicesSupplier;
-
-  // These are only used for multi-threaded search
-  private final Executor executor;
+  private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -226,22 +222,21 @@ public class IndexSearcher {
    * @lucene.experimental
    */
   public IndexSearcher(IndexReaderContext context, Executor executor) {
-    this(context, executor, getSliceExecutionControlPlane(executor));
-  }
-
-  // Package private for testing
-  IndexSearcher(IndexReaderContext context, Executor executor, TaskExecutor taskExecutor) {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
-    assert (taskExecutor == null) == (executor == null);
-
     reader = context.reader();
-    this.executor = executor;
-    this.taskExecutor = taskExecutor;
+    this.taskExecutor =
+        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    leafSlicesSupplier =
-        (executor == null) ? null : new CachingLeafSlicesSupplier(this::slices, leafContexts);
+    Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
+        executor == null
+            ? leaves ->
+                leaves.size() == 0
+                    ? new LeafSlice[0]
+                    : new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))}
+            : this::slices;
+    leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
   }
 
   /**
@@ -430,13 +425,13 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns the leaf slices used for concurrent searching, or null if no {@code Executor} was
-   * passed to the constructor.
+   * Returns the leaf slices used for concurrent searching. Override {@link #slices(List)} to
+   * customize how slices are created.
    *
    * @lucene.experimental
    */
-  public LeafSlice[] getSlices() {
-    return (executor == null) ? null : leafSlicesSupplier.get();
+  public final LeafSlice[] getSlices() {
+    return leafSlicesSupplier.get();
   }
 
   /**
@@ -466,12 +461,12 @@ public class IndexSearcher {
         new CollectorManager<TopScoreDocCollector, TopDocs>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
+              leafSlices.length <= 1
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              leafSlices.length <= 1 ? null : new MaxScoreAccumulator();
 
           @Override
           public TopScoreDocCollector newCollector() throws IOException {
@@ -611,12 +606,12 @@ public class IndexSearcher {
         new CollectorManager<>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
+              leafSlices.length <= 1
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              leafSlices.length <= 1 ? null : new MaxScoreAccumulator();
 
           @Override
           public TopFieldCollector newCollector() throws IOException {
@@ -662,8 +657,10 @@ public class IndexSearcher {
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
-    if (leafSlices == null || leafSlices.length <= 1) {
-      search(leafContexts, weight, firstCollector);
+    if (leafSlices.length == 0) {
+      // there are no segments, nothing to offload to the executor, but we do need to call reduce to
+      // create some kind of empty result
+      assert leafContexts.size() == 0;
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
@@ -677,18 +674,15 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<RunnableFuture<C>> listTasks = new ArrayList<>();
+      final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
-        FutureTask<C> task =
-            new FutureTask<>(
-                () -> {
-                  search(Arrays.asList(leaves), weight, collector);
-                  return collector;
-                });
-
-        listTasks.add(task);
+        listTasks.add(
+            () -> {
+              search(Arrays.asList(leaves), weight, collector);
+              return collector;
+            });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);
@@ -905,13 +899,7 @@ public class IndexSearcher {
 
   @Override
   public String toString() {
-    return "IndexSearcher("
-        + reader
-        + "; executor="
-        + executor
-        + "; sliceExecutionControlPlane "
-        + taskExecutor
-        + ")";
+    return "IndexSearcher(" + reader + "; taskExecutor=" + taskExecutor + ")";
   }
 
   /**
@@ -957,12 +945,12 @@ public class IndexSearcher {
     return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
-  /** Returns this searchers executor or <code>null</code> if no executor was provided */
-  public Executor getExecutor() {
-    return executor;
-  }
-
-  TaskExecutor getTaskExecutor() {
+  /**
+   * Returns the {@link TaskExecutor} that this searcher relies on to execute concurrent operations
+   *
+   * @return the task executor
+   */
+  public TaskExecutor getTaskExecutor() {
     return taskExecutor;
   }
 
@@ -982,6 +970,7 @@ public class IndexSearcher {
     public TooManyClauses() {
       this("maxClauseCount is set to " + IndexSearcher.getMaxClauseCount());
     }
+
     /** The value of {@link IndexSearcher#getMaxClauseCount()} when this Exception was created */
     public int getMaxClauseCount() {
       return maxClauseCount;
@@ -1000,19 +989,6 @@ public class IndexSearcher {
           "Query contains too many nested clauses; maxClauseCount is set to "
               + IndexSearcher.getMaxClauseCount());
     }
-  }
-
-  /** Return the SliceExecutionControlPlane instance to be used for this IndexSearcher instance */
-  private static TaskExecutor getSliceExecutionControlPlane(Executor executor) {
-    if (executor == null) {
-      return null;
-    }
-
-    if (executor instanceof ThreadPoolExecutor) {
-      return new QueueSizeBasedExecutor((ThreadPoolExecutor) executor);
-    }
-
-    return new TaskExecutor(executor);
   }
 
   /**

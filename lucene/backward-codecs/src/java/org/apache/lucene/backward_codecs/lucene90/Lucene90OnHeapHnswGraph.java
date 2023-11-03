@@ -78,7 +78,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,
-      int visitedLimit,
+      long visitedLimit,
       SplittableRandom random)
       throws IOException {
     int size = graphValues.size();

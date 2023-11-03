@@ -31,6 +31,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.BasicStats;
@@ -91,6 +93,20 @@ public class TestBlockJoin extends LuceneTestCase {
     job.add(new IntPoint("year", year));
     job.add(new StoredField("year", year));
     return job;
+  }
+
+  private Document makeVector(String vectorField, String childsParent, float[] value) {
+    Document vectorDoc = new Document();
+    vectorDoc.add(new KnnFloatVectorField(vectorField, value));
+    vectorDoc.add(newStringField("my_parent_id", childsParent, Store.YES));
+    return vectorDoc;
+  }
+
+  private Document makeParent(String parentId) {
+    Document parent = new Document();
+    parent.add(newStringField("docType", "_parent", Field.Store.NO));
+    parent.add(newStringField("parent_id", parentId, Store.YES));
+    return parent;
   }
 
   public void testEmptyChildFilter() throws Exception {
@@ -225,6 +241,52 @@ public class TestBlockJoin extends LuceneTestCase {
     assertEquals(1, matchingChildren.totalHits.value);
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
+    r.close();
+    dir.close();
+  }
+
+  public void testSimpleKnn() throws Exception {
+
+    final Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    final List<Document> docs = new ArrayList<>();
+
+    docs.add(makeVector("vector", "parent1", new float[] {1f, 2f, 3f}));
+    docs.add(makeVector("vector", "parent1", new float[] {3f, 3f, 3f}));
+    docs.add(makeParent("parent1"));
+    w.addDocuments(docs);
+
+    docs.clear();
+    docs.add(makeVector("vector", "parent2", new float[] {0f, 0f, 1f}));
+    docs.add(makeVector("vector", "parent2", new float[] {1f, 1f, 1f}));
+    docs.add(makeParent("parent2"));
+    w.addDocuments(docs);
+
+    IndexReader r = w.getReader();
+    w.close();
+    IndexSearcher s = newSearcher(r, false);
+
+    // Create a filter that defines "parent" documents in the index
+    BitSetProducer parentsFilter =
+        new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+    CheckJoinIndex.check(r, parentsFilter);
+
+    DiversifyingChildrenFloatKnnVectorQuery childKnnJoin =
+        new DiversifyingChildrenFloatKnnVectorQuery(
+            "vector", new float[] {4f, 4f, 4f}, null, 3, parentsFilter);
+
+    TopDocs topDocs = s.search(childKnnJoin, 5);
+    assertEquals(2, topDocs.totalHits.value);
+    Document childDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
+    assertEquals("parent1", childDoc.get("my_parent_id"));
+    assertEquals(
+        topDocs.scoreDocs[0].score,
+        VectorSimilarityFunction.EUCLIDEAN.compare(
+            new float[] {4f, 4f, 4f}, new float[] {3f, 3f, 3f}),
+        1e-7);
+    childDoc = s.storedFields().document(topDocs.scoreDocs[1].doc);
+    assertEquals("parent2", childDoc.get("my_parent_id"));
     r.close();
     dir.close();
   }

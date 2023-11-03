@@ -35,6 +35,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
+  protected int lastOrd = -1;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
@@ -60,7 +61,10 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
+    if (lastOrd != targetOrd) {
+      readValue(targetOrd);
+      lastOrd = targetOrd;
+    }
     return binaryValue;
   }
 
@@ -68,8 +72,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
-
-  public abstract int ordToDoc(int ord);
 
   static OffHeapByteVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
@@ -99,9 +101,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-      return binaryValue;
+      return vectorValue(doc);
     }
 
     @Override
@@ -126,11 +126,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     @Override
     public RandomAccessVectorValues<byte[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
     }
 
     @Override
@@ -171,9 +166,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
+      return vectorValue(disi.index());
     }
 
     @Override

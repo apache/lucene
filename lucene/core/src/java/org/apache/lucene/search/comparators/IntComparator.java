@@ -97,11 +97,13 @@ public class IntComparator extends NumericComparator<Integer> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Integer.compare(missingValue, bottom);
-      return reverse
-          ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
-          : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Integer.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Integer.compare(missingValue, topValue);
     }
 
     @Override

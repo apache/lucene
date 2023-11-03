@@ -213,16 +213,22 @@ public class BM25Similarity extends Similarity {
   private static class BM25Scorer extends SimScorer {
     /** query boost */
     private final float boost;
+
     /** k1 value for scale factor */
     private final float k1;
+
     /** b value for length normalization impact */
     private final float b;
+
     /** BM25's idf */
     private final Explanation idf;
+
     /** The average document length. */
     private final float avgdl;
+
     /** precomputed norm[256] with k1 * ((1 - b) + b * dl / avgdl) */
     private final float[] cache;
+
     /** weight (idf * boost) */
     private final float weight;
 

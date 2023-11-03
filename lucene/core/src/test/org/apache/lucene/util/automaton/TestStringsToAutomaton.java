@@ -33,7 +33,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.fst.Util;
 
 public class TestStringsToAutomaton extends LuceneTestCase {
@@ -104,7 +103,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
             .startsWith(
                 "This builder doesn't allow terms that are larger than "
                     + Automata.MAX_STRING_UNION_TERM_LENGTH
-                    + " characters"));
+                    + " UTF-8 bytes"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
     build(Collections.singleton(new BytesRef(b1k)), false); // no exception
@@ -142,22 +141,11 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     }
 
     // Make sure every term produced by the automaton is expected
-    FiniteStringsIterator it = new FiniteStringsIterator(a);
-    if (isBinary) {
-      BytesRefBuilder scratch = new BytesRefBuilder();
-      for (IntsRef r = it.next(); r != null; r = it.next()) {
-        BytesRef t = Util.toBytesRef(r, scratch);
-        assertTrue(t + " unexpectedly produced by automaton", expected.contains(t));
-      }
-    } else {
-      // Note that we validate against the original automaton, not the compiled one as the compiled
-      // automaton can incorrectly produce invalid/overlong utf8 terms (see: GH#12458). This means
-      // we need slightly different logic here since the automaton "speaks" code points and not
-      // utf8 bytes.
-      for (IntsRef r = it.next(); r != null; r = it.next()) {
-        BytesRef t = newBytesRef(UnicodeUtil.newString(r.ints, r.offset, r.length));
-        assertTrue(t + " unexpectedly produced by automaton", expected.contains(t));
-      }
+    BytesRefBuilder scratch = new BytesRefBuilder();
+    FiniteStringsIterator it = new FiniteStringsIterator(c.automaton);
+    for (IntsRef r = it.next(); r != null; r = it.next()) {
+      BytesRef t = Util.toBytesRef(r, scratch);
+      assertTrue(expected.contains(t));
     }
   }
 

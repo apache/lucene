@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BaseCompositeReader<R extends IndexReader> extends CompositeReader {
   private final R[] subReaders;
+
   /** A comparator for sorting sub-readers */
   protected final Comparator<R> subReadersSorter;
 

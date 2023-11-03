@@ -354,7 +354,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       type.setDimensions(dimension, indexDimension, dimensionNumBytes);
     }
 
-    if (r.nextBoolean()) {
+    if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
       int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
@@ -400,6 +400,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         minVersion,
         name,
         10000,
+        false,
         false,
         Codec.getDefault(),
         Collections.emptyMap(),

@@ -18,8 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -555,8 +553,6 @@ final class ReadersAndUpdates {
     FieldInfos fieldInfos = null;
     boolean any = false;
     for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
-      // Sort by increasing delGen:
-      Collections.sort(updates, Comparator.comparingLong(a -> a.delGen));
       for (DocValuesFieldUpdates update : updates) {
         if (update.delGen <= maxDelGen && update.any()) {
           any = true;

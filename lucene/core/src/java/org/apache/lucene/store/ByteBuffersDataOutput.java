@@ -81,11 +81,13 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
   /** Default {@code minBitsPerBlock} */
   public static final int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
+
   /** Default {@code maxBitsPerBlock} */
   public static final int DEFAULT_MAX_BITS_PER_BLOCK = 26; //   64 MB
 
   /** Smallest {@code minBitsPerBlock} allowed */
   public static final int LIMIT_MIN_BITS_PER_BLOCK = 1;
+
   /** Largest {@code maxBitsPerBlock} allowed */
   public static final int LIMIT_MAX_BITS_PER_BLOCK = 31;
 

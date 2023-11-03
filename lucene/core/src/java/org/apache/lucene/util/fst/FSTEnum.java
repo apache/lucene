@@ -32,6 +32,7 @@ abstract class FSTEnum<T> {
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   protected FST.Arc<T>[] arcs = new FST.Arc[10];
+
   // outputs are cumulative
   @SuppressWarnings({"rawtypes", "unchecked"})
   protected T[] output = (T[]) new Object[10];

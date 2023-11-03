@@ -712,7 +712,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  private VectorSimilarityFunction randomSimilarity() {
+  protected VectorSimilarityFunction randomSimilarity() {
     return VectorSimilarityFunction.values()[
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
@@ -1221,16 +1221,24 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-  private float[] randomVector(int dim) {
+  protected float[] randomVector(int dim) {
+    assert dim > 0;
     float[] v = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      v[i] = random().nextFloat();
+    double squareSum = 0.0;
+    // keep generating until we don't get a zero-length vector
+    while (squareSum == 0.0) {
+      squareSum = 0.0;
+      for (int i = 0; i < dim; i++) {
+        v[i] = random().nextFloat();
+        squareSum += v[i] * v[i];
+      }
     }
     VectorUtil.l2normalize(v);
     return v;
   }
 
   private byte[] randomVector8(int dim) {
+    assert dim > 0;
     float[] v = randomVector(dim);
     byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
@@ -1270,7 +1278,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
     assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
-    assertEquals(3, VectorSimilarityFunction.values().length);
+    assertEquals(3, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.ordinal());
+    assertEquals(4, VectorSimilarityFunction.values().length);
   }
 
   public void testVectorEncodingOrdinals() {
@@ -1400,6 +1409,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
         }
         assertEquals(
+            "encoding=" + vectorEncoding,
             fieldValuesCheckSum,
             checksum,
             vectorEncoding == VectorEncoding.BYTE ? numDocs * 0.2 : 1e-5);

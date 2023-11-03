@@ -23,13 +23,7 @@ import java.util.Objects;
  * Expert: Common scoring functionality for different types of queries.
  *
  * <p>A <code>Scorer</code> exposes an {@link #iterator()} over documents matching a query in
- * increasing order of doc Id.
- *
- * <p>Document scores are computed using a given <code>Similarity</code> implementation.
- *
- * <p><b>NOTE</b>: The values Float.Nan, Float.NEGATIVE_INFINITY and Float.POSITIVE_INFINITY are not
- * valid scores. Certain collectors (eg {@link TopScoreDocCollector}) will not properly collect hits
- * with these scores.
+ * increasing order of doc id.
  */
 public abstract class Scorer extends Scorable {
 

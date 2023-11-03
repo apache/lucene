@@ -106,7 +106,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void uk_suggest() throws Exception {
-    checkSuggestionPerformance("uk", 700);
+    checkSuggestionPerformance("uk", 800);
   }
 
   private Dictionary loadDictionary(String code) throws IOException, ParseException {

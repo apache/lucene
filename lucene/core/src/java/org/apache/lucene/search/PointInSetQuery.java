@@ -352,7 +352,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
         if (cmpMin == 0 && cmpMax == 0) {
           // NOTE: we only hit this if we are on a cell whose min and max values are exactly equal
           // to our point,
-          // which can easily happen if many (> 1024) docs share this one value
+          // which can easily happen if many (> 512) docs share this one value
           return Relation.CELL_INSIDE_QUERY;
         } else {
           return Relation.CELL_CROSSES_QUERY;

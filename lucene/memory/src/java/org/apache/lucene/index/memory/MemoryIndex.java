@@ -40,11 +40,11 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -243,6 +243,7 @@ public class MemoryIndex {
       public SliceWriter(SlicedIntBlockPool slicedIntBlockPool) {
         this.slicedIntBlockPool = slicedIntBlockPool;
       }
+
       /** */
       public void reset(int sliceOffset) {
         this.offset = sliceOffset;
@@ -445,9 +446,7 @@ public class MemoryIndex {
             + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
-        new ByteBlockPool(
-            new RecyclingByteBlockAllocator(
-                ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
+        new ByteBlockPool(new RecyclingByteBlockAllocator(maxBufferedByteBlocks, bytesUsed));
     slicedIntBlockPool =
         new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
@@ -1636,16 +1635,12 @@ public class MemoryIndex {
     }
 
     @Override
-    public TopDocs searchNearestVectors(
-        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
+    public void searchNearestVectors(
+        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
     @Override
-    public TopDocs searchNearestVectors(
-        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
+    public void searchNearestVectors(
+        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
     @Override
     public void checkIntegrity() throws IOException {
@@ -2127,7 +2122,7 @@ public class MemoryIndex {
 
     @Override
     public LeafMetaData getMetaData() {
-      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
     }
 
     @Override

@@ -19,6 +19,9 @@ package org.apache.lucene.util;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.FiniteStringsIterator;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -186,6 +189,33 @@ public class TestUnicodeUtil extends LuceneTestCase {
       assertEquals(utf8Len, pos);
       assertEquals(expected.length, expectedUpto);
     }
+  }
+
+  public void testUTF8SpanMultipleBytes() throws Exception {
+    Automaton.Builder b = new Automaton.Builder();
+    // start state:
+    int s1 = b.createState();
+
+    // single end accept state:
+    int s2 = b.createState();
+    b.setAccept(s2, true);
+
+    // utf8 codepoint length range from [1,2]
+    b.addTransition(s1, s2, 0x7F, 0x80);
+    // utf8 codepoint length range from [2,3]
+    b.addTransition(s1, s2, 0x7FF, 0x800);
+    // utf8 codepoint length range from [3,4]
+    b.addTransition(s1, s2, 0xFFFF, 0x10000);
+
+    Automaton a = b.finish();
+
+    CompiledAutomaton c = new CompiledAutomaton(a);
+    FiniteStringsIterator it = new FiniteStringsIterator(c.automaton);
+    int termCount = 0;
+    for (IntsRef r = it.next(); r != null; r = it.next()) {
+      termCount++;
+    }
+    assertEquals(6, termCount);
   }
 
   public void testNewString() {
