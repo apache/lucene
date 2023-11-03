@@ -188,6 +188,8 @@ Other
 
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
+* GITHUB#12757: Stop generating test polygons with duplicate vertices when the radius is small. (Stefan Vodita)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
