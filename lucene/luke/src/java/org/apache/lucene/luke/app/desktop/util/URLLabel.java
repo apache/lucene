@@ -38,8 +38,8 @@ public final class URLLabel extends JLabel {
     super(text);
 
     try {
-      this.link = (URI.create(text)).toURL();
-    } catch (MalformedURLException e) {
+      this.link = (new URI(text)).toURL();
+    } catch (URISyntaxException | MalformedURLException e) {
       throw new LukeException(e.getMessage(), e);
     }
 

@@ -1128,6 +1128,10 @@ public class RegExp {
           if (start != pos) m = Integer.parseInt(originalString.substring(start, pos));
         } else m = n;
         if (!match('}')) throw new IllegalArgumentException("expected '}' at position " + pos);
+        if (m != -1 && n > m) {
+          throw new IllegalArgumentException(
+              "invalid repetition range(out of order): " + n + ".." + m);
+        }
         if (m == -1) e = makeRepeat(flags, e, n);
         else e = makeRepeat(flags, e, n, m);
       }

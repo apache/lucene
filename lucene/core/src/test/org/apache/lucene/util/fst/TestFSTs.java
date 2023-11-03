@@ -568,7 +568,6 @@ public class TestFSTs extends LuceneTestCase {
         System.out.println(
             ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
-        assert fstCompiler.getTermCount() == ord;
         FST<T> fst = fstCompiler.compile();
         long tEnd = System.nanoTime();
         System.out.println(

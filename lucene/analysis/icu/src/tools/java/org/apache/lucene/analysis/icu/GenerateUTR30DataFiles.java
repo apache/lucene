@@ -156,19 +156,19 @@ public class GenerateUTR30DataFiles {
   }
 
   private static void getNFKCDataFilesFromIcuProject(String releaseTag) throws IOException {
-    URI icuTagsURL = URI.create(ICU_GIT_TAG_URL + "/");
-    URI icuReleaseTagURL = icuTagsURL.resolve(releaseTag + "/");
-    URI norm2url = icuReleaseTagURL.resolve(ICU_DATA_NORM2_PATH + "/");
+    URI icuTagsURI = URI.create(ICU_GIT_TAG_URL + "/");
+    URI icuReleaseTagURI = icuTagsURI.resolve(releaseTag + "/");
+    URI norm2uri = icuReleaseTagURI.resolve(ICU_DATA_NORM2_PATH + "/");
 
     System.err.print("Downloading " + NFKC_TXT + " ... ");
-    download(norm2url.resolve(NFKC_TXT), NFKC_TXT);
+    download(norm2uri.resolve(NFKC_TXT), NFKC_TXT);
     System.err.println("done.");
     System.err.print("Downloading " + NFKC_CF_TXT + " ... ");
-    download(norm2url.resolve(NFKC_CF_TXT), NFKC_CF_TXT);
+    download(norm2uri.resolve(NFKC_CF_TXT), NFKC_CF_TXT);
     System.err.println("done.");
 
     System.err.print("Downloading " + NFKC_CF_TXT + " and making diacritic rules one-way ... ");
-    URLConnection connection = openConnection(norm2url.resolve(NFC_TXT).toURL());
+    URLConnection connection = openConnection(norm2uri.resolve(NFC_TXT).toURL());
     try (BufferedReader reader =
             new BufferedReader(
                 new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
