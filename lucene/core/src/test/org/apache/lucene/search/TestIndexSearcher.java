@@ -301,7 +301,7 @@ public class TestIndexSearcher extends LuceneTestCase {
 
   /*
    * The goal of this test is to ensure that when multiple concurrent slices are
-   * being searched and one of concurrent tasks throws an Exception that the other
+   * being searched, and one of the concurrent tasks throws an Exception, the other
    * tasks become aware of it (via the ExceptionBasedQueryTimeout in IndexSearcher)
    * and exit immediately rather than completing their search actions.
    *
@@ -441,7 +441,6 @@ public class TestIndexSearcher extends LuceneTestCase {
         public Scorer scorer(LeafReaderContext context) throws IOException {
           // only throw exception when the counter hits 1 (so only one exception gets thrown)
           if (numExceptionsToThrow.getAndDecrement() == 1) {
-            // wait until at least one other task has
             try {
               // wait until we know another task is in the QueryTimeout.shouldExit method
               // before throwing an Exception to ensure at least one shouldExit method
