@@ -16,18 +16,25 @@
  */
 package org.apache.lucene.util;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Objects;
+import java.util.logging.Logger;
+
 /** Some useful constants. */
 public final class Constants {
   private Constants() {} // can't construct
 
+  private static final String UNKNOWN = "Unknown";
+
   /** JVM vendor info. */
-  public static final String JVM_VENDOR = System.getProperty("java.vm.vendor");
+  public static final String JVM_VENDOR = getSysProp("java.vm.vendor", UNKNOWN);
 
   /** JVM vendor name. */
-  public static final String JVM_NAME = System.getProperty("java.vm.name");
+  public static final String JVM_NAME = getSysProp("java.vm.name", UNKNOWN);
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
-  public static final String OS_NAME = System.getProperty("os.name");
+  public static final String OS_NAME = getSysProp("os.name", UNKNOWN);
 
   /** True iff running on Linux. */
   public static final boolean LINUX = OS_NAME.startsWith("Linux");
@@ -45,36 +52,67 @@ public final class Constants {
   public static final boolean FREE_BSD = OS_NAME.startsWith("FreeBSD");
 
   /** The value of <code>System.getProperty("os.arch")</code>. */
-  public static final String OS_ARCH = System.getProperty("os.arch");
+  public static final String OS_ARCH = getSysProp("os.arch", UNKNOWN);
 
   /** The value of <code>System.getProperty("os.version")</code>. */
-  public static final String OS_VERSION = System.getProperty("os.version");
+  public static final String OS_VERSION = getSysProp("os.version", UNKNOWN);
 
   /** The value of <code>System.getProperty("java.vendor")</code>. */
-  public static final String JAVA_VENDOR = System.getProperty("java.vendor");
+  public static final String JAVA_VENDOR = getSysProp("java.vendor", UNKNOWN);
+
+  /** True iff the Java runtime is a client runtime and C2 compiler is not enabled */
+  public static final boolean IS_CLIENT_VM =
+      getSysProp("java.vm.info", "").contains("emulated-client");
 
   /** True iff running on a 64bit JVM */
-  public static final boolean JRE_IS_64BIT;
+  public static final boolean JRE_IS_64BIT = is64Bit();
 
-  static {
-    boolean is64Bit = false;
-    String datamodel = null;
+  /** true iff we know fast FMA is supported, to deliver less error */
+  public static final boolean HAS_FAST_FMA =
+      (IS_CLIENT_VM == false)
+          && Objects.equals(OS_ARCH, "amd64")
+          && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+
+  private static boolean is64Bit() {
+    final String datamodel = getSysProp("sun.arch.data.model");
+    if (datamodel != null) {
+      return datamodel.contains("64");
+    } else {
+      return (OS_ARCH != null && OS_ARCH.contains("64"));
+    }
+  }
+
+  private static String getSysProp(String property) {
     try {
-      datamodel = System.getProperty("sun.arch.data.model");
-      if (datamodel != null) {
-        is64Bit = datamodel.contains("64");
-      }
+      return doPrivileged(() -> System.getProperty(property));
     } catch (
         @SuppressWarnings("unused")
-        SecurityException ex) {
+        SecurityException se) {
+      logSecurityWarning(property);
+      return null;
     }
-    if (datamodel == null) {
-      if (OS_ARCH != null && OS_ARCH.contains("64")) {
-        is64Bit = true;
-      } else {
-        is64Bit = false;
-      }
+  }
+
+  private static String getSysProp(String property, String def) {
+    try {
+      return doPrivileged(() -> System.getProperty(property, def));
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      logSecurityWarning(property);
+      return def;
     }
-    JRE_IS_64BIT = is64Bit;
+  }
+
+  private static void logSecurityWarning(String property) {
+    var log = Logger.getLogger(Constants.class.getName());
+    log.warning("SecurityManager prevented access to system property: " + property);
+  }
+
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 }
