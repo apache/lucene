@@ -793,19 +793,19 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     // ROOT locale
     benchmark = execBenchmark(getLocaleConfig("ROOT"));
-    assertEquals(new Locale(""), benchmark.getRunData().getLocale());
+    assertEquals(Locale.of(""), benchmark.getRunData().getLocale());
 
     // specify just a language
     benchmark = execBenchmark(getLocaleConfig("de"));
-    assertEquals(new Locale("de"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.of("de"), benchmark.getRunData().getLocale());
 
     // specify language + country
     benchmark = execBenchmark(getLocaleConfig("en,US"));
-    assertEquals(new Locale("en", "US"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.of("en", "US"), benchmark.getRunData().getLocale());
 
     // specify language + country + variant
     benchmark = execBenchmark(getLocaleConfig("no,NO,NY"));
-    assertEquals(new Locale("no", "NO", "NY"), benchmark.getRunData().getLocale());
+    assertEquals(Locale.of("no", "NO", "NY"), benchmark.getRunData().getLocale());
   }
 
   private String[] getLocaleConfig(String localeParam) {
@@ -832,22 +832,22 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   public void testCollator() throws Exception {
     // ROOT locale
     Benchmark benchmark = execBenchmark(getCollatorConfig("ROOT", "impl:jdk"));
-    CollationKeyAnalyzer expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("")));
+    CollationKeyAnalyzer expected = new CollationKeyAnalyzer(Collator.getInstance(Locale.of("")));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify just a language
     benchmark = execBenchmark(getCollatorConfig("de", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("de")));
+    expected = new CollationKeyAnalyzer(Collator.getInstance(Locale.of("de")));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country
     benchmark = execBenchmark(getCollatorConfig("en,US", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("en", "US")));
+    expected = new CollationKeyAnalyzer(Collator.getInstance(Locale.of("en", "US")));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country + variant
     benchmark = execBenchmark(getCollatorConfig("no,NO,NY", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("no", "NO", "NY")));
+    expected = new CollationKeyAnalyzer(Collator.getInstance(Locale.of("no", "NO", "NY")));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
   }
 

@@ -24,7 +24,7 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestICUCollationKeyAnalyzer extends CollationTestBase {
 
-  private Collator collator = Collator.getInstance(new Locale("fa"));
+  private Collator collator = Collator.getInstance(Locale.of("fa"));
   private Analyzer analyzer;
 
   @Override

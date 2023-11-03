@@ -96,7 +96,7 @@ public class TestHtmlParser extends LuceneTestCase {
   public void testTurkish() throws Exception {
     final Locale saved = Locale.getDefault();
     try {
-      Locale.setDefault(new Locale("tr", "TR"));
+      Locale.setDefault(Locale.of("tr", "TR"));
       String text =
           "<html><HEAD><TITLE>ııı</TITLE></head><body>"
               + "<IMG SRC=\"../images/head.jpg\" WIDTH=570 HEIGHT=47 BORDER=0 ALT=\"ş\">"

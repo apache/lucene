@@ -73,7 +73,7 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_17
+  minJavaVersion = JavaVersion.VERSION_21
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
@@ -99,6 +99,12 @@ configurations {
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
   groovy "org.codehaus.groovy:groovy-all:3.0.12"
+}
+
+repositories {
+  maven {
+    url "https://repo.eclipse.org/content/repositories/eclipse-snapshots/"
+  }
 }
 
 apply from: file('buildSrc/scriptDepVersions.gradle')

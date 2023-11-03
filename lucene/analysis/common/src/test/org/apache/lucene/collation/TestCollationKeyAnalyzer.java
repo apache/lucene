@@ -26,7 +26,7 @@ public class TestCollationKeyAnalyzer extends CollationTestBase {
   // Neither Java 1.4.2 nor 1.5.0 has Farsi Locale collation available in
   // RuleBasedCollator.  However, the Arabic Locale seems to order the Farsi
   // characters properly.
-  private Collator collator = Collator.getInstance(new Locale("ar"));
+  private Collator collator = Collator.getInstance(Locale.of("ar"));
   private Analyzer analyzer;
 
   @Override

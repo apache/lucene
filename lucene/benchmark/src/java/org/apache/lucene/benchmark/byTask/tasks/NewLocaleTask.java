@@ -39,7 +39,7 @@ public class NewLocaleTask extends PerfTask {
   private String variant;
 
   /**
-   * Create a new {@link java.util.Locale} and set it it in the getRunData() for use by all future
+   * Create a new {@link java.util.Locale} and set it in the getRunData() for use by all future
    * tasks.
    */
   public NewLocaleTask(PerfRunData runData) {
@@ -52,7 +52,7 @@ public class NewLocaleTask extends PerfTask {
     String lang = language;
     if (lang.equalsIgnoreCase("ROOT")) lang = ""; // empty language is the root locale in the JDK
 
-    return new Locale(lang, country, variant);
+    return Locale.of(lang, country, variant);
   }
 
   @Override

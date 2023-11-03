@@ -23,6 +23,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import javax.swing.JLabel;
@@ -37,7 +38,7 @@ public final class URLLabel extends JLabel {
     super(text);
 
     try {
-      this.link = new URL(text);
+      this.link = (URI.create(text)).toURL();
     } catch (MalformedURLException e) {
       throw new LukeException(e.getMessage(), e);
     }
