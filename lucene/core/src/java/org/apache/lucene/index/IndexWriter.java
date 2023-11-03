@@ -2560,10 +2560,15 @@ public class IndexWriter
 
           // close all the closeables we can (but important is readerPool and writeLock to prevent
           // leaks)
-          IOUtils.closeWhileHandlingException(readerPool, deleter, writeLock);
-          writeLock = null;
-          closed = true;
-          closing = false;
+          try {
+            IOUtils.closeWhileHandlingException(readerPool, deleter, writeLock);
+          } catch (Throwable t) {
+            throwable.addSuppressed(t);
+          } finally {
+            writeLock = null;
+            closed = true;
+            closing = false;
+          }
 
           // So any "concurrently closing" threads wake up and see that the close has now completed:
           notifyAll();
