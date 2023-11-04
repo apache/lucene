@@ -27,7 +27,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   private static float fma(float a, float b, float c) {
-    if (Constants.HAS_FAST_FMA) {
+    if (Constants.HAS_FAST_SCALAR_FMA) {
       return Math.fma(a, b, c);
     } else {
       return a * b + c;

@@ -82,33 +82,64 @@ public final class Constants {
   /** nonzero for an ARM cpu with SVE instructions */
   private static final int HAS_SVE = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0);
 
-  /** nonzero for an x86 cpu with AVX instructions */
-  private static final int HAS_AVX = HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0);
+  /** maximum supported vectorsize */
+  private static final int MAX_VECTOR_SIZE =
+      HotspotVMOptions.get("MaxVectorSize").map(Integer::valueOf).orElse(0);
 
   /** true for an AMD cpu with SSE4a instructions */
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
-  /** true iff we know FMA has faster throughput than separate mul/add */
-  public static final boolean HAS_FAST_FMA = hasFastFMA();
+  /** true iff we know VFMA has faster throughput than separate vmul/vadd */
+  public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
 
-  private static boolean hasFastFMA() {
+  /** true iff we know FMA has faster throughput than separate mul/add */
+  public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
+
+  private static boolean hasFastVectorFMA() {
     if (HAS_FMA) {
-      // for official police use only, who may slow vector performance 15% for 1 ulp precision :)
-      if (Boolean.parseBoolean(getSysProp("lucene.useSlowFMA", "false"))) {
-        return true;
+      String value = getSysProp("lucene.useVectorFMA", "auto");
+      if ("auto".equals(value)) {
+        // newer Neoverse cores have their act together
+        if (HAS_SVE > 0) {
+          return true;
+        }
+        // zen cores or newer, its a wash, turn it on as it doesn't hurt
+        // starts to yield gains for vectors only at zen4+
+        if (HAS_SSE4A && MAX_VECTOR_SIZE >= 32) {
+          return true;
+        }
+        // intel has their act together
+        if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
+          return true;
+        }
+      } else {
+        return Boolean.parseBoolean(value);
       }
-      // newer Neoverse cores have their act together
-      if (HAS_SVE > 0) {
-        return true;
-      }
-      // newer AMD cores with AVX-512 have their act together
-      if (HAS_AVX >= 3) {
-        return true;
-      }
-      // intel has their act together
-      if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
-        return true;
+    }
+    // everyone else is slow, until proven otherwise by benchmarks
+    return false;
+  }
+
+  private static boolean hasFastScalarFMA() {
+    if (HAS_FMA) {
+      String value = getSysProp("lucene.useScalarFMA", "auto");
+      if ("auto".equals(value)) {
+        // newer Neoverse cores have their act together
+        if (HAS_SVE > 0) {
+          return true;
+        }
+        // latency becomes 4 for the Zen3 (0x19h), but still a wash
+        // until the Zen4 anyway, and big drop on previous zens:
+        if (HAS_SSE4A && MAX_VECTOR_SIZE >= 64) {
+          return true;
+        }
+        // intel has their act together
+        if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
+          return true;
+        }
+      } else {
+        return Boolean.parseBoolean(value);
       }
     }
     // everyone else is slow, until proven otherwise by benchmarks
