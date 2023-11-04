@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 /** Some useful constants. */
@@ -67,12 +66,6 @@ public final class Constants {
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = is64Bit();
 
-  /** true iff we know fast FMA is supported, to deliver less error */
-  public static final boolean HAS_FAST_FMA =
-      (IS_CLIENT_VM == false)
-          && Objects.equals(OS_ARCH, "amd64")
-          && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
-
   private static boolean is64Bit() {
     final String datamodel = getSysProp("sun.arch.data.model");
     if (datamodel != null) {
@@ -80,6 +73,76 @@ public final class Constants {
     } else {
       return (OS_ARCH != null && OS_ARCH.contains("64"));
     }
+  }
+
+  /** true if FMA likely means a cpu instruction and not BigDecimal logic */
+  private static final boolean HAS_FMA =
+      (IS_CLIENT_VM == false) && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
+
+  /** maximum supported vectorsize */
+  private static final int MAX_VECTOR_SIZE =
+      HotspotVMOptions.get("MaxVectorSize").map(Integer::valueOf).orElse(0);
+
+  /** true for an AMD cpu with SSE4a instructions */
+  private static final boolean HAS_SSE4A =
+      HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
+
+  /** true iff we know VFMA has faster throughput than separate vmul/vadd */
+  public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
+
+  /** true iff we know FMA has faster throughput than separate mul/add */
+  public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
+
+  private static boolean hasFastVectorFMA() {
+    if (HAS_FMA) {
+      String value = getSysProp("lucene.useVectorFMA", "auto");
+      if ("auto".equals(value)) {
+        // newer Neoverse cores have their act together
+        // the problem is just apple silicon (this is a practical heuristic)
+        if (OS_ARCH.equals("aarch64") && MAC_OS_X == false) {
+          return true;
+        }
+        // zen cores or newer, its a wash, turn it on as it doesn't hurt
+        // starts to yield gains for vectors only at zen4+
+        if (HAS_SSE4A && MAX_VECTOR_SIZE >= 32) {
+          return true;
+        }
+        // intel has their act together
+        if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
+          return true;
+        }
+      } else {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    // everyone else is slow, until proven otherwise by benchmarks
+    return false;
+  }
+
+  private static boolean hasFastScalarFMA() {
+    if (HAS_FMA) {
+      String value = getSysProp("lucene.useScalarFMA", "auto");
+      if ("auto".equals(value)) {
+        // newer Neoverse cores have their act together
+        // the problem is just apple silicon (this is a practical heuristic)
+        if (OS_ARCH.equals("aarch64") && MAC_OS_X == false) {
+          return true;
+        }
+        // latency becomes 4 for the Zen3 (0x19h), but still a wash
+        // until the Zen4 anyway, and big drop on previous zens:
+        if (HAS_SSE4A && MAX_VECTOR_SIZE >= 64) {
+          return true;
+        }
+        // intel has their act together
+        if (OS_ARCH.equals("amd64") && HAS_SSE4A == false) {
+          return true;
+        }
+      } else {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    // everyone else is slow, until proven otherwise by benchmarks
+    return false;
   }
 
   private static String getSysProp(String property) {
