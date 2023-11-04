@@ -396,30 +396,32 @@ public final class FST<T> implements Accountable {
 
   private static final int DEFAULT_MAX_BLOCK_BITS = Constants.JRE_IS_64BIT ? 30 : 28;
 
-  /** Load a previously saved FST. */
+  /**
+   * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
+   * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
+   */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs) throws IOException {
     this(metaIn, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
   }
 
-  /** Load a previously saved FST. */
+  /**
+   * Load a previously saved FST with a DataInput for metdata and a FSTStore. If using {@link
+   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
+   * to hold the FST bytes.
+   */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
       throws IOException {
-    this(parseMetadata(metaIn, outputs), in, outputs, fstStore);
+    this(readMetadata(metaIn, outputs), in, outputs, fstStore);
   }
 
   /**
-   * Load a previously saved FST; maxBlockBits allows you to control the size of the byte[] pages
-   * used to hold the FST bytes.
+   * Load a previously saved FST with a metadata object and a FSTStore. If using {@link
+   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
+   * to hold the FST bytes.
    */
   public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs, FSTStore fstStore)
       throws IOException {
-    this(metadata, outputs, initStore(fstStore, metadata.numBytes, in));
-  }
-
-  private static FSTReader initStore(FSTStore fstStore, long numBytes, DataInput in)
-      throws IOException {
-    fstStore.init(in, numBytes);
-    return fstStore;
+    this(metadata, outputs, fstStore.init(in, metadata.numBytes));
   }
 
   /**
@@ -431,7 +433,7 @@ public final class FST<T> implements Accountable {
    * @param <T> the output type
    * @throws IOException if exception occurred during parsing
    */
-  public static <T> FSTMetadata<T> parseMetadata(DataInput metaIn, Outputs<T> outputs)
+  public static <T> FSTMetadata<T> readMetadata(DataInput metaIn, Outputs<T> outputs)
       throws IOException {
     // NOTE: only reads formats VERSION_START up to VERSION_CURRENT; we don't have
     // back-compat promise for FSTs (they are experimental), but we are sometimes able to offer it
@@ -1143,13 +1145,13 @@ public final class FST<T> implements Accountable {
    *
    * @param <T> the FST output type
    */
-  public static class FSTMetadata<T> {
-    INPUT_TYPE inputType;
+  public static final class FSTMetadata<T> {
+    final INPUT_TYPE inputType;
+    final int version;
     // if non-null, this FST accepts the empty string and
     // produces this output
     T emptyOutput;
     long startNode;
-    private int version;
     long numBytes;
 
     public FSTMetadata(
