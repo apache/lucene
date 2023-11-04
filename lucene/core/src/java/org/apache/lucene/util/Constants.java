@@ -79,9 +79,6 @@ public final class Constants {
   private static final boolean HAS_FMA =
       (IS_CLIENT_VM == false) && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
 
-  /** nonzero for an ARM cpu with SVE instructions */
-  private static final int HAS_SVE = HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0);
-
   /** maximum supported vectorsize */
   private static final int MAX_VECTOR_SIZE =
       HotspotVMOptions.get("MaxVectorSize").map(Integer::valueOf).orElse(0);
@@ -101,7 +98,8 @@ public final class Constants {
       String value = getSysProp("lucene.useVectorFMA", "auto");
       if ("auto".equals(value)) {
         // newer Neoverse cores have their act together
-        if (HAS_SVE > 0) {
+        // the problem is just apple silicon (this is a practical heuristic)
+        if (OS_ARCH.equals("aarch64") && MAC_OS_X == false) {
           return true;
         }
         // zen cores or newer, its a wash, turn it on as it doesn't hurt
@@ -126,7 +124,8 @@ public final class Constants {
       String value = getSysProp("lucene.useScalarFMA", "auto");
       if ("auto".equals(value)) {
         // newer Neoverse cores have their act together
-        if (HAS_SVE > 0) {
+        // the problem is just apple silicon (this is a practical heuristic)
+        if (OS_ARCH.equals("aarch64") && MAC_OS_X == false) {
           return true;
         }
         // latency becomes 4 for the Zen3 (0x19h), but still a wash
