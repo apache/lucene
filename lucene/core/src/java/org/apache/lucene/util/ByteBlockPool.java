@@ -38,6 +38,8 @@ public final class ByteBlockPool implements Accountable {
 
   /** Abstract class for allocating and freeing byte blocks. */
   public abstract static class Allocator {
+    // TODO: ByteBlockPool assume the blockSize is always {@link BYTE_BLOCK_SIZE}, but this class
+    // allow arbitrary value of blockSize. We should make them consistent.
     protected final int blockSize;
 
     protected Allocator(int blockSize) {
@@ -215,19 +217,38 @@ public final class ByteBlockPool implements Accountable {
 
   /** Appends the bytes in the provided {@link BytesRef} at the current position. */
   public void append(final BytesRef bytes) {
-    int bytesLeft = bytes.length;
-    int offset = bytes.offset;
+    append(bytes.bytes, bytes.offset, bytes.length);
+  }
+
+  /**
+   * Append the provided byte array at the current position.
+   *
+   * @param bytes the byte array to write
+   */
+  public void append(final byte[] bytes) {
+    append(bytes, 0, bytes.length);
+  }
+
+  /**
+   * Append some portion of the provided byte array at the current position.
+   *
+   * @param bytes the byte array to write
+   * @param offset the offset of the byte array
+   * @param length the number of bytes to write
+   */
+  public void append(final byte[] bytes, int offset, int length) {
+    int bytesLeft = length;
     while (bytesLeft > 0) {
       int bufferLeft = BYTE_BLOCK_SIZE - byteUpto;
       if (bytesLeft < bufferLeft) {
         // fits within current buffer
-        System.arraycopy(bytes.bytes, offset, buffer, byteUpto, bytesLeft);
+        System.arraycopy(bytes, offset, buffer, byteUpto, bytesLeft);
         byteUpto += bytesLeft;
         break;
       } else {
         // fill up this buffer and move to next one
         if (bufferLeft > 0) {
-          System.arraycopy(bytes.bytes, offset, buffer, byteUpto, bufferLeft);
+          System.arraycopy(bytes, offset, buffer, byteUpto, bufferLeft);
         }
         nextBuffer();
         bytesLeft -= bufferLeft;
@@ -256,6 +277,18 @@ public final class ByteBlockPool implements Accountable {
     }
   }
 
+  /**
+   * Read a single byte at the given offset
+   *
+   * @param offset the offset to read
+   * @return the byte
+   */
+  public byte readByte(final long offset) {
+    int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
+    int pos = (int) (offset & BYTE_BLOCK_MASK);
+    return buffers[bufferIndex][pos];
+  }
+
   @Override
   public long ramBytesUsed() {
     long size = BASE_RAM_BYTES;
@@ -268,5 +301,10 @@ public final class ByteBlockPool implements Accountable {
       size += RamUsageEstimator.sizeOfObject(buf);
     }
     return size;
+  }
+
+  /** the current position (in absolute value) of this byte pool */
+  public long getPosition() {
+    return bufferUpto * allocator.blockSize + byteUpto;
   }
 }
