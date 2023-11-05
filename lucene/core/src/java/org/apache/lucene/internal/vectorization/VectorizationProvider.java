@@ -131,6 +131,10 @@ public abstract class VectorizationProvider {
           LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
           return new DefaultVectorizationProvider();
         }
+        if (Constants.IS_J9_VM) {
+          LOG.warning("J9 VM detected; Java vector incubator API can't be enabled");
+          return new DefaultVectorizationProvider();
+        }
       }
       try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we

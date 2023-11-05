@@ -63,6 +63,9 @@ public final class Constants {
   public static final boolean IS_CLIENT_VM =
       getSysProp("java.vm.info", "").contains("emulated-client");
 
+  /** True when using a J9 VM */
+  public static final boolean IS_J9_VM = getSysProp("java.vm.vendor", "").contains("J9");
+
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = is64Bit();
 
