@@ -408,6 +408,11 @@ final class NodeHash<T> {
               return -1;
             }
             break;
+          case FST.ARCS_FOR_CONTINUOUS:
+            if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()) {
+              return -1;
+            }
+            break;
           default:
             throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
         }
