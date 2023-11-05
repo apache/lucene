@@ -672,6 +672,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
         name,
         10000,
         false,
+        false,
         Codec.getDefault(),
         Collections.emptyMap(),
         StringHelper.randomId(),

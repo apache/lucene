@@ -14,38 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene95;
+package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return TestUtil.getDefaultCodec();
   }
 
   public void testToString() {
-    Lucene95Codec customCodec =
-        new Lucene95Codec() {
+    FilterCodec customCodec =
+        new FilterCodec("foo", Codec.getDefault()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(10, 20);
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new Lucene99HnswVectorsFormat(10, 20);
           }
         };
     String expectedString =
-        "Lucene95HnswVectorsFormat(name=Lucene95HnswVectorsFormat, maxConn=10, beamWidth=20)";
-    assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=none)";
+    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 
   public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(-1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(0, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 0));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, -1));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(512 + 1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 3201));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
   }
 }

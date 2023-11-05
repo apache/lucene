@@ -14,23 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene99;
 
-package org.apache.lucene.codecs.lucene90;
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Version;
-
-public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
-
-  @Override
-  protected Version[] getVersions() {
-    return new Version[] {Version.LATEST};
-  }
+/**
+ * Random access values for <code>byte[]</code>, but also includes accessing the score correction
+ * constant for the current vector in the buffer.
+ */
+interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
+  float getScoreCorrectionConstant();
 
   @Override
-  protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
-  }
+  RandomAccessQuantizedByteVectorValues copy() throws IOException;
 }

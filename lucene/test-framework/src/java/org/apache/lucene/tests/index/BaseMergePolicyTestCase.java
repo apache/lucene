@@ -154,6 +154,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
                 TestUtil.randomSimpleString(random()), // name
                 random().nextInt(Integer.MAX_VALUE), // maxDoc
                 random().nextBoolean(), // isCompoundFile
+                false,
                 null, // codec
                 Collections.emptyMap(), // diagnostics
                 TestUtil.randomSimpleString( // id
@@ -235,6 +236,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
             Version.LATEST,
             name,
             maxDoc,
+            false,
             false,
             TestUtil.getDefaultCodec(),
             Collections.emptyMap(),

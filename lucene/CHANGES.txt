@@ -62,6 +62,11 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
+
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -81,6 +86,13 @@ Improvements
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
+* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
+  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
+  result in a more minimal FST (more common suffixes are shard).  Pass
+  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
+  minimal FST.  Inspired by this Rust FST implemention:
+  https://blog.burntsushi.net/transducers (Mike McCandless)
 
 Optimizations
 ---------------------
@@ -143,12 +155,29 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
+* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
+  between FST and FSTCompiler (Anh Dung Bui)
+
+* GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
+
+* GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
+  Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
+  instead of relying on assert. (Shubham Chaudhary)
 
 New Features
 ---------------------
+
 * GITHUB#12548: Added similarityToQueryVector API to compute vector similarity scores
   with DoubleValuesSource. (Shubham Chaudhary)
+
+* GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
+  segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
+
+* GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
+  storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+  
+* GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
+  (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -171,10 +200,18 @@ Improvements
 * GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
   (Uwe Schindler)
 
-* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
-  and test improvements. (Uwe Schindler, Robert Muir)
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731, GITHUB#12737: Speed up
+  Panama vector support and test improvements. (Uwe Schindler, Robert Muir)
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
+
+* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
+  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
+
+* GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
+* GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
+  if SecurityManager prevents access.  (Uwe Schindler)
 
 Optimizations
 ---------------------
@@ -184,7 +221,7 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
-  
+
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
 * GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
@@ -199,14 +236,38 @@ Optimizations
 
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
-  
+
 * GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
+
+* GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
+
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
+
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
+
+* GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
+
+* GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
+  and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
+
+* GITHUB#12726: Return the same input vector if its a unit vector in VectorUtil#l2normalize. (Shubham Chaudhary)
+
+* GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
+  specialized bulk scorer. (Adrien Grand)
+
+* GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
+
+* GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
 
 Changes in runtime behavior
 ---------------------
 
 * GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
+
+* GITHUB#12765: Disable vectorization on VMs that are not Hotspot-based.  (Uwe Schindler, Robert Muir)
 
 Bug Fixes
 ---------------------
@@ -216,12 +277,27 @@ Bug Fixes
 
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
+* GITHUB#12698: Fix IndexOutOfBoundsException when saving FSTStore-backed FST with different DataOutput for metadata (Anh Dung Bui)
+
 * GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
+
+* GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
+
+* GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
+
+* GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
 
 Build
 ---------------------
 
+* GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
+  nightly mode). (Dawid Weiss)
+
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+  leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
+
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other

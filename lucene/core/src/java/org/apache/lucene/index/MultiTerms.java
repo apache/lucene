@@ -136,17 +136,16 @@ public final class MultiTerms extends Terms {
 
   @Override
   public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
-    final List<MultiTermsEnum.TermsEnumIndex> termsEnums = new ArrayList<>();
+    final List<TermsEnumIndex> termsEnums = new ArrayList<>();
     for (int i = 0; i < subs.length; i++) {
       final TermsEnum termsEnum = subs[i].intersect(compiled, startTerm);
       if (termsEnum != null) {
-        termsEnums.add(new MultiTermsEnum.TermsEnumIndex(termsEnum, i));
+        termsEnums.add(new TermsEnumIndex(termsEnum, i));
       }
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices)
-          .reset(termsEnums.toArray(MultiTermsEnum.TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
     } else {
       return TermsEnum.EMPTY;
     }
@@ -181,17 +180,16 @@ public final class MultiTerms extends Terms {
   @Override
   public TermsEnum iterator() throws IOException {
 
-    final List<MultiTermsEnum.TermsEnumIndex> termsEnums = new ArrayList<>();
+    final List<TermsEnumIndex> termsEnums = new ArrayList<>();
     for (int i = 0; i < subs.length; i++) {
       final TermsEnum termsEnum = subs[i].iterator();
       if (termsEnum != null) {
-        termsEnums.add(new MultiTermsEnum.TermsEnumIndex(termsEnum, i));
+        termsEnums.add(new TermsEnumIndex(termsEnum, i));
       }
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices)
-          .reset(termsEnums.toArray(MultiTermsEnum.TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
     } else {
       return TermsEnum.EMPTY;
     }
