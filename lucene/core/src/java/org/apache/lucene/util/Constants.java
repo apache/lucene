@@ -83,9 +83,12 @@ public final class Constants {
   /** The value of <code>System.getProperty("java.vendor")</code>. */
   public static final String JAVA_VENDOR = getSysProp("java.vendor", UNKNOWN);
 
-  /** True iff the Java runtime is a client runtime and C2 compiler is not enabled */
+  /** True iff the Java runtime is a client runtime and C2 compiler is not enabled. */
   public static final boolean IS_CLIENT_VM =
       getSysProp("java.vm.info", "").contains("emulated-client");
+
+  /** True iff the Java VM is based on Hotspot and has the Hotspot MX bean readable by Lucene. */
+  public static final boolean IS_HOTSPOT_VM = HotspotVMOptions.IS_HOTSPOT_VM;
 
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = is64Bit();
@@ -99,22 +102,22 @@ public final class Constants {
     }
   }
 
-  /** true if FMA likely means a cpu instruction and not BigDecimal logic */
+  /** true if FMA likely means a cpu instruction and not BigDecimal logic. */
   private static final boolean HAS_FMA =
       (IS_CLIENT_VM == false) && HotspotVMOptions.get("UseFMA").map(Boolean::valueOf).orElse(false);
 
-  /** maximum supported vectorsize */
+  /** maximum supported vectorsize. */
   private static final int MAX_VECTOR_SIZE =
       HotspotVMOptions.get("MaxVectorSize").map(Integer::valueOf).orElse(0);
 
-  /** true for an AMD cpu with SSE4a instructions */
+  /** true for an AMD cpu with SSE4a instructions. */
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
-  /** true iff we know VFMA has faster throughput than separate vmul/vadd */
+  /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
 
-  /** true iff we know FMA has faster throughput than separate mul/add */
+  /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
 
   private static boolean hasFastVectorFMA() {

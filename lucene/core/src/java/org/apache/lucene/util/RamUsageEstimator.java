@@ -113,7 +113,7 @@ public final class RamUsageEstimator {
   /** Initialize constants and try to collect information about the JVM internals. */
   static {
     if (Constants.JRE_IS_64BIT) {
-      JVM_IS_HOTSPOT_64BIT = HotspotVMOptions.IS_HOTSPOT;
+      JVM_IS_HOTSPOT_64BIT = HotspotVMOptions.IS_HOTSPOT_VM;
       // Try to get compressed oops and object alignment (the default seems to be 8 on Hotspot);
       // (this only works on 64 bit, on 32 bits the alignment and reference size is fixed):
       COMPRESSED_REFS_ENABLED =

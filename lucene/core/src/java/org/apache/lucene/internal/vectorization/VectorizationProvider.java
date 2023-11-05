@@ -111,6 +111,12 @@ public abstract class VectorizationProvider {
                 + Locale.getDefault());
         return new DefaultVectorizationProvider();
       }
+      // only use vector module with Hotspot VM
+      if (!Constants.IS_HOTSPOT_VM) {
+        LOG.warning(
+            "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
+        return new DefaultVectorizationProvider();
+      }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
       final var vectorMod = lookupVectorModule();
