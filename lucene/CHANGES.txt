@@ -106,6 +106,8 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
+
 Bug Fixes
 ---------------------
 
