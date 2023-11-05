@@ -67,7 +67,7 @@ public final class Constants {
   public static final boolean IS_HOTSPOT_VM = HotspotVMOptions.IS_HOTSPOT_VM;
 
   /** True if jvmci is enabled (e.g. graalvm) */
-  public static final boolean IS_JVMCI =
+  public static final boolean IS_JVMCI_VM =
       HotspotVMOptions.get("UseJVMCICompiler").map(Boolean::valueOf).orElse(false);
 
   /** True iff running on a 64bit JVM */
