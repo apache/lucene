@@ -26,8 +26,8 @@ import java.util.logging.Logger;
 final class HotspotVMOptions {
   private HotspotVMOptions() {} // can't construct
 
-  /** True if the Java VM is based on Hotspot and has the Hotspot MX bean readable by Lucene */
-  public static final boolean IS_HOTSPOT;
+  /** True iff the Java VM is based on Hotspot and has the Hotspot MX bean readable by Lucene */
+  public static final boolean IS_HOTSPOT_VM;
 
   /**
    * Returns an optional with the value of a Hotspot VM option. If the VM option does not exist or
@@ -84,7 +84,7 @@ final class HotspotVMOptions {
             "Lucene cannot optimize algorithms or calculate object sizes for JVMs that are not based on Hotspot or a compatible implementation.");
       }
     }
-    IS_HOTSPOT = isHotspot;
+    IS_HOTSPOT_VM = isHotspot;
     ACCESSOR = accessor;
   }
 }

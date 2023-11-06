@@ -145,7 +145,7 @@ public class FSTCompiler<T> {
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
     } else {
       dedupHash = null;
     }
