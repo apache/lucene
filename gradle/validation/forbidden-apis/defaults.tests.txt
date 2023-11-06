@@ -21,3 +21,7 @@ java.lang.System#currentTimeMillis() @ Don't depend on wall clock times
 #java.lang.System#nanoTime() @ Don't depend on wall clock times
 
 java.text.Collator#compare(**) @ Use LuceneTestCase.collate instead, which can avoid JDK-8071862
+
+# #12771: dangerously slow implementation when the range is small
+java.util.Random#nextInt(int,int)
+java.util.Random#nextLong(long,long)
