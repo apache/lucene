@@ -15,13 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
-import org.apache.lucene.util.BytesRef;
+import java.io.IOException;
+import java.util.Iterator;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.index.Terms;
 
-/** Interface for bit-unpacking */
-public interface BitUnpacker {
+class Lucene99RandomAccessTermsReader extends FieldsProducer {
+  @Override
+  public void close() throws IOException {}
 
-  /** Unpack a long in the given bytesRef from a range of bits. */
-  long unpack(BytesRef bytesRef, int startBitIndex, int bitWidth);
+  @Override
+  public void checkIntegrity() throws IOException {}
+
+  @Override
+  public Iterator<String> iterator() {
+    return null;
+  }
+
+  @Override
+  public Terms terms(String field) throws IOException {
+    return null;
+  }
+
+  @Override
+  public int size() {
+    return 0;
+  }
 }

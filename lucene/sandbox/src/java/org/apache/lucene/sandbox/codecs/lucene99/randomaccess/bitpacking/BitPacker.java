@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
 /** Interface for bit-packing */
 public interface BitPacker {

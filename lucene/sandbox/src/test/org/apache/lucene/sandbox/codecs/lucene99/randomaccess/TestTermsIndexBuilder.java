@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
 import java.util.HashMap;

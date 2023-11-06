@@ -14,6 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
-/** Code for packing and unpacking sequence of non-negative integers with smaller bit width. */
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking;
+import java.io.IOException;
+import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.index.Fields;
+
+class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
+  @Override
+  public void write(Fields fields, NormsProducer norms) throws IOException {}
+
+  @Override
+  public void close() throws IOException {}
+}

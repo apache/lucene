@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.util.Objects;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 
 /**
  * TermType holds the classification of a term, based on how its postings are written.

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -22,26 +22,26 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
 
 /**
- * Similar to {@link Lucene90PostingsFormat} but with a different term dictionary implementation.
+ * Similar to {@link Lucene99PostingsFormat} but with a different term dictionary implementation.
  *
  * @lucene.experimental
  */
-public final class Lucene90RandomAccessDictionaryPostingsFormat extends PostingsFormat {
+public final class Lucene99RandomAccessDictionaryPostingsFormat extends PostingsFormat {
 
   // Increment version to change it
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Creates {@code Lucene90RandomAccessDictionaryPostingsFormat} */
-  public Lucene90RandomAccessDictionaryPostingsFormat() {
+  public Lucene99RandomAccessDictionaryPostingsFormat() {
     super("Lucene90RandomAccess");
   }
 
@@ -52,10 +52,10 @@ public final class Lucene90RandomAccessDictionaryPostingsFormat extends Postings
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
     boolean success = false;
     try {
-      FieldsConsumer ret = new Lucene90RandomAccessTermsWriter();
+      FieldsConsumer ret = new Lucene99RandomAccessTermsWriter();
       success = true;
       return ret;
     } finally {
@@ -67,10 +67,10 @@ public final class Lucene90RandomAccessDictionaryPostingsFormat extends Postings
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene90PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
     boolean success = false;
     try {
-      FieldsProducer ret = new Lucene90RandomAccessTermsReader();
+      FieldsProducer ret = new Lucene99RandomAccessTermsReader();
       success = true;
       return ret;
     } finally {

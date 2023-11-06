@@ -15,8 +15,13 @@
  * limitations under the License.
  */
 
-/**
- * A PostingFormat that is based on {@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat}
- * but provides random access term dictionary.
- */
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
+
+import org.apache.lucene.util.BytesRef;
+
+/** Interface for bit-unpacking */
+public interface BitUnpacker {
+
+  /** Unpack a long in the given bytesRef from a range of bits. */
+  long unpack(BytesRef bytesRef, int startBitIndex, int bitWidth);
+}

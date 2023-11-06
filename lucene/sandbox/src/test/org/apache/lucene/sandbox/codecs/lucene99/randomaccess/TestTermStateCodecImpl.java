@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.util.ArrayList;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
-import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitPerBytePacker;
-import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitUnpacker;
-import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitUnpackerImpl;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPerBytePacker;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpackerImpl;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;

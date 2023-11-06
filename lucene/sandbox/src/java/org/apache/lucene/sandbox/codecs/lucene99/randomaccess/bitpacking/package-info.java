@@ -15,8 +15,5 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
-
-import org.apache.lucene.util.fst.FST;
-
-record TermsIndex(FST<Long> fst) {}
+/** Code for packing and unpacking sequence of non-negative integers with smaller bit width. */
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
