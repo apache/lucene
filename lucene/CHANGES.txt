@@ -67,6 +67,9 @@ API Changes
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
+
 New Features
 ---------------------
 
