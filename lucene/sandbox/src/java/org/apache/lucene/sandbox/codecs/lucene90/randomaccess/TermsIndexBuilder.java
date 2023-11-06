@@ -57,11 +57,13 @@ final class TermsIndexBuilder {
     // so it looks like this |...  ord ...| termType| ... hasOutput  ...|
     // where termType takes 3 bit and hasOutput takes the lowest bit. The rest is taken by ord
     if (ord < 0) {
-      throw new IllegalArgumentException("can't encode negative ord");
+      throw new IllegalArgumentException("can't encode negative ord: " + ord);
     }
     if (ord > MAX_ORD) {
       throw new IllegalArgumentException(
-          "Input ord is too large for TermType: "
+          "Input ord "
+              + ord
+              + " is too large for TermType: "
               + termType.getId()
               + ", max ord allowed is 2^60 - 1");
     }

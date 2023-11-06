@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermStat
  * TermType holds the classification of a term, based on how its postings are written.
  *
  * <p>It captures -- 1) if a term has a singleton docid (i.e. only one doc contains this term). 2)
- * if the term has skip data. 3) if the term as an VINT encoded position block.
+ * if the term has skip data. 3) if the term has an VINT encoded position block.
  */
 final class TermType {
   private static final byte SINGLETON_DOC_MASK = (byte) 1;
