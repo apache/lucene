@@ -36,7 +36,7 @@ public final class ByteBlockPool implements Accountable {
   /**
    * Use this to find the index of the buffer containing a byte, given an offset to that byte.
    *
-   * <p>bufferUpto = globalOffset >> BYTE_BLOCK_SHIFT
+   * <p>bufferUpto = globalOffset &gt;&gt; BYTE_BLOCK_SHIFT
    *
    * <p>bufferUpto = globalOffset / BYTE_BLOCK_SIZE
    */
