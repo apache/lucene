@@ -387,13 +387,6 @@ public final class FST<T> implements Accountable {
     return (flags & bit) != 0;
   }
 
-  // make a new FST; Builder invokes this
-  FST(FSTMetadata<T> metadata, Outputs<T> outputs, FSTReader fstReader) {
-    this.metadata = metadata;
-    this.outputs = outputs;
-    this.fstReader = fstReader;
-  }
-
   private static final int DEFAULT_MAX_BLOCK_BITS = Constants.JRE_IS_64BIT ? 30 : 28;
 
   /**
@@ -415,7 +408,7 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Load a previously saved FST with a metadata object and a FSTStore. If using {@link
+   * Load a previously saved FST with a metdata object and a FSTStore. If using {@link
    * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
    * to hold the FST bytes.
    */
@@ -424,8 +417,15 @@ public final class FST<T> implements Accountable {
     this(metadata, outputs, fstStore.init(in, metadata.numBytes));
   }
 
+  /** Create the FST with a metadata object and a FSTReader. */
+  FST(FSTMetadata<T> metadata, Outputs<T> outputs, FSTReader fstReader) {
+    this.metadata = metadata;
+    this.outputs = outputs;
+    this.fstReader = fstReader;
+  }
+
   /**
-   * Parse the FST metadata from DataInput
+   * Read the FST metadata from DataInput
    *
    * @param metaIn the DataInput of the metadata
    * @param outputs the FST outputs
