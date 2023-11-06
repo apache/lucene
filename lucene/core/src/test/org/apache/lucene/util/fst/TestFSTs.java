@@ -1275,7 +1275,7 @@ public class TestFSTs extends LuceneTestCase {
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fstCompiler.addNode(rootNode));
+    fstCompiler.finish(fstCompiler.addNode(rootNode));
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));
