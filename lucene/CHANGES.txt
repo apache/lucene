@@ -200,8 +200,8 @@ Improvements
 * GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
   (Uwe Schindler)
 
-* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731: Speed up Panama vector support
-  and test improvements. (Uwe Schindler, Robert Muir)
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731, GITHUB#12737: Speed up
+  Panama vector support and test improvements. (Uwe Schindler, Robert Muir)
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
@@ -209,6 +209,9 @@ Improvements
   in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
 * GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
+* GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
+  if SecurityManager prevents access.  (Uwe Schindler)
 
 Optimizations
 ---------------------
@@ -264,6 +267,8 @@ Changes in runtime behavior
 * GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
 
+* GITHUB#12765: Disable vectorization on VMs that are not Hotspot-based.  (Uwe Schindler, Robert Muir)
+
 Bug Fixes
 ---------------------
 
@@ -284,6 +289,9 @@ Bug Fixes
 
 Build
 ---------------------
+
+* GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
+  nightly mode). (Dawid Weiss)
 
 * GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)

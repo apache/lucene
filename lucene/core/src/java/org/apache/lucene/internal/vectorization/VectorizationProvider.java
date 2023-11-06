@@ -21,8 +21,6 @@ import java.lang.Runtime.Version;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -31,7 +29,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -113,6 +111,12 @@ public abstract class VectorizationProvider {
                 + Locale.getDefault());
         return new DefaultVectorizationProvider();
       }
+      // only use vector module with Hotspot VM
+      if (!Constants.IS_HOTSPOT_VM) {
+        LOG.warning(
+            "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
+        return new DefaultVectorizationProvider();
+      }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
       final var vectorMod = lookupVectorModule();
@@ -129,7 +133,7 @@ public abstract class VectorizationProvider {
               "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
           return new DefaultVectorizationProvider();
         }
-        if (isClientVM()) {
+        if (Constants.IS_CLIENT_VM) {
           LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
           return new DefaultVectorizationProvider();
         }
@@ -186,23 +190,6 @@ public abstract class VectorizationProvider {
   private static boolean isAffectedByJDK8301190() {
     return VERSION_JDK8301190_FIXED.compareToIgnoreOptional(Runtime.version()) > 0
         && !Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
-  }
-
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static boolean isClientVM() {
-    try {
-      final PrivilegedAction<Boolean> action =
-          () -> System.getProperty("java.vm.info", "").contains("emulated-client");
-      return AccessController.doPrivileged(action);
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException e) {
-      LOG.warning(
-          "SecurityManager denies permission to 'java.vm.info' system property, so state of C2 compiler can't be detected. "
-              + "In case of performance issues allow access to this property.");
-      return false;
-    }
   }
 
   // add all possible callers here as FQCN:
