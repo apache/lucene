@@ -27,6 +27,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
 /**
  * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits)} to perform nearest
@@ -76,10 +77,16 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      BlockingFloatHeap globalScoreQueue)
       throws IOException {
     TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        context
+            .reader()
+            .searchNearestVectors(field, target, k, acceptDocs, visitedLimit, globalScoreQueue);
     return results != null ? results : NO_RESULTS;
   }
 
