@@ -256,6 +256,8 @@ Optimizations
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
+* GITHUB#12696: Change Postings back to using FOR in Lucene99PostingsFormat. Freqs, positions and offset keep using PFOR. (Jakub Slowinski)
+
 * GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
@@ -307,6 +309,11 @@ Other
 * GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
 * GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
+
+* GITHUB#6675: Various improvements related to ByteBlockPool. Slice functionality on top of ByteBlockPool moved to its
+  own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
+  overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
+  (Stefan Vodita)
 
 ======================== Lucene 9.8.0 =======================
 
