@@ -90,6 +90,10 @@ public final class Constants {
   /** True iff the Java VM is based on Hotspot and has the Hotspot MX bean readable by Lucene. */
   public static final boolean IS_HOTSPOT_VM = HotspotVMOptions.IS_HOTSPOT_VM;
 
+  /** True if jvmci is enabled (e.g. graalvm) */
+  public static final boolean IS_JVMCI_VM =
+      HotspotVMOptions.get("UseJVMCICompiler").map(Boolean::valueOf).orElse(false);
+
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = is64Bit();
 
