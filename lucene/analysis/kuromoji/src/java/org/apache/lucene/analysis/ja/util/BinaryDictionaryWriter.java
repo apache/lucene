@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import org.apache.lucene.analysis.ja.dict.BinaryDictionary;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.OutputStreamDataOutput;

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.util;
 
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
