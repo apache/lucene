@@ -174,7 +174,8 @@ public class HnswGraphSearcher {
           }
           float friendSimilarity = scorer.score(friendOrd);
           visitedCount++;
-          if (friendSimilarity > currentScore) {
+          if (friendSimilarity > currentScore
+              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
             foundBetter = true;
