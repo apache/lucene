@@ -131,6 +131,7 @@ public abstract class MSBRadixSorter extends Sorter {
 
   protected void sort(int from, int to, int k, int l) {
     if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
+      //      System.out.println("fall back sort: " + (to - from));
       introSort(from, to, k);
     } else {
       radixSort(from, to, k, l);

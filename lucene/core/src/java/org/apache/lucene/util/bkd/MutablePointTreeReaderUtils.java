@@ -21,10 +21,12 @@ import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.RadixSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.Sorter;
 import org.apache.lucene.util.StableMSBRadixSorter;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -57,6 +59,11 @@ public final class MutablePointTreeReaderUtils {
     final int bitsPerDocId = sortedByDocID ? 0 : PackedInts.bitsRequired(maxDoc - 1);
     new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
 
+      final BytesRef scratch1 = new BytesRef();
+      final BytesRef scratch2 = new BytesRef();
+      final BytesRef pivot = new BytesRef();
+      int pivotDoc;
+
       @Override
       protected void swap(int i, int j) {
         reader.swap(i, j);
@@ -80,6 +87,78 @@ public final class MutablePointTreeReaderUtils {
           final int shift = bitsPerDocId - ((k - config.packedBytesLength + 1) << 3);
           return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;
         }
+      }
+
+      @Override
+      protected Sorter getFallbackSorter(int k) {
+        return new InPlaceMergeSorter() {
+          final int cmpStartOffset;
+          final ByteArrayComparator packedBytesComparator;
+
+          {
+            if (config.packedBytesLength >= 4 && config.packedBytesLength - k <= 4) {
+              cmpStartOffset = config.packedBytesLength - 4;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(4);
+            } else if (config.packedBytesLength >= 8 && config.packedBytesLength - k <= 8) {
+              cmpStartOffset = config.packedBytesLength - 8;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(8);
+            } else {
+              cmpStartOffset = k;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(config.packedBytesLength - k);
+            }
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            reader.swap(i, j);
+          }
+
+          @Override
+          protected int compare(int i, int j) {
+            if (k < config.packedBytesLength) {
+              reader.getValue(i, scratch1);
+              reader.getValue(j, scratch2);
+              int v = compare(scratch1, scratch2);
+              if (v != 0) {
+                return v;
+              }
+            }
+            if (bitsPerDocId == 0) {
+              return 0;
+            }
+            // Directly compare the whole int even if some bytes have been checked before.
+            return Integer.compare(reader.getDocID(i), reader.getDocID(j));
+          }
+
+          @Override
+          protected void setPivot(int i) {
+            reader.getValue(i, pivot);
+            if (bitsPerDocId != 0) {
+              pivotDoc = reader.getDocID(i);
+            }
+          }
+
+          @Override
+          protected int comparePivot(int j) {
+            if (k < config.packedBytesLength) {
+              reader.getValue(j, scratch2);
+              int v = compare(pivot, scratch2);
+              if (v != 0) {
+                return v;
+              }
+            }
+            if (bitsPerDocId == 0) {
+              return 0;
+            }
+            // Directly compare the whole int even if some bytes have been checked before.
+            return Integer.compare(pivotDoc, reader.getDocID(j));
+          }
+
+          private int compare(BytesRef o1, BytesRef o2) {
+            return packedBytesComparator.compare(
+                o1.bytes, o1.offset + cmpStartOffset, o2.bytes, o2.offset + cmpStartOffset);
+          }
+        };
       }
     }.sort(from, to);
   }
