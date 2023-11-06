@@ -119,10 +119,11 @@ Optimizations
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
+* GITHUB#12696: Change Postings back to using FOR in Lucene99PostingsFormat. Freqs, positions and offset keep using PFOR. (Jakub Slowinski)
+
 * GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
-
 
 Changes in runtime behavior
 ---------------------
