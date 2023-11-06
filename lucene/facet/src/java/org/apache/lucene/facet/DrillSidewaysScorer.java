@@ -167,7 +167,7 @@ class DrillSidewaysScorer extends BulkScorer {
       // TODO: What's the right behavior when a collector throws CollectionTerminatedException?
       // Should we stop scoring immediately (what we're doing now), or should we keep scoring until
       // all collectors throw? Should users be able to specify somehow?
-      finish(collector, dims);
+      finish(dims);
     }
 
     return Integer.MAX_VALUE;
