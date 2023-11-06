@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.ja.util.DictionaryBuilder.DictionaryFormat;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
