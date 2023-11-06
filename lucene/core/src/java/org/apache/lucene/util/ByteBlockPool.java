@@ -19,12 +19,13 @@ package org.apache.lucene.util;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
- * Represents a logical byte[] as a series of blocks. You can write into it by using append and read
- * using the offset position (random access). The buffers can be reset to reuse the allocated
- * buffers.
+ * This class enables the allocation of fixed-size buffers and their management as part of a buffer
+ * array. Allocation is done through the use of an {@link Allocator} which can be customized, e.g.
+ * to allow recycling old buffers. There are methods for writing ({@link #append(BytesRef)} and
+ * reading from the buffers (e.g. {@link #readBytes(long, byte[], int, int)}, which handle
+ * read/write operations across buffer boundaries.
  *
  * @lucene.internal
  */
@@ -32,8 +33,25 @@ public final class ByteBlockPool implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(ByteBlockPool.class);
 
+  /**
+   * Use this to find the index of the buffer containing a byte, given an offset to that byte.
+   *
+   * <p>bufferUpto = globalOffset >> BYTE_BLOCK_SHIFT
+   *
+   * <p>bufferUpto = globalOffset / BYTE_BLOCK_SIZE
+   */
   public static final int BYTE_BLOCK_SHIFT = 15;
+
+  /** The size of each buffer in the pool. */
   public static final int BYTE_BLOCK_SIZE = 1 << BYTE_BLOCK_SHIFT;
+
+  /**
+   * Use this to find the position of a global offset in a particular buffer.
+   *
+   * <p>positionInCurrentBuffer = globalOffset &amp; BYTE_BLOCK_MASK
+   *
+   * <p>positionInCurrentBuffer = globalOffset % BYTE_BLOCK_SIZE
+   */
   public static final int BYTE_BLOCK_MASK = BYTE_BLOCK_SIZE - 1;
 
   /** Abstract class for allocating and freeing byte blocks. */
@@ -45,11 +63,6 @@ public final class ByteBlockPool implements Accountable {
     }
 
     public abstract void recycleByteBlocks(byte[][] blocks, int start, int end);
-
-    public void recycleByteBlocks(List<byte[]> blocks) {
-      final byte[][] b = blocks.toArray(new byte[blocks.size()][]);
-      recycleByteBlocks(b, 0, b.length);
-    }
 
     public byte[] getByteBlock() {
       return new byte[blockSize];
@@ -90,24 +103,24 @@ public final class ByteBlockPool implements Accountable {
       }
     }
   }
-  ;
 
-  /**
-   * array of buffers currently used in the pool. Buffers are allocated if needed don't modify this
-   * outside of this class.
-   */
-  public byte[][] buffers = new byte[10][];
+  /** Array of buffers currently used in the pool. Buffers are allocated if needed. */
+  private byte[][] buffers = new byte[10][];
 
   /** index into the buffers array pointing to the current buffer used as the head */
   private int bufferUpto = -1; // Which buffer we are upto
 
-  /** Where we are in head buffer */
+  /** Where we are in the head buffer. */
   public int byteUpto = BYTE_BLOCK_SIZE;
 
-  /** Current head buffer */
+  /** Current head buffer. */
   public byte[] buffer;
 
-  /** Current head offset */
+  /**
+   * Offset from the start of the first buffer to the start of the current buffer, which is
+   * bufferUpto * BYTE_BLOCK_SIZE. The buffer pool maintains this offset because it is the first to
+   * overflow if there are too many allocated blocks.
+   */
   public int byteOffset = -BYTE_BLOCK_SIZE;
 
   private final Allocator allocator;
@@ -117,21 +130,22 @@ public final class ByteBlockPool implements Accountable {
   }
 
   /**
-   * Resets the pool to its initial state reusing the first buffer and fills all buffers with <code>
-   * 0</code> bytes before they reused or passed to {@link Allocator#recycleByteBlocks(byte[][],
-   * int, int)}. Calling {@link ByteBlockPool#nextBuffer()} is not needed after reset.
+   * Resets the pool to its initial state, reusing the first buffer and filling all buffers with
+   * {@code 0} bytes before they are reused or passed to {@link
+   * Allocator#recycleByteBlocks(byte[][], int, int)}. Calling {@link ByteBlockPool#nextBuffer()} is
+   * not needed after reset.
    */
   public void reset() {
     reset(true, true);
   }
 
   /**
-   * Expert: Resets the pool to its initial state reusing the first buffer. Calling {@link
+   * Expert: Resets the pool to its initial state, while reusing the first buffer. Calling {@link
    * ByteBlockPool#nextBuffer()} is not needed after reset.
    *
-   * @param zeroFillBuffers if <code>true</code> the buffers are filled with <code>0</code>. This
-   *     should be set to <code>true</code> if this pool is used with slices.
-   * @param reuseFirst if <code>true</code> the first buffer will be reused and calling {@link
+   * @param zeroFillBuffers if {@code true} the buffers are filled with {@code 0}. This should be
+   *     set to {@code true} if this pool is used with slices.
+   * @param reuseFirst if {@code true} the first buffer will be reused and calling {@link
    *     ByteBlockPool#nextBuffer()} is not needed after reset iff the block pool was used before
    *     ie. {@link ByteBlockPool#nextBuffer()} was called before.
    */
@@ -170,42 +184,42 @@ public final class ByteBlockPool implements Accountable {
   }
 
   /**
-   * Advances the pool to its next buffer. This method should be called once after the constructor
-   * to initialize the pool. In contrast to the constructor a {@link ByteBlockPool#reset()} call
-   * will advance the pool to its first buffer immediately.
+   * Allocates a new buffer and advances the pool to it. This method should be called once after the
+   * constructor to initialize the pool. In contrast to the constructor, a {@link
+   * ByteBlockPool#reset()} call will advance the pool to its first buffer immediately.
    */
   public void nextBuffer() {
     if (1 + bufferUpto == buffers.length) {
+      // The buffer array is full - expand it
       byte[][] newBuffers =
           new byte[ArrayUtil.oversize(buffers.length + 1, NUM_BYTES_OBJECT_REF)][];
       System.arraycopy(buffers, 0, newBuffers, 0, buffers.length);
       buffers = newBuffers;
     }
+    // Allocate new buffer and advance the pool to it
     buffer = buffers[1 + bufferUpto] = allocator.getByteBlock();
     bufferUpto++;
-
     byteUpto = 0;
     byteOffset = Math.addExact(byteOffset, BYTE_BLOCK_SIZE);
   }
 
   /**
-   * Fill the provided {@link BytesRef} with the bytes at the specified offset/length slice. This
-   * will avoid copying the bytes, if the slice fits into a single block; otherwise, it uses the
-   * provided {@link BytesRefBuilder} to copy bytes over.
+   * Fill the provided {@link BytesRef} with the bytes at the specified offset and length. This will
+   * avoid copying the bytes if the slice fits into a single block; otherwise, it uses the provided
+   * {@link BytesRefBuilder} to copy bytes over.
    */
   void setBytesRef(BytesRefBuilder builder, BytesRef result, long offset, int length) {
     result.length = length;
 
-    int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
+    int bufferIndex = Math.toIntExact(offset >> BYTE_BLOCK_SHIFT);
     byte[] buffer = buffers[bufferIndex];
     int pos = (int) (offset & BYTE_BLOCK_MASK);
     if (pos + length <= BYTE_BLOCK_SIZE) {
-      // common case where the slice lives in a single block: just reference the buffer directly
-      // without copying
+      // Common case: The slice lives in a single block. Reference the buffer directly.
       result.bytes = buffer;
       result.offset = pos;
     } else {
-      // uncommon case: the slice spans at least 2 blocks, so we must copy the bytes:
+      // Uncommon case: The slice spans at least 2 blocks, so we must copy the bytes.
       builder.grow(length);
       result.bytes = builder.get().bytes;
       result.offset = 0;
@@ -244,7 +258,7 @@ public final class ByteBlockPool implements Accountable {
    */
   public void readBytes(final long offset, final byte[] bytes, int bytesOffset, int bytesLength) {
     int bytesLeft = bytesLength;
-    int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
+    int bufferIndex = Math.toIntExact(offset >> BYTE_BLOCK_SHIFT);
     int pos = (int) (offset & BYTE_BLOCK_MASK);
     while (bytesLeft > 0) {
       byte[] buffer = buffers[bufferIndex++];
@@ -259,14 +273,20 @@ public final class ByteBlockPool implements Accountable {
   @Override
   public long ramBytesUsed() {
     long size = BASE_RAM_BYTES;
-    size += RamUsageEstimator.sizeOfObject(buffer);
     size += RamUsageEstimator.shallowSizeOf(buffers);
     for (byte[] buf : buffers) {
-      if (buf == buffer) {
-        continue;
-      }
       size += RamUsageEstimator.sizeOfObject(buf);
     }
     return size;
+  }
+
+  /** the current position (in absolute value) of this byte pool */
+  public long getPosition() {
+    return bufferUpto * allocator.blockSize + byteUpto;
+  }
+
+  /** Retrieve the buffer at the specified index from the buffer pool. */
+  public byte[] getBuffer(int bufferIndex) {
+    return buffers[bufferIndex];
   }
 }
