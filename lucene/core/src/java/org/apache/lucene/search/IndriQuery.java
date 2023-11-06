@@ -46,9 +46,9 @@ public abstract class IndriQuery extends Query implements Iterable<BooleanClause
       buffer.append(c.getOccur().toString());
 
       Query subQuery = c.getQuery();
-      if (subQuery instanceof BooleanQuery) { // wrap sub-bools in parens
+      if (subQuery instanceof BooleanQuery booleanQuery) { // wrap sub-bools in parens
         buffer.append("(");
-        buffer.append(subQuery.toString(field));
+        buffer.append(booleanQuery.toString(field));
         buffer.append(")");
       } else {
         buffer.append(subQuery.toString(field));

@@ -334,8 +334,8 @@ public final class RamUsageEstimator {
       if (query == root) {
         return;
       }
-      if (query instanceof Accountable) {
-        total += ((Accountable) query).ramBytesUsed();
+      if (query instanceof Accountable accountable) {
+        total += accountable.ramBytesUsed();
       } else {
         if (defSize > 0) {
           total += defSize;
@@ -365,8 +365,8 @@ public final class RamUsageEstimator {
    * greater than 0.
    */
   public static long sizeOf(Query q, long defSize) {
-    if (q instanceof Accountable) {
-      return ((Accountable) q).ramBytesUsed();
+    if (q instanceof Accountable accountable) {
+      return accountable.ramBytesUsed();
     } else {
       RamUsageQueryVisitor visitor = new RamUsageQueryVisitor(q, defSize);
       q.visit(visitor);
@@ -398,38 +398,38 @@ public final class RamUsageEstimator {
       return 0;
     }
     long size;
-    if (o instanceof Accountable) {
-      size = ((Accountable) o).ramBytesUsed();
-    } else if (o instanceof String) {
-      size = sizeOf((String) o);
-    } else if (o instanceof boolean[]) {
-      size = sizeOf((boolean[]) o);
-    } else if (o instanceof byte[]) {
-      size = sizeOf((byte[]) o);
-    } else if (o instanceof char[]) {
-      size = sizeOf((char[]) o);
-    } else if (o instanceof double[]) {
-      size = sizeOf((double[]) o);
-    } else if (o instanceof float[]) {
-      size = sizeOf((float[]) o);
-    } else if (o instanceof int[]) {
-      size = sizeOf((int[]) o);
-    } else if (o instanceof Integer) {
-      size = sizeOf((Integer) o);
-    } else if (o instanceof Long) {
-      size = sizeOf((Long) o);
-    } else if (o instanceof long[]) {
-      size = sizeOf((long[]) o);
-    } else if (o instanceof short[]) {
-      size = sizeOf((short[]) o);
-    } else if (o instanceof String[]) {
-      size = sizeOf((String[]) o);
-    } else if (o instanceof Query) {
-      size = sizeOf((Query) o, defSize);
-    } else if (o instanceof Map) {
-      size = sizeOfMap((Map<?, ?>) o, ++depth, defSize);
-    } else if (o instanceof Collection) {
-      size = sizeOfCollection((Collection<?>) o, ++depth, defSize);
+    if (o instanceof Accountable accountable) {
+      size = accountable.ramBytesUsed();
+    } else if (o instanceof String string) {
+      size = sizeOf(string);
+    } else if (o instanceof boolean[] booleans) {
+      size = sizeOf(booleans);
+    } else if (o instanceof byte[] bytes) {
+      size = sizeOf(bytes);
+    } else if (o instanceof char[] chars) {
+      size = sizeOf(chars);
+    } else if (o instanceof double[] doubles) {
+      size = sizeOf(doubles);
+    } else if (o instanceof float[] floats) {
+      size = sizeOf(floats);
+    } else if (o instanceof int[] intValue) {
+      size = sizeOf(intValue);
+    } else if (o instanceof Integer integer) {
+      size = sizeOf(integer);
+    } else if (o instanceof Long longValue) {
+      size = sizeOf(longValue);
+    } else if (o instanceof long[] longs) {
+      size = sizeOf(longs);
+    } else if (o instanceof short[] shorts) {
+      size = sizeOf(shorts);
+    } else if (o instanceof String[] strings) {
+      size = sizeOf(strings);
+    } else if (o instanceof Query query) {
+      size = sizeOf(query, defSize);
+    } else if (o instanceof Map<?, ?> map) {
+      size = sizeOfMap(map, ++depth, defSize);
+    } else if (o instanceof Collection<?> collection) {
+      size = sizeOfCollection(collection, ++depth, defSize);
     } else {
       if (defSize > 0) {
         size = defSize;

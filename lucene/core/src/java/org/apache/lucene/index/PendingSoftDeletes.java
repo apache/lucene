@@ -130,9 +130,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     int newDeletes = 0;
     int docID;
     DocValuesFieldUpdates.Iterator hasValue =
-        iterator instanceof DocValuesFieldUpdates.Iterator
-            ? (DocValuesFieldUpdates.Iterator) iterator
-            : null;
+        iterator instanceof DocValuesFieldUpdates.Iterator exactIterator ? exactIterator : null;
     while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (hasValue == null || hasValue.hasValue()) {
         if (bits.get(docID)) { // doc is live - clear it

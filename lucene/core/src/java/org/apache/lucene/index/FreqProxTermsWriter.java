@@ -181,10 +181,10 @@ final class FreqProxTermsWriter extends TermsHash {
           && PostingsEnum.featureRequested(flags, PostingsEnum.FREQS)) {
         final PostingsEnum inReuse;
         final SortingPostingsEnum wrapReuse;
-        if (reuse != null && reuse instanceof SortingPostingsEnum) {
+        if (reuse != null && reuse instanceof SortingPostingsEnum reuseSortingPostingsEnum) {
           // if we're asked to reuse the given DocsEnum and it is Sorting, return
           // the wrapped one, since some Codecs expect it.
-          wrapReuse = (SortingPostingsEnum) reuse;
+          wrapReuse = reuseSortingPostingsEnum;
           inReuse = wrapReuse.getWrapped();
         } else {
           wrapReuse = new SortingPostingsEnum();
@@ -206,10 +206,10 @@ final class FreqProxTermsWriter extends TermsHash {
 
       final PostingsEnum inReuse;
       final SortingDocsEnum wrapReuse;
-      if (reuse != null && reuse instanceof SortingDocsEnum) {
+      if (reuse != null && reuse instanceof SortingDocsEnum reuseSortingDocsEnum) {
         // if we're asked to reuse the given DocsEnum and it is Sorting, return
         // the wrapped one, since some Codecs expect it.
-        wrapReuse = (SortingDocsEnum) reuse;
+        wrapReuse = reuseSortingDocsEnum;
         inReuse = wrapReuse.getWrapped();
       } else {
         wrapReuse = new SortingDocsEnum();

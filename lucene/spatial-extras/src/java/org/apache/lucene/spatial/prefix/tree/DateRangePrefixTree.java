@@ -158,8 +158,7 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
 
     maxLV = toShape((Calendar) MAXCAL.clone());
     minLV = toShape((Calendar) MINCAL.clone());
-    if (MAXCAL instanceof GregorianCalendar) {
-      GregorianCalendar gCal = (GregorianCalendar) MAXCAL;
+    if (MAXCAL instanceof GregorianCalendar gCal) {
       gregorianChangeDateLV = toUnitShape(gCal.getGregorianChange());
     } else {
       gregorianChangeDateLV = null;
@@ -292,11 +291,11 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
    */
   @Override
   public UnitNRShape toUnitShape(Object value) {
-    if (value instanceof Calendar) {
-      return toShape((Calendar) value);
-    } else if (value instanceof Date) {
+    if (value instanceof Calendar calendar) {
+      return toShape(calendar);
+    } else if (value instanceof Date date) {
       Calendar cal = newCal();
-      cal.setTime((Date) value);
+      cal.setTime(date);
       return toShape(cal);
     }
     throw new IllegalArgumentException("Expecting Calendar or Date but got: " + value.getClass());

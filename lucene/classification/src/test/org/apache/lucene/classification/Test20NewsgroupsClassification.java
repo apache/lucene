@@ -334,8 +334,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       IOUtils.close(reader, directory, testReader, test, train, cv);
 
       for (Classifier<BytesRef> c : classifiers) {
-        if (c instanceof Closeable) {
-          ((Closeable) c).close();
+        if (c instanceof Closeable closeable) {
+          closeable.close();
         }
       }
     }

@@ -69,13 +69,13 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     Map<CacheKey, LeafReader> readerCache = new HashMap<>();
     for (LeafReader reader : getSequentialSubReaders()) {
       // we try to reuse the life docs instances here if the reader cache key didn't change
-      if (reader instanceof SoftDeletesFilterLeafReader && reader.getReaderCacheHelper() != null) {
+      if (reader instanceof SoftDeletesFilterLeafReader softDeletesFilterLeafReader
+          && softDeletesFilterLeafReader.getReaderCacheHelper() != null) {
+        readerCache.put(softDeletesFilterLeafReader.reader.getReaderCacheHelper().getKey(), reader);
+      } else if (reader instanceof SoftDeletesFilterCodecReader softDeletesFilterCodecReader
+          && softDeletesFilterCodecReader.getReaderCacheHelper() != null) {
         readerCache.put(
-            ((SoftDeletesFilterLeafReader) reader).reader.getReaderCacheHelper().getKey(), reader);
-      } else if (reader instanceof SoftDeletesFilterCodecReader
-          && reader.getReaderCacheHelper() != null) {
-        readerCache.put(
-            ((SoftDeletesFilterCodecReader) reader).reader.getReaderCacheHelper().getKey(), reader);
+            softDeletesFilterCodecReader.reader.getReaderCacheHelper().getKey(), reader);
       }
     }
     return new SoftDeletesDirectoryReaderWrapper(
@@ -144,15 +144,14 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     int numDeletes = reader.numDeletedDocs() + numSoftDeletes;
     int numDocs = reader.maxDoc() - numDeletes;
     assert assertDocCounts(numDocs, numSoftDeletes, reader);
-    return reader instanceof CodecReader
-        ? new SoftDeletesFilterCodecReader((CodecReader) reader, bits, numDocs)
+    return reader instanceof CodecReader codecReader
+        ? new SoftDeletesFilterCodecReader(codecReader, bits, numDocs)
         : new SoftDeletesFilterLeafReader(reader, bits, numDocs);
   }
 
   private static boolean assertDocCounts(
       int expectedNumDocs, int numSoftDeletes, LeafReader reader) {
-    if (reader instanceof SegmentReader) {
-      SegmentReader segmentReader = (SegmentReader) reader;
+    if (reader instanceof final SegmentReader segmentReader) {
       SegmentCommitInfo segmentInfo = segmentReader.getSegmentInfo();
       if (segmentReader.isNRT == false) {
         int numDocs =

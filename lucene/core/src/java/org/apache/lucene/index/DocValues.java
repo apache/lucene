@@ -175,8 +175,8 @@ public final class DocValues {
    * {@link #singleton(SortedDocValues)}, or null.
    */
   public static SortedDocValues unwrapSingleton(SortedSetDocValues dv) {
-    if (dv instanceof SingletonSortedSetDocValues) {
-      return ((SingletonSortedSetDocValues) dv).getSortedDocValues();
+    if (dv instanceof SingletonSortedSetDocValues singletonDv) {
+      return singletonDv.getSortedDocValues();
     } else {
       return null;
     }

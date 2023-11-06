@@ -206,8 +206,7 @@ public final class OpenNLPSentenceBreakIterator extends BreakIterator {
 
   private String characterIteratorToString() {
     String fullText;
-    if (text instanceof CharArrayIterator) {
-      CharArrayIterator charArrayIterator = (CharArrayIterator) text;
+    if (text instanceof CharArrayIterator charArrayIterator) {
       fullText =
           new String(
               charArrayIterator.getText(),

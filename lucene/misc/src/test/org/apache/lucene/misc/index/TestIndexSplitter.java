@@ -38,8 +38,8 @@ public class TestIndexSplitter extends LuceneTestCase {
     Directory fsDir = newFSDirectory(dir);
     // IndexSplitter.split makes its own commit directly with SIPC/SegmentInfos,
     // so the unreferenced files are expected.
-    if (fsDir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper) fsDir).setAssertNoUnrefencedFilesOnClose(false);
+    if (fsDir instanceof MockDirectoryWrapper mockDirectoryWrapper) {
+      mockDirectoryWrapper.setAssertNoUnrefencedFilesOnClose(false);
     }
 
     MergePolicy mergePolicy = new LogByteSizeMergePolicy();

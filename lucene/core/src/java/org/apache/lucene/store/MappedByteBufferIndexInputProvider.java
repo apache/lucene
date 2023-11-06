@@ -49,8 +49,8 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
 
   public MappedByteBufferIndexInputProvider() {
     final Object hack = unmapHackImpl();
-    if (hack instanceof BufferCleaner) {
-      cleaner = (BufferCleaner) hack;
+    if (hack instanceof BufferCleaner bufferCleaner) {
+      cleaner = bufferCleaner;
       unmapSupported = true;
       unmapNotSupportedReason = null;
     } else {

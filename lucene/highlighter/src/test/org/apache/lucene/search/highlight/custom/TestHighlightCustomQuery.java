@@ -129,13 +129,12 @@ public class TestHighlightCustomQuery extends LuceneTestCase {
     protected void extractUnknownQuery(Query query, Map<String, WeightedSpanTerm> terms)
         throws IOException {
       float boost = 1f;
-      while (query instanceof BoostQuery) {
-        BoostQuery bq = (BoostQuery) query;
+      while (query instanceof BoostQuery bq) {
         boost *= bq.getBoost();
         query = bq.getQuery();
       }
-      if (query instanceof CustomQuery) {
-        extractWeightedTerms(terms, new TermQuery(((CustomQuery) query).term), boost);
+      if (query instanceof CustomQuery customQuery) {
+        extractWeightedTerms(terms, new TermQuery(customQuery.term), boost);
       }
     }
   }

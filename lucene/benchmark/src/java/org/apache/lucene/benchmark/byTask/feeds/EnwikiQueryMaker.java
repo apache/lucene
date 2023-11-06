@@ -172,11 +172,11 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
 
         Object query = qs.get(i);
         Query q = null;
-        if (query instanceof String) {
-          q = qp.parse((String) query);
+        if (query instanceof String stringQuery) {
+          q = qp.parse(stringQuery);
 
-        } else if (query instanceof Query) {
-          q = (Query) query;
+        } else if (query instanceof Query queryQuery) {
+          q = queryQuery;
 
         } else {
           System.err.println("Unsupported Query Type: " + query);

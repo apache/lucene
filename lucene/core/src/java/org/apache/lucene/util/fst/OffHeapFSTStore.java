@@ -39,8 +39,8 @@ public final class OffHeapFSTStore implements FSTStore {
 
   @Override
   public void init(DataInput in, long numBytes) throws IOException {
-    if (in instanceof IndexInput) {
-      this.in = (IndexInput) in;
+    if (in instanceof IndexInput indexIn) {
+      this.in = indexIn;
       this.numBytes = numBytes;
       this.offset = this.in.getFilePointer();
     } else {

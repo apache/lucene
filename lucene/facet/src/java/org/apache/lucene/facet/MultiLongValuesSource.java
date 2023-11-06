@@ -90,8 +90,8 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
    * with {@link #fromSingleValued(LongValuesSource)}, or null.
    */
   public static LongValuesSource unwrapSingleton(MultiLongValuesSource in) {
-    if (in instanceof SingleValuedAsMultiValued) {
-      return ((SingleValuedAsMultiValued) in).in;
+    if (in instanceof SingleValuedAsMultiValued singleValuedAsMultiValued) {
+      return singleValuedAsMultiValued.in;
     } else {
       return null;
     }

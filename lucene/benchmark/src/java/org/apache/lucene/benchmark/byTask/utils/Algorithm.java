@@ -74,13 +74,13 @@ public class Algorithm implements AutoCloseable {
           task.setDisableCounting(isDisableCountNextTask);
           isDisableCountNextTask = false;
           currSequence.addTask(task);
-          if (task instanceof RepSumByPrefTask) {
+          if (task instanceof RepSumByPrefTask repSumByPrefTask) {
             stok.nextToken();
             String prefix = stok.sval;
             if (prefix == null || prefix.length() == 0) {
               throw new Exception("named report prefix problem - " + stok.toString());
             }
-            ((RepSumByPrefTask) task).setPrefix(prefix);
+            repSumByPrefTask.setPrefix(prefix);
           }
           // check for task param: '(' someParam ')'
           stok.nextToken();
@@ -282,8 +282,8 @@ public class Algorithm implements AutoCloseable {
       ArrayList<PerfTask> t = sequence.getTasks();
       if (t != null && t.size() == 1) {
         PerfTask p = t.get(0);
-        if (p instanceof TaskSequence) {
-          sequence = (TaskSequence) p;
+        if (p instanceof TaskSequence taskSequence) {
+          sequence = taskSequence;
           continue;
         }
       }

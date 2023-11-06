@@ -318,9 +318,8 @@ public final class FixedBitSet extends BitSet {
       checkUnpositioned(iter);
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       or(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
-      checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+    } else if (iter instanceof DocBaseBitSetIterator baseIter) {
+      checkUnpositioned(baseIter);
       or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       super.or(iter);
@@ -406,9 +405,8 @@ public final class FixedBitSet extends BitSet {
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       assert bits != null;
       andNot(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
-      checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+    } else if (iter instanceof final DocBaseBitSetIterator baseIter) {
+      checkUnpositioned(baseIter);
       andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       checkUnpositioned(iter);

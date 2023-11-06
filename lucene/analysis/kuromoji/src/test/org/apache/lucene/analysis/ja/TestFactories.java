@@ -141,9 +141,9 @@ public class TestFactories extends BaseTokenStreamTestCase {
       }
     }
 
-    if (factory instanceof ResourceLoaderAware) {
+    if (factory instanceof ResourceLoaderAware resourceLoaderAware) {
       try {
-        ((ResourceLoaderAware) factory).inform(new StringMockResourceLoader(""));
+        resourceLoaderAware.inform(new StringMockResourceLoader(""));
       } catch (
           @SuppressWarnings("unused")
           IOException ignored) {

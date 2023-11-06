@@ -129,8 +129,8 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
     b.append("shape: " + shape);
     int rel = geoAreaShape.getRelationship(shape);
     assertEquals(b.toString(), GeoArea.DISJOINT, rel);
-    if (shape instanceof GeoArea) {
-      rel = ((GeoArea) shape).getRelationship(geoAreaShape);
+    if (shape instanceof GeoArea geoArea) {
+      rel = geoArea.getRelationship(geoAreaShape);
       assertEquals(b.toString(), GeoArea.DISJOINT, rel);
     }
   }
@@ -175,8 +175,8 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
     b.append("shape: " + shape);
     int rel = geoAreaShape.getRelationship(shape);
     assertEquals(b.toString(), GeoArea.WITHIN, rel);
-    if (shape instanceof GeoArea) {
-      rel = ((GeoArea) shape).getRelationship(geoAreaShape);
+    if (shape instanceof GeoArea geoArea) {
+      rel = geoArea.getRelationship(geoAreaShape);
       assertEquals(b.toString(), GeoArea.CONTAINS, rel);
     }
   }
@@ -227,8 +227,8 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
     b.append("shape: " + shape);
     int rel = geoAreaShape.getRelationship(shape);
     assertEquals(b.toString(), GeoArea.CONTAINS, rel);
-    if (shape instanceof GeoArea) {
-      rel = ((GeoArea) shape).getRelationship(geoAreaShape);
+    if (shape instanceof GeoArea geoArea) {
+      rel = geoArea.getRelationship(geoAreaShape);
       assertEquals(b.toString(), GeoArea.WITHIN, rel);
     }
   }
@@ -282,8 +282,8 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
     b.append("shape: " + shape);
     int rel = geoAreaShape.getRelationship(shape);
     assertEquals(b.toString(), GeoArea.OVERLAPS, rel);
-    if (shape instanceof GeoArea) {
-      rel = ((GeoArea) shape).getRelationship(geoAreaShape);
+    if (shape instanceof GeoArea geoArea) {
+      rel = geoArea.getRelationship(geoAreaShape);
       assertEquals(b.toString(), GeoArea.OVERLAPS, rel);
     }
   }

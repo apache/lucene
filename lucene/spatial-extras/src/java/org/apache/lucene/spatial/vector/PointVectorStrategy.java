@@ -149,7 +149,7 @@ public class PointVectorStrategy extends SpatialStrategy {
 
   @Override
   public Field[] createIndexableFields(Shape shape) {
-    if (shape instanceof Point) return createIndexableFields((Point) shape);
+    if (shape instanceof Point point) return createIndexableFields(point);
     throw new UnsupportedOperationException("Can only index Point, not " + shape);
   }
 
@@ -186,11 +186,9 @@ public class PointVectorStrategy extends SpatialStrategy {
         args.getOperation(), SpatialOperation.Intersects, SpatialOperation.IsWithin))
       throw new UnsupportedSpatialOperation(args.getOperation());
     Shape shape = args.getShape();
-    if (shape instanceof Rectangle) {
-      Rectangle bbox = (Rectangle) shape;
+    if (shape instanceof Rectangle bbox) {
       return new ConstantScoreQuery(makeWithin(bbox));
-    } else if (shape instanceof Circle) {
-      Circle circle = (Circle) shape;
+    } else if (shape instanceof Circle circle) {
       Rectangle bbox = circle.getBoundingBox();
       return new DistanceRangeQuery(
           makeWithin(bbox), makeDistanceValueSource(circle.getCenter()), circle.getRadius());

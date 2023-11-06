@@ -34,8 +34,8 @@ public class FilterIndexInput extends IndexInput {
    * returns it
    */
   public static IndexInput unwrap(IndexInput in) {
-    while (in instanceof FilterIndexInput) {
-      in = ((FilterIndexInput) in).in;
+    while (in instanceof FilterIndexInput filterIn) {
+      in = filterIn.in;
     }
     return in;
   }

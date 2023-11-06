@@ -72,21 +72,21 @@ public class PayloadSpanUtil {
   }
 
   private void queryToSpanQuery(Query query, Collection<byte[]> payloads) throws IOException {
-    if (query instanceof BooleanQuery) {
-      for (BooleanClause clause : (BooleanQuery) query) {
+    if (query instanceof BooleanQuery booleanQuery) {
+      for (BooleanClause clause : booleanQuery) {
         if (!clause.isProhibited()) {
           queryToSpanQuery(clause.getQuery(), payloads);
         }
       }
 
-    } else if (query instanceof PhraseQuery) {
-      Term[] phraseQueryTerms = ((PhraseQuery) query).getTerms();
+    } else if (query instanceof PhraseQuery phraseQuery) {
+      Term[] phraseQueryTerms = phraseQuery.getTerms();
       SpanQuery[] clauses = new SpanQuery[phraseQueryTerms.length];
       for (int i = 0; i < phraseQueryTerms.length; i++) {
         clauses[i] = new SpanTermQuery(phraseQueryTerms[i]);
       }
 
-      int slop = ((PhraseQuery) query).getSlop();
+      int slop = phraseQuery.getSlop();
       boolean inorder = false;
 
       if (slop == 0) {
@@ -95,20 +95,18 @@ public class PayloadSpanUtil {
 
       SpanNearQuery sp = new SpanNearQuery(clauses, slop, inorder);
       getPayloads(payloads, sp);
-    } else if (query instanceof TermQuery) {
-      SpanTermQuery stq = new SpanTermQuery(((TermQuery) query).getTerm());
+    } else if (query instanceof TermQuery termQuery) {
+      SpanTermQuery stq = new SpanTermQuery(termQuery.getTerm());
       getPayloads(payloads, stq);
-    } else if (query instanceof SpanQuery) {
-      getPayloads(payloads, (SpanQuery) query);
-    } else if (query instanceof DisjunctionMaxQuery) {
+    } else if (query instanceof SpanQuery spanQuery) {
+      getPayloads(payloads, spanQuery);
+    } else if (query instanceof DisjunctionMaxQuery disjunctionMaxQuery) {
 
-      for (Iterator<Query> iterator = ((DisjunctionMaxQuery) query).iterator();
-          iterator.hasNext(); ) {
+      for (Iterator<Query> iterator = disjunctionMaxQuery.iterator(); iterator.hasNext(); ) {
         queryToSpanQuery(iterator.next(), payloads);
       }
 
-    } else if (query instanceof MultiPhraseQuery) {
-      final MultiPhraseQuery mpq = (MultiPhraseQuery) query;
+    } else if (query instanceof MultiPhraseQuery mpq) {
       final Term[][] termArrays = mpq.getTermArrays();
       final int[] positions = mpq.getPositions();
       if (positions.length > 0) {

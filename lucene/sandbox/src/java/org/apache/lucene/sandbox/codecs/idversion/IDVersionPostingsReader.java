@@ -71,8 +71,8 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
     if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
       SinglePostingsEnum posEnum;
 
-      if (reuse instanceof SinglePostingsEnum) {
-        posEnum = (SinglePostingsEnum) reuse;
+      if (reuse instanceof SinglePostingsEnum singlePostingsEnum) {
+        posEnum = singlePostingsEnum;
       } else {
         posEnum = new SinglePostingsEnum();
       }
@@ -81,8 +81,8 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
       return posEnum;
     }
 
-    if (reuse instanceof SingleDocsEnum) {
-      docsEnum = (SingleDocsEnum) reuse;
+    if (reuse instanceof SingleDocsEnum singleDocsEnum) {
+      docsEnum = singleDocsEnum;
     } else {
       docsEnum = new SingleDocsEnum();
     }

@@ -85,9 +85,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
   }
 
   static Object checkTagsArgument(Object tags) {
-    if (tags instanceof String) {
-      return tags;
-    } else if (tags instanceof String[]) {
+    if (tags instanceof String || tags instanceof String[]) {
       return tags;
     }
     throw new IllegalArgumentException("type of preTags/postTags must be a String or String[]");

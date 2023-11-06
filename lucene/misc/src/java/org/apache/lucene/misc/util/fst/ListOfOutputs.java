@@ -80,10 +80,10 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   @Override
   public Object add(Object prefix, Object output) {
     assert !(prefix instanceof List);
-    if (!(output instanceof List)) {
+    if (!(output instanceof List<?> list)) {
       return outputs.add((T) prefix, (T) output);
     } else {
-      List<T> outputList = (List<T>) output;
+      List<T> outputList = (List<T>) list;
       List<T> addedList = new ArrayList<>(outputList.size());
       for (T _output : outputList) {
         addedList.add(outputs.add((T) prefix, _output));
@@ -100,11 +100,11 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
 
   @Override
   public void writeFinalOutput(Object output, DataOutput out) throws IOException {
-    if (!(output instanceof List)) {
+    if (!(output instanceof List<?> list)) {
       out.writeVInt(1);
       outputs.write((T) output, out);
     } else {
-      List<T> outputList = (List<T>) output;
+      List<T> outputList = (List<T>) list;
       out.writeVInt(outputList.size());
       for (T eachOutput : outputList) {
         outputs.write(eachOutput, out);
@@ -151,10 +151,10 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
 
   @Override
   public String outputToString(Object output) {
-    if (!(output instanceof List)) {
+    if (!(output instanceof List<?> list)) {
       return outputs.outputToString((T) output);
     } else {
-      List<T> outputList = (List<T>) output;
+      List<T> outputList = (List<T>) list;
 
       StringBuilder b = new StringBuilder();
       b.append('[');
@@ -173,15 +173,15 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   @Override
   public Object merge(Object first, Object second) {
     List<T> outputList = new ArrayList<>();
-    if (!(first instanceof List)) {
+    if (!(first instanceof List<?> list)) {
       outputList.add((T) first);
     } else {
-      outputList.addAll((List<T>) first);
+      outputList.addAll((List<T>) list);
     }
-    if (!(second instanceof List)) {
+    if (!(second instanceof List<?> list)) {
       outputList.add((T) second);
     } else {
-      outputList.addAll((List<T>) second);
+      outputList.addAll((List<T>) list);
     }
     // System.out.println("MERGE: now " + outputList.size() + " first=" + outputToString(first) + "
     // second=" + outputToString(second));
@@ -195,12 +195,12 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   }
 
   public List<T> asList(Object output) {
-    if (!(output instanceof List)) {
+    if (!(output instanceof List<?> list)) {
       List<T> result = new ArrayList<>(1);
       result.add((T) output);
       return result;
     } else {
-      return (List<T>) output;
+      return (List<T>) list;
     }
   }
 
@@ -210,9 +210,9 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   @Override
   public long ramBytesUsed(Object output) {
     long bytes = 0;
-    if (output instanceof List) {
+    if (output instanceof List<?> rawOutputList) {
       bytes += BASE_LIST_NUM_BYTES;
-      List<T> outputList = (List<T>) output;
+      List<T> outputList = (List<T>) rawOutputList;
       for (T _output : outputList) {
         bytes += outputs.ramBytesUsed(_output);
       }

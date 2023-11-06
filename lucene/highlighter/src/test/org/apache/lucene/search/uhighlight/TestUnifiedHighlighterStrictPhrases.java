@@ -566,8 +566,8 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
               @Override
               protected Collection<Query> preSpanQueryRewrite(Query query) {
-                if (query instanceof MyQuery) {
-                  return Collections.singletonList(((MyQuery) query).wrapped);
+                if (query instanceof MyQuery myQuery) {
+                  return Collections.singletonList(myQuery.wrapped);
                 }
                 return null;
               }

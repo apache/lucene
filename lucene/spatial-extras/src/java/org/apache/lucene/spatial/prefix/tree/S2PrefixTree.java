@@ -80,10 +80,10 @@ public class S2PrefixTree extends SpatialPrefixTree {
    */
   public S2PrefixTree(SpatialContext ctx, int maxLevels, int arity) {
     super(ctx, maxLevels);
-    if (!(ctx.getShapeFactory() instanceof S2ShapeFactory)) {
+    if (!(ctx.getShapeFactory() instanceof S2ShapeFactory s2ShapeFactory)) {
       throw new IllegalArgumentException("Spatial context does not support S2 spatial index.");
     }
-    this.s2ShapeFactory = (S2ShapeFactory) ctx.getShapeFactory();
+    this.s2ShapeFactory = s2ShapeFactory;
     if (arity < 1 || arity > 3) {
       throw new IllegalArgumentException(
           "Invalid value for S2 tree arity. Possible values are 1, 2 or 3. Provided value is "
@@ -139,10 +139,9 @@ public class S2PrefixTree extends SpatialPrefixTree {
 
   @Override
   public CellIterator getTreeCellIterator(Shape shape, int detailLevel) {
-    if (!(shape instanceof Point)) {
+    if (!(shape instanceof Point p)) {
       return super.getTreeCellIterator(shape, detailLevel);
     }
-    Point p = (Point) shape;
     S2CellId id =
         S2CellId.fromLatLng(S2LatLng.fromDegrees(p.getY(), p.getX()))
             .parent(arity * (detailLevel - 1));

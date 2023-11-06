@@ -1069,8 +1069,9 @@ public final class RandomGeo3dShapeGenerator {
     private boolean validPoint(GeoPoint point, GeoShape shape, int relationship) {
       // For GeoCompositeMembershipShape we only consider the first shape to help
       // converging
-      if (relationship == GeoArea.WITHIN && shape instanceof GeoCompositeMembershipShape) {
-        shape = (((GeoCompositeMembershipShape) shape).getShapes().get(0));
+      if (relationship == GeoArea.WITHIN
+          && shape instanceof GeoCompositeMembershipShape compositeShape) {
+        shape = compositeShape.getShapes().get(0);
       }
       switch (relationship) {
         case GeoArea.DISJOINT:

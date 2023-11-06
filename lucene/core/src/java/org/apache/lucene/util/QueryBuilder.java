@@ -157,8 +157,8 @@ public class QueryBuilder {
 
     Query query =
         createFieldQuery(analyzer, BooleanClause.Occur.SHOULD, field, queryText, false, 0);
-    if (query instanceof BooleanQuery) {
-      query = addMinShouldMatchToBoolean((BooleanQuery) query, fraction);
+    if (query instanceof BooleanQuery booleanQuery) {
+      query = addMinShouldMatchToBoolean(booleanQuery, fraction);
     }
     return query;
   }

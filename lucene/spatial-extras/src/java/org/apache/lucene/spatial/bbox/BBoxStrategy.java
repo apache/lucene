@@ -250,10 +250,9 @@ public class BBoxStrategy extends SpatialStrategy {
   @Override
   public Query makeQuery(SpatialArgs args) {
     Shape shape = args.getShape();
-    if (!(shape instanceof Rectangle))
+    if (!(shape instanceof Rectangle bbox))
       throw new UnsupportedOperationException("Can only query by Rectangle, not " + shape);
 
-    Rectangle bbox = (Rectangle) shape;
     Query spatial;
 
     // Useful for understanding Relations:

@@ -79,16 +79,16 @@ import org.apache.lucene.util.IOUtils;
  * <code>
  *    WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor() {
  *        protected void extract(Query query, float boost, Map&lt;String, WeightedSpanTerm&gt;terms) throws IOException {
- *          if (query instanceof QueryWrapper) {
- *            extract(((QueryWrapper)query).getQuery(), boost, terms);
+ *          if (query instanceof QueryWrapper queryWrapper) {
+ *            extract(queryWrapper.getQuery(), boost, terms);
  *          } else {
  *            super.extract(query, boost, terms);
  *          }
  *        }
  *
  *        protected void extractUnknownQuery(Query query, Map&lt;String, WeightedSpanTerm&gt; terms) throws IOException {
- *          if (query instanceOf CustomTermQuery) {
- *            Term term = ((CustomTermQuery) query).getTerm();
+ *          if (query instanceOf CustomTermQuery customTermQuery) {
+ *            Term term = customTermQuery.getTerm();
  *            terms.put(term.field(), new WeightedSpanTerm(1, term.text()));
  *          }
  *        }
@@ -127,17 +127,15 @@ public class WeightedSpanTermExtractor {
    */
   protected void extract(Query query, float boost, Map<String, WeightedSpanTerm> terms)
       throws IOException {
-    if (query instanceof BoostQuery) {
-      BoostQuery boostQuery = (BoostQuery) query;
+    if (query instanceof BoostQuery boostQuery) {
       extract(boostQuery.getQuery(), boost * boostQuery.getBoost(), terms);
-    } else if (query instanceof BooleanQuery) {
-      for (BooleanClause clause : (BooleanQuery) query) {
+    } else if (query instanceof BooleanQuery booleanQuery) {
+      for (BooleanClause clause : booleanQuery) {
         if (!clause.isProhibited()) {
           extract(clause.getQuery(), boost, terms);
         }
       }
-    } else if (query instanceof PhraseQuery) {
-      PhraseQuery phraseQuery = ((PhraseQuery) query);
+    } else if (query instanceof PhraseQuery phraseQuery) {
       Term[] phraseQueryTerms = phraseQuery.getTerms();
       if (phraseQueryTerms.length == 1) {
         extractWeightedSpanTerms(terms, new SpanTermQuery(phraseQueryTerms[0]), boost);
@@ -165,10 +163,10 @@ public class WeightedSpanTermExtractor {
       }
     } else if (query instanceof TermQuery || query instanceof SynonymQuery) {
       extractWeightedTerms(terms, query, boost);
-    } else if (query instanceof SpanQuery) {
-      extractWeightedSpanTerms(terms, (SpanQuery) query, boost);
-    } else if (query instanceof ConstantScoreQuery) {
-      final Query q = ((ConstantScoreQuery) query).getQuery();
+    } else if (query instanceof SpanQuery spanQuery) {
+      extractWeightedSpanTerms(terms, spanQuery, boost);
+    } else if (query instanceof ConstantScoreQuery constantScoreQuery) {
+      final Query q = constantScoreQuery.getQuery();
       if (q != null) {
         extract(q, boost, terms);
       }
@@ -176,12 +174,11 @@ public class WeightedSpanTermExtractor {
       // specialized since rewriting would change the result query
       // this query is index sensitive.
       extractWeightedTerms(terms, query, boost);
-    } else if (query instanceof DisjunctionMaxQuery) {
-      for (Query clause : ((DisjunctionMaxQuery) query)) {
+    } else if (query instanceof DisjunctionMaxQuery disjunctionMaxQuery) {
+      for (Query clause : disjunctionMaxQuery) {
         extract(clause, boost, terms);
       }
-    } else if (query instanceof MultiPhraseQuery) {
-      final MultiPhraseQuery mpq = (MultiPhraseQuery) query;
+    } else if (query instanceof MultiPhraseQuery mpq) {
       final Term[][] termArrays = mpq.getTermArrays();
       final int[] positions = mpq.getPositions();
       if (positions.length > 0) {
@@ -235,8 +232,8 @@ public class WeightedSpanTermExtractor {
       // nothing
     } else if (query instanceof FieldExistsQuery) {
       // nothing
-    } else if (query instanceof FunctionScoreQuery) {
-      extract(((FunctionScoreQuery) query).getWrappedQuery(), boost, terms);
+    } else if (query instanceof FunctionScoreQuery functionScoreQuery) {
+      extract(functionScoreQuery.getWrappedQuery(), boost, terms);
     } else if (isQueryUnsupported(query.getClass())) {
       // nothing
     } else {
@@ -247,10 +244,10 @@ public class WeightedSpanTermExtractor {
       Query origQuery = query;
       final IndexReader reader = getLeafContext().reader();
       Query rewritten;
-      if (query instanceof MultiTermQuery) {
+      if (query instanceof MultiTermQuery multiTermQuery) {
         rewritten =
             MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(
-                new IndexSearcher(reader), (MultiTermQuery) query);
+                new IndexSearcher(reader), multiTermQuery);
       } else {
         rewritten = origQuery.rewrite(new IndexSearcher(reader));
       }
@@ -413,9 +410,9 @@ public class WeightedSpanTermExtractor {
       boolean cacheIt = wrapToCaching && !(tokenStream instanceof CachingTokenFilter);
 
       // If it's from term vectors, simply wrap the underlying Terms in a reader
-      if (tokenStream instanceof TokenStreamFromTermVector) {
+      if (tokenStream instanceof TokenStreamFromTermVector tokenStreamFromTermVector) {
         cacheIt = false;
-        Terms termVectorTerms = ((TokenStreamFromTermVector) tokenStream).getTermVectorTerms();
+        Terms termVectorTerms = tokenStreamFromTermVector.getTermVectorTerms();
         if (termVectorTerms.hasPositions() && termVectorTerms.hasOffsets()) {
           internalReader =
               new TermVectorLeafReader(DelegatingLeafReader.FIELD_NAME, termVectorTerms);
@@ -585,18 +582,18 @@ public class WeightedSpanTermExtractor {
   }
 
   protected void collectSpanQueryFields(SpanQuery spanQuery, Set<String> fieldNames) {
-    if (spanQuery instanceof FieldMaskingSpanQuery) {
-      collectSpanQueryFields(((FieldMaskingSpanQuery) spanQuery).getMaskedQuery(), fieldNames);
-    } else if (spanQuery instanceof SpanFirstQuery) {
-      collectSpanQueryFields(((SpanFirstQuery) spanQuery).getMatch(), fieldNames);
-    } else if (spanQuery instanceof SpanNearQuery) {
-      for (final SpanQuery clause : ((SpanNearQuery) spanQuery).getClauses()) {
+    if (spanQuery instanceof FieldMaskingSpanQuery fieldMaskingSpanQuery) {
+      collectSpanQueryFields(fieldMaskingSpanQuery.getMaskedQuery(), fieldNames);
+    } else if (spanQuery instanceof SpanFirstQuery spanFirstQuery) {
+      collectSpanQueryFields(spanFirstQuery.getMatch(), fieldNames);
+    } else if (spanQuery instanceof SpanNearQuery spanNearQuery) {
+      for (final SpanQuery clause : spanNearQuery.getClauses()) {
         collectSpanQueryFields(clause, fieldNames);
       }
-    } else if (spanQuery instanceof SpanNotQuery) {
-      collectSpanQueryFields(((SpanNotQuery) spanQuery).getInclude(), fieldNames);
-    } else if (spanQuery instanceof SpanOrQuery) {
-      for (final SpanQuery clause : ((SpanOrQuery) spanQuery).getClauses()) {
+    } else if (spanQuery instanceof SpanNotQuery spanNotQuery) {
+      collectSpanQueryFields(spanNotQuery.getInclude(), fieldNames);
+    } else if (spanQuery instanceof SpanOrQuery spanOrQuery) {
+      for (final SpanQuery clause : spanOrQuery.getClauses()) {
         collectSpanQueryFields(clause, fieldNames);
       }
     } else {
@@ -607,23 +604,22 @@ public class WeightedSpanTermExtractor {
   protected boolean mustRewriteQuery(SpanQuery spanQuery) {
     if (!expandMultiTermQuery) {
       return false; // Will throw UnsupportedOperationException in case of a SpanRegexQuery.
-    } else if (spanQuery instanceof FieldMaskingSpanQuery) {
-      return mustRewriteQuery(((FieldMaskingSpanQuery) spanQuery).getMaskedQuery());
-    } else if (spanQuery instanceof SpanFirstQuery) {
-      return mustRewriteQuery(((SpanFirstQuery) spanQuery).getMatch());
-    } else if (spanQuery instanceof SpanNearQuery) {
-      for (final SpanQuery clause : ((SpanNearQuery) spanQuery).getClauses()) {
+    } else if (spanQuery instanceof FieldMaskingSpanQuery fieldMaskingSpanQuery) {
+      return mustRewriteQuery(fieldMaskingSpanQuery.getMaskedQuery());
+    } else if (spanQuery instanceof SpanFirstQuery spanFirstQuery) {
+      return mustRewriteQuery(spanFirstQuery.getMatch());
+    } else if (spanQuery instanceof SpanNearQuery spanNearQuery) {
+      for (final SpanQuery clause : spanNearQuery.getClauses()) {
         if (mustRewriteQuery(clause)) {
           return true;
         }
       }
       return false;
-    } else if (spanQuery instanceof SpanNotQuery) {
-      SpanNotQuery spanNotQuery = (SpanNotQuery) spanQuery;
+    } else if (spanQuery instanceof SpanNotQuery spanNotQuery) {
       return mustRewriteQuery(spanNotQuery.getInclude())
           || mustRewriteQuery(spanNotQuery.getExclude());
-    } else if (spanQuery instanceof SpanOrQuery) {
-      for (final SpanQuery clause : ((SpanOrQuery) spanQuery).getClauses()) {
+    } else if (spanQuery instanceof SpanOrQuery spanOrQuery) {
+      for (final SpanQuery clause : spanOrQuery.getClauses()) {
         if (mustRewriteQuery(clause)) {
           return true;
         }
