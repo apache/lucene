@@ -145,7 +145,7 @@ public class FSTCompiler<T> {
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
     } else {
       dedupHash = null;
     }
@@ -268,10 +268,6 @@ public class FSTCompiler<T> {
 
   public float getDirectAddressingMaxOversizingFactor() {
     return directAddressingMaxOversizingFactor;
-  }
-
-  public long getTermCount() {
-    return frontier[0].inputCount;
   }
 
   public long getNodeCount() {
@@ -749,7 +745,6 @@ public class FSTCompiler<T> {
       // format cannot represent the empty input since
       // 'finalness' is stored on the incoming arc, not on
       // the node
-      frontier[0].inputCount++;
       frontier[0].isFinal = true;
       fst.setEmptyOutput(output);
       return;
@@ -760,9 +755,6 @@ public class FSTCompiler<T> {
     int pos2 = input.offset;
     final int pos1Stop = Math.min(lastInput.length(), input.length);
     while (true) {
-      frontier[pos1].inputCount++;
-      // System.out.println("  incr " + pos1 + " ct=" + frontier[pos1].inputCount + " n=" +
-      // frontier[pos1]);
       if (pos1 >= pos1Stop || lastInput.intAt(pos1) != input.ints[pos2]) {
         break;
       }
@@ -786,7 +778,6 @@ public class FSTCompiler<T> {
     // init tail states for current input
     for (int idx = prefixLenPlus1; idx <= input.length; idx++) {
       frontier[idx - 1].addArc(input.ints[input.offset + idx - 1], frontier[idx]);
-      frontier[idx].inputCount++;
     }
 
     final UnCompiledNode<T> lastNode = frontier[input.length];
@@ -835,8 +826,6 @@ public class FSTCompiler<T> {
 
     // save last input
     lastInput.copyInts(input);
-
-    // System.out.println("  count[0]=" + frontier[0].inputCount);
   }
 
   private boolean validOutput(T output) {
@@ -906,10 +895,6 @@ public class FSTCompiler<T> {
     T output;
     boolean isFinal;
 
-    // TODO: remove this tracking?  we used to use it for confusingly pruning NodeHash, but
-    // we switched to LRU by RAM usage instead:
-    long inputCount;
-
     /** This node's depth, starting from the automaton root. */
     final int depth;
 
@@ -935,7 +920,6 @@ public class FSTCompiler<T> {
       numArcs = 0;
       isFinal = false;
       output = owner.NO_OUTPUT;
-      inputCount = 0;
 
       // We don't clear the depth here because it never changes
       // for nodes on the frontier (even when reused).

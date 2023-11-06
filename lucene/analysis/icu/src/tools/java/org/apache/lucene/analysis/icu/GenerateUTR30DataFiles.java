@@ -27,6 +27,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -155,19 +156,19 @@ public class GenerateUTR30DataFiles {
   }
 
   private static void getNFKCDataFilesFromIcuProject(String releaseTag) throws IOException {
-    URL icuTagsURL = new URL(ICU_GIT_TAG_URL + "/");
-    URL icuReleaseTagURL = new URL(icuTagsURL, releaseTag + "/");
-    URL norm2url = new URL(icuReleaseTagURL, ICU_DATA_NORM2_PATH + "/");
+    URI icuTagsURI = URI.create(ICU_GIT_TAG_URL + "/");
+    URI icuReleaseTagURI = icuTagsURI.resolve(releaseTag + "/");
+    URI norm2uri = icuReleaseTagURI.resolve(ICU_DATA_NORM2_PATH + "/");
 
     System.err.print("Downloading " + NFKC_TXT + " ... ");
-    download(new URL(norm2url, NFKC_TXT), NFKC_TXT);
+    download(norm2uri.resolve(NFKC_TXT), NFKC_TXT);
     System.err.println("done.");
     System.err.print("Downloading " + NFKC_CF_TXT + " ... ");
-    download(new URL(norm2url, NFKC_CF_TXT), NFKC_CF_TXT);
+    download(norm2uri.resolve(NFKC_CF_TXT), NFKC_CF_TXT);
     System.err.println("done.");
 
     System.err.print("Downloading " + NFKC_CF_TXT + " and making diacritic rules one-way ... ");
-    URLConnection connection = openConnection(new URL(norm2url, NFC_TXT));
+    URLConnection connection = openConnection(norm2uri.resolve(NFC_TXT).toURL());
     try (BufferedReader reader =
             new BufferedReader(
                 new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
@@ -210,8 +211,8 @@ public class GenerateUTR30DataFiles {
     System.err.println("done.");
   }
 
-  private static void download(URL url, String outputFile) throws IOException {
-    final URLConnection connection = openConnection(url);
+  private static void download(URI uri, String outputFile) throws IOException {
+    final URLConnection connection = openConnection(uri.toURL());
     try (InputStream inputStream = connection.getInputStream();
         OutputStream outputStream = Files.newOutputStream(Path.of(outputFile))) {
       inputStream.transferTo(outputStream);

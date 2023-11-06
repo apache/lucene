@@ -24,8 +24,14 @@ import org.openjdk.jmh.annotations.*;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 3)
-@Measurement(iterations = 5, time = 3)
+// first iteration is complete garbage, so make sure we really warmup
+@Warmup(iterations = 4, time = 1)
+// real iterations. not useful to spend tons of time here, better to fork more
+@Measurement(iterations = 5, time = 1)
+// engage some noise reduction
+@Fork(
+    value = 3,
+    jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
 
   private byte[] bytesA;
@@ -36,7 +42,7 @@ public class VectorUtilBenchmark {
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
 
-  @Setup(Level.Trial)
+  @Setup(Level.Iteration)
   public void init() {
     ThreadLocalRandom random = ThreadLocalRandom.current();
 
@@ -56,84 +62,72 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
-  @Fork(value = 1)
   public float binaryCosineScalar() {
     return VectorUtil.cosine(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryCosineVector() {
     return VectorUtil.cosine(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(value = 1)
   public int binaryDotProductScalar() {
     return VectorUtil.dotProduct(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryDotProductVector() {
     return VectorUtil.dotProduct(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(value = 1)
   public int binarySquareScalar() {
     return VectorUtil.squareDistance(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareVector() {
     return VectorUtil.squareDistance(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(value = 1)
   public float floatCosineScalar() {
     return VectorUtil.cosine(floatsA, floatsB);
   }
 
   @Benchmark
   @Fork(
-      value = 1,
+      value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatCosineVector() {
     return VectorUtil.cosine(floatsA, floatsB);
   }
 
   @Benchmark
-  @Fork(value = 1)
   public float floatDotProductScalar() {
     return VectorUtil.dotProduct(floatsA, floatsB);
   }
 
   @Benchmark
   @Fork(
-      value = 1,
+      value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatDotProductVector() {
     return VectorUtil.dotProduct(floatsA, floatsB);
   }
 
   @Benchmark
-  @Fork(value = 1)
   public float floatSquareScalar() {
     return VectorUtil.squareDistance(floatsA, floatsB);
   }
 
   @Benchmark
   @Fork(
-      value = 1,
+      value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatSquareVector() {
     return VectorUtil.squareDistance(floatsA, floatsB);
