@@ -226,7 +226,7 @@ public class TestByteSlicePool extends LuceneTestCase {
     ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     ByteSlicePool slicePool = new ByteSlicePool(blockPool);
 
-    int n = random().nextInt(2, 4); // 2 or 3 writers and readers
+    int n = TestUtil.nextInt(random(), 2, 3); // 2 or 3 writers and readers
     SliceWriter[] sliceWriters = new SliceWriter[n];
     SliceReader[] sliceReaders = new SliceReader[n];
 
