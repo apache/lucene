@@ -307,6 +307,11 @@ Other
 
 * GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
 
+* GITHUB#6675: Various improvements related to ByteBlockPool. Slice functionality on top of ByteBlockPool moved to its
+  own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
+  overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
+  (Stefan Vodita)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
