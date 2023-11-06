@@ -147,13 +147,10 @@ public final class BytesRefHash implements Accountable {
     final int[] compact = compact();
 
     // We do not really need "stable" here. But since we allocated the extra O(n) memory anyway we
-    // can use this stable
-    // sorter to speed it up ~30%.
+    // can use this stable sorter to speed it up ~40%.
     assert count * 2 <= compact.length
-        : "This sorter relies on the load factor <= 0.5f, change it to a StringSorter"
-            + " if you are increasing the load factor.";
+        : "Change the following sorter to a StringSorter if you are increasing the load factor.";
     final int tmpOffset = count;
-
     new StableStringSorter(BytesRefComparator.NATURAL) {
 
       @Override
@@ -178,7 +175,6 @@ public final class BytesRefHash implements Accountable {
         pool.fillBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
-
     return compact;
   }
 

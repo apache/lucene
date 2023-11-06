@@ -260,6 +260,7 @@ Optimizations
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
 
+* GITHUB#12775: Speed up BytesRefHash#sort with stable radix sorter. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
