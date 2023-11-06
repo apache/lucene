@@ -67,7 +67,7 @@ allprojects {
           // seed, repetition and amplification.
           [propName: 'tests.seed', value: { -> rootSeed }, description: "Sets the master randomization seed."],
           [propName: 'tests.iters', value: null, description: "Duplicate (re-run) each test case N times."],
-          [propName: 'tests.multiplier', value: 1, description: "Value multiplier for randomized tests."],
+          [propName: 'tests.multiplier', value: null, description: "Value multiplier for randomized tests."],
           [propName: 'tests.maxfailures', value: null, description: "Skip tests after a given number of failures."],
           [propName: 'tests.timeoutSuite', value: null, description: "Timeout (in millis) for an entire suite."],
           [propName: 'tests.failfast', value: "false", description: "Stop the build early on failure.", buildOnly: true],
