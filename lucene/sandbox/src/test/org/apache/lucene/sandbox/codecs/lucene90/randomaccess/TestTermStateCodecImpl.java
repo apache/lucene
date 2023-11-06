@@ -19,8 +19,9 @@ package org.apache.lucene.sandbox.codecs.lucene90.randomaccess;
 
 import java.util.ArrayList;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
-import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitPacker;
+import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitPerBytePacker;
 import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitUnpacker;
+import org.apache.lucene.sandbox.codecs.lucene90.randomaccess.bitpacking.BitUnpackerImpl;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -40,7 +41,7 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     long maxDocStartFPDeltaSeen = -1;
     for (int i = 0; i < random().nextInt(2, 256); i++) {
       var termState = new IntBlockTermState();
-      termState.docFreq = random().nextInt(1, Integer.MAX_VALUE);
+      termState.docFreq = random().nextInt(1, 1 << random().nextInt(1, 31));
       if (i == 0) {
         termState.docStartFP = docStartFPBase;
       } else {
@@ -72,64 +73,60 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     // Assert that each term state is the same after the encode-decode roundtrip.
     BytesRef metadataBytes = new BytesRef(metadata);
     BytesRef dataBytes = new BytesRef(bitPerBytePacker.getBytes());
-    for (int i = 0; i < termStatesArray.length; i++) {
-      IntBlockTermState decoded =
-          codec.decodeWithinBlock(metadataBytes, dataBytes, bitPerBytePacker, i);
-      assertEquals(termStatesArray[i].docFreq, decoded.docFreq);
-      assertEquals(termStatesArray[i].docStartFP, decoded.docStartFP);
-    }
+    assertBlockRoundTrip(termStatesArray, codec, metadataBytes, dataBytes, bitPerBytePacker);
+
+    // With real compact bits instead of bit-per-byte
+    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes());
+    assertBlockRoundTrip(
+        termStatesArray, codec, metadataBytes, dataBytes, BitUnpackerImpl.INSTANCE);
 
     // Also test decoding that doesn't begin at the start of the block.
     int pos = random().nextInt(termStatesArray.length);
     int startBitIndex = random().nextInt(pos);
+    int recordSize = expectedDocFreqBitWidth + expectedDocStartFPBitWidth;
+    // With bit-per-byte bytes
     dataBytes =
-        new BytesRef(
-            bitPerBytePacker.getBytes(),
-            pos * (expectedDocFreqBitWidth + expectedDocStartFPBitWidth) - startBitIndex,
-            expectedDocFreqBitWidth + expectedDocStartFPBitWidth);
+        new BytesRef(bitPerBytePacker.getBytes(), pos * recordSize - startBitIndex, recordSize);
+    assertDecodeAt(
+        codec, metadataBytes, dataBytes, bitPerBytePacker, startBitIndex, termStatesArray[pos]);
+
+    // With compact bytes
+    int startByteIndex = pos * recordSize / 8;
+    int endByteIndex = (pos + 1) * recordSize / 8;
+    int length = endByteIndex - startByteIndex + ((pos + 1) * recordSize % 8 == 0 ? 0 : 1);
+    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes(), startByteIndex, length);
+    assertDecodeAt(
+        codec,
+        metadataBytes,
+        dataBytes,
+        BitUnpackerImpl.INSTANCE,
+        (pos * recordSize) % 8,
+        termStatesArray[pos]);
+  }
+
+  private static void assertDecodeAt(
+      TermStateCodecImpl codec,
+      BytesRef metadataBytes,
+      BytesRef dataBytes,
+      BitUnpacker bitUnpacker,
+      int startBitIndex,
+      IntBlockTermState termState) {
     IntBlockTermState decoded =
-        codec.decodeAt(metadataBytes, dataBytes, bitPerBytePacker, startBitIndex);
-    assertEquals(termStatesArray[pos].docFreq, decoded.docFreq);
-    assertEquals(termStatesArray[pos].docStartFP, decoded.docStartFP);
-  }
-}
-
-/**
- * A wasteful bit packer that use whole byte to keep a bit. Useful for tests. It uses little-endian
- * bit order.
- */
-class BitPerBytePacker implements BitPacker, BitUnpacker {
-  private final ArrayList<Byte> buffer = new ArrayList<>();
-
-  private int totalNumBits = 0;
-
-  @Override
-  public void add(long value, int numBits) {
-    assert numBits < 64;
-    totalNumBits += numBits;
-    while (numBits-- > 0) {
-      byte b = (byte) (value & 1L);
-      value = value >>> 1;
-      buffer.add(b);
-    }
+        codec.decodeAt(metadataBytes, dataBytes, bitUnpacker, startBitIndex);
+    assertEquals(termState.docFreq, decoded.docFreq);
+    assertEquals(termState.docStartFP, decoded.docStartFP);
   }
 
-  public byte[] getBytes() {
-    byte[] bytes = new byte[totalNumBits];
-    int index = 0;
-    for (var b : buffer) {
-      bytes[index++] = b;
+  private static void assertBlockRoundTrip(
+      IntBlockTermState[] termStatesArray,
+      TermStateCodecImpl codec,
+      BytesRef metadataBytes,
+      BytesRef dataBytes,
+      BitUnpacker bitUnpacker) {
+    for (int i = 0; i < termStatesArray.length; i++) {
+      IntBlockTermState decoded = codec.decodeWithinBlock(metadataBytes, dataBytes, bitUnpacker, i);
+      assertEquals(termStatesArray[i].docFreq, decoded.docFreq);
+      assertEquals(termStatesArray[i].docStartFP, decoded.docStartFP);
     }
-
-    return bytes;
-  }
-
-  @Override
-  public long unpack(BytesRef bytesRef, int startBitIndex, int bitWidth) {
-    long res = 0;
-    for (int i = 0; i < bitWidth; i++) {
-      res |= ((long) (bytesRef.bytes[bytesRef.offset + startBitIndex + i] & 1)) << i;
-    }
-    return res;
   }
 }
