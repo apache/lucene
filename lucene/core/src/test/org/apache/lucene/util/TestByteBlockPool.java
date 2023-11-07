@@ -16,9 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -27,10 +29,8 @@ public class TestByteBlockPool extends LuceneTestCase {
   public void testAppendFromOtherPool() {
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     final int numBytes = atLeast(2 << 16);
-    byte[] bytes = new byte[numBytes];
-    for (int i = 0; i < numBytes; i++) {
-      bytes[i] = (byte) random().nextInt(256);
-    }
+    Random random = random();
+    byte[] bytes = RandomBytes.randomBytesOfLength(random, numBytes);
     pool.append(bytes);
 
     ByteBlockPool anotherPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
@@ -38,8 +38,8 @@ public class TestByteBlockPool extends LuceneTestCase {
     anotherPool.append(existingBytes);
 
     // now slice and append to another pool
-    int offset = random().nextInt(2 << 15);
-    int length = random().nextInt(bytes.length - offset);
+    int offset = TestUtil.nextInt(random, 1, 2 << 15);
+    int length = TestUtil.nextInt(random, 1, bytes.length - offset);
     anotherPool.append(pool, offset, length);
 
     assertEquals(existingBytes.length + length, anotherPool.getPosition());
