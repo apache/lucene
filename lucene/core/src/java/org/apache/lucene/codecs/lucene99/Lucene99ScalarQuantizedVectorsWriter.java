@@ -143,6 +143,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     byte[] vector = new byte[fieldData.dim];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (float[] v : fieldData.floatVectors) {
+      if (fieldData.normalize) {
+        float[] copy = new float[v.length];
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeBytes(vector, vector.length);
@@ -196,6 +203,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
+      if (fieldData.normalize) {
+        float[] copy = new float[v.length];
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeBytes(vector, vector.length);
