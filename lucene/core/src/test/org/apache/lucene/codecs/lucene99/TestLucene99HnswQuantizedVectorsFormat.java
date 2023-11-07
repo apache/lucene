@@ -58,8 +58,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
-//    VectorSimilarityFunction similarityFunction = randomSimilarity();
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.COSINE;
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
     boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
