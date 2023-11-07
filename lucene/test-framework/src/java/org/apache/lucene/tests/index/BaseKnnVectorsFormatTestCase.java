@@ -81,7 +81,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(new KnnFloatVectorField("v2", randomVector(30), similarityFunction));
+      case FLOAT32 -> doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
   }
 
@@ -611,7 +611,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v", randomVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
+                "v", randomNormalizedVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -664,7 +664,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 fieldTotals[field] += b[0];
               }
               case FLOAT32 -> {
-                float[] v = randomVector(fieldDims[field]);
+                float[] v = randomNormalizedVector(fieldDims[field]);
                 doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
                 fieldTotals[field] += v[0];
               }
@@ -885,7 +885,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (int i = 0; i < numDoc; i++) {
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          values[i] = randomVector(dimension);
+          values[i] = randomNormalizedVector(dimension);
           ++numValues;
         }
         if (random().nextBoolean() && values[i] != null) {
@@ -1033,7 +1033,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          value = randomVector(dimension);
+          value = randomNormalizedVector(dimension);
         } else {
           value = null;
         }
@@ -1061,7 +1061,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
           assertEquals(visitedLimit, results.totalHits.value);
 
@@ -1071,7 +1071,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
           assertTrue(results.totalHits.value <= visitedLimit);
         }
@@ -1097,7 +1097,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          value = randomVector(dimension);
+          value = randomNormalizedVector(dimension);
         } else {
           value = null;
         }
@@ -1147,7 +1147,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, Integer.MAX_VALUE);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1221,6 +1221,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
+
+
   protected float[] randomVector(int dim) {
     assert dim > 0;
     float[] v = new float[dim];
@@ -1233,13 +1235,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         squareSum += v[i] * v[i];
       }
     }
+    return v;
+  }
+
+  protected float[] randomNormalizedVector(int dim) {
+    float[] v = randomVector(dim);
     VectorUtil.l2normalize(v);
     return v;
   }
 
+
+
   private byte[] randomVector8(int dim) {
     assert dim > 0;
-    float[] v = randomVector(dim);
+    float[] v = randomNormalizedVector(dim);
     byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
       b[i] = (byte) (v[i] * 127);
@@ -1251,10 +1260,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("v1", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(new KnnFloatVectorField("v1", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
 
-        doc.add(new KnnFloatVectorField("v2", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
 
@@ -1359,7 +1368,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               doc.add(new KnnByteVectorField("knn_vector", b, similarityFunction));
             }
             case FLOAT32 -> {
-              float[] v = randomVector(dim);
+              float[] v = randomNormalizedVector(dim);
               fieldValuesCheckSum += v[0];
               doc.add(new KnnFloatVectorField("knn_vector", v, similarityFunction));
             }
