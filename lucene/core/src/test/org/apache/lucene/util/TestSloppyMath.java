@@ -22,7 +22,8 @@ import static org.apache.lucene.util.SloppyMath.haversinMeters;
 import static org.apache.lucene.util.SloppyMath.haversinSortKey;
 
 import java.util.Random;
-import org.apache.lucene.geo.GeoTestUtil;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSloppyMath extends LuceneTestCase {
   // accuracy for cos()

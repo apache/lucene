@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -39,7 +41,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.DirectoryObserver;
@@ -304,7 +305,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
                 }
                 status = st;
               } catch (Exception e) {
-                log.error("Error checking index", e);
+                log.log(Level.SEVERE, "Error checking index", e);
                 statusLbl.setText(MessageUtils.getLocalizedMessage("message.error.unknown"));
               }
             }

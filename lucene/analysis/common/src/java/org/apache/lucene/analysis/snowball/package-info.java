@@ -17,30 +17,21 @@
 
 /**
  * {@link org.apache.lucene.analysis.TokenFilter} and {@link org.apache.lucene.analysis.Analyzer}
- * implementations that use Snowball stemmers.
+ * implementations that use a modified version of <a href="https://snowballstem.org/">Snowball
+ * stemmers</a>. See <a href="https://snowballstem.org/">Snowball project page</a> for more
+ * information about the original algorithms used.
  *
- * <p>This project provides pre-compiled version of the Snowball stemmers based on revision 500 of
- * the Tartarus Snowball repository, together with classes integrating them with the Lucene search
- * engine.
+ * <p>Lucene snowball classes require a few patches to the original Snowball source tree to generate
+ * more efficient code.
  *
- * <p>A few changes has been made to the static Snowball code and compiled stemmers:
- *
- * <ul>
- *   <li>Class SnowballProgram is made abstract and contains new abstract method stem() to avoid
- *       reflection in Lucene filter class SnowballFilter.
- *   <li>All use of StringBuffers has been refactored to StringBuilder for speed.
- *   <li>Snowball BSD license header has been added to the Java classes to avoid having RAT adding
- *       ASL headers.
- * </ul>
- *
- * <p>See the Snowball <a href ="http://snowball.tartarus.org/">home page</a> for more information
- * about the algorithms.
+ * <p>Refer to {@code gradle/generation/snowball*} and {@code help/regeneration.txt} files in Lucene
+ * source code for instructions on how code regeneration from Snowball sources works, what
+ * modifications are applied and what is required to regenerate snowball analyzers from scratch.
  *
  * <p><b>IMPORTANT NOTICE ON BACKWARDS COMPATIBILITY!</b>
  *
- * <p>An index created using the Snowball module in Lucene 2.3.2 and below might not be compatible
- * with the Snowball module in Lucene 2.4 or greater.
- *
- * <p>For more information about this issue see: https://issues.apache.org/jira/browse/LUCENE-1142
+ * <p>An index created using the Snowball module in one Lucene version may not be compatible with an
+ * index created with another Lucene version. The token stream will vary depending on the changes in
+ * snowball stemmer definitions.
  */
 package org.apache.lucene.analysis.snowball;

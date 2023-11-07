@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -29,9 +28,11 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** */
 public class TestCustomNorms extends LuceneTestCase {
@@ -71,8 +72,9 @@ public class TestCustomNorms extends LuceneTestCase {
     DirectoryReader open = DirectoryReader.open(dir);
     NumericDocValues norms = MultiDocValues.getNormValues(open, FLOAT_TEST_FIELD);
     assertNotNull(norms);
+    StoredFields storedFields = open.storedFields();
     for (int i = 0; i < open.maxDoc(); i++) {
-      Document document = open.document(i);
+      Document document = storedFields.document(i);
       int expected = Integer.parseInt(document.get(FLOAT_TEST_FIELD).split(" ")[0]);
       assertEquals(i, norms.nextDoc());
       assertEquals(expected, norms.longValue());

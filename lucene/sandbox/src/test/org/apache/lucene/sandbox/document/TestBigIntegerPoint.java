@@ -19,11 +19,11 @@ package org.apache.lucene.sandbox.document;
 import java.math.BigInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link BigIntegerPoint} */
 public class TestBigIntegerPoint extends LuceneTestCase {

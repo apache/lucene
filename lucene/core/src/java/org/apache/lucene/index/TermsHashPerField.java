@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -97,7 +98,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     final int offsetInAddressBuffer = streamStartOffset & IntBlockPool.INT_BLOCK_MASK;
     reader.init(
         bytePool,
-        postingsArray.byteStarts[termID] + stream * ByteBlockPool.FIRST_LEVEL_SIZE,
+        postingsArray.byteStarts[termID] + stream * FIRST_LEVEL_SIZE,
         streamAddressBuffer[offsetInAddressBuffer + stream]);
   }
 
@@ -140,16 +141,20 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
   }
 
+  /**
+   * Called when we first encounter a new term. We must allocate slies to store the postings (vInt
+   * compressed doc/freq/prox), and also the int pointers to where (in our ByteBlockPool storage)
+   * the postings for this term begin.
+   */
   private void initStreamSlices(int termID, int docID) throws IOException {
     // Init stream slices
-    // TODO: figure out why this is 2*streamCount here. streamCount should be enough?
-    if ((2 * streamCount) + intPool.intUpto > IntBlockPool.INT_BLOCK_SIZE) {
-      // can we fit all the streams in the current buffer?
+    if (streamCount + intPool.intUpto > IntBlockPool.INT_BLOCK_SIZE) {
+      // not enough space remaining in this buffer -- jump to next buffer and lose this remaining
+      // piece
       intPool.nextBuffer();
     }
 
-    if (ByteBlockPool.BYTE_BLOCK_SIZE - bytePool.byteUpto
-        < (2 * streamCount) * ByteBlockPool.FIRST_LEVEL_SIZE) {
+    if (ByteBlockPool.BYTE_BLOCK_SIZE - bytePool.byteUpto < (2 * streamCount) * FIRST_LEVEL_SIZE) {
       // can we fit at least one byte per stream in the current buffer, if not allocate a new one
       bytePool.nextBuffer();
     }
@@ -163,7 +168,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     for (int i = 0; i < streamCount; i++) {
       // initialize each stream with a slice we start with ByteBlockPool.FIRST_LEVEL_SIZE)
       // and grow as we need more space. see ByteBlockPool.LEVEL_SIZE_ARRAY
-      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
+      final int upto = newSlice(bytePool, FIRST_LEVEL_SIZE, 0);
       termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;
     }
     postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];
@@ -216,7 +221,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     int offset = upto & ByteBlockPool.BYTE_BLOCK_MASK;
     if (bytes[offset] != 0) {
       // End of slice; allocate a new one
-      offset = bytePool.allocSlice(bytes, offset);
+      offset = allocSlice(bytePool, bytes, offset);
       bytes = bytePool.buffer;
       termStreamAddressBuffer[streamAddress] = offset + bytePool.byteOffset;
     }
@@ -225,9 +230,104 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   final void writeBytes(int stream, byte[] b, int offset, int len) {
-    // TODO: optimize
     final int end = offset + len;
-    for (int i = offset; i < end; i++) writeByte(stream, b[i]);
+    int streamAddress = streamAddressOffset + stream;
+    int upto = termStreamAddressBuffer[streamAddress];
+    byte[] slice = bytePool.buffers[upto >> ByteBlockPool.BYTE_BLOCK_SHIFT];
+    assert slice != null;
+    int sliceOffset = upto & ByteBlockPool.BYTE_BLOCK_MASK;
+
+    while (slice[sliceOffset] == 0 && offset < end) {
+      slice[sliceOffset++] = b[offset++];
+      (termStreamAddressBuffer[streamAddress])++;
+    }
+
+    while (offset < end) {
+      int offsetAndLength = allocKnownSizeSlice(bytePool, slice, sliceOffset);
+      sliceOffset = offsetAndLength >> 8;
+      int sliceLength = offsetAndLength & 0xff;
+      slice = bytePool.buffer;
+      int writeLength = Math.min(sliceLength - 1, end - offset);
+      System.arraycopy(b, offset, slice, sliceOffset, writeLength);
+      sliceOffset += writeLength;
+      offset += writeLength;
+      termStreamAddressBuffer[streamAddress] = sliceOffset + bytePool.byteOffset;
+    }
+  }
+
+  // Size of each slice.  These arrays should be at most 16
+  // elements (index is encoded with 4 bits).  First array
+  // is just a compact way to encode X+1 with a max.  Second
+  // array is the length of each slice, ie first slice is 5
+  // bytes, next slice is 14 bytes, etc.
+
+  /**
+   * An array holding the offset into the {@link #LEVEL_SIZE_ARRAY} to quickly navigate to the next
+   * slice level.
+   */
+  static final int[] NEXT_LEVEL_ARRAY = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9};
+
+  /** An array holding the level sizes for byte slices. */
+  static final int[] LEVEL_SIZE_ARRAY = {5, 14, 20, 30, 40, 40, 80, 80, 120, 200};
+
+  /** The first level size for new slices */
+  static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
+
+  /**
+   * Allocates a new slice with the given size. As each slice is filled with 0's initially, we mark
+   * the end with a non-zero byte. This way we don't need to record its length and instead allocate
+   * new slice once they hit a non-zero byte.
+   */
+  // pkg private for access by tests
+  static int newSlice(ByteBlockPool bytePool, final int size, final int level) {
+    assert LEVEL_SIZE_ARRAY[level] == size;
+    // Maybe allocate another block
+    if (bytePool.byteUpto > ByteBlockPool.BYTE_BLOCK_SIZE - size) {
+      bytePool.nextBuffer();
+    }
+    final int upto = bytePool.byteUpto;
+    bytePool.byteUpto += size;
+    bytePool.buffer[bytePool.byteUpto - 1] = (byte) (16 | level);
+    return upto;
+  }
+
+  /**
+   * Creates a new byte slice with the given starting size and returns the slices offset in the
+   * pool.
+   */
+  // pkg private for access by tests
+  static int allocSlice(ByteBlockPool bytePool, final byte[] slice, final int upto) {
+    return allocKnownSizeSlice(bytePool, slice, upto) >> 8;
+  }
+
+  /**
+   * Create a new byte slice with the given starting size return the slice offset in the pool and
+   * length. The lower 8 bits of the returned int represent the length of the slice, and the upper
+   * 24 bits represent the offset.
+   */
+  // pkg private for access by tests
+  static int allocKnownSizeSlice(ByteBlockPool bytePool, final byte[] slice, final int upto) {
+    // The idea is to allocate the next slice and then write the address of the new slice
+    // into the last 4 bytes of the previous slice (the "forwarding address").
+    final int level = slice[upto] & 15;
+    final int newLevel = NEXT_LEVEL_ARRAY[level];
+    final int newSize = LEVEL_SIZE_ARRAY[newLevel];
+
+    final int newUpto = newSlice(bytePool, newSize, newLevel);
+    final int offset = newUpto + bytePool.byteOffset;
+
+    // Copy forward the past 3 bytes (which we are about to overwrite with the forwarding address).
+    // We actually copy 4 bytes at once since VarHandles make it cheap.
+    final int past3Bytes = ((int) BitUtil.VH_LE_INT.get(slice, upto - 3)) & 0xFFFFFF;
+    // Ensure we're not changing the content of `buffer` by setting 4 bytes instead of 3. This
+    // should never happen since the next `newSize` bytes must be equal to 0.
+    assert bytePool.buffer[newUpto + 3] == 0;
+    BitUtil.VH_LE_INT.set(bytePool.buffer, newUpto, past3Bytes);
+
+    // Write forwarding address at end of last slice:
+    BitUtil.VH_LE_INT.set(slice, upto - 3, offset);
+
+    return ((newUpto + 3) << 8) | (newSize - 3);
   }
 
   final void writeVInt(int stream, int i) {
@@ -262,7 +362,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       if (perField.postingsArray == null) {
         perField.postingsArray = perField.createPostingsArray(2);
         perField.newPostingsArray();
-        bytesUsed.addAndGet(perField.postingsArray.size * perField.postingsArray.bytesPerPosting());
+        bytesUsed.addAndGet(
+            perField.postingsArray.size * (long) perField.postingsArray.bytesPerPosting());
       }
       return perField.postingsArray.textStarts;
     }
@@ -273,7 +374,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       final int oldSize = perField.postingsArray.size;
       postingsArray = perField.postingsArray = postingsArray.grow();
       perField.newPostingsArray();
-      bytesUsed.addAndGet((postingsArray.bytesPerPosting() * (postingsArray.size - oldSize)));
+      bytesUsed.addAndGet(postingsArray.bytesPerPosting() * (long) (postingsArray.size - oldSize));
       return postingsArray.textStarts;
     }
 

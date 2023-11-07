@@ -27,9 +27,7 @@ import javax.swing.JLabel;
 
 /** Font utilities */
 public class FontUtils {
-
-  public static final String TTF_RESOURCE_NAME =
-      "org/apache/lucene/luke/app/desktop/font/ElegantIcons.ttf";
+  private static final String TTF_RESOURCE_NAME = "ElegantIcons.ttf";
 
   @SuppressWarnings("unchecked")
   public static JLabel toLinkText(JLabel label) {
@@ -42,7 +40,7 @@ public class FontUtils {
   }
 
   public static Font createElegantIconFont() throws IOException, FontFormatException {
-    InputStream is = FontUtils.class.getClassLoader().getResourceAsStream(TTF_RESOURCE_NAME);
+    InputStream is = FontUtils.class.getResourceAsStream(TTF_RESOURCE_NAME);
     return Font.createFont(Font.TRUETYPE_FONT, is);
   }
 

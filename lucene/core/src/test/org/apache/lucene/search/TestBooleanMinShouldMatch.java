@@ -23,10 +23,13 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -92,8 +95,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     // bs2
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
-    TopDocs topDocs = s.search(q, collectorManager);
-    ScoreDoc[] h2 = topDocs.scoreDocs;
+    ScoreDoc[] h2 = s.search(q, collectorManager).scoreDocs;
     if (expected != h2.length) {
       printHits(getTestName(), h2, s);
     }
@@ -435,14 +437,40 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertSubsetOfSameScores(q2.build(), top1, top2);
   }
 
+  public void testFlattenInnerDisjunctions() throws Exception {
+    Query q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+    verifyNrHits(q, 1);
+
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .build();
+    q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(inner, BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+
+    verifyNrHits(q, 0);
+  }
+
   protected void printHits(String test, ScoreDoc[] h, IndexSearcher searcher) throws Exception {
 
     System.err.println("------- " + test + " -------");
 
     DecimalFormat f = new DecimalFormat("0.000000", DecimalFormatSymbols.getInstance(Locale.ROOT));
 
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.doc(h[i].doc);
+      Document d = storedFields.document(h[i].doc);
       float score = h[i].score;
       System.err.println(
           "#" + i + ": " + f.format(score) + " - " + d.get("id") + " - " + d.get("data"));

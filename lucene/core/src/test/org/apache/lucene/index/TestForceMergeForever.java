@@ -19,11 +19,11 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestForceMergeForever extends LuceneTestCase {
 
@@ -91,7 +91,7 @@ public class TestForceMergeForever extends LuceneTestCase {
                 w.updateDocument(
                     new Term("docid", "" + random().nextInt(numStartDocs)), docs.nextDoc());
                 // Force deletes to apply
-                w.getReader().close();
+                DirectoryReader.open(w).close();
               }
             } catch (Throwable t) {
               throw new RuntimeException(t);

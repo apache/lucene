@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -36,10 +35,12 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Before;
 
 public class TestStressIndexing2 extends LuceneTestCase {
@@ -63,7 +64,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
     // TODO: verify equals using IW.getReader
     DocsAndWriter dw = indexRandomIWReader(5, 3, 100, dir);
-    DirectoryReader reader = dw.writer.getReader();
+    DirectoryReader reader = DirectoryReader.open(dw.writer);
     dw.writer.commit();
     verifyEquals(random(), reader, dir, "id");
     reader.close();
@@ -312,9 +313,10 @@ public class TestStressIndexing2 extends LuceneTestCase {
       // TODO: improve this
       LeafReader sub = ctx.reader();
       Bits liveDocs = sub.getLiveDocs();
+      StoredFields storedFields = sub.storedFields();
       System.out.println("  " + ((SegmentReader) sub).getSegmentInfo());
       for (int docID = 0; docID < sub.maxDoc(); docID++) {
-        Document doc = sub.document(docID);
+        Document doc = storedFields.document(docID);
         if (liveDocs == null || liveDocs.get(docID)) {
           System.out.println("    docID=" + docID + " id:" + doc.get("id"));
         } else {
@@ -414,20 +416,20 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
       // verify stored fields are equivalent
       try {
-        verifyEquals(r1.document(id1), r2.document(id2));
+        verifyEquals(r1.storedFields().document(id1), r2.storedFields().document(id2));
       } catch (Throwable t) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2 + " term=" + term);
-        System.out.println("  d1=" + r1.document(id1));
-        System.out.println("  d2=" + r2.document(id2));
+        System.out.println("  d1=" + r1.storedFields().document(id1));
+        System.out.println("  d2=" + r2.storedFields().document(id2));
         throw t;
       }
 
       try {
         // verify term vectors are equivalent
-        verifyEquals(r1.getTermVectors(id1), r2.getTermVectors(id2));
+        verifyEquals(r1.termVectors().get(id1), r2.termVectors().get(id2));
       } catch (Throwable e) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2);
-        Fields tv1 = r1.getTermVectors(id1);
+        Fields tv1 = r1.termVectors().get(id1);
         System.out.println("  d1=" + tv1);
         if (tv1 != null) {
           PostingsEnum dpEnum = null;
@@ -460,7 +462,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
           }
         }
 
-        Fields tv2 = r2.getTermVectors(id2);
+        Fields tv2 = r2.termVectors().get(id2);
         System.out.println("  d2=" + tv2);
         if (tv2 != null) {
           PostingsEnum dpEnum = null;

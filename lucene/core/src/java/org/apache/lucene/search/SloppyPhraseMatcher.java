@@ -133,7 +133,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           @Override
           public void advanceShallow(int target) throws IOException {}
         };
-    impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
+    impactsApproximation = new ImpactsDISI(approximation, new MaxScoreCache(impactsSource, scorer));
   }
 
   @Override

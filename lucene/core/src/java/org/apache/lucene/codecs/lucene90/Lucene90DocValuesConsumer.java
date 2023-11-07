@@ -164,6 +164,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       ++numValues;
     }
 
+    /** Accumulate state from another tracker. */
+    void update(MinMaxTracker other) {
+      min = Math.min(min, other.min);
+      max = Math.max(max, other.max);
+      numValues += other.numValues;
+    }
+
     /** Update the required space. */
     void finish() {
       if (max > min) {
@@ -181,6 +188,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    final long firstValue;
+    if (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      firstValue = values.nextValue();
+    } else {
+      firstValue = 0L;
+    }
+    values = valuesProducer.getSortedNumeric(field);
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
@@ -196,14 +210,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             // wrong results. Since these extreme values are unlikely, we just discard
             // GCD computation for them
             gcd = 1;
-          } else if (minMax.numValues != 0) { // minValue needs to be set first
-            gcd = MathUtil.gcd(gcd, v - minMax.min);
+          } else {
+            gcd = MathUtil.gcd(gcd, v - firstValue);
           }
         }
 
-        minMax.update(v);
         blockMinMax.update(v);
         if (blockMinMax.numValues == NUMERIC_BLOCK_SIZE) {
+          minMax.update(blockMinMax);
           blockMinMax.nextBlock();
         }
 
@@ -215,6 +229,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       numDocsWithValue++;
     }
 
+    minMax.update(blockMinMax);
     minMax.finish();
     blockMinMax.finish();
 
@@ -550,18 +565,26 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     LZ4.FastCompressionHashTable ht = new LZ4.FastCompressionHashTable();
     ByteArrayDataOutput bufferedOutput = new ByteArrayDataOutput(termsDictBuffer);
+    int dictLength = 0;
 
     for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
       if ((ord & blockMask) == 0) {
-        if (bufferedOutput.getPosition() > 0) {
-          maxBlockLength =
-              Math.max(maxBlockLength, compressAndGetTermsDictBlockLength(bufferedOutput, ht));
+        if (ord != 0) {
+          // flush the previous block
+          final int uncompressedLength =
+              compressAndGetTermsDictBlockLength(bufferedOutput, dictLength, ht);
+          maxBlockLength = Math.max(maxBlockLength, uncompressedLength);
           bufferedOutput.reset(termsDictBuffer);
         }
 
         writer.add(data.getFilePointer() - start);
+        // Write the first term both to the index output, and to the buffer where we'll use it as a
+        // dictionary for compression
         data.writeVInt(term.length);
         data.writeBytes(term.bytes, term.offset, term.length);
+        bufferedOutput = maybeGrowBuffer(bufferedOutput, term.length);
+        bufferedOutput.writeBytes(term.bytes, term.offset, term.length);
+        dictLength = term.length;
       } else {
         final int prefixLength = StringHelper.bytesDifference(previous.get(), term);
         final int suffixLength = term.length - prefixLength;
@@ -583,9 +606,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       ++ord;
     }
     // Compress and write out the last block
-    if (bufferedOutput.getPosition() > 0) {
-      maxBlockLength =
-          Math.max(maxBlockLength, compressAndGetTermsDictBlockLength(bufferedOutput, ht));
+    if (bufferedOutput.getPosition() > dictLength) {
+      final int uncompressedLength =
+          compressAndGetTermsDictBlockLength(bufferedOutput, dictLength, ht);
+      maxBlockLength = Math.max(maxBlockLength, uncompressedLength);
     }
 
     writer.finish();
@@ -604,15 +628,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   }
 
   private int compressAndGetTermsDictBlockLength(
-      ByteArrayDataOutput bufferedOutput, LZ4.FastCompressionHashTable ht) throws IOException {
-    int uncompressedLength = bufferedOutput.getPosition();
+      ByteArrayDataOutput bufferedOutput, int dictLength, LZ4.FastCompressionHashTable ht)
+      throws IOException {
+    int uncompressedLength = bufferedOutput.getPosition() - dictLength;
     data.writeVInt(uncompressedLength);
-    long before = data.getFilePointer();
-    LZ4.compress(termsDictBuffer, 0, uncompressedLength, data, ht);
-    int compressedLength = (int) (data.getFilePointer() - before);
-    // Block length will be used for creating buffer for decompression, one corner case is that
-    // compressed length might be bigger than un-compressed length, so just return the bigger one.
-    return Math.max(uncompressedLength, compressedLength);
+    LZ4.compressWithDictionary(termsDictBuffer, 0, dictLength, uncompressedLength, data, ht);
+    return uncompressedLength;
   }
 
   private ByteArrayDataOutput maybeGrowBuffer(ByteArrayDataOutput bufferedOutput, int termLength) {
@@ -678,12 +699,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_NUMERIC);
-    doAddSortedNumericField(field, valuesProducer);
+    doAddSortedNumericField(field, valuesProducer, false);
   }
 
-  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
-      throws IOException {
-    long[] stats = writeValues(field, valuesProducer, false);
+  private void doAddSortedNumericField(
+      FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
+    long[] stats = writeValues(field, valuesProducer, ords);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
     assert numValues >= numDocsWithField;
@@ -711,25 +732,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
+  private static boolean isSingleValued(SortedSetDocValues values) throws IOException {
+    if (DocValues.unwrapSingleton(values) != null) {
+      return true;
+    }
+
+    assert values.docID() == -1;
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      int docValueCount = values.docValueCount();
+      assert docValueCount > 0;
+      if (docValueCount > 1) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public void addSortedSetField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeByte(Lucene90DocValuesFormat.SORTED_SET);
 
-    SortedSetDocValues values = valuesProducer.getSortedSet(field);
-    int numDocsWithField = 0;
-    long numOrds = 0;
-    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      numDocsWithField++;
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        numOrds++;
-      }
-    }
-
-    if (numDocsWithField == numOrds) {
+    if (isSingleValued(valuesProducer.getSortedSet(field))) {
       meta.writeByte((byte) 0); // multiValued (0 = singleValued)
       doAddSortedField(
           field,
@@ -779,12 +804,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               public int nextDoc() throws IOException {
                 int doc = values.nextDoc();
                 if (doc != NO_MORE_DOCS) {
-                  docValueCount = 0;
-                  for (long ord = values.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = values.nextOrd()) {
-                    ords = ArrayUtil.grow(ords, docValueCount + 1);
-                    ords[docValueCount++] = ord;
+                  docValueCount = values.docValueCount();
+                  ords = ArrayUtil.grow(ords, docValueCount);
+                  for (int j = 0; j < docValueCount; j++) {
+                    ords[j] = values.nextOrd();
                   }
                   i = 0;
                 }
@@ -802,8 +825,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               }
             };
           }
-        });
+        },
+        true);
 
-    addTermsDict(values);
+    addTermsDict(valuesProducer.getSortedSet(field));
   }
 }

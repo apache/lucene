@@ -32,8 +32,8 @@ public class LongComparator extends NumericComparator<Long> {
   protected long bottom;
 
   public LongComparator(
-      int numHits, String field, Long missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0L, reverse, sortPos, Long.BYTES);
+      int numHits, String field, Long missingValue, boolean reverse, boolean enableSkipping) {
+    super(field, missingValue != null ? missingValue : 0L, reverse, enableSkipping, Long.BYTES);
     values = new long[numHits];
   }
 
@@ -96,11 +96,13 @@ public class LongComparator extends NumericComparator<Long> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Long.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Long.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Long.compare(missingValue, topValue);
     }
 
     @Override

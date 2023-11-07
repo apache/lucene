@@ -35,8 +35,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final HitsThresholdChecker hitsThresholdChecker;
   private final MaxScoreAccumulator minScoreAcc;
   private final List<TopFieldCollector> collectors;
-  private final boolean supportsConcurrency;
-  private boolean collectorCreated;
 
   /**
    * Creates a new {@link TopFieldCollectorManager} from the given arguments.
@@ -88,7 +86,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.sort = sort;
     this.numHits = numHits;
     this.after = after;
-    this.supportsConcurrency = supportsConcurrency;
     this.hitsThresholdChecker =
         supportsConcurrency
             ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
@@ -138,22 +135,34 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
 
   @Override
   public TopFieldCollector newCollector() {
-    if (collectorCreated && supportsConcurrency == false) {
-      throw new IllegalStateException(
-          "The instantiated TopFieldCollectorManager does not support concurrency, but multiple collectors are being created");
-    } else {
-      collectorCreated = true;
-    }
-
     FieldValueHitQueue<FieldValueHitQueue.Entry> queue =
-        FieldValueHitQueue.create(sort.fields, numHits);
+        FieldValueHitQueue.create(sort.getSort(), numHits);
 
     TopFieldCollector collector;
     if (after == null) {
+      // inform a comparator that sort is based on this single field
+      // to enable some optimizations for skipping over non-competitive documents
+      // We can't set single sort when the `after` parameter is non-null as it's
+      // an implicit sort over the document id.
+      if (queue.comparators.length == 1) {
+        queue.comparators[0].setSingleSort();
+      }
       collector =
           new TopFieldCollector.SimpleFieldCollector(
               sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
     } else {
+      if (after.fields == null) {
+        throw new IllegalArgumentException(
+            "after.fields wasn't set; you must pass fillFields=true for the previous search");
+      }
+
+      if (after.fields.length != sort.getSort().length) {
+        throw new IllegalArgumentException(
+            "after.fields has "
+                + after.fields.length
+                + " values but sort has "
+                + sort.getSort().length);
+      }
       collector =
           new TopFieldCollector.PagingFieldCollector(
               sort, queue, after, numHits, hitsThresholdChecker, minScoreAcc);

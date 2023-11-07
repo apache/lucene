@@ -26,7 +26,6 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.expressions.js.VariableContext;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.FieldDoc;
@@ -37,7 +36,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** simple demo of using expressions */
 public class TestDemoExpressions extends LuceneTestCase {
@@ -92,7 +92,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     // compile an expression:
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 
-    // we use SimpleBindings: which just maps variables to SortField instances
+    // we use SimpleBindings: which just maps variables to DoubleValuesSource instances
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("_score", DoubleValuesSource.SCORES);
     bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));

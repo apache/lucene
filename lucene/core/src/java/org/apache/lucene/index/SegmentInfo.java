@@ -81,8 +81,25 @@ public final class SegmentInfo {
   // into this segment
   Version minVersion;
 
+  private boolean hasBlocks;
+
   void setDiagnostics(Map<String, String> diagnostics) {
     this.diagnostics = Map.copyOf(Objects.requireNonNull(diagnostics));
+  }
+
+  /**
+   * Adds or modifies this segment's diagnostics.
+   *
+   * <p>Entries in the given map whose keys are not present in the current diagnostics are added.
+   * Otherwise, existing entries are modified with the given map's value.
+   *
+   * @param diagnostics the additional diagnostics
+   */
+  public void addDiagnostics(Map<String, String> diagnostics) {
+    Objects.requireNonNull(diagnostics);
+    Map<String, String> copy = new HashMap<>(this.diagnostics);
+    copy.putAll(diagnostics);
+    setDiagnostics(copy);
   }
 
   /** Returns diagnostics saved into the segment when it was written. The map is immutable. */
@@ -102,6 +119,7 @@ public final class SegmentInfo {
       String name,
       int maxDoc,
       boolean isCompoundFile,
+      boolean hasBlocks,
       Codec codec,
       Map<String, String> diagnostics,
       byte[] id,
@@ -114,6 +132,7 @@ public final class SegmentInfo {
     this.name = Objects.requireNonNull(name);
     this.maxDoc = maxDoc;
     this.isCompoundFile = isCompoundFile;
+    this.hasBlocks = hasBlocks;
     this.codec = codec;
     this.diagnostics = Map.copyOf(Objects.requireNonNull(diagnostics));
     this.id = id;
@@ -136,6 +155,20 @@ public final class SegmentInfo {
   /** Returns true if this segment is stored as a compound file; else, false. */
   public boolean getUseCompoundFile() {
     return isCompoundFile;
+  }
+
+  /**
+   * Returns true if this segment contains documents written as blocks.
+   *
+   * @see LeafMetaData#hasBlocks()
+   */
+  public boolean getHasBlocks() {
+    return hasBlocks;
+  }
+
+  /** Sets the hasBlocks property to true. This setting is viral and can't be unset. */
+  void setHasBlocks() {
+    hasBlocks = true;
   }
 
   /** Can only be called once. */

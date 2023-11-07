@@ -18,7 +18,7 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoUtils;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * base shape encoding class for testing encoding of tessellated {@link

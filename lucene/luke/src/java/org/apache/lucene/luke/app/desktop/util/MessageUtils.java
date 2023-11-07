@@ -17,13 +17,8 @@
 
 package org.apache.lucene.luke.app.desktop.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.Locale;
-import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 
 /** Utilities for accessing message resources. */
@@ -41,24 +36,8 @@ public class MessageUtils {
     return new MessageFormat(pattern, Locale.ENGLISH).format(args);
   }
 
-  // https://stackoverflow.com/questions/4659929/how-to-use-utf-8-in-resource-properties-with-resourcebundle
-  private static ResourceBundle.Control UTF8_RESOURCEBUNDLE_CONTROL =
-      new ResourceBundle.Control() {
-        @Override
-        public ResourceBundle newBundle(
-            String baseName, Locale locale, String format, ClassLoader loader, boolean reload)
-            throws IllegalAccessException, InstantiationException, IOException {
-          String bundleName = toBundleName(baseName, locale);
-          String resourceName = toResourceName(bundleName, "properties");
-          try (InputStream is = loader.getResourceAsStream(resourceName)) {
-            return new PropertyResourceBundle(new InputStreamReader(is, StandardCharsets.UTF_8));
-          }
-        }
-      };
-
   private static ResourceBundle bundle =
-      ResourceBundle.getBundle(
-          MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH, UTF8_RESOURCEBUNDLE_CONTROL);
+      ResourceBundle.getBundle(MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH);
 
   private MessageUtils() {}
 }

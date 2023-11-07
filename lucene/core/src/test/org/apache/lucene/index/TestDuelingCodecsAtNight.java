@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.util.LuceneTestCase.Nightly;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 
 /** Just like TestDuelingCodecs, only with a lot more documents. */
 @Nightly

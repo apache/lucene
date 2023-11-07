@@ -16,60 +16,72 @@
  */
 
 /**
+ * Intervals queries
  *
- *
- * <h2>Intervals queries</h2>
- *
- * This package contains experimental classes to search over intervals within fields
+ * <p>This package contains experimental classes to search over intervals within fields
  *
  * <h2>IntervalsSource</h2>
  *
  * The {@link org.apache.lucene.queries.intervals.IntervalsSource} class can be used to construct
  * proximity relationships between terms and intervals. They can be built using static methods in
- * the {@link org.apache.lucene.queries.intervals.Intervals} class
+ * the {@link org.apache.lucene.queries.intervals.Intervals} class.
  *
  * <h3>Basic intervals</h3>
  *
  * <ul>
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#term(String)} &mdash; Represents a
- *       single term
+ *       single term.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#phrase(java.lang.String...)} &mdash;
- *       Represents a phrase
+ *       Represents a phrase.
+ *   <li>{@link org.apache.lucene.queries.intervals.Intervals#analyzedText(java.lang.String,
+ *       org.apache.lucene.analysis.Analyzer, java.lang.String, int, boolean)} &mdash; Represents a
+ *       phrase (or an unordered sequence) of tokens resulting from an analysis of a given text.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#ordered(IntervalsSource...)} &mdash;
- *       Represents an interval over an ordered set of terms or intervals
+ *       Represents an interval over an ordered set of terms or intervals.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#unordered(IntervalsSource...)} &mdash;
- *       Represents an interval over an unordered set of terms or intervals
+ *       Represents an interval over an unordered set of terms or intervals.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#or(IntervalsSource...)} &mdash;
- *       Represents the disjunction of a set of terms or intervals
+ *       Represents the disjunction of a set of terms or intervals.
+ *   <li>{@link
+ *       org.apache.lucene.queries.intervals.Intervals#wildcard(org.apache.lucene.util.BytesRef)}
+ *       &mdash; Represents an suffix wildcard (any prefix-matching term from the index).
  * </ul>
  *
  * <h3>Filters</h3>
  *
  * <ul>
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#maxwidth(int, IntervalsSource)}
- *       &mdash; Filters out intervals that are larger than a set width
+ *       &mdash; Filters out intervals that are larger than a set width.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#maxgaps(int, IntervalsSource)} &mdash;
  *       Filters out intervals that have more than a set number of gaps between their constituent
- *       sub-intervals
+ *       sub-intervals.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#containedBy(IntervalsSource,
- *       IntervalsSource)} &mdash; Returns intervals that are contained by another interval
+ *       IntervalsSource)} &mdash; Returns intervals that are contained by another interval.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#notContainedBy(IntervalsSource,
- *       IntervalsSource)} &mdash; Returns intervals that are *not* contained by another interval
+ *       IntervalsSource)} &mdash; Returns intervals that are *not* contained by another interval.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#containing(IntervalsSource,
- *       IntervalsSource)} &mdash; Returns intervals that contain another interval
+ *       IntervalsSource)} &mdash; Returns intervals that contain another interval.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#notContaining(IntervalsSource,
- *       IntervalsSource)} &mdash; Returns intervals that do not contain another interval
+ *       IntervalsSource)} &mdash; Returns intervals that do not contain another interval.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#nonOverlapping(IntervalsSource,
- *       IntervalsSource)} &mdash; Returns intervals that do not overlap with another interval
+ *       IntervalsSource)} &mdash; Returns intervals that do not overlap with another interval.
  *   <li>{@link org.apache.lucene.queries.intervals.Intervals#notWithin(IntervalsSource, int,
  *       IntervalsSource)} &mdash; Returns intervals that do not appear within a set number of
- *       positions of another interval
+ *       positions of another interval.
  * </ul>
+ *
+ * The {@link org.apache.lucene.queries.intervals.Intervals} class contains more advanced filters,
+ * please refer to the documentation of that class.
  *
  * <h2>IntervalQuery</h2>
  *
  * An {@link org.apache.lucene.queries.intervals.IntervalQuery} takes a field name and an {@link
  * org.apache.lucene.queries.intervals.IntervalsSource}, and matches all documents that contain
  * intervals defined by the source in that field.
+ *
+ * <h2>Interval query support in query parsers</h2>
+ *
+ * <p>Lucene's {@code StandardQueryParser} (from the {@code queryparser} module) supports interval
+ * function expressions.
  */
 package org.apache.lucene.queries.intervals;

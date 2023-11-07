@@ -54,14 +54,15 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       // reset the minimum competitive score
       docBase = context.docBase;
-      return new ScorerLeafCollector() {
+      minCompetitiveScore = 0f;
 
+      return new ScorerLeafCollector() {
         @Override
         public void setScorer(Scorable scorer) throws IOException {
           super.setScorer(scorer);
-          minCompetitiveScore = 0f;
-          updateMinCompetitiveScore(scorer);
-          if (minScoreAcc != null) {
+          if (minScoreAcc == null) {
+            updateMinCompetitiveScore(scorer);
+          } else {
             updateGlobalMinCompetitiveScore(scorer);
           }
         }
@@ -131,8 +132,19 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       docBase = context.docBase;
       final int afterDoc = after.doc - context.docBase;
+      minCompetitiveScore = 0f;
 
       return new ScorerLeafCollector() {
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {
+          super.setScorer(scorer);
+          if (minScoreAcc == null) {
+            updateMinCompetitiveScore(scorer);
+          } else {
+            updateGlobalMinCompetitiveScore(scorer);
+          }
+        }
+
         @Override
         public void collect(int doc) throws IOException {
           float score = scorer.score();
@@ -222,6 +234,19 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         .newCollector();
   }
 
+  /**
+   * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
+   * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
+   *
+   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
+   */
+  @Deprecated
+  public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
+      int numHits, ScoreDoc after, int totalHitsThreshold) {
+    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
+  }
+
   int docBase;
   ScoreDoc pqTop;
   final HitsThresholdChecker hitsThresholdChecker;
@@ -263,7 +288,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
       float score =
-          docBase > maxMinScore.docID ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
+          docBase >= maxMinScore.docBase ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
       if (score > minCompetitiveScore) {
         assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);
@@ -288,7 +313,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           // we don't use the next float but we register the document
           // id so that other leaves can require it if they are after
           // the current maximum
-          minScoreAcc.accumulate(pqTop.doc, pqTop.score);
+          minScoreAcc.accumulate(docBase, pqTop.score);
         }
       }
     }

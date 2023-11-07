@@ -29,12 +29,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -67,10 +61,16 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Verifies that Lucene MemoryIndex and RAM-resident Directory have the same behaviour, returning
@@ -162,7 +162,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   }
 
   private void duellReaders(CompositeReader other, LeafReader memIndexReader) throws IOException {
-    Fields memFields = memIndexReader.getTermVectors(0);
+    Fields memFields = memIndexReader.termVectors().get(0);
     for (String field : FieldInfos.getIndexedFields(other)) {
       Terms memTerms = memFields.terms(field);
       Terms iwTerms = memIndexReader.terms(field);
@@ -533,15 +533,13 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
         controlLeafReader.getSortedSetDocValues("sorted_set");
     assertEquals(0, controlSortedSetDocValues.nextDoc());
     assertEquals(controlSortedSetDocValues.getValueCount(), sortedSetDocValues.getValueCount());
-    for (long controlOrd = controlSortedSetDocValues.nextOrd();
-        controlOrd != SortedSetDocValues.NO_MORE_ORDS;
-        controlOrd = controlSortedSetDocValues.nextOrd()) {
+    for (int i = 0; i < controlSortedSetDocValues.docValueCount(); i++) {
+      long controlOrd = controlSortedSetDocValues.nextOrd();
       assertEquals(controlOrd, sortedSetDocValues.nextOrd());
       assertEquals(
           controlSortedSetDocValues.lookupOrd(controlOrd),
           sortedSetDocValues.lookupOrd(controlOrd));
     }
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
 
     indexReader.close();
     controlIndexReader.close();
@@ -706,10 +704,10 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     memIndex.addField(field_name, "foo bar foo bar foo", mockAnalyzer);
 
     // compare term vectors
-    Terms ramTv = reader.getTermVector(0, field_name);
+    Terms ramTv = reader.termVectors().get(0, field_name);
     IndexReader memIndexReader = memIndex.createSearcher().getIndexReader();
     TestUtil.checkReader(memIndexReader);
-    Terms memTv = memIndexReader.getTermVector(0, field_name);
+    Terms memTv = memIndexReader.termVectors().get(0, field_name);
 
     compareTermVectors(ramTv, memTv, field_name);
     memIndexReader.close();

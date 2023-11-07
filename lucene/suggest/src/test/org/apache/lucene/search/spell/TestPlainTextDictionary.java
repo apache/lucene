@@ -19,7 +19,7 @@ package org.apache.lucene.search.spell;
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test case for PlainTextDictionary */
 public class TestPlainTextDictionary extends LuceneTestCase {
@@ -31,7 +31,9 @@ public class TestPlainTextDictionary extends LuceneTestCase {
     Directory ramDir = newDirectory();
     SpellChecker spellChecker = new SpellChecker(ramDir);
     spellChecker.indexDictionary(ptd, newIndexWriterConfig(null), false);
-    String[] similar = spellChecker.suggestSimilar("treeword", 2);
+    String[] similar = spellChecker.suggestSimilar("", 2);
+    assertEquals(0, similar.length);
+    similar = spellChecker.suggestSimilar("treeword", 2);
     assertEquals(2, similar.length);
     assertEquals(similar[0], "threeword");
     assertEquals(similar[1], "oneword");

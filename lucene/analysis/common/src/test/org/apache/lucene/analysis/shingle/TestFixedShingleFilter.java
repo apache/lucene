@@ -19,10 +19,10 @@ package org.apache.lucene.analysis.shingle;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
 
 public class TestFixedShingleFilter extends BaseTokenStreamTestCase {

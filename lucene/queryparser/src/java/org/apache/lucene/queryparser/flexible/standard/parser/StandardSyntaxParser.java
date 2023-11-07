@@ -24,26 +24,51 @@ import java.io.Reader;
 import java.util.Collections;
 import java.util.ArrayList;
 
-import org.apache.lucene.queryparser.flexible.messages.Message;
-import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
-import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
-import org.apache.lucene.queryparser.flexible.core.parser.SyntaxParser;
 import org.apache.lucene.queryparser.flexible.core.nodes.AndQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.BoostQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.FuzzyQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.ModifierQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.GroupQueryNode;
+import org.apache.lucene.queryparser.flexible.core.nodes.ModifierQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.OrQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.SlopQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QuotedFieldQueryNode;
-import org.apache.lucene.queryparser.flexible.standard.nodes.TermRangeQueryNode;
+import org.apache.lucene.queryparser.flexible.core.nodes.SlopQueryNode;
+import org.apache.lucene.queryparser.flexible.messages.Message;
+import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
+import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
+import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
+import org.apache.lucene.queryparser.flexible.core.parser.SyntaxParser;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.After;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.AnalyzedText;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.AtLeast;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Before;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.ContainedBy;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Containing;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Extend;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.FuzzyTerm;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.IntervalFunction;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.MaxGaps;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.MaxWidth;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.NonOverlapping;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.NotContainedBy;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.NotContaining;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.NotWithin;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Or;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Ordered;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Overlapping;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Phrase;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Unordered;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.UnorderedNoOverlaps;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Wildcard;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Within;
+import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.MinShouldMatchNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.RegexpQueryNode;
 import org.apache.lucene.queryparser.charstream.CharStream;
 import org.apache.lucene.queryparser.charstream.FastCharStream;
+import org.apache.lucene.queryparser.flexible.standard.nodes.TermRangeQueryNode;
 
 import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuerySyntaxImpl.discardEscapeChar;
 
@@ -77,6 +102,14 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
     }
   }
 
+  public static float parseFloat(Token token) {
+    return Float.parseFloat(token.image);
+  }
+
+  public static int parseInt(Token token) {
+    return Integer.parseInt(token.image);
+  }
+
   final public QueryNode TopLevelQuery(CharSequence field) throws ParseException {QueryNode q;
     q = Query(field);
     jj_consume_token(0);
@@ -92,15 +125,16 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
 clauses.add(node);
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case NOT:
+      case FN_PREFIX:
       case PLUS:
       case MINUS:
-      case LPAREN:
       case QUOTED:
       case NUMBER:
       case TERM:
       case REGEXPTERM:
       case RANGEIN_START:
-      case RANGEEX_START:{
+      case RANGEEX_START:
+      case LPAREN:{
         ;
         break;
         }
@@ -221,17 +255,18 @@ if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
 }
 
   final private QueryNode Clause(CharSequence field) throws ParseException {QueryNode q;
-    if (jj_2_2(2)) {
+    if (jj_2_3(2)) {
       q = FieldRangeExpr(field);
     } else {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case LPAREN:
+      case FN_PREFIX:
       case QUOTED:
       case NUMBER:
       case TERM:
       case REGEXPTERM:
       case RANGEIN_START:
-      case RANGEEX_START:{
+      case RANGEEX_START:
+      case LPAREN:{
         if (jj_2_1(2)) {
           field = FieldName();
           switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -251,24 +286,26 @@ if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
         } else {
           ;
         }
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case QUOTED:
-        case NUMBER:
-        case TERM:
-        case REGEXPTERM:
-        case RANGEIN_START:
-        case RANGEEX_START:{
+        if (jj_2_2(2)) {
           q = Term(field);
-          break;
+        } else {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case LPAREN:{
+            q = GroupingExpr(field);
+            break;
+            }
+          case FN_PREFIX:
+          case QUOTED:
+          case NUMBER:
+          case TERM:{
+            q = IntervalExpr(field);
+            break;
+            }
+          default:
+            jj_la1[7] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
           }
-        case LPAREN:{
-          q = GroupingExpr(field);
-          break;
-          }
-        default:
-          jj_la1[7] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
         }
         break;
         }
@@ -288,8 +325,8 @@ if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
     throw new Error("Missing return statement in function");
 }
 
-  final private GroupQueryNode GroupingExpr(CharSequence field) throws ParseException {QueryNode q;
-  Token boost;
+  final private QueryNode GroupingExpr(CharSequence field) throws ParseException {QueryNode q;
+  Token boost, minShouldMatch = null;
     jj_consume_token(LPAREN);
     q = Query(field);
     jj_consume_token(RPAREN);
@@ -302,27 +339,563 @@ if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
       jj_la1[9] = jj_gen;
       ;
     }
-{if ("" != null) return new GroupQueryNode(q);}
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case 56:{
+      jj_consume_token(56);
+      minShouldMatch = jj_consume_token(NUMBER);
+      break;
+      }
+    default:
+      jj_la1[10] = jj_gen;
+      ;
+    }
+if (minShouldMatch != null) {
+      q = new MinShouldMatchNode(parseInt(minShouldMatch), new GroupQueryNode(q));
+    } else {
+      q = new GroupQueryNode(q);
+    }
+    {if ("" != null) return q;}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalQueryNode IntervalExpr(CharSequence field) throws ParseException {IntervalFunction source;
+    source = IntervalFun();
+{if ("" != null) return new IntervalQueryNode(field == null ? null : field.toString(), source);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalFun() throws ParseException {IntervalFunction source;
+    if (jj_2_4(2)) {
+      source = IntervalAtLeast();
+{if ("" != null) return source;}
+    } else if (jj_2_5(2)) {
+      source = IntervalMaxWidth();
+{if ("" != null) return source;}
+    } else if (jj_2_6(2)) {
+      source = IntervalMaxGaps();
+{if ("" != null) return source;}
+    } else if (jj_2_7(2)) {
+      source = IntervalOrdered();
+{if ("" != null) return source;}
+    } else if (jj_2_8(2)) {
+      source = IntervalUnordered();
+{if ("" != null) return source;}
+    } else if (jj_2_9(2)) {
+      source = IntervalUnorderedNoOverlaps();
+{if ("" != null) return source;}
+    } else if (jj_2_10(2)) {
+      source = IntervalOr();
+{if ("" != null) return source;}
+    } else if (jj_2_11(2)) {
+      source = IntervalWildcard();
+{if ("" != null) return source;}
+    } else if (jj_2_12(2)) {
+      source = IntervalAfter();
+{if ("" != null) return source;}
+    } else if (jj_2_13(2)) {
+      source = IntervalBefore();
+{if ("" != null) return source;}
+    } else if (jj_2_14(2)) {
+      source = IntervalPhrase();
+{if ("" != null) return source;}
+    } else if (jj_2_15(2)) {
+      source = IntervalContaining();
+{if ("" != null) return source;}
+    } else if (jj_2_16(2)) {
+      source = IntervalNotContaining();
+{if ("" != null) return source;}
+    } else if (jj_2_17(2)) {
+      source = IntervalContainedBy();
+{if ("" != null) return source;}
+    } else if (jj_2_18(2)) {
+      source = IntervalNotContainedBy();
+{if ("" != null) return source;}
+    } else if (jj_2_19(2)) {
+      source = IntervalWithin();
+{if ("" != null) return source;}
+    } else if (jj_2_20(2)) {
+      source = IntervalNotWithin();
+{if ("" != null) return source;}
+    } else if (jj_2_21(2)) {
+      source = IntervalOverlapping();
+{if ("" != null) return source;}
+    } else if (jj_2_22(2)) {
+      source = IntervalNonOverlapping();
+{if ("" != null) return source;}
+    } else if (jj_2_23(2)) {
+      source = IntervalExtend();
+{if ("" != null) return source;}
+    } else if (jj_2_24(2)) {
+      source = IntervalFuzzyTerm();
+{if ("" != null) return source;}
+    } else if (jj_2_25(2)) {
+      source = IntervalText();
+{if ("" != null) return source;}
+    } else {
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalAtLeast() throws ParseException {IntervalFunction source;
+  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+  Token minShouldMatch;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(ATLEAST);
+    jj_consume_token(LPAREN);
+    minShouldMatch = jj_consume_token(NUMBER);
+    label_4:
+    while (true) {
+      source = IntervalFun();
+sources.add(source);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FN_PREFIX:
+      case QUOTED:
+      case NUMBER:
+      case TERM:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[11] = jj_gen;
+        break label_4;
+      }
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new AtLeast(parseInt(minShouldMatch), sources);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalMaxWidth() throws ParseException {IntervalFunction source;
+  Token maxWidth;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(MAXWIDTH);
+    jj_consume_token(LPAREN);
+    maxWidth = jj_consume_token(NUMBER);
+    source = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new MaxWidth(parseInt(maxWidth), source);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalMaxGaps() throws ParseException {IntervalFunction source;
+  Token maxGaps;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(MAXGAPS);
+    jj_consume_token(LPAREN);
+    maxGaps = jj_consume_token(NUMBER);
+    source = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new MaxGaps(parseInt(maxGaps), source);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalUnordered() throws ParseException {IntervalFunction source;
+  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(UNORDERED);
+    jj_consume_token(LPAREN);
+    label_5:
+    while (true) {
+      source = IntervalFun();
+sources.add(source);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FN_PREFIX:
+      case QUOTED:
+      case NUMBER:
+      case TERM:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[12] = jj_gen;
+        break label_5;
+      }
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Unordered(sources);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalUnorderedNoOverlaps() throws ParseException {IntervalFunction a, b;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(UNORDERED_NO_OVERLAPS);
+    jj_consume_token(LPAREN);
+    a = IntervalFun();
+    b = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new UnorderedNoOverlaps(a, b);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalOrdered() throws ParseException {IntervalFunction source;
+  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(ORDERED);
+    jj_consume_token(LPAREN);
+    label_6:
+    while (true) {
+      source = IntervalFun();
+sources.add(source);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FN_PREFIX:
+      case QUOTED:
+      case NUMBER:
+      case TERM:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[13] = jj_gen;
+        break label_6;
+      }
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Ordered(sources);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalOr() throws ParseException {IntervalFunction source;
+  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(FN_OR);
+    jj_consume_token(LPAREN);
+    label_7:
+    while (true) {
+      source = IntervalFun();
+sources.add(source);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FN_PREFIX:
+      case QUOTED:
+      case NUMBER:
+      case TERM:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[14] = jj_gen;
+        break label_7;
+      }
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Or(sources);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalPhrase() throws ParseException {IntervalFunction source;
+  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(PHRASE);
+    jj_consume_token(LPAREN);
+    label_8:
+    while (true) {
+      source = IntervalFun();
+sources.add(source);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FN_PREFIX:
+      case QUOTED:
+      case NUMBER:
+      case TERM:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[15] = jj_gen;
+        break label_8;
+      }
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Phrase(sources);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalBefore() throws ParseException {IntervalFunction source;
+  IntervalFunction reference;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(BEFORE);
+    jj_consume_token(LPAREN);
+    source = IntervalFun();
+    reference = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Before(source, reference);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalAfter() throws ParseException {IntervalFunction source;
+  IntervalFunction reference;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(AFTER);
+    jj_consume_token(LPAREN);
+    source = IntervalFun();
+    reference = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new After(source, reference);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalContaining() throws ParseException {IntervalFunction big;
+  IntervalFunction small;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(CONTAINING);
+    jj_consume_token(LPAREN);
+    big = IntervalFun();
+    small = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Containing(big, small);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalNotContaining() throws ParseException {IntervalFunction minuend;
+  IntervalFunction subtrahend;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(NOT_CONTAINING);
+    jj_consume_token(LPAREN);
+    minuend = IntervalFun();
+    subtrahend = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new NotContaining(minuend, subtrahend);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalContainedBy() throws ParseException {IntervalFunction big;
+  IntervalFunction small;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(CONTAINED_BY);
+    jj_consume_token(LPAREN);
+    small = IntervalFun();
+    big = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new ContainedBy(small, big);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalNotContainedBy() throws ParseException {IntervalFunction big;
+  IntervalFunction small;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(NOT_CONTAINED_BY);
+    jj_consume_token(LPAREN);
+    small = IntervalFun();
+    big = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new NotContainedBy(small, big);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalWithin() throws ParseException {IntervalFunction source, reference;
+  Token positions;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(WITHIN);
+    jj_consume_token(LPAREN);
+    source = IntervalFun();
+    positions = jj_consume_token(NUMBER);
+    reference = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Within(source, parseInt(positions), reference);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalExtend() throws ParseException {IntervalFunction source;
+  Token before, after;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(EXTEND);
+    jj_consume_token(LPAREN);
+    source = IntervalFun();
+    before = jj_consume_token(NUMBER);
+    after = jj_consume_token(NUMBER);
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Extend(source, parseInt(before), parseInt(after));}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalNotWithin() throws ParseException {IntervalFunction minuend, subtrahend;
+  Token positions;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(NOT_WITHIN);
+    jj_consume_token(LPAREN);
+    minuend = IntervalFun();
+    positions = jj_consume_token(NUMBER);
+    subtrahend = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new NotWithin(minuend, parseInt(positions), subtrahend);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalOverlapping() throws ParseException {IntervalFunction source, reference;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(OVERLAPPING);
+    jj_consume_token(LPAREN);
+    source = IntervalFun();
+    reference = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Overlapping(source, reference);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalNonOverlapping() throws ParseException {IntervalFunction minuend, subtrahend;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(NON_OVERLAPPING);
+    jj_consume_token(LPAREN);
+    minuend = IntervalFun();
+    subtrahend = IntervalFun();
+    jj_consume_token(RPAREN);
+{if ("" != null) return new NonOverlapping(minuend, subtrahend);}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalWildcard() throws ParseException {String wildcard;
+  Token maxExpansions = null;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(WILDCARD);
+    jj_consume_token(LPAREN);
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case NUMBER:
+    case TERM:{
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case TERM:{
+        jj_consume_token(TERM);
+        break;
+        }
+      case NUMBER:{
+        jj_consume_token(NUMBER);
+        break;
+        }
+      default:
+        jj_la1[16] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+      }
+wildcard = token.image;
+      break;
+      }
+    case QUOTED:{
+      jj_consume_token(QUOTED);
+wildcard = token.image.substring(1, token.image.length() - 1);
+      break;
+      }
+    default:
+      jj_la1[17] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case NUMBER:{
+      maxExpansions = jj_consume_token(NUMBER);
+      break;
+      }
+    default:
+      jj_la1[18] = jj_gen;
+      ;
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new Wildcard(wildcard, maxExpansions == null ? 0 : parseInt(maxExpansions));}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalFuzzyTerm() throws ParseException {String term;
+  Token maxEdits = null;
+  Token maxExpansions = null;
+    jj_consume_token(FN_PREFIX);
+    jj_consume_token(FUZZYTERM);
+    jj_consume_token(LPAREN);
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case NUMBER:
+    case TERM:{
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case TERM:{
+        jj_consume_token(TERM);
+        break;
+        }
+      case NUMBER:{
+        jj_consume_token(NUMBER);
+        break;
+        }
+      default:
+        jj_la1[19] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+      }
+term = token.image;
+      break;
+      }
+    case QUOTED:{
+      jj_consume_token(QUOTED);
+term = token.image.substring(1, token.image.length() - 1);
+      break;
+      }
+    default:
+      jj_la1[20] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
+    if (jj_2_26(2)) {
+      maxEdits = jj_consume_token(NUMBER);
+    } else {
+      ;
+    }
+    if (jj_2_27(2)) {
+      maxExpansions = jj_consume_token(NUMBER);
+    } else {
+      ;
+    }
+    jj_consume_token(RPAREN);
+{if ("" != null) return new FuzzyTerm(term,
+      maxEdits == null ? null : parseInt(maxEdits),
+      maxExpansions == null ? null : parseInt(maxExpansions));}
+    throw new Error("Missing return statement in function");
+}
+
+  final private IntervalFunction IntervalText() throws ParseException {
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case QUOTED:{
+      jj_consume_token(QUOTED);
+{if ("" != null) return new AnalyzedText(token.image.substring(1, token.image.length() - 1));}
+      break;
+      }
+    case NUMBER:
+    case TERM:{
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case TERM:{
+        jj_consume_token(TERM);
+        break;
+        }
+      case NUMBER:{
+        jj_consume_token(NUMBER);
+        break;
+        }
+      default:
+        jj_la1[21] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+      }
+{if ("" != null) return new AnalyzedText(token.image);}
+      break;
+      }
+    default:
+      jj_la1[22] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
     throw new Error("Missing return statement in function");
 }
 
   final private QueryNode Boost(QueryNode node) throws ParseException {Token boost;
     jj_consume_token(CARAT);
     boost = jj_consume_token(NUMBER);
-{if ("" != null) return node == null ? node : new BoostQueryNode(node, Float.parseFloat(boost.image));}
+{if ("" != null) return node == null ? node : new BoostQueryNode(node, parseFloat(boost));}
     throw new Error("Missing return statement in function");
 }
 
   final private QueryNode FuzzyOp(CharSequence field, Token term, QueryNode node) throws ParseException {Token similarity = null;
     jj_consume_token(TILDE);
-    if (jj_2_3(2)) {
+    if (jj_2_28(2)) {
       similarity = jj_consume_token(NUMBER);
     } else {
       ;
     }
 float fms = org.apache.lucene.search.FuzzyQuery.defaultMaxEdits;
     if (similarity != null) {
-      fms = Float.parseFloat(similarity.image);
+      fms = parseFloat(similarity);
       if (fms < 0.0f) {
         {if (true) throw new ParseException(new MessageImpl(QueryParserMessages.INVALID_SYNTAX_FUZZY_LIMITS));}
       } else if (fms >= 1.0f && fms != (int) fms) {
@@ -355,7 +928,7 @@ float fms = org.apache.lucene.search.FuzzyQuery.defaultMaxEdits;
       break;
       }
     default:
-      jj_la1[10] = jj_gen;
+      jj_la1[23] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -374,7 +947,7 @@ operator = token;
       break;
       }
     default:
-      jj_la1[11] = jj_gen;
+      jj_la1[24] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -419,7 +992,8 @@ if (term.kind == QUOTED) {
     switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
     case REGEXPTERM:{
       term = jj_consume_token(REGEXPTERM);
-q = new RegexpQueryNode(field, term.image.substring(1, term.image.length() - 1));
+String v = term.image.substring(1, term.image.length() - 1);
+          q = new RegexpQueryNode(field, v, 0, v.length());
       break;
       }
     case NUMBER:
@@ -434,7 +1008,7 @@ q = new RegexpQueryNode(field, term.image.substring(1, term.image.length() - 1))
         break;
         }
       default:
-        jj_la1[12] = jj_gen;
+        jj_la1[25] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
@@ -445,7 +1019,7 @@ q = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, t
         break;
         }
       default:
-        jj_la1[13] = jj_gen;
+        jj_la1[26] = jj_gen;
         ;
       }
       break;
@@ -460,7 +1034,7 @@ q = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, t
       break;
       }
     default:
-      jj_la1[14] = jj_gen;
+      jj_la1[27] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -470,7 +1044,7 @@ q = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, t
       break;
       }
     default:
-      jj_la1[15] = jj_gen;
+      jj_la1[28] = jj_gen;
       ;
     }
 {if ("" != null) return q;}
@@ -486,11 +1060,11 @@ String image = term.image.substring(1, term.image.length() - 1);
     case TILDE:{
       jj_consume_token(TILDE);
       slop = jj_consume_token(NUMBER);
-q = new SlopQueryNode(q, (int) Float.parseFloat(slop.image));
+q = new SlopQueryNode(q, parseInt(slop));
       break;
       }
     default:
-      jj_la1[16] = jj_gen;
+      jj_la1[29] = jj_gen;
       ;
     }
 {if ("" != null) return q;}
@@ -511,7 +1085,7 @@ leftInclusive = true;
       break;
       }
     default:
-      jj_la1[17] = jj_gen;
+      jj_la1[30] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -529,7 +1103,7 @@ leftInclusive = true;
       break;
       }
     default:
-      jj_la1[18] = jj_gen;
+      jj_la1[31] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -549,7 +1123,7 @@ left = token;
       break;
       }
     default:
-      jj_la1[19] = jj_gen;
+      jj_la1[32] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -565,7 +1139,7 @@ rightInclusive = true;
       break;
       }
     default:
-      jj_la1[20] = jj_gen;
+      jj_la1[33] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
@@ -609,21 +1183,223 @@ if (left.kind == RANGE_QUOTED) {
     finally { jj_save(2, xla); }
   }
 
-  private boolean jj_3R_4()
+  private boolean jj_2_4(int xla)
  {
-    if (jj_scan_token(TERM)) return true;
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_4()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(3, xla); }
+  }
+
+  private boolean jj_2_5(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_5()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(4, xla); }
+  }
+
+  private boolean jj_2_6(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_6()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(5, xla); }
+  }
+
+  private boolean jj_2_7(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_7()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(6, xla); }
+  }
+
+  private boolean jj_2_8(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_8()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(7, xla); }
+  }
+
+  private boolean jj_2_9(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_9()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(8, xla); }
+  }
+
+  private boolean jj_2_10(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_10()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(9, xla); }
+  }
+
+  private boolean jj_2_11(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_11()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(10, xla); }
+  }
+
+  private boolean jj_2_12(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_12()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(11, xla); }
+  }
+
+  private boolean jj_2_13(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_13()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(12, xla); }
+  }
+
+  private boolean jj_2_14(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_14()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(13, xla); }
+  }
+
+  private boolean jj_2_15(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_15()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(14, xla); }
+  }
+
+  private boolean jj_2_16(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_16()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(15, xla); }
+  }
+
+  private boolean jj_2_17(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_17()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(16, xla); }
+  }
+
+  private boolean jj_2_18(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_18()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(17, xla); }
+  }
+
+  private boolean jj_2_19(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_19()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(18, xla); }
+  }
+
+  private boolean jj_2_20(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_20()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(19, xla); }
+  }
+
+  private boolean jj_2_21(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_21()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(20, xla); }
+  }
+
+  private boolean jj_2_22(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_22()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(21, xla); }
+  }
+
+  private boolean jj_2_23(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_23()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(22, xla); }
+  }
+
+  private boolean jj_2_24(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_24()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(23, xla); }
+  }
+
+  private boolean jj_2_25(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_25()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(24, xla); }
+  }
+
+  private boolean jj_2_26(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_26()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(25, xla); }
+  }
+
+  private boolean jj_2_27(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_27()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(26, xla); }
+  }
+
+  private boolean jj_2_28(int xla)
+ {
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return (!jj_3_28()); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(27, xla); }
+  }
+
+  private boolean jj_3R_IntervalUnorderedNoOverlaps_465_3_17()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(UNORDERED_NO_OVERLAPS)) return true;
     return false;
   }
 
-  private boolean jj_3_2()
+  private boolean jj_3R_IntervalContainedBy_557_3_25()
  {
-    if (jj_3R_5()) return true;
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(CONTAINED_BY)) return true;
     return false;
   }
 
-  private boolean jj_3R_5()
+  private boolean jj_3R_FieldRangeExpr_744_3_11()
  {
-    if (jj_3R_4()) return true;
+    if (jj_3R_FieldName_344_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(17)) {
@@ -639,21 +1415,458 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3_3()
+  private boolean jj_3R_IntervalWildcard_647_3_19()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(WILDCARD)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_QuotedTerm_834_5_47()
+ {
+    if (jj_scan_token(TILDE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalUnordered_454_3_16()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(UNORDERED)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalNotContaining_546_3_24()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(NOT_CONTAINING)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_QuotedTerm_829_3_43()
+ {
+    if (jj_scan_token(QUOTED)) return true;
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_QuotedTerm_834_5_47()) jj_scanpos = xsp;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalNonOverlapping_636_3_30()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(NON_OVERLAPPING)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalMaxGaps_442_3_14()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(MAXGAPS)) return true;
+    return false;
+  }
+
+  private boolean jj_3_28()
  {
     if (jj_scan_token(NUMBER)) return true;
     return false;
   }
 
+  private boolean jj_3R_IntervalContaining_535_3_23()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(CONTAINING)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_FieldName_344_3_9()
+ {
+    if (jj_scan_token(TERM)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalOverlapping_626_3_29()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(OVERLAPPING)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_806_10_41()
+ {
+    if (jj_3R_FuzzyOp_717_3_45()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_808_8_37()
+ {
+    if (jj_3R_QuotedTerm_829_3_43()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_FuzzyOp_717_3_45()
+ {
+    if (jj_scan_token(TILDE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_810_5_38()
+ {
+    if (jj_3R_Boost_700_3_44()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_807_8_36()
+ {
+    if (jj_3R_TermRangeExpr_855_3_42()) return true;
+    return false;
+  }
+
+  private boolean jj_3_2()
+ {
+    if (jj_3R_Term_798_3_10()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalMaxWidth_430_3_13()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(MAXWIDTH)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_804_8_35()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_scan_token(25)) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(24)) return true;
+    }
+    xsp = jj_scanpos;
+    if (jj_3R_Term_806_10_41()) jj_scanpos = xsp;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalAfter_524_3_20()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(AFTER)) return true;
+    return false;
+  }
+
   private boolean jj_3_1()
  {
-    if (jj_3R_4()) return true;
+    if (jj_3R_FieldName_344_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(15)) {
     jj_scanpos = xsp;
     if (jj_scan_token(16)) return true;
     }
+    return false;
+  }
+
+  private boolean jj_3_3()
+ {
+    if (jj_3R_FieldRangeExpr_744_3_11()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_799_8_34()
+ {
+    if (jj_scan_token(REGEXPTERM)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalNotWithin_611_3_28()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(NOT_WITHIN)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalBefore_513_3_21()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(BEFORE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Term_798_3_10()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_Term_799_8_34()) {
+    jj_scanpos = xsp;
+    if (jj_3R_Term_804_8_35()) {
+    jj_scanpos = xsp;
+    if (jj_3R_Term_807_8_36()) {
+    jj_scanpos = xsp;
+    if (jj_3R_Term_808_8_37()) return true;
+    }
+    }
+    }
+    xsp = jj_scanpos;
+    if (jj_3R_Term_810_5_38()) jj_scanpos = xsp;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalAtLeast_418_3_12()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(ATLEAST)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Boost_700_3_44()
+ {
+    if (jj_scan_token(CARAT)) return true;
+    return false;
+  }
+
+  private boolean jj_3_25()
+ {
+    if (jj_3R_IntervalText_685_5_33()) return true;
+    return false;
+  }
+
+  private boolean jj_3_24()
+ {
+    if (jj_3R_IntervalFuzzyTerm_666_3_32()) return true;
+    return false;
+  }
+
+  private boolean jj_3_23()
+ {
+    if (jj_3R_IntervalExtend_595_3_31()) return true;
+    return false;
+  }
+
+  private boolean jj_3_22()
+ {
+    if (jj_3R_IntervalNonOverlapping_636_3_30()) return true;
+    return false;
+  }
+
+  private boolean jj_3_21()
+ {
+    if (jj_3R_IntervalOverlapping_626_3_29()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalPhrase_501_3_22()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(PHRASE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_20()
+ {
+    if (jj_3R_IntervalNotWithin_611_3_28()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalExtend_595_3_31()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(EXTEND)) return true;
+    return false;
+  }
+
+  private boolean jj_3_19()
+ {
+    if (jj_3R_IntervalWithin_579_3_27()) return true;
+    return false;
+  }
+
+  private boolean jj_3_18()
+ {
+    if (jj_3R_IntervalNotContainedBy_568_3_26()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalText_686_5_40()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_scan_token(25)) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(24)) return true;
+    }
+    return false;
+  }
+
+  private boolean jj_3_17()
+ {
+    if (jj_3R_IntervalContainedBy_557_3_25()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalText_685_5_39()
+ {
+    if (jj_scan_token(QUOTED)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalText_685_5_33()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_IntervalText_685_5_39()) {
+    jj_scanpos = xsp;
+    if (jj_3R_IntervalText_686_5_40()) return true;
+    }
+    return false;
+  }
+
+  private boolean jj_3_16()
+ {
+    if (jj_3R_IntervalNotContaining_546_3_24()) return true;
+    return false;
+  }
+
+  private boolean jj_3_15()
+ {
+    if (jj_3R_IntervalContaining_535_3_23()) return true;
+    return false;
+  }
+
+  private boolean jj_3_14()
+ {
+    if (jj_3R_IntervalPhrase_501_3_22()) return true;
+    return false;
+  }
+
+  private boolean jj_3_13()
+ {
+    if (jj_3R_IntervalBefore_513_3_21()) return true;
+    return false;
+  }
+
+  private boolean jj_3_12()
+ {
+    if (jj_3R_IntervalAfter_524_3_20()) return true;
+    return false;
+  }
+
+  private boolean jj_3_11()
+ {
+    if (jj_3R_IntervalWildcard_647_3_19()) return true;
+    return false;
+  }
+
+  private boolean jj_3_10()
+ {
+    if (jj_3R_IntervalOr_489_3_18()) return true;
+    return false;
+  }
+
+  private boolean jj_3_9()
+ {
+    if (jj_3R_IntervalUnorderedNoOverlaps_465_3_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalOr_489_3_18()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(FN_OR)) return true;
+    return false;
+  }
+
+  private boolean jj_3_8()
+ {
+    if (jj_3R_IntervalUnordered_454_3_16()) return true;
+    return false;
+  }
+
+  private boolean jj_3_7()
+ {
+    if (jj_3R_IntervalOrdered_477_3_15()) return true;
+    return false;
+  }
+
+  private boolean jj_3_6()
+ {
+    if (jj_3R_IntervalMaxGaps_442_3_14()) return true;
+    return false;
+  }
+
+  private boolean jj_3_5()
+ {
+    if (jj_3R_IntervalMaxWidth_430_3_13()) return true;
+    return false;
+  }
+
+  private boolean jj_3_4()
+ {
+    if (jj_3R_IntervalAtLeast_418_3_12()) return true;
+    return false;
+  }
+
+  private boolean jj_3_27()
+ {
+    if (jj_scan_token(NUMBER)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalWithin_579_3_27()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(WITHIN)) return true;
+    return false;
+  }
+
+  private boolean jj_3_26()
+ {
+    if (jj_scan_token(NUMBER)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_TermRangeExpr_856_6_46()
+ {
+    if (jj_scan_token(RANGEIN_START)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalOrdered_477_3_15()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(ORDERED)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_IntervalFuzzyTerm_666_3_32()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(FUZZYTERM)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_TermRangeExpr_855_3_42()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_TermRangeExpr_856_6_46()) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(28)) return true;
+    }
+    xsp = jj_scanpos;
+    if (jj_scan_token(55)) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(54)) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(51)) return true;
+    }
+    }
+    return false;
+  }
+
+  private boolean jj_3R_IntervalNotContainedBy_568_3_26()
+ {
+    if (jj_scan_token(FN_PREFIX)) return true;
+    if (jj_scan_token(NOT_CONTAINED_BY)) return true;
     return false;
   }
 
@@ -667,7 +1880,7 @@ if (left.kind == RANGE_QUOTED) {
   private Token jj_scanpos, jj_lastpos;
   private int jj_la;
   private int jj_gen;
-  final private int[] jj_la1 = new int[21];
+  final private int[] jj_la1 = new int[34];
   static private int[] jj_la1_0;
   static private int[] jj_la1_1;
   static {
@@ -675,12 +1888,12 @@ if (left.kind == RANGE_QUOTED) {
        jj_la1_init_1();
     }
     private static void jj_la1_init_0() {
-       jj_la1_0 = new int[] {0x1f803c00,0x200,0x100,0x1400,0x1c00,0x1c00,0x18000,0x1f802000,0x1f802000,0x200000,0x1e0000,0x3800000,0x3000000,0x400000,0x1f800000,0x200000,0x400000,0x18000000,0x20000000,0x20000000,0xc0000000,};
+       jj_la1_0 = new int[] {0x3f803c00,0x200,0x100,0x2400,0x3400,0x3400,0x18000,0x23800800,0x3f800800,0x200000,0x0,0x3800800,0x3800800,0x3800800,0x3800800,0x3800800,0x3000000,0x3800000,0x1000000,0x3000000,0x3800000,0x3000000,0x3800000,0x1e0000,0x3800000,0x3000000,0x400000,0x1f800000,0x200000,0x400000,0x18000000,0x0,0x0,0x0,};
     }
     private static void jj_la1_init_1() {
-       jj_la1_1 = new int[] {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x3,0x3,0x0,};
+       jj_la1_1 = new int[] {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x1000000,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xc80000,0xc80000,0x300000,};
     }
-  final private JJCalls[] jj_2_rtns = new JJCalls[3];
+  final private JJCalls[] jj_2_rtns = new JJCalls[28];
   private boolean jj_rescan = false;
   private int jj_gc = 0;
 
@@ -690,7 +1903,7 @@ if (left.kind == RANGE_QUOTED) {
      token = new Token();
      jj_ntk = -1;
      jj_gen = 0;
-     for (int i = 0; i < 21; i++) jj_la1[i] = -1;
+     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
      for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
@@ -700,7 +1913,7 @@ if (left.kind == RANGE_QUOTED) {
      token = new Token();
      jj_ntk = -1;
      jj_gen = 0;
-     for (int i = 0; i < 21; i++) jj_la1[i] = -1;
+     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
      for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
@@ -710,7 +1923,7 @@ if (left.kind == RANGE_QUOTED) {
      token = new Token();
      jj_ntk = -1;
      jj_gen = 0;
-     for (int i = 0; i < 21; i++) jj_la1[i] = -1;
+     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
      for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
@@ -720,7 +1933,7 @@ if (left.kind == RANGE_QUOTED) {
      token = new Token();
      jj_ntk = -1;
      jj_gen = 0;
-     for (int i = 0; i < 21; i++) jj_la1[i] = -1;
+     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
      for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
@@ -749,8 +1962,13 @@ if (left.kind == RANGE_QUOTED) {
   }
 
   @SuppressWarnings("serial")
-  static private final class LookaheadSuccess extends java.lang.Error { }
-  final private LookaheadSuccess jj_ls = new LookaheadSuccess();
+  static private final class LookaheadSuccess extends java.lang.Error {
+    @Override
+    public Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+  static private final LookaheadSuccess jj_ls = new LookaheadSuccess();
   private boolean jj_scan_token(int kind) {
      if (jj_scanpos == jj_lastpos) {
        jj_la--;
@@ -846,12 +2064,12 @@ if (left.kind == RANGE_QUOTED) {
   /** Generate ParseException. */
   public ParseException generateParseException() {
      jj_expentries.clear();
-     boolean[] la1tokens = new boolean[34];
+     boolean[] la1tokens = new boolean[57];
      if (jj_kind >= 0) {
        la1tokens[jj_kind] = true;
        jj_kind = -1;
      }
-     for (int i = 0; i < 21; i++) {
+     for (int i = 0; i < 34; i++) {
        if (jj_la1[i] == jj_gen) {
          for (int j = 0; j < 32; j++) {
            if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -863,7 +2081,7 @@ if (left.kind == RANGE_QUOTED) {
          }
        }
      }
-     for (int i = 0; i < 34; i++) {
+     for (int i = 0; i < 57; i++) {
        if (la1tokens[i]) {
          jj_expentry = new int[1];
          jj_expentry[0] = i;
@@ -880,7 +2098,6 @@ if (left.kind == RANGE_QUOTED) {
      return new ParseException(token, exptokseq, tokenImage);
   }
 
-  private int trace_indent = 0;
   private boolean trace_enabled;
 
 /** Trace enabled. */
@@ -898,7 +2115,7 @@ if (left.kind == RANGE_QUOTED) {
 
   private void jj_rescan_token() {
      jj_rescan = true;
-     for (int i = 0; i < 3; i++) {
+     for (int i = 0; i < 28; i++) {
        try {
          JJCalls p = jj_2_rtns[i];
 
@@ -909,6 +2126,31 @@ if (left.kind == RANGE_QUOTED) {
                case 0: jj_3_1(); break;
                case 1: jj_3_2(); break;
                case 2: jj_3_3(); break;
+               case 3: jj_3_4(); break;
+               case 4: jj_3_5(); break;
+               case 5: jj_3_6(); break;
+               case 6: jj_3_7(); break;
+               case 7: jj_3_8(); break;
+               case 8: jj_3_9(); break;
+               case 9: jj_3_10(); break;
+               case 10: jj_3_11(); break;
+               case 11: jj_3_12(); break;
+               case 12: jj_3_13(); break;
+               case 13: jj_3_14(); break;
+               case 14: jj_3_15(); break;
+               case 15: jj_3_16(); break;
+               case 16: jj_3_17(); break;
+               case 17: jj_3_18(); break;
+               case 18: jj_3_19(); break;
+               case 19: jj_3_20(); break;
+               case 20: jj_3_21(); break;
+               case 21: jj_3_22(); break;
+               case 22: jj_3_23(); break;
+               case 23: jj_3_24(); break;
+               case 24: jj_3_25(); break;
+               case 25: jj_3_26(); break;
+               case 26: jj_3_27(); break;
+               case 27: jj_3_28(); break;
              }
            }
            p = p.next;

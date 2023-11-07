@@ -33,6 +33,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
@@ -298,7 +299,7 @@ public abstract class ReplicaNode extends Node {
                 Locale.ROOT,
                 "top: %d: start: done sync: took %.3fs for %s, opened NRT reader version=%d",
                 id,
-                (System.nanoTime() - initSyncStartNS) / 1000000000.0,
+                (System.nanoTime() - initSyncStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
                 bytesToString(job.getTotalBytesCopied()),
                 job.getCopyState().version));
 
@@ -380,9 +381,7 @@ public abstract class ReplicaNode extends Node {
       // Notify current infos (which may have changed while we were doing dir.sync above) what
       // generation we are up to; this way future
       // commits are guaranteed to go to the next (unwritten) generations:
-      if (mgr != null) {
-        ((SegmentInfosSearcherManager) mgr).getCurrentInfos().updateGeneration(infos);
-      }
+      ((SegmentInfosSearcherManager) mgr).getCurrentInfos().updateGeneration(infos);
       String segmentsFileName = infos.getSegmentsFileName();
       message(
           "top: commit wrote segments file "
@@ -444,9 +443,7 @@ public abstract class ReplicaNode extends Node {
       message("  version=" + infos.getVersion() + " segments=" + infos.toString());
 
       // Cutover to new searcher:
-      if (mgr != null) {
-        ((SegmentInfosSearcherManager) mgr).setCurrentInfos(infos);
-      }
+      ((SegmentInfosSearcherManager) mgr).setCurrentInfos(infos);
 
       // Must first incRef new NRT files, then decRef old ones, to make sure we don't remove an NRT
       // file that's in common to both:
@@ -495,7 +492,7 @@ public abstract class ReplicaNode extends Node {
         String.format(
             Locale.ROOT,
             "top: done sync: took %.3fs for %s, opened NRT reader version=%d markerCount=%d",
-            (System.nanoTime() - startNS) / 1000000000.0,
+            (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1),
             bytesToString(job.getTotalBytesCopied()),
             copyState.version,
             markerCount));

@@ -19,11 +19,11 @@ package org.apache.lucene.analysis.miscellaneous;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 
 public class TestAsciiFoldingFilterFactory extends BaseTokenStreamFactoryTestCase {
 

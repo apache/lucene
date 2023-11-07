@@ -49,6 +49,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Shows simple usage of dynamic range faceting, using the expressions module to calculate distance.
@@ -119,6 +120,8 @@ public class DistanceFacetsExample implements Closeable {
     writer.close();
   }
 
+  // TODO: Would be nice to augment this example with documents containing multiple "locations",
+  // adding the ability to compute distance facets for the multi-valued case (see LUCENE-10245)
   private DoubleValuesSource getDistanceValueSource() {
     Expression distance;
     try {
@@ -224,7 +227,7 @@ public class DistanceFacetsExample implements Closeable {
             FIVE_KM,
             TEN_KM);
 
-    return facets.getTopChildren(10, "field");
+    return facets.getAllChildren("field");
   }
 
   /** User drills down on the specified range. */
@@ -255,8 +258,7 @@ public class DistanceFacetsExample implements Closeable {
 
   @Override
   public void close() throws IOException {
-    searcher.getIndexReader().close();
-    indexDir.close();
+    IOUtils.close(searcher.getIndexReader(), indexDir);
   }
 
   /** Runs the search and drill-down examples and prints the results. */

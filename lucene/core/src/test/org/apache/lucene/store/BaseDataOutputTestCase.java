@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.store;
 
-import static org.junit.Assert.*;
-
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
@@ -30,11 +27,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IOUtils.IOConsumer;
+import org.apache.lucene.util.IOConsumer;
 import org.junit.Test;
 
-public abstract class BaseDataOutputTestCase<T extends DataOutput> extends RandomizedTest {
+public abstract class BaseDataOutputTestCase<T extends DataOutput> extends LuceneTestCase {
   protected abstract T newInstance();
 
   protected abstract byte[] toBytes(T instance);
@@ -50,7 +48,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Rando
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutput ref = new OutputStreamDataOutput(baos);
 
-    long seed = randomLong();
+    long seed = random().nextLong();
     int max = 50_000;
     addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
     addRandomData(ref, new Xoroshiro128PlusRandom(seed), max);

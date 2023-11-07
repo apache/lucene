@@ -17,8 +17,11 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.BaseBitSetTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
@@ -31,6 +34,20 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       set.set(doc);
     }
     return set;
+  }
+
+  @SuppressWarnings("NarrowCalculation")
+  public void testApproximateCardinality() {
+    // The approximate cardinality works in such a way that it should be pretty accurate on a bitset
+    // whose bits are uniformly distributed.
+    final FixedBitSet set = new FixedBitSet(TestUtil.nextInt(random(), 100_000, 200_000));
+    final int first = random().nextInt(10);
+    final int interval = TestUtil.nextInt(random(), 10, 20);
+    for (int i = first; i < set.length(); i += interval) {
+      set.set(i);
+    }
+    final int cardinality = set.cardinality();
+    assertEquals(cardinality, set.approximateCardinality(), cardinality / 20); // 5% error at most
   }
 
   void doGet(java.util.BitSet a, FixedBitSet b) {
@@ -444,6 +461,56 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     bitSet1.and(bitSet2);
 
     assertEquals(bitSet1.cardinality(), intersectionCount);
+  }
+
+  public void testAndNot() throws IOException {
+    Random random = random();
+
+    int numBits2 = TestUtil.nextInt(random, 1000, 2000);
+    int numBits1 = TestUtil.nextInt(random, 1000, numBits2);
+
+    int count1 = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int count2 = TestUtil.nextInt(random, 0, numBits2 - 1);
+
+    int min = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int offSetWord1 = min >> 6;
+    int offset1 = offSetWord1 << 6;
+    int[] bits1 = makeIntArray(random, count1, min, numBits1 - 1);
+    int[] bits2 = makeIntArray(random, count2, 0, numBits2 - 1);
+
+    java.util.BitSet bitSet1 = makeBitSet(bits1);
+    java.util.BitSet bitSet2 = makeBitSet(bits2);
+    bitSet2.andNot(bitSet1);
+
+    {
+      // test BitSetIterator
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      DocIdSetIterator disi = new BitSetIterator(makeFixedBitSet(bits1, numBits1), count1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
+
+    {
+      // test DocBaseBitSetIterator
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      int[] offsetBits = Arrays.stream(bits1).map(i -> i - offset1).toArray();
+      DocIdSetIterator disi =
+          new DocBaseBitSetIterator(
+              makeFixedBitSet(offsetBits, numBits1 - offset1), count1, offset1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
+
+    {
+      // test other
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      int[] sorted = new int[bits1.length + 1];
+      System.arraycopy(bits1, 0, sorted, 0, bits1.length);
+      sorted[bits1.length] = DocIdSetIterator.NO_MORE_DOCS;
+      DocIdSetIterator disi = new IntArrayDocIdSet.IntArrayDocIdSetIterator(sorted, count1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
   }
 
   // Demonstrates that the presence of ghost bits in the last used word can cause spurious failures

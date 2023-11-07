@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-class OrderedIntervalsSource extends ConjunctionIntervalsSource {
+class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
@@ -69,12 +69,12 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private OrderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
-    return new OrderedIntervalIterator(iterators);
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+    return new OrderedIntervalIterator(iterators, onMatch);
   }
 
   @Override
@@ -112,11 +112,13 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
 
   private static class OrderedIntervalIterator extends ConjunctionIntervalIterator {
 
-    int start = -1, end = -1, i;
+    int start = -1, end = -1, i = 1;
     int slop;
+    final MatchCallback onMatch;
 
-    private OrderedIntervalIterator(List<IntervalIterator> subIntervals) {
+    private OrderedIntervalIterator(List<IntervalIterator> subIntervals, MatchCallback onMatch) {
       super(subIntervals);
+      this.onMatch = onMatch;
     }
 
     @Override
@@ -134,7 +136,6 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
       start = end = slop = IntervalIterator.NO_MORE_INTERVALS;
       int lastStart = Integer.MAX_VALUE;
       boolean minimizing = false;
-      i = 1;
       while (true) {
         while (true) {
           if (subIterators.get(i - 1).end() >= lastStart) {
@@ -161,6 +162,7 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
         for (IntervalIterator subIterator : subIterators) {
           slop -= subIterator.width();
         }
+        onMatch.onMatch();
         lastStart = subIterators.get(subIterators.size() - 1).start();
         i = 1;
         if (subIterators.get(0).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {

@@ -18,9 +18,9 @@ package org.apache.lucene.queries.function;
 
 import org.apache.lucene.queries.function.valuesource.ConstValueSource;
 import org.apache.lucene.queries.function.valuesource.RangeMapFloatFunction;
-import org.apache.lucene.search.BaseExplanationTestCase;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 public class TestFunctionQueryExplanations extends BaseExplanationTestCase {
 

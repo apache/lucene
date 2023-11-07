@@ -26,12 +26,19 @@ import java.io.OutputStream;
  * @lucene.internal
  */
 class GeoWideRectangle extends GeoBaseBBox {
+
+  /** Minimum extent for a rectangle of this type */
+  public static final double MIN_WIDE_EXTENT = Math.PI - Vector.MINIMUM_ANGULAR_RESOLUTION;
+
   /** The top latitude */
   protected final double topLat;
+
   /** The bottom latitude */
   protected final double bottomLat;
+
   /** The left longitude */
   protected final double leftLon;
+
   /** The right longitude */
   protected final double rightLon;
 
@@ -40,28 +47,37 @@ class GeoWideRectangle extends GeoBaseBBox {
 
   /** Upper left hand corner point */
   protected final GeoPoint ULHC;
+
   /** Lower right hand corner point */
   protected final GeoPoint URHC;
+
   /** Lower right hand corner point */
   protected final GeoPoint LRHC;
+
   /** Lower left hand corner point */
   protected final GeoPoint LLHC;
 
   /** Top plane */
   protected final SidedPlane topPlane;
+
   /** Bottom plane */
   protected final SidedPlane bottomPlane;
+
   /** Left plane */
   protected final SidedPlane leftPlane;
+
   /** Right plane */
   protected final SidedPlane rightPlane;
 
   /** Top plane's notable points */
   protected final GeoPoint[] topPlanePoints;
+
   /** Bottom plane's notable points */
   protected final GeoPoint[] bottomPlanePoints;
+
   /** Left plane's notable points */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Right plane's notable points */
   protected final GeoPoint[] rightPlanePoints;
 
@@ -111,7 +127,7 @@ class GeoWideRectangle extends GeoBaseBBox {
     if (extent < 0.0) {
       extent += 2.0 * Math.PI;
     }
-    if (extent < Math.PI) {
+    if (extent < MIN_WIDE_EXTENT) {
       throw new IllegalArgumentException("Width of rectangle too small");
     }
 

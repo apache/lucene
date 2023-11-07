@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -28,14 +27,17 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -51,10 +53,13 @@ public class TestBoolean2 extends LuceneTestCase {
   private static IndexReader reader;
   private static IndexReader littleReader;
   private static IndexReader singleSegmentReader;
+
   /** num of empty docs injected between every doc in the (main) index */
   private static int NUM_FILLER_DOCS;
+
   /** num of empty docs injected prior to the first doc in the (main) index */
   private static int PRE_FILLER_DOCS;
+
   /** num "extra" docs containing value in "field2" added to the "big" clone of the index */
   private static final int NUM_EXTRA_DOCS = 6000;
 
@@ -245,12 +250,12 @@ public class TestBoolean2 extends LuceneTestCase {
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
     collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
-    TopDocs topDocs2 = singleSegmentSearcher.search(query, collectorManager);
-    hits2 = topDocs2.scoreDocs;
+    TopDocs topDocs = singleSegmentSearcher.search(query, collectorManager);
+    hits2 = topDocs.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // sanity check expected num matches in bigSearcher
-    assertEquals(mulFactor * topDocs2.totalHits.value, bigSearcher.count(query));
+    assertEquals(mulFactor * topDocs.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
     collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
@@ -384,10 +389,9 @@ public class TestBoolean2 extends LuceneTestCase {
         }
 
         // check diff (randomized) scorers (from AssertingSearcher) produce the same results
-        TopFieldCollectorManager collectorManager = new TopFieldCollectorManager(sort, 1000, 1);
-        ScoreDoc[] hits1 = searcher.search(q1, collectorManager).scoreDocs;
-        collectorManager = new TopFieldCollectorManager(sort, 1000, 1);
-        TopDocs topDocs = searcher.search(q1, collectorManager);
+        ScoreDoc[] hits1 =
+            searcher.search(q1, new TopFieldCollectorManager(sort, 1000, 1)).scoreDocs;
+        TopDocs topDocs = searcher.search(q1, new TopFieldCollectorManager(sort, 1000, 1));
         ScoreDoc[] hits2 = topDocs.scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
 
@@ -399,10 +403,12 @@ public class TestBoolean2 extends LuceneTestCase {
             bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
-        collectorManager = new TopFieldCollectorManager(sort, 1000 * mulFactor, 1);
-        hits1 = bigSearcher.search(q1, collectorManager).scoreDocs;
-        collectorManager = new TopFieldCollectorManager(sort, 1000 * mulFactor, 1);
-        hits2 = bigSearcher.search(q1, collectorManager).scoreDocs;
+        hits1 =
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
+                .scoreDocs;
+        hits2 =
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
+                .scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
 

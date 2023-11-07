@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /*
  * TODO: Consider implementing https://issues.apache.org/jira/browse/LUCENE-1688 changes to stop list and associated constructors
@@ -43,10 +44,7 @@ import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
  *       "the-quick" has a term.type() of "gram"
  * </ul>
  */
-
-/*
- * Constructors and makeCommonSet based on similar code in StopFilter
- */
+@IgnoreRandomChains(reason = "LUCENE-4983")
 public final class CommonGramsFilter extends TokenFilter {
 
   public static final String GRAM_TYPE = "gram";

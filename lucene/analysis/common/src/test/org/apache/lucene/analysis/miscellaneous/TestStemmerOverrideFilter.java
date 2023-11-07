@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -33,7 +32,8 @@ import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOverrideMap;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** */
 public class TestStemmerOverrideFilter extends BaseTokenStreamTestCase {
@@ -102,7 +102,7 @@ public class TestStemmerOverrideFilter extends BaseTokenStreamTestCase {
           // TODO: can we simply use inputValue.toLowerCase(Locale.ROOT)???
           char[] buffer = inputValue.toCharArray();
           CharacterUtils.toLowerCase(buffer, 0, buffer.length);
-          seenInputValue = buffer.toString();
+          seenInputValue = new String(buffer);
         } else {
           seenInputValue = inputValue;
         }

@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.es;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests to ensure the Spanish Light stem factory is working. */
 public class TestSpanishLightStemFilterFactory extends BaseTokenStreamFactoryTestCase {

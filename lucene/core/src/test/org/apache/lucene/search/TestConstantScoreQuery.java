@@ -18,16 +18,19 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * This class only tests some basic functionality in CSQ, the main parts are mostly tested by
@@ -57,25 +60,46 @@ public class TestConstantScoreQuery extends LuceneTestCase {
       final float expectedScore,
       final Class<? extends Scorable> innerScorerClass)
       throws IOException {
-    int count =
-        searcher.search(
-            q,
-            new CollectorManager<CountingSimpleCollector, Integer>() {
+    final AtomicInteger count = new AtomicInteger();
+    searcher.search(
+        q,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              private Scorable scorer;
+
               @Override
-              public CountingSimpleCollector newCollector() {
-                return new CountingSimpleCollector(innerScorerClass, expectedScore);
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+                if (innerScorerClass != null) {
+                  Scorable innerScorer = rootScorer(scorer);
+                  assertEquals(
+                      "inner Scorer is implemented by wrong class",
+                      innerScorerClass,
+                      innerScorer.getClass());
+                }
               }
 
               @Override
-              public Integer reduce(Collection<CountingSimpleCollector> collectors) {
-                return collectors.stream()
-                    .map(CountingSimpleCollector::getCount)
-                    .mapToInt(Integer::intValue)
-                    .sum();
+              public void collect(int doc) throws IOException {
+                assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
+                count.incrementAndGet();
               }
-            });
 
-    assertEquals("invalid number of results", 1, count);
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
+    assertEquals("invalid number of results", 1, count.get());
   }
 
   private Scorable rootScorer(Scorable s) {
@@ -133,7 +157,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
 
       // for the combined BQ, the scorer should always be BooleanScorer's BucketScorer, because our
       // scorer supports out-of order collection!
-      final Class<ScoreAndDoc> bucketScorerClass = ScoreAndDoc.class;
+      final Class<Score> bucketScorerClass = Score.class;
       checkHits(searcher, csqbq, csqbq.getBoost(), bucketScorerClass);
     } finally {
       IOUtils.close(reader, directory);
@@ -232,42 +256,10 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private class CountingSimpleCollector extends SimpleCollector {
-    private final Class<? extends Scorable> innerScorerClass;
-    private final float expectedScore;
-    private int count;
-    private Scorable scorer;
+  public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
 
-    public CountingSimpleCollector(
-        Class<? extends Scorable> innerScorerClass, float expectedScore) {
-      this.innerScorerClass = innerScorerClass;
-      this.expectedScore = expectedScore;
-      count = 0;
-    }
-
-    @Override
-    public void setScorer(Scorable scorer) {
-      this.scorer = scorer;
-      if (innerScorerClass != null) {
-        Scorable innerScorer = rootScorer(scorer);
-        assertEquals(
-            "inner Scorer is implemented by wrong class", innerScorerClass, innerScorer.getClass());
-      }
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
-      count++;
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.COMPLETE;
-    }
-
-    public int getCount() {
-      return count;
-    }
+    Query query = new ConstantScoreQuery(new MatchNoDocsQuery());
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
   }
 }

@@ -26,13 +26,13 @@ import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MultiCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 
 public class TestRandomSamplingFacetsCollector extends FacetTestCase {
@@ -74,11 +74,11 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
     IOUtils.close(writer, taxoWriter);
 
     // Test empty results
-    RandomSamplingFacetsCollector collectRandomZeroResults =
-        new RandomSamplingFacetsCollector(numDocs / 10, random.nextLong());
-
+    CollectorManager<RandomSamplingFacetsCollector, RandomSamplingFacetsCollector> fcm =
+        RandomSamplingFacetsCollector.createManager(numDocs / 10, random.nextLong());
     // There should be no divisions by zero
-    searcher.search(new TermQuery(new Term("EvenOdd", "NeverMatches")), collectRandomZeroResults);
+    RandomSamplingFacetsCollector collectRandomZeroResults =
+        searcher.search(new TermQuery(new Term("EvenOdd", "NeverMatches")), fcm);
 
     // There should be no divisions by zero and no null result
     assertNotNull(collectRandomZeroResults.getMatchingDocs());
@@ -93,13 +93,9 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
     // Use a query to select half of the documents.
     TermQuery query = new TermQuery(new Term("EvenOdd", "even"));
 
-    RandomSamplingFacetsCollector random10Percent =
-        new RandomSamplingFacetsCollector(
-            numDocs / 10, random.nextLong()); // 10% of total docs, 20% of the hits
-
-    FacetsCollector fc = new FacetsCollector();
-
-    searcher.search(query, MultiCollector.wrap(fc, random10Percent));
+    // 10% of total docs, 20% of the hits
+    fcm = RandomSamplingFacetsCollector.createManager(numDocs / 10, random.nextLong());
+    RandomSamplingFacetsCollector random10Percent = searcher.search(query, fcm);
 
     final List<MatchingDocs> matchingDocs = random10Percent.getMatchingDocs();
 

@@ -22,6 +22,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,9 +39,10 @@ public final class ByteBuffersDataInput extends DataInput
     implements Accountable, RandomAccessInput {
   private final ByteBuffer[] blocks;
   private final FloatBuffer[] floatBuffers;
+  private final LongBuffer[] longBuffers;
   private final int blockBits;
   private final int blockMask;
-  private final long size;
+  private final long length;
   private final long offset;
 
   private long pos;
@@ -53,12 +55,13 @@ public final class ByteBuffersDataInput extends DataInput
   public ByteBuffersDataInput(List<ByteBuffer> buffers) {
     ensureAssumptions(buffers);
 
-    this.blocks =
-        buffers.stream()
-            .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
-            .toArray(ByteBuffer[]::new);
-    // pre-allocate this array and create the FloatBuffers lazily
+    this.blocks = buffers.toArray(ByteBuffer[]::new);
+    for (int i = 0; i < blocks.length; ++i) {
+      blocks[i] = blocks[i].asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+    }
+    // pre-allocate these arrays and create the view buffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
+    this.longBuffers = new LongBuffer[blocks.length * Long.BYTES];
     if (blocks.length == 1) {
       this.blockBits = 32;
       this.blockMask = ~0;
@@ -68,22 +71,32 @@ public final class ByteBuffersDataInput extends DataInput
       this.blockMask = (1 << blockBits) - 1;
     }
 
-    this.size = Arrays.stream(blocks).mapToLong(block -> block.remaining()).sum();
+    long length = 0;
+    for (ByteBuffer block : blocks) {
+      length += block.remaining();
+    }
+    this.length = length;
 
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
   }
 
+  /**
+   * Returns the total number of bytes in this stream.
+   *
+   * @deprecated Use {@link #length()} instead.
+   */
+  @Deprecated
   public long size() {
-    return size;
+    return length();
   }
 
   @Override
   public long ramBytesUsed() {
     // Return a rough estimation for allocated blocks. Note that we do not make
     // any special distinction for what the type of buffer is (direct vs. heap-based).
-    return RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.length
+    return (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.length
         + Arrays.stream(blocks).mapToLong(buf -> buf.capacity()).sum();
   }
 
@@ -95,7 +108,7 @@ public final class ByteBuffersDataInput extends DataInput
       pos++;
       return v;
     } catch (IndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -128,7 +141,7 @@ public final class ByteBuffersDataInput extends DataInput
         len -= chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -155,7 +168,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -164,9 +177,78 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public short readShort() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Short.BYTES <= blockMask) {
+      short v = blocks[blockIndex(pos)].getShort(blockOffset);
+      pos += Short.BYTES;
+      return v;
+    } else {
+      return super.readShort();
+    }
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Integer.BYTES <= blockMask) {
+      int v = blocks[blockIndex(pos)].getInt(blockOffset);
+      pos += Integer.BYTES;
+      return v;
+    } else {
+      return super.readInt();
+    }
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Long.BYTES <= blockMask) {
+      long v = blocks[blockIndex(pos)].getLong(blockOffset);
+      pos += Long.BYTES;
+      return v;
+    } else {
+      return super.readLong();
+    }
+  }
+
+  @Override
+  public long length() {
+    return length;
+  }
+
+  @Override
   public byte readByte(long pos) {
     pos += offset;
     return blocks[blockIndex(pos)].get(blockOffset(pos));
+  }
+
+  @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    long absPos = this.offset + pos;
+    try {
+      while (len > 0) {
+        ByteBuffer block = blocks[blockIndex(absPos)];
+        int blockPosition = blockOffset(absPos);
+        int chunk = Math.min(len, block.capacity() - blockPosition);
+        if (chunk == 0) {
+          throw new EOFException();
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        block.get(blockPosition, bytes, offset, chunk);
+
+        absPos += chunk;
+        len -= chunk;
+        offset += chunk;
+      }
+    } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
+      if (absPos >= length()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
   }
 
   @Override
@@ -244,7 +326,39 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
-      if (pos - offset + Float.BYTES > size()) {
+      if (pos - offset + Float.BYTES > length()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
+  }
+
+  @Override
+  public void readLongs(long[] arr, int off, int len) throws EOFException {
+    try {
+      while (len > 0) {
+        LongBuffer longBuffer = getLongBuffer(pos);
+        longBuffer.position(blockOffset(pos) >> 3);
+        int chunk = Math.min(len, longBuffer.remaining());
+        if (chunk == 0) {
+          // read a single long spanning the boundary between two buffers
+          arr[off] = readLong(pos - offset);
+          off++;
+          len--;
+          pos += Long.BYTES;
+          continue;
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        pos += chunk << 3;
+        longBuffer.get(arr, off, chunk);
+
+        len -= chunk;
+        off += chunk;
+      }
+    } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
+      if (pos - offset + Long.BYTES > length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -265,14 +379,27 @@ public final class ByteBuffersDataInput extends DataInput
     return floatBuffers[floatBufferIndex];
   }
 
+  private LongBuffer getLongBuffer(long pos) {
+    // This creates a separate LongBuffer for each observed combination of ByteBuffer/alignment
+    int bufferIndex = blockIndex(pos);
+    int alignment = (int) pos & 0x7;
+    int longBufferIndex = bufferIndex * Long.BYTES + alignment;
+    if (longBuffers[longBufferIndex] == null) {
+      ByteBuffer dup = blocks[bufferIndex].duplicate();
+      dup.position(alignment);
+      longBuffers[longBufferIndex] = dup.order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
+    }
+    return longBuffers[longBufferIndex];
+  }
+
   public long position() {
     return pos - offset;
   }
 
   public void seek(long position) throws EOFException {
     this.pos = position + offset;
-    if (position > size()) {
-      this.pos = size();
+    if (position > length()) {
+      this.pos = length();
       throw new EOFException();
     }
   }
@@ -287,7 +414,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   public ByteBuffersDataInput slice(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.size) {
+    if (offset < 0 || length < 0 || offset + length > this.length) {
       throw new IllegalArgumentException(
           String.format(
               Locale.ROOT,
@@ -305,7 +432,7 @@ public final class ByteBuffersDataInput extends DataInput
     return String.format(
         Locale.ROOT,
         "%,d bytes, block size: %,d, blocks: %,d, position: %,d%s",
-        size(),
+        length(),
         blockSize(),
         blocks.length,
         position(),

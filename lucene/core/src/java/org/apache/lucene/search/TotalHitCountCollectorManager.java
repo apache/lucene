@@ -16,22 +16,29 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.Collection;
 
-/** CollectorManager that aggregates counts to get the total number of hits. */
+/**
+ * Collector manager based on {@link TotalHitCountCollector} that allows users to parallelize
+ * counting the number of hits, expected to be used mostly wrapped in {@link MultiCollectorManager}.
+ * For cases when this is the only collector manager used, {@link IndexSearcher#count(Query)} should
+ * be called instead of {@link IndexSearcher#search(Query, CollectorManager)} as the former is
+ * faster whenever the count can be returned directly from the index statistics.
+ */
 public class TotalHitCountCollectorManager
     implements CollectorManager<TotalHitCountCollector, Integer> {
   @Override
-  public TotalHitCountCollector newCollector() {
+  public TotalHitCountCollector newCollector() throws IOException {
     return new TotalHitCountCollector();
   }
 
   @Override
-  public Integer reduce(Collection<TotalHitCountCollector> collectors) {
-    int total = 0;
+  public Integer reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
+    int totalHits = 0;
     for (TotalHitCountCollector collector : collectors) {
-      total += collector.getTotalHits();
+      totalHits += collector.getTotalHits();
     }
-    return total;
+    return totalHits;
   }
 }

@@ -46,7 +46,7 @@ public class TermFreqValueSource extends DocFreqValueSource {
   @Override
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
-    final Terms terms = readerContext.reader().terms(indexedField);
+    final Terms terms = Terms.getTerms(readerContext.reader(), indexedField);
 
     return new IntDocValues(this) {
       PostingsEnum docs;
@@ -60,13 +60,9 @@ public class TermFreqValueSource extends DocFreqValueSource {
       public void reset() throws IOException {
         // no one should call us for deleted docs?
 
-        if (terms != null) {
-          final TermsEnum termsEnum = terms.iterator();
-          if (termsEnum.seekExact(indexedBytes)) {
-            docs = termsEnum.postings(null);
-          } else {
-            docs = null;
-          }
+        final TermsEnum termsEnum = terms.iterator();
+        if (termsEnum.seekExact(indexedBytes)) {
+          docs = termsEnum.postings(null);
         } else {
           docs = null;
         }

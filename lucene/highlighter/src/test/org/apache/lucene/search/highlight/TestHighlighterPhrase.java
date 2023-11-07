@@ -17,10 +17,6 @@
 package org.apache.lucene.search.highlight;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -42,9 +38,13 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.FixedBitSetCollector;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestHighlighterPhrase extends LuceneTestCase {
   private static final String FIELD = "text";
@@ -79,7 +79,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
 
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals(
           highlighter.getBestFragment(new TokenStreamConcurrent(), TEXT),
           highlighter.getBestFragment(tokenStream, TEXT));
@@ -134,7 +134,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
         assertEquals(0, position);
         final TokenStream tokenStream =
             TokenSources.getTermVectorTokenStreamOrNull(
-                FIELD, indexReader.getTermVectors(position), -1);
+                FIELD, indexReader.termVectors().get(position), -1);
         assertEquals(
             highlighter.getBestFragment(new TokenStreamConcurrent(), TEXT),
             highlighter.getBestFragment(tokenStream, TEXT));
@@ -175,7 +175,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals(
           highlighter.getBestFragment(new TokenStreamSparse(), TEXT),
           highlighter.getBestFragment(tokenStream, TEXT));
@@ -214,7 +214,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals(
           "the fox <B>did</B> not <B>jump</B>", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
@@ -260,7 +260,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals(
           highlighter.getBestFragment(new TokenStreamSparse(), TEXT),
           highlighter.getBestFragment(tokenStream, TEXT));

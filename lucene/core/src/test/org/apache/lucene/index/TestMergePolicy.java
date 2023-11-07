@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestMergePolicy extends LuceneTestCase {
@@ -149,6 +149,7 @@ public class TestMergePolicy extends LuceneTestCase {
               TestUtil.randomSimpleString(random()), // name
               random().nextInt(1000), // maxDoc
               random().nextBoolean(), // isCompoundFile
+              false,
               null, // codec
               Collections.emptyMap(), // diagnostics
               TestUtil.randomSimpleString( // id

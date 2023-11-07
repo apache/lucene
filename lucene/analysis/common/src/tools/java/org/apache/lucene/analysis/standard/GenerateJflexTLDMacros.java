@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -111,7 +112,7 @@ public class GenerateJflexTLDMacros {
 
   public GenerateJflexTLDMacros(String tldFileURL, String jflexFile, String tldListFile)
       throws Exception {
-    this.tldFileURL = new URL(tldFileURL);
+    this.tldFileURL = URI.create(tldFileURL).toURL();
     this.jflexMacroFile = Paths.get(jflexFile);
     this.tldListFile = Paths.get(tldListFile);
   }
@@ -171,6 +172,8 @@ public class GenerateJflexTLDMacros {
    * care about TLDs that are prefixes and are exactly one character shorter than another TLD. See
    * LUCENE-8278 and LUCENE-5391.
    */
+  @SuppressWarnings(
+      "ModifyCollectionInEnhancedForLoop") // it looks like it works because it is a sorted map!
   private void partitionTLDprefixesBySuffixLength() {
     TLDsBySuffixLength.add(new TreeSet<>()); // initialize set for zero-suffix TLDs
     for (SortedMap.Entry<String, Boolean> entry : processedTLDsLongestFirst.entrySet()) {

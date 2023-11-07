@@ -1,3 +1,6 @@
+import java.util.jar.JarFile
+import java.util.regex.Matcher
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,12 +25,10 @@ subprojects {
     // per-project.
     def title = "Lucene Search Engine: ${project.name}"
     def implementationTitle = "org.apache.lucene"
-    def legaleseDir = project(":lucene").projectDir
+    def legaleseDir = project(":").projectDir
 
-    // Apply the manifest to any JAR or WAR file created by any project,
-    // excluding those explicitly listed.
+    // Apply the manifest to any JAR or WAR file created by any project.
     tasks.withType(Jar)
-      .matching { t -> !["sourcesJar", "javadocJar"].contains(t.name) }
       .configureEach { task ->
           // Compute git status once on the root project prior to assembling manifest.
           dependsOn ":gitStatus"
@@ -45,12 +46,11 @@ subprojects {
             if (snapshotBuild) {
               return "${project.version} ${gitRev} [snapshot build, details omitted]"
             } else {
-              return "${project.version} ${gitRev} - ${System.properties['user.name']} - ${buildDate} ${buildTime}"
+              return "${project.version} ${gitRev} - ${buildDate} ${buildTime}"
             }
           }
 
-          manifest {
-            attributes([
+          def manifestAttrs = [
               "Extension-Name"        : implementationTitle,
 
               "Implementation-Vendor" : "The Apache Software Foundation",
@@ -67,7 +67,10 @@ subprojects {
 
               "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
               "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
-            ])
+          ]
+
+          manifest {
+            attributes(manifestAttrs)
           }
 
           // Copy legalese into META-INF.

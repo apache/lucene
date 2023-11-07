@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import java.util.Objects;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -42,7 +43,7 @@ public final class KeepWordFilter extends FilteringTokenFilter {
    */
   public KeepWordFilter(TokenStream in, CharArraySet words) {
     super(in);
-    this.words = words;
+    this.words = Objects.requireNonNull(words, "words");
   }
 
   @Override

@@ -27,7 +27,9 @@ public class PhraseSlopQueryNode extends QueryNodeImpl implements FieldableNode 
 
   private int value = 0;
 
-  /** @exception QueryNodeError throw in overridden method to disallow */
+  /**
+   * @exception QueryNodeError throw in overridden method to disallow
+   */
   public PhraseSlopQueryNode(QueryNode query, int value) {
     if (query == null) {
       throw new QueryNodeError(

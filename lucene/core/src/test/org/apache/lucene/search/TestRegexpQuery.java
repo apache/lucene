@@ -23,10 +23,10 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonProvider;
@@ -142,10 +142,9 @@ public class TestRegexpQuery extends LuceneTestCase {
     assertEquals(1, caseInsensitiveRegexQueryNrHits("Quick"));
   }
 
-  public void testRegexComplement() throws IOException {
-    assertEquals(1, regexQueryNrHits("4934~[3]"));
-    // not the empty lang, i.e. match all docs
-    assertEquals(1, regexQueryNrHits("~#"));
+  public void testRegexNegatedCharacterClass() throws IOException {
+    assertEquals(1, regexQueryNrHits("[^a-z]"));
+    assertEquals(1, regexQueryNrHits("[^03ad]"));
   }
 
   public void testCustomProvider() throws IOException {

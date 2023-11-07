@@ -22,7 +22,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.text.BreakIterator;
 import java.util.Locale;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
 

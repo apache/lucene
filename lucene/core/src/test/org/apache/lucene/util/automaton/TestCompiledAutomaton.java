@@ -22,10 +22,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestCompiledAutomaton extends LuceneTestCase {
 
@@ -35,8 +35,8 @@ public class TestCompiledAutomaton extends LuceneTestCase {
       terms.add(new BytesRef(s));
     }
     Collections.sort(terms);
-    final Automaton a = DaciukMihovAutomatonBuilder.build(terms);
-    return new CompiledAutomaton(a, true, false, determinizeWorkLimit, false);
+    final Automaton a = Automata.makeStringUnion(terms);
+    return new CompiledAutomaton(a, true, false, false);
   }
 
   private void testFloor(CompiledAutomaton c, String input, String expected) {
@@ -130,7 +130,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, 0xff);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -142,7 +142,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, Character.MAX_CODE_POINT);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -150,14 +150,14 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   public void testBinarySingleton() throws Exception {
     // This is just ascii so we can pretend it's binary:
     Automaton a = Automata.makeString("foobar");
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, true, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 
   // LUCENE-6367
   public void testUnicodeSingleton() throws Exception {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, true, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 }

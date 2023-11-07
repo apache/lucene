@@ -22,8 +22,8 @@ import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
 import org.apache.lucene.util.ResourceLoader;
 
@@ -37,11 +37,6 @@ public class TestMorfologikFilterFactory extends BaseTokenStreamTestCase {
 
     @Override
     public <T> Class<? extends T> findClass(String cname, Class<T> expectedType) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> T newInstance(String cname, Class<T> expectedType) {
       throw new UnsupportedOperationException();
     }
   }

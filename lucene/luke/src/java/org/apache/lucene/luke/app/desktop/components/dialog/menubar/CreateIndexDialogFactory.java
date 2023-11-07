@@ -35,6 +35,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -47,7 +49,6 @@ import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.app.desktop.Preferences;
 import org.apache.lucene.luke.app.desktop.PreferencesFactory;
@@ -337,8 +338,8 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
                       IOException ex2) {
                   }
 
-                  log.error("Cannot create index", ex);
-                  String message = "See Logs tab or log file for more details.";
+                  log.log(Level.SEVERE, "Cannot create index", ex);
+                  String message = "See Logs tab for more details.";
                   JOptionPane.showMessageDialog(
                       dialog, message, "Cannot create index", JOptionPane.ERROR_MESSAGE);
                 } finally {

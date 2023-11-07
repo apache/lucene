@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -33,12 +32,13 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.BeforeClass;
 
@@ -112,6 +112,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     0,
                     0,
+                    VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
                     false));
       }
@@ -243,6 +244,7 @@ public class TestCodecs extends LuceneTestCase {
             SEGMENT,
             10000,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -320,6 +322,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),

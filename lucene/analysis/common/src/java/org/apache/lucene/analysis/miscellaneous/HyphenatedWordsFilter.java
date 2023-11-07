@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * When the plain text is extracted from documents, we will often have many words hyphenated and
@@ -50,6 +51,8 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
  * &lt;/fieldtype&gt;
  * </pre>
  */
+@IgnoreRandomChains(
+    reason = "TODO: doesn't handle graph inputs (or even look at positionIncrement)")
 public final class HyphenatedWordsFilter extends TokenFilter {
 
   private final CharTermAttribute termAttribute = addAttribute(CharTermAttribute.class);

@@ -20,8 +20,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.index.ThreadedIndexingAndSearchingTestCase;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.junit.Before;
 
 // TODO
@@ -41,13 +42,13 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
   }
 
   @Override
-  protected void doSearching(ExecutorService es, long stopTime) throws Exception {
+  protected void doSearching(ExecutorService es, int maxIterations) throws Exception {
 
     boolean anyOpenDelFiles = false;
 
     DirectoryReader r = DirectoryReader.open(writer);
-
-    while (System.currentTimeMillis() < stopTime && !failed.get()) {
+    int iterations = 0;
+    while (++iterations < maxIterations && !failed.get()) {
       if (random().nextBoolean()) {
         if (VERBOSE) {
           System.out.println("TEST: now reopen r=" + r);
@@ -83,7 +84,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
       if (r.numDocs() > 0) {
         fixedSearcher = new IndexSearcher(r, es);
         smokeTestSearcher(fixedSearcher);
-        runSearchThreads(System.currentTimeMillis() + 100);
+        runSearchThreads(100);
       }
     }
     r.close();
@@ -111,7 +112,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
     // Force writer to do reader pooling, always, so that
     // all merged segments, even for merges before
     // doSearching is called, are warmed:
-    writer.getReader().close();
+    DirectoryReader.open(writer).close();
   }
 
   private IndexSearcher fixedSearcher;
@@ -134,13 +135,13 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
     final IndexReader r2;
     if (useNonNrtReaders) {
       if (random().nextBoolean()) {
-        r2 = writer.getReader();
+        r2 = DirectoryReader.open(writer);
       } else {
         writer.commit();
         r2 = DirectoryReader.open(dir);
       }
     } else {
-      r2 = writer.getReader();
+      r2 = DirectoryReader.open(writer);
     }
     return newSearcher(r2);
   }

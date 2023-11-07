@@ -66,6 +66,11 @@ final class StateSet extends IntSet {
     }
   }
 
+  void reset() {
+    inner.clear();
+    keyChanged();
+  }
+
   /**
    * Create a snapshot of this int set associated with a given state. The snapshot will not retain
    * any frequency information about the elements of this set, only existence.

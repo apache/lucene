@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.miscellaneous;
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * This TokenFilter limits the number of tokens while indexing. It is a replacement for the maximum
@@ -45,6 +46,7 @@ public final class LimitTokenCountFilter extends TokenFilter {
    *
    * @see #LimitTokenCountFilter(TokenStream,int,boolean)
    */
+  @IgnoreRandomChains(reason = "all tokens must be consumed")
   public LimitTokenCountFilter(TokenStream in, int maxTokenCount) {
     this(in, maxTokenCount, false);
   }

@@ -33,13 +33,14 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** random sorting tests */
 public class TestSortRandom extends LuceneTestCase {
@@ -203,6 +204,7 @@ public class TestSortRandom extends LuceneTestCase {
 
       if (VERBOSE) {
         System.out.println("  actual:");
+        StoredFields storedFields = s.storedFields();
         for (int hitIDX = 0; hitIDX < hits.scoreDocs.length; hitIDX++) {
           final FieldDoc fd = (FieldDoc) hits.scoreDocs[hitIDX];
           BytesRef br = (BytesRef) fd.fields[0];
@@ -213,7 +215,7 @@ public class TestSortRandom extends LuceneTestCase {
                   + ": "
                   + (br == null ? "<missing>" : br.utf8ToString())
                   + " id="
-                  + s.doc(fd.doc).get("id"));
+                  + storedFields.document(fd.doc).get("id"));
         }
       }
       for (int hitIDX = 0; hitIDX < hits.scoreDocs.length; hitIDX++) {

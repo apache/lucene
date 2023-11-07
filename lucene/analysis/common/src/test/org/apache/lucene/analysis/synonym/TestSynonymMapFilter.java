@@ -27,16 +27,17 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockGraphTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.apache.lucene.util.TestUtil;
 
 @Deprecated
 public class TestSynonymMapFilter extends BaseTokenStreamTestCase {
@@ -629,7 +630,8 @@ public class TestSynonymMapFilter extends BaseTokenStreamTestCase {
           new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-              Tokenizer tokenizer = new MockTokenizer(MockTokenizer.SIMPLE, true);
+              Tokenizer tokenizer =
+                  new MockTokenizer(MockTokenizer.SIMPLE, true, IndexWriter.MAX_TERM_LENGTH / 2);
               return new TokenStreamComponents(
                   tokenizer, new SynonymFilter(tokenizer, map, ignoreCase));
             }

@@ -16,15 +16,14 @@
  */
 package org.apache.lucene.store;
 
-import static org.junit.Assert.*;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.junit.Assert;
 import org.junit.Test;
@@ -58,8 +57,8 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
             reuser::reuse);
 
     // Add some random data first.
-    long genSeed = randomLong();
-    int addCount = randomIntBetween(1000, 5000);
+    long genSeed = random().nextLong();
+    int addCount = TestUtil.nextInt(random(), 1000, 5000);
     addRandomData(o, new Random(genSeed), addCount);
     byte[] data = o.toArrayCopy();
 
@@ -84,7 +83,7 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
 
     {
       long MB = 1024 * 1024;
-      long expectedSize = randomLongBetween(MB, MB * 1024);
+      long expectedSize = TestUtil.nextLong(random(), MB, MB * 1024);
       ByteBuffersDataOutput o = new ByteBuffersDataOutput(expectedSize);
       o.writeByte((byte) 0);
       int cap = o.toBufferList().get(0).capacity();
@@ -94,6 +93,63 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
           "cap=" + cap + ", exp=" + expectedSize,
           (cap) * ByteBuffersDataOutput.MAX_BLOCKS_BEFORE_BLOCK_EXPANSION >= expectedSize);
     }
+  }
+
+  public void testIllegalMinBitsPerBlock() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new ByteBuffersDataOutput(
+              ByteBuffersDataOutput.LIMIT_MIN_BITS_PER_BLOCK - 1,
+              ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+              ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+              ByteBuffersDataOutput.NO_REUSE);
+        });
+  }
+
+  public void testIllegalMaxBitsPerBlock() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new ByteBuffersDataOutput(
+              ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+              ByteBuffersDataOutput.LIMIT_MAX_BITS_PER_BLOCK + 1,
+              ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+              ByteBuffersDataOutput.NO_REUSE);
+        });
+  }
+
+  public void testIllegalBitsPerBlockRange() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new ByteBuffersDataOutput(
+              20, 19, ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP, ByteBuffersDataOutput.NO_REUSE);
+        });
+  }
+
+  public void testNullAllocator() {
+    expectThrows(
+        NullPointerException.class,
+        () -> {
+          new ByteBuffersDataOutput(
+              ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+              ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+              null,
+              ByteBuffersDataOutput.NO_REUSE);
+        });
+  }
+
+  public void testNullRecycler() {
+    expectThrows(
+        NullPointerException.class,
+        () -> {
+          new ByteBuffersDataOutput(
+              ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+              ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+              ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+              null);
+        });
   }
 
   @Test
@@ -116,9 +172,10 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
   @Test
   public void testWriteByteBuffer() {
     ByteBuffersDataOutput o = new ByteBuffersDataOutput();
-    byte[] bytes = randomBytesOfLength(1024 * 8 + 10);
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
     ByteBuffer src = ByteBuffer.wrap(bytes);
-    int offset = randomIntBetween(0, 100);
+    int offset = TestUtil.nextInt(random(), 0, 100);
     int len = bytes.length - offset;
     src.position(offset);
     src.limit(offset + len);
@@ -134,16 +191,53 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     int MB = 1024 * 1024;
     final byte[] bytes;
     if (LuceneTestCase.TEST_NIGHTLY) {
-      bytes = randomBytesOfLength(5 * MB, 15 * MB);
+      bytes = new byte[TestUtil.nextInt(random(), 5 * MB, 15 * MB)];
     } else {
-      bytes = randomBytesOfLength(MB / 2, MB);
+      bytes = new byte[TestUtil.nextInt(random(), MB / 2, MB)];
     }
-    int offset = randomIntBetween(0, 100);
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
     int len = bytes.length - offset;
     o.writeBytes(bytes, offset, len);
     assertEquals(len, o.size());
     Assert.assertArrayEquals(
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len), o.toArrayCopy());
+  }
+
+  @Test
+  public void testCopyBytesOnHeap() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+  }
+
+  @Test
+  public void testCopyBytesOnDirectByteBuffer() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffer::allocateDirect,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
   @Test

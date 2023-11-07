@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCollectionUtil extends LuceneTestCase {
 

@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.icu;
 import com.ibm.icu.text.Normalizer;
 import com.ibm.icu.text.Normalizer2;
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -71,7 +72,7 @@ public class ICUNormalizer2Filter extends TokenFilter {
    */
   public ICUNormalizer2Filter(TokenStream input, Normalizer2 normalizer) {
     super(input);
-    this.normalizer = normalizer;
+    this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
   }
 
   @Override

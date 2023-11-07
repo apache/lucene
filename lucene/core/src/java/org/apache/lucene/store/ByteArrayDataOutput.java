@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -67,5 +68,26 @@ public class ByteArrayDataOutput extends DataOutput {
     assert pos + length <= limit;
     System.arraycopy(b, offset, bytes, pos, length);
     pos += length;
+  }
+
+  @Override
+  public void writeShort(short i) {
+    assert pos + Short.BYTES <= limit;
+    BitUtil.VH_LE_SHORT.set(bytes, pos, i);
+    pos += Short.BYTES;
+  }
+
+  @Override
+  public void writeInt(int i) {
+    assert pos + Integer.BYTES <= limit;
+    BitUtil.VH_LE_INT.set(bytes, pos, i);
+    pos += Integer.BYTES;
+  }
+
+  @Override
+  public void writeLong(long i) {
+    assert pos + Long.BYTES <= limit;
+    BitUtil.VH_LE_LONG.set(bytes, pos, i);
+    pos += Long.BYTES;
   }
 }

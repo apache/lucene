@@ -18,9 +18,9 @@ package org.apache.lucene.search;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.XYPointField;
-import org.apache.lucene.geo.BaseXYPointTestCase;
 import org.apache.lucene.geo.XYGeometry;
 import org.apache.lucene.geo.XYPolygon;
+import org.apache.lucene.tests.geo.BaseXYPointTestCase;
 
 public class TestXYPointQueries extends BaseXYPointTestCase {
 

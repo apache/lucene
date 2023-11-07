@@ -22,7 +22,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 /**
  * This class implements the classic lucene StandardTokenizer up until 3.0 
  */
-@SuppressWarnings({"unused","fallthrough"})
 %%
 
 %class ClassicTokenizerImpl
@@ -49,7 +48,8 @@ public static final String [] TOKEN_TYPES = ClassicTokenizer.TOKEN_TYPES;
 
 public final int yychar()
 {
-    return yychar;
+    // jflex supports > 2GB docs but not lucene
+    return (int) yychar;
 }
 
 /**

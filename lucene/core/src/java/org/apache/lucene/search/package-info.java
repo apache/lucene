@@ -301,10 +301,10 @@
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("_score * ln(popularity)");
  *
- *   // SimpleBindings just maps variables to SortField instances
+ *   // SimpleBindings just maps variables to DoubleValuesSource instances
  *   SimpleBindings bindings = new SimpleBindings();
- *   bindings.add(new SortField("_score", SortField.Type.SCORE));
- *   bindings.add(new SortField("popularity", SortField.Type.INT));
+ *   bindings.add("_score", DoubleValuesSource.SCORES);
+ *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
  *
  *   // create a query that matches based on 'originalQuery' but
  *   // scores using expr
@@ -357,11 +357,11 @@
  *       each Query implementation must provide an implementation of Weight. See the subsection on
  *       <a href="#weightClass">The Weight Interface</a> below for details on implementing the
  *       Weight interface.
- *   <li>{@link org.apache.lucene.search.Query#rewrite(org.apache.lucene.index.IndexReader)
- *       rewrite(IndexReader reader)} &mdash; Rewrites queries into primitive queries. Primitive
- *       queries are: {@link org.apache.lucene.search.TermQuery TermQuery}, {@link
- *       org.apache.lucene.search.BooleanQuery BooleanQuery}, <span >and other queries that
- *       implement {@link org.apache.lucene.search.Query#createWeight(IndexSearcher,ScoreMode,float)
+ *   <li>{@link org.apache.lucene.search.Query#rewrite(IndexSearcher) rewrite(IndexReader reader)}
+ *       &mdash; Rewrites queries into primitive queries. Primitive queries are: {@link
+ *       org.apache.lucene.search.TermQuery TermQuery}, {@link org.apache.lucene.search.BooleanQuery
+ *       BooleanQuery}, <span >and other queries that implement {@link
+ *       org.apache.lucene.search.Query#createWeight(IndexSearcher,ScoreMode,float)
  *       createWeight(IndexSearcher searcher,ScoreMode scoreMode, float boost)}</span>
  * </ol>
  *

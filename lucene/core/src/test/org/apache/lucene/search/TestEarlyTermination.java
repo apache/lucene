@@ -21,9 +21,9 @@ import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestEarlyTermination extends LuceneTestCase {
 
@@ -57,18 +57,16 @@ public class TestEarlyTermination extends LuceneTestCase {
 
     for (int i = 0; i < iters; ++i) {
       final IndexSearcher searcher = newSearcher(reader);
-
       searcher.search(
           new MatchAllDocsQuery(),
-          new CollectorManager<SimpleCollector, Object>() {
+          new CollectorManager<SimpleCollector, Void>() {
             @Override
-            public SimpleCollector newCollector() throws IOException {
+            public SimpleCollector newCollector() {
               return new SimpleCollector() {
-
                 boolean collectionTerminated = true;
 
                 @Override
-                public void collect(int doc) throws IOException {
+                public void collect(int doc) {
                   assertFalse(collectionTerminated);
                   if (rarely()) {
                     collectionTerminated = true;
@@ -77,7 +75,7 @@ public class TestEarlyTermination extends LuceneTestCase {
                 }
 
                 @Override
-                protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                protected void doSetNextReader(LeafReaderContext context) {
                   if (random().nextBoolean()) {
                     collectionTerminated = true;
                     throw new CollectionTerminatedException();
@@ -94,7 +92,7 @@ public class TestEarlyTermination extends LuceneTestCase {
             }
 
             @Override
-            public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+            public Void reduce(Collection<SimpleCollector> collectors) {
               return null;
             }
           });

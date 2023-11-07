@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.MatchesIterator;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
 class ExtendedIntervalsSource extends IntervalsSource {
@@ -53,9 +55,66 @@ class ExtendedIntervalsSource extends IntervalsSource {
     if (in == null) {
       return null;
     }
+
+    IntervalMatchesIterator inNoOffsets =
+        new IntervalMatchesIterator() {
+          IntervalMatchesIterator delegate = in;
+
+          @Override
+          public int gaps() {
+            return delegate.gaps();
+          }
+
+          @Override
+          public int width() {
+            return delegate.width();
+          }
+
+          @Override
+          public boolean next() throws IOException {
+            return delegate.next();
+          }
+
+          @Override
+          public int startPosition() {
+            return delegate.startPosition();
+          }
+
+          @Override
+          public int endPosition() {
+            return delegate.endPosition();
+          }
+
+          @Override
+          public int startOffset() throws IOException {
+            // We could return this:
+            // before > 0 ? -1 : in.startOffset();
+            // but keep it consistent for start/end offset:
+            return -1;
+          }
+
+          @Override
+          public int endOffset() throws IOException {
+            // We could return this:
+            // after > 0 ? -1 : in.startOffset();
+            // but keep it consistent for start/end offset:
+            return -1;
+          }
+
+          @Override
+          public MatchesIterator getSubMatches() throws IOException {
+            return delegate.getSubMatches();
+          }
+
+          @Override
+          public Query getQuery() {
+            return delegate.getQuery();
+          }
+        };
+
     IntervalIterator wrapped =
-        new ExtendedIntervalIterator(IntervalMatches.wrapMatches(in, doc), before, after);
-    return IntervalMatches.asMatches(wrapped, in, doc);
+        new ExtendedIntervalIterator(IntervalMatches.wrapMatches(inNoOffsets, doc), before, after);
+    return IntervalMatches.asMatches(wrapped, inNoOffsets, doc);
   }
 
   @Override

@@ -22,6 +22,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
@@ -37,8 +38,8 @@ import org.apache.lucene.util.packed.PackedLongValues;
  */
 class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
   final BytesRefHash hash;
-  private PackedLongValues.Builder pending;
-  private DocsWithFieldSet docsWithField;
+  private final PackedLongValues.Builder pending;
+  private final DocsWithFieldSet docsWithField;
   private final Counter iwBytesUsed;
   private long bytesUsed; // this currently only tracks differences in 'pending'
   private final FieldInfo fieldInfo;
@@ -109,24 +110,28 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     bytesUsed = newBytesUsed;
   }
 
-  @Override
-  SortedDocValues getDocValues() {
-    int valueCount = hash.size();
+  private void finish() {
     if (finalSortedValues == null) {
+      int valueCount = hash.size();
       updateBytesUsed();
       assert finalOrdMap == null && finalOrds == null;
       finalSortedValues = hash.sort();
       finalOrds = pending.build();
       finalOrdMap = new int[valueCount];
+      for (int ord = 0; ord < valueCount; ord++) {
+        finalOrdMap[finalSortedValues[ord]] = ord;
+      }
     }
-    for (int ord = 0; ord < valueCount; ord++) {
-      finalOrdMap[finalSortedValues[ord]] = ord;
-    }
-    return new BufferedSortedDocValues(
-        hash, valueCount, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator());
   }
 
-  private int[] sortDocValues(int maxDoc, Sorter.DocMap sortMap, SortedDocValues oldValues)
+  @Override
+  SortedDocValues getDocValues() {
+    finish();
+    return new BufferedSortedDocValues(
+        hash, finalOrds, finalSortedValues, finalOrdMap, docsWithField.iterator());
+  }
+
+  private static int[] sortDocValues(int maxDoc, Sorter.DocMap sortMap, SortedDocValues oldValues)
       throws IOException {
     int[] ords = new int[maxDoc];
     Arrays.fill(ords, -1);
@@ -141,76 +146,66 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
   @Override
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, DocValuesConsumer dvConsumer)
       throws IOException {
-    final int valueCount = hash.size();
-    if (finalOrds == null) {
-      updateBytesUsed();
-      finalSortedValues = hash.sort();
-      finalOrds = pending.build();
-      finalOrdMap = new int[valueCount];
-      for (int ord = 0; ord < valueCount; ord++) {
-        finalOrdMap[finalSortedValues[ord]] = ord;
-      }
-    }
+    finish();
 
+    dvConsumer.addSortedField(
+        fieldInfo,
+        getDocValuesProducer(
+            fieldInfo, hash, finalOrds, finalSortedValues, finalOrdMap, docsWithField, sortMap));
+  }
+
+  static DocValuesProducer getDocValuesProducer(
+      FieldInfo writerFieldInfo,
+      BytesRefHash hash,
+      PackedLongValues ords,
+      int[] sortedValues,
+      int[] ordMap,
+      DocsWithFieldSet docsWithField,
+      Sorter.DocMap sortMap)
+      throws IOException {
     final int[] sorted;
     if (sortMap != null) {
       sorted =
           sortDocValues(
-              state.segmentInfo.maxDoc(),
+              sortMap.size(),
               sortMap,
               new BufferedSortedDocValues(
-                  hash,
-                  valueCount,
-                  finalOrds,
-                  finalSortedValues,
-                  finalOrdMap,
-                  docsWithField.iterator()));
+                  hash, ords, sortedValues, ordMap, docsWithField.iterator()));
     } else {
       sorted = null;
     }
-    dvConsumer.addSortedField(
-        fieldInfo,
-        new EmptyDocValuesProducer() {
-          @Override
-          public SortedDocValues getSorted(FieldInfo fieldInfoIn) {
-            if (fieldInfoIn != fieldInfo) {
-              throw new IllegalArgumentException("wrong fieldInfo");
-            }
-            final SortedDocValues buf =
-                new BufferedSortedDocValues(
-                    hash,
-                    valueCount,
-                    finalOrds,
-                    finalSortedValues,
-                    finalOrdMap,
-                    docsWithField.iterator());
-            if (sorted == null) {
-              return buf;
-            }
-            return new SortingSortedDocValues(buf, sorted);
-          }
-        });
+    return new EmptyDocValuesProducer() {
+      @Override
+      public SortedDocValues getSorted(FieldInfo fieldInfoIn) {
+        if (fieldInfoIn != writerFieldInfo) {
+          throw new IllegalArgumentException("wrong fieldInfo");
+        }
+        final SortedDocValues buf =
+            new BufferedSortedDocValues(hash, ords, sortedValues, ordMap, docsWithField.iterator());
+        if (sorted == null) {
+          return buf;
+        }
+        return new SortingSortedDocValues(buf, sorted);
+      }
+    };
   }
 
-  private static class BufferedSortedDocValues extends SortedDocValues {
+  static class BufferedSortedDocValues extends SortedDocValues {
     final BytesRefHash hash;
     final BytesRef scratch = new BytesRef();
     final int[] sortedValues;
     final int[] ordMap;
-    final int valueCount;
     private int ord;
     final PackedLongValues.Iterator iter;
     final DocIdSetIterator docsWithField;
 
     public BufferedSortedDocValues(
         BytesRefHash hash,
-        int valueCount,
         PackedLongValues docToOrd,
         int[] sortedValues,
         int[] ordMap,
         DocIdSetIterator docsWithField) {
       this.hash = hash;
-      this.valueCount = valueCount;
       this.sortedValues = sortedValues;
       this.iter = docToOrd.iterator();
       this.ordMap = ordMap;
@@ -262,7 +257,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
 
     @Override
     public int getValueCount() {
-      return valueCount;
+      return hash.size();
     }
   }
 

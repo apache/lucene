@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -36,6 +35,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.NumericUtils;
 
 final class LongDistanceFeatureQuery extends Query {
 
@@ -267,8 +267,8 @@ final class LongDistanceFeatureQuery extends Query {
       return doc;
     }
 
-    private float score(double distance) {
-      return (float) (boost * (pivotDistance / (pivotDistance + distance)));
+    private float score(long distance) {
+      return (float) (boost * (pivotDistance / (pivotDistance + (double) distance)));
     }
 
     /**
@@ -378,11 +378,8 @@ final class LongDistanceFeatureQuery extends Query {
         // overflow
         maxValue = Long.MAX_VALUE;
       }
-
-      final byte[] minValueAsBytes = new byte[Long.BYTES];
-      LongPoint.encodeDimension(minValue, minValueAsBytes, 0);
-      final byte[] maxValueAsBytes = new byte[Long.BYTES];
-      LongPoint.encodeDimension(maxValue, maxValueAsBytes, 0);
+      long min = minValue;
+      long max = maxValue;
 
       DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
       final int doc = docID();
@@ -411,14 +408,9 @@ final class LongDistanceFeatureQuery extends Query {
                 // Already visited or skipped
                 return;
               }
-              if (Arrays.compareUnsigned(packedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                  < 0) {
+              long docValue = NumericUtils.sortableBytesToLong(packedValue, 0);
+              if (docValue < min || docValue > max) {
                 // Doc's value is too low, in this dimension
-                return;
-              }
-              if (Arrays.compareUnsigned(packedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                  > 0) {
-                // Doc's value is too high, in this dimension
                 return;
               }
 
@@ -428,21 +420,14 @@ final class LongDistanceFeatureQuery extends Query {
 
             @Override
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              if (Arrays.compareUnsigned(
-                          minPackedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                      > 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                      < 0) {
+              long minDocValue = NumericUtils.sortableBytesToLong(minPackedValue, 0);
+              long maxDocValue = NumericUtils.sortableBytesToLong(maxPackedValue, 0);
+
+              if (minDocValue > max || maxDocValue < min) {
                 return Relation.CELL_OUTSIDE_QUERY;
               }
 
-              if (Arrays.compareUnsigned(
-                          minPackedValue, 0, Long.BYTES, minValueAsBytes, 0, Long.BYTES)
-                      < 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue, 0, Long.BYTES, maxValueAsBytes, 0, Long.BYTES)
-                      > 0) {
+              if (minDocValue < min || maxDocValue > max) {
                 return Relation.CELL_CROSSES_QUERY;
               }
 

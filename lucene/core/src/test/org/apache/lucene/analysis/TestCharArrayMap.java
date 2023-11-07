@@ -16,8 +16,12 @@
  */
 package org.apache.lucene.analysis;
 
-import java.util.*;
-import org.apache.lucene.util.LuceneTestCase;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCharArrayMap extends LuceneTestCase {
   public void doRandom(int iter, boolean ignoreCase) {

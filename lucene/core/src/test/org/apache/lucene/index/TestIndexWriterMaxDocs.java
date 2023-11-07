@@ -31,12 +31,12 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.NoLockFactory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.TimeUnits;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 8 * TimeUnits.HOUR)
@@ -67,7 +67,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
       TopScoreDocCollectorManager collectorManager =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false);
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, true);
       TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), collectorManager);
       assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
 
@@ -528,7 +528,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
       w.addDocument(new Document());
-      w.getReader().close();
+      DirectoryReader.open(w).close();
       w.addDocument(new Document());
       expectThrows(
           IllegalArgumentException.class,

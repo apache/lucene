@@ -22,15 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Class that Posting and PostingVector use to write byte streams into shared fixed-size byte[]
- * arrays. The idea is to allocate slices of increasing lengths For example, the first slice is 5
- * bytes, the next slice is 14, etc. We start by writing our bytes into the first 5 bytes. When we
- * hit the end of the slice, we allocate the next slice and then write the address of the new slice
- * into the last 4 bytes of the previous slice (the "forwarding address").
- *
- * <p>Each slice is filled with 0's initially, and we mark the end with a non-zero byte. This way
- * the methods that are writing into the slice don't need to record its length and instead allocate
- * a new slice once they hit a non-zero byte.
+ * Represents a logical byte[] as a series of blocks. You can write into it by using append and read
+ * using the offset position (random access). The buffers can be reset to reuse the allocated
+ * buffers.
  *
  * @lucene.internal
  */
@@ -44,6 +38,8 @@ public final class ByteBlockPool implements Accountable {
 
   /** Abstract class for allocating and freeing byte blocks. */
   public abstract static class Allocator {
+    // TODO: ByteBlockPool assume the blockSize is always {@link BYTE_BLOCK_SIZE}, but this class
+    // allow arbitrary value of blockSize. We should make them consistent.
     protected final int blockSize;
 
     protected Allocator(int blockSize) {
@@ -66,11 +62,7 @@ public final class ByteBlockPool implements Accountable {
   public static final class DirectAllocator extends Allocator {
 
     public DirectAllocator() {
-      this(BYTE_BLOCK_SIZE);
-    }
-
-    public DirectAllocator(int blockSize) {
-      super(blockSize);
+      super(BYTE_BLOCK_SIZE);
     }
 
     @Override
@@ -82,11 +74,7 @@ public final class ByteBlockPool implements Accountable {
     private final Counter bytesUsed;
 
     public DirectTrackingAllocator(Counter bytesUsed) {
-      this(BYTE_BLOCK_SIZE, bytesUsed);
-    }
-
-    public DirectTrackingAllocator(int blockSize, Counter bytesUsed) {
-      super(blockSize);
+      super(BYTE_BLOCK_SIZE);
       this.bytesUsed = bytesUsed;
     }
 
@@ -114,11 +102,13 @@ public final class ByteBlockPool implements Accountable {
 
   /** index into the buffers array pointing to the current buffer used as the head */
   private int bufferUpto = -1; // Which buffer we are upto
+
   /** Where we are in head buffer */
   public int byteUpto = BYTE_BLOCK_SIZE;
 
   /** Current head buffer */
   public byte[] buffer;
+
   /** Current head offset */
   public int byteOffset = -BYTE_BLOCK_SIZE;
 
@@ -197,79 +187,7 @@ public final class ByteBlockPool implements Accountable {
     bufferUpto++;
 
     byteUpto = 0;
-    byteOffset += BYTE_BLOCK_SIZE;
-  }
-
-  /**
-   * Allocates a new slice with the given size.
-   *
-   * @see ByteBlockPool#FIRST_LEVEL_SIZE
-   */
-  public int newSlice(final int size) {
-    if (byteUpto > BYTE_BLOCK_SIZE - size) nextBuffer();
-    final int upto = byteUpto;
-    byteUpto += size;
-    buffer[byteUpto - 1] = 16;
-    return upto;
-  }
-
-  // Size of each slice.  These arrays should be at most 16
-  // elements (index is encoded with 4 bits).  First array
-  // is just a compact way to encode X+1 with a max.  Second
-  // array is the length of each slice, ie first slice is 5
-  // bytes, next slice is 14 bytes, etc.
-
-  /**
-   * An array holding the offset into the {@link ByteBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
-   * to the next slice level.
-   */
-  public static final int[] NEXT_LEVEL_ARRAY = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9};
-
-  /** An array holding the level sizes for byte slices. */
-  public static final int[] LEVEL_SIZE_ARRAY = {5, 14, 20, 30, 40, 40, 80, 80, 120, 200};
-
-  /**
-   * The first level size for new slices
-   *
-   * @see ByteBlockPool#newSlice(int)
-   */
-  public static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
-
-  /**
-   * Creates a new byte slice with the given starting size and returns the slices offset in the
-   * pool.
-   */
-  public int allocSlice(final byte[] slice, final int upto) {
-
-    final int level = slice[upto] & 15;
-    final int newLevel = NEXT_LEVEL_ARRAY[level];
-    final int newSize = LEVEL_SIZE_ARRAY[newLevel];
-
-    // Maybe allocate another block
-    if (byteUpto > BYTE_BLOCK_SIZE - newSize) {
-      nextBuffer();
-    }
-
-    final int newUpto = byteUpto;
-    final int offset = newUpto + byteOffset;
-    byteUpto += newSize;
-
-    // Copy forward the past 3 bytes (which we are about
-    // to overwrite with the forwarding address):
-    buffer[newUpto] = slice[upto - 3];
-    buffer[newUpto + 1] = slice[upto - 2];
-    buffer[newUpto + 2] = slice[upto - 1];
-
-    // Write forwarding address at end of last slice:
-    slice[upto - 3] = (byte) (offset >>> 24);
-    slice[upto - 2] = (byte) (offset >>> 16);
-    slice[upto - 1] = (byte) (offset >>> 8);
-    slice[upto] = (byte) offset;
-
-    // Write new level:
-    buffer[byteUpto - 1] = (byte) (16 | newLevel);
-
-    return newUpto + 3;
+    byteOffset = Math.addExact(byteOffset, BYTE_BLOCK_SIZE);
   }
 
   /**
@@ -297,38 +215,40 @@ public final class ByteBlockPool implements Accountable {
     }
   }
 
-  // Fill in a BytesRef from term's length & bytes encoded in
-  // byte block
-  public void setBytesRef(BytesRef term, int textStart) {
-    final byte[] bytes = term.bytes = buffers[textStart >> BYTE_BLOCK_SHIFT];
-    int pos = textStart & BYTE_BLOCK_MASK;
-    if ((bytes[pos] & 0x80) == 0) {
-      // length is 1 byte
-      term.length = bytes[pos];
-      term.offset = pos + 1;
-    } else {
-      // length is 2 bytes
-      term.length = (bytes[pos] & 0x7f) + ((bytes[pos + 1] & 0xff) << 7);
-      term.offset = pos + 2;
-    }
-    assert term.length >= 0;
-  }
-
   /** Appends the bytes in the provided {@link BytesRef} at the current position. */
   public void append(final BytesRef bytes) {
-    int bytesLeft = bytes.length;
-    int offset = bytes.offset;
+    append(bytes.bytes, bytes.offset, bytes.length);
+  }
+
+  /**
+   * Append the provided byte array at the current position.
+   *
+   * @param bytes the byte array to write
+   */
+  public void append(final byte[] bytes) {
+    append(bytes, 0, bytes.length);
+  }
+
+  /**
+   * Append some portion of the provided byte array at the current position.
+   *
+   * @param bytes the byte array to write
+   * @param offset the offset of the byte array
+   * @param length the number of bytes to write
+   */
+  public void append(final byte[] bytes, int offset, int length) {
+    int bytesLeft = length;
     while (bytesLeft > 0) {
       int bufferLeft = BYTE_BLOCK_SIZE - byteUpto;
       if (bytesLeft < bufferLeft) {
         // fits within current buffer
-        System.arraycopy(bytes.bytes, offset, buffer, byteUpto, bytesLeft);
+        System.arraycopy(bytes, offset, buffer, byteUpto, bytesLeft);
         byteUpto += bytesLeft;
         break;
       } else {
         // fill up this buffer and move to next one
         if (bufferLeft > 0) {
-          System.arraycopy(bytes.bytes, offset, buffer, byteUpto, bufferLeft);
+          System.arraycopy(bytes, offset, buffer, byteUpto, bufferLeft);
         }
         nextBuffer();
         bytesLeft -= bufferLeft;
@@ -358,23 +278,15 @@ public final class ByteBlockPool implements Accountable {
   }
 
   /**
-   * Set the given {@link BytesRef} so that its content is equal to the {@code ref.length} bytes
-   * starting at {@code offset}. Most of the time this method will set pointers to internal
-   * data-structures. However, in case a value crosses a boundary, a fresh copy will be returned. On
-   * the contrary to {@link #setBytesRef(BytesRef, int)}, this does not expect the length to be
-   * encoded with the data.
+   * Read a single byte at the given offset
+   *
+   * @param offset the offset to read
+   * @return the byte
    */
-  public void setRawBytesRef(BytesRef ref, final long offset) {
+  public byte readByte(final long offset) {
     int bufferIndex = (int) (offset >> BYTE_BLOCK_SHIFT);
     int pos = (int) (offset & BYTE_BLOCK_MASK);
-    if (pos + ref.length <= BYTE_BLOCK_SIZE) {
-      ref.bytes = buffers[bufferIndex];
-      ref.offset = pos;
-    } else {
-      ref.bytes = new byte[ref.length];
-      ref.offset = 0;
-      readBytes(offset, ref.bytes, 0, ref.length);
-    }
+    return buffers[bufferIndex][pos];
   }
 
   @Override
@@ -389,5 +301,10 @@ public final class ByteBlockPool implements Accountable {
       size += RamUsageEstimator.sizeOfObject(buf);
     }
     return size;
+  }
+
+  /** the current position (in absolute value) of this byte pool */
+  public long getPosition() {
+    return bufferUpto * allocator.blockSize + byteUpto;
   }
 }

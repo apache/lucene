@@ -30,10 +30,9 @@ import org.apache.lucene.analysis.util.OpenStringBuilder;
 /**
  * A CharFilter that wraps another Reader and attempts to strip out HTML constructs.
  */
-@SuppressWarnings({"unused","fallthrough"})
 %%
 
-%unicode 9.0
+%unicode 12.1
 %apiprivate
 %type int
 %final
@@ -112,7 +111,8 @@ SingleQuoted = ( "'" ( "\\'" | [^']* )* "'" )
 DoubleQuoted = ( "\"" ( "\\\"" | [^\"]* )* "\"" )
 ServerSideInclude = ( "<!--#" ( [^'\"] | {SingleQuoted} | {DoubleQuoted} )* "-->" )
 EventAttribute = [oO][nN] {EventAttributeSuffixes} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
-OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} )*
+OpenTagAttribute = {Name} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
+OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} | {OpenTagAttribute} )*
 
 InlineElment = ( [aAbBiIqQsSuU]                   |
                  [aA][bB][bB][rR]                 |
@@ -155,7 +155,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
   private static final char REPLACEMENT_CHARACTER = '\uFFFD';
 
   private CharArraySet escapedTags = null;
-  private int inputStart;
+  private long inputStart;
   private int cumulativeDiff;
   private boolean escapeBR = false;
   private boolean escapeSCRIPT = false;
@@ -287,7 +287,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
     case SERVER_SIDE_INCLUDE:
     case START_TAG_TAIL_SUBSTITUTE: { // Exclude
       // add (length of input that won't be output) [ - (substitution length) = 0 ]
-      cumulativeDiff += yychar - inputStart;
+      cumulativeDiff += (int) (yychar - inputStart);
       // position the correction at (already output length) [ + (substitution length) = 0 ]
       addOffCorrectMap(outputCharCount, cumulativeDiff);
       outputSegment.clear();
@@ -805,7 +805,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
   "<!--#" { restoreState = COMMENT; yybegin(SERVER_SIDE_INCLUDE); }
   "-->" {
     // add (previously matched input length) + (this match length) [ - (substitution length) = 0]
-    cumulativeDiff += yychar - inputStart + yylength();
+    cumulativeDiff += (int) (yychar - inputStart + yylength());
     // position the correction at (already output length) [ + (substitution length) = 0]
     addOffCorrectMap(outputCharCount, cumulativeDiff);
     inputSegment.clear();
@@ -890,7 +890,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
     inputSegment.clear();
     yybegin(YYINITIAL);
     // add (previously matched input length) -- current match and substitution handled below
-    cumulativeDiff += yychar - inputStart;
+    cumulativeDiff += (int) (yychar - inputStart);
     // position the offset correction at (already output length) -- substitution handled below
     int offsetCorrectionPos = outputCharCount;
     int returnValue;

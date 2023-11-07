@@ -16,13 +16,18 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import com.carrotsearch.randomizedtesting.RandomizedContext;
+import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
+import java.io.IOException;
 import java.util.Comparator;
+import java.util.Random;
 import org.apache.lucene.search.suggest.InMemorySorter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.OfflineSorter;
 import org.junit.Test;
 
@@ -36,16 +41,28 @@ public class TestBytesRefSorters extends LuceneTestCase {
   }
 
   @Test
+  public void testExternalRefSortersIteratorIsCloseable() throws Exception {
+    try (Directory tempDir = newDirectory();
+        ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"))) {
+      appendRandomSequences(s);
+
+      // Sometimes iterate over a subset of the entries in the sequence iterator, then
+      // close it before exhausting the iterator.
+      try (ExternalRefSorter.ByteSequenceIterator it = s.iterator()) {
+        for (int i = 0; i < 5 && it.next() != null; i++) {
+          // Empty.
+        }
+      }
+    }
+  }
+
+  @Test
   public void testInMemorySorter() throws Exception {
     check(new InMemorySorter(Comparator.naturalOrder()));
   }
 
   private void check(BytesRefSorter sorter) throws Exception {
-    for (int i = 0; i < 100; i++) {
-      byte[] current = new byte[random().nextInt(256)];
-      random().nextBytes(current);
-      sorter.add(new BytesRef(current));
-    }
+    appendRandomSequences(sorter);
 
     // Create two iterators and check that they're aligned with each other.
     BytesRefIterator i1 = sorter.iterator();
@@ -65,6 +82,13 @@ public class TestBytesRefSorters extends LuceneTestCase {
       if (spare1 == null) {
         break;
       }
+    }
+  }
+
+  private void appendRandomSequences(BytesRefSorter sorter) throws IOException {
+    Random rnd = new Random(RandomizedContext.current().getRandom().nextLong());
+    for (int i = 0; i < RandomNumbers.randomIntBetween(rnd, 10, 100); i++) {
+      sorter.add(new BytesRef(RandomBytes.randomBytesOfLengthBetween(rnd, 1, 256)));
     }
   }
 }

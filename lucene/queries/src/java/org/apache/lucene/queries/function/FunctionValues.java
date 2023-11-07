@@ -61,6 +61,7 @@ public abstract class FunctionValues {
   public double doubleVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
   }
+
   // TODO: should we make a termVal, returns BytesRef?
   public String strVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
@@ -68,6 +69,14 @@ public abstract class FunctionValues {
 
   public boolean boolVal(int doc) throws IOException {
     return intVal(doc) != 0;
+  }
+
+  public float[] floatVectorVal(int doc) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  public byte[] byteVectorVal(int doc) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -103,7 +112,9 @@ public abstract class FunctionValues {
     throw new UnsupportedOperationException();
   }
 
-  /** @return the number of unique sort ordinals this instance has */
+  /**
+   * @return the number of unique sort ordinals this instance has
+   */
   public int numOrd() {
     throw new UnsupportedOperationException();
   }
@@ -135,7 +146,9 @@ public abstract class FunctionValues {
     public abstract void fillValue(int doc) throws IOException;
   }
 
-  /** @lucene.experimental */
+  /**
+   * @lucene.experimental
+   */
   public ValueFiller getValueFiller() {
     return new ValueFiller() {
       private final MutableValueFloat mval = new MutableValueFloat();

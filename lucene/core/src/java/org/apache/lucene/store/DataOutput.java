@@ -63,11 +63,10 @@ public abstract class DataOutput {
   public abstract void writeBytes(byte[] b, int offset, int length) throws IOException;
 
   /**
-   * Writes an int as four bytes.
-   *
-   * <p>32-bit unsigned integer written as four bytes, high-order bytes first.
+   * Writes an int as four bytes (LE byte order).
    *
    * @see DataInput#readInt()
+   * @see BitUtil#VH_LE_INT
    */
   public void writeInt(int i) throws IOException {
     writeByte((byte) i);
@@ -77,9 +76,10 @@ public abstract class DataOutput {
   }
 
   /**
-   * Writes a short as two bytes.
+   * Writes a short as two bytes (LE byte order).
    *
    * @see DataInput#readShort()
+   * @see BitUtil#VH_LE_SHORT
    */
   public void writeShort(short i) throws IOException {
     writeByte((byte) i);
@@ -215,11 +215,10 @@ public abstract class DataOutput {
   }
 
   /**
-   * Writes a long as eight bytes.
-   *
-   * <p>64-bit unsigned integer written as eight bytes, high-order bytes first.
+   * Writes a long as eight bytes (LE byte order).
    *
    * @see DataInput#readLong()
+   * @see BitUtil#VH_LE_LONG
    */
   public void writeLong(long i) throws IOException {
     writeInt((int) i);

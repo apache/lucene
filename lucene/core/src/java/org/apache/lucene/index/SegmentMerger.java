@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -130,21 +131,27 @@ final class SegmentMerger {
             segmentWriteState.segmentSuffix);
 
     if (mergeState.mergeFieldInfos.hasNorms()) {
-      mergeWithLogging(() -> mergeNorms(segmentWriteState), "norms", numMerged);
+      mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
     }
 
-    mergeWithLogging(() -> mergeTerms(segmentWriteState, segmentReadState), "postings", numMerged);
+    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
-      mergeWithLogging(() -> mergeDocValues(segmentWriteState), "doc values", numMerged);
+      mergeWithLogging(
+          this::mergeDocValues, segmentWriteState, segmentReadState, "doc values", numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasPointValues()) {
-      mergeWithLogging(() -> mergePoints(segmentWriteState), "points", numMerged);
+      mergeWithLogging(this::mergePoints, segmentWriteState, segmentReadState, "points", numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasVectorValues()) {
-      mergeWithLogging(() -> mergeVectorValues(segmentWriteState), "numeric vectors", numMerged);
+      mergeWithLogging(
+          this::mergeVectorValues,
+          segmentWriteState,
+          segmentReadState,
+          "numeric vectors",
+          numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasVectors()) {
@@ -153,29 +160,34 @@ final class SegmentMerger {
 
     // write the merged infos
     mergeWithLogging(
-        () ->
-            codec
-                .fieldInfosFormat()
-                .write(directory, mergeState.segmentInfo, "", mergeState.mergeFieldInfos, context),
-        "field infos",
-        numMerged);
+        this::mergeFieldInfos, segmentWriteState, segmentReadState, "field infos", numMerged);
 
     return mergeState;
   }
 
-  private void mergeDocValues(SegmentWriteState segmentWriteState) throws IOException {
+  private void mergeFieldInfos(
+      SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
+    codec
+        .fieldInfosFormat()
+        .write(directory, mergeState.segmentInfo, "", mergeState.mergeFieldInfos, context);
+  }
+
+  private void mergeDocValues(
+      SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
     try (DocValuesConsumer consumer = codec.docValuesFormat().fieldsConsumer(segmentWriteState)) {
       consumer.merge(mergeState);
     }
   }
 
-  private void mergePoints(SegmentWriteState segmentWriteState) throws IOException {
+  private void mergePoints(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
+      throws IOException {
     try (PointsWriter writer = codec.pointsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }
   }
 
-  private void mergeNorms(SegmentWriteState segmentWriteState) throws IOException {
+  private void mergeNorms(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
+      throws IOException {
     try (NormsConsumer consumer = codec.normsFormat().normsConsumer(segmentWriteState)) {
       consumer.merge(mergeState);
     }
@@ -192,8 +204,10 @@ final class SegmentMerger {
         // Use the merge instance in order to reuse the same IndexInput for all terms
         normsMergeInstance = norms.getMergeInstance();
       }
-      try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(segmentWriteState)) {
-        consumer.merge(mergeState, normsMergeInstance);
+      if (mergeState.mergeFieldInfos.hasPostings()) {
+        try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(segmentWriteState)) {
+          consumer.merge(mergeState, normsMergeInstance);
+        }
       }
     }
   }
@@ -235,7 +249,8 @@ final class SegmentMerger {
     }
   }
 
-  private void mergeVectorValues(SegmentWriteState segmentWriteState) throws IOException {
+  private void mergeVectorValues(
+      SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
     try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }
@@ -246,7 +261,8 @@ final class SegmentMerger {
   }
 
   private interface VoidMerger {
-    void merge() throws IOException;
+    void merge(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
+        throws IOException;
   }
 
   private int mergeWithLogging(Merger merger, String formatName) throws IOException {
@@ -256,26 +272,40 @@ final class SegmentMerger {
     }
     int numMerged = merger.merge();
     if (mergeState.infoStream.isEnabled("SM")) {
-      long t1 = System.nanoTime();
       mergeState.infoStream.message(
           "SM",
-          ((t1 - t0) / 1000000) + " msec to merge " + formatName + " [" + numMerged + " docs]");
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms to merge "
+              + formatName
+              + " ["
+              + numMerged
+              + " docs]");
     }
     return numMerged;
   }
 
-  private void mergeWithLogging(VoidMerger merger, String formatName, int numMerged)
+  private void mergeWithLogging(
+      VoidMerger merger,
+      SegmentWriteState segmentWriteState,
+      SegmentReadState segmentReadState,
+      String formatName,
+      int numMerged)
       throws IOException {
     long t0 = 0;
     if (mergeState.infoStream.isEnabled("SM")) {
       t0 = System.nanoTime();
     }
-    merger.merge();
+    merger.merge(segmentWriteState, segmentReadState);
+    long t1 = System.nanoTime();
     if (mergeState.infoStream.isEnabled("SM")) {
-      long t1 = System.nanoTime();
       mergeState.infoStream.message(
           "SM",
-          ((t1 - t0) / 1000000) + " msec to merge " + formatName + " [" + numMerged + " docs]");
+          TimeUnit.NANOSECONDS.toMillis(t1 - t0)
+              + " ms to merge "
+              + formatName
+              + " ["
+              + numMerged
+              + " docs]");
     }
   }
 }

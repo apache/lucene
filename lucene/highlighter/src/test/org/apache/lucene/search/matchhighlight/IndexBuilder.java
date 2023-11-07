@@ -17,7 +17,6 @@
 package org.apache.lucene.search.matchhighlight;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -34,7 +33,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Utility class for building an ephemeral document index and running a block of code on its reader.
@@ -82,8 +81,8 @@ class IndexBuilder {
     return this;
   }
 
-  public IndexBuilder build(Analyzer analyzer, IOUtils.IOConsumer<DirectoryReader> block)
-      throws IOException {
+  public IndexBuilder build(
+      Analyzer analyzer, LuceneTestCase.ThrowingConsumer<DirectoryReader> block) throws Exception {
     IndexWriterConfig config = new IndexWriterConfig(analyzer);
     config.setIndexSort(new Sort(new SortField(FLD_SORT_ORDER, SortField.Type.LONG)));
     try (Directory directory = new ByteBuffersDirectory()) {

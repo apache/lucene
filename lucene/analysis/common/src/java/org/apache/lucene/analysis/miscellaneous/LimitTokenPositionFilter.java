@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * This TokenFilter limits its emitted tokens to those with positions that are not greater than the
@@ -50,6 +51,7 @@ public final class LimitTokenPositionFilter extends TokenFilter {
    * @param maxTokenPosition max position of tokens to produce (1st token always has position 1)
    * @see #LimitTokenPositionFilter(TokenStream,int,boolean)
    */
+  @IgnoreRandomChains(reason = "all tokens must be consumed")
   public LimitTokenPositionFilter(TokenStream in, int maxTokenPosition) {
     this(in, maxTokenPosition, false);
   }

@@ -21,29 +21,37 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringContains.containsString;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.LongStream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockPayloadAnalyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
@@ -52,6 +60,7 @@ import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -59,6 +68,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -71,9 +81,11 @@ import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -151,7 +163,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     IndexSearcher searcher = mi.createSearcher();
     IndexReader reader = searcher.getIndexReader();
 
-    assertEquals(reader.getTermVectors(0).size(), 1);
+    assertEquals(reader.termVectors().get(0).size(), 1);
   }
 
   public void testReaderConsistency() throws IOException {
@@ -248,6 +260,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertThat(mi.search(new TermQuery(new Term("field2", "text"))), is(0.0f));
     assertThat(mi.search(new TermQuery(new Term("field2", "untokenized text"))), not(0.0f));
 
+    assertThat(mi.search(new TermQuery(new Term("field1", "some more text"))), is(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "some", "more", "text")), not(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "some", "text")), not(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "text", "some")), is(0.0f));
@@ -297,10 +310,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("sorted_set");
     assertEquals(3, sortedSetDocValues.getValueCount());
     assertEquals(0, sortedSetDocValues.nextDoc());
+    assertEquals(3, sortedSetDocValues.docValueCount());
     assertEquals(0L, sortedSetDocValues.nextOrd());
     assertEquals(1L, sortedSetDocValues.nextOrd());
     assertEquals(2L, sortedSetDocValues.nextOrd());
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
     assertEquals("c", sortedSetDocValues.lookupOrd(0L).utf8ToString());
     assertEquals("d", sortedSetDocValues.lookupOrd(1L).utf8ToString());
     assertEquals("f", sortedSetDocValues.lookupOrd(2L).utf8ToString());
@@ -328,10 +341,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(3, sortedSetDocValues.getValueCount());
     for (int times = 0; times < 3; times++) {
       assertTrue(sortedSetDocValues.advanceExact(0));
+      assertEquals(3, sortedSetDocValues.docValueCount());
       assertEquals(0L, sortedSetDocValues.nextOrd());
       assertEquals(1L, sortedSetDocValues.nextOrd());
       assertEquals(2L, sortedSetDocValues.nextOrd());
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
     }
 
     SortedNumericDocValues sortedNumericDocValues =
@@ -428,6 +441,30 @@ public class TestMemoryIndex extends LuceneTestCase {
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("text");
     assertEquals(0, binaryDocValues.nextDoc());
     assertEquals("quick brown fox", binaryDocValues.binaryValue().utf8ToString());
+  }
+
+  public void testBigBinaryDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new BinaryDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
+    assertEquals(0, binaryDocValues.nextDoc());
+    assertArrayEquals(bytes, binaryDocValues.binaryValue().bytes);
+  }
+
+  public void testBigSortedDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new SortedDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    SortedDocValues sortedDocValues = leafReader.getSortedDocValues("binary");
+    assertEquals(0, sortedDocValues.nextDoc());
+    assertArrayEquals(bytes, sortedDocValues.lookupOrd(0).bytes);
   }
 
   public void testPointValues() throws Exception {
@@ -662,5 +699,296 @@ public class TestMemoryIndex extends LuceneTestCase {
             + "\n"
             + "fields=2, terms=2, positions=3",
         mi.toStringDebug());
+  }
+
+  public void testStoredFields() throws IOException {
+    List<IndexableField> fields = new ArrayList<>();
+    fields.add(new StoredField("float", 1.5f));
+    fields.add(new StoredField("multifloat", 2.5f));
+    fields.add(new StoredField("multifloat", 3.5f));
+    fields.add(new StoredField("long", 10L));
+    fields.add(new StoredField("multilong", 15L));
+    fields.add(new StoredField("multilong", 20L));
+    fields.add(new StoredField("int", 1.7));
+    fields.add(new StoredField("multiint", 2.7));
+    fields.add(new StoredField("multiint", 2.8));
+    fields.add(new StoredField("multiint", 2.9));
+    fields.add(new StoredField("double", 3.7d));
+    fields.add(new StoredField("multidouble", 4.5d));
+    fields.add(new StoredField("multidouble", 4.6d));
+    fields.add(new StoredField("multidouble", 4.7d));
+    fields.add(new StoredField("string", "foo"));
+    fields.add(new StoredField("multistring", "bar"));
+    fields.add(new StoredField("multistring", "baz"));
+    fields.add(new StoredField("binary", "bfoo".getBytes(StandardCharsets.UTF_8)));
+    fields.add(new StoredField("multibinary", "bbar".getBytes(StandardCharsets.UTF_8)));
+    fields.add(new StoredField("multibinary", "bbaz".getBytes(StandardCharsets.UTF_8)));
+
+    Collections.shuffle(fields, random());
+    Document doc = new Document();
+    for (IndexableField f : fields) {
+      doc.add(f);
+    }
+
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, new StandardAnalyzer());
+    Document d = mi.createSearcher().storedFields().document(0);
+
+    assertContains(d, "long", 10L, IndexableField::numericValue);
+    assertContains(d, "int", 1.7, IndexableField::numericValue);
+    assertContains(d, "double", 3.7d, IndexableField::numericValue);
+    assertContains(d, "float", 1.5f, IndexableField::numericValue);
+    assertContains(d, "string", "foo", IndexableField::stringValue);
+    assertBinaryContains(d, "binary", new BytesRef("bfoo"));
+
+    assertMultiContains(d, "multilong", new Object[] {15L, 20L}, IndexableField::numericValue);
+    assertMultiContains(d, "multiint", new Object[] {2.7, 2.8, 2.9}, IndexableField::numericValue);
+    assertMultiContains(
+        d, "multidouble", new Object[] {4.5d, 4.6d, 4.7d}, IndexableField::numericValue);
+    assertMultiContains(d, "multifloat", new Object[] {2.5f, 3.5f}, IndexableField::numericValue);
+    assertMultiContains(d, "multistring", new Object[] {"bar", "baz"}, IndexableField::stringValue);
+    assertBinaryMultiContains(
+        d, "multibinary", new BytesRef[] {new BytesRef("bbar"), new BytesRef("bbaz")});
+  }
+
+  private static void assertContains(
+      Document d, String field, Object expected, Function<IndexableField, Object> value) {
+    assertNotNull(d.getField(field));
+    IndexableField[] fields = d.getFields(field);
+    assertEquals(1, fields.length);
+    assertEquals(expected, value.apply(fields[0]));
+  }
+
+  private static void assertBinaryContains(Document d, String field, BytesRef expected) {
+    assertNotNull(d.getField(field));
+    IndexableField[] fields = d.getFields(field);
+    assertEquals(1, fields.length);
+    assertEquals(0, expected.compareTo(fields[0].binaryValue()));
+  }
+
+  private static void assertMultiContains(
+      Document d, String field, Object[] expected, Function<IndexableField, Object> value) {
+    assertNotNull(d.get(field));
+    IndexableField[] fields = d.getFields(field);
+    assertEquals(expected.length, fields.length);
+    for (IndexableField f : fields) {
+      Object actual = value.apply(f);
+      assertTrue(arrayContains(expected, actual));
+    }
+  }
+
+  private static void assertBinaryMultiContains(Document d, String field, BytesRef[] expected) {
+    IndexableField[] fields = d.getFields(field);
+    assertEquals(expected.length, fields.length);
+    for (IndexableField f : fields) {
+      BytesRef actual = f.binaryValue();
+      assertTrue(arrayBinaryContains(expected, actual));
+    }
+  }
+
+  private static boolean arrayContains(Object[] array, Object value) {
+    for (Object o : array) {
+      if (Objects.equals(o, value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean arrayBinaryContains(BytesRef[] array, BytesRef value) {
+    for (BytesRef b : array) {
+      if (b.compareTo(value) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public void testIntegerNumericDocValue() throws IOException {
+    // MemoryIndex used to fail when doc values are enabled and numericValue() returns an Integer
+    // such as with IntField.
+    FieldType ft = new FieldType();
+    ft.setDocValuesType(DocValuesType.NUMERIC);
+    ft.freeze();
+    Field field =
+        new Field("field", ft) {
+          {
+            fieldsData = 35;
+          }
+        };
+
+    FieldType multiFt = new FieldType();
+    multiFt.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    multiFt.freeze();
+    Field multiField =
+        new Field("multi_field", multiFt) {
+          {
+            fieldsData = 42;
+          }
+        };
+
+    Field intField = new IntField("int_field", 50, Store.NO);
+
+    MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField, intField), null);
+    IndexSearcher searcher = index.createSearcher();
+
+    NumericDocValues ndv =
+        searcher.getIndexReader().leaves().get(0).reader().getNumericDocValues("field");
+    assertTrue(ndv.advanceExact(0));
+    assertEquals(35, ndv.longValue());
+
+    SortedNumericDocValues sndv =
+        searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("multi_field");
+    assertTrue(sndv.advanceExact(0));
+    assertEquals(1, sndv.docValueCount());
+    assertEquals(42, sndv.nextValue());
+
+    sndv =
+        searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("int_field");
+    assertTrue(sndv.advanceExact(0));
+    assertEquals(1, sndv.docValueCount());
+    assertEquals(50, sndv.nextValue());
+  }
+
+  private static class MockIndexableField implements IndexableField {
+
+    private final String field;
+    private final BytesRef value;
+    private final IndexableFieldType fieldType;
+
+    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
+      this.field = field;
+      this.value = value;
+      this.fieldType = fieldType;
+    }
+
+    @Override
+    public String name() {
+      return field;
+    }
+
+    @Override
+    public IndexableFieldType fieldType() {
+      return fieldType;
+    }
+
+    @Override
+    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+      return null;
+    }
+
+    @Override
+    public BytesRef binaryValue() {
+      return value;
+    }
+
+    @Override
+    public String stringValue() {
+      return null;
+    }
+
+    @Override
+    public Reader readerValue() {
+      return null;
+    }
+
+    @Override
+    public Number numericValue() {
+      return null;
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.BINARY;
+    }
+  }
+
+  public void testKeywordWithoutTokenStream() throws IOException {
+    List<FieldType> legalFieldTypes = new ArrayList<>();
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+
+    for (FieldType ft : legalFieldTypes) {
+      MockIndexableField field = new MockIndexableField("field", new BytesRef("a"), ft);
+      MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, field), null);
+      LeafReader leafReader = index.createSearcher().getIndexReader().leaves().get(0).reader();
+      {
+        Terms terms = leafReader.terms("field");
+        assertEquals(1, terms.getSumDocFreq());
+        assertEquals(2, terms.getSumTotalTermFreq());
+        TermsEnum termsEnum = terms.iterator();
+        assertTrue(termsEnum.seekExact(new BytesRef("a")));
+        PostingsEnum pe = termsEnum.postings(null, PostingsEnum.ALL);
+        assertEquals(0, pe.nextDoc());
+        assertEquals(2, pe.freq());
+        assertEquals(0, pe.nextPosition());
+        assertEquals(1, pe.nextPosition());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+      }
+
+      if (ft.storeTermVectors()) {
+        Terms tvTerms = leafReader.termVectors().get(0).terms("field");
+        assertEquals(1, tvTerms.getSumDocFreq());
+        assertEquals(2, tvTerms.getSumTotalTermFreq());
+        TermsEnum tvTermsEnum = tvTerms.iterator();
+        assertTrue(tvTermsEnum.seekExact(new BytesRef("a")));
+        PostingsEnum pe = tvTermsEnum.postings(null, PostingsEnum.ALL);
+        assertEquals(0, pe.nextDoc());
+        assertEquals(2, pe.freq());
+        assertEquals(0, pe.nextPosition());
+        assertEquals(1, pe.nextPosition());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+      }
+    }
   }
 }

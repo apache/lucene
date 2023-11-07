@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.util.Arrays;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -67,10 +68,7 @@ public final class HeapPointWriter implements PointWriter {
     System.arraycopy(
         packedValue, 0, block, nextWrite * config.bytesPerDoc, config.packedBytesLength);
     int position = nextWrite * config.bytesPerDoc + config.packedBytesLength;
-    block[position] = (byte) (docID >> 24);
-    block[++position] = (byte) (docID >> 16);
-    block[++position] = (byte) (docID >> 8);
-    block[++position] = (byte) (docID >> 0);
+    BitUtil.VH_BE_INT.set(block, position, docID);
     nextWrite++;
   }
 

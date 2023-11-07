@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.el;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** A unit test class for verifying the correct operation of the GreekAnalyzer. */
 public class TestGreekAnalyzer extends BaseTokenStreamTestCase {

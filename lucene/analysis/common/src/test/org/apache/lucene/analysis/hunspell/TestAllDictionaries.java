@@ -41,12 +41,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.RamUsageTester;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Ignore;
@@ -74,7 +74,12 @@ public class TestAllDictionaries extends LuceneTestCase {
     try (InputStream dictionary = Files.newInputStream(dic);
         InputStream affix = Files.newInputStream(aff);
         BaseDirectoryWrapper tempDir = newDirectory()) {
-      return new Dictionary(tempDir, "dictionary", affix, dictionary);
+      return new Dictionary(tempDir, "dictionary", affix, dictionary) {
+        @Override
+        protected boolean tolerateAffixRuleCountMismatches() {
+          return true;
+        }
+      };
     }
   }
 
@@ -149,6 +154,7 @@ public class TestAllDictionaries extends LuceneTestCase {
   }
 
   public void testDictionariesLoadSuccessfully() throws Exception {
+    AtomicLong memoryWithCache = new AtomicLong();
     AtomicLong totalMemory = new AtomicLong();
     AtomicLong totalWords = new AtomicLong();
     int threads = Runtime.getRuntime().availableProcessors();
@@ -159,8 +165,17 @@ public class TestAllDictionaries extends LuceneTestCase {
         (Path aff) -> {
           try {
             Dictionary dic = loadDictionary(aff);
-            totalMemory.addAndGet(RamUsageTester.sizeOf(dic));
-            totalWords.addAndGet(RamUsageTester.sizeOf(dic.words));
+            new Hunspell(dic).spell("aaaa");
+            Suggester suggester = new Suggester(dic).withSuggestibleEntryCache();
+            try {
+              suggester.suggestWithTimeout("aaaaaaaaaa", Hunspell.SUGGEST_TIME_LIMIT, () -> {});
+            } catch (
+                @SuppressWarnings("unused")
+                SuggestionTimeoutException e) {
+            }
+            totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
+            memoryWithCache.addAndGet(RamUsageTester.ramUsed(suggester));
+            totalWords.addAndGet(RamUsageTester.ramUsed(dic.words));
             System.out.println(aff + "\t" + memoryUsageSummary(dic));
           } catch (Throwable e) {
             failures.add(aff);
@@ -195,6 +210,9 @@ public class TestAllDictionaries extends LuceneTestCase {
     System.out.println("Total memory: " + RamUsageEstimator.humanReadableUnits(totalMemory.get()));
     System.out.println(
         "Total memory for word storage: " + RamUsageEstimator.humanReadableUnits(totalWords.get()));
+    System.out.println(
+        "Additional memory if withSuggestibleEntryCache is enabled: "
+            + RamUsageEstimator.humanReadableUnits(memoryWithCache.get() - totalMemory.get()));
   }
 
   private static String memoryUsageSummary(Dictionary dic) {

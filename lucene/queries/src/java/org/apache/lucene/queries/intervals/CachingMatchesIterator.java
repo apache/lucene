@@ -25,7 +25,6 @@ import org.apache.lucene.util.ArrayUtil;
 
 class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMatchesIterator {
 
-  private boolean positioned = false;
   private int[] posAndOffsets = new int[4 * 4];
   private Query[] matchingQueries = new Query[4];
   private int count = 0;
@@ -34,7 +33,7 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
     super(in);
   }
 
-  private void cache() throws IOException {
+  void cache() throws IOException {
     count = 0;
     MatchesIterator mi = in.getSubMatches();
     if (mi == null) {
@@ -62,32 +61,25 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
 
   @Override
   public boolean next() throws IOException {
-    if (positioned == false) {
-      positioned = true;
-    } else {
-      cache();
-    }
     return in.next();
   }
 
-  int startOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      return in.startOffset();
-    }
+  @Override
+  public int startOffset() throws IOException {
     return posAndOffsets[2];
   }
 
-  int endOffset(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      return in.endOffset();
-    }
-    return posAndOffsets[count * 4 + 3];
+  @Override
+  public int endOffset() throws IOException {
+    return posAndOffsets[(count - 1) * 4 + 3];
   }
 
-  MatchesIterator getSubMatches(int endPos) throws IOException {
-    if (endPosition() <= endPos) {
-      cache();
-    }
+  @Override
+  public MatchesIterator getSubMatches() {
+    // We always return a submatches, even if there's only a single
+    // cached submatch, because this way we can return the correct
+    // positions - the positions of the top-level match may have
+    // moved on due to minimization
     return new MatchesIterator() {
 
       int upto = -1;
@@ -128,6 +120,11 @@ class CachingMatchesIterator extends FilterMatchesIterator implements IntervalMa
         return matchingQueries[upto];
       }
     };
+  }
+
+  @Override
+  public Query getQuery() {
+    return matchingQueries[0];
   }
 
   @Override

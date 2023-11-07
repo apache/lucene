@@ -18,14 +18,13 @@ package org.apache.lucene.queryparser.complexPhrase;
 
 import java.util.HashSet;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockSynonymAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -36,7 +35,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestComplexPhraseQuery extends LuceneTestCase {
   Directory rd;
@@ -147,8 +148,9 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
 
     TopDocs td = searcher.search(q, 10);
     ScoreDoc[] sd = td.scoreDocs;
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < sd.length; i++) {
-      Document doc = searcher.doc(sd[i].doc);
+      Document doc = storedFields.document(sd[i].doc);
       String id = doc.get("id");
       assertTrue(qString + "matched doc#" + id + " not expected", expecteds.contains(id));
       expecteds.remove(id);

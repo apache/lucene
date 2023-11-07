@@ -19,17 +19,12 @@ package org.apache.lucene.analysis.miscellaneous;
 import java.util.Map;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /**
  * Factory for {@link ConcatenateGraphFilter}.
  *
  * <ul>
- *   <li><code>preserveSep</code>: For lucene versions lesser than {@link
- *       org.apache.lucene.util.Version#LUCENE_8_4_0} Whether {@link
- *       ConcatenateGraphFilter#SEP_LABEL} should separate the input tokens in the concatenated
- *       token
  *   <li><code>tokenSeparator</code>: Separator to use for concatenation. If not present, {@link
  *       ConcatenateGraphFilter#DEFAULT_TOKEN_SEPARATOR} will be used. If empty, tokens will be
  *       concatenated without any separators.
@@ -57,17 +52,8 @@ public class ConcatenateGraphFilterFactory extends TokenFilterFactory {
 
   public ConcatenateGraphFilterFactory(Map<String, String> args) {
     super(args);
-    Version luceneMatchVersion = getLuceneMatchVersion();
-    @SuppressWarnings("deprecation")
-    Version LUCENE_8_4_0 = Version.LUCENE_8_4_0;
-    if (luceneMatchVersion.onOrAfter(LUCENE_8_4_0)) {
-      tokenSeparator =
-          getCharacter(args, "tokenSeparator", ConcatenateGraphFilter.DEFAULT_TOKEN_SEPARATOR);
-    } else {
-      boolean preserveSep =
-          getBoolean(args, "preserveSep", ConcatenateGraphFilter.DEFAULT_PRESERVE_SEP);
-      tokenSeparator = (preserveSep) ? ConcatenateGraphFilter.DEFAULT_TOKEN_SEPARATOR : null;
-    }
+    tokenSeparator =
+        getCharacter(args, "tokenSeparator", ConcatenateGraphFilter.DEFAULT_TOKEN_SEPARATOR);
     preservePositionIncrements =
         getBoolean(
             args,

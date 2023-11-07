@@ -164,11 +164,7 @@ public abstract class StringHelper {
 
     for (int i = offset; i < roundedEnd; i += 4) {
       // little endian load order
-      int k1 =
-          (data[i] & 0xff)
-              | ((data[i + 1] & 0xff) << 8)
-              | ((data[i + 2] & 0xff) << 16)
-              | (data[i + 3] << 24);
+      int k1 = (int) BitUtil.VH_LE_INT.get(data, i);
       k1 *= c1;
       k1 = Integer.rotateLeft(k1, 15);
       k1 *= c2;

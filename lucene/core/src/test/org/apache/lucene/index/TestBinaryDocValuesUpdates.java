@@ -27,11 +27,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
-import org.apache.lucene.codecs.asserting.AssertingDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -44,11 +40,16 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestBinaryDocValuesUpdates extends LuceneTestCase {
 
@@ -368,12 +369,14 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
       assertEquals(i, Integer.parseInt(term.utf8ToString()));
       // For the i=0 case, we added the same value twice, which was dedup'd by IndexWriter so it has
       // only one value:
-      if (i != 0) {
+      if (i == 0) {
+        assertEquals(1, ssdv.docValueCount());
+      } else {
+        assertEquals(2, ssdv.docValueCount());
         ord = ssdv.nextOrd();
         term = ssdv.lookupOrd(ord);
         assertEquals(i * 2, Integer.parseInt(term.utf8ToString()));
       }
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, ssdv.nextOrd());
     }
 
     reader.close();
@@ -755,11 +758,12 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
           BinaryDocValues values = leafReader.getBinaryDocValues("number");
           NumericDocValues sortValues = leafReader.getNumericDocValues("sort");
           Bits liveDocs = leafReader.getLiveDocs();
+          StoredFields storedFields = leafReader.storedFields();
 
           long lastSortValue = Long.MIN_VALUE;
           for (int i = 0; i < leafReader.maxDoc(); i++) {
 
-            Document doc = leafReader.document(i);
+            Document doc = storedFields.document(i);
             OneSortDoc sortDoc = docs.get(Integer.parseInt(doc.get("id")));
 
             assertEquals(i, values.nextDoc());

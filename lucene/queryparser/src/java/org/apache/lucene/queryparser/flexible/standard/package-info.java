@@ -16,10 +16,7 @@
  */
 
 /**
- * Implementation of the {@linkplain org.apache.lucene.queryparser.classic Lucene classic query
- * parser} using the flexible query parser frameworks
- *
- * <h2>Lucene Flexible Query Parser Implementation</h2>
+ * Lucene Flexible Query Parser Implementation
  *
  * <p>The old Lucene query parser used to have only one class that performed all the parsing
  * operations. In the new query parser structure, the parsing was divided in 3 steps: parsing

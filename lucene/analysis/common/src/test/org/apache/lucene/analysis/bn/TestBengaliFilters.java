@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.bn;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Test Bengali Filter Factory */
 public class TestBengaliFilters extends BaseTokenStreamFactoryTestCase {

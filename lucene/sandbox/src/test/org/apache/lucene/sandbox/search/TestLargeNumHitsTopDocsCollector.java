@@ -21,11 +21,9 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -34,7 +32,9 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private Directory dir;
@@ -112,8 +112,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
     assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
-    assertEquals(largeCollector.pq, null);
-    assertEquals(largeCollector.pqTop, null);
+    assertNull(largeCollector.pq);
+    assertNull(largeCollector.pqTop);
   }
 
   public void testPQBuild() throws IOException {
@@ -127,8 +127,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
     assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
-    assertNotEquals(largeCollector.pq, null);
-    assertNotEquals(largeCollector.pqTop, null);
+    assertNotNull(largeCollector.pq);
+    assertNotNull(largeCollector.pqTop);
   }
 
   public void testNoPQHitsOrder() throws IOException {
@@ -142,8 +142,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
     assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
-    assertEquals(largeCollector.pq, null);
-    assertEquals(largeCollector.pqTop, null);
+    assertNull(largeCollector.pq);
+    assertNull(largeCollector.pqTop);
 
     topDocs = largeCollector.topDocs();
 
@@ -159,13 +159,13 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private void runNumHits(int numHits) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(numHits);
-    TopScoreDocCollectorManager regularCollector =
+    TopScoreDocCollectorManager regularCollectorManager =
         new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs firstTopDocs = largeCollector.topDocs();
 
-    TopDocs secondTopDocs = searcher.search(testQuery, regularCollector);
+    TopDocs firstTopDocs = largeCollector.topDocs();
+    TopDocs secondTopDocs = searcher.search(testQuery, regularCollectorManager);
 
     assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value);
     assertEquals(firstTopDocs.scoreDocs.length, secondTopDocs.scoreDocs.length);

@@ -66,9 +66,4 @@ public final class OffsetsFromValues implements OffsetsRetrievalStrategy {
     }
     return ranges;
   }
-
-  @Override
-  public boolean requiresDocument() {
-    return true;
-  }
 }

@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -33,20 +32,21 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.Slow;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
-@Slow
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterWithThreads extends LuceneTestCase {
 
@@ -116,7 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           }
         } catch (
             @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+            IllegalStateException ise) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {
@@ -324,10 +324,12 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       if (success) {
         IndexReader reader = DirectoryReader.open(dir);
         final Bits delDocs = MultiBits.getLiveDocs(reader);
+        StoredFields storedFields = reader.storedFields();
+        TermVectors termVectors = reader.termVectors();
         for (int j = 0; j < reader.maxDoc(); j++) {
           if (delDocs == null || !delDocs.get(j)) {
-            reader.document(j);
-            reader.getTermVectors(j);
+            storedFields.document(j);
+            termVectors.get(j);
           }
         }
         reader.close();

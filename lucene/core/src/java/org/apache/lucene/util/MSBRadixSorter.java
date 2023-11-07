@@ -21,7 +21,8 @@ import java.util.Arrays;
 /**
  * Radix sorter for variable-length strings. This class sorts based on the most significant byte
  * first and falls back to {@link IntroSorter} when the size of the buckets to sort becomes small.
- * It is <b>NOT</b> stable. Worst-case memory usage is about {@code 2.3 KB}.
+ *
+ * <p>This algorithm is <b>NOT</b> stable. Worst-case memory usage is about {@code 2.3 KB}.
  *
  * @lucene.internal
  */

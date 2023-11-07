@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.utils.Config;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestEnwikiContentSource extends LuceneTestCase {

@@ -23,7 +23,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -31,11 +30,13 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBlockJoinScorer extends LuceneTestCase {
   public void testScoreNone() throws IOException {
@@ -90,7 +91,9 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ScorerSupplier ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(0f);
     parent = 0;
     for (int i = 0; i < 9; i++) {
@@ -99,11 +102,15 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(Math.nextUp(0f));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     assertEquals(2, scorer.iterator().nextDoc());
     scorer.setMinCompetitiveScore(Math.nextUp(0f));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());

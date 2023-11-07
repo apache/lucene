@@ -19,12 +19,12 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
 
 public class TestExtendedMode extends BaseTokenStreamTestCase {

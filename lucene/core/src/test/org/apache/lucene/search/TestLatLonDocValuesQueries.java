@@ -19,10 +19,10 @@ package org.apache.lucene.search;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LatLonDocValuesField;
 import org.apache.lucene.document.ShapeField;
-import org.apache.lucene.geo.BaseGeoPointTestCase;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.tests.geo.BaseGeoPointTestCase;
 
 public class TestLatLonDocValuesQueries extends BaseGeoPointTestCase {
 

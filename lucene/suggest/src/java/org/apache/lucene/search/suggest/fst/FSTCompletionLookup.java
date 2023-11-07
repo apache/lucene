@@ -98,7 +98,7 @@ public class FSTCompletionLookup extends Lookup {
   private FSTCompletion normalCompletion;
 
   /** Number of entries the lookup was built with */
-  private long count = 0;
+  private volatile long count = 0;
 
   /** This constructor should only be used to read a previously saved suggester. */
   public FSTCompletionLookup() {
@@ -171,7 +171,6 @@ public class FSTCompletionLookup extends Lookup {
 
     // Push floats up front before sequences to sort them. For now, assume they are non-negative.
     // If negative floats are allowed some trickery needs to be done to find their byte order.
-    count = 0;
     try {
       byte[] buffer = new byte[0];
       ByteArrayDataOutput output = new ByteArrayDataOutput(buffer);
@@ -185,10 +184,7 @@ public class FSTCompletionLookup extends Lookup {
         output.reset(buffer);
         final int encodedWeight = encodeWeight(iterator.weight());
         // write bytes for comparing in lexicographically order
-        output.writeByte((byte) (encodedWeight >> 24));
-        output.writeByte((byte) (encodedWeight >> 16));
-        output.writeByte((byte) (encodedWeight >> 8));
-        output.writeByte((byte) encodedWeight);
+        output.writeInt(Integer.reverseBytes(encodedWeight));
         output.writeBytes(spare.bytes, spare.offset, spare.length);
         writer.write(buffer, 0, output.getPosition());
         inputLineCount++;
@@ -206,13 +202,13 @@ public class FSTCompletionLookup extends Lookup {
 
       reader =
           new OfflineSorter.ByteSequencesReader(
-              tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE),
-              tempSortedFileName);
+              tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
       long line = 0;
       int previousBucket = 0;
       int previousScore = 0;
       ByteArrayDataInput input = new ByteArrayDataInput();
       BytesRef tmp2 = new BytesRef();
+      long newCount = 0;
       while (true) {
         BytesRef scratch = reader.next();
         if (scratch == null) {
@@ -237,13 +233,14 @@ public class FSTCompletionLookup extends Lookup {
         builder.add(tmp2, bucket);
 
         line++;
-        count++;
+        newCount++;
       }
 
       // The two FSTCompletions share the same automaton.
       this.higherWeightsCompletion = builder.build();
       this.normalCompletion =
           new FSTCompletion(higherWeightsCompletion.getFST(), false, exactMatchFirst);
+      this.count = newCount;
 
     } finally {
       IOUtils.closeWhileHandlingException(reader, writer, externalSorter);

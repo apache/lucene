@@ -15,6 +15,21 @@
  * limitations under the License.
  */
 
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+    id 'com.gradle.enterprise' version '3.15.1'
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version '1.11.3'
+}
+
+apply from: file('gradle/ge.gradle')
+
 rootProject.name = "lucene-root"
 
 includeBuild("dev-tools/missing-doclet")
@@ -23,17 +38,24 @@ include "lucene:analysis:common"
 include "lucene:analysis:icu"
 include "lucene:analysis:kuromoji"
 include "lucene:analysis:morfologik"
+include "lucene:analysis:morfologik.tests"
 include "lucene:analysis:nori"
 include "lucene:analysis:opennlp"
 include "lucene:analysis:phonetic"
 include "lucene:analysis:smartcn"
 include "lucene:analysis:stempel"
+include "lucene:analysis.tests"
 include "lucene:backward-codecs"
 include "lucene:benchmark"
+include "lucene:benchmark-jmh"
 include "lucene:classification"
 include "lucene:codecs"
 include "lucene:core"
+include "lucene:core.tests"
 include "lucene:demo"
+include "lucene:distribution"
+include "lucene:distribution.tests"
+include "lucene:documentation"
 include "lucene:expressions"
 include "lucene:facet"
 include "lucene:grouping"
@@ -42,15 +64,13 @@ include "lucene:join"
 include "lucene:luke"
 include "lucene:memory"
 include "lucene:misc"
-include "lucene:misc:native"
 include "lucene:monitor"
 include "lucene:queries"
 include "lucene:queryparser"
 include "lucene:replicator"
 include "lucene:sandbox"
-include "lucene:spatial-extras"
 include "lucene:spatial3d"
+include "lucene:spatial-extras"
+include "lucene:spatial-test-fixtures"
 include "lucene:suggest"
 include "lucene:test-framework"
-include "lucene:documentation"
-include "lucene:packaging"

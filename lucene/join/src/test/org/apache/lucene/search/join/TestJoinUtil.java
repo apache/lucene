@@ -33,8 +33,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -60,7 +58,6 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
@@ -68,12 +65,16 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Test;
 
@@ -536,9 +537,10 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(numParents, topDocs.totalHits.value);
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       ScoreDoc scoreDoc = topDocs.scoreDocs[i];
-      String id = searcher.doc(scoreDoc.doc).get("id");
+      String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(lowestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     joinQuery =
         JoinUtil.createJoinQuery(
@@ -547,9 +549,10 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(numParents, topDocs.totalHits.value);
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       ScoreDoc scoreDoc = topDocs.scoreDocs[i];
-      String id = searcher.doc(scoreDoc.doc).get("id");
+      String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(highestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     searcher.getIndexReader().close();
     dir.close();
@@ -559,7 +562,7 @@ public class TestJoinUtil extends LuceneTestCase {
   static Query numericDocValuesScoreQuery(final String field) {
     return new Query() {
 
-      private final Query fieldQuery = new DocValuesFieldExistsQuery(field);
+      private final Query fieldQuery = new FieldExistsQuery(field);
 
       @Override
       public Weight createWeight(
@@ -689,6 +692,7 @@ public class TestJoinUtil extends LuceneTestCase {
         }
       }
       assertEquals(expectedCount, totalHits);
+      checkBoost(joinQuery, searcher);
     }
     searcher.getIndexReader().close();
     dir.close();
@@ -997,6 +1001,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(0, result.scoreDocs[0].doc);
     assertEquals(3, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode max.
     joinQuery =
@@ -1011,6 +1016,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(3, result.scoreDocs[0].doc);
     assertEquals(0, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode total
     joinQuery =
@@ -1025,6 +1031,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(0, result.scoreDocs[0].doc);
     assertEquals(3, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode avg
     joinQuery =
@@ -1039,9 +1046,21 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(3, result.scoreDocs[0].doc);
     assertEquals(0, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     indexSearcher.getIndexReader().close();
     dir.close();
+  }
+
+  private void checkBoost(Query query, IndexSearcher searcher) throws IOException {
+    TopDocs result = searcher.search(query, 10);
+    if (result.scoreDocs.length == 0) {
+      return;
+    }
+    Query boostedQuery = new BoostQuery(query, 10);
+    TopDocs boostedResult = searcher.search(boostedQuery, 10);
+    assertEquals(result.scoreDocs[0].score * 10, boostedResult.scoreDocs[0].score, 0.000001f);
+    QueryUtils.checkExplanations(boostedQuery, searcher);
   }
 
   public void testEquals() throws Exception {
@@ -1420,7 +1439,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   public void testSingleValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
     int maxSearchIter = atLeast(1);
@@ -1428,7 +1446,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   // This test really takes more time, that is why the number of iterations are smaller.
   public void testMultiValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
@@ -1552,7 +1569,7 @@ public class TestJoinUtil extends LuceneTestCase {
                 Locale.ROOT,
                 "Expected doc[%d] with id value %s",
                 doc,
-                indexSearcher.doc(doc).get("id")));
+                indexSearcher.storedFields().document(doc).get("id")));
       }
       System.out.println("actual cardinality:" + actualResult.cardinality());
       iterator = new BitSetIterator(actualResult, actualResult.cardinality());
@@ -1564,7 +1581,7 @@ public class TestJoinUtil extends LuceneTestCase {
                 Locale.ROOT,
                 "Actual doc[%d] with id value %s",
                 doc,
-                indexSearcher.doc(doc).get("id")));
+                indexSearcher.storedFields().document(doc).get("id")));
       }
     }
     assertEquals(expectedResult, actualResult);
@@ -1762,7 +1779,8 @@ public class TestJoinUtil extends LuceneTestCase {
                 }
                 if (doc == docTermOrds.docID()) {
                   long ord;
-                  while ((ord = docTermOrds.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+                  for (int j = 0; j < docTermOrds.docValueCount(); j++) {
+                    ord = docTermOrds.nextOrd();
                     final BytesRef joinValue = docTermOrds.lookupOrd(ord);
                     JoinScore joinScore = joinValueToJoinScores.get(joinValue);
                     if (joinScore == null) {
@@ -1932,7 +1950,7 @@ public class TestJoinUtil extends LuceneTestCase {
     document.add(new IntPoint(fieldName + "INT", linkInt));
     document.add(new FloatPoint(fieldName + "FLOAT", linkInt));
 
-    final long linkLong = linkInt << 32 | linkInt;
+    final long linkLong = (long) linkInt << 32 | linkInt;
     document.add(new LongPoint(fieldName + "LONG", linkLong));
     document.add(new DoublePoint(fieldName + "DOUBLE", linkLong));
 
@@ -1944,7 +1962,7 @@ public class TestJoinUtil extends LuceneTestCase {
       document.add(new SortedNumericDocValuesField(fieldName + "LONG", linkLong));
       document.add(
           new SortedNumericDocValuesField(
-              fieldName + "DOUBLE", Double.doubleToRawLongBits(linkLong)));
+              fieldName + "DOUBLE", Double.doubleToRawLongBits((double) linkLong)));
     } else {
       document.add(new SortedDocValuesField(fieldName, new BytesRef(linkValue)));
       document.add(new NumericDocValuesField(fieldName + "INT", linkInt));

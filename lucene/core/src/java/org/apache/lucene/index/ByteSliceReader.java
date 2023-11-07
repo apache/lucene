@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 
 /* IndexInput that knows how to read the byte slices written
@@ -52,7 +53,7 @@ final class ByteSliceReader extends DataInput {
     buffer = pool.buffers[bufferUpto];
     upto = startIndex & ByteBlockPool.BYTE_BLOCK_MASK;
 
-    final int firstSize = ByteBlockPool.LEVEL_SIZE_ARRAY[0];
+    final int firstSize = TermsHashPerField.LEVEL_SIZE_ARRAY[0];
 
     if (startIndex + firstSize >= endIndex) {
       // There is only this one slice to read
@@ -94,14 +95,10 @@ final class ByteSliceReader extends DataInput {
   public void nextSlice() {
 
     // Skip to our next slice
-    final int nextIndex =
-        ((buffer[limit] & 0xff) << 24)
-            + ((buffer[1 + limit] & 0xff) << 16)
-            + ((buffer[2 + limit] & 0xff) << 8)
-            + (buffer[3 + limit] & 0xff);
+    final int nextIndex = (int) BitUtil.VH_LE_INT.get(buffer, limit);
 
-    level = ByteBlockPool.NEXT_LEVEL_ARRAY[level];
-    final int newSize = ByteBlockPool.LEVEL_SIZE_ARRAY[level];
+    level = TermsHashPerField.NEXT_LEVEL_ARRAY[level];
+    final int newSize = TermsHashPerField.LEVEL_SIZE_ARRAY[level];
 
     bufferUpto = nextIndex / ByteBlockPool.BYTE_BLOCK_SIZE;
     bufferOffset = bufferUpto * ByteBlockPool.BYTE_BLOCK_SIZE;

@@ -19,13 +19,16 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -33,10 +36,13 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
@@ -615,6 +621,81 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     w.rollback();
     dir.close();
+  }
+
+  // LUCENE-10118 : Verify the basic log output from MergeThreads
+  public void testMergeThreadMessages() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Set<Thread> mergeThreadSet = ConcurrentHashMap.newKeySet();
+    ConcurrentMergeScheduler cms =
+        new ConcurrentMergeScheduler() {
+          @Override
+          protected synchronized MergeThread getMergeThread(
+              MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
+            MergeThread newMergeThread = super.getMergeThread(mergeSource, merge);
+            mergeThreadSet.add(newMergeThread);
+            return newMergeThread;
+          }
+        };
+    iwc.setMergeScheduler(cms);
+
+    List<String> messages = Collections.synchronizedList(new ArrayList<>());
+    iwc.setInfoStream(
+        new InfoStream() {
+          @Override
+          public void close() {}
+
+          @Override
+          public void message(String component, String message) {
+            if (component.equals("MS")) messages.add(message);
+          }
+
+          @Override
+          public boolean isEnabled(String component) {
+            if (component.equals("MS")) return true;
+            return false;
+          }
+        });
+    iwc.setMaxBufferedDocs(2);
+    LogMergePolicy lmp = newLogMergePolicy();
+    lmp.setMergeFactor(2);
+    iwc.setMergePolicy(lmp);
+
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new TextField("foo", new CannedTokenStream()));
+    w.addDocument(doc);
+    w.addDocument(new Document());
+    // flush
+    w.addDocument(new Document());
+    w.addDocument(new Document());
+    // flush + merge
+    w.close();
+    dir.close();
+
+    assertTrue(mergeThreadSet.size() > 0);
+    for (Thread t : mergeThreadSet) {
+      t.join();
+    }
+    for (Thread t : mergeThreadSet) {
+      String name = t.getName();
+      List<String> threadMsgs =
+          messages.stream()
+              .filter(line -> line.startsWith("merge thread " + name))
+              .collect(Collectors.toList());
+      assertTrue(
+          "Expected:·a·value·equal·to·or·greater·than·3,·got:"
+              + threadMsgs.size()
+              + ", threadMsgs="
+              + threadMsgs,
+          threadMsgs.size() >= 3);
+      assertTrue(threadMsgs.get(0).startsWith("merge thread " + name + " start"));
+      assertTrue(
+          threadMsgs.stream()
+              .anyMatch(line -> line.startsWith("merge thread " + name + " merge segment")));
+      assertTrue(threadMsgs.get(threadMsgs.size() - 1).startsWith("merge thread " + name + " end"));
+    }
   }
 
   public void testDynamicDefaults() throws Exception {

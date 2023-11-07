@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
 

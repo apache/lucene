@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.index.NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocValuesFieldUpdates extends LuceneTestCase {
 

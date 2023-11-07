@@ -126,10 +126,10 @@ final class OrdsIntersectTermsEnumFrame {
   public void setState(int state) {
     this.state = state;
     transitionIndex = 0;
-    transitionCount = ite.compiledAutomaton.automaton.getNumTransitions(state);
+    transitionCount = ite.transitionAccessor.getNumTransitions(state);
     if (transitionCount != 0) {
-      ite.compiledAutomaton.automaton.initTransition(state, transition);
-      ite.compiledAutomaton.automaton.getNextTransition(transition);
+      ite.transitionAccessor.initTransition(state, transition);
+      ite.transitionAccessor.getNextTransition(transition);
       curTransitionMax = transition.max;
     } else {
       curTransitionMax = -1;
@@ -164,7 +164,7 @@ final class OrdsIntersectTermsEnumFrame {
 
         // If current state is accept, we must process
         // first block in case it has empty suffix:
-        if (!ite.runAutomaton.isAccept(state)) {
+        if (!ite.byteRunnable.isAccept(state)) {
           // Maybe skip floor blocks:
           assert transitionIndex == 0 : "transitionIndex=" + transitionIndex;
           while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min) {

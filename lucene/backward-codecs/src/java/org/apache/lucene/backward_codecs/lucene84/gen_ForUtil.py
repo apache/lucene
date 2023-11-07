@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fractions import gcd
+from math import gcd
 
 """Code generation for ForUtil.java"""
 
@@ -40,10 +40,9 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene84;
+package org.apache.lucene.backward_codecs.lucene84;
 
 import java.io.IOException;
-
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
@@ -85,13 +84,13 @@ final class ForUtil {
     for (int i = 0; i < 16; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 56) & 0xFFL;
-      arr[16+i] = (l >>> 48) & 0xFFL;
-      arr[32+i] = (l >>> 40) & 0xFFL;
-      arr[48+i] = (l >>> 32) & 0xFFL;
-      arr[64+i] = (l >>> 24) & 0xFFL;
-      arr[80+i] = (l >>> 16) & 0xFFL;
-      arr[96+i] = (l >>> 8) & 0xFFL;
-      arr[112+i] = l & 0xFFL;
+      arr[16 + i] = (l >>> 48) & 0xFFL;
+      arr[32 + i] = (l >>> 40) & 0xFFL;
+      arr[48 + i] = (l >>> 32) & 0xFFL;
+      arr[64 + i] = (l >>> 24) & 0xFFL;
+      arr[80 + i] = (l >>> 16) & 0xFFL;
+      arr[96 + i] = (l >>> 8) & 0xFFL;
+      arr[112 + i] = l & 0xFFL;
     }
   }
 
@@ -99,15 +98,23 @@ final class ForUtil {
     for (int i = 0; i < 16; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[16+i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[32+i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[48+i] = l & 0x000000FF000000FFL;
+      arr[16 + i] = (l >>> 16) & 0x000000FF000000FFL;
+      arr[32 + i] = (l >>> 8) & 0x000000FF000000FFL;
+      arr[48 + i] = l & 0x000000FF000000FFL;
     }
   }
 
   private static void collapse8(long[] arr) {
     for (int i = 0; i < 16; ++i) {
-      arr[i] = (arr[i] << 56) | (arr[16+i] << 48) | (arr[32+i] << 40) | (arr[48+i] << 32) | (arr[64+i] << 24) | (arr[80+i] << 16) | (arr[96+i] << 8) | arr[112+i];
+      arr[i] =
+          (arr[i] << 56)
+              | (arr[16 + i] << 48)
+              | (arr[32 + i] << 40)
+              | (arr[48 + i] << 32)
+              | (arr[64 + i] << 24)
+              | (arr[80 + i] << 16)
+              | (arr[96 + i] << 8)
+              | arr[112 + i];
     }
   }
 
@@ -115,9 +122,9 @@ final class ForUtil {
     for (int i = 0; i < 32; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 48) & 0xFFFFL;
-      arr[32+i] = (l >>> 32) & 0xFFFFL;
-      arr[64+i] = (l >>> 16) & 0xFFFFL;
-      arr[96+i] = l & 0xFFFFL;
+      arr[32 + i] = (l >>> 32) & 0xFFFFL;
+      arr[64 + i] = (l >>> 16) & 0xFFFFL;
+      arr[96 + i] = l & 0xFFFFL;
     }
   }
 
@@ -125,13 +132,13 @@ final class ForUtil {
     for (int i = 0; i < 32; ++i) {
       long l = arr[i];
       arr[i] = (l >>> 16) & 0x0000FFFF0000FFFFL;
-      arr[32+i] = l & 0x0000FFFF0000FFFFL;
+      arr[32 + i] = l & 0x0000FFFF0000FFFFL;
     }
   }
 
   private static void collapse16(long[] arr) {
     for (int i = 0; i < 32; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[32+i] << 32) | (arr[64+i] << 16) | arr[96+i];
+      arr[i] = (arr[i] << 48) | (arr[32 + i] << 32) | (arr[64 + i] << 16) | arr[96 + i];
     }
   }
 
@@ -145,7 +152,7 @@ final class ForUtil {
 
   private static void collapse32(long[] arr) {
     for (int i = 0; i < 64; ++i) {
-      arr[i] = (arr[i] << 32) | arr[64+i];
+      arr[i] = (arr[i] << 32) | arr[64 + i];
     }
   }
 
@@ -164,8 +171,8 @@ final class ForUtil {
     arr[0] += base << 32;
     innerPrefixSum32(arr);
     expand32(arr);
-    final long l = arr[BLOCK_SIZE/2-1];
-    for (int i = BLOCK_SIZE/2; i < BLOCK_SIZE; ++i) {
+    final long l = arr[BLOCK_SIZE / 2 - 1];
+    for (int i = BLOCK_SIZE / 2; i < BLOCK_SIZE; ++i) {
       arr[i] += l;
     }
   }
@@ -237,11 +244,17 @@ final class ForUtil {
     arr[63] += arr[62];
   }
 
-  private final long[] tmp = new long[BLOCK_SIZE/2];
+  private static void readLELongs(DataInput in, long[] dst, int offset, int length)
+      throws IOException {
+    in.readLongs(dst, offset, length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = Long.reverseBytes(dst[offset + i]);
+    }
+  }
 
-  /**
-   * Encode 128 integers from {@code longs} into {@code out}.
-   */
+  private final long[] tmp = new long[BLOCK_SIZE / 2];
+
+  /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     final int numLongs;
@@ -310,22 +323,22 @@ final class ForUtil {
     }
 
     for (int i = 0; i < numLongsPerShift; ++i) {
-      // Java longs are big endian and we want to read little endian longs, so we need to reverse bytes
+      // Java longs are big endian and we want to read little endian longs, so we need to reverse
+      // bytes
       long l = Long.reverseBytes(tmp[i]);
       out.writeLong(l);
     }
   }
 
-  /**
-   * Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value.
-   */
+  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
   int numBytes(int bitsPerValue) throws IOException {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs) throws IOException {
+  private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
+      throws IOException {
     final int numLongs = bitsPerValue << 1;
-    in.readLELongs(tmp, 0, numLongs);
+    readLELongs(in, tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
     int longsIdx = 0;
     int shift = 32 - bitsPerValue;
@@ -345,7 +358,7 @@ final class ForUtil {
         l |= (tmp[tmpIdx++] & mask32RemainingBitsPerLong) << b;
       }
       if (b > 0) {
-        l |= (tmp[tmpIdx] >>> (remainingBitsPerLong-b)) & MASKS32[b];
+        l |= (tmp[tmpIdx] >>> (remainingBitsPerLong - b)) & MASKS32[b];
         remainingBits = remainingBitsPerLong - b;
       } else {
         remainingBits = remainingBitsPerLong;
@@ -355,13 +368,12 @@ final class ForUtil {
   }
 
   /**
-   * The pattern that this shiftLongs method applies is recognized by the C2
-   * compiler, which generates SIMD instructions for it in order to shift
-   * multiple longs at once.
+   * The pattern that this shiftLongs method applies is recognized by the C2 compiler, which
+   * generates SIMD instructions for it in order to shift multiple longs at once.
    */
   private static void shiftLongs(long[] a, int count, long[] b, int bi, int shift, long mask) {
     for (int i = 0; i < count; ++i) {
-      b[bi+i] = (a[i] >>> shift) & mask;
+      b[bi + i] = (a[i] >>> shift) & mask;
     }
   }
 
@@ -381,13 +393,13 @@ def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long,
   tmp_idx = 0
   b = bpv
   b -= remaining_bits_per_long
-  f.write('      long l0 = tmp[tmpIdx+%d] << %d;\n' %(tmp_idx, b))
+  f.write('      long l0 = tmp[tmpIdx + %d] << %d;\n' %(tmp_idx, b))
   tmp_idx += 1
   while b >= remaining_bits_per_long:
     b -= remaining_bits_per_long
-    f.write('      l0 |= tmp[tmpIdx+%d] << %d;\n' %(tmp_idx, b))
+    f.write('      l0 |= tmp[tmpIdx + %d] << %d;\n' %(tmp_idx, b))
     tmp_idx += 1
-  f.write('      longs[longsIdx+0] = l0;\n')
+  f.write('      longs[longsIdx + 0] = l0;\n')
   f.write('    }\n')
   
 
@@ -402,23 +414,23 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
   i = 0
   remaining_bits = 0
   tmp_idx = 0
-  for i in range(num_values):
+  for i in range(int(num_values)):
     b = bpv
     if remaining_bits == 0:
       b -= remaining_bits_per_long
-      f.write('      long l%d = (tmp[tmpIdx+%d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
     else:
       b -= remaining_bits
-      f.write('      long l%d = (tmp[tmpIdx+%d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
+      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
     tmp_idx += 1
     while b >= remaining_bits_per_long:
       b -= remaining_bits_per_long
-      f.write('      l%d |= (tmp[tmpIdx+%d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+      f.write('      l%d |= (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
       tmp_idx += 1
     if b > 0:
-      f.write('      l%d |= (tmp[tmpIdx+%d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
+      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
       remaining_bits = remaining_bits_per_long-b
-    f.write('      longs[longsIdx+%d] = l%d;\n' %(i, i))
+    f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
   
   
@@ -432,9 +444,9 @@ def writeDecode(bpv, f):
   f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   num_values_per_long = 64 / next_primitive
   if bpv == next_primitive:
-    f.write('    in.readLELongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    readLELongs(in, longs, 0, %d);\n' %(bpv*2))
   else:
-    f.write('    in.readLELongs(tmp, 0, %d);\n' %(bpv*2))
+    f.write('    readLELongs(in, tmp, 0, %d);\n' %(bpv*2))
     shift = next_primitive - bpv
     o = 0
     while shift >= 0:
@@ -454,23 +466,22 @@ if __name__ == '__main__':
   f.write(HEADER)
   for primitive_size in PRIMITIVE_SIZE:
     f.write('  private static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size))
+  f.write('\n')
   f.write('  static {\n')
   for primitive_size in PRIMITIVE_SIZE:
     f.write('    for (int i = 0; i < %d; ++i) {\n' %primitive_size)
     f.write('      MASKS%d[i] = mask%d(i);\n' %(primitive_size, primitive_size))
     f.write('    }\n')
   f.write('  }\n')
-  f.write('  //mark values in array as final longs to avoid the cost of reading array, arrays should only be used when the idx is a variable\n')
+  f.write('  // mark values in array as final longs to avoid the cost of reading array, arrays should only be\n')
+  f.write('  // used when the idx is a variable\n')
   for primitive_size in PRIMITIVE_SIZE:
     for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size)):
       if bpv * 2 != primitive_size or primitive_size == 8:
         f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
-  f.write('\n')
 
   f.write("""
-  /**
-   * Decode 128 integers into {@code longs}.
-   */
+  /** Decode 128 integers into {@code longs}. */
   void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
@@ -480,22 +491,21 @@ if __name__ == '__main__':
       next_primitive = 8
     elif bpv <= 16:
       next_primitive = 16
-    f.write('    case %d:\n' %bpv)
-    f.write('      decode%d(in, tmp, longs);\n' %bpv)
-    f.write('      expand%d(longs);\n' %next_primitive)
-    f.write('      break;\n')
-  f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, in, tmp, longs);\n')
-  f.write('      expand32(longs);\n')
-  f.write('      break;\n')
+    f.write('      case %d:\n' %bpv)
+    f.write('        decode%d(in, tmp, longs);\n' %bpv)
+    f.write('        expand%d(longs);\n' %next_primitive)
+    f.write('        break;\n')
+  f.write('      default:\n')
+  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
+  f.write('        expand32(longs);\n')
+  f.write('        break;\n')
   f.write('    }\n')
   f.write('  }\n')
 
   f.write("""
-  /**
-   * Delta-decode 128 integers into {@code longs}.
-   */
-  void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs) throws IOException {
+  /** Delta-decode 128 integers into {@code longs}. */
+  void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs)
+      throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -504,14 +514,14 @@ if __name__ == '__main__':
       next_primitive = 8 
     elif bpv <= 16:
       next_primitive = 16
-    f.write('    case %d:\n' %bpv)
-    f.write('      decode%d(in, tmp, longs);\n' %bpv)
-    f.write('      prefixSum%d(longs, base);\n' %next_primitive)
-    f.write('      break;\n')
-  f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, in, tmp, longs);\n')
-  f.write('      prefixSum32(longs, base);\n')
-  f.write('      break;\n')
+    f.write('      case %d:\n' %bpv)
+    f.write('        decode%d(in, tmp, longs);\n' %bpv)
+    f.write('        prefixSum%d(longs, base);\n' %next_primitive)
+    f.write('        break;\n')
+  f.write('      default:\n')
+  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
+  f.write('        prefixSum32(longs, base);\n')
+  f.write('        break;\n')
   f.write('    }\n')
   f.write('  }\n')
 

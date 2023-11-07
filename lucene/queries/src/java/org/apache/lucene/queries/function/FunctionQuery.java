@@ -39,12 +39,16 @@ import org.apache.lucene.search.Weight;
 public class FunctionQuery extends Query {
   final ValueSource func;
 
-  /** @param func defines the function to be used for scoring */
+  /**
+   * @param func defines the function to be used for scoring
+   */
   public FunctionQuery(ValueSource func) {
     this.func = func;
   }
 
-  /** @return The associated ValueSource */
+  /**
+   * @return The associated ValueSource
+   */
   public ValueSource getValueSource() {
     return func;
   }

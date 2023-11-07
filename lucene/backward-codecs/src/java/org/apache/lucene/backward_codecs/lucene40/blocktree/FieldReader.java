@@ -50,6 +50,7 @@ public final class FieldReader extends Terms {
   final Lucene40BlockTreeTermsReader parent;
 
   final FST<BytesRef> index;
+
   // private boolean DEBUG;
 
   FieldReader(
@@ -188,7 +189,11 @@ public final class FieldReader extends Terms {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
     return new IntersectTermsEnum(
-        this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
+        this,
+        compiled.getTransitionAccessor(),
+        compiled.getByteRunnable(),
+        compiled.commonSuffixRef,
+        startTerm);
   }
 
   @Override

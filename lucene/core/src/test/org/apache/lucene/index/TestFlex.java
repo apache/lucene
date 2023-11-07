@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestFlex extends LuceneTestCase {
 
@@ -53,7 +53,7 @@ public class TestFlex extends LuceneTestCase {
         w.forceMerge(1);
       }
 
-      IndexReader r = w.getReader();
+      IndexReader r = DirectoryReader.open(w);
 
       TermsEnum terms = MultiTerms.getTerms(r, "field3").iterator();
       assertEquals(TermsEnum.SeekStatus.END, terms.seekCeil(new BytesRef("abc")));
@@ -75,7 +75,7 @@ public class TestFlex extends LuceneTestCase {
     doc.add(newTextField("f", "a b c", Field.Store.NO));
     w.addDocument(doc);
     w.forceMerge(1);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     TermsEnum terms = getOnlyLeafReader(r).terms("f").iterator();
     assertTrue(terms.next() != null);
     try {

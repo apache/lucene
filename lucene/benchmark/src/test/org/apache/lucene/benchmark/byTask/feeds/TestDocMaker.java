@@ -165,7 +165,7 @@ public class TestDocMaker extends BenchmarkTestCase {
     // leading to a file handle leak.
     Path f = getWorkDir().resolve("docMakerLeak.txt");
     PrintStream ps = new PrintStream(Files.newOutputStream(f), true, IOUtils.UTF_8);
-    ps.println("one title\t" + System.currentTimeMillis() + "\tsome content");
+    ps.println("one title\t" + random().nextLong() + "\tsome content");
     ps.close();
 
     Properties props = new Properties();

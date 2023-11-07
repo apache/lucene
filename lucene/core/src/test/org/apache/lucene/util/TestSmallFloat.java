@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Ignore;
 
 public class TestSmallFloat extends LuceneTestCase {

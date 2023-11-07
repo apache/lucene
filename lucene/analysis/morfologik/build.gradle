@@ -20,13 +20,12 @@ apply plugin: 'java-library'
 description = 'Analyzer for dictionary stemming, built-in Polish dictionary'
 
 dependencies {
-  api project(':lucene:core')
-  api project(':lucene:analysis:common')
+  moduleApi project(':lucene:core')
+  moduleApi project(':lucene:analysis:common')
+  moduleApi 'org.carrot2:morfologik-stemming'
 
-  api 'org.carrot2:morfologik-stemming'
+  moduleImplementation 'org.carrot2:morfologik-polish'
+  moduleImplementation 'ua.net.nlp:morfologik-ukrainian-search'
 
-  implementation 'org.carrot2:morfologik-polish'
-  implementation 'ua.net.nlp:morfologik-ukrainian-search'
-
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

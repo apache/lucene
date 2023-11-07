@@ -39,6 +39,9 @@ public final class DoubleMetaphoneFilter extends TokenFilter {
    */
   public DoubleMetaphoneFilter(TokenStream input, int maxCodeLength, boolean inject) {
     super(input);
+    if (maxCodeLength < 1) {
+      throw new IllegalArgumentException("maxCodeLength must be >=1");
+    }
     this.encoder.setMaxCodeLen(maxCodeLength);
     this.inject = inject;
   }

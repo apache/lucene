@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -38,8 +37,10 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestOmitTf extends LuceneTestCase {
 
@@ -220,148 +221,89 @@ public class TestOmitTf extends LuceneTestCase {
 
     searcher.search(
         q1,
-        new CollectorManager<CountingHitCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public CountingHitCollector newCollector() throws IOException {
-            return new CountingHitCollector() {
-              private Scorable scorer;
-
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
               @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public final void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public final void collect(int doc) throws IOException {
+              public void collect(int doc) throws IOException {
                 // System.out.println("Q1: Doc=" + doc + " score=" + score);
                 float score = scorer.score();
                 assertTrue("got score=" + score, score == 1.0f);
-                super.collect(doc);
               }
             };
           }
 
           @Override
-          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
-    // System.out.println(CountingHitCollector.getCount());
 
     searcher.search(
         q2,
-        new CollectorManager<CountingHitCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public CountingHitCollector newCollector() throws IOException {
-            return new CountingHitCollector() {
-              private Scorable scorer;
-
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
               @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public final void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public final void collect(int doc) throws IOException {
+              public void collect(int doc) throws IOException {
                 // System.out.println("Q2: Doc=" + doc + " score=" + score);
                 float score = scorer.score();
                 assertEquals(1.0f + doc, score, 0.00001f);
-                super.collect(doc);
               }
             };
           }
 
           @Override
-          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
 
-    // System.out.println(CountingHitCollector.getCount());
-
     searcher.search(
         q3,
-        new CollectorManager<CountingHitCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public CountingHitCollector newCollector() throws IOException {
-            return new CountingHitCollector() {
-              private Scorable scorer;
-
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
               @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public final void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public final void collect(int doc) throws IOException {
+              public void collect(int doc) throws IOException {
                 // System.out.println("Q1: Doc=" + doc + " score=" + score);
                 float score = scorer.score();
                 assertTrue(score == 1.0f);
                 assertFalse(doc % 2 == 0);
-                super.collect(doc);
               }
             };
           }
 
           @Override
-          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
 
-    // System.out.println(CountingHitCollector.getCount());
-
     searcher.search(
         q4,
-        new CollectorManager<CountingHitCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public CountingHitCollector newCollector() throws IOException {
-            return new CountingHitCollector() {
-              private Scorable scorer;
-
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
               @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public final void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public final void collect(int doc) throws IOException {
+              public void collect(int doc) throws IOException {
                 float score = scorer.score();
                 // System.out.println("Q1: Doc=" + doc + " score=" + score);
                 assertTrue(score == 1.0f);
                 assertTrue(doc % 2 == 0);
-                super.collect(doc);
               }
             };
           }
 
           @Override
-          public Object reduce(Collection<CountingHitCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
-
-    // System.out.println(CountingHitCollector.getCount());
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(q1, Occur.MUST);
@@ -372,41 +314,6 @@ public class TestOmitTf extends LuceneTestCase {
 
     reader.close();
     dir.close();
-  }
-
-  public static class CountingHitCollector extends SimpleCollector {
-    static int count = 0;
-    static int sum = 0;
-    private int docBase = -1;
-
-    CountingHitCollector() {
-      count = 0;
-      sum = 0;
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      count++;
-      sum += doc + docBase; // use it to avoid any possibility of being merged away
-    }
-
-    public static int getCount() {
-      return count;
-    }
-
-    public static int getSum() {
-      return sum;
-    }
-
-    @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      docBase = context.docBase;
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.COMPLETE_NO_SCORES;
-    }
   }
 
   /**
@@ -432,5 +339,19 @@ public class TestOmitTf extends LuceneTestCase {
     assertEquals(ir.getSumDocFreq("foo"), ir.getSumTotalTermFreq("foo"));
     ir.close();
     dir.close();
+  }
+
+  private abstract static class ScoreAssertingCollector extends SimpleCollector {
+    Scorable scorer;
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {
+      this.scorer = scorer;
+    }
   }
 }

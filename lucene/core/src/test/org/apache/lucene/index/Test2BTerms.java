@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -32,19 +32,20 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.Monster;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.TimeUnits;
 
 // NOTE: SimpleText codec will consume very large amounts of
 // disk (but, should run successfully).  Best to run w/
@@ -199,10 +200,15 @@ public class Test2BTerms extends LuceneTestCase {
       System.out.println("numDocs=" + numDocs);
 
       for (int i = 0; i < numDocs; i++) {
-        final long t0 = System.currentTimeMillis();
+        final long t0 = System.nanoTime();
         w.addDocument(doc);
         System.out.println(
-            i + " of " + numDocs + " " + (System.currentTimeMillis() - t0) + " msec");
+            i
+                + " of "
+                + numDocs
+                + " "
+                + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+                + " ms");
       }
       savedTerms = ts.savedTerms;
 
@@ -260,14 +266,13 @@ public class Test2BTerms extends LuceneTestCase {
     for (int iter = 0; iter < 10 * terms.size(); iter++) {
       final BytesRef term = terms.get(random().nextInt(terms.size()));
       System.out.println("TEST: search " + term);
-      final long t0 = System.currentTimeMillis();
+      final long t0 = System.nanoTime();
       final long count = s.count(new TermQuery(new Term("field", term)));
       if (count <= 0) {
         System.out.println("  FAILED: count=" + count);
         failed = true;
       }
-      final long t1 = System.currentTimeMillis();
-      System.out.println("  took " + (t1 - t0) + " millis");
+      System.out.println("  took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms");
 
       TermsEnum.SeekStatus result = termsEnum.seekCeil(term);
       if (result != TermsEnum.SeekStatus.FOUND) {

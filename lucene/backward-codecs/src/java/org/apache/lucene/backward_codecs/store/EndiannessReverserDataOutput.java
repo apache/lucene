@@ -24,7 +24,7 @@ import org.apache.lucene.store.DataOutput;
 
 class EndiannessReverserDataOutput extends DataOutput {
 
-  private final DataOutput out;
+  final DataOutput out;
 
   EndiannessReverserDataOutput(DataOutput out) {
     this.out = out;

@@ -19,7 +19,6 @@ package org.apache.lucene.queryparser.flexible.standard;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.TooManyListenersException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.DateTools.Resolution;
@@ -39,57 +38,189 @@ import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 
 /**
- * This class is a helper that enables users to easily use the Lucene query parser.
+ * The {@link StandardQueryParser} is a pre-assembled query parser that supports most features of
+ * the {@linkplain org.apache.lucene.queryparser.classic.QueryParser classic Lucene query parser},
+ * allows dynamic configuration of some of its features (like multi-field expansion or wildcard
+ * query restrictions) and adds support for new query types and expressions.
  *
- * <p>To construct a Query object from a query string, use the {@link #parse(String, String)}
- * method:
+ * <p>The {@link StandardSyntaxParser} is an extension of the {@link QueryParserHelper} with
+ * reasonable defaults for syntax tree parsing ({@link StandardSyntaxParser}, node processor
+ * pipeline ({@link StandardQueryNodeProcessorPipeline} and node tree to {@link Query} builder
+ * ({@link StandardQueryTreeBuilder}).
  *
- * <pre class="prettyprint">
- * StandardQueryParser queryParserHelper = new StandardQueryParser();
- * Query query = queryParserHelper.parse("a AND b", "defaultField");
- * </pre>
+ * <p>Typical usage, including configuration tweaks:
  *
- * <p>To change any configuration before parsing the query string do, for example: <br>
+ * <pre class="prettyprint">{@code
+ * StandardQueryParser qpHelper = new StandardQueryParser();
+ * StandardQueryConfigHandler config =  qpHelper.getQueryConfigHandler();
+ * config.setAllowLeadingWildcard(true);
+ * config.setAnalyzer(new WhitespaceAnalyzer());
+ * Query query = qpHelper.parse("apache AND lucene", "defaultField");
+ * }</pre>
  *
- * <pre class="prettyprint">
- * // the query config handler returned by {@link StandardQueryParser} is a {@link StandardQueryConfigHandler}
- * queryParserHelper.getQueryConfigHandler().setAnalyzer(new WhitespaceAnalyzer());
- * </pre>
+ * <h2>Supported query syntax</h2>
  *
- * <p>The syntax for query strings is as follows (copied from the old QueryParser javadoc): A Query
- * is a series of clauses. A clause may be prefixed by:
+ * <p>Standard query parser borrows most of its syntax from the {@linkplain
+ * org.apache.lucene.queryparser.classic classic query parser} but adds more features and
+ * expressions on top of that syntax.
+ *
+ * <p>A <em>query</em> consists of clauses, field specifications, grouping and Boolean operators and
+ * interval functions. We will discuss them in order.
+ *
+ * <h3>Basic clauses</h3>
+ *
+ * <p>A query must contain one or more clauses. A clause can be a literal term, a phrase, a wildcard
+ * expression or other expression that
+ *
+ * <p>The following are some examples of simple one-clause queries:
  *
  * <ul>
- *   <li>a plus (<code>+</code>) or a minus (<code>-</code>) sign, indicating that the clause is
- *       required or prohibited respectively; or
- *   <li>a term followed by a colon, indicating the field to be searched. This enables one to
- *       construct queries which search multiple fields.
+ *   <li><code>test</code>
+ *       <p>selects documents containing the word <em>test</em> (term clause).
+ *   <li><code>"test equipment"</code>
+ *       <p>phrase search; selects documents containing the phrase <em>test equipment</em> (phrase
+ *       clause).
+ *   <li><code>"test failure"~4</code>
+ *       <p>proximity search; selects documents containing the words <em>test</em> and
+ *       <em>failure</em> within 4 words (positions) from each other. The provided "proximity" is
+ *       technically translated into "edit distance" (maximum number of atomic word-moving
+ *       operations required to transform the document's phrase into the query phrase).
+ *   <li><code>tes*</code>
+ *       <p>prefix wildcard matching; selects documents containing words starting with <em>tes</em>,
+ *       such as: <em>test</em>, <em>testing</em> or <em>testable</em>.
+ *   <li><code>/.est(s|ing)/</code>
+ *       <p>documents containing words matching the provided regular expression, such as
+ *       <em>resting</em> or <em>nests</em>.
+ *   <li><code>nest~2</code>
+ *       <p>fuzzy term matching; documents containing words within 2-edits distance (2 additions,
+ *       removals or replacements of a letter) from <em>nest</em>, such as <em>test</em>,
+ *       <em>net</em> or <em>rests</em>.
  * </ul>
  *
- * A clause may be either:
+ * <h3>Field specifications</h3>
+ *
+ * <p>Most clauses can be prefixed by a field name and a colon: the clause will then apply to that
+ * field only. If the field specification is omitted, the query parser will expand the clause over
+ * all fields specified by a call to {@link StandardQueryParser#setMultiFields(CharSequence[])} or
+ * will use the default field provided in the call to {@link #parse(String, String)}.
+ *
+ * <p>The following are some examples of field-prefixed clauses:
  *
  * <ul>
- *   <li>a term, indicating all the documents that contain this term; or
- *   <li>a nested query, enclosed in parentheses. Note that this may be used with a <code>+</code>/
- *       <code>-</code> prefix to require any of a set of terms.
+ *   <li><code>title:test</code>
+ *       <p>documents containing <em>test</em> in the <code>title</code> field.
+ *   <li><code>title:(die OR hard)</code>
+ *       <p>documents containing <em>die</em> or <em>hard</em> in the <code>title</code> field.
  * </ul>
  *
- * Thus, in BNF, the query grammar is:
+ * <h3>Boolean operators and grouping</h3>
  *
- * <pre>
- *   Query  ::= ( Clause )*
- *   Clause ::= [&quot;+&quot;, &quot;-&quot;] [&lt;TERM&gt; &quot;:&quot;] ( &lt;TERM&gt; | &quot;(&quot; Query &quot;)&quot; )
- * </pre>
+ * <p>You can combine clauses using Boolean AND, OR and NOT operators to form more complex
+ * expressions, for example:
  *
- * <p>Examples of appropriately formatted queries can be found in the <a
- * href="{@docRoot}/org/apache/lucene/queryparser/classic/package-summary.html#package.description">
- * query syntax documentation</a>.
+ * <ul>
+ *   <li><code>test AND results</code>
+ *       <p>selects documents containing both the word <em>test</em> and the word <em>results</em>.
+ *   <li><code>test OR suite OR results</code>
+ *       <p>selects documents with at least one of <em>test</em>, <em>suite</em> or
+ *       <em>results</em>.
+ *   <li><code>title:test AND NOT title:complete</code>
+ *       <p>selects documents containing <em>test</em> and not containing <em>complete</em> in the
+ *       <code>title</code> field.
+ *   <li><code>title:test AND (pass* OR fail*)</code>
+ *       <p>grouping; use parentheses to specify the precedence of terms in a Boolean clause. Query
+ *       will match documents containing <em>test</em> in the <code>title</code> field and a word
+ *       starting with <em>pass</em> or <em>fail</em> in the default search fields.
+ *   <li><code>title:(pass fail skip)</code>
+ *       <p>shorthand notation; documents containing at least one of <em>pass</em>, <em>fail</em> or
+ *       <em>skip</em> in the <code>title</code> field.
+ *   <li><code>title:(+test +"result unknown")</code>
+ *       <p>shorthand notation; documents containing both <em>pass</em> and <em>result unknown</em>
+ *       in the <code>title</code> field.
+ * </ul>
  *
- * <p>The text parser used by this helper is a {@link StandardSyntaxParser}.
+ * <p>Note the Boolean operators must be written in all caps, otherwise they are parsed as regular
+ * terms.
  *
- * <p>The query node processor used by this helper is a {@link StandardQueryNodeProcessorPipeline}.
+ * <h3>Range operators</h3>
  *
- * <p>The builder used by this helper is a {@link StandardQueryTreeBuilder}.
+ * <p>To search for ranges of textual or numeric values, use square or curly brackets, for example:
+ *
+ * <ul>
+ *   <li><code>name:[Jones TO Smith]</code>
+ *       <p>inclusive range; selects documents whose <code>name
+ *       </code> field has any value between <em>Jones</em> and <em>Smith</em>, including
+ *       boundaries.
+ *   <li><code>score:{2.5 TO 7.3}</code>
+ *       <p>exclusive range; selects documents whose <code>score</code> field is between 2.5 and
+ *       7.3, excluding boundaries.
+ *   <li><code>score:{2.5 TO *]</code>
+ *       <p>one-sided range; selects documents whose <code>score</code> field is larger than 2.5.
+ * </ul>
+ *
+ * <h3>Term boosting</h3>
+ *
+ * <p>Terms, quoted terms, term range expressions and grouped clauses can have a floating-point
+ * weight <em>boost</em> applied to them to increase their score relative to other clauses. For
+ * example:
+ *
+ * <ul>
+ *   <li><code>jones^2 OR smith^0.5</code>
+ *       <p>prioritize documents with <code>jones</code> term over matches on the <code>smith</code>
+ *       term.
+ *   <li><code>field:(a OR b NOT c)^2.5 OR field:d</code>
+ *       <p>apply the boost to a sub-query.
+ * </ul>
+ *
+ * <h3>Special character escaping</h3>
+ *
+ * <p>Most search terms can be put in double quotes making special-character escaping not necessary.
+ * If the search term contains the quote character (or cannot be quoted for some reason), any
+ * character can be quoted with a backslash. For example:
+ *
+ * <ul>
+ *   <li><code>\:\(quoted\+term\)\:</code>
+ *       <p>a single search term <code>(quoted+term):</code> with escape sequences. An alternative
+ *       quoted form would be simpler: <code>":(quoted+term):"
+ *       </code>.
+ * </ul>
+ *
+ * <h3>Minimum-should-match constraint for Boolean disjunction groups</h3>
+ *
+ * <p>A minimum-should-match operator can be applied to a disjunction Boolean query (a query with
+ * only "OR"-subclauses) and forces the query to match documents with at least the provided number
+ * of these subclauses. For example:
+ *
+ * <ul>
+ *   <li><code>(blue crab fish)@2</code>
+ *       <p>matches all documents with at least two terms from the set [blue, crab, fish] (in any
+ *       order).
+ *   <li><code>((yellow OR blue) crab fish)@2</code>
+ *       <p>sub-clauses of a Boolean query can themselves be complex queries; here the
+ *       min-should-match selects documents that match at least two of the provided three
+ *       sub-clauses.
+ * </ul>
+ *
+ * <h3>Interval function clauses</h3>
+ *
+ * <p>Interval functions are a powerful tool to express search needs in terms of one or more *
+ * contiguous fragments of text and their relationship to one another. All interval clauses start
+ * with the {@code fn:} prefix (possibly prefixed by a field specification). For example:
+ *
+ * <ul>
+ *   <li><code>fn:ordered(quick brown fox)</code>
+ *       <p>matches all documents (in the default field or in multi-field expansion) with at least
+ *       one ordered sequence of <code>quick</code>, <code>
+ *       brown</code> and <code>fox</code> terms.
+ *   <li><code>title:fn:maxwidth(5 fn:atLeast(2 quick brown fox))</code>
+ *       <p>matches all documents in the <code>title
+ *       </code> field where at least two of the three terms (<code>quick</code>, <code>
+ *        brown</code> and <code>fox</code>) occur within five positions of each other.
+ * </ul>
+ *
+ * Please refer to the {@linkplain org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn
+ * interval functions package} for more information on which functions are available and how they
+ * work.
  *
  * @see StandardQueryParser
  * @see StandardQueryConfigHandler
@@ -194,7 +325,9 @@ public class StandardQueryParser extends QueryParserHelper
     getQueryConfigHandler().set(ConfigurationKeys.ENABLE_POSITION_INCREMENTS, enabled);
   }
 
-  /** @see #setEnablePositionIncrements(boolean) */
+  /**
+   * @see #setEnablePositionIncrements(boolean)
+   */
   @Override
   public boolean getEnablePositionIncrements() {
     Boolean enablePositionsIncrements =
@@ -208,20 +341,14 @@ public class StandardQueryParser extends QueryParserHelper
     }
   }
 
-  /**
-   * By default, it uses {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} when creating a prefix,
-   * wildcard and range queries. This implementation is generally preferable because it a) Runs
-   * faster b) Does not have the scarcity of terms unduly influence score c) avoids any {@link
-   * TooManyListenersException} exception. However, if your application really needs to use the
-   * old-fashioned boolean queries expansion rewriting and the above points are not relevant then
-   * use this change the rewrite method.
-   */
   @Override
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method) {
     getQueryConfigHandler().set(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD, method);
   }
 
-  /** @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod) */
+  /**
+   * @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod)
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return getQueryConfigHandler().get(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD);
@@ -317,7 +444,9 @@ public class StandardQueryParser extends QueryParserHelper
     return getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     Boolean allowLeadingWildcard =

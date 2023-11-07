@@ -22,9 +22,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public abstract class LZ4TestCase extends LuceneTestCase {
 
@@ -243,7 +243,7 @@ public abstract class LZ4TestCase extends LuceneTestCase {
   }
 
   public void testIncompressibleRandom() throws IOException {
-    byte[] b = new byte[TestUtil.nextInt(random(), 1, 1 << 32)];
+    byte[] b = new byte[TestUtil.nextInt(random(), 1, 1 << 18)];
     random().nextBytes(b);
     doTest(b, newHashTable());
     doTestWithDictionary(b, newHashTable());

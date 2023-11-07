@@ -66,7 +66,7 @@ public final class JoinUtil {
    *
    * <p>In the case a single document relates to more than one document the <code>
    * multipleValuesPerDocument</code> option should be set to true. When the <code>
-   * multipleValuesPerDocument</code> is set to <code>true</code> only the the score from the first
+   * multipleValuesPerDocument</code> is set to <code>true</code> only the score from the first
    * encountered join value originating from the 'from' side is mapped into the 'to' side. Even in
    * the case when a second join value related to a specific document yields a higher score.
    * Obviously this doesn't apply in the case that {@link ScoreMode#None} is used, since no scores

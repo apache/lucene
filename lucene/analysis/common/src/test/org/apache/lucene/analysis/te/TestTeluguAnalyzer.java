@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.te;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestTeluguAnalyzer extends BaseTokenStreamTestCase {
 

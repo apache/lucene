@@ -21,7 +21,10 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -612,7 +615,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     if (verbose() && startStallTime != 0) {
-      message("  stalled for " + (System.currentTimeMillis() - startStallTime) + " msec");
+      message("  stalled for " + (System.currentTimeMillis() - startStallTime) + " ms");
     }
 
     return true;
@@ -691,15 +694,30 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     public void run() {
       try {
         if (verbose()) {
-          message("  merge thread: start");
+          message(String.format(Locale.ROOT, "merge thread %s start", this.getName()));
         }
 
         doMerge(mergeSource, merge);
+        if (verbose()) {
+          message(
+              String.format(
+                  Locale.ROOT,
+                  "merge thread %s merge segment [%s] done estSize=%.1f MB (written=%.1f MB) runTime=%.1fs (stopped=%.1fs, paused=%.1fs) rate=%s",
+                  this.getName(),
+                  getSegmentName(merge),
+                  bytesToMB(merge.estimatedMergeBytes),
+                  bytesToMB(rateLimiter.getTotalBytesWritten()),
+                  nsToSec(System.nanoTime() - merge.mergeStartNS),
+                  nsToSec(rateLimiter.getTotalStoppedNS()),
+                  nsToSec(rateLimiter.getTotalPausedNS()),
+                  rateToString(rateLimiter.getMBPerSec())));
+        }
+
+        runOnMergeFinished(mergeSource);
 
         if (verbose()) {
-          message("  merge thread: done");
+          message(String.format(Locale.ROOT, "merge thread %s end", this.getName()));
         }
-        runOnMergeFinished(mergeSource);
       } catch (Throwable exc) {
         if (exc instanceof MergePolicy.MergeAbortedException) {
           // OK to ignore
@@ -872,10 +890,24 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected void targetMBPerSecChanged() {}
 
   private static double nsToSec(long ns) {
-    return ns / 1000000000.0;
+    return ns / (double) TimeUnit.SECONDS.toNanos(1);
   }
 
   private static double bytesToMB(long bytes) {
     return bytes / 1024. / 1024.;
+  }
+
+  private static String getSegmentName(MergePolicy.OneMerge merge) {
+    return merge.info != null ? merge.info.info.name : "_na_";
+  }
+
+  static {
+    TestSecrets.setConcurrentMergeSchedulerAccess(
+        new ConcurrentMergeSchedulerAccess() {
+          @Override
+          public void setSuppressExceptions(ConcurrentMergeScheduler cms) {
+            cms.setSuppressExceptions();
+          }
+        });
   }
 }

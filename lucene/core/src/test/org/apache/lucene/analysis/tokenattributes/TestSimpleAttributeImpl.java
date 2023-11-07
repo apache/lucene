@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.tokenattributes;
 
 import java.util.Collections;
 import java.util.HashMap;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestSimpleAttributeImpl extends LuceneTestCase {
 

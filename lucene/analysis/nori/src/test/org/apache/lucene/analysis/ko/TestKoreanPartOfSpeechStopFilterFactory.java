@@ -20,9 +20,10 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.Version;
 
 /** Simple tests for {@link KoreanPartOfSpeechStopFilterFactory} */
@@ -34,7 +35,7 @@ public class TestKoreanPartOfSpeechStopFilterFactory extends BaseTokenStreamTest
     ((Tokenizer) ts).setReader(new StringReader(" 한국은 대단한 나라입니다."));
     Map<String, String> args = new HashMap<>();
     args.put("luceneMatchVersion", Version.LATEST.toString());
-    args.put("tags", "E, J");
+    args.put("tags", "EP, EF, EC, ETN, ETM, JKS, JKC, JKG, JKO, JKB, JKV, JKQ, JX, JC");
     KoreanPartOfSpeechStopFilterFactory factory = new KoreanPartOfSpeechStopFilterFactory(args);
     ts = factory.create(ts);
     assertTokenStreamContents(ts, new String[] {"한국", "대단", "하", "나라", "이"});

@@ -18,17 +18,26 @@ package org.apache.lucene.backward_codecs.lucene50;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Compressor;
+import org.apache.lucene.backward_codecs.compressing.Decompressor;
 import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingStoredFieldsFormat;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.compress.LZ4;
 
 /**
  * Lucene 5.0 stored fields format.
@@ -148,7 +157,7 @@ public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
     switch (mode) {
       case BEST_SPEED:
         return new Lucene50CompressingStoredFieldsFormat(
-            "Lucene50StoredFieldsFastData", CompressionMode.FAST, 1 << 14, 128, 10);
+            "Lucene50StoredFieldsFastData", FAST_MODE, 1 << 14, 128, 10);
       case BEST_COMPRESSION:
         return new Lucene50CompressingStoredFieldsFormat(
             "Lucene50StoredFieldsHighData", CompressionMode.HIGH_COMPRESSION, 61440, 512, 10);
@@ -156,4 +165,71 @@ public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
         throw new AssertionError();
     }
   }
+
+  static final CompressionMode FAST_MODE =
+      new CompressionMode() {
+
+        @Override
+        public Compressor newCompressor() {
+          return new LZ4FastCompressor();
+        }
+
+        @Override
+        public Decompressor newDecompressor() {
+          return LZ4_DECOMPRESSOR;
+        }
+
+        @Override
+        public String toString() {
+          return "FAST";
+        }
+      };
+
+  private static final class LZ4FastCompressor extends Compressor {
+
+    private final LZ4.FastCompressionHashTable ht;
+
+    LZ4FastCompressor() {
+      ht = new LZ4.FastCompressionHashTable();
+    }
+
+    @Override
+    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
+      LZ4.compress(bytes, off, len, EndiannessReverserUtil.wrapDataOutput(out), ht);
+    }
+
+    @Override
+    public void close() throws IOException {
+      // no-op
+    }
+  }
+
+  private static final Decompressor LZ4_DECOMPRESSOR =
+      new Decompressor() {
+
+        @Override
+        public void decompress(
+            DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+            throws IOException {
+          assert offset + length <= originalLength;
+          // add 7 padding bytes, this is not necessary but can help decompression run faster
+          if (bytes.bytes.length < originalLength + 7) {
+            bytes.bytes = new byte[ArrayUtil.oversize(originalLength + 7, 1)];
+          }
+          final int decompressedLength =
+              LZ4.decompress(
+                  EndiannessReverserUtil.wrapDataInput(in), offset + length, bytes.bytes, 0);
+          if (decompressedLength > originalLength) {
+            throw new CorruptIndexException(
+                "Corrupted: lengths mismatch: " + decompressedLength + " > " + originalLength, in);
+          }
+          bytes.offset = offset;
+          bytes.length = length;
+        }
+
+        @Override
+        public Decompressor clone() {
+          return this;
+        }
+      };
 }

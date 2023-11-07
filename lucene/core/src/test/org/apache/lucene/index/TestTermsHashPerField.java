@@ -28,11 +28,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTermsHashPerField extends LuceneTestCase {
 
@@ -296,6 +297,64 @@ public class TestTermsHashPerField extends LuceneTestCase {
         prefDoc = entry.getKey();
       }
       assertTrue("the last posting must be EOF on the reader", eof);
+    }
+  }
+
+  public void testWriteBytes() throws IOException {
+    for (int i = 0; i < 100; i++) {
+      AtomicInteger newCalled = new AtomicInteger(0);
+      AtomicInteger addCalled = new AtomicInteger(0);
+      TermsHashPerField hash = createNewHash(newCalled, addCalled);
+      hash.start(null, true);
+      hash.add(newBytesRef("start"), 0); // tid = 0;
+      int size = TestUtil.nextInt(random(), 50000, 100000);
+      byte[] randomData = new byte[size];
+      random().nextBytes(randomData);
+      int offset = 0;
+      while (offset < randomData.length) {
+        int writeLength = Math.min(randomData.length - offset, TestUtil.nextInt(random(), 1, 200));
+        hash.writeBytes(0, randomData, offset, writeLength);
+        offset += writeLength;
+      }
+      ByteSliceReader reader = new ByteSliceReader();
+      reader.init(hash.bytePool, 0, hash.bytePool.byteOffset + hash.bytePool.byteUpto);
+      for (byte expected : randomData) {
+        assertEquals(expected, reader.readByte());
+      }
+    }
+  }
+
+  public void testAllocKnowSizeSlice() {
+    Counter bytesUsed = Counter.newCounter();
+    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
+    pool.nextBuffer();
+    for (int i = 0; i < 100; i++) {
+      int size;
+      if (random().nextBoolean()) {
+        size = TestUtil.nextInt(random(), 100, 1000);
+      } else {
+        size = TestUtil.nextInt(random(), 50000, 100000);
+      }
+      byte[] randomData = new byte[size];
+      random().nextBytes(randomData);
+
+      int upto = TermsHashPerField.newSlice(pool, TermsHashPerField.FIRST_LEVEL_SIZE, 0);
+
+      for (int offset = 0; offset < size; ) {
+        if ((pool.buffer[upto] & 16) == 0) {
+          pool.buffer[upto++] = randomData[offset++];
+        } else {
+          int offsetAndLength = TermsHashPerField.allocKnownSizeSlice(pool, pool.buffer, upto);
+          int sliceLength = offsetAndLength & 0xff;
+          upto = offsetAndLength >> 8;
+          assertNotEquals(0, pool.buffer[upto + sliceLength - 1]);
+          assertEquals(0, pool.buffer[upto]);
+          int writeLength = Math.min(sliceLength - 1, size - offset);
+          System.arraycopy(randomData, offset, pool.buffer, upto, writeLength);
+          offset += writeLength;
+          upto += writeLength;
+        }
+      }
     }
   }
 }

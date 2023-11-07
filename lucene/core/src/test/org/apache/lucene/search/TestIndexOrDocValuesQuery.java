@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -26,11 +27,13 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestIndexOrDocValuesQuery extends LuceneTestCase {
 
@@ -74,6 +77,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                     NumericDocValuesField.newSlowRangeQuery("f2", 2L, 2L)),
                 Occur.MUST)
             .build();
+    QueryUtils.check(random(), q1, searcher);
 
     final Weight w1 = searcher.createWeight(searcher.rewrite(q1), ScoreMode.COMPLETE, 1);
     final Scorer s1 = w1.scorer(searcher.getIndexReader().leaves().get(0));
@@ -89,6 +93,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                     NumericDocValuesField.newSlowRangeQuery("f2", 42L, 42L)),
                 Occur.MUST)
             .build();
+    QueryUtils.check(random(), q2, searcher);
 
     final Weight w2 = searcher.createWeight(searcher.rewrite(q2), ScoreMode.COMPLETE, 1);
     final Scorer s2 = w2.scorer(searcher.getIndexReader().leaves().get(0));
@@ -107,23 +112,21 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
             newIndexWriterConfig()
                 // relies on costs and PointValues.estimateCost so we need the default codec
                 .setCodec(TestUtil.getDefaultCodec()));
-    for (int i = 0; i < 2000; ++i) {
+    final int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      if (i < 1000) {
+      if (i < numDocs / 2) {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 500; j++) {
-          doc.add(new LongPoint("f2", 42L));
-          doc.add(new SortedNumericDocValuesField("f2", 42L));
+          doc.add(new LongField("f2", 42L, Store.NO));
         }
-      } else if (i == 1001) {
+      } else if (i == numDocs / 2) {
         doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongPoint("f2", 2L));
-        doc.add(new SortedNumericDocValuesField("f2", 42L));
+        doc.add(new LongField("f2", 2L, Store.NO));
       } else {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 100; j++) {
-          doc.add(new LongPoint("f2", 2L));
-          doc.add(new SortedNumericDocValuesField("f2", 2L));
+          doc.add(new LongField("f2", 2L, Store.NO));
         }
       }
       w.addDocument(doc);
@@ -143,6 +146,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                     SortedNumericDocValuesField.newSlowRangeQuery("f2", 2L, 2L)),
                 Occur.MUST)
             .build();
+    QueryUtils.check(random(), q1, searcher);
 
     final Weight w1 = searcher.createWeight(searcher.rewrite(q1), ScoreMode.COMPLETE, 1);
     final Scorer s1 = w1.scorer(searcher.getIndexReader().leaves().get(0));
@@ -158,6 +162,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                     SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L)),
                 Occur.MUST)
             .build();
+    QueryUtils.check(random(), q2, searcher);
 
     final Weight w2 = searcher.createWeight(searcher.rewrite(q2), ScoreMode.COMPLETE, 1);
     final Scorer s2 = w2.scorer(searcher.getIndexReader().leaves().get(0));
@@ -173,10 +178,50 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                     SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L)),
                 Occur.MUST)
             .build();
+    QueryUtils.check(random(), q3, searcher);
 
     final Weight w3 = searcher.createWeight(searcher.rewrite(q3), ScoreMode.COMPLETE, 1);
     final Scorer s3 = w3.scorer(searcher.getIndexReader().leaves().get(0));
     assertNotNull(s3.twoPhaseIterator()); // means we use doc values
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  // Weight#count is delegated to the inner weight
+  public void testQueryMatchesCount() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                // relies on costs and PointValues.estimateCost so we need the default codec
+                .setCodec(TestUtil.getDefaultCodec()));
+    final int numDocs = random().nextInt(5000);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new LongPoint("f2", 42L));
+      doc.add(new SortedNumericDocValuesField("f2", 42L));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(w);
+    IndexSearcher searcher = newSearcher(reader);
+
+    final IndexOrDocValuesQuery query =
+        new IndexOrDocValuesQuery(
+            LongPoint.newExactQuery("f2", 42),
+            SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L));
+    QueryUtils.check(random(), query, searcher);
+
+    final int searchCount = searcher.count(query);
+    final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
+    int weightCount = 0;
+    for (LeafReaderContext leafReaderContext : reader.leaves()) {
+      weightCount += weight.count(leafReaderContext);
+    }
+    assertEquals(searchCount, weightCount);
 
     reader.close();
     w.close();

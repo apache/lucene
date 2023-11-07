@@ -1,0 +1,15 @@
+name: Test Improvement / Failure Report
+description: File a task relates to test
+labels: ["type:test"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Gradle command to reproduce
+      placeholder: Specify the gradle command to reproduce the failure

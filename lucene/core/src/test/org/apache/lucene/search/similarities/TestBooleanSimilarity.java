@@ -25,7 +25,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -33,7 +32,9 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestBooleanSimilarity extends BaseSimilarityTestCase {
@@ -119,7 +120,7 @@ public class TestBooleanSimilarity extends BaseSimilarityTestCase {
               100,
               maxTermFrequency,
               uniqueTermCount);
-      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state), 0f);
+      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state));
     }
   }
 

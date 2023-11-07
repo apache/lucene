@@ -23,7 +23,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -67,7 +66,8 @@ import org.apache.lucene.search.similarities.NormalizationH3;
 import org.apache.lucene.search.similarities.NormalizationZ;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSpanSimilarity extends LuceneTestCase {
 
@@ -77,6 +77,7 @@ public class TestSpanSimilarity extends LuceneTestCase {
   static BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne()
   };
+
   /** The DFR aftereffects to test. */
   static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
 
@@ -87,10 +88,13 @@ public class TestSpanSimilarity extends LuceneTestCase {
     new NormalizationZ(),
     new Normalization.NoNormalization()
   };
+
   /** The distributions for IB. */
   static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+
   /** Lambdas for IB. */
   static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+
   /** Independence measures for DFI */
   static Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()

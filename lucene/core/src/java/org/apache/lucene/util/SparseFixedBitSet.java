@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -69,7 +70,18 @@ public class SparseFixedBitSet extends BitSet {
     bits = new long[blockCount][];
     ramBytesUsed =
         BASE_RAM_BYTES_USED
-            + RamUsageEstimator.shallowSizeOf(indices)
+            + RamUsageEstimator.sizeOf(indices)
+            + RamUsageEstimator.shallowSizeOf(bits);
+  }
+
+  @Override
+  public void clear() {
+    Arrays.fill(bits, null);
+    Arrays.fill(indices, 0L);
+    nonZeroLongCount = 0;
+    ramBytesUsed =
+        BASE_RAM_BYTES_USED
+            + RamUsageEstimator.sizeOf(indices)
             + RamUsageEstimator.shallowSizeOf(bits);
   }
 
@@ -116,17 +128,48 @@ public class SparseFixedBitSet extends BitSet {
     final int i4096 = i >>> 12;
     final long index = indices[i4096];
     final int i64 = i >>> 6;
+    final long i64bit = 1L << i64;
     // first check the index, if the i64-th bit is not set, then i is not set
     // note: this relies on the fact that shifts are mod 64 in java
-    if ((index & (1L << i64)) == 0) {
+    if ((index & i64bit) == 0) {
       return false;
     }
 
     // if it is set, then we count the number of bits that are set on the right
     // of i64, and that gives us the index of the long that stores the bits we
     // are interested in
-    final long bits = this.bits[i4096][Long.bitCount(index & ((1L << i64) - 1))];
+    final long bits = this.bits[i4096][Long.bitCount(index & (i64bit - 1))];
     return (bits & (1L << i)) != 0;
+  }
+
+  @Override
+  public boolean getAndSet(int i) {
+    assert consistent(i);
+    final int i4096 = i >>> 12;
+    final long index = indices[i4096];
+    final int i64 = i >>> 6;
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
+      // in that case the sub 64-bits block we are interested in already exists,
+      // we just need to set a bit in an existing long: the number of ones on
+      // the right of i64 gives us the index of the long we need to update
+      final int location = Long.bitCount(index & (i64bit - 1));
+      final long bit = 1L << i; // shifts are mod 64 in java
+      boolean v = (bits[i4096][location] & bit) != 0;
+      bits[i4096][location] |= bit;
+      return v;
+    } else if (index == 0) {
+      // if the index is 0, it means that we just found a block of 4096 bits
+      // that has no bit that is set yet. So let's initialize a new block:
+      insertBlock(i4096, i64bit, i);
+      return false;
+    } else {
+      // in that case we found a block of 4096 bits that has some values, but
+      // the sub-block of 64 bits that we are interested in has no value yet,
+      // so we need to insert a new long
+      insertLong(i4096, i64bit, i, index);
+      return false;
+    }
   }
 
   private static int oversize(int s) {
@@ -144,40 +187,41 @@ public class SparseFixedBitSet extends BitSet {
     final int i4096 = i >>> 12;
     final long index = indices[i4096];
     final int i64 = i >>> 6;
-    if ((index & (1L << i64)) != 0) {
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
       // in that case the sub 64-bits block we are interested in already exists,
       // we just need to set a bit in an existing long: the number of ones on
       // the right of i64 gives us the index of the long we need to update
-      bits[i4096][Long.bitCount(index & ((1L << i64) - 1))] |= 1L << i; // shifts are mod 64 in java
+      bits[i4096][Long.bitCount(index & (i64bit - 1))] |= 1L << i; // shifts are mod 64 in java
     } else if (index == 0) {
       // if the index is 0, it means that we just found a block of 4096 bits
       // that has no bit that is set yet. So let's initialize a new block:
-      insertBlock(i4096, i64, i);
+      insertBlock(i4096, i64bit, i);
     } else {
       // in that case we found a block of 4096 bits that has some values, but
       // the sub-block of 64 bits that we are interested in has no value yet,
       // so we need to insert a new long
-      insertLong(i4096, i64, i, index);
+      insertLong(i4096, i64bit, i, index);
     }
   }
 
-  private void insertBlock(int i4096, int i64, int i) {
-    indices[i4096] = 1L << i64; // shifts are mod 64 in java
+  private void insertBlock(int i4096, long i64bit, int i) {
+    indices[i4096] = i64bit;
     assert bits[i4096] == null;
     bits[i4096] = new long[] {1L << i}; // shifts are mod 64 in java
     ++nonZeroLongCount;
     ramBytesUsed += SINGLE_ELEMENT_ARRAY_BYTES_USED;
   }
 
-  private void insertLong(int i4096, int i64, int i, long index) {
-    indices[i4096] |= 1L << i64; // shifts are mod 64 in java
+  private void insertLong(int i4096, long i64bit, int i, long index) {
+    indices[i4096] |= i64bit;
     // we count the number of bits that are set on the right of i64
     // this gives us the index at which to perform the insertion
-    final int o = Long.bitCount(index & ((1L << i64) - 1));
+    final int o = Long.bitCount(index & (i64bit - 1));
     final long[] bitArray = bits[i4096];
     if (bitArray[bitArray.length - 1] == 0) {
       // since we only store non-zero longs, if the last value is 0, it means
-      // that we alreay have extra space, make use of it
+      // that we already have extra space, make use of it
       System.arraycopy(bitArray, o, bitArray, o + 1, bitArray.length - o - 1);
       bitArray[o] = 1L << i;
     } else {
@@ -188,7 +232,8 @@ public class SparseFixedBitSet extends BitSet {
       newBitArray[o] = 1L << i;
       System.arraycopy(bitArray, o, newBitArray, o + 1, bitArray.length - o);
       bits[i4096] = newBitArray;
-      ramBytesUsed += RamUsageEstimator.sizeOf(newBitArray) - RamUsageEstimator.sizeOf(bitArray);
+      // we may slightly overestimate size here, but keep it cheap
+      ramBytesUsed += (newBitArray.length - bitArray.length) << 3;
     }
     ++nonZeroLongCount;
   }
@@ -375,7 +420,11 @@ public class SparseFixedBitSet extends BitSet {
       // fast path: if we currently have nothing in the block, just copy the data
       // this especially happens all the time if you call OR on an empty set
       indices[i4096] = index;
-      this.bits[i4096] = ArrayUtil.copyOfSubArray(bits, 0, nonZeroLongCount);
+
+      long[] newBits = ArrayUtil.copyOfSubArray(bits, 0, nonZeroLongCount);
+      this.bits[i4096] = newBits;
+      // we may slightly overestimate size here, but keep it cheap
+      this.ramBytesUsed += SINGLE_ELEMENT_ARRAY_BYTES_USED + ((long) newBits.length - 1 << 3);
       this.nonZeroLongCount += nonZeroLongCount;
       return;
     }
@@ -387,6 +436,8 @@ public class SparseFixedBitSet extends BitSet {
       newBits = currentBits;
     } else {
       newBits = new long[oversize(requiredCapacity)];
+      // we may slightly overestimate size here, but keep it cheap
+      this.ramBytesUsed += (long) (newBits.length - currentBits.length) << 3;
     }
     // we iterate backwards in order to not override data we might need on the next iteration if the
     // array is reused

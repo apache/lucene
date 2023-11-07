@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.hunspell;
 
 import java.util.stream.Collectors;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTrigramAutomaton extends LuceneTestCase {
   public void testSameScore() {

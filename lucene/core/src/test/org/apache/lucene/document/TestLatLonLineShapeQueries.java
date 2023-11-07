@@ -19,8 +19,8 @@ package org.apache.lucene.document;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.Line;
+import org.apache.lucene.tests.geo.GeoTestUtil;
 
 /** random bounding box, line, and polygon query tests for random generated {@link Line} types */
 @SuppressWarnings("SimpleText")
@@ -68,7 +68,7 @@ public class TestLatLonLineShapeQueries extends BaseLatLonShapeTestCase {
     return new LineValidator(this.ENCODER);
   }
 
-  protected static class LineValidator extends Validator {
+  public static class LineValidator extends Validator {
     protected LineValidator(Encoder encoder) {
       super(encoder);
     }

@@ -20,15 +20,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.tests.search.ShardSearchingTestBase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 
 // TODO
 //   - other queries besides PrefixQuery & TermQuery (but:
@@ -109,7 +111,8 @@ public class TestShardSearching extends ShardSearchingTestBase {
         if (VERBOSE) {
           System.out.println(
               "\nTEST: follow-on query age="
-                  + ((System.nanoTime() - prevSearchState.searchTimeNanos) / 1000000000.0));
+                  + ((System.nanoTime() - prevSearchState.searchTimeNanos)
+                      / (double) TimeUnit.SECONDS.toNanos(1)));
         }
 
         try {

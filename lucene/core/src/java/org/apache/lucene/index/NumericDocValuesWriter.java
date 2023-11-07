@@ -20,6 +20,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Counter;
@@ -30,7 +31,7 @@ import org.apache.lucene.util.packed.PackedLongValues;
 /** Buffers up pending long per doc, then flushes when segment flushes. */
 class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
 
-  private PackedLongValues.Builder pending;
+  private final PackedLongValues.Builder pending;
   private PackedLongValues finalValues;
   private final Counter iwBytesUsed;
   private long bytesUsed;
@@ -77,9 +78,14 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     return new BufferedNumericDocValues(finalValues, docsWithField.iterator());
   }
 
-  static NumericDVs sortDocValues(int maxDoc, Sorter.DocMap sortMap, NumericDocValues oldDocValues)
+  static NumericDVs sortDocValues(
+      int maxDoc, Sorter.DocMap sortMap, NumericDocValues oldDocValues, boolean dense)
       throws IOException {
-    FixedBitSet docsWithField = new FixedBitSet(maxDoc);
+    FixedBitSet docsWithField = null;
+    if (dense == false) {
+      docsWithField = new FixedBitSet(maxDoc);
+    }
+
     long[] values = new long[maxDoc];
     while (true) {
       int docID = oldDocValues.nextDoc();
@@ -87,7 +93,9 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
         break;
       }
       int newDocID = sortMap.oldToNew(docID);
-      docsWithField.set(newDocID);
+      if (docsWithField != null) {
+        docsWithField.set(newDocID);
+      }
       values[newDocID] = oldDocValues.longValue();
     }
     return new NumericDVs(values, docsWithField);
@@ -99,34 +107,44 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     if (finalValues == null) {
       finalValues = pending.build();
     }
+
+    dvConsumer.addNumericField(
+        fieldInfo, getDocValuesProducer(fieldInfo, finalValues, docsWithField, sortMap));
+  }
+
+  static DocValuesProducer getDocValuesProducer(
+      FieldInfo writerFieldInfo,
+      PackedLongValues values,
+      DocsWithFieldSet docsWithField,
+      Sorter.DocMap sortMap)
+      throws IOException {
     final NumericDVs sorted;
     if (sortMap != null) {
-      NumericDocValues oldValues =
-          new BufferedNumericDocValues(finalValues, docsWithField.iterator());
-      sorted = sortDocValues(state.segmentInfo.maxDoc(), sortMap, oldValues);
+      NumericDocValues oldValues = new BufferedNumericDocValues(values, docsWithField.iterator());
+      sorted =
+          sortDocValues(
+              sortMap.size(), sortMap, oldValues, sortMap.size() == docsWithField.cardinality());
     } else {
       sorted = null;
     }
 
-    dvConsumer.addNumericField(
-        fieldInfo,
-        new EmptyDocValuesProducer() {
-          @Override
-          public NumericDocValues getNumeric(FieldInfo fieldInfo) {
-            if (fieldInfo != NumericDocValuesWriter.this.fieldInfo) {
-              throw new IllegalArgumentException("wrong fieldInfo");
-            }
-            if (sorted == null) {
-              return new BufferedNumericDocValues(finalValues, docsWithField.iterator());
-            } else {
-              return new SortingNumericDocValues(sorted);
-            }
-          }
-        });
+    return new EmptyDocValuesProducer() {
+      @Override
+      public NumericDocValues getNumeric(FieldInfo fieldInfo) {
+        if (fieldInfo != writerFieldInfo) {
+          throw new IllegalArgumentException("wrong fieldInfo");
+        }
+        if (sorted == null) {
+          return new BufferedNumericDocValues(values, docsWithField.iterator());
+        } else {
+          return new SortingNumericDocValues(sorted);
+        }
+      }
+    };
   }
 
   // iterates over the values we have in ram
-  private static class BufferedNumericDocValues extends NumericDocValues {
+  static class BufferedNumericDocValues extends NumericDocValues {
     final PackedLongValues.Iterator iter;
     final DocIdSetIterator docsWithField;
     private long value;
@@ -188,10 +206,10 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
 
     @Override
     public int nextDoc() {
-      if (docID + 1 == dvs.docsWithField.length()) {
+      if (docID + 1 == dvs.maxDoc()) {
         docID = NO_MORE_DOCS;
       } else {
-        docID = dvs.docsWithField.nextSetBit(docID + 1);
+        docID = dvs.advance(docID + 1);
       }
       return docID;
     }
@@ -205,7 +223,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     public boolean advanceExact(int target) throws IOException {
       // needed in IndexSorter#{Long|Int|Double|Float}Sorter
       docID = target;
-      return dvs.docsWithField.get(target);
+      return dvs.advanceExact(target);
     }
 
     @Override
@@ -216,7 +234,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     @Override
     public long cost() {
       if (cost == -1) {
-        cost = dvs.docsWithField.cardinality();
+        cost = dvs.cost();
       }
       return cost;
     }
@@ -225,10 +243,39 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
   static class NumericDVs {
     private final long[] values;
     private final BitSet docsWithField;
+    private final int maxDoc;
 
     NumericDVs(long[] values, BitSet docsWithField) {
       this.values = values;
       this.docsWithField = docsWithField;
+      this.maxDoc = values.length;
+    }
+
+    int maxDoc() {
+      return maxDoc;
+    }
+
+    private boolean advanceExact(int target) {
+      if (docsWithField != null) {
+        return docsWithField.get(target);
+      }
+      return true;
+    }
+
+    private int advance(int target) {
+      if (docsWithField != null) {
+        return docsWithField.nextSetBit(target);
+      }
+
+      // Only called when target is less than maxDoc
+      return target;
+    }
+
+    private long cost() {
+      if (docsWithField != null) {
+        return docsWithField.cardinality();
+      }
+      return maxDoc;
     }
   }
 }

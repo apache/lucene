@@ -38,12 +38,12 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.FixedBitSetCollector;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Base test case for testing spherical and cartesian geometry indexing and search functionality
@@ -81,7 +81,6 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   }
 
   // Force low cardinality leaves
-  @Slow
   public void testLowCardinalityShapeManyTimes() throws Exception {
     int numShapes = atLeast(20);
     int cardinality = TestUtil.nextInt(random(), 2, 20);
@@ -104,12 +103,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     doTestRandom(10);
   }
 
-  @Slow
   public void testRandomMedium() throws Exception {
     doTestRandom(atLeast(20));
   }
 
-  @Slow
   @Nightly
   public void testRandomBig() throws Exception {
     doTestRandom(20000);
@@ -175,6 +172,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   protected abstract double rectMaxY(Object rect);
 
   protected abstract boolean rectCrossesDateline(Object rect);
+
+  protected QueryRelation[] getSupportedQueryRelations() {
+    return QueryRelation.values();
+  }
 
   /**
    * return a semi-random line used for queries
@@ -256,7 +257,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     Set<Integer> deleted = new HashSet<>();
     for (int id = 0; id < shapes.length; ++id) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (shapes[id] != null) {
         addShapeToDoc(FIELD_NAME, doc, shapes[id]);
@@ -306,7 +307,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
 
       // BBox
       Object rect = randomQueryBox();
-      QueryRelation queryRelation = RandomPicks.randomFrom(random(), QueryRelation.values());
+      QueryRelation queryRelation = RandomPicks.randomFrom(random(), getSupportedQueryRelations());
       Query query =
           newRectQuery(
               FIELD_NAME,

@@ -28,13 +28,14 @@ import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -257,16 +258,16 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource rewritten = vs.rewrite(searcher);
     searcher.search(
         q,
-        new CollectorManager<SimpleCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public SimpleCollector newCollector() throws IOException {
+          public SimpleCollector newCollector() {
             return new SimpleCollector() {
 
               DoubleValues v;
               LeafReaderContext ctx;
 
               @Override
-              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+              protected void doSetNextReader(LeafReaderContext context) {
                 this.ctx = context;
               }
 
@@ -298,7 +299,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
           }
 
           @Override
-          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
@@ -325,9 +326,9 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource vs = DoubleValuesSource.fromQuery(q).rewrite(searcher);
     searcher.search(
         q,
-        new CollectorManager<SimpleCollector, Object>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public SimpleCollector newCollector() throws IOException {
+          public SimpleCollector newCollector() {
             return new SimpleCollector() {
 
               DoubleValues v;
@@ -335,7 +336,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
               LeafReaderContext ctx;
 
               @Override
-              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+              protected void doSetNextReader(LeafReaderContext context) {
                 this.ctx = context;
               }
 
@@ -359,7 +360,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
           }
 
           @Override
-          public Object reduce(Collection<SimpleCollector> collectors) throws IOException {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });

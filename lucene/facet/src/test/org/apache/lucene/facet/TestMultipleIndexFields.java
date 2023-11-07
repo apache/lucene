@@ -19,8 +19,6 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -32,10 +30,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
@@ -190,7 +190,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
   private void assertOrdinalsExist(String field, IndexReader ir) throws IOException {
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
-      if (r.getBinaryDocValues(field) != null) {
+      if (r.getSortedNumericDocValues(field) != null) {
         return; // not all segments must have this DocValues
       }
     }
@@ -294,12 +294,45 @@ public class TestMultipleIndexFields extends FacetTestCase {
     assertEquals(
         "dim=Band path=[] value=5 childCount=2\n  Rock & Pop (4)\n  Punk (1)\n",
         facets.getTopChildren(10, "Band").toString());
+    assertFacetResult(
+        facets.getAllChildren("Band"),
+        "Band",
+        new String[0],
+        2,
+        5,
+        new LabelAndValue[] {
+          new LabelAndValue("Punk", 1), new LabelAndValue("Rock & Pop", 4),
+        });
     assertEquals(
         "dim=Band path=[Rock & Pop] value=4 childCount=4\n  The Beatles (1)\n  U2 (1)\n  REM (1)\n  Dave Matthews Band (1)\n",
         facets.getTopChildren(10, "Band", "Rock & Pop").toString());
+    assertFacetResult(
+        facets.getAllChildren("Band", "Rock & Pop"),
+        "Band",
+        new String[] {"Rock & Pop"},
+        4,
+        4,
+        new LabelAndValue[] {
+          new LabelAndValue("Dave Matthews Band", 1),
+          new LabelAndValue("REM", 1),
+          new LabelAndValue("The Beatles", 1),
+          new LabelAndValue("U2", 1),
+        });
+
     assertEquals(
         "dim=Author path=[] value=3 childCount=3\n  Mark Twain (1)\n  Stephen King (1)\n  Kurt Vonnegut (1)\n",
         facets.getTopChildren(10, "Author").toString());
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        3,
+        3,
+        new LabelAndValue[] {
+          new LabelAndValue("Kurt Vonnegut", 1),
+          new LabelAndValue("Mark Twain", 1),
+          new LabelAndValue("Stephen King", 1),
+        });
   }
 
   private FacetsCollector performSearch(TaxonomyReader tr, IndexReader ir, IndexSearcher searcher)

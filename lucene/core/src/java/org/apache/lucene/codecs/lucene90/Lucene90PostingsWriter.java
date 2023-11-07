@@ -25,7 +25,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.TERMS_COD
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
-import java.nio.ByteOrder;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -111,14 +110,6 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     try {
       CodecUtil.writeIndexHeader(
           docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-      ByteOrder byteOrder = ByteOrder.nativeOrder();
-      if (byteOrder == ByteOrder.BIG_ENDIAN) {
-        docOut.writeByte((byte) 'B');
-      } else if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
-        docOut.writeByte((byte) 'L');
-      } else {
-        throw new Error();
-      }
       pforUtil = new PForUtil(new ForUtil());
       if (state.fieldInfos.hasProx()) {
         posDeltaBuffer = new long[BLOCK_SIZE];

@@ -19,7 +19,8 @@ package org.apache.lucene.analysis;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestAnalyzerWrapper extends LuceneTestCase {
 

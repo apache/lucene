@@ -88,9 +88,13 @@ public class PassageSelector {
       return Collections.emptyList();
     }
 
+    // minimum priority queue size of 16 so that small maxPassages values don't
+    // return too few passages due to subsequent passage merges
+    int pqSize = Math.max(16, maxPassages);
+
     // Best passages so far.
     PriorityQueue<Passage> pq =
-        new PriorityQueue<>(maxPassages) {
+        new PriorityQueue<>(pqSize) {
           @Override
           protected boolean lessThan(Passage a, Passage b) {
             return passageScorer.compare(a, b) < 0;
@@ -127,8 +131,8 @@ public class PassageSelector {
         if (m.from >= range.from && m.to <= rangeTo && m.length() <= maxPassageWindow) {
 
           // Adjust the window range to center the highlight marker.
-          int from = (m.from + m.to - maxPassageWindow) / 2;
-          int to = (m.from + m.to + maxPassageWindow) / 2;
+          int from = Math.toIntExact(((long) m.from + m.to - maxPassageWindow) / 2);
+          int to = Math.toIntExact(((long) m.from + m.to + maxPassageWindow) / 2);
           if (from < range.from) {
             to += range.from - from;
             from = range.from;
@@ -215,6 +219,7 @@ public class PassageSelector {
     }
 
     // Remove nullified slots.
+    last = Math.min(last, maxPassages);
     if (passages.length != last) {
       passages = ArrayUtil.copyOfSubArray(passages, 0, last);
     }
@@ -234,24 +239,30 @@ public class PassageSelector {
     ArrayList<OffsetRange> processedMarkers = new ArrayList<>(markers.size());
     for (OffsetRange marker : markers) {
       for (OffsetRange permitted : permittedPassageRanges) {
-        boolean needsNew = false;
+        boolean newSlice = false;
+
         int from = marker.from;
         if (from < permitted.from) {
           from = permitted.from;
-          needsNew = true;
+          newSlice = true;
         }
 
         int to = marker.to;
         if (to > permitted.to) {
           to = permitted.to;
-          needsNew = true;
+          newSlice = true;
         }
 
-        if (from >= to || (to - from) > maxPassageWindow) {
+        if (from >= to) {
           continue;
         }
 
-        processedMarkers.add(needsNew ? marker.slice(from, to) : marker);
+        if (to - from > maxPassageWindow) {
+          to = from + maxPassageWindow;
+          newSlice = true;
+        }
+
+        processedMarkers.add(newSlice ? marker.slice(from, to) : marker);
       }
     }
     markers = processedMarkers;

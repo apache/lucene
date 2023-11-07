@@ -22,6 +22,8 @@ import java.util.Set;
 import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizer.Foldings;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Tests low level the normalizer functionality */
 public class TestScandinavianNormalizer extends BaseTokenStreamTestCase {

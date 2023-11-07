@@ -61,7 +61,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   }
 
   /**
-   * Returns a IndexReader for the the index in the given Directory
+   * Returns a IndexReader for the index in the given Directory
    *
    * @param directory the index directory
    * @param leafSorter a comparator for sorting leaf readers. Providing leafSorter is useful for

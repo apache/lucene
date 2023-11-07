@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja.dict;
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.ja.TestJapaneseTokenizer;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestUserDictionary extends LuceneTestCase {
@@ -54,12 +54,15 @@ public class TestUserDictionary extends LuceneTestCase {
     int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
     assertEquals(3, result.length);
     int wordIdNihon = result[0][0]; // wordId of 日本 in 日本経済新聞
-    assertEquals("ニホン", dictionary.getReading(wordIdNihon, "日本".toCharArray(), 0, 2));
+    assertEquals(
+        "ニホン", dictionary.getMorphAttributes().getReading(wordIdNihon, "日本".toCharArray(), 0, 2));
 
     result = dictionary.lookup("朝青龍".toCharArray(), 0, 3);
     assertEquals(1, result.length);
     int wordIdAsashoryu = result[0][0]; // wordId for 朝青龍
-    assertEquals("アサショウリュウ", dictionary.getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
+    assertEquals(
+        "アサショウリュウ",
+        dictionary.getMorphAttributes().getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
   }
 
   @Test
@@ -68,7 +71,7 @@ public class TestUserDictionary extends LuceneTestCase {
     int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
     assertEquals(3, result.length);
     int wordIdKeizai = result[1][0]; // wordId of 経済 in 日本経済新聞
-    assertEquals("カスタム名詞", dictionary.getPartOfSpeech(wordIdKeizai));
+    assertEquals("カスタム名詞", dictionary.getMorphAttributes().getPartOfSpeech(wordIdKeizai));
   }
 
   @Test
@@ -109,7 +112,7 @@ public class TestUserDictionary extends LuceneTestCase {
     for (String input : inputs) {
       System.out.println(input);
       int[][] result = dictionary.lookup(input.toCharArray(), 0, input.length());
-      assertEquals("カスタム名刺", dictionary.getPartOfSpeech(result[0][0]));
+      assertEquals("カスタム名刺", dictionary.getMorphAttributes().getPartOfSpeech(result[0][0]));
     }
   }
 }

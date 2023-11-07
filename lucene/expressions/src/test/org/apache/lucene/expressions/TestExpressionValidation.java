@@ -18,7 +18,7 @@ package org.apache.lucene.expressions;
 
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests validation of bindings */
 public class TestExpressionValidation extends LuceneTestCase {

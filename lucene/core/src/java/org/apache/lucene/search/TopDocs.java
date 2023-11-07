@@ -159,7 +159,7 @@ public class TopDocs {
       reverseMul = new int[sortFields.length];
       for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
         final SortField sortField = sortFields[compIDX];
-        comparators[compIDX] = sortField.getComparator(1, compIDX);
+        comparators[compIDX] = sortField.getComparator(1, compIDX == 0);
         reverseMul[compIDX] = sortField.getReverse() ? -1 : 1;
       }
     }

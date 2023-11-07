@@ -22,8 +22,8 @@ import java.util.HashMap;
  * This class is the base of {@link QueryConfigHandler} and {@link FieldConfig}. It has operations
  * to set, unset and get configuration values.
  *
- * <p>Each configuration is is a key-&gt;value pair. The key should be an unique {@link
- * ConfigurationKey} instance and it also holds the value's type.
+ * <p>Each configuration is a key-&gt;value pair. The key should be a unique {@link
+ * ConfigurationKey} instance, and it also holds the value's type.
  *
  * @see ConfigurationKey
  */

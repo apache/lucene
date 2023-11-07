@@ -17,7 +17,7 @@
 package org.apache.lucene.demo.facet;
 
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestExpressionAggregationFacetsExample extends LuceneTestCase {

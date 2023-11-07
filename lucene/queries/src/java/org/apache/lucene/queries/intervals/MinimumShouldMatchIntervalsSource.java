@@ -59,7 +59,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     if (iterators.size() < minShouldMatch) {
       return null;
     }
-    return new MinimumShouldMatchIntervalIterator(iterators, minShouldMatch);
+    return new MinimumShouldMatchIntervalIterator(iterators, minShouldMatch, () -> {});
   }
 
   @Override
@@ -77,7 +77,10 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       return null;
     }
     MinimumShouldMatchIntervalIterator it =
-        new MinimumShouldMatchIntervalIterator(lookup.keySet(), minShouldMatch);
+        new MinimumShouldMatchIntervalIterator(
+            lookup.keySet(),
+            minShouldMatch,
+            MinimizingConjunctionIntervalsSource.cacheIterators(lookup.values()));
     if (it.advance(doc) != doc) {
       return null;
     }
@@ -159,11 +162,15 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     private final float matchCost;
     private final int minShouldMatch;
     private final Collection<IntervalIterator> currentIterators = new ArrayList<>();
+    private final MinimizingConjunctionIntervalsSource.MatchCallback onMatch;
 
     private int start, end, queueEnd, slop;
     private IntervalIterator lead;
 
-    MinimumShouldMatchIntervalIterator(Collection<IntervalIterator> subs, int minShouldMatch) {
+    MinimumShouldMatchIntervalIterator(
+        Collection<IntervalIterator> subs,
+        int minShouldMatch,
+        MinimizingConjunctionIntervalsSource.MatchCallback onMatch) {
       this.disiQueue = new DisiPriorityQueue(subs.size());
       float mc = 0;
       for (IntervalIterator it : subs) {
@@ -173,6 +180,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       this.approximation = new DisjunctionDISIApproximation(disiQueue);
       this.matchCost = mc;
       this.minShouldMatch = minShouldMatch;
+      this.onMatch = onMatch;
 
       this.proximityQueue =
           new PriorityQueue<IntervalIterator>(minShouldMatch) {
@@ -207,6 +215,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
 
     @Override
     public int nextInterval() throws IOException {
+      lead = null;
       // first, find a matching interval beyond the current start
       while (this.proximityQueue.size() == minShouldMatch
           && proximityQueue.top().start() == start) {
@@ -223,6 +232,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
         return start = end = IntervalIterator.NO_MORE_INTERVALS;
       // then, minimize it
       do {
+        onMatch.onMatch();
         start = proximityQueue.top().start();
         end = queueEnd;
         slop = width();
@@ -249,7 +259,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
 
     Collection<IntervalIterator> getCurrentIterators() {
       currentIterators.clear();
-      currentIterators.add(lead);
+      if (lead != null) {
+        currentIterators.add(lead);
+      }
       for (IntervalIterator it : this.proximityQueue) {
         if (it.end() <= end) {
           currentIterators.add(it);
@@ -352,10 +364,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int startOffset() throws IOException {
       int start = Integer.MAX_VALUE;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        start = Math.min(start, cms.startOffset(endPos));
+        start = Math.min(start, cms.startOffset());
       }
       return start;
     }
@@ -363,10 +374,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public int endOffset() throws IOException {
       int end = 0;
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        end = Math.max(end, cms.endOffset(endPos));
+        end = Math.max(end, cms.endOffset());
       }
       return end;
     }
@@ -384,10 +394,10 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
     @Override
     public MatchesIterator getSubMatches() throws IOException {
       List<MatchesIterator> mis = new ArrayList<>();
-      int endPos = endPosition();
       for (IntervalIterator it : iterator.getCurrentIterators()) {
         CachingMatchesIterator cms = lookup.get(it);
-        mis.add(cms.getSubMatches(endPos));
+        MatchesIterator mi = cms.getSubMatches();
+        mis.add(mi == null ? cms : mi);
       }
       return MatchesUtils.disjunction(mis);
     }

@@ -34,7 +34,9 @@ import org.apache.lucene.analysis.TokenStream;
  * &lt;/fieldType&gt;</pre>
  *
  * @lucene.spi {@value #NAME}
+ * @deprecated Use {@link SpanishPluralStemFilterFactory} instead
  */
+@Deprecated
 public class SpanishMinimalStemFilterFactory extends TokenFilterFactory {
 
   /** SPI name */

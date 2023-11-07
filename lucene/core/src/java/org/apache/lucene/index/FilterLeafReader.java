@@ -18,10 +18,11 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -242,7 +243,8 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   /** Base class for filtering {@link PostingsEnum} implementations. */
-  public abstract static class FilterPostingsEnum extends PostingsEnum {
+  public abstract static class FilterPostingsEnum extends PostingsEnum
+      implements Unwrappable<PostingsEnum> {
     /** The underlying PostingsEnum instance. */
     protected final PostingsEnum in;
 
@@ -302,6 +304,11 @@ public abstract class FilterLeafReader extends LeafReader {
     public long cost() {
       return in.cost();
     }
+
+    @Override
+    public PostingsEnum unwrap() {
+      return in;
+    }
   }
 
   /** The underlying LeafReader. */
@@ -340,20 +347,31 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
-    return in.getVectorValues(field);
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return in.getFloatVectorValues(field);
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException {
-    return in.searchNearestVectors(field, target, k, acceptDocs);
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    return in.getByteVectorValues(field);
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public TermVectors termVectors() throws IOException {
     ensureOpen();
-    return in.getTermVectors(docID);
+    return in.termVectors();
   }
 
   @Override
@@ -369,9 +387,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public StoredFields storedFields() throws IOException {
     ensureOpen();
-    in.document(docID, visitor);
+    return in.storedFields();
   }
 
   @Override

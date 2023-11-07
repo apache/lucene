@@ -23,14 +23,12 @@ import javax.swing.ImageIcon;
 /** Image utilities */
 public class ImageUtils {
 
-  private static final String IMAGE_BASE_DIR = "org/apache/lucene/luke/app/desktop/img/";
-
   public static ImageIcon createImageIcon(String name, int width, int height) {
     return createImageIcon(name, "", width, height);
   }
 
   public static ImageIcon createImageIcon(String name, String description, int width, int height) {
-    java.net.URL imgURL = ImageUtils.class.getClassLoader().getResource(IMAGE_BASE_DIR + name);
+    java.net.URL imgURL = ImageUtils.class.getResource(name);
     if (imgURL != null) {
       ImageIcon originalIcon = new ImageIcon(imgURL, description);
       ImageIcon icon =

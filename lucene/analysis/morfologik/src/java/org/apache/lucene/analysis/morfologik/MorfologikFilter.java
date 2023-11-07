@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * {@link TokenFilter} using Morfologik library to transform input tokens into lemma and
@@ -73,6 +74,7 @@ public class MorfologikFilter extends TokenFilter {
    * @param in input token stream.
    * @param dict Dictionary to use for stemming.
    */
+  @IgnoreRandomChains(reason = "No dictionary support yet")
   public MorfologikFilter(final TokenStream in, final Dictionary dict) {
     super(in);
     this.input = in;

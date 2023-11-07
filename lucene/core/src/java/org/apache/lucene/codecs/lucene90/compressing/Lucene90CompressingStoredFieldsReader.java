@@ -137,7 +137,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       final String metaStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
-      metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+      metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
           INDEX_CODEC_NAME + "Meta",
@@ -217,7 +217,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  /** @throws AlreadyClosedException if this FieldsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this FieldsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");
@@ -238,9 +240,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        byte[] data = new byte[length];
-        in.readBytes(data, 0, length);
-        visitor.binaryField(info, data);
+        visitor.binaryField(info, in, length);
         break;
       case STRING:
         visitor.stringField(info, in.readString());
@@ -454,8 +454,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       sliced = (token & 1) != 0;
 
-      offsets = ArrayUtil.grow(offsets, chunkDocs + 1);
-      numStoredFields = ArrayUtil.grow(numStoredFields, chunkDocs);
+      offsets = ArrayUtil.growNoCopy(offsets, chunkDocs + 1);
+      numStoredFields = ArrayUtil.growNoCopy(numStoredFields, chunkDocs);
 
       if (chunkDocs == 1) {
         numStoredFields[0] = fieldsStream.readVInt();
@@ -601,7 +601,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  SerializedDocument document(int docID) throws IOException {
+  SerializedDocument serializedDocument(int docID) throws IOException {
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);
@@ -623,9 +623,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   @Override
-  public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
 
-    final SerializedDocument doc = document(docID);
+    final SerializedDocument doc = serializedDocument(docID);
 
     for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
       final long infoAndBits = doc.in.readVLong();

@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 /** TestCase for the {@link CharacterUtils} class. */

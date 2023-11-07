@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.wikipedia;
 import java.io.StringReader;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the wikipedia tokenizer is working. */
 public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCase {

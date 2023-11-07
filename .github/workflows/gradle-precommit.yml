@@ -1,41 +1,84 @@
-name: Gradle Precommit
+name: Gradle Precommit Checks
 
 on: 
   pull_request:
     branches:
     - '*'
 
-jobs:
-  test:
-    name: gradle precommit w/ Java 11
+  push:
+    branches:
+    - main
+    - branch_9x
 
-    runs-on: ubuntu-latest
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  # This runs all validation checks without tests.
+  checks:
+    name: gradle check -x test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        # Operating systems to run on.
+        os: [ubuntu-latest]
+        # Test JVMs.
+        java: [ '17' ]
+
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
     steps:
-    # Setup
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v1
+    - name: Set up JDK
+      uses: actions/setup-java@v3
       with:
-        java-version: 11
+        distribution: 'temurin'
+        java-version: ${{ matrix.java }}
+        java-package: jdk
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
-
-    - name: Initialize gradle settings
-      run: ./gradlew localSettings
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Run gradle check (without tests)
-      run: ./gradlew check -x test -Ptask.times=true
+      run: ./gradlew check -x test -Ptask.times=true --max-workers 2
 
-    - uses: gradle/wrapper-validation-action@v1
+  # This runs all tests without any other validation checks.
+  tests:
+    name: gradle test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        # Operating systems to run on.
+        # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
+        # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
+        os: [ubuntu-latest]
+        # Test JVMs.
+        java: [ '17' ]
+
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ matrix.java }}
+        java-package: jdk
+
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
+
+    - name: Run gradle tests
+      run: ./gradlew test "-Ptask.times=true" --max-workers 2
+
+    - name: Echo settings
+      run: cat gradle.properties

@@ -17,22 +17,7 @@
 
 # Luke
 
-## Introduction
-
-Luke (atop Swing) is the GUI tool for introspecting your Lucene index. It allows:
-
-* Browsing your documents, indexed terms and posting lists
-* Searching in the index
-* Performing index maintenance: index health checking, index optimization (take a backup before running this!)
-* Testing your custom Lucene analyzer (Tokenizer/CharFilter/TokenFilter)
-
-![Swing Luke](luke-swing.png)
-
-## Launching Luke
-
-Using a binary release
-
-The [Lucene Downloads](https://lucene.apache.org/core/downloads.html) page contains stable releases of Lucene including Luke. Download the respective release, unpack and run a shell or batch scripts inside the folder 'luke' (or directly with java -jar if you prefer it that way).
+Integrated desktop GUI tool: a utility for browsing, searching and maintaining indexes and documents.
 
 ## Older releases
 

@@ -31,8 +31,6 @@ public class TopScoreDocCollectorManager
   private final ScoreDoc after;
   private final HitsThresholdChecker hitsThresholdChecker;
   private final MaxScoreAccumulator minScoreAcc;
-  private final boolean supportsConcurrency;
-  private boolean collectorCreated;
 
   /**
    * Creates a new {@link TopScoreDocCollectorManager} given the number of hits to collect and the
@@ -70,7 +68,6 @@ public class TopScoreDocCollectorManager
 
     this.numHits = numHits;
     this.after = after;
-    this.supportsConcurrency = supportsConcurrency;
     this.hitsThresholdChecker =
         supportsConcurrency
             ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
@@ -129,13 +126,6 @@ public class TopScoreDocCollectorManager
 
   @Override
   public TopScoreDocCollector newCollector() {
-    if (collectorCreated && supportsConcurrency == false) {
-      throw new IllegalStateException(
-          "The instantiated TopScoreDocCollectorManager does not support concurrency, but multiple collectors are being created");
-    } else {
-      collectorCreated = true;
-    }
-
     if (after == null) {
       return new TopScoreDocCollector.SimpleTopScoreDocCollector(
           numHits, hitsThresholdChecker, minScoreAcc);

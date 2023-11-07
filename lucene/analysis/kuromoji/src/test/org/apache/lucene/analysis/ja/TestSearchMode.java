@@ -25,9 +25,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestSearchMode extends BaseTokenStreamTestCase {
   private static final String SEGMENTATION_FILENAME = "search-segmentation-tests.txt";

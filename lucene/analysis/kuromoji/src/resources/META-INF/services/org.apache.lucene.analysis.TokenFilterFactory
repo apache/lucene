@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 org.apache.lucene.analysis.ja.JapaneseBaseFormFilterFactory
+org.apache.lucene.analysis.ja.JapaneseCompletionFilterFactory
 org.apache.lucene.analysis.ja.JapaneseKatakanaStemFilterFactory
 org.apache.lucene.analysis.ja.JapaneseNumberFilterFactory
 org.apache.lucene.analysis.ja.JapanesePartOfSpeechStopFilterFactory

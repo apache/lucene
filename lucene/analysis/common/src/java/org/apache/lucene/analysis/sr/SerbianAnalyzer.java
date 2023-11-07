@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.util.IOUtils;
 import org.tartarus.snowball.ext.SerbianStemmer;
 
 /**
@@ -58,7 +59,11 @@ public class SerbianAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            loadStopwordSet(false, SerbianAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
+            WordlistLoader.getWordSet(
+                IOUtils.requireResourceNonNull(
+                    SerbianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
+                STOPWORDS_COMMENT);
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

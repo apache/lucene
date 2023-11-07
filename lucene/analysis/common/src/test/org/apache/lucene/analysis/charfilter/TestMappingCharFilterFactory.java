@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.charfilter;
 
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 public class TestMappingCharFilterFactory extends BaseTokenStreamFactoryTestCase {
   public void testParseString() throws Exception {

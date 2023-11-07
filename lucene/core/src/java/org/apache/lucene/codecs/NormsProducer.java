@@ -33,7 +33,8 @@ public abstract class NormsProducer implements Closeable {
 
   /**
    * Returns {@link NumericDocValues} for this field. The returned instance need not be thread-safe:
-   * it will only be used by a single thread.
+   * it will only be used by a single thread. The behavior is undefined if the given field doesn't
+   * have norms enabled on its {@link FieldInfo}. The return value is never {@code null}.
    */
   public abstract NumericDocValues getNorms(FieldInfo field) throws IOException;
 

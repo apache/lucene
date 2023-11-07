@@ -22,8 +22,8 @@ import static org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer.DEFA
 import java.io.StringReader;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestReversePathHierarchyTokenizer extends BaseTokenStreamTestCase {
 

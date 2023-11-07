@@ -33,7 +33,7 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
   private final IntervalsSource big;
 
   private ContainedByIntervalsSource(IntervalsSource small, IntervalsSource big) {
-    super(Arrays.asList(small, big), false);
+    super(Arrays.asList(small, big));
     this.small = small;
     this.big = big;
   }
@@ -64,6 +64,14 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
         return IntervalIterator.NO_MORE_INTERVALS;
       }
     };
+  }
+
+  @Override
+  protected IntervalMatchesIterator createMatchesIterator(
+      IntervalIterator it, List<IntervalMatchesIterator> subs) {
+    assert subs.size() == 2;
+    // the only sub source we care is the "small" source
+    return new ConjunctionMatchesIterator(it, List.of(subs.get(0)));
   }
 
   @Override

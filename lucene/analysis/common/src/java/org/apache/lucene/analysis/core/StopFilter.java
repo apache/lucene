@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.core;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Removes stop words from a token stream.
@@ -28,6 +29,7 @@ import org.apache.lucene.analysis.TokenStream;
  * @see org.apache.lucene.analysis.StopFilter
  * @see StopFilterFactory
  */
+@IgnoreRandomChains(reason = "clones of core's filters")
 public final class StopFilter extends org.apache.lucene.analysis.StopFilter {
 
   /**

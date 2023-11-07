@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.PriorityQueue;
 
-class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
+class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
@@ -68,12 +68,12 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private UnorderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
-    return new UnorderedIntervalIterator(iterators);
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+    return new UnorderedIntervalIterator(iterators, onMatch);
   }
 
   @Override
@@ -113,10 +113,11 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
 
     private final PriorityQueue<IntervalIterator> queue;
     private final IntervalIterator[] subIterators;
+    private final MatchCallback onMatch;
 
     int start = -1, end = -1, slop, queueEnd;
 
-    UnorderedIntervalIterator(List<IntervalIterator> subIterators) {
+    UnorderedIntervalIterator(List<IntervalIterator> subIterators, MatchCallback onMatch) {
       super(subIterators);
       this.queue =
           new PriorityQueue<IntervalIterator>(subIterators.size()) {
@@ -126,6 +127,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
             }
           };
       this.subIterators = new IntervalIterator[subIterators.size()];
+      this.onMatch = onMatch;
 
       for (int i = 0; i < subIterators.size(); i++) {
         this.subIterators[i] = subIterators.get(i);
@@ -169,6 +171,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
         for (IntervalIterator it : subIterators) {
           slop -= it.width();
         }
+        onMatch.onMatch();
         if (queue.top().end() == end) {
           return start;
         }

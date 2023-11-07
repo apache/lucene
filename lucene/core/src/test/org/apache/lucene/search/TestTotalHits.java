@@ -18,7 +18,7 @@
 package org.apache.lucene.search;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTotalHits extends LuceneTestCase {
 

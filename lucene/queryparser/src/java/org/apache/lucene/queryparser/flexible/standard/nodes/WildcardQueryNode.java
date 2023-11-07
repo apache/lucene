@@ -21,7 +21,7 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 
 /**
  * A {@link WildcardQueryNode} represents wildcard query This does not apply to phrases. Examples:
- * a*b*c Fl?w? m?ke*g
+ * {@code a*b*c Fl?w? m?ke*g}.
  */
 public class WildcardQueryNode extends FieldQueryNode {
 

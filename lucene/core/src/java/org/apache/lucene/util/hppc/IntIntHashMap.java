@@ -563,7 +563,9 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     }
   }
 
-  /** @return Returns a container with all values stored in this map. */
+  /**
+   * @return Returns a container with all values stored in this map.
+   */
   public IntContainer values() {
     return new ValuesContainer();
   }

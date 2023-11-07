@@ -18,19 +18,39 @@ package org.apache.lucene.util;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * Methods for manipulating (sorting) collections. Sort methods work directly on the supplied lists
- * and don't copy to/from arrays before/after. For medium size collections as used in the Lucene
- * indexer that is much more efficient.
+ * Methods for manipulating (sorting) and creating collections. Sort methods work directly on the
+ * supplied lists and don't copy to/from arrays before/after. For medium size collections as used in
+ * the Lucene indexer that is much more efficient.
  *
  * @lucene.internal
  */
 public final class CollectionUtil {
 
   private CollectionUtil() {} // no instance
+
+  /**
+   * Returns a new {@link HashMap} sized to contain {@code size} items without resizing the internal
+   * array.
+   */
+  public static <K, V> HashMap<K, V> newHashMap(int size) {
+    // This should be replaced with HashMap.newHashMap when lucene moves to jdk19 minimum version
+    return new HashMap<>((int) (size / 0.75f) + 1);
+  }
+
+  /**
+   * Returns a new {@link HashSet} sized to contain {@code size} items without resizing the internal
+   * array.
+   */
+  public static <E> HashSet<E> newHashSet(int size) {
+    // This should be replaced with HashSet.newHashSet when lucene moves to jdk19 minimum version
+    return new HashSet<>((int) (size / 0.75f) + 1);
+  }
 
   private static final class ListIntroSorter<T> extends IntroSorter {
 
@@ -127,6 +147,7 @@ public final class CollectionUtil {
    * implement {@link RandomAccess}. This method uses the intro sort algorithm, but falls back to
    * insertion sort for small lists.
    *
+   * @see IntroSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T> void introSort(List<T> list, Comparator<? super T> comp) {
@@ -140,6 +161,7 @@ public final class CollectionUtil {
    * RandomAccess}. This method uses the intro sort algorithm, but falls back to insertion sort for
    * small lists.
    *
+   * @see IntroSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T extends Comparable<? super T>> void introSort(List<T> list) {
@@ -155,6 +177,7 @@ public final class CollectionUtil {
    * implement {@link RandomAccess}. This method uses the Tim sort algorithm, but falls back to
    * binary sort for small lists.
    *
+   * @see TimSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T> void timSort(List<T> list, Comparator<? super T> comp) {
@@ -168,6 +191,7 @@ public final class CollectionUtil {
    * RandomAccess}. This method uses the Tim sort algorithm, but falls back to binary sort for small
    * lists.
    *
+   * @see TimSorter
    * @throws IllegalArgumentException if list is e.g. a linked list without random access.
    */
   public static <T extends Comparable<? super T>> void timSort(List<T> list) {

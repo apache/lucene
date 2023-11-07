@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.analysis.ja.dict.BinaryDictionary.ResourceScheme;
+import static org.apache.lucene.analysis.ja.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -24,12 +27,9 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.ja.util.DictionaryBuilder;
-import org.apache.lucene.analysis.ja.util.DictionaryBuilder.DictionaryFormat;
-import org.apache.lucene.analysis.ja.util.ToStringUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
@@ -74,10 +74,14 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
             new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
       printer.println("1 1");
     }
-    DictionaryBuilder.build(DictionaryFormat.IPADIC, dir, dir, "utf-8", true);
+    DictionaryBuilder.build(DictionaryBuilder.DictionaryFormat.IPADIC, dir, dir, "utf-8", true);
     String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
     // We must also load the other files (in BinaryDictionary) from the correct path
-    return new TokenInfoDictionary(ResourceScheme.FILE, dir.resolve(dictionaryPath).toString());
+    return new TokenInfoDictionary(
+        dir.resolve(dictionaryPath + TARGETMAP_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + POSDICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + DICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + FST_FILENAME_SUFFIX));
   }
 
   public void testPutException() {
@@ -130,17 +134,17 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
         assertTrue(wordId > lastWordId);
         lastWordId = wordId;
 
-        String baseForm = tid.getBaseForm(wordId, chars, 0, chars.length);
+        String baseForm = tid.getMorphAttributes().getBaseForm(wordId, chars, 0, chars.length);
         assertTrue(baseForm == null || UnicodeUtil.validUTF16String(baseForm));
 
-        String inflectionForm = tid.getInflectionForm(wordId);
+        String inflectionForm = tid.getMorphAttributes().getInflectionForm(wordId);
         assertTrue(inflectionForm == null || UnicodeUtil.validUTF16String(inflectionForm));
         if (inflectionForm != null) {
           // check that it's actually an ipadic inflection form
           assertNotNull(ToStringUtil.getInflectedFormTranslation(inflectionForm));
         }
 
-        String inflectionType = tid.getInflectionType(wordId);
+        String inflectionType = tid.getMorphAttributes().getInflectionType(wordId);
         assertTrue(inflectionType == null || UnicodeUtil.validUTF16String(inflectionType));
         if (inflectionType != null) {
           // check that it's actually an ipadic inflection type
@@ -154,17 +158,18 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
 
         tid.getWordCost(wordId);
 
-        String pos = tid.getPartOfSpeech(wordId);
+        String pos = tid.getMorphAttributes().getPartOfSpeech(wordId);
         assertNotNull(pos);
         assertTrue(UnicodeUtil.validUTF16String(pos));
         // check that it's actually an ipadic pos tag
         assertNotNull(ToStringUtil.getPOSTranslation(pos));
 
-        String pronunciation = tid.getPronunciation(wordId, chars, 0, chars.length);
+        String pronunciation =
+            tid.getMorphAttributes().getPronunciation(wordId, chars, 0, chars.length);
         assertNotNull(pronunciation);
         assertTrue(UnicodeUtil.validUTF16String(pronunciation));
 
-        String reading = tid.getReading(wordId, chars, 0, chars.length);
+        String reading = tid.getMorphAttributes().getReading(wordId, chars, 0, chars.length);
         assertNotNull(reading);
         assertTrue(UnicodeUtil.validUTF16String(reading));
       }

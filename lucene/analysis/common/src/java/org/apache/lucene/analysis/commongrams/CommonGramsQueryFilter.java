@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Wrap a CommonGramsFilter optimizing phrase queries by only returning single words when they are
@@ -42,6 +43,7 @@ import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
  * See:http://hudson.zones.apache.org/hudson/job/Lucene-trunk/javadoc//all/org/apache/lucene/analysis/TokenStream.html and
  * http://svn.apache.org/viewvc/lucene/dev/trunk/lucene/src/java/org/apache/lucene/analysis/package.html?revision=718798
  */
+@IgnoreRandomChains(reason = "TODO: doesn't handle graph inputs")
 public final class CommonGramsQueryFilter extends TokenFilter {
 
   private final TypeAttribute typeAttribute = addAttribute(TypeAttribute.class);

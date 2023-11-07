@@ -17,9 +17,19 @@
 
 package org.apache.lucene.queries.intervals;
 
-import static org.apache.lucene.queries.intervals.Intervals.*;
+import static org.apache.lucene.queries.intervals.Intervals.containedBy;
+import static org.apache.lucene.queries.intervals.Intervals.containing;
+import static org.apache.lucene.queries.intervals.Intervals.fixField;
+import static org.apache.lucene.queries.intervals.Intervals.maxgaps;
+import static org.apache.lucene.queries.intervals.Intervals.maxwidth;
+import static org.apache.lucene.queries.intervals.Intervals.notContainedBy;
+import static org.apache.lucene.queries.intervals.Intervals.notContaining;
+import static org.apache.lucene.queries.intervals.Intervals.or;
+import static org.apache.lucene.queries.intervals.Intervals.ordered;
+import static org.apache.lucene.queries.intervals.Intervals.phrase;
+import static org.apache.lucene.queries.intervals.Intervals.term;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDisjunctionRewrites extends LuceneTestCase {
 

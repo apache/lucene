@@ -23,14 +23,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -39,9 +38,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MergeScheduler;
-import org.apache.lucene.index.PerThreadPKLookup;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.sandbox.codecs.idversion.StringAndPayloadField.SingleTokenWithPayloadTokenStream;
@@ -51,9 +48,14 @@ import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.PerThreadPKLookup;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Basic tests for IDVersionPostingsFormat */
 // Cannot extend BasePostingsFormatTestCase because this PF is not
@@ -732,8 +734,9 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
       }
     }
 
-    // Run for .5 sec in normal tests, else 60 seconds for nightly:
-    final long stopTime = System.currentTimeMillis() + (TEST_NIGHTLY ? 60000 : 500);
+    // Run for 20k iterations in normal tests, else 2m iterations for nightly:
+    final AtomicInteger iterations = new AtomicInteger(0);
+    final int stopIterations = TEST_NIGHTLY ? 2_000_000 : 20_000;
 
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
@@ -751,8 +754,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
               startingGun.await();
               PerThreadVersionPKLookup lookup = null;
               IndexReader lookupReader = null;
-              while (System.currentTimeMillis() < stopTime) {
-
+              while (iterations.incrementAndGet() < stopIterations) {
                 // Intentionally pull version first, and then sleep/yield, to provoke version
                 // conflicts:
                 long newVersion;
@@ -824,7 +826,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
                     }
 
                     boolean doIndex;
-                    if (currentVersion == missingValue) {
+                    if (Objects.equals(currentVersion, missingValue)) {
                       if (VERBOSE) {
                         System.out.println(
                             Thread.currentThread().getName() + ":   id not in RT cache");

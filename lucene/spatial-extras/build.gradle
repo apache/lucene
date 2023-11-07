@@ -19,18 +19,28 @@ apply plugin: 'java-library'
 
 description = 'Geospatial search'
 
-dependencies {
-  api project(':lucene:core')
-  api project(':lucene:spatial3d')
-
-  api 'org.locationtech.spatial4j:spatial4j'
-  api 'io.sgr:s2-geometry-library-java'
-
-  testImplementation project(':lucene:test-framework')
-  testImplementation testFixtures(project(':lucene:spatial3d'))
-
-  testImplementation 'org.locationtech.jts:jts-core'
-  testImplementation 'org.locationtech.spatial4j:spatial4j::tests'
+configurations {
+  spatial4jTestPatch
 }
 
+dependencies {
+  moduleApi project(':lucene:core')
+  moduleApi project(':lucene:spatial3d')
 
+  moduleApi 'org.locationtech.spatial4j:spatial4j'
+  moduleApi 'io.sgr:s2-geometry-library-java'
+
+  moduleTestImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:spatial-test-fixtures')
+  moduleTestImplementation 'org.locationtech.jts:jts-core'
+
+  // We add patched modules to this configuration because otherwise IDEs would not see the
+  // dependency at all, even in classpath mode (they don't see --patch-module commands we
+  // add to the compiler and test tasks).
+  moduleTestPatchOnly 'org.locationtech.spatial4j:spatial4j::tests'
+  spatial4jTestPatch 'org.locationtech.spatial4j:spatial4j::tests'
+}
+
+sourceSets.test.extensions.configure("modularPaths", {
+  it.patchModule("spatial4j", project.providers.provider({ configurations.spatial4jTestPatch.singleFile }))
+})

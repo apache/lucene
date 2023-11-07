@@ -61,7 +61,9 @@ public class QueryNodeParseException extends QueryNodeException {
     return this.query;
   }
 
-  /** @param errorToken the errorToken in the query */
+  /**
+   * @param errorToken the errorToken in the query
+   */
   protected void setErrorToken(String errorToken) {
     this.errorToken = errorToken;
   }
@@ -96,12 +98,16 @@ public class QueryNodeParseException extends QueryNodeException {
     return this.beginColumn;
   }
 
-  /** @param beginLine the beginLine to set */
+  /**
+   * @param beginLine the beginLine to set
+   */
   protected void setBeginLine(int beginLine) {
     this.beginLine = beginLine;
   }
 
-  /** @param beginColumn the beginColumn to set */
+  /**
+   * @param beginColumn the beginColumn to set
+   */
   protected void setBeginColumn(int beginColumn) {
     this.beginColumn = beginColumn;
   }

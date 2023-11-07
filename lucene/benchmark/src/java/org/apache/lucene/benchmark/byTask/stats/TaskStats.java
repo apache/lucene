@@ -103,7 +103,9 @@ public class TaskStats implements Cloneable {
     return countsByTimeStepMSec;
   }
 
-  /** @return the taskRunNum. */
+  /**
+   * @return the taskRunNum.
+   */
   public int getTaskRunNum() {
     return taskRunNum;
   }
@@ -121,37 +123,51 @@ public class TaskStats implements Cloneable {
     return res.toString();
   }
 
-  /** @return Returns the count. */
+  /**
+   * @return Returns the count.
+   */
   public int getCount() {
     return count;
   }
 
-  /** @return elapsed time. */
+  /**
+   * @return elapsed time.
+   */
   public long getElapsed() {
     return elapsed;
   }
 
-  /** @return Returns the maxTotMem. */
+  /**
+   * @return Returns the maxTotMem.
+   */
   public long getMaxTotMem() {
     return maxTotMem;
   }
 
-  /** @return Returns the maxUsedMem. */
+  /**
+   * @return Returns the maxUsedMem.
+   */
   public long getMaxUsedMem() {
     return maxUsedMem;
   }
 
-  /** @return Returns the numParallelTasks. */
+  /**
+   * @return Returns the numParallelTasks.
+   */
   public int getNumParallelTasks() {
     return numParallelTasks;
   }
 
-  /** @return Returns the task. */
+  /**
+   * @return Returns the task.
+   */
   public PerfTask getTask() {
     return task;
   }
 
-  /** @return Returns the numRuns. */
+  /**
+   * @return Returns the numRuns.
+   */
   public int getNumRuns() {
     return numRuns;
   }
@@ -196,7 +212,9 @@ public class TaskStats implements Cloneable {
     return c;
   }
 
-  /** @return the round number. */
+  /**
+   * @return the round number.
+   */
   public int getRound() {
     return round;
   }

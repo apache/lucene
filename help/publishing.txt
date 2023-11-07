@@ -1,0 +1,134 @@
+Distribution and artifact publishing
+====================================
+
+
+See all distribution-related tasks by running:
+gradlew tasks --group distribution
+
+
+Maven
+-----
+
+To publish Lucene Maven artifacts to a local ~/.m2 repository, run:
+
+gradlew mavenToLocal
+
+To publish Lucene Maven artifacts to Apache repositories
+(CI or release manager's job, typically!), run:
+
+gradlew mavenToApacheSnapshots -PasfNexusUsername= -PasfNexusPassword=
+gradlew mavenToApacheReleases  -PasfNexusUsername= -PasfNexusPassword= [optional signing options]
+
+See artifact signing section below if you plan to use mavenToApacheReleases.
+
+It is a good idea to avoid passing passwords on command line. CI jobs have
+these properties saved in ~/.gradle/gradle.properties - this way they
+are read automatically.
+
+Apache Releases repository will not accept snapshots.
+
+
+Release (distribution) artifacts
+--------------------------------
+
+To collect all release artifacts, and optionally sign them, run:
+
+gradlew assembleRelease [optional signing options]
+
+All distribution artifacts will be placed under:
+
+lucene/distribution/build/release
+
+Artifact signing is optional (but required if you're really making a release).
+
+
+Artifact signing
+----------------
+
+Certain tasks may optionally sign artifacts or require artifacts to be signed:
+
+ assembleRelease
+ mavenToApacheReleases
+
+Signing can be enabled by adding the "-Psign" option, for example:
+
+gradlew assembleRelease mavenToApacheReleases -Psign
+
+By default gradle uses a Java-based implementation of PGP for signing, which requieres
+several "signing.*" properties via either ~/.gradle/gradle.properties or command-line options:
+
+https://docs.gradle.org/current/userguide/signing_plugin.html#sec:signatory_credentials
+
+An example full command-line that assembles signed artifacts could look like this:
+
+gradlew assembleRelease mavenToApacheReleases -Psign -Psigning.keyId=... -Psigning.password=... -Psigning.secretKeyRingFile=...
+
+The keyId is the last 8 digits of your key (gpg -k will print your keys). Gradle documentation has more options
+of secure passing of private key information and passwords.
+
+
+Artifact signing using an external GPG with GPG Agent
+-----------------------------------------------------
+
+You can use an external GPG command to deal with signing artifacts, with out needing to give gradle your passphrase,
+by adding a "-PuseGpg" option, but this changes the properties you must specify:
+
+For gpg2:
+gradlew [tasks] -Psign -PuseGpg -Psigning.gnupg.keyName=...
+
+For gpg:
+gradlew [tasks] -Psign -PuseGpg -Psigning.gnupg.keyName=... -Psigning.gnupg.useLegacyGpg=true
+
+The keyName is the last 8 digits of your key (gpg -k will print your keys).
+
+There are additional (optional) "signing.gnupg.*" properties which exist that may be useful/necessary in your system:
+
+signing.gnupg.useLegacyGpg=true                    # Changes the default executable from `gpg2` to `gpg` and explicitly sets `--use-agent`
+signing.gnupg.executable=gpg                       # Allows explicit control over what command executable used (ex: `gpg2`, `gpg`, `gpg.exe`, etc...)
+signing.gnupg.homeDir=/tmp/gnupg-home              # overrides GnuPG's default home directory (ex: `~/.gnupg/`)
+signing.gnupg.optionsFile=/tmp/gnupg-home/my.conf  # overrides GnuPG's default configuration file
+signing.gnupg.passphrase=...                       # Provide your passphrase to gradle to hand off to gpg.  *NOT RECOMMENDED*, see below.
+
+If in doubt, consult gradle's signing plugin documentation:
+https://docs.gradle.org/current/userguide/signing_plugin.html#sec:using_gpg_agent
+
+"signing.gnupg.passphrase" is not recomended because there is no advantage to using an external GPG process if you use it.  If you
+are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg'.   Just use the
+"signing.*" options described previuosly to let gradle deal with your key directly.
+
+Because of how Gradle's signing plugin invokes GPG, using an external GPG process *only* works if your GPG configuration uses a 
+GPG agent (required by gpg2) and if the "pinentry" for your GPG agent does not require access to the tty to prompt you for a password.
+
+If you the following command fails with your GPG configuration, you can not use an external GPG process with gradle:
+
+echo foo | gpg --batch --no-tty --armor --detach-sign --use-agent --local-user YOUR_KEY_NAME
+
+
+Notes About GPG Error Messages
+------------------------------
+
+### `gpg: signing failed: Inappropriate ioctl for device` or `Invalid IPC response`
+
+This typically happens if your `gpg-agent` is configured (either globally for your operating system, or personally in your
+`~/.gnupg/gpg-agent.conf`) to use a `pinentry` command which depends on using the same `tty` as the `gpg` command (ex: `pinentry-curses`,
+or `pinentry-tty`, etc...).
+
+`tty` based `pinentry` implementations do not work when Gradle's signing plugin is attempting to invoke `gpg` -- among other problems:
+Gradle is multi-threaded and we sign multiple artifacts by default.  Even if you use "--max-workers 1" to force single-threaded execution,
+the signing plugin invokes gpg with `--batch --no-tty`, making it impossible for gpg (or a tty based pinentry) to prompt you for your passphrase
+in the same terminal where you run Gradle.
+
+Developers are encouraged to configure a *non* `tty` based `pinentry` (ex: `pinentry-gnome`, `pinentry-x11`, `pinentry-qt`, `pinentry-mac`,
+`pinentry-wsl-ps1`, etc...) either globally in your operating system, or personally in your `~/.gnupg/gpg-agent.conf`, or in a new
+`gpg-agent.conf` file a new GnuPG configuration directory (containing a copy of your private keys) that you direct gradle to via
+`signing.gnupg.homeDir`
+
+If this is not possible, then you should avoid using an external GPG process, and use the default (pure java) Artifact signing support
+
+
+### `gpg: signing failed: No such file or directory`
+
+This may mean that there is a problem preventing `gpg` from communicating correctly with the `gpg-agent` (and/or invoking your `pinentry`
+program) that is independent of gradle.  Try running `pkill gpg-agent` and then retrying your `./gradlew` command
+
+

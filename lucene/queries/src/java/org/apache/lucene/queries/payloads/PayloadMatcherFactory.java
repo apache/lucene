@@ -21,6 +21,7 @@ import java.util.EnumMap;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery.MatchOperation;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery.PayloadType;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -153,10 +154,7 @@ public class PayloadMatcherFactory {
     }
 
     private int decodeInt(byte[] bytes, int offset) {
-      return ((bytes[offset] & 0xFF) << 24)
-          | ((bytes[offset + 1] & 0xFF) << 16)
-          | ((bytes[offset + 2] & 0xFF) << 8)
-          | (bytes[offset + 3] & 0xFF);
+      return (int) BitUtil.VH_BE_INT.get(bytes, offset);
     }
 
     protected abstract boolean intCompare(int val, int threshold);
@@ -203,11 +201,7 @@ public class PayloadMatcherFactory {
     }
 
     private float decodeFloat(byte[] bytes, int offset) {
-      return Float.intBitsToFloat(
-          ((bytes[offset] & 0xFF) << 24)
-              | ((bytes[offset + 1] & 0xFF) << 16)
-              | ((bytes[offset + 2] & 0xFF) << 8)
-              | (bytes[offset + 3] & 0xFF));
+      return (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
     }
 
     protected abstract boolean floatCompare(float val, float threshold);

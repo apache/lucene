@@ -33,13 +33,15 @@ import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestSynonymQuery extends LuceneTestCase {
 
@@ -71,6 +73,18 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("field", "c"), 0.2f)
             .addTerm(new Term("field", "d"))
             .build());
+
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.4f).build(),
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "b"), 0.4f).build());
+
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.2f).build(),
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.4f).build());
+
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field1").addTerm(new Term("field1", "b"), 0.4f).build(),
+        new SynonymQuery.Builder("field2").addTerm(new Term("field2", "b"), 0.4f).build());
   }
 
   public void testBogusParams() {
@@ -125,6 +139,12 @@ public class TestSynonymQuery extends LuceneTestCase {
         () -> {
           new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a"), -0f);
         });
+
+    expectThrows(
+        NullPointerException.class,
+        () -> new SynonymQuery.Builder(null).addTerm(new Term("field1", "a"), -0f));
+
+    expectThrows(NullPointerException.class, () -> new SynonymQuery.Builder(null).build());
   }
 
   public void testToString() {
@@ -441,14 +461,14 @@ public class TestSynonymQuery extends LuceneTestCase {
               .addTerm(new Term("foo", Integer.toString(term2)), boost2)
               .build();
 
-      TopScoreDocCollectorManager collectorManager1 =
+      TopScoreDocCollectorManager completeManager =
           new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
-      TopScoreDocCollectorManager collectorManager2 =
+      TopScoreDocCollectorManager topScoresManager =
           new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
-      TopDocs topDocs1 = searcher.search(query, collectorManager1);
-      TopDocs topDocs2 = searcher.search(query, collectorManager2);
-      CheckHits.checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);
+      TopDocs complete = searcher.search(query, completeManager);
+      TopDocs topScores = searcher.search(query, topScoresManager);
+      CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
 
       int filterTerm = random().nextInt(15);
       Query filteredQuery =
@@ -457,12 +477,12 @@ public class TestSynonymQuery extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      collectorManager1 = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
-      collectorManager2 = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
+      completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      topScoresManager = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
-      topDocs1 = searcher.search(filteredQuery, collectorManager1);
-      topDocs2 = searcher.search(filteredQuery, collectorManager2);
-      CheckHits.checkEqual(query, topDocs1.scoreDocs, topDocs2.scoreDocs);
+      complete = searcher.search(filteredQuery, completeManager);
+      topScores = searcher.search(filteredQuery, topScoresManager);
+      CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
     }
     reader.close();
     dir.close();

@@ -28,28 +28,37 @@ import java.io.OutputStream;
 public class GeoDegenerateVerticalLine extends GeoBaseBBox {
   /** Top latitude of the vertical line */
   protected final double topLat;
+
   /** Bottom latitude of the vertical line */
   protected final double bottomLat;
+
   /** Longitude of the vertical line */
   protected final double longitude;
 
   /** Point at the upper end of the vertical line */
   protected final GeoPoint UHC;
+
   /** Point at the lower end of the vertical line */
   protected final GeoPoint LHC;
 
   /** Top end cutoff plane */
   protected final SidedPlane topPlane;
+
   /** Bottom end cutoff plane */
   protected final SidedPlane bottomPlane;
+
   /** Back-side cutoff plane */
   protected final SidedPlane boundingPlane;
+
   /** The vertical line plane */
   protected final Plane plane;
+
   /** Notable points for the line (end points) */
   protected final GeoPoint[] planePoints;
+
   /** A computed center point for the line */
   protected final GeoPoint centerPoint;
+
   /** A point that's on the line */
   protected final GeoPoint[] edgePoints;
 
@@ -107,8 +116,11 @@ public class GeoDegenerateVerticalLine extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinLongitude, cosMiddleLat, cosLongitude);
 
-    this.topPlane = new SidedPlane(centerPoint, planetModel, sinTopLat);
-    this.bottomPlane = new SidedPlane(centerPoint, planetModel, sinBottomLat);
+    this.topPlane = new SidedPlane(LHC, planetModel, sinTopLat);
+    this.bottomPlane = new SidedPlane(UHC, planetModel, sinBottomLat);
+
+    assert (topPlane.isWithin(centerPoint));
+    assert (bottomPlane.isWithin(centerPoint));
 
     this.boundingPlane = new SidedPlane(centerPoint, -sinLongitude, cosLongitude);
 

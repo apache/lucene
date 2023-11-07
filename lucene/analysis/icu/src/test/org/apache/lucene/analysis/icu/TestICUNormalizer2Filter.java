@@ -19,10 +19,10 @@ package org.apache.lucene.analysis.icu;
 import com.ibm.icu.text.Normalizer2;
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Tests the ICUNormalizer2Filter */
 public class TestICUNormalizer2Filter extends BaseTokenStreamTestCase {
