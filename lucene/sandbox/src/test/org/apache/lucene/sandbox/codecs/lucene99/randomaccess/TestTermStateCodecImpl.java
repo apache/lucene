@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermStat
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPerBytePacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpackerImpl;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.FixedSizeByteArrayBitPacker;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -69,6 +70,12 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     assertEquals(expectedDocStartFPBitWidth, metadata[1]);
     ByteArrayDataInput byteArrayDataInput = new ByteArrayDataInput(metadata, 2, 8);
     assertEquals(docStartFPBase, byteArrayDataInput.readLong());
+
+    // Assert with real bit-packer we get the same bytes
+    FixedSizeByteArrayBitPacker fixedSizeByteArrayBitPacker =
+        new FixedSizeByteArrayBitPacker(bitPerBytePacker.getCompactBytes().length);
+    codec.encodeBlock(termStatesArray, fixedSizeByteArrayBitPacker);
+    assertArrayEquals(bitPerBytePacker.getCompactBytes(), fixedSizeByteArrayBitPacker.getBytes());
 
     // Assert that each term state is the same after the encode-decode roundtrip.
     BytesRef metadataBytes = new BytesRef(metadata);

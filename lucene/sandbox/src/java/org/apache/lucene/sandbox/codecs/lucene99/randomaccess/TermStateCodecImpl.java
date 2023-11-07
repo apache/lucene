@@ -53,6 +53,7 @@ final class TermStateCodecImpl implements TermStateCodec {
     for (var termState : inputs) {
       encodeOne(bitPacker, termState, metadataPerComponent);
     }
+    bitPacker.flush();
 
     return metadataBytes;
   }
