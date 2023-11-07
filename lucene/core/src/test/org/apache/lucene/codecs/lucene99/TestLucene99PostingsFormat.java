@@ -14,7 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
+
+import static org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.readImpacts;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -22,9 +24,9 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
-import org.apache.lucene.codecs.lucene90.Lucene90ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
+import org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -40,8 +42,8 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene90PostingsFormat());
+public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
+  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99PostingsFormat());
 
   @Override
   protected Codec getCodec() {
@@ -77,7 +79,7 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new Lucene90PostingsFormat(minItemsInBlock, maxItemsInBlock);
+          new Lucene99PostingsFormat(minItemsInBlock, maxItemsInBlock);
         });
   }
 
@@ -131,13 +133,12 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
     }
     try (Directory dir = newDirectory()) {
       try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
-        Lucene90SkipWriter.writeImpacts(acc, out);
+        Lucene99SkipWriter.writeImpacts(acc, out);
       }
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
-        List<Impact> impacts2 =
-            Lucene90ScoreSkipReader.readImpacts(new ByteArrayDataInput(b), new MutableImpactList());
+        List<Impact> impacts2 = readImpacts(new ByteArrayDataInput(b), new MutableImpactList());
         assertEquals(impacts, impacts2);
       }
     }

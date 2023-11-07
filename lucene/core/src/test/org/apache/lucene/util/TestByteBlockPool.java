@@ -79,6 +79,7 @@ public class TestByteBlockPool extends LuceneTestCase {
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
 
+    long totalBytes = 0;
     List<byte[]> items = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       int size;
@@ -91,6 +92,10 @@ public class TestByteBlockPool extends LuceneTestCase {
       random().nextBytes(bytes);
       items.add(bytes);
       pool.append(new BytesRef(bytes));
+      totalBytes += size;
+
+      // make sure we report the correct position
+      assertEquals(totalBytes, pool.getPosition());
     }
 
     long position = 0;
