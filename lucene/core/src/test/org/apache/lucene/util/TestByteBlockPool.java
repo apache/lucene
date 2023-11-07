@@ -27,9 +27,10 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestByteBlockPool extends LuceneTestCase {
 
   public void testAppendFromOtherPool() {
+    Random random = random();
+
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     final int numBytes = atLeast(2 << 16);
-    Random random = random();
     byte[] bytes = RandomBytes.randomBytesOfLength(random, numBytes);
     pool.append(bytes);
 
@@ -39,7 +40,10 @@ public class TestByteBlockPool extends LuceneTestCase {
 
     // now slice and append to another pool
     int offset = TestUtil.nextInt(random, 1, 2 << 15);
-    int length = TestUtil.nextInt(random, 1, bytes.length - offset);
+    int length = bytes.length - offset;
+    if (random.nextBoolean()) {
+      length = TestUtil.nextInt(random, 1, length);
+    }
     anotherPool.append(pool, offset, length);
 
     assertEquals(existingBytes.length + length, anotherPool.getPosition());

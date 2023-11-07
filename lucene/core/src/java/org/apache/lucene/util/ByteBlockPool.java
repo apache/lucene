@@ -238,21 +238,21 @@ public final class ByteBlockPool implements Accountable {
    * Append the bytes from a source {@link ByteBlockPool} at a given offset and length
    *
    * @param srcPool the source pool to copy from
-   * @param offset the source pool offset
+   * @param srcOffset the source pool offset
    * @param length the number of bytes to copy
    */
-  public void append(ByteBlockPool srcPool, long offset, int length) {
+  public void append(ByteBlockPool srcPool, long srcOffset, int length) {
     int bytesLeft = length;
     while (bytesLeft > 0) {
       int bufferLeft = BYTE_BLOCK_SIZE - byteUpto;
       if (bytesLeft < bufferLeft) { // fits within current buffer
-        copyBytes(srcPool, offset, bytesLeft);
+        appendBytesSingleBuffer(srcPool, srcOffset, bytesLeft);
         break;
       } else { // fill up this buffer and move to next one
         if (bufferLeft > 0) {
-          copyBytes(srcPool, offset, bufferLeft);
+          appendBytesSingleBuffer(srcPool, srcOffset, bufferLeft);
           bytesLeft -= bufferLeft;
-          offset += bufferLeft;
+          srcOffset += bufferLeft;
         }
         nextBuffer();
       }
@@ -260,14 +260,16 @@ public final class ByteBlockPool implements Accountable {
   }
 
   // copy from source pool until no bytes left. length must be fit within the current head buffer
-  private void copyBytes(ByteBlockPool srcPool, long offset, int length) {
+  private void appendBytesSingleBuffer(ByteBlockPool srcPool, long srcOffset, int length) {
+    assert length <= BYTE_BLOCK_SIZE - byteUpto;
+    // doing a loop as the bytes to copy might span across multiple byte[] in srcPool
     while (length > 0) {
-      byte[] bytes = srcPool.buffers[Math.toIntExact(offset >> BYTE_BLOCK_SHIFT)];
-      int pos = Math.toIntExact(offset & BYTE_BLOCK_MASK);
-      int bytesToCopy = Math.min(length, BYTE_BLOCK_SIZE - pos);
-      System.arraycopy(bytes, pos, buffer, byteUpto, bytesToCopy);
+      byte[] srcBytes = srcPool.buffers[Math.toIntExact(srcOffset >> BYTE_BLOCK_SHIFT)];
+      int srcPos = Math.toIntExact(srcOffset & BYTE_BLOCK_MASK);
+      int bytesToCopy = Math.min(length, BYTE_BLOCK_SIZE - srcPos);
+      System.arraycopy(srcBytes, srcPos, buffer, byteUpto, bytesToCopy);
       length -= bytesToCopy;
-      offset += bytesToCopy;
+      srcOffset += bytesToCopy;
       byteUpto += bytesToCopy;
     }
   }
