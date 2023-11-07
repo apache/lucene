@@ -281,12 +281,12 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       DocIdSetIterator it = scorer.iterator();
       assertEquals(3, it.cost());
-      assertEquals(1, it.nextDoc());
-      assertEquals(1 / 6f, scorer.score(), 0);
-      assertEquals(3, it.advance(3));
+      assertEquals(2, it.nextDoc());
       assertEquals(1 / 2f, scorer.score(), 0);
+      assertEquals(4, it.advance(4));
+      assertEquals(1 / 6f, scorer.score(), 0);
 
-      assertEquals(NO_MORE_DOCS, it.advance(4));
+      assertEquals(NO_MORE_DOCS, it.advance(5));
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
   }
@@ -384,7 +384,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3 docs", matched.getDescription());
 
-        Explanation nomatch = searcher.explain(query, 4);
+        Explanation nomatch = searcher.explain(query, 1);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);

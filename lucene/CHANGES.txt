@@ -288,6 +288,8 @@ Bug Fixes
 
 * GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
 
+* GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
+
 Build
 ---------------------
 
