@@ -434,11 +434,6 @@ class BytesStore extends DataOutput implements FSTReader {
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos;
       }
-
-      @Override
-      public boolean reversed() {
-        return false;
-      }
     };
   }
 
@@ -491,11 +486,6 @@ class BytesStore extends DataOutput implements FSTReader {
         }
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos : "pos=" + pos + " getPos()=" + getPosition();
-      }
-
-      @Override
-      public boolean reversed() {
-        return true;
       }
     };
   }
