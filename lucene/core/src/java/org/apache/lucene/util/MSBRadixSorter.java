@@ -131,14 +131,10 @@ public abstract class MSBRadixSorter extends Sorter {
 
   protected void sort(int from, int to, int k, int l) {
     if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
-      introSort(from, to, k);
+      getFallbackSorter(k).sort(from, to);
     } else {
       radixSort(from, to, k, l);
     }
-  }
-
-  private void introSort(int from, int to, int k) {
-    getFallbackSorter(k).sort(from, to);
   }
 
   /**
