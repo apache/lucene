@@ -22,7 +22,6 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
  * byte. This is useful as we can wire the byte-writing to byte[], stream or IndexInput, etc.
  */
 abstract class BitPackerImplBase implements BitPacker {
-  private long totalNumBytesWritten;
   private byte buffer;
   private int bufferNumBitsUsed;
 
@@ -47,7 +46,6 @@ abstract class BitPackerImplBase implements BitPacker {
         numBits -= bufferNumBitsRemaining;
         value >>>= bufferNumBitsRemaining;
         writeByte(buffer);
-        totalNumBytesWritten += 1;
         buffer = 0;
         bufferNumBitsUsed = 0;
       }
