@@ -40,6 +40,11 @@ public class BitPerBytePacker implements BitPacker, BitUnpacker {
     }
   }
 
+  @Override
+  public void flush() {
+    // No-op as this impl writes a byte per bit
+  }
+
   public byte[] getBytes() {
     byte[] bytes = new byte[totalNumBits];
     int index = 0;

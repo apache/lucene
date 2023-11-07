@@ -17,12 +17,25 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
-/** Interface for bit-packing */
-public interface BitPacker {
+/**
+ * A {@link BitPacker} implementation that requires user to know the size of the resulting byte
+ * array upfront, in order to avoid allocation and copying for dynamically growing the array.
+ */
+public final class FixedSizeByteArrayBitPacker extends BitPackerImplBase {
+  private final byte[] bytes;
+  private int numBytesUsed = 0;
 
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits);
+  public FixedSizeByteArrayBitPacker(int capacity) {
+    this.bytes = new byte[capacity];
+  }
 
-  /** Flush any pending byte */
-  void flush();
+  @Override
+  void writeByte(byte b) {
+    assert numBytesUsed < bytes.length;
+    bytes[numBytesUsed++] = b;
+  }
+
+  public byte[] getBytes() {
+    return bytes;
+  }
 }

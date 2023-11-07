@@ -17,12 +17,19 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
-/** Interface for bit-packing */
-public interface BitPacker {
+import java.util.Random;
 
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits);
+record ValueAndBitWidth(long value, int bitWidth) {
 
-  /** Flush any pending byte */
-  void flush();
+  static ValueAndBitWidth[] getRandomArray(Random random, int size) {
+    return random
+        .longs(size, 0, Long.MAX_VALUE)
+        .mapToObj(
+            val -> {
+              int bitWidth = random.nextInt(1, 64);
+              val &= (1L << bitWidth) - 1;
+              return new ValueAndBitWidth(val, bitWidth);
+            })
+        .toArray(ValueAndBitWidth[]::new);
+  }
 }

@@ -33,30 +33,19 @@ public class TestBitUnpackerImpl extends LuceneTestCase {
   }
 
   public void testRandom() {
-    ValueAndBitWidth[] expected =
-        random()
-            .longs(1000, 0, Long.MAX_VALUE)
-            .mapToObj(
-                val -> {
-                  int bitWidth = random().nextInt(1, 64);
-                  val &= (1L << bitWidth) - 1;
-                  return new ValueAndBitWidth(val, bitWidth);
-                })
-            .toArray(ValueAndBitWidth[]::new);
+    ValueAndBitWidth[] expected = ValueAndBitWidth.getRandomArray(random(), 1000);
 
     BitPerBytePacker referencePacker = new BitPerBytePacker();
     for (var x : expected) {
-      referencePacker.add(x.value, x.bitWidth);
+      referencePacker.add(x.value(), x.bitWidth());
     }
 
     BytesRef bytes = new BytesRef(referencePacker.getCompactBytes());
     int startBitIndex = 0;
     for (var x : expected) {
-      long unpacked = BitUnpackerImpl.INSTANCE.unpack(bytes, startBitIndex, x.bitWidth);
-      startBitIndex += x.bitWidth;
-      assertEquals(x.value, unpacked);
+      long unpacked = BitUnpackerImpl.INSTANCE.unpack(bytes, startBitIndex, x.bitWidth());
+      startBitIndex += x.bitWidth();
+      assertEquals(x.value(), unpacked);
     }
   }
-
-  private record ValueAndBitWidth(long value, int bitWidth) {}
 }
