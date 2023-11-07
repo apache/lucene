@@ -138,29 +138,27 @@ typedef uint8_t result_t;
  * @return The metadata information.
  */
 struct metadata_t {
-    index_t *results_size;
+    index_t *results_index;
     index_t *results_size_lucene_segments;
     size_t max_nr_results;
     size_t total_nr_results;
 } static get_metadata(JNIEnv *env, struct dpu_set_t set, const uint32_t nr_dpus, const jint nr_queries, const jint nr_segments)
 {
     /* Transfer and postprocess the results_index from the DPU */
-    index_t(*results_size)[nr_dpus][nr_queries] = malloc(sizeof(index_t[nr_dpus][nr_queries]));
+    index_t(*results_index)[nr_dpus][nr_queries] = malloc(sizeof(index_t[nr_dpus][nr_queries]));
 
     struct dpu_set_t dpu;
     uint32_t each_dpu = 0;
     DPU_FOREACH (set, dpu, each_dpu) {
-        THROW_ON_ERROR(dpu_prepare_xfer(dpu, results_size[each_dpu]));
+        THROW_ON_ERROR(dpu_prepare_xfer(dpu, results_index[each_dpu]));
     }
-    THROW_ON_ERROR(dpu_push_xfer(set, DPU_XFER_FROM_DPU, "results_size", 0, sizeof(index_t[nr_queries]), DPU_XFER_DEFAULT));
+    THROW_ON_ERROR(dpu_push_xfer(set, DPU_XFER_FROM_DPU, "results_index", 0, sizeof(index_t[nr_queries]), DPU_XFER_DEFAULT));
 
     size_t max_nr_results = 0;
     size_t total_nr_results = 0;
     for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
         size_t nr_results = 0;
-        for (jint i_query = 0; i_query < nr_queries; ++i_query) {
-            nr_results += (*results_size)[i_dpu][i_query];
-        }
+        nr_results += (*results_index)[i_dpu][nr_queries - 1];
         max_nr_results = MAX(max_nr_results, nr_results);
         total_nr_results += nr_results;
     }
@@ -175,7 +173,7 @@ struct metadata_t {
     THROW_ON_ERROR(dpu_push_xfer(
         set, DPU_XFER_FROM_DPU, "results_size_lucene_segments", 0, sizeof(index_t[nr_queries][nr_segments]), DPU_XFER_DEFAULT));
 
-    return (struct metadata_t) { .results_size = (index_t *)results_size,
+    return (struct metadata_t) { .results_index = (index_t *)results_index,
         .results_size_lucene_segments = (index_t *)results_size_lucene_segments,
         .max_nr_results = max_nr_results,
         .total_nr_results = total_nr_results };
@@ -183,7 +181,7 @@ struct metadata_t {
 
 // TODO(sbrocard): use compound literals
 typedef struct sg_xfer_context {
-    index_t *results_size;
+    index_t *results_index;
     index_t *results_size_lucene_segments;
     result_t **block_addresses;
     jint nr_queries;
@@ -301,7 +299,7 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
 
     result_t **block_addresses = malloc(sizeof(result_t *[nr_dpus][nr_queries][nr_segments]));
 
-    sg_xfer_context sc_args = { .results_size = metadata.results_size, .block_addresses = block_addresses };
+    sg_xfer_context sc_args = { .results_index = metadata.results_index, .block_addresses = block_addresses };
     get_block_t get_block_info = { .f = &get_block, .args = &sc_args, .args_size = sizeof(sc_args) };
 
     compute_block_addresses(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
@@ -322,7 +320,7 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     (*env)->SetObjectField(env, result, SGReturnQueriesIndicesField, byteBufferQueriesIndices);
     (*env)->SetObjectField(env, result, SGReturnSegmentsIndicesField, byteBufferSegmentsIndices);
 
-    free(metadata.results_size);
+    free(metadata.results_index);
     free(metadata.results_size_lucene_segments);
     free(block_addresses);
 
@@ -338,7 +336,7 @@ cache_callback(JNIEnv *env)
     exClass = (*env)->FindClass(env, "com/upmem/dpu/DpuException");
     nativeDpuSetClass = (*env)->FindClass(env, "com/upmem/dpu/NativeDpuSet");
     dpuSystemClass = (*env)->FindClass(env, "com/upmem/dpu/DpuSystem");
-    dpuSystemExecutorClass = (*env)->FindClass(env, "com/upmem/dpu/DpuSystemExecutor");
+    dpuSystemExecutorClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/DpuSystemExecutor");
 
     dpuSystemField = (*env)->GetFieldID(env, dpuSystemExecutorClass, "dpuSystem", "Lcom/upmem/dpu/DpuSystem;");
     nativeDpuSetField = (*env)->GetFieldID(env, dpuSystemClass, "set", "Lcom/upmem/dpu/NativeDpuSet;");
