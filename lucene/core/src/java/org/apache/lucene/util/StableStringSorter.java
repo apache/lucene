@@ -77,6 +77,17 @@ abstract class StableStringSorter extends StringSorter {
       }
 
       @Override
+      protected void setPivot(int i) {
+        get(pivotBuilder, pivot, i);
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        get(scratch1, scratchBytes1, j);
+        return cmp.compare(pivot, scratchBytes1);
+      }
+
+      @Override
       protected int compare(int i, int j) {
         get(scratch1, scratchBytes1, i);
         get(scratch2, scratchBytes2, j);

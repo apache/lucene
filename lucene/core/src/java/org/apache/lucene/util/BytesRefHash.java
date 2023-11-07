@@ -151,17 +151,8 @@ public final class BytesRefHash implements Accountable {
     assert count * 2 <= compact.length
         : "Change the following sorter to a StringSorter if you are increasing the load factor.";
     final int tmpOffset = count;
-    new StableStringSorter(BytesRefComparator.NATURAL) {
-
-      @Override
-      protected void save(int i, int j) {
-        compact[tmpOffset + j] = compact[i];
-      }
-
-      @Override
-      protected void restore(int i, int j) {
-        System.arraycopy(compact, tmpOffset + i, compact, i, j - i);
-      }
+    long start = System.currentTimeMillis();
+    new StringSorter(BytesRefComparator.NATURAL) {
 
       @Override
       protected void swap(int i, int j) {
@@ -175,6 +166,8 @@ public final class BytesRefHash implements Accountable {
         pool.fillBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
+    long end = System.currentTimeMillis();
+    System.out.println(end - start);
     return compact;
   }
 

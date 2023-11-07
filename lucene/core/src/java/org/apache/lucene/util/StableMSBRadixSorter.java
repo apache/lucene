@@ -135,22 +135,22 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
       int left = from;
       int right = mid;
       int index = from;
+      outer:
       while (true) {
-        int cmp = compare(left, right);
-        if (cmp <= 0) {
+        setPivot(right);
+        while (comparePivot(left) >= 0) {
           save(left++, index++);
           if (left == mid) {
             assert index == right;
             bulkSave(right, index, to - right);
-            break;
+            break outer;
           }
-        } else {
-          save(right++, index++);
-          if (right == to) {
-            assert to - index == mid - left;
-            bulkSave(left, index, mid - left);
-            break;
-          }
+        }
+        save(right++, index++);
+        if (right == to) {
+          assert to - index == mid - left;
+          bulkSave(left, index, mid - left);
+          break;
         }
       }
       restore(from, to);
