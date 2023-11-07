@@ -81,7 +81,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
+      case FLOAT32 -> doc.add(
+          new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
   }
 
@@ -1221,8 +1222,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-
-
   protected float[] randomVector(int dim) {
     assert dim > 0;
     float[] v = new float[dim];
@@ -1244,8 +1243,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return v;
   }
 
-
-
   private byte[] randomVector8(int dim) {
     assert dim > 0;
     float[] v = randomNormalizedVector(dim);
@@ -1260,10 +1257,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("v1", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField(
+                "v1", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
 
-        doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField(
+                "v2", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
 

@@ -68,8 +68,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     float quantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(dim);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectors(
-            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors,
-                normalize), quantile);
+            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
+            quantile);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
