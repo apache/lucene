@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
 import org.apache.lucene.util.BytesRef;
 
+/** Implementation of {@link BitUnpacker} that works with compactly packed bits */
 public class BitUnpackerImpl implements BitUnpacker {
   public static BitUnpackerImpl INSTANCE = new BitUnpackerImpl();
 

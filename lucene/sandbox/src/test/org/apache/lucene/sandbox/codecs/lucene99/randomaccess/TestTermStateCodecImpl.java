@@ -82,7 +82,7 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
 
     // Also test decoding that doesn't begin at the start of the block.
     int pos = random().nextInt(termStatesArray.length);
-    int startBitIndex = random().nextInt(pos);
+    int startBitIndex = pos > 0 ? random().nextInt(pos) : 0;
     int recordSize = expectedDocFreqBitWidth + expectedDocStartFPBitWidth;
     // With bit-per-byte bytes
     dataBytes =
