@@ -242,6 +242,8 @@ public abstract class PointValues {
     public static final int HIGH_IN_SORTED_DIM = 2;
     /** Packed value is too high in NON-SORTED dimension */
     public static final int HIGH_IN_NON_SORTED_DIM = 3;
+    /** Packed value does not match the range in this dimension */
+    public static final int NOT_MATCH = 3;
   }
 
   /** Create a new {@link PointTree} to navigate the index */
