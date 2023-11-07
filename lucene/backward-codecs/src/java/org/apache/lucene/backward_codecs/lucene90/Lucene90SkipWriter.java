@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -92,8 +92,7 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
     }
   }
 
-  public void setField(
-      boolean fieldHasPositions, boolean fieldHasOffsets, boolean fieldHasPayloads) {
+  void setField(boolean fieldHasPositions, boolean fieldHasOffsets, boolean fieldHasPayloads) {
     this.fieldHasPositions = fieldHasPositions;
     this.fieldHasOffsets = fieldHasOffsets;
     this.fieldHasPayloads = fieldHasPayloads;

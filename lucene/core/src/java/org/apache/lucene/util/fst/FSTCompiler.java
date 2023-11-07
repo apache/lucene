@@ -26,6 +26,7 @@ import static org.apache.lucene.util.fst.FST.BIT_STOP_NODE;
 import static org.apache.lucene.util.fst.FST.BIT_TARGET_NEXT;
 import static org.apache.lucene.util.fst.FST.FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
+import static org.apache.lucene.util.fst.FST.VERSION_CURRENT;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
@@ -141,11 +142,11 @@ public class FSTCompiler<T> {
     // pad: ensure no node gets address 0 which is reserved to mean
     // the stop state w/ no arcs
     bytes.writeByte((byte) 0);
-    fst = new FST<>(inputType, outputs, bytes);
+    fst = new FST<>(new FST.FSTMetadata<>(inputType, null, -1, VERSION_CURRENT, 0), outputs, bytes);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
     } else {
       dedupHash = null;
     }
@@ -462,10 +463,10 @@ public class FSTCompiler<T> {
 
   private void writeLabel(DataOutput out, int v) throws IOException {
     assert v >= 0 : "v=" + v;
-    if (fst.inputType == INPUT_TYPE.BYTE1) {
+    if (fst.metadata.inputType == INPUT_TYPE.BYTE1) {
       assert v <= 255 : "v=" + v;
       out.writeByte((byte) v);
-    } else if (fst.inputType == INPUT_TYPE.BYTE2) {
+    } else if (fst.metadata.inputType == INPUT_TYPE.BYTE2) {
       assert v <= 65535 : "v=" + v;
       out.writeShort((short) v);
     } else {
@@ -746,7 +747,7 @@ public class FSTCompiler<T> {
       // 'finalness' is stored on the incoming arc, not on
       // the node
       frontier[0].isFinal = true;
-      fst.setEmptyOutput(output);
+      setEmptyOutput(output);
       return;
     }
 
@@ -828,6 +829,26 @@ public class FSTCompiler<T> {
     lastInput.copyInts(input);
   }
 
+  void setEmptyOutput(T v) {
+    if (fst.metadata.emptyOutput != null) {
+      fst.metadata.emptyOutput = fst.outputs.merge(fst.metadata.emptyOutput, v);
+    } else {
+      fst.metadata.emptyOutput = v;
+    }
+  }
+
+  void finish(long newStartNode) {
+    assert newStartNode <= bytes.size();
+    if (fst.metadata.startNode != -1) {
+      throw new IllegalStateException("already finished");
+    }
+    if (newStartNode == FINAL_END_NODE && fst.metadata.emptyOutput != null) {
+      newStartNode = 0;
+    }
+    fst.metadata.startNode = newStartNode;
+    fst.metadata.numBytes = bytes.getPosition();
+  }
+
   private boolean validOutput(T output) {
     return output == NO_OUTPUT || !output.equals(NO_OUTPUT);
   }
@@ -840,14 +861,14 @@ public class FSTCompiler<T> {
     // minimize nodes in the last word's suffix
     freezeTail(0);
     if (root.numArcs == 0) {
-      if (fst.emptyOutput == null) {
+      if (fst.metadata.emptyOutput == null) {
         return null;
       }
     }
 
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
-    fst.finish(compileNode(root, lastInput.length()).node);
+    finish(compileNode(root, lastInput.length()).node);
     bytes.finish();
 
     return fst;

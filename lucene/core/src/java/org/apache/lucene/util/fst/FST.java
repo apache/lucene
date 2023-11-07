@@ -61,6 +61,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class FST<T> implements Accountable {
 
+  final FSTMetadata<T> metadata;
+
   /** Specifies allowed range of each int input label for this FST. */
   public enum INPUT_TYPE {
     BYTE1,
@@ -100,7 +102,7 @@ public final class FST<T> implements Accountable {
   private static final String FILE_FORMAT_NAME = "FST";
   private static final int VERSION_START = 6;
   private static final int VERSION_LITTLE_ENDIAN = 8;
-  private static final int VERSION_CURRENT = VERSION_LITTLE_ENDIAN;
+  static final int VERSION_CURRENT = VERSION_LITTLE_ENDIAN;
 
   // Never serialized; just used to represent the virtual
   // final node w/ no arcs:
@@ -113,23 +115,13 @@ public final class FST<T> implements Accountable {
   /** If arc has this label then that arc is final/accepted */
   public static final int END_LABEL = -1;
 
-  final INPUT_TYPE inputType;
-
-  // if non-null, this FST accepts the empty string and
-  // produces this output
-  T emptyOutput;
-
   /**
    * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
    * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
   private final FSTReader fstReader;
 
-  private long startNode = -1;
-
   public final Outputs<T> outputs;
-
-  private final int version;
 
   /** Represents a single arc. */
   public static final class Arc<T> {
@@ -395,33 +387,58 @@ public final class FST<T> implements Accountable {
     return (flags & bit) != 0;
   }
 
-  // make a new empty FST, for building; Builder invokes this
-  FST(INPUT_TYPE inputType, Outputs<T> outputs, FSTReader fstReader) {
-    this.inputType = inputType;
-    this.outputs = outputs;
-    emptyOutput = null;
-    this.fstReader = fstReader;
-    this.version = VERSION_CURRENT;
-  }
-
   private static final int DEFAULT_MAX_BLOCK_BITS = Constants.JRE_IS_64BIT ? 30 : 28;
 
-  /** Load a previously saved FST. */
+  /**
+   * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
+   * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
+   */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs) throws IOException {
     this(metaIn, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
   }
 
   /**
-   * Load a previously saved FST; maxBlockBits allows you to control the size of the byte[] pages
-   * used to hold the FST bytes.
+   * Load a previously saved FST with a DataInput for metdata and a FSTStore. If using {@link
+   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
+   * to hold the FST bytes.
    */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
       throws IOException {
-    this.outputs = outputs;
+    this(readMetadata(metaIn, outputs), in, outputs, fstStore);
+  }
 
+  /**
+   * Load a previously saved FST with a metdata object and a FSTStore. If using {@link
+   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
+   * to hold the FST bytes.
+   */
+  public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs, FSTStore fstStore)
+      throws IOException {
+    this(metadata, outputs, fstStore.init(in, metadata.numBytes));
+  }
+
+  /** Create the FST with a metadata object and a FSTReader. */
+  FST(FSTMetadata<T> metadata, Outputs<T> outputs, FSTReader fstReader) {
+    this.metadata = metadata;
+    this.outputs = outputs;
+    this.fstReader = fstReader;
+  }
+
+  /**
+   * Read the FST metadata from DataInput
+   *
+   * @param metaIn the DataInput of the metadata
+   * @param outputs the FST outputs
+   * @return the FST metadata
+   * @param <T> the output type
+   * @throws IOException if exception occurred during parsing
+   */
+  public static <T> FSTMetadata<T> readMetadata(DataInput metaIn, Outputs<T> outputs)
+      throws IOException {
     // NOTE: only reads formats VERSION_START up to VERSION_CURRENT; we don't have
     // back-compat promise for FSTs (they are experimental), but we are sometimes able to offer it
-    this.version = CodecUtil.checkHeader(metaIn, FILE_FORMAT_NAME, VERSION_START, VERSION_CURRENT);
+    int version = CodecUtil.checkHeader(metaIn, FILE_FORMAT_NAME, VERSION_START, VERSION_CURRENT);
+    T emptyOutput;
     if (metaIn.readByte() == 1) {
       // accepts empty string
       // 1 KB blocks:
@@ -441,6 +458,7 @@ public final class FST<T> implements Accountable {
     } else {
       emptyOutput = null;
     }
+    INPUT_TYPE inputType;
     final byte t = metaIn.readByte();
     switch (t) {
       case 0:
@@ -453,13 +471,11 @@ public final class FST<T> implements Accountable {
         inputType = INPUT_TYPE.BYTE4;
         break;
       default:
-        throw new CorruptIndexException("invalid input type " + t, in);
+        throw new CorruptIndexException("invalid input type " + t, metaIn);
     }
-    startNode = metaIn.readVLong();
-
+    long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
-    fstStore.init(in, numBytes);
-    this.fstReader = fstStore;
+    return new FSTMetadata<>(inputType, emptyOutput, startNode, version, numBytes);
   }
 
   @Override
@@ -469,50 +485,42 @@ public final class FST<T> implements Accountable {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "(input=" + inputType + ",output=" + outputs;
-  }
-
-  void finish(long newStartNode) throws IOException {
-    assert newStartNode <= fstReader.size();
-    if (startNode != -1) {
-      throw new IllegalStateException("already finished");
-    }
-    if (newStartNode == FINAL_END_NODE && emptyOutput != null) {
-      newStartNode = 0;
-    }
-    startNode = newStartNode;
+    return getClass().getSimpleName() + "(input=" + metadata.inputType + ",output=" + outputs;
   }
 
   public long numBytes() {
-    return fstReader.size();
+    return metadata.numBytes;
   }
 
   public T getEmptyOutput() {
-    return emptyOutput;
+    return metadata.emptyOutput;
   }
 
-  void setEmptyOutput(T v) {
-    if (emptyOutput != null) {
-      emptyOutput = outputs.merge(emptyOutput, v);
-    } else {
-      emptyOutput = v;
-    }
+  public FSTMetadata<T> getMetadata() {
+    return metadata;
   }
 
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
-    if (startNode == -1) {
-      throw new IllegalStateException("call finish first");
-    }
+    saveMetadata(metaOut);
+    fstReader.writeTo(out);
+  }
+
+  /**
+   * Save the metadata to a DataOutput
+   *
+   * @param metaOut the DataOutput to save
+   */
+  public void saveMetadata(DataOutput metaOut) throws IOException {
     CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
     // TODO: really we should encode this as an arc, arriving
     // to the root node, instead of special casing here:
-    if (emptyOutput != null) {
+    if (metadata.emptyOutput != null) {
       // Accepts empty string
       metaOut.writeByte((byte) 1);
 
       // Serialize empty-string output:
       ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
-      outputs.writeFinalOutput(emptyOutput, ros);
+      outputs.writeFinalOutput(metadata.emptyOutput, ros);
       byte[] emptyOutputBytes = ros.toArrayCopy();
       int emptyLen = emptyOutputBytes.length;
 
@@ -531,17 +539,16 @@ public final class FST<T> implements Accountable {
       metaOut.writeByte((byte) 0);
     }
     final byte t;
-    if (inputType == INPUT_TYPE.BYTE1) {
+    if (metadata.inputType == INPUT_TYPE.BYTE1) {
       t = 0;
-    } else if (inputType == INPUT_TYPE.BYTE2) {
+    } else if (metadata.inputType == INPUT_TYPE.BYTE2) {
       t = 1;
     } else {
       t = 2;
     }
     metaOut.writeByte(t);
-    metaOut.writeVLong(startNode);
+    metaOut.writeVLong(metadata.startNode);
     metaOut.writeVLong(numBytes());
-    fstReader.writeTo(out);
   }
 
   /** Writes an automaton to a file. */
@@ -563,12 +570,12 @@ public final class FST<T> implements Accountable {
   /** Reads one BYTE1/2/4 label from the provided {@link DataInput}. */
   public int readLabel(DataInput in) throws IOException {
     final int v;
-    if (inputType == INPUT_TYPE.BYTE1) {
+    if (metadata.inputType == INPUT_TYPE.BYTE1) {
       // Unsigned byte:
       v = in.readByte() & 0xFF;
-    } else if (inputType == INPUT_TYPE.BYTE2) {
+    } else if (metadata.inputType == INPUT_TYPE.BYTE2) {
       // Unsigned short:
-      if (version < VERSION_LITTLE_ENDIAN) {
+      if (metadata.version < VERSION_LITTLE_ENDIAN) {
         v = Short.reverseBytes(in.readShort()) & 0xFFFF;
       } else {
         v = in.readShort() & 0xFFFF;
@@ -608,10 +615,10 @@ public final class FST<T> implements Accountable {
   public Arc<T> getFirstArc(Arc<T> arc) {
     T NO_OUTPUT = outputs.getNoOutput();
 
-    if (emptyOutput != null) {
+    if (metadata.emptyOutput != null) {
       arc.flags = BIT_FINAL_ARC | BIT_LAST_ARC;
-      arc.nextFinalOutput = emptyOutput;
-      if (emptyOutput != NO_OUTPUT) {
+      arc.nextFinalOutput = metadata.emptyOutput;
+      if (metadata.emptyOutput != NO_OUTPUT) {
         arc.flags = (byte) (arc.flags() | BIT_ARC_HAS_FINAL_OUTPUT);
       }
     } else {
@@ -622,7 +629,7 @@ public final class FST<T> implements Accountable {
 
     // If there are no nodes, ie, the FST only accepts the
     // empty string, then startNode is 0
-    arc.target = startNode;
+    arc.target = metadata.startNode;
     return arc;
   }
 
@@ -1128,8 +1135,29 @@ public final class FST<T> implements Accountable {
 
     /** Set current read position. */
     public abstract void setPosition(long pos);
+  }
 
-    /** Returns true if this reader uses reversed bytes under-the-hood. */
-    public abstract boolean reversed();
+  /**
+   * Represent the FST metadata
+   *
+   * @param <T> the FST output type
+   */
+  public static final class FSTMetadata<T> {
+    final INPUT_TYPE inputType;
+    final int version;
+    // if non-null, this FST accepts the empty string and
+    // produces this output
+    T emptyOutput;
+    long startNode;
+    long numBytes;
+
+    public FSTMetadata(
+        INPUT_TYPE inputType, T emptyOutput, long startNode, int version, long numBytes) {
+      this.inputType = inputType;
+      this.emptyOutput = emptyOutput;
+      this.startNode = startNode;
+      this.version = version;
+      this.numBytes = numBytes;
+    }
   }
 }

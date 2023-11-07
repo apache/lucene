@@ -476,7 +476,12 @@ public abstract class LuceneTestCase extends Assert {
    * of iterations to scale your tests (for nightly builds).
    */
   public static final int RANDOM_MULTIPLIER =
-      systemPropertyAsInt("tests.multiplier", TEST_NIGHTLY ? 2 : 1);
+      systemPropertyAsInt("tests.multiplier", defaultRandomMultiplier());
+
+  /** Compute the default value of the random multiplier (based on {@link #TEST_NIGHTLY}). */
+  static int defaultRandomMultiplier() {
+    return TEST_NIGHTLY ? 2 : 1;
+  }
 
   /** Leave temporary files on disk, even on successful runs. */
   public static final boolean LEAVE_TEMPORARY;
