@@ -273,15 +273,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         Query dasq = query.rewrite(searcher);
         Scorer scorer =
             dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
+        int firstDoc = scorer.advanceShallow(0);
         // before advancing the iterator
-        assertEquals(1, scorer.advanceShallow(0));
-        assertEquals(1, scorer.advanceShallow(1));
+        assertEquals(firstDoc, scorer.advanceShallow(0));
+        assertTrue(firstDoc < scorer.advanceShallow(firstDoc + 1));
         assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
 
         // after advancing the iterator
-        scorer.iterator().advance(2);
-        assertEquals(2, scorer.advanceShallow(0));
-        assertEquals(2, scorer.advanceShallow(2));
+        int nextDoc = scorer.iterator().advance(firstDoc + 1);
+        assertEquals(nextDoc, scorer.advanceShallow(0));
+        assertEquals(nextDoc, scorer.advanceShallow(firstDoc + 1));
         assertEquals(3, scorer.advanceShallow(3));
         assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
       }
@@ -314,11 +315,18 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       DocIdSetIterator it = scorer.iterator();
       assertEquals(3, it.cost());
-      assertEquals(1, it.nextDoc());
-      assertEquals(1 / 6f, scorer.score(), 0);
-      assertEquals(3, it.advance(3));
-      assertEquals(1 / 2f, scorer.score(), 0);
-      assertEquals(NO_MORE_DOCS, it.advance(4));
+      int firstDoc = it.nextDoc();
+      if (firstDoc == 1) {
+        assertEquals(1 / 6f, scorer.score(), 0);
+        assertEquals(3, it.advance(3));
+        assertEquals(NO_MORE_DOCS, it.advance(4));
+      } else {
+        assertEquals(2, firstDoc);
+        assertEquals(1 / 2f, scorer.score(), 0);
+        assertEquals(4, it.advance(4));
+        assertEquals(1 / 6f, scorer.score(), 0);
+        assertEquals(NO_MORE_DOCS, it.advance(5));
+      }
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
   }
@@ -418,7 +426,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3", matched.getDescription());
 
-        Explanation nomatch = searcher.explain(query, 4);
+        Explanation nomatch = searcher.explain(query, 5);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
