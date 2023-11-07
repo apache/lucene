@@ -265,9 +265,7 @@ public class TestSortOptimization extends LuceneTestCase {
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
-      assertEquals(
-          topDocs.totalHits.value,
-          numDocs); // assert that all documents were collected => optimization was not run
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that optimization is not run when missing value setting of SortField is competitive
@@ -282,9 +280,7 @@ public class TestSortOptimization extends LuceneTestCase {
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
-      assertEquals(
-          topDocs.totalHits.value,
-          numDocs); // assert that all documents were collected => optimization was not run
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     reader.close();
