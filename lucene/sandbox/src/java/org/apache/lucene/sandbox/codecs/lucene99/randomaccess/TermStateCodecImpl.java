@@ -17,7 +17,18 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.DocFreq;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.DocStartFP;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.LastPositionBlockOffset;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.PayloadStartFP;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.PositionStartFP;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.SingletonDocId;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.SkipOffset;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.TotalTermFreq;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -28,11 +39,6 @@ final class TermStateCodecImpl implements TermStateCodec {
   private final TermStateCodecComponent[] components;
   private final int metadataBytesLength;
 
-  private static int getMetadataLength(TermStateCodecComponent component) {
-    // 1 byte for bitWidth; optionally 8 byte more for the reference value
-    return 1 + (component.isMonotonicallyIncreasing() ? 8 : 0);
-  }
-
   public TermStateCodecImpl(TermStateCodecComponent[] components) {
     assert components.length > 0;
 
@@ -42,6 +48,74 @@ final class TermStateCodecImpl implements TermStateCodec {
       metadataBytesLength += getMetadataLength(component);
     }
     this.metadataBytesLength = metadataBytesLength;
+  }
+
+  private static int getMetadataLength(TermStateCodecComponent component) {
+    // 1 byte for bitWidth; optionally 8 byte more for the reference value
+    return 1 + (component.isMonotonicallyIncreasing() ? 8 : 0);
+  }
+
+  public static TermStateCodecImpl getCodec(TermType termType, IndexOptions indexOptions) {
+    assert indexOptions.ordinal() > IndexOptions.NONE.ordinal();
+    // A term can't have skip data (has more than one block's worth of doc),
+    // while having a singleton doc at the same time!
+    assert !(termType.hasSkipData() && termType.hasSingletonDoc());
+
+    ArrayList<TermStateCodecComponent> components = new ArrayList<>();
+    // handle docs
+    if (termType.hasSingletonDoc()) {
+      components.add(SingletonDocId.INSTANCE);
+    } else {
+      components.add(DocStartFP.INSTANCE);
+    }
+    // handle skip data
+    if (termType.hasSkipData()) {
+      components.add(SkipOffset.INSTANCE);
+    }
+    // handle docFreq
+    boolean totalTermFeqAdded = false;
+    if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
+      if (termType.hasSingletonDoc()) {
+        components.add(TotalTermFreq.INSTANCE);
+        totalTermFeqAdded = true;
+      } else {
+        components.add(DocFreq.INSTANCE);
+      }
+    }
+    // handle positions
+    if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+      if (!totalTermFeqAdded) {
+        components.add(TotalTermFreq.INSTANCE);
+      }
+      components.add(PositionStartFP.INSTANCE);
+      if (termType.hasLastPositionBlockOffset()) {
+        components.add(LastPositionBlockOffset.INSTANCE);
+      }
+    }
+    // handle payload and offsets
+    if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+      components.add(PayloadStartFP.INSTANCE);
+    }
+
+    return new TermStateCodecImpl(components.toArray(TermStateCodecComponent[]::new));
+  }
+
+  @Override
+  public String toString() {
+    return "TermStateCodecImpl{" + "components=" + Arrays.toString(components) + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TermStateCodecImpl that = (TermStateCodecImpl) o;
+    return Arrays.equals(components, that.components);
+  }
+
+  @Override
+  public int hashCode() {
+    return Arrays.hashCode(components);
   }
 
   @Override

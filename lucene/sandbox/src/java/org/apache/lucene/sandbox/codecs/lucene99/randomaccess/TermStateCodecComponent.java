@@ -20,6 +20,16 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 
 abstract class TermStateCodecComponent {
+  private final String name;
+
+  TermStateCodecComponent(String name) {
+    this.name = name;
+  }
+
+  @Override
+  public String toString() {
+    return "TermStateCodecComponent{" + "name='" + name + '\'' + '}';
+  }
 
   static byte getBitWidth(IntBlockTermState[] termStates, TermStateCodecComponent component) {
     assert termStates.length > 0;
@@ -44,7 +54,9 @@ abstract class TermStateCodecComponent {
   static final class SingletonDocId extends TermStateCodecComponent {
     public static SingletonDocId INSTANCE = new SingletonDocId();
 
-    private SingletonDocId() {}
+    private SingletonDocId() {
+      super("SingletonDocId");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -68,7 +80,9 @@ abstract class TermStateCodecComponent {
   static final class DocFreq extends TermStateCodecComponent {
     public static DocFreq INSTANCE = new DocFreq();
 
-    private DocFreq() {}
+    private DocFreq() {
+      super("DocFreq");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -92,7 +106,9 @@ abstract class TermStateCodecComponent {
   static final class TotalTermFreq extends TermStateCodecComponent {
     public static TotalTermFreq INSTANCE = new TotalTermFreq();
 
-    private TotalTermFreq() {}
+    private TotalTermFreq() {
+      super("TotalTermFreq");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -113,7 +129,9 @@ abstract class TermStateCodecComponent {
   static final class DocStartFP extends TermStateCodecComponent {
     public static DocStartFP INSTANCE = new DocStartFP();
 
-    private DocStartFP() {}
+    private DocStartFP() {
+      super("DocStartFP");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -134,7 +152,9 @@ abstract class TermStateCodecComponent {
   static final class PositionStartFP extends TermStateCodecComponent {
     public static PositionStartFP INSTANCE = new PositionStartFP();
 
-    private PositionStartFP() {}
+    private PositionStartFP() {
+      super("PositionStartFP");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -155,7 +175,9 @@ abstract class TermStateCodecComponent {
   static final class PayloadStartFP extends TermStateCodecComponent {
     public static PayloadStartFP INSTANCE = new PayloadStartFP();
 
-    private PayloadStartFP() {}
+    private PayloadStartFP() {
+      super("PayloadStartFP");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -176,7 +198,9 @@ abstract class TermStateCodecComponent {
   static final class SkipOffset extends TermStateCodecComponent {
     public static SkipOffset INSTANCE = new SkipOffset();
 
-    private SkipOffset() {}
+    private SkipOffset() {
+      super("SkipOffset");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {
@@ -197,7 +221,9 @@ abstract class TermStateCodecComponent {
   static final class LastPositionBlockOffset extends TermStateCodecComponent {
     public static LastPositionBlockOffset INSTANCE = new LastPositionBlockOffset();
 
-    private LastPositionBlockOffset() {}
+    private LastPositionBlockOffset() {
+      super("LastPositionBlockOffset");
+    }
 
     @Override
     public boolean isMonotonicallyIncreasing() {

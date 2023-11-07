@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.util.ArrayList;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPerBytePacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpackerImpl;
@@ -135,5 +136,148 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
       assertEquals(termStatesArray[i].docFreq, decoded.docFreq);
       assertEquals(termStatesArray[i].docStartFP, decoded.docStartFP);
     }
+  }
+
+  public void testGetCodec() {
+    for (IndexOptions indexOptions : IndexOptions.values()) {
+      if (indexOptions == IndexOptions.NONE) {
+        continue;
+      }
+      for (int i = 0; i < 8; i++) {
+        if ((i & 0b011) == 0b011) {
+          continue;
+        }
+        if ((i & 0b100) == 0b100
+            && indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+          continue;
+        }
+        TermType termType = TermType.fromId(i);
+        var expected = getExpectedCodec(termType, indexOptions);
+        var got = TermStateCodecImpl.getCodec(termType, indexOptions);
+        assertEquals(expected, got);
+      }
+    }
+  }
+
+  // Enumerate the expected Codec we get for (TermType, IndexOptions) pairs.
+  static TermStateCodecImpl getExpectedCodec(TermType termType, IndexOptions indexOptions) {
+    ArrayList<TermStateCodecComponent> components = new ArrayList<>();
+    // Wish I can code this better in java...
+    switch (termType.getId()) {
+        // Not singleton doc; No skip data; No last position block offset
+      case 0b000 -> {
+        assert !termType.hasLastPositionBlockOffset()
+            && !termType.hasSkipData()
+            && !termType.hasSingletonDoc();
+        components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
+          components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+        }
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+          components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        }
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+        // Singleton doc; No skip data; No last position block offset
+      case 0b001 -> {
+        assert !termType.hasLastPositionBlockOffset()
+            && !termType.hasSkipData()
+            && termType.hasSingletonDoc();
+        components.add(TermStateCodecComponent.SingletonDocId.INSTANCE);
+        // If field needs frequency, we need totalTermsFreq.
+        // Since there is only 1 doc, totalTermsFreq == docFreq.
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
+          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+        }
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+          components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        }
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+
+        // Not Singleton doc; Has skip data; No last position block offset
+      case 0b010 -> {
+        assert !termType.hasLastPositionBlockOffset()
+            && termType.hasSkipData()
+            && !termType.hasSingletonDoc();
+        components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
+          components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+        }
+        if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+          components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        }
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+        // Singleton doc but has skip data; Invalid state.
+      case 0b011, 0b111 -> {
+        assert termType.hasSkipData() && termType.hasSingletonDoc();
+        throw new IllegalStateException(
+            "Unreachable. A term has skip data but also only has one doc!? Must be a bug");
+      }
+        // Not singleton doc; No skip data; Has last position block offset;
+      case 0b100 -> {
+        assert termType.hasLastPositionBlockOffset()
+            && !termType.hasSkipData()
+            && !termType.hasSingletonDoc();
+        assert indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal();
+        components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+        components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+        components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+        // Singleton doc; No skip data; Has last position block offset;
+      case 0b101 -> {
+        assert termType.hasLastPositionBlockOffset()
+            && !termType.hasSkipData()
+            && termType.hasSingletonDoc();
+        assert indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal();
+        components.add(TermStateCodecComponent.SingletonDocId.INSTANCE);
+        components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+        components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+        // Not singleton doc; Has skip data; Has last position block offset;
+      case 0b110 -> {
+        assert termType.hasLastPositionBlockOffset()
+            && termType.hasSkipData()
+            && !termType.hasSingletonDoc();
+        assert indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal();
+        components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
+        components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+        components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
+        components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
+        if (indexOptions.ordinal()
+            >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
+      }
+      default -> throw new IllegalStateException("Unreachable");
+    }
+
+    return new TermStateCodecImpl(components.toArray(TermStateCodecComponent[]::new));
   }
 }

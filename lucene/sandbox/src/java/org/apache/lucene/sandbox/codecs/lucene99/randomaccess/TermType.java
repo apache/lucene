@@ -31,7 +31,7 @@ final class TermType {
 
   private static final byte HAS_SKIP_DATA_MASK = (byte) 1 << 1;
 
-  private static final byte HAS_VINT_POSITION_BLOCK_MASK = (byte) 1 << 2;
+  private static final byte HAS_LAST_POSITION_BLOCK_OFFEST_MASK = (byte) 1 << 2;
 
   public static final int NUM_TOTAL_TYPES = 8;
 
@@ -54,8 +54,8 @@ final class TermType {
     return (this.flag & HAS_SKIP_DATA_MASK) > 0;
   }
 
-  boolean hasVintPositionBlock() {
-    return (this.flag & HAS_VINT_POSITION_BLOCK_MASK) > 0;
+  boolean hasLastPositionBlockOffset() {
+    return (this.flag & HAS_LAST_POSITION_BLOCK_OFFEST_MASK) > 0;
   }
 
   static TermType fromTermState(IntBlockTermState state) {
@@ -67,7 +67,7 @@ final class TermType {
       flag |= HAS_SKIP_DATA_MASK;
     }
     if (state.lastPosBlockOffset != -1) {
-      flag |= HAS_VINT_POSITION_BLOCK_MASK;
+      flag |= HAS_LAST_POSITION_BLOCK_OFFEST_MASK;
     }
     return new TermType(flag);
   }
