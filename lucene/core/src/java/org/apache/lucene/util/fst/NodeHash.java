@@ -124,7 +124,7 @@ final class NodeHash<T> {
 
           // it was already in fallback -- promote to primary
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
-          primaryTable.setBytes(
+          primaryTable.copyFallbackNodeBytes(
               hashSlot, fallbackTable, lastFallbackHashSlot, lastFallbackNodeLength);
         } else {
           // not in fallback either -- freeze & add the incoming node
@@ -141,7 +141,7 @@ final class NodeHash<T> {
           fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
 
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
-          primaryTable.setBytes(hashSlot, buf);
+          primaryTable.copyNodeBytes(hashSlot, buf);
 
           // confirm frozen hash and unfrozen hash are the same
           assert primaryTable.hash(nodeAddress, hashSlot) == hash
@@ -284,7 +284,8 @@ final class NodeHash<T> {
       count++;
     }
 
-    private void setBytes(long hashSlot, byte[] bytes) {
+    /** copy the node bytes from the FST */
+    private void copyNodeBytes(long hashSlot, byte[] bytes) {
       assert copiedNodeAddress.get(hashSlot) == 0;
       copiedNodes.append(bytes);
       // write the offset, which points to the last byte of the node we copied since we later read
@@ -293,7 +294,7 @@ final class NodeHash<T> {
     }
 
     /** promote the node bytes from the fallback table */
-    private void setBytes(
+    private void copyFallbackNodeBytes(
         long hashSlot, PagedGrowableHash fallbackTable, long fallbackHashSlot, int nodeLength) {
       assert copiedNodeAddress.get(hashSlot) == 0;
       long fallbackAddress = fallbackTable.copiedNodeAddress.get(fallbackHashSlot);
