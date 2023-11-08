@@ -298,6 +298,8 @@ final class NodeHash<T> {
         long hashSlot, PagedGrowableHash fallbackTable, long fallbackHashSlot, int nodeLength) {
       assert copiedNodeAddress.get(hashSlot) == 0;
       long fallbackAddress = fallbackTable.copiedNodeAddress.get(fallbackHashSlot);
+      // fallbackAddress is the last offset of the node, but we need to copy the bytes from the
+      // start address
       long fallbackStartAddress = fallbackAddress - nodeLength + 1;
       assert fallbackStartAddress >= 0;
       copiedNodes.append(fallbackTable.copiedNodes, fallbackStartAddress, nodeLength);
