@@ -103,12 +103,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   AlreadyClosedException alreadyClosed(RuntimeException e) {
     // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
     // we check the "is closed" condition explicitly by checking that our "curSegment" is null.
+    // Care must be taken to not leak the NPE to caller!
     if (this.curSegment == null) {
       return new AlreadyClosedException("Already closed: " + this);
     }
-    // we also check if the scope of all segments is still alive:
-    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
-      return new AlreadyClosedException("Already closed: " + this);
+    // ISE can be thrown by MemorySegment and contains "closed" in message:
+    if (e instanceof IllegalStateException
+        && e.getMessage() != null
+        && e.getMessage().contains("closed")) {
+      return new AlreadyClosedException("Already closed: " + this, e);
     }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
     // the IndexInput method):
