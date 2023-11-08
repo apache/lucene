@@ -105,7 +105,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   AlreadyClosedException alreadyClosed(RuntimeException e) {
     // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
     // we check the "is closed" condition explicitly by checking that our "curSegment" is null.
-    // Care must be taken to not leak the NPE to caller!
+    // Care must be taken to not leak the NPE to code outside MemorySegmentIndexInput!
     if (this.curSegment == null) {
       return new AlreadyClosedException("Already closed: " + this);
     }
