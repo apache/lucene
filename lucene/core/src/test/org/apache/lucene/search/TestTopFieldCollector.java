@@ -74,7 +74,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
       throws IOException {
     IndexSearcher searcher = newSearcher(indexReader);
     TopFieldCollectorManager manager =
-        new TopFieldCollectorManager(sort, numResults, null, thresHold, false);
+        new TopFieldCollectorManager(
+            sort, numResults, null, thresHold, searcher.getSlices().length > 1);
     return searcher.search(q, manager);
   }
 
@@ -84,7 +85,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
 
     TopFieldCollectorManager collectorManager =
-        new TopFieldCollectorManager(sort, numResults, threshold);
+        new TopFieldCollectorManager(
+            sort, numResults, null, threshold, searcher.getSlices().length > 1);
 
     TopDocs topDoc = searcher.search(q, collectorManager);
 
