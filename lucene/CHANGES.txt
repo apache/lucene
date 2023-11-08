@@ -205,8 +205,8 @@ Improvements
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
-* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
-  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
+* GITHUB#12705, GITHUB#12705, GITHUB#12785: Improve handling of NullPointerException and
+  IllegalStateException in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
 * GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
 
