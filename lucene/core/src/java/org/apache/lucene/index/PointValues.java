@@ -234,14 +234,19 @@ public abstract class PointValues {
 
     /** Invalid state */
     public static final int INVALID = -1;
+
     /** Packed value matches the range in this dimension */
     public static final int MATCH = 0;
+
     /** Packed value is too low in this SORTED or NON-SORTED dimension */
     public static final int LOW = 1;
+
     /** Packed value is too high in SORTED dimension */
     public static final int HIGH_IN_SORTED_DIM = 2;
+
     /** Packed value is too high in NON-SORTED dimension */
     public static final int HIGH_IN_NON_SORTED_DIM = 3;
+
     /** Packed value does not match the range in this dimension */
     public static final int NOT_MATCH = 3;
   }
