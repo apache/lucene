@@ -16,46 +16,16 @@
  */
 package org.apache.lucene.util;
 
-import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteBlockPool extends LuceneTestCase {
 
-  public void testAppendFromOtherPool() {
-    Random random = random();
-
-    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
-    final int numBytes = atLeast(2 << 16);
-    byte[] bytes = RandomBytes.randomBytesOfLength(random, numBytes);
-    pool.append(bytes);
-
-    ByteBlockPool anotherPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
-    byte[] existingBytes = new byte[atLeast(500)];
-    anotherPool.append(existingBytes);
-
-    // now slice and append to another pool
-    int offset = TestUtil.nextInt(random, 1, 2 << 15);
-    int length = bytes.length - offset;
-    if (random.nextBoolean()) {
-      length = TestUtil.nextInt(random, 1, length);
-    }
-    anotherPool.append(pool, offset, length);
-
-    assertEquals(existingBytes.length + length, anotherPool.getPosition());
-
-    byte[] results = new byte[length];
-    anotherPool.readBytes(existingBytes.length, results, 0, results.length);
-    for (int i = 0; i < length; i++) {
-      assertEquals("byte @ index=" + i, bytes[offset + i], results[i]);
-    }
-  }
-
-  public void testReadAndWrite() {
+  public void testReadAndWrite() throws IOException {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
@@ -104,7 +74,7 @@ public class TestByteBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testLargeRandomBlocks() {
+  public void testLargeRandomBlocks() throws IOException {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();

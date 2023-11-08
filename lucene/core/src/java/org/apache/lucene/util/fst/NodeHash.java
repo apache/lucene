@@ -123,9 +123,11 @@ final class NodeHash<T> {
           assert lastFallbackHashSlot != -1 && lastFallbackNodeLength != -1;
 
           // it was already in fallback -- promote to primary
-          primaryTable.setNodeAddress(hashSlot, nodeAddress);
-          primaryTable.copyFallbackNodeBytes(
-              hashSlot, fallbackTable, lastFallbackHashSlot, lastFallbackNodeLength);
+          // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
+          primaryTable.setNode(
+              hashSlot,
+              nodeAddress,
+              fallbackTable.getBytes(lastFallbackHashSlot, lastFallbackNodeLength));
         } else {
           // not in fallback either -- freeze & add the incoming node
 
@@ -140,8 +142,7 @@ final class NodeHash<T> {
           byte[] buf = new byte[Math.toIntExact(nodeAddress - startAddress + 1)];
           fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
 
-          primaryTable.setNodeAddress(hashSlot, nodeAddress);
-          primaryTable.copyNodeBytes(hashSlot, buf);
+          primaryTable.setNode(hashSlot, nodeAddress, buf);
 
           // confirm frozen hash and unfrozen hash are the same
           assert primaryTable.hash(nodeAddress, hashSlot) == hash
@@ -263,6 +264,21 @@ final class NodeHash<T> {
     }
 
     /**
+     * Get the copied bytes at the provided hash slot
+     *
+     * @param hashSlot the hash slot to read from
+     * @param length the number of bytes to read
+     * @return the copied byte array
+     */
+    public byte[] getBytes(long hashSlot, int length) {
+      long address = copiedNodeAddress.get(hashSlot);
+      assert address - length + 1 >= 0;
+      byte[] buf = new byte[length];
+      copiedNodes.readBytes(address - length + 1, buf, 0, length);
+      return buf;
+    }
+
+    /**
      * Get the node address from the provided hash slot
      *
      * @param hashSlot the hash slot to read
@@ -273,35 +289,21 @@ final class NodeHash<T> {
     }
 
     /**
-     * Set the node address from the provided hash slot
+     * Set the node address and bytes from the provided hash slot
      *
      * @param hashSlot the hash slot to write to
      * @param nodeAddress the node address
+     * @param bytes the node bytes to be copied
      */
-    public void setNodeAddress(long hashSlot, long nodeAddress) {
+    public void setNode(long hashSlot, long nodeAddress, byte[] bytes) {
       assert fstNodeAddress.get(hashSlot) == 0;
       fstNodeAddress.set(hashSlot, nodeAddress);
       count++;
-    }
 
-    /** copy the node bytes from the FST */
-    private void copyNodeBytes(long hashSlot, byte[] bytes) {
-      assert copiedNodeAddress.get(hashSlot) == 0;
       copiedNodes.append(bytes);
       // write the offset, which points to the last byte of the node we copied since we later read
       // this node in reverse
-      copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);
-    }
-
-    /** promote the node bytes from the fallback table */
-    private void copyFallbackNodeBytes(
-        long hashSlot, PagedGrowableHash fallbackTable, long fallbackHashSlot, int nodeLength) {
       assert copiedNodeAddress.get(hashSlot) == 0;
-      long fallbackAddress = fallbackTable.copiedNodeAddress.get(fallbackHashSlot);
-      assert fallbackAddress - nodeLength + 1 >= 0;
-      copiedNodes.append(fallbackTable.copiedNodes, fallbackAddress, nodeLength);
-      // write the offset, which points to the last byte of the node we copied since we later read
-      // this node in reverse
       copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);
     }
 
