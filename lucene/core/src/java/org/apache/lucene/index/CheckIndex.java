@@ -2708,7 +2708,7 @@ public final class CheckIndex implements Closeable {
     while (values.nextDoc() != NO_MORE_DOCS) {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
-        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE, null);
         codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
@@ -2752,7 +2752,7 @@ public final class CheckIndex implements Closeable {
     while (values.nextDoc() != NO_MORE_DOCS) {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
-        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE, null);
         codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {

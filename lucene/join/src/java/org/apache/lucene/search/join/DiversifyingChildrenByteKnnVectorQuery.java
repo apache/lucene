@@ -28,6 +28,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.MaxScoreAccumulator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -123,7 +124,11 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      MaxScoreAccumulator globalMinSimAcc)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {

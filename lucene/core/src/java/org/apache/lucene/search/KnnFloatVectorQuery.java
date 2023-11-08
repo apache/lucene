@@ -76,10 +76,16 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      MaxScoreAccumulator globalMinSimAcc)
       throws IOException {
     TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        context
+            .reader()
+            .searchNearestVectors(field, target, k, acceptDocs, visitedLimit, globalMinSimAcc);
     return results != null ? results : NO_RESULTS;
   }
 

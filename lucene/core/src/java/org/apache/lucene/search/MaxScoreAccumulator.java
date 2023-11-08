@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
-final class MaxScoreAccumulator {
+public final class MaxScoreAccumulator {
   // we use 2^10-1 to check the remainder with a bitwise operation
   static final int DEFAULT_INTERVAL = 0x3ff;
 

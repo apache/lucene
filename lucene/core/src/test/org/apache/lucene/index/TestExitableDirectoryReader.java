@@ -469,7 +469,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   TestVectorUtil.randomVector(dimension),
                   5,
                   leaf.getLiveDocs(),
-                  Integer.MAX_VALUE));
+                  Integer.MAX_VALUE,
+                  null));
     } else {
       DocIdSetIterator iter = leaf.getFloatVectorValues("vector");
       scanAndRetrieve(leaf, iter);
@@ -479,7 +480,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           TestVectorUtil.randomVector(dimension),
           5,
           leaf.getLiveDocs(),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          null);
     }
 
     reader.close();
@@ -544,7 +546,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   TestVectorUtil.randomVectorBytes(dimension),
                   5,
                   leaf.getLiveDocs(),
-                  Integer.MAX_VALUE));
+                  Integer.MAX_VALUE,
+                  null));
     } else {
       DocIdSetIterator iter = leaf.getByteVectorValues("vector");
       scanAndRetrieve(leaf, iter);
@@ -554,7 +557,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           TestVectorUtil.randomVectorBytes(dimension),
           5,
           leaf.getLiveDocs(),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          null);
     }
 
     reader.close();

@@ -28,24 +28,50 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
 public final class TopKnnCollector extends AbstractKnnCollector {
 
   private final NeighborQueue queue;
+  private final MaxScoreAccumulator globalMinSimAcc;
+  private boolean kResultsCollected = false;
+  private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
 
   /**
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
+   * @param globalMinSimAcc the global minimum competitive similarity tracked across all segments
    */
-  public TopKnnCollector(int k, int visitLimit) {
+  public TopKnnCollector(int k, int visitLimit, MaxScoreAccumulator globalMinSimAcc) {
     super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
+    this.globalMinSimAcc = globalMinSimAcc;
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    return queue.insertWithOverflow(docId, similarity);
+    boolean result = queue.insertWithOverflow(docId, similarity);
+    boolean reachedKResults = (kResultsCollected == false && queue.size() == k());
+    if (reachedKResults) {
+      kResultsCollected = true;
+    }
+
+    if (globalMinSimAcc != null && kResultsCollected) {
+      // as we've collected k results, we can start exchanging globally
+      globalMinSimAcc.accumulate(queue.topNode(), queue.topScore());
+
+      // periodically update the local copy of global similarity
+      if (reachedKResults || (visitedCount & globalMinSimAcc.modInterval) == 0) {
+        MaxScoreAccumulator.DocAndScore docAndScore = globalMinSimAcc.get();
+        cachedGlobalMinSim = docAndScore.score;
+      }
+    }
+    return result;
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
+    float minSim = kResultsCollected ? queue.topScore() : Float.NEGATIVE_INFINITY;
+    if (globalMinSimAcc == null) {
+      return minSim;
+    } else {
+      return Math.max(minSim, cachedGlobalMinSim);
+    }
   }
 
   @Override

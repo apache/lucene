@@ -363,7 +363,7 @@ public class TestKnnGraph extends LuceneTestCase {
       Bits liveDocs = ctx.reader().getLiveDocs();
       results[ctx.ord] =
           ctx.reader()
-              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE);
+              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE, null);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;
