@@ -57,24 +57,34 @@ public abstract class StringSorter extends Sorter {
     }
   }
 
+  protected class MSBStringRadixSorter extends MSBRadixSorter {
+
+    private final BytesRefComparator cmp;
+
+    protected MSBStringRadixSorter(BytesRefComparator cmp) {
+      super(cmp.comparedBytesCount);
+      this.cmp = cmp;
+    }
+
+    @Override
+    protected void swap(int i, int j) {
+      StringSorter.this.swap(i, j);
+    }
+
+    @Override
+    protected int byteAt(int i, int k) {
+      get(scratch1, scratchBytes1, i);
+      return cmp.byteAt(scratchBytes1, k);
+    }
+
+    @Override
+    protected Sorter getFallbackSorter(int k) {
+      return fallbackSorter((o1, o2) -> cmp.compare(o1, o2, k));
+    }
+  }
+
   protected Sorter radixSorter(BytesRefComparator cmp) {
-    return new MSBRadixSorter(cmp.comparedBytesCount) {
-      @Override
-      protected void swap(int i, int j) {
-        StringSorter.this.swap(i, j);
-      }
-
-      @Override
-      protected int byteAt(int i, int k) {
-        get(scratch1, scratchBytes1, i);
-        return cmp.byteAt(scratchBytes1, k);
-      }
-
-      @Override
-      protected Sorter getFallbackSorter(int k) {
-        return fallbackSorter((o1, o2) -> cmp.compare(o1, o2, k));
-      }
-    };
+    return new MSBStringRadixSorter(cmp);
   }
 
   protected Sorter fallbackSorter(Comparator<BytesRef> cmp) {
