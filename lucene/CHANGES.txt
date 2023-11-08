@@ -136,6 +136,9 @@ Changes in runtime behavior
 Bug Fixes
 ---------------------
 
+* GITHUB#12654: TestIndexWriterOnVMError.testUnknownError times out (fixes potential IndexWriter
+  deadlock with tragic exceptions). (Benjamin Trent, Dawid Weiss, Simon Willnauer)
+
 * GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
   (Grigoriy Troitskiy)
 
