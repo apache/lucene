@@ -35,6 +35,7 @@ import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
@@ -321,7 +322,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -418,7 +419,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -491,7 +492,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -570,7 +571,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -645,7 +646,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -692,6 +693,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         fail("some hits were wrong");
       }
     }
+  }
+
+  private CollectorManager<FixedBitSetCollector, FixedBitSet> searchIndex(int maxDoc) {
+    return FixedBitSetCollector.createManager(maxDoc);
   }
 
   protected abstract Validator getValidator();

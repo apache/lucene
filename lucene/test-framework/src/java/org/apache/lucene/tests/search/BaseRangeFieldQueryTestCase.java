@@ -296,7 +296,7 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
         System.out.println("  query=" + query);
       }
 
-      FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(maxDoc));
 
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
       for (int docID = 0; docID < maxDoc; ++docID) {

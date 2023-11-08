@@ -222,8 +222,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testIntAssociationRandom() throws Exception {
+
+    FacetsCollector fc = new FacetsCollector();
+
     IndexSearcher searcher = newSearcher(reader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    searcher.search(new MatchAllDocsQuery(), fc);
 
     Map<String, Integer> expected;
     Facets facets;
