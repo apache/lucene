@@ -175,13 +175,9 @@ public final class BytesRefHash implements Accountable {
           }
 
           @Override
-          protected void sort(int from, int to, int k, int l) {
-            // We lower the fallback threshold because the bucket cache speed up the reorder
-            if (to - from <= LENGTH_THRESHOLD / 2 || l >= LEVEL_THRESHOLD) {
-              getFallbackSorter(k).sort(from, to);
-            } else {
-              radixSort(from, to, k, l);
-            }
+          protected boolean shouldFallback(int from, int to, int l) {
+            // We lower the fallback threshold because the bucket cache speeds up the reorder
+            return to - from <= LENGTH_THRESHOLD / 2 || l >= LEVEL_THRESHOLD;
           }
 
           private void swapBucketCache(int i, int j) {

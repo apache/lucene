@@ -129,12 +129,16 @@ public abstract class MSBRadixSorter extends Sorter {
     sort(from, to, 0, 0);
   }
 
-  protected void sort(int from, int to, int k, int l) {
-    if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
+  private void sort(int from, int to, int k, int l) {
+    if (shouldFallback(from, to, l)) {
       getFallbackSorter(k).sort(from, to);
     } else {
       radixSort(from, to, k, l);
     }
+  }
+
+  protected boolean shouldFallback(int from, int to, int l) {
+    return to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD;
   }
 
   /**
