@@ -220,7 +220,7 @@ final class NodeHash<T> {
   }
 
   /** Inner class because it needs access to hash function and FST bytes. */
-  private class PagedGrowableHash {
+  class PagedGrowableHash {
     // storing the FST node address where the position is the masked hash of the node arcs
     private PagedGrowableWriter fstNodeAddress;
     // storing the local copiedNodes address in the same position as fstNodeAddress
@@ -263,6 +263,21 @@ final class NodeHash<T> {
     }
 
     /**
+     * Get the copied bytes at the provided hash slot
+     *
+     * @param hashSlot the hash slot to read from
+     * @param length the number of bytes to read
+     * @return the copied byte array
+     */
+    public byte[] getBytes(long hashSlot, int length) {
+      long address = copiedNodeAddress.get(hashSlot);
+      assert address - length + 1 >= 0;
+      byte[] buf = new byte[length];
+      copiedNodes.readBytes(address - length + 1, buf, 0, length);
+      return buf;
+    }
+
+    /**
      * Get the node address from the provided hash slot
      *
      * @param hashSlot the hash slot to read
@@ -285,7 +300,7 @@ final class NodeHash<T> {
     }
 
     /** copy the node bytes from the FST */
-    private void copyNodeBytes(long hashSlot, byte[] bytes) {
+    void copyNodeBytes(long hashSlot, byte[] bytes) {
       assert copiedNodeAddress.get(hashSlot) == 0;
       copiedNodes.append(bytes);
       // write the offset, which points to the last byte of the node we copied since we later read
@@ -294,7 +309,7 @@ final class NodeHash<T> {
     }
 
     /** promote the node bytes from the fallback table */
-    private void copyFallbackNodeBytes(
+    void copyFallbackNodeBytes(
         long hashSlot, PagedGrowableHash fallbackTable, long fallbackHashSlot, int nodeLength) {
       assert copiedNodeAddress.get(hashSlot) == 0;
       long fallbackAddress = fallbackTable.copiedNodeAddress.get(fallbackHashSlot);
