@@ -51,9 +51,4 @@ final class ReverseBytesReader extends FST.BytesReader {
   public void setPosition(long pos) {
     this.pos = (int) pos;
   }
-
-  @Override
-  public boolean reversed() {
-    return true;
-  }
 }

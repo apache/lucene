@@ -1193,9 +1193,6 @@ public final class FST<T> implements Accountable {
 
     /** Set current read position. */
     public abstract void setPosition(long pos);
-
-    /** Returns true if this reader uses reversed bytes under-the-hood. */
-    public abstract boolean reversed();
   }
 
   /**

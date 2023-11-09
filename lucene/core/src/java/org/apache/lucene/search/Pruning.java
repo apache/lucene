@@ -16,19 +16,18 @@
  */
 package org.apache.lucene.search;
 
-/**
- * Provides a {@link FieldComparator} for custom field sorting.
- *
- * @lucene.experimental
- */
-public abstract class FieldComparatorSource {
-
+/** Controls {@link LeafFieldComparator} how to skip documents */
+public enum Pruning {
+  /** Not allowed to skip documents. */
+  NONE,
   /**
-   * Creates a comparator for the field in the given index.
-   *
-   * @param fieldname Name of the field to create comparator for.
-   * @return FieldComparator.
+   * Allowed to skip documents that compare strictly better than the top value, or strictly worse
+   * than the bottom value.
    */
-  public abstract FieldComparator<?> newComparator(
-      String fieldname, int numHits, Pruning pruning, boolean reversed);
+  GREATER_THAN,
+  /**
+   * Allowed to skip documents that compare better than the top value, or worse than or equal to the
+   * bottom value.
+   */
+  GREATER_THAN_OR_EQUAL_TO
 }

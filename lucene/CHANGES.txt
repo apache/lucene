@@ -264,6 +264,8 @@ Optimizations
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
 
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
@@ -274,6 +276,9 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
+
+* GITHUB#12654: TestIndexWriterOnVMError.testUnknownError times out (fixes potential IndexWriter
+  deadlock with tragic exceptions). (Benjamin Trent, Dawid Weiss, Simon Willnauer)
 
 * GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
   (Grigoriy Troitskiy)
@@ -289,6 +294,8 @@ Bug Fixes
 * GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
 
 * GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
+
+* GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
 
 Build
 ---------------------
