@@ -475,10 +475,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return;
     }
 
-    // make sure all accesses to this IndexInput instance throw NPE:
-    curSegment = null;
-    Arrays.fill(segments, null);
-
     // the master IndexInput has a MemorySession and is able
     // to release all resources (unmap segments) - a
     // side effect is that other threads still using clones
@@ -486,6 +482,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     if (session != null) {
       session.close();
     }
+
+    // make sure all accesses to this IndexInput instance throw NPE:
+    curSegment = null;
+    Arrays.fill(segments, null);
   }
 
   /** Optimization of MemorySegmentIndexInput for when there is only one segment. */
