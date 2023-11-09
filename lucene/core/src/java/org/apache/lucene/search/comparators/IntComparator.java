@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 
 /**
  * Comparator based on {@link Integer#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class IntComparator extends NumericComparator<Integer> {
   protected int bottom;
 
   public IntComparator(
-      int numHits, String field, Integer missingValue, boolean reverse, boolean enableSkipping) {
-    super(field, missingValue != null ? missingValue : 0, reverse, enableSkipping, Integer.BYTES);
+      int numHits, String field, Integer missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0, reverse, pruning, Integer.BYTES);
     values = new int[numHits];
   }
 
