@@ -85,9 +85,11 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
                       clone.seek(0);
                       clone.readBytes(accum, 0, accum.length);
                     }
-                  } catch (@SuppressWarnings("unused") IOException | AlreadyClosedException ok) {
+                  } catch (
+                      @SuppressWarnings("unused")
+                      AlreadyClosedException ok) {
                     // OK
-                  } catch (InterruptedException e) {
+                  } catch (InterruptedException | IOException e) {
                     throw new RuntimeException(e);
                   }
                 });
