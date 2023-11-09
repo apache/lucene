@@ -264,6 +264,8 @@ Optimizations
 
 * GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
 
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
+
 Changes in runtime behavior
 ---------------------
 

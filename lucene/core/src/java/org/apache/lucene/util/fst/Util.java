@@ -854,6 +854,17 @@ public final class Util {
           }
           return arc;
         }
+      } else if (arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS) {
+        int targetIndex = label - arc.label();
+        if (targetIndex >= arc.numArcs()) {
+          return null;
+        } else if (targetIndex < 0) {
+          return arc;
+        } else {
+          fst.readArcByContinuous(arc, in, targetIndex);
+          assert arc.label() == label;
+          return arc;
+        }
       }
       // Fixed length arcs in a binary search node.
       int idx = binarySearch(fst, arc, label);
