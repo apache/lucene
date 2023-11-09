@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 
 /**
  * Comparator based on {@link Float#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class FloatComparator extends NumericComparator<Float> {
   protected float bottom;
 
   public FloatComparator(
-      int numHits, String field, Float missingValue, boolean reverse, boolean enableSkipping) {
-    super(field, missingValue != null ? missingValue : 0.0f, reverse, enableSkipping, Float.BYTES);
+      int numHits, String field, Float missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0.0f, reverse, pruning, Float.BYTES);
     values = new float[numHits];
   }
 
