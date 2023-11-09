@@ -21,6 +21,7 @@ import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
@@ -60,8 +61,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     log.info(
         String.format(
             Locale.ENGLISH,
-            "Java vector incubator API enabled; uses preferredBitSize=%d%s",
+            "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorUtilSupport.VECTOR_BITSIZE,
+            Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
             PanamaVectorUtilSupport.HAS_FAST_INTEGER_VECTORS
                 ? ""
                 : "; floating-point vectors only"));

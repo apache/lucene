@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -116,7 +116,7 @@ final class PForUtil {
     out.writeBytes(exceptions, exceptions.length);
   }
 
-  /** Decode 128 integers into {@code ints}. */
+  /** Decode 128 integers into {@code longs}. */
   void decode(DataInput in, long[] longs) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;

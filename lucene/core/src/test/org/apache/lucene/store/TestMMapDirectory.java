@@ -27,7 +27,7 @@ import org.junit.BeforeClass;
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
 // machines occasionally
-public class TestMmapDirectory extends BaseDirectoryTestCase {
+public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   @Override
   protected Directory getDirectory(Path path) throws IOException {
@@ -60,48 +60,45 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   public void testAceWithThreads() throws Exception {
     assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
 
-    final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
-    for (int iter = 0; iter < iters; iter++) {
-      Directory dir = getDirectory(createTempDir("testAceWithThreads"));
-      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
-      Random random = random();
-      for (int i = 0; i < 8 * 1024 * 1024; i++) {
-        out.writeInt(random.nextInt());
+    final int nInts = 8 * 1024 * 1024;
+
+    try (Directory dir = getDirectory(createTempDir("testAceWithThreads"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        final Random random = random();
+        for (int i = 0; i < nInts; i++) {
+          out.writeInt(random.nextInt());
+        }
       }
-      out.close();
-      IndexInput in = dir.openInput("test", IOContext.DEFAULT);
-      IndexInput clone = in.clone();
-      final byte[] accum = new byte[32 * 1024 * 1024];
-      final CountDownLatch shotgun = new CountDownLatch(1);
-      Thread t1 =
-          new Thread(
-              () -> {
-                try {
-                  shotgun.await();
-                  for (int i = 0; i < 10; i++) {
-                    clone.seek(0);
-                    clone.readBytes(accum, 0, accum.length);
+
+      final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
+      for (int iter = 0; iter < iters; iter++) {
+        final IndexInput in = dir.openInput("test", IOContext.DEFAULT);
+        final IndexInput clone = in.clone();
+        final byte[] accum = new byte[nInts * Integer.BYTES];
+        final CountDownLatch shotgun = new CountDownLatch(1);
+        final Thread t1 =
+            new Thread(
+                () -> {
+                  try {
+                    shotgun.await();
+                    for (int i = 0; i < 10; i++) {
+                      clone.seek(0);
+                      clone.readBytes(accum, 0, accum.length);
+                    }
+                  } catch (
+                      @SuppressWarnings("unused")
+                      AlreadyClosedException ok) {
+                    // OK
+                  } catch (InterruptedException | IOException e) {
+                    throw new RuntimeException(e);
                   }
-                } catch (@SuppressWarnings("unused") IOException | AlreadyClosedException ok) {
-                  // OK
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
-                }
-              });
-      t1.start();
-      shotgun.countDown();
-      try {
+                });
+        t1.start();
+        shotgun.countDown();
+        // this triggers "bad behaviour": closing input while other threads are running
         in.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
-        // this may also happen and is a valid exception, informing our user that, e.g., a query is
-        // running!
-        // "java.lang.IllegalStateException: Cannot close while another thread is accessing the
-        // segment"
+        t1.join();
       }
-      t1.join();
-      dir.close();
     }
   }
 

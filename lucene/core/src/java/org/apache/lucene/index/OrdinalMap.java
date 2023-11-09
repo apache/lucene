@@ -24,8 +24,6 @@ import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.PriorityQueue;
@@ -48,19 +46,15 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
-  private static class TermsEnumIndex {
-    final int subIndex;
-    final TermsEnum termsEnum;
-    BytesRef currentTerm;
+  private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
 
-    public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
-      this.termsEnum = termsEnum;
-      this.subIndex = subIndex;
+    TermsEnumPriorityQueue(int size) {
+      super(size);
     }
 
-    public BytesRef next() throws IOException {
-      currentTerm = termsEnum.next();
-      return currentTerm;
+    @Override
+    protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
+      return a.compareTermTo(b) < 0;
     }
   }
 
@@ -227,13 +221,7 @@ public class OrdinalMap implements Accountable {
     long[] segmentOrds = new long[subs.length];
 
     // Just merge-sorts by term:
-    PriorityQueue<TermsEnumIndex> queue =
-        new PriorityQueue<TermsEnumIndex>(subs.length) {
-          @Override
-          protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-            return a.currentTerm.compareTo(b.currentTerm) < 0;
-          }
-        };
+    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
 
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
@@ -242,19 +230,18 @@ public class OrdinalMap implements Accountable {
       }
     }
 
-    BytesRefBuilder scratch = new BytesRefBuilder();
+    TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
 
     long globalOrd = 0;
     while (queue.size() != 0) {
       TermsEnumIndex top = queue.top();
-      scratch.copyBytes(top.currentTerm);
+      topState.copyFrom(top);
 
       int firstSegmentIndex = Integer.MAX_VALUE;
       long globalOrdDelta = Long.MAX_VALUE;
 
       // Advance past this term, recording the per-segment ord deltas:
       while (true) {
-        top = queue.top();
         long segmentOrd = top.termsEnum.ord();
         long delta = globalOrd - segmentOrd;
         int segmentIndex = top.subIndex;
@@ -284,10 +271,11 @@ public class OrdinalMap implements Accountable {
           if (queue.size() == 0) {
             break;
           }
+          top = queue.top();
         } else {
-          queue.updateTop();
+          top = queue.updateTop();
         }
-        if (queue.top().currentTerm.equals(scratch.get()) == false) {
+        if (top.termEquals(topState) == false) {
           break;
         }
       }

@@ -201,6 +201,28 @@ public abstract class TaxonomyReader implements Closeable {
    */
   public abstract int getOrdinal(FacetLabel categoryPath) throws IOException;
 
+  /**
+   * Returns the ordinals of the categories given as a path. The ordinal is the category's serial
+   * number, an integer which starts with 0 and grows as more categories are added (note that once a
+   * category is added, it can never be deleted).
+   *
+   * <p>The implementation in {@link
+   * org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader} is generally faster than
+   * iteratively calling {@link #getOrdinal(FacetLabel)}
+   *
+   * @return array of the category's' ordinals or {@link #INVALID_ORDINAL} if the category wasn't
+   *     found.
+   */
+  public int[] getBulkOrdinals(FacetLabel... categoryPath) throws IOException {
+    // This is a slow default implementation. DirectoryTaxonomyReader overrides this method to make
+    // it faster.
+    int[] ords = new int[categoryPath.length];
+    for (int i = 0; i < categoryPath.length; i++) {
+      ords[i] = getOrdinal(categoryPath[i]);
+    }
+    return ords;
+  }
+
   /** Returns ordinal for the dim + path. */
   public int getOrdinal(String dim, String... path) throws IOException {
     String[] fullPath = new String[path.length + 1];
@@ -218,6 +240,9 @@ public abstract class TaxonomyReader implements Closeable {
    * <p>The implementation in {@link
    * org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader} is generally faster than
    * the default implementation which iteratively calls {@link #getPath(int)}
+   *
+   * <p>Note: this method may change (reorder elements) its parameter, you should avoid reusing the
+   * parameter after the method is called.
    */
   public FacetLabel[] getBulkPath(int... ordinals) throws IOException {
     FacetLabel[] facetLabels = new FacetLabel[ordinals.length];

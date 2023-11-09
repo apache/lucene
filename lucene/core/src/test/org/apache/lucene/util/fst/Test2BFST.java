@@ -56,7 +56,7 @@ public class Test2BFST extends LuceneTestCase {
     for (int iter = 0; iter < 1; iter++) {
       // Build FST w/ NoOutputs and stop when nodeCount > 2.2B
       {
-        System.out.println("\nTEST: 3B nodes; doPack=false output=NO_OUTPUTS");
+        System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
         Outputs<Object> outputs = NoOutputs.getSingleton();
         Object NO_OUTPUT = outputs.getNoOutput();
         final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);

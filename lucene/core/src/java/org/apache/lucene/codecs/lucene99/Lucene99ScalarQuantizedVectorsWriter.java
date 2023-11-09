@@ -52,6 +52,7 @@ import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * Writes quantized vector values and metadata to index segments.
@@ -141,7 +142,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
     for (float[] v : fieldData.floatVectors) {
+      if (fieldData.normalize) {
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeBytes(vector, vector.length);
@@ -193,8 +201,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
+      if (fieldData.normalize) {
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeBytes(vector, vector.length);
@@ -233,7 +248,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
               fieldInfo, mergeState, mergedQuantizationState);
-      writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
+      DocsWithFieldSet docsWithField =
+          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
@@ -253,10 +269,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
               fieldInfo.getVectorSimilarityFunction(),
               mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(), byteVectorValues.size(), quantizationDataInput)));
+                  fieldInfo.getVectorDimension(),
+                  docsWithField.cardinality(),
+                  quantizationDataInput)));
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(quantizationDataInput);
+        IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempQuantizedVectorData.getName());
       }
@@ -759,6 +777,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       return supplier.scorer(ord);
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return supplier.copy();
     }
 
     @Override
