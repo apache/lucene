@@ -21,30 +21,31 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNodeHash extends LuceneTestCase {
 
-    public void testCopyFallbackNodeBytes() {
-        // we don't need the FSTCompiler in this test
-        NodeHash<Object> nodeHash = new NodeHash<>(null, 1);
+  public void testCopyFallbackNodeBytes() {
+    // we don't need the FSTCompiler in this test
+    NodeHash<Object> nodeHash = new NodeHash<>(null, 1);
 
-        NodeHash<Object>.PagedGrowableHash primaryHashTable = nodeHash.new PagedGrowableHash();
-        NodeHash<Object>.PagedGrowableHash fallbackHashTable = nodeHash.new PagedGrowableHash();
-        int nodeLength = atLeast(500);
-        long fallbackHashSlot = 1;
-        byte[] fallbackBytes = RandomBytes.randomBytesOfLength(random(), nodeLength);
-        fallbackHashTable.copyNodeBytes(fallbackHashSlot, fallbackBytes);
+    NodeHash<Object>.PagedGrowableHash primaryHashTable = nodeHash.new PagedGrowableHash();
+    NodeHash<Object>.PagedGrowableHash fallbackHashTable = nodeHash.new PagedGrowableHash();
+    int nodeLength = atLeast(500);
+    long fallbackHashSlot = 1;
+    byte[] fallbackBytes = RandomBytes.randomBytesOfLength(random(), nodeLength);
+    fallbackHashTable.copyNodeBytes(fallbackHashSlot, fallbackBytes);
 
-        // check if the bytes we wrote are the same as the original bytes
-        byte[] storedBytes = fallbackHashTable.getBytes(fallbackHashSlot, nodeLength);
-        for (int i = 0; i < nodeLength; i++) {
-            assertEquals("byte @ index=" + i, fallbackBytes[i], storedBytes[i]);
-        }
-
-        long primaryHashSlot = 2;
-        primaryHashTable.copyFallbackNodeBytes(primaryHashSlot, fallbackHashTable, fallbackHashSlot, nodeLength);
-
-        // check if the bytes we copied are the same as the original bytes
-        byte[] copiedBytes = primaryHashTable.getBytes(primaryHashSlot, nodeLength);
-        for (int i = 0; i < nodeLength; i++) {
-            assertEquals("byte @ index=" + i, fallbackBytes[i], copiedBytes[i]);
-        }
+    // check if the bytes we wrote are the same as the original bytes
+    byte[] storedBytes = fallbackHashTable.getBytes(fallbackHashSlot, nodeLength);
+    for (int i = 0; i < nodeLength; i++) {
+      assertEquals("byte @ index=" + i, fallbackBytes[i], storedBytes[i]);
     }
+
+    long primaryHashSlot = 2;
+    primaryHashTable.copyFallbackNodeBytes(
+        primaryHashSlot, fallbackHashTable, fallbackHashSlot, nodeLength);
+
+    // check if the bytes we copied are the same as the original bytes
+    byte[] copiedBytes = primaryHashTable.getBytes(primaryHashSlot, nodeLength);
+    for (int i = 0; i < nodeLength; i++) {
+      assertEquals("byte @ index=" + i, fallbackBytes[i], copiedBytes[i]);
+    }
+  }
 }
