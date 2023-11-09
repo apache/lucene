@@ -266,6 +266,9 @@ Optimizations
 
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
+* GITHUB#12789: Improve kNN vector search speed by utilizing FixedBitSet instead of SparseFixedBitSet when tracking
+  visited nodes. (Ben Trent)
+
 Changes in runtime behavior
 ---------------------
 
