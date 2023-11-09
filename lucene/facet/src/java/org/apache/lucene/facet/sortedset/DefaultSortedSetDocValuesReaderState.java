@@ -52,7 +52,13 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** {@link IndexReader} passed to the constructor. */
   public final IndexReader reader;
 
-  private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
+  /**
+   * There is only ever one cached ordinal map, but storing it in a hash map together with the field
+   * name is convenient. It enables us to have code blocks synchronized on the ordinal map even when
+   * the ordinal map is null and it makes it easy to call to {@link
+   * Accountables#namedAccountables(String, Map)} in {@link #getChildResources()}.
+   */
+  private final Map<String, OrdinalMap> cachedOrdMap = new HashMap<>();
 
   private final FacetsConfig config;
 
@@ -259,13 +265,13 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** Return the memory usage of this object in bytes. Negative values are illegal. */
   @Override
   public long ramBytesUsed() {
-    synchronized (cachedOrdMaps) {
-      long bytes = 0;
-      for (OrdinalMap map : cachedOrdMaps.values()) {
-        bytes += map.ramBytesUsed();
+    synchronized (cachedOrdMap) {
+      OrdinalMap map = cachedOrdMap.get(field);
+      if (map == null) {
+        return 0;
+      } else {
+        return map.ramBytesUsed();
       }
-
-      return bytes;
     }
   }
 
@@ -277,8 +283,8 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
    */
   @Override
   public Collection<Accountable> getChildResources() {
-    synchronized (cachedOrdMaps) {
-      return Accountables.namedAccountables("DefaultSortedSetDocValuesReaderState", cachedOrdMaps);
+    synchronized (cachedOrdMap) {
+      return Accountables.namedAccountables("DefaultSortedSetDocValuesReaderState", cachedOrdMap);
     }
   }
 
@@ -290,15 +296,9 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** Return top-level doc values. */
   @Override
   public SortedSetDocValues getDocValues() throws IOException {
-    // TODO: this is dup'd from slow composite reader wrapper ... can we factor it out to share?
     OrdinalMap map = null;
-    // TODO: why are we lazy about this?  It's better if ctor pays the cost, not first query?  Oh,
-    // but we
-    // call this method from ctor, ok.  Also, we only ever store one entry in the map (for
-    // key=field) so
-    // why are we using a map?
-    synchronized (cachedOrdMaps) {
-      map = cachedOrdMaps.get(field);
+    synchronized (cachedOrdMap) {
+      map = cachedOrdMap.get(field);
       if (map == null) {
         // uncached, or not a multi dv
         SortedSetDocValues dv = MultiDocValues.getSortedSetValues(reader, field);
@@ -306,7 +306,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
           map = ((MultiDocValues.MultiSortedSetDocValues) dv).mapping;
           IndexReader.CacheHelper cacheHelper = reader.getReaderCacheHelper();
           if (cacheHelper != null && map.owner == cacheHelper.getKey()) {
-            cachedOrdMaps.put(field, map);
+            cachedOrdMap.put(field, map);
           }
         }
         return dv;
