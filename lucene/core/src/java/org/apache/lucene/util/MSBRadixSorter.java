@@ -32,11 +32,11 @@ public abstract class MSBRadixSorter extends Sorter {
   // this is used as a protection against the fact that radix sort performs
   // worse when there are long common prefixes (probably because of cache
   // locality)
-  private static final int LEVEL_THRESHOLD = 8;
+  protected static final int LEVEL_THRESHOLD = 8;
   // size of histograms: 256 + 1 to indicate that the string is finished
   protected static final int HISTOGRAM_SIZE = 257;
-  // buckets below this size will be sorted with introsort
-  private static final int LENGTH_THRESHOLD = 100;
+  // buckets below this size will be sorted with fallback sorter
+  protected static final int LENGTH_THRESHOLD = 100;
 
   // we store one histogram per recursion level
   private final int[][] histograms = new int[LEVEL_THRESHOLD][];
@@ -141,7 +141,7 @@ public abstract class MSBRadixSorter extends Sorter {
    * @param k the character number to compare
    * @param l the level of recursion
    */
-  private void radixSort(int from, int to, int k, int l) {
+  protected void radixSort(int from, int to, int k, int l) {
     int[] histogram = histograms[l];
     if (histogram == null) {
       histogram = histograms[l] = new int[HISTOGRAM_SIZE];

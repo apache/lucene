@@ -174,6 +174,15 @@ public final class BytesRefHash implements Accountable {
             }
           }
 
+          @Override
+          protected void sort(int from, int to, int k, int l) {
+            if (to - from <= LENGTH_THRESHOLD / 2 || l >= LEVEL_THRESHOLD) {
+              getFallbackSorter(k).sort(from, to);
+            } else {
+              radixSort(from, to, k, l);
+            }
+          }
+
           private void swapBucketCache(int i, int j) {
             swap(i, j);
             int tmp = compact[tmpOffset + i];
