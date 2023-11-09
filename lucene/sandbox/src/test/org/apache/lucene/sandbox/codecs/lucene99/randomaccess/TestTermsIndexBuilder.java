@@ -22,8 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.Util;
 
 public class TestTermsIndexBuilder extends LuceneTestCase {
 
@@ -51,15 +49,12 @@ public class TestTermsIndexBuilder extends LuceneTestCase {
     }
     TermsIndex termsIndex = builder.build();
 
-    FST<Long> fst = termsIndex.fst();
-
     for (String term : test_terms) {
       BytesRef termBytes = new BytesRef(term);
-      long encoded = Util.get(fst, termBytes);
+      TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(termBytes);
 
-      assertEquals(1L, encoded & 0b1L);
-      assertEquals((long) termsToType.get(term), (encoded & 0b1110L) >> 1);
-      assertEquals((long) termsToOrd.get(term), encoded >> 4);
+      assertEquals(termsToType.get(term).intValue(), typeAndOrd.termType().getId());
+      assertEquals((long) termsToOrd.get(term), typeAndOrd.ord());
     }
   }
 }
