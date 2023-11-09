@@ -294,7 +294,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
     for (float[] v : fieldData.floatVectors) {
+      if (fieldData.normalize) {
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
       quantizedVectorData.writeBytes(vector, vector.length);
@@ -347,8 +354,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
+      if (fieldData.normalize) {
+        System.arraycopy(v, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        v = copy;
+      }
+
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
       quantizedVectorData.writeBytes(vector, vector.length);

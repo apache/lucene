@@ -83,7 +83,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
@@ -165,7 +165,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
@@ -210,16 +210,30 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    { // test that optimization is not run when missing value setting of SortField is competitive
+    { // test that optimization is run when missing value setting of SortField is competitive with
+      // Puring.GREATER_THAN_OR_EQUAL_TO
       final SortField sortField = new SortField("my_field", SortField.Type.LONG);
       sortField.setMissingValue(0L); // set a competitive missing value
       final Sort sort = new Sort(sortField);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+    { // test that optimization is not run when missing value setting of SortField is competitive
+      // with Puring.SKIP
+      final SortField sortField1 = new SortField("my_field1", SortField.Type.LONG);
+      final SortField sortField2 = new SortField("my_field2", SortField.Type.LONG);
+      sortField1.setMissingValue(0L); // set a competitive missing value
+      sortField2.setMissingValue(0L); // set a competitive missing value
+      final Sort sort = new Sort(sortField1, sortField2);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
           TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
@@ -251,9 +265,7 @@ public class TestSortOptimization extends LuceneTestCase {
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
-      assertEquals(
-          topDocs.totalHits.value,
-          numDocs); // assert that all documents were collected => optimization was not run
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that optimization is not run when missing value setting of SortField is competitive
@@ -268,9 +280,85 @@ public class TestSortOptimization extends LuceneTestCase {
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
-      assertEquals(
-          topDocs.totalHits.value,
-          numDocs); // assert that all documents were collected => optimization was not run
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testNumericDocValuesOptimizationWithMissingValues() throws IOException {
+    final Directory dir = newDirectory();
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
+    final int numDocs = atLeast(10000);
+    final int missValuesNumDocs = numDocs / 2;
+    for (int i = 0; i < numDocs; ++i) {
+      final Document doc = new Document();
+      if (i <= missValuesNumDocs) { // missing value document
+      } else {
+        doc.add(new NumericDocValuesField("my_field", i));
+        doc.add(new LongPoint("my_field", i));
+      }
+      writer.addDocument(doc);
+    }
+    final IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    // single threaded so totalHits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
+    final int numHits = 3;
+    final int totalHitsThreshold = 3;
+    TopDocs topDocs1;
+    TopDocs topDocs2;
+
+    { // Test that optimization is run with NumericDocValues when missing value is NOT competitive
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
+      sortField.setMissingValue(0L); // missing value is not competitive
+      final Sort sort = new Sort(sortField);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      topDocs1 = searcher.search(new MatchAllDocsQuery(), manager);
+      assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value, numDocs);
+    }
+    { // Test that sort on sorted numeric field without sort optimization and with sort optimization
+      // produce the same results
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
+      sortField.setMissingValue(0L); // missing value is not competitive
+      final Sort sort = new Sort(sortField);
+      sortField.setOptimizeSortWithPoints(false);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      topDocs2 = searcher.search(new MatchAllDocsQuery(), manager);
+      // assert that the resulting hits are the same
+      assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
+      assertEquals(topDocs1.scoreDocs.length, numHits);
+      ScoreDoc[] scoreDocs1 = topDocs1.scoreDocs;
+      ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) scoreDocs1[i];
+        FieldDoc fieldDoc2 = (FieldDoc) scoreDocs2[i];
+        assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
+        assertEquals(fieldDoc.doc, fieldDoc2.doc);
+      }
+      assertTrue(topDocs1.totalHits.value < topDocs2.totalHits.value);
+    }
+
+    { // Test that we can't do optimization via NumericDocValues when there are multiple comparators
+      final SortField sortField1 = new SortField("my_field", SortField.Type.LONG, true);
+      final SortField sortField2 = new SortField("other", SortField.Type.LONG, true);
+      sortField1.setMissingValue(0L); // missing value is not competitive
+      sortField2.setMissingValue(0L); // missing value is not competitive
+      final Sort multiSorts = new Sort(new SortField[] {sortField1, sortField2});
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(multiSorts, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+      // can't optimization with NumericDocValues when there are multiple comparators
+      assertEquals(topDocs.totalHits.value, numDocs);
     }
 
     reader.close();
@@ -295,17 +383,19 @@ public class TestSortOptimization extends LuceneTestCase {
           new NumericDocValuesField(
               "my_field2", numDocs - i)); // diff values for the field my_field2
       writer.addDocument(doc);
-      if (i == 7000) writer.flush(); // two segments
+      // if there is only one segment, we could test that totalHits must always equal (numHits + 1)
+      if (i == 7000 && random().nextBoolean()) writer.flush(); // two segments
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    { // test that sorting on a single field with equal values uses the optimization
+    { // test that sorting on a single field with equal values uses the optimization with
+      // GREATER_THAN_OR_EQUAL_TO
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -316,11 +406,15 @@ public class TestSortOptimization extends LuceneTestCase {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(100, fieldDoc.fields[0]);
       }
+      if (reader.leaves().size() == 1) {
+        // if segment size equals one, totalHits should always equals numHits plus 1
+        assertEquals(topDocs.totalHits.value, numHits + 1);
+      }
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on a single field with equal values and after parameter
-      // doesn't use the optimization
+      // use the optimization with GREATER_THAN_OR_EQUAL_TO
       final int afterValue = 100;
       final int afterDocID = 10 + random().nextInt(1000);
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
@@ -335,11 +429,11 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(100, fieldDoc.fields[0]);
         assertTrue(fieldDoc.doc > afterDocID);
       }
-      assertEquals(topDocs.totalHits.value, numDocs);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on main field with equal values + another field for tie breaks doesn't
-      // use optimization
+      // use optimization with Pruning.GREATER_THAN
       final SortField sortField1 = new SortField("my_field1", SortField.Type.INT);
       final SortField sortField2 = new SortField("my_field2", SortField.Type.INT);
       final Sort sort = new Sort(sortField1, sortField2);
@@ -375,7 +469,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.FLOAT);
@@ -438,7 +532,7 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
-        // single threaded so totalhits is deterministic
+        // single threaded so totalHits is deterministic
         IndexSearcher searcher =
             newSearcher(readers[i], random().nextBoolean(), random().nextBoolean(), false);
         CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -482,7 +576,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 10;
@@ -601,7 +695,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
 
@@ -803,14 +897,20 @@ public class TestSortOptimization extends LuceneTestCase {
         writer.flush();
       }
     }
+    boolean reverse = random().nextBoolean();
     writer.flush();
-    seqNos.sort(Long::compare);
+    if (reverse == false) {
+      seqNos.sort(Long::compare);
+    } else {
+      seqNos.sort(Collections.reverseOrder());
+    }
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
     IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
-    SortField sortField = new SortField("seq_no", SortField.Type.LONG);
+    SortField sortField = new SortField("seq_no", SortField.Type.LONG, reverse);
     int visitedHits = 0;
     ScoreDoc after = null;
+    // test page search
     while (visitedHits < seqNos.size()) {
       int batch = 1 + random().nextInt(100);
       Query query =
@@ -827,6 +927,17 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(expectedSeqNo, ((Long) fieldDoc.fields[0]).intValue());
         visitedHits++;
       }
+    }
+
+    // test search
+    int numHits = 1 + random().nextInt(100);
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(new Sort(sortField), numHits, null, numHits);
+    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+      long expectedSeqNo = seqNos.get(i);
+      FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+      assertEquals(expectedSeqNo, ((Long) fieldDoc.fields[0]).intValue());
     }
     reader.close();
     dir.close();
@@ -848,7 +959,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     SortedNumericSelector.Type type =
@@ -1098,7 +1209,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
   private TopDocs assertSearchHits(DirectoryReader reader, Sort sort, int n, FieldDoc after)
       throws IOException {
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
     Query query = new MatchAllDocsQuery();
     CollectorManager<TopFieldCollector, TopFieldDocs> manager =

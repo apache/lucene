@@ -164,6 +164,9 @@ API Changes
   Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
   instead of relying on assert. (Shubham Chaudhary)
 
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
+
 New Features
 ---------------------
 
@@ -209,8 +212,11 @@ Improvements
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
-* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
-  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
+* GITHUB#12705, GITHUB#12705, GITHUB#12785: Improve handling of NullPointerException and
+  IllegalStateException in MMapDirectory's IndexInputs. Also makes sure to close master
+  MemorySegmentIndexInput while not throwing IllegalStateException (retry in spin loop).
+  Also improve TestMmapDirectory.testAceWithThreads to run faster and use less resources.
+  (Uwe Schindler, Maurizio Cimadamore, Michael Sokolov)
 
 * GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
 
@@ -266,6 +272,10 @@ Optimizations
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
 
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
+
 Changes in runtime behavior
 ---------------------
 
@@ -276,6 +286,9 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
+
+* GITHUB#12654: TestIndexWriterOnVMError.testUnknownError times out (fixes potential IndexWriter
+  deadlock with tragic exceptions). (Benjamin Trent, Dawid Weiss, Simon Willnauer)
 
 * GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
   (Grigoriy Troitskiy)
