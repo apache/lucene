@@ -158,7 +158,10 @@ public class RegexpQuery extends AutomatonQuery {
    * @param doDeterminization whether do determinization to force the query to use DFA as
    *     runAutomaton, if false, the query will not try to determinize the generated automaton from
    *     regexp such that it might or might not be a DFA. In case it is an NFA, the query will
-   *     eventually use {@link org.apache.lucene.util.automaton.NFARunAutomaton} to execute.
+   *     eventually use {@link org.apache.lucene.util.automaton.NFARunAutomaton} to execute. Notice
+   *     that {@link org.apache.lucene.util.automaton.NFARunAutomaton} is not thread-safe, so better
+   *     to avoid rewritten method like {@link #CONSTANT_SCORE_BLENDED_REWRITE} when searcher is
+   *     configured with an executor service
    */
   public RegexpQuery(
       Term term,
