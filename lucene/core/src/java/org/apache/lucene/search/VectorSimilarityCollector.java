@@ -18,26 +18,34 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
- * A collector that performs similarity-based vector searches. All vectors above a (lower) traversal
- * similarity are visited, and those above a (higher) result similarity are collected.
+ * Perform a similarity-based graph search.
  *
  * @lucene.experimental
  */
-public class VectorSimilarityCollector extends AbstractKnnCollector {
+class VectorSimilarityCollector extends AbstractKnnCollector {
+  private static final Bits MATCH_ALL_BITS = new Bits.MatchAllBits(Integer.MAX_VALUE);
+
   private final float traversalSimilarity, resultSimilarity;
   private final List<ScoreDoc> scoreDocList;
+  private final BitSet visited;
 
   /**
-   * Performs similarity-based vector searches.
+   * Perform a similarity-based graph search. All nodes above a {@link #traversalSimilarity} are
+   * traversed, and all nodes above a {@link #resultSimilarity} are collected.
    *
    * @param traversalSimilarity (lower) similarity score for graph traversal.
    * @param resultSimilarity (higher) similarity score for result collection.
-   * @param visitLimit limit of graph nodes to visit.
+   * @param visitLimit limit on number of nodes to visit.
+   * @param maxDoc maximum docid of any node.
    */
   public VectorSimilarityCollector(
-      float traversalSimilarity, float resultSimilarity, long visitLimit) {
+      float traversalSimilarity, float resultSimilarity, long visitLimit, int maxDoc) {
     super(1, visitLimit);
     if (traversalSimilarity > resultSimilarity) {
       throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
@@ -45,10 +53,20 @@ public class VectorSimilarityCollector extends AbstractKnnCollector {
     this.traversalSimilarity = traversalSimilarity;
     this.resultSimilarity = resultSimilarity;
     this.scoreDocList = new ArrayList<>();
+
+    if (visitLimit == Long.MAX_VALUE) {
+      this.visited = null;
+    } else {
+      this.visited = new SparseFixedBitSet(maxDoc);
+    }
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
+    if (visited != null) {
+      visited.set(docId);
+    }
+
     if (similarity >= resultSimilarity) {
       return scoreDocList.add(new ScoreDoc(docId, similarity));
     }
@@ -70,5 +88,9 @@ public class VectorSimilarityCollector extends AbstractKnnCollector {
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(
         new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+  }
+
+  public Bits getVisited() {
+    return Objects.requireNonNullElse(visited, MATCH_ALL_BITS);
   }
 }

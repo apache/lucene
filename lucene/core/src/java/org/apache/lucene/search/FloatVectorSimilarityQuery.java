@@ -18,17 +18,17 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Search for all (approximate) float vectors above a similarity score using the {@link
- * VectorSimilarityCollector}.
+ * Search for all (approximate) float vectors above a similarity threshold.
  *
  * @lucene.experimental
  */
@@ -36,59 +36,65 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final float[] target;
 
   /**
-   * Performs similarity-based float vector searches using the {@link VectorSimilarityCollector}.
+   * Search for all (approximate) float vectors above a similarity threshold. First performs a
+   * similarity-based graph search using {@link VectorSimilarityCollector} between {@link
+   * #traversalSimilarity} and {@link #resultSimilarity}. If this does not complete within a
+   * specified {@link #visitLimit}, returns a lazy-loading iterator over all float vectors above the
+   * {@link #resultSimilarity}.
    *
    * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search.
    * @param traversalSimilarity (lower) similarity score for graph traversal.
    * @param resultSimilarity (higher) similarity score for result collection.
-   * @param filter a filter applied before the vector search.
+   * @param visitLimit limit on number of nodes to visit before falling back to a lazy-loading
+   *     iterator.
    */
   public FloatVectorSimilarityQuery(
       String field,
       float[] target,
       float traversalSimilarity,
       float resultSimilarity,
-      Query filter) {
-    super(field, traversalSimilarity, resultSimilarity, filter);
+      long visitLimit) {
+    super(field, traversalSimilarity, resultSimilarity, visitLimit);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
   @Override
-  @SuppressWarnings("resource")
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    VectorSimilarityCollector vectorSimilarityCollector =
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitedLimit);
-    context.reader().searchNearestVectors(field, target, vectorSimilarityCollector, acceptDocs);
-    return vectorSimilarityCollector.topDocs();
-  }
-
-  @Override
-  VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+  VectorScorer createVectorScorer(LeafReaderContext context) throws IOException {
+    @SuppressWarnings("resource")
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return null;
     }
     return VectorScorer.create(context, fi, target);
   }
 
   @Override
+  protected void approximateSearch(LeafReaderContext context, KnnCollector collector)
+      throws IOException {
+    @SuppressWarnings("resource")
+    LeafReader reader = context.reader();
+    reader.searchNearestVectors(field, target, collector, reader.getLiveDocs());
+  }
+
+  @Override
   public String toString(String field) {
-    return getClass().getSimpleName()
-        + ":"
-        + this.field
-        + "["
-        + target[0]
-        + ",...][traversalSimilarity="
-        + traversalSimilarity
-        + "][resultSimilarity="
-        + resultSimilarity
-        + "]";
+    return String.format(
+        Locale.ROOT,
+        "%s[field=%s target=[%f...] traversalSimilarity=%f resultSimilarity=%f visitLimit=%d]",
+        getClass().getSimpleName(),
+        field,
+        target[0],
+        traversalSimilarity,
+        resultSimilarity,
+        visitLimit);
   }
 
   @Override
   public boolean equals(Object o) {
-    return sameClassAs(o) && Arrays.equals(target, ((FloatVectorSimilarityQuery) o).target);
+    return sameClassAs(o)
+        && super.equals(o)
+        && Arrays.equals(target, ((FloatVectorSimilarityQuery) o).target);
   }
 
   @Override
