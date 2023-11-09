@@ -140,7 +140,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   public TopFieldCollector newCollector() {
     if (collectorCreated && supportsConcurrency == false) {
       throw new IllegalStateException(
-          "The instantiated TopFieldCollectorManager does not support concurrency, but multiple collectors are being created");
+          "This TopFieldCollectorManager was created without concurrency (supportsConcurrency=false), but multiple collectors are being created");
     } else {
       collectorCreated = true;
     }

@@ -204,7 +204,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>, and fill the array with sentinel objects.
    *
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
@@ -225,7 +225,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>, and fill the array with sentinel objects.
    *
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
@@ -238,7 +238,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
    *
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated

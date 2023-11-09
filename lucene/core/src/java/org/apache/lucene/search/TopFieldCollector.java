@@ -404,7 +404,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
@@ -432,7 +432,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    *     field is indexed both with doc values and points. In this case, there is an assumption that
    *     the same data is stored in these points and doc values.
    * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
@@ -447,7 +447,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments if the
    * primary sort is by relevancy.
    *
-   * @deprecated This method is being deprecated in favor of using the constructor of {@link
+   * @deprecated This method is deprecated in favor of the constructor of {@link
    *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
   @Deprecated

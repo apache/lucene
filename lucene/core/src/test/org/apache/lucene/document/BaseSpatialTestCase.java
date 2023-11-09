@@ -20,6 +20,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,7 +36,6 @@ import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
@@ -322,7 +322,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
+      final FixedBitSet hits = searchIndex(s, query, maxDoc);
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -419,7 +419,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
+      final FixedBitSet hits = searchIndex(s, query, maxDoc);
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -492,7 +492,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
+      final FixedBitSet hits = searchIndex(s, query, maxDoc);
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -571,7 +571,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
+      final FixedBitSet hits = searchIndex(s, query, maxDoc);
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -646,7 +646,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
         System.out.println("  query=" + query + ", relation=" + queryRelation);
       }
 
-      final FixedBitSet hits = s.search(query, searchIndex(maxDoc));
+      final FixedBitSet hits = searchIndex(s, query, maxDoc);
 
       boolean fail = false;
       NumericDocValues docIDToID = MultiDocValues.getNumericValues(reader, "id");
@@ -695,8 +695,8 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     }
   }
 
-  private CollectorManager<FixedBitSetCollector, FixedBitSet> searchIndex(int maxDoc) {
-    return FixedBitSetCollector.createManager(maxDoc);
+  private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   protected abstract Validator getValidator();

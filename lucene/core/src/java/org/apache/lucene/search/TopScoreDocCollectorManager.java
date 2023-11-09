@@ -131,7 +131,7 @@ public class TopScoreDocCollectorManager
   public TopScoreDocCollector newCollector() {
     if (collectorCreated && supportsConcurrency == false) {
       throw new IllegalStateException(
-          "The instantiated TopScoreDocCollectorManager does not support concurrency, but multiple collectors are being created");
+          "This TopScoreDocCollectorManager was created without concurrency (supportsConcurrency=false), but multiple collectors are being created");
     } else {
       collectorCreated = true;
     }
