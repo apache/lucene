@@ -481,11 +481,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       while (arena.scope().isAlive()) {
         try {
           arena.close();
+          break;
         } catch (IllegalStateException e) {
           Thread.onSpinWait();
           continue;
         }
-        break;
       }
     }
 
