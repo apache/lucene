@@ -929,10 +929,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
         VectorUtil.l2normalize(normalizedVector);
         offsetValue =
-          quantizer.quantize(normalizedVector, quantizedVector, vectorSimilarityFunction);
+            quantizer.quantize(normalizedVector, quantizedVector, vectorSimilarityFunction);
       } else {
         offsetValue =
-          quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
+            quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
       }
     }
   }
