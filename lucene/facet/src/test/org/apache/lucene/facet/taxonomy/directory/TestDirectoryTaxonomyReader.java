@@ -703,7 +703,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
                     threadIterations++) {
 
                   // length of the FacetLabel array that we are going to check
-                  int numOfOrdinalsToCheck = random().nextInt(allOrdinals.length);
+                  int numOfOrdinalsToCheck = RandomizedTest.randomIntBetween(1, allOrdinals.length);
                   int[] ordinals = new int[numOfOrdinalsToCheck];
                   FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
 
