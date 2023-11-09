@@ -861,6 +861,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
+    private final float[] normalizedVector;
     private float offsetValue = 0f;
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
@@ -873,6 +874,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
+      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+        this.normalizedVector = new float[values.dimension()];
+      } else {
+        this.normalizedVector = null;
+      }
     }
 
     @Override
@@ -904,8 +910,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public int nextDoc() throws IOException {
       int doc = values.nextDoc();
       if (doc != NO_MORE_DOCS) {
-        offsetValue =
-            quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
+        quantize();
       }
       return doc;
     }
@@ -914,10 +919,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public int advance(int target) throws IOException {
       int doc = values.advance(target);
       if (doc != NO_MORE_DOCS) {
-        offsetValue =
-            quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
+        quantize();
       }
       return doc;
+    }
+
+    private void quantize() throws IOException {
+      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
+        VectorUtil.l2normalize(normalizedVector);
+        offsetValue =
+          quantizer.quantize(normalizedVector, quantizedVector, vectorSimilarityFunction);
+      } else {
+        offsetValue =
+          quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
+      }
     }
   }
 
