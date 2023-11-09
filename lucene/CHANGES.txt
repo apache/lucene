@@ -164,6 +164,9 @@ API Changes
   Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
   instead of relying on assert. (Shubham Chaudhary)
 
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
+
 New Features
 ---------------------
 
@@ -264,6 +267,10 @@ Optimizations
 * GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
 Changes in runtime behavior
 ---------------------
