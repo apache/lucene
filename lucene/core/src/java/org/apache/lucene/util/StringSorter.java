@@ -97,7 +97,9 @@ public abstract class StringSorter extends Sorter {
 
       @Override
       protected int compare(int i, int j) {
-        return StringSorter.this.compare(i, j);
+        get(scratch1, scratchBytes1, i);
+        get(scratch2, scratchBytes2, j);
+        return cmp.compare(scratchBytes1, scratchBytes2);
       }
 
       @Override
