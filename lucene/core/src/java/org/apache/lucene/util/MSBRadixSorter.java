@@ -145,7 +145,7 @@ public abstract class MSBRadixSorter extends Sorter {
    * @param k the character number to compare
    * @param l the level of recursion
    */
-  protected void radixSort(int from, int to, int k, int l) {
+  private void radixSort(int from, int to, int k, int l) {
     int[] histogram = histograms[l];
     if (histogram == null) {
       histogram = histograms[l] = new int[HISTOGRAM_SIZE];
