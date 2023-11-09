@@ -478,7 +478,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     // side effect is that other threads still using clones
     // will throw IllegalStateException
     if (arena != null) {
-      arena.close();
+      while (arena.scope().isAlive()) {
+        try {
+          arena.close();
+        } catch (IllegalStateException e) {
+          Thread.onSpinWait();
+          continue;
+        }
+        break;
+      }
     }
 
     // make sure all accesses to this IndexInput instance throw NPE:
