@@ -86,8 +86,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
    */
   public static final int VERSION_MSB_VLONG_OUTPUT = 1;
 
+  /** The version that specialize arc store for continuous label in FST. */
+  public static final int VERSION_FST_CONTINUOUS_ARCS = 2;
+
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_MSB_VLONG_OUTPUT;
+  public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";

@@ -156,13 +156,13 @@ Optimizations
 
 * GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
 
-* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
-
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
 
 * GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
 
 * GITHUB#12782: Use group-varint encoding for the tail of postings. (Adrien Grand, Zhang Chao)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
 Changes in runtime behavior
 ---------------------
