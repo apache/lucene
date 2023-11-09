@@ -57,6 +57,7 @@ public abstract class StringSorter extends Sorter {
     }
   }
 
+  /** A radix sorter for {@link BytesRef} */
   protected class MSBStringRadixSorter extends MSBRadixSorter {
 
     private final BytesRefComparator cmp;

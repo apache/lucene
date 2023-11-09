@@ -262,6 +262,8 @@ Optimizations
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
 
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
