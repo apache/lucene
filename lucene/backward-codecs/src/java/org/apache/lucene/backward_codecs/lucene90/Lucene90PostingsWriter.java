@@ -92,7 +92,6 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
   private final PForUtil pforUtil;
   private final Lucene90SkipWriter skipWriter;
 
-  private final GroupVintWriter docGroupVintWriter;
   private boolean fieldHasNorms;
   private NumericDocValues norms;
   private final CompetitiveImpactAccumulator competitiveFreqNormAccumulator =
@@ -165,7 +164,6 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     docDeltaBuffer = new long[BLOCK_SIZE];
     freqBuffer = new long[BLOCK_SIZE];
-    docGroupVintWriter = new GroupVintWriter(docOut);
 
     // TODO: should we try skipping every 2/4 blocks...?
     skipWriter =
@@ -370,20 +368,18 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     } else {
       singletonDocID = -1;
       // vInt encode the remaining doc deltas and freqs:
-      docGroupVintWriter.reset(docBufferUpto);
       for (int i = 0; i < docBufferUpto; i++) {
         final int docDelta = (int) docDeltaBuffer[i];
         final int freq = (int) freqBuffer[i];
         if (!writeFreqs) {
-          docGroupVintWriter.add(docDelta);
+          docOut.writeVInt(docDelta);
         } else if (freq == 1) {
-          docGroupVintWriter.add((docDelta << 1) | 1);
+          docOut.writeVInt((docDelta << 1) | 1);
         } else {
-          docGroupVintWriter.add(docDelta << 1);
-          docGroupVintWriter.add(freq);
+          docOut.writeVInt(docDelta << 1);
+          docOut.writeVInt(freq);
         }
       }
-      docGroupVintWriter.flush();
     }
 
     final long lastPosBlockOffset;
