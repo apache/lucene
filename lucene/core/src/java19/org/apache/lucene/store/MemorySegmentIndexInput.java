@@ -484,9 +484,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         try {
           session.close();
           break;
-        } catch (IllegalStateException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalStateException e) {
           Thread.onSpinWait();
-          continue;
         }
       }
     }
