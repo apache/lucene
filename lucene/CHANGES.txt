@@ -27,6 +27,9 @@ API Changes
   Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
   instead of relying on assert. (Shubham Chaudhary)
 
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
+
 New Features
 ---------------------
 
