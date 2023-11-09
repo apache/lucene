@@ -27,7 +27,7 @@ import org.junit.BeforeClass;
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
 // machines occasionally
-public class TestMmapDirectory extends BaseDirectoryTestCase {
+public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   @Override
   protected Directory getDirectory(Path path) throws IOException {
