@@ -53,6 +53,9 @@ allprojects {
             include "**/*.sh"
             include "**/*.bat"
 
+            // exclude anything in build folders
+            exclude "**/build/**"
+
             // Include selected patterns from any source folders. We could make this
             // relative to source sets but it seems to be of little value - all our source sets
             // live under 'src' anyway.
