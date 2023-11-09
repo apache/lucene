@@ -57,6 +57,13 @@
           - git
       become: true
 
+    - name: Disable noisy services
+      command:
+        cmd: "systemctl disable --now {{ item }}"
+      loop: "{{ disable_services }}"
+      failed_when: false
+      become: true
+
     - name: Reboot machine
       reboot:
       become: true
