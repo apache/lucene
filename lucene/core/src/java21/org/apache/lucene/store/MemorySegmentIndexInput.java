@@ -107,11 +107,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     if (this.curSegment == null) {
       return new AlreadyClosedException("Already closed: " + this);
     }
-    // we also check if the scope of all segments is still alive (should work after Java 22,
-    // see https://bugs.openjdk.org/browse/JDK-8319756):
-    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
-      return new AlreadyClosedException("Already closed: " + this, e);
-    }
     // ISE can be thrown by MemorySegment and contains "closed" in message:
     if (e instanceof IllegalStateException
         && e.getMessage() != null
