@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -489,7 +490,8 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertEquals(expectedOrds.length, sourcePaths.length);
     int bulkOperationsIteration = random().nextInt(sourcePaths.length);
     List<Integer> indexesShuffled =
-        new ArrayList<>(IntStream.range(0, sourcePaths.length).boxed().toList());
+        new ArrayList<>(
+            IntStream.range(0, sourcePaths.length).boxed().collect(Collectors.toList()));
     Collections.shuffle(indexesShuffled, random());
 
     for (int i = 0; i < bulkOperationsIteration; i++) {
@@ -518,7 +520,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertEquals(expectedPaths.length, sourceOrds.length);
     int bulkOperationsIteration = random().nextInt(sourceOrds.length);
     List<Integer> indexesShuffled =
-        new ArrayList<>(IntStream.range(0, sourceOrds.length).boxed().toList());
+        new ArrayList<>(IntStream.range(0, sourceOrds.length).boxed().collect(Collectors.toList()));
     Collections.shuffle(indexesShuffled, random());
 
     boolean illegalPathExceptionIsExpected =
