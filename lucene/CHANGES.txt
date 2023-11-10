@@ -274,6 +274,8 @@ Optimizations
 
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
