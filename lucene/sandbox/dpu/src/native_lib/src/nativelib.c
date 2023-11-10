@@ -292,9 +292,10 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
 
     uint32_t nr_dpus = 0;
     dpu_get_nr_dpus(set, &nr_dpus);
-    size_t total_nr_results = 0;
-    size_t max_nr_results = 0;
+
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);
+    size_t total_nr_results = metadata.total_nr_results;
+    size_t max_nr_results = metadata.max_nr_results;
 
     // Allocate Java direct buffers
     jobject byteBuffer
@@ -311,7 +312,12 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
 
     result_t **block_addresses = malloc(sizeof(result_t *[nr_dpus][nr_queries][nr_segments]));
 
-    sg_xfer_context sc_args = { .results_index = metadata.results_index, .block_addresses = block_addresses };
+    sg_xfer_context sc_args = {
+                .nr_queries = nr_queries,
+                .nr_segments = nr_segments,
+                .results_index = metadata.results_index,
+                .results_size_lucene_segments = metadata.results_size_lucene_segments,
+                .block_addresses = block_addresses };
     get_block_t get_block_info = { .f = &get_block, .args = &sc_args, .args_size = sizeof(sc_args) };
 
     compute_block_addresses(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
