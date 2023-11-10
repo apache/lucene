@@ -144,15 +144,21 @@ struct metadata_t {
     size_t total_nr_results;
 } static get_metadata(JNIEnv *env, struct dpu_set_t set, const uint32_t nr_dpus, const jint nr_queries, const jint nr_segments)
 {
-    /* Transfer and postprocess the results_index from the DPU */
-    index_t(*results_index)[nr_dpus][nr_queries] = malloc(sizeof(index_t[nr_dpus][nr_queries]));
+    /* Transfer and postprocess the results_index from the DPU
+     * Need to align the transfer to 8 bytes, so align the number of queries to an even number
+     */
+    uint32_t nr_queries_ub = ((nr_queries + 1) >> 1) << 1;
+    index_t(*results_index)[nr_dpus][nr_queries_ub] = malloc(sizeof(index_t[nr_dpus][nr_queries_ub]));
 
     struct dpu_set_t dpu;
     uint32_t each_dpu = 0;
     DPU_FOREACH (set, dpu, each_dpu) {
-        THROW_ON_ERROR(dpu_prepare_xfer(dpu, results_index[each_dpu]));
+        THROW_ON_ERROR(dpu_prepare_xfer(dpu, &((*results_index)[each_dpu][0])));
     }
-    THROW_ON_ERROR(dpu_push_xfer(set, DPU_XFER_FROM_DPU, "results_index", 0, sizeof(index_t[nr_queries]), DPU_XFER_DEFAULT));
+
+    dpu_push_xfer(set, DPU_XFER_FROM_DPU, "results_index", 0,
+                    sizeof(index_t[nr_queries_ub]),
+                    DPU_XFER_DEFAULT);
 
     size_t max_nr_results = 0;
     size_t total_nr_results = 0;
@@ -164,14 +170,16 @@ struct metadata_t {
     }
 
     /* Transfer the results_size_lucene_segments from the DPU */
-    index_t(*results_size_lucene_segments)[nr_dpus][nr_queries][nr_segments]
-        = malloc(sizeof(index_t[nr_dpus][nr_queries][nr_segments]));
+    index_t(*results_size_lucene_segments)[nr_dpus][nr_queries_ub][nr_segments]
+        = malloc(sizeof(index_t[nr_dpus][nr_queries_ub][nr_segments]));
 
     DPU_FOREACH (set, dpu, each_dpu) {
-        THROW_ON_ERROR(dpu_prepare_xfer(dpu, results_size_lucene_segments[each_dpu]));
+        THROW_ON_ERROR(dpu_prepare_xfer(dpu, &((*results_size_lucene_segments)[each_dpu][0][0])));
     }
+
     THROW_ON_ERROR(dpu_push_xfer(
-        set, DPU_XFER_FROM_DPU, "results_size_lucene_segments", 0, sizeof(index_t[nr_queries][nr_segments]), DPU_XFER_DEFAULT));
+        set, DPU_XFER_FROM_DPU, "results_index_lucene_segments", 0,
+        sizeof(index_t[nr_queries_ub][nr_segments]), DPU_XFER_DEFAULT));
 
     return (struct metadata_t) { .results_index = (index_t *)results_index,
         .results_size_lucene_segments = (index_t *)results_size_lucene_segments,
@@ -206,11 +214,12 @@ compute_block_addresses(struct sg_xfer_context *sc_args,
 {
     /* Unpack the arguments */
     const jint nr_queries = sc_args->nr_queries;
+    const uint32_t nr_queries_ub = ((nr_queries + 1) >> 1) << 1;
     const jint nr_segments = sc_args->nr_segments;
     result_t *(*block_addresses)[nr_dpus][nr_queries][nr_segments]
         = (result_t * (*)[nr_dpus][nr_queries][nr_segments]) sc_args->block_addresses;
-    index_t(*results_size_lucene_segments)[nr_dpus][nr_queries][nr_segments]
-        = (index_t(*)[nr_dpus][nr_queries][nr_segments])sc_args->results_size_lucene_segments;
+    index_t(*results_size_lucene_segments)[nr_dpus][nr_queries_ub][nr_segments]
+        = (index_t(*)[nr_dpus][nr_queries_ub][nr_segments])sc_args->results_size_lucene_segments;
 
     jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])queries_indices;
     jint(*segments_indices_table)[nr_queries][nr_segments] = (jint(*)[nr_queries][nr_segments])segments_indices;
@@ -245,14 +254,17 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
     /* Unpack the arguments */
     sg_xfer_context *sc_args = (sg_xfer_context *)args;
     const uint32_t nr_queries = sc_args->nr_queries;
+    const uint32_t nr_queries_ub = ((nr_queries + 1) >> 1) << 1;
     const uint32_t nr_segments = sc_args->nr_segments;
+
     if (i_block >= nr_queries * nr_segments) {
         return false;
     }
 
-    index_t(*results_size_lucene_segments)[nr_queries * nr_segments]
-        = (index_t(*)[nr_queries * nr_segments]) sc_args->results_size_lucene_segments;
-    result_t *(*block_addresses)[nr_queries * nr_segments] = (result_t * (*)[nr_queries * nr_segments]) sc_args->block_addresses;
+    index_t(*results_size_lucene_segments)[nr_queries_ub * nr_segments]
+        = (index_t(*)[nr_queries_ub * nr_segments]) sc_args->results_size_lucene_segments;
+    result_t *(*block_addresses)[nr_queries * nr_segments]
+        = (result_t * (*)[nr_queries * nr_segments]) sc_args->block_addresses;
 
     /* Set the output block */
     out->length = results_size_lucene_segments[i_dpu][i_block] * sizeof(result_t);
