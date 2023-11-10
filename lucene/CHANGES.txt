@@ -133,6 +133,8 @@ Optimizations
 
 * GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
 
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
