@@ -24,14 +24,14 @@ import org.apache.lucene.util.ArrayUtil;
  * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for a
  * group
  */
-class GroupVintWriter {
+class GroupVIntWriter {
   private int[] buffer = new int[4];
   private byte[] bytes = new byte[16];
   private int byteOffset = 0;
   private int bufferOffset = 0;
   private final IndexOutput output;
 
-  public GroupVintWriter(IndexOutput output) {
+  public GroupVIntWriter(IndexOutput output) {
     this.output = output;
   }
 

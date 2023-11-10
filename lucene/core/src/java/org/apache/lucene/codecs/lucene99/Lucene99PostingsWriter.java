@@ -92,7 +92,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
   private final PForUtil pforUtil;
   private final ForDeltaUtil forDeltaUtil;
   private final Lucene99SkipWriter skipWriter;
-  private final GroupVintWriter docGroupVintWriter;
+  private final GroupVIntWriter docGroupVIntWriter;
 
   private boolean fieldHasNorms;
   private NumericDocValues norms;
@@ -173,7 +173,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     skipWriter =
         new Lucene99SkipWriter(
             MAX_SKIP_LEVELS, BLOCK_SIZE, state.segmentInfo.maxDoc(), docOut, posOut, payOut);
-    docGroupVintWriter = new GroupVintWriter(docOut);
+    docGroupVIntWriter = new GroupVIntWriter(docOut);
   }
 
   @Override
@@ -373,20 +373,20 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     } else {
       singletonDocID = -1;
       // Group vInt encode the remaining doc deltas and freqs:
-      docGroupVintWriter.reset(docBufferUpto);
+      docGroupVIntWriter.reset(docBufferUpto);
       for (int i = 0; i < docBufferUpto; i++) {
         final int docDelta = (int) docDeltaBuffer[i];
         final int freq = (int) freqBuffer[i];
         if (!writeFreqs) {
-          docGroupVintWriter.add(docDelta);
+          docGroupVIntWriter.add(docDelta);
         } else if (freq == 1) {
-          docGroupVintWriter.add((docDelta << 1) | 1);
+          docGroupVIntWriter.add((docDelta << 1) | 1);
         } else {
-          docGroupVintWriter.add(docDelta << 1);
-          docGroupVintWriter.add(freq);
+          docGroupVIntWriter.add(docDelta << 1);
+          docGroupVIntWriter.add(freq);
         }
       }
-      docGroupVintWriter.flush();
+      docGroupVIntWriter.flush();
     }
 
     final long lastPosBlockOffset;

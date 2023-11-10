@@ -147,21 +147,21 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       long[] freqBuffer,
       int num,
       boolean indexHasFreq,
-      GroupVintReader groupVintReader)
+      GroupVIntReader groupVIntReader)
       throws IOException {
-    groupVintReader.reset(docIn, num);
+    groupVIntReader.reset(docIn, num);
     if (indexHasFreq) {
       for (int i = 0; i < num; i++) {
-        final int code = groupVintReader.nextInt();
+        final int code = groupVIntReader.nextInt();
         docBuffer[i] = code >>> 1;
         if ((code & 1) != 0) {
           freqBuffer[i] = 1;
         } else {
-          freqBuffer[i] = groupVintReader.nextInt();
+          freqBuffer[i] = groupVIntReader.nextInt();
         }
       }
     } else {
-      groupVintReader.readValues(docBuffer, num);
+      groupVIntReader.readValues(docBuffer, num);
     }
   }
 
@@ -355,7 +355,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private boolean isFreqsRead;
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
-    private final GroupVintReader docGroupVintReader = new GroupVintReader();
+    private final GroupVIntReader docGroupVIntReader = new GroupVIntReader();
 
     public BlockDocsEnum(FieldInfo fieldInfo) throws IOException {
       this.startDocIn = Lucene99PostingsReader.this.docIn;
@@ -477,7 +477,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         blockUpto++;
       } else {
         // Read vInts:
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, docGroupVintReader);
+        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, docGroupVIntReader);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -653,7 +653,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private boolean needsPayloads; // true if we actually need payloads
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
-    private final GroupVintReader docGroupVintReader = new GroupVintReader();
+    private final GroupVIntReader docGroupVIntReader = new GroupVIntReader();
 
     public EverythingEnum(FieldInfo fieldInfo) throws IOException {
       indexHasOffsets =
@@ -772,7 +772,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[1] = NO_MORE_DOCS;
         blockUpto++;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, docGroupVintReader);
+        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, docGroupVIntReader);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -1088,7 +1088,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // (needsFreq=false)
     private boolean isFreqsRead;
 
-    private final GroupVintReader docGroupVintReader = new GroupVintReader();
+    private final GroupVIntReader docGroupVIntReader = new GroupVIntReader();
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1163,7 +1163,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         }
         blockUpto += BLOCK_SIZE;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, docGroupVintReader);
+        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, docGroupVIntReader);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -1319,7 +1319,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private long seekTo = -1;
 
-    private final GroupVintReader docGroupVintReader = new GroupVintReader();
+    private final GroupVIntReader docGroupVIntReader = new GroupVIntReader();
 
     public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1384,7 +1384,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, docGroupVintReader);
+        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, docGroupVIntReader);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
@@ -1642,7 +1642,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private long seekTo = -1;
 
-    private final GroupVintReader docGroupVintReader = new GroupVintReader();
+    private final GroupVIntReader docGroupVIntReader = new GroupVIntReader();
 
     public BlockImpactsEverythingEnum(FieldInfo fieldInfo, IntBlockTermState termState, int flags)
         throws IOException {
@@ -1780,7 +1780,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
               false; // freq block will be loaded lazily when necessary, we don't load it here
         }
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, docGroupVintReader);
+        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, docGroupVIntReader);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }

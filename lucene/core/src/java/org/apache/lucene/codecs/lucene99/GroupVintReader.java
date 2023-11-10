@@ -25,100 +25,32 @@ import org.apache.lucene.util.BitUtil;
  * Decode integers using group-varint. It will fully read the bytes for the block, to avoid repeated
  * expensive bounds checking per readBytes.
  */
-class GroupVintReader {
-
-  private static final int[][] flagToLengths = {
-    {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 0, 2}, {0, 0, 0, 3},
-    {0, 0, 1, 0}, {0, 0, 1, 1}, {0, 0, 1, 2}, {0, 0, 1, 3},
-    {0, 0, 2, 0}, {0, 0, 2, 1}, {0, 0, 2, 2}, {0, 0, 2, 3},
-    {0, 0, 3, 0}, {0, 0, 3, 1}, {0, 0, 3, 2}, {0, 0, 3, 3},
-    {0, 1, 0, 0}, {0, 1, 0, 1}, {0, 1, 0, 2}, {0, 1, 0, 3},
-    {0, 1, 1, 0}, {0, 1, 1, 1}, {0, 1, 1, 2}, {0, 1, 1, 3},
-    {0, 1, 2, 0}, {0, 1, 2, 1}, {0, 1, 2, 2}, {0, 1, 2, 3},
-    {0, 1, 3, 0}, {0, 1, 3, 1}, {0, 1, 3, 2}, {0, 1, 3, 3},
-    {0, 2, 0, 0}, {0, 2, 0, 1}, {0, 2, 0, 2}, {0, 2, 0, 3},
-    {0, 2, 1, 0}, {0, 2, 1, 1}, {0, 2, 1, 2}, {0, 2, 1, 3},
-    {0, 2, 2, 0}, {0, 2, 2, 1}, {0, 2, 2, 2}, {0, 2, 2, 3},
-    {0, 2, 3, 0}, {0, 2, 3, 1}, {0, 2, 3, 2}, {0, 2, 3, 3},
-    {0, 3, 0, 0}, {0, 3, 0, 1}, {0, 3, 0, 2}, {0, 3, 0, 3},
-    {0, 3, 1, 0}, {0, 3, 1, 1}, {0, 3, 1, 2}, {0, 3, 1, 3},
-    {0, 3, 2, 0}, {0, 3, 2, 1}, {0, 3, 2, 2}, {0, 3, 2, 3},
-    {0, 3, 3, 0}, {0, 3, 3, 1}, {0, 3, 3, 2}, {0, 3, 3, 3},
-    {1, 0, 0, 0}, {1, 0, 0, 1}, {1, 0, 0, 2}, {1, 0, 0, 3},
-    {1, 0, 1, 0}, {1, 0, 1, 1}, {1, 0, 1, 2}, {1, 0, 1, 3},
-    {1, 0, 2, 0}, {1, 0, 2, 1}, {1, 0, 2, 2}, {1, 0, 2, 3},
-    {1, 0, 3, 0}, {1, 0, 3, 1}, {1, 0, 3, 2}, {1, 0, 3, 3},
-    {1, 1, 0, 0}, {1, 1, 0, 1}, {1, 1, 0, 2}, {1, 1, 0, 3},
-    {1, 1, 1, 0}, {1, 1, 1, 1}, {1, 1, 1, 2}, {1, 1, 1, 3},
-    {1, 1, 2, 0}, {1, 1, 2, 1}, {1, 1, 2, 2}, {1, 1, 2, 3},
-    {1, 1, 3, 0}, {1, 1, 3, 1}, {1, 1, 3, 2}, {1, 1, 3, 3},
-    {1, 2, 0, 0}, {1, 2, 0, 1}, {1, 2, 0, 2}, {1, 2, 0, 3},
-    {1, 2, 1, 0}, {1, 2, 1, 1}, {1, 2, 1, 2}, {1, 2, 1, 3},
-    {1, 2, 2, 0}, {1, 2, 2, 1}, {1, 2, 2, 2}, {1, 2, 2, 3},
-    {1, 2, 3, 0}, {1, 2, 3, 1}, {1, 2, 3, 2}, {1, 2, 3, 3},
-    {1, 3, 0, 0}, {1, 3, 0, 1}, {1, 3, 0, 2}, {1, 3, 0, 3},
-    {1, 3, 1, 0}, {1, 3, 1, 1}, {1, 3, 1, 2}, {1, 3, 1, 3},
-    {1, 3, 2, 0}, {1, 3, 2, 1}, {1, 3, 2, 2}, {1, 3, 2, 3},
-    {1, 3, 3, 0}, {1, 3, 3, 1}, {1, 3, 3, 2}, {1, 3, 3, 3},
-    {2, 0, 0, 0}, {2, 0, 0, 1}, {2, 0, 0, 2}, {2, 0, 0, 3},
-    {2, 0, 1, 0}, {2, 0, 1, 1}, {2, 0, 1, 2}, {2, 0, 1, 3},
-    {2, 0, 2, 0}, {2, 0, 2, 1}, {2, 0, 2, 2}, {2, 0, 2, 3},
-    {2, 0, 3, 0}, {2, 0, 3, 1}, {2, 0, 3, 2}, {2, 0, 3, 3},
-    {2, 1, 0, 0}, {2, 1, 0, 1}, {2, 1, 0, 2}, {2, 1, 0, 3},
-    {2, 1, 1, 0}, {2, 1, 1, 1}, {2, 1, 1, 2}, {2, 1, 1, 3},
-    {2, 1, 2, 0}, {2, 1, 2, 1}, {2, 1, 2, 2}, {2, 1, 2, 3},
-    {2, 1, 3, 0}, {2, 1, 3, 1}, {2, 1, 3, 2}, {2, 1, 3, 3},
-    {2, 2, 0, 0}, {2, 2, 0, 1}, {2, 2, 0, 2}, {2, 2, 0, 3},
-    {2, 2, 1, 0}, {2, 2, 1, 1}, {2, 2, 1, 2}, {2, 2, 1, 3},
-    {2, 2, 2, 0}, {2, 2, 2, 1}, {2, 2, 2, 2}, {2, 2, 2, 3},
-    {2, 2, 3, 0}, {2, 2, 3, 1}, {2, 2, 3, 2}, {2, 2, 3, 3},
-    {2, 3, 0, 0}, {2, 3, 0, 1}, {2, 3, 0, 2}, {2, 3, 0, 3},
-    {2, 3, 1, 0}, {2, 3, 1, 1}, {2, 3, 1, 2}, {2, 3, 1, 3},
-    {2, 3, 2, 0}, {2, 3, 2, 1}, {2, 3, 2, 2}, {2, 3, 2, 3},
-    {2, 3, 3, 0}, {2, 3, 3, 1}, {2, 3, 3, 2}, {2, 3, 3, 3},
-    {3, 0, 0, 0}, {3, 0, 0, 1}, {3, 0, 0, 2}, {3, 0, 0, 3},
-    {3, 0, 1, 0}, {3, 0, 1, 1}, {3, 0, 1, 2}, {3, 0, 1, 3},
-    {3, 0, 2, 0}, {3, 0, 2, 1}, {3, 0, 2, 2}, {3, 0, 2, 3},
-    {3, 0, 3, 0}, {3, 0, 3, 1}, {3, 0, 3, 2}, {3, 0, 3, 3},
-    {3, 1, 0, 0}, {3, 1, 0, 1}, {3, 1, 0, 2}, {3, 1, 0, 3},
-    {3, 1, 1, 0}, {3, 1, 1, 1}, {3, 1, 1, 2}, {3, 1, 1, 3},
-    {3, 1, 2, 0}, {3, 1, 2, 1}, {3, 1, 2, 2}, {3, 1, 2, 3},
-    {3, 1, 3, 0}, {3, 1, 3, 1}, {3, 1, 3, 2}, {3, 1, 3, 3},
-    {3, 2, 0, 0}, {3, 2, 0, 1}, {3, 2, 0, 2}, {3, 2, 0, 3},
-    {3, 2, 1, 0}, {3, 2, 1, 1}, {3, 2, 1, 2}, {3, 2, 1, 3},
-    {3, 2, 2, 0}, {3, 2, 2, 1}, {3, 2, 2, 2}, {3, 2, 2, 3},
-    {3, 2, 3, 0}, {3, 2, 3, 1}, {3, 2, 3, 2}, {3, 2, 3, 3},
-    {3, 3, 0, 0}, {3, 3, 0, 1}, {3, 3, 0, 2}, {3, 3, 0, 3},
-    {3, 3, 1, 0}, {3, 3, 1, 1}, {3, 3, 1, 2}, {3, 3, 1, 3},
-    {3, 3, 2, 0}, {3, 3, 2, 1}, {3, 3, 2, 2}, {3, 3, 2, 3},
-    {3, 3, 3, 0}, {3, 3, 3, 1}, {3, 3, 3, 2}, {3, 3, 3, 3}
-  };
-
+class GroupVIntReader {
   IndexInput in;
-  private static final int[] MASKS = {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   // buffer for all groups
   private int offset = 0;
   private byte[] bytes = new byte[16];
 
-  private byte numGroup = 0;
-  private int[] groupLengths = null;
+  private byte numGroups = 0;
+  private byte flag;
 
   // the next int will be read in the single group. in the range [0-3].
   private int posInGroup = 0;
 
-  public GroupVintReader() {}
+  public GroupVIntReader() {}
 
   /** Called when decode a new block. */
   public void reset(IndexInput indexInput, int num) throws IOException {
     this.in = indexInput;
     offset = 0;
     posInGroup = 0;
+    numGroups = 0;
 
     if (num > 0) {
       int len = in.readVInt();
       if (len > 0) {
-        numGroup = in.readByte();
+        numGroups = in.readByte();
         // + 3 bytes to avoid BitUtil.VH_LE_INT.get out of array bounds when reading the last value
         bytes = ArrayUtil.growNoCopy(bytes, len + 3);
         in.readBytes(bytes, 0, len);
@@ -134,41 +66,47 @@ class GroupVintReader {
 
   /** only readValues or nextInt can be called after reset */
   public void readValues(long[] docs, int limit) throws IOException {
-    if (numGroup == 0) {
+    if (numGroups == 0) {
       readVInts(docs, 0, limit);
       return;
     }
-    int groupValues = limit / 4 * 4;
-    int cur = 0;
+    int groupValues = limit & 0xFFFFFFFC;
+    posInGroup = 0;
     for (int i = 0; i < groupValues; i++) {
-      cur = i % 4;
-      if (cur == 0) {
-        groupLengths = flagToLengths[Byte.toUnsignedInt(bytes[offset++])];
+      posInGroup = i % 4;
+      if (posInGroup == 0) {
+        flag = bytes[offset++];
       }
-      docs[i] = (int) BitUtil.VH_LE_INT.get(bytes, offset) & MASKS[groupLengths[cur]];
-      offset += groupLengths[cur] + 1;
+      int shift = (6 - (posInGroup << 1));
+      int len = ((flag >>> shift) & 3) + 1;
+      int mask = (0xFFFFFFFF >>> ((4 - len) << 3));
+      docs[i] = (int) BitUtil.VH_LE_INT.get(bytes, offset) & mask;
+      offset += len;
     }
     if (groupValues < limit) {
       readVInts(docs, groupValues, limit);
-      return;
     }
   }
 
   /** the caller must ensure that the read is not out of bounds */
   public int nextInt() throws IOException {
     if (posInGroup == 0) {
-      if (numGroup > 0) {
-        groupLengths = flagToLengths[Byte.toUnsignedInt(bytes[offset++])];
-        numGroup--;
+      if (numGroups > 0) {
+        flag = bytes[offset++];
+        numGroups--;
       } else {
         return in.readVInt();
       }
     }
 
     // get int from groups buffer
+    int shift = (6 - (posInGroup << 1));
+    int len = ((flag >>> shift) & 3) + 1;
+    int mask = (0xFFFFFFFF >>> ((4 - len) << 3));
+
     assert offset + 4 <= bytes.length;
-    int v = (int) BitUtil.VH_LE_INT.get(bytes, offset) & MASKS[groupLengths[posInGroup]];
-    offset += groupLengths[posInGroup] + 1;
+    int v = (int) BitUtil.VH_LE_INT.get(bytes, offset) & mask;
+    offset += len;
     posInGroup = ++posInGroup % 4;
     assert v >= 0;
     return v;
