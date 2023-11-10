@@ -77,9 +77,9 @@ class GroupVIntReader {
       if (posInGroup == 0) {
         flag = bytes[offset++];
       }
-      int shift = (6 - (posInGroup << 1));
+      int shift = 6 - (posInGroup << 1);
       int len = ((flag >>> shift) & 3) + 1;
-      int mask = (0xFFFFFFFF >>> ((4 - len) << 3));
+      int mask = 0xFFFFFFFF >>> ((4 - len) << 3);
       docs[i] = (int) BitUtil.VH_LE_INT.get(bytes, offset) & mask;
       offset += len;
     }
@@ -100,9 +100,9 @@ class GroupVIntReader {
     }
 
     // get int from groups buffer
-    int shift = (6 - (posInGroup << 1));
+    int shift = 6 - (posInGroup << 1);
     int len = ((flag >>> shift) & 3) + 1;
-    int mask = (0xFFFFFFFF >>> ((4 - len) << 3));
+    int mask = 0xFFFFFFFF >>> ((4 - len) << 3);
 
     assert offset + 4 <= bytes.length;
     int v = (int) BitUtil.VH_LE_INT.get(bytes, offset) & mask;
