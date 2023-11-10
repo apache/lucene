@@ -17,108 +17,31 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
  * the documents having values. The graph is used to power HNSW search. The format consists of two
- * files, and requires a {@link FlatVectorsFormat} to store the actual vectors:
- *
- * <h2>.vex (vector index)</h2>
- *
- * <p>Stores graphs connecting the documents for each field organized as a list of nodes' neighbours
- * as following:
- *
- * <ul>
- *   <li>For each level:
- *       <ul>
- *         <li>For each node:
- *             <ul>
- *               <li><b>[vint]</b> the number of neighbor nodes
- *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
- *             </ul>
- *       </ul>
- *   <li>After all levels are encoded memory offsets for each node's neighbor nodes encoded by
- *       {@link org.apache.lucene.util.packed.DirectMonotonicWriter} are appened to the end of the
- *       file.
- * </ul>
- *
- * <h2>.vem (vector metadata) file</h2>
- *
- * <p>For each field:
- *
- * <ul>
- *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> vector similarity function ordinal
- *   <li><b>[vlong]</b> offset to this field's index in the .vex file
- *   <li><b>[vlong]</b> length of this field's index data, in bytes
- *   <li><b>[vint]</b> dimension of this field's vectors
- *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
- *       0, sparse – some documents missing values.
- *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
- *       that only in sparse case
- *   <li><b>[vint]</b> the maximum number of connections (neigbours) that each node can have
- *   <li><b>[vint]</b> number of levels in the graph
- *   <li>Graph nodes by level. For each level
- *       <ul>
- *         <li><b>[vint]</b> the number of nodes on this level
- *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the level 0th delta encoded nodes' ordinals.
- *       </ul>
- * </ul>
+ * files, and uses {@link Lucene99ScalarQuantizedVectorsFormat} to store the actual vectors: For
+ * details on graph storage and file extensions, see {@link Lucene99HnswVectorsFormat}.
  *
  * @lucene.experimental
  */
-public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
-
-  static final String META_CODEC_NAME = "Lucene99HnswVectorsFormatMeta";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene99HnswVectorsFormatIndex";
-  static final String META_EXTENSION = "vem";
-  static final String VECTOR_INDEX_EXTENSION = "vex";
-
-  public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
-
-  /**
-   * A maximum configurable maximum max conn.
-   *
-   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
-   * numbers here will use an inordinate amount of heap
-   */
-  static final int MAXIMUM_MAX_CONN = 512;
-
-  /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = 16;
-
-  /**
-   * The maximum size of the queue to maintain while searching during graph construction This
-   * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
-   * 3200`
-   */
-  static final int MAXIMUM_BEAM_WIDTH = 3200;
-
-  /**
-   * Default number of the size of the queue maintained while searching during a graph construction.
-   */
-  public static final int DEFAULT_BEAM_WIDTH = 100;
-
-  /** Default to use single thread merge */
-  public static final int DEFAULT_NUM_MERGE_WORKER = 1;
-
-  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -134,14 +57,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /** The format for storing, reading, merging vectors on disk */
-  private static final FlatVectorsFormat flatVectorsFormat = new Lucene99FlatVectorsFormat();
+  private final FlatVectorsFormat flatVectorsFormat;
 
   private final int numMergeWorkers;
   private final ExecutorService mergeExec;
 
   /** Constructs a format using default graph construction parameters */
-  public Lucene99HnswVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null);
+  public Lucene99HnswScalarQuantizedVectorsFormat() {
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, null);
   }
 
   /**
@@ -150,8 +73,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    */
-  public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null);
+  public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, null);
   }
 
   /**
@@ -161,12 +84,18 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
    *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
+   * @param configuredQuantile the quantile for scalar quantizing the vectors, when `null` it is
+   *     calculated based on the vector field dimensions.
    * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
    *     generated by this format to do the merge
    */
-  public Lucene99HnswVectorsFormat(
-      int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    super("Lucene99HnswVectorsFormat");
+  public Lucene99HnswScalarQuantizedVectorsFormat(
+      int maxConn,
+      int beamWidth,
+      int numMergeWorkers,
+      Float configuredQuantile,
+      ExecutorService mergeExec) {
+    super("Lucene99HnswScalarQuantizedVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to"
@@ -193,6 +122,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     }
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
+    this.flatVectorsFormat = new Lucene99ScalarQuantizedVectorsFormat(configuredQuantile);
   }
 
   @Override
@@ -218,7 +148,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn="
+    return "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth

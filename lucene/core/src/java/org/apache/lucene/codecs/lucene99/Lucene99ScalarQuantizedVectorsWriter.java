@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -29,13 +30,18 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -44,7 +50,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -59,9 +64,9 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
+public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
-  private static final long BASE_RAM_BYTES_USED =
+  private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsWriter.class);
 
   // Used for determining when merged quantiles shifted too far from individual segment quantiles.
@@ -82,67 +87,214 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
   // the quantization error) and the condition is sensitive enough to detect all adversarial cases,
   // such as merging clustered data.
   private static final float REQUANTIZATION_LIMIT = 0.2f;
-  private final IndexOutput quantizedVectorData;
+  private final SegmentWriteState segmentWriteState;
+
+  private final List<FieldWriter> fields = new ArrayList<>();
+  private final IndexOutput meta, quantizedVectorData;
   private final Float quantile;
+  private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
 
-  Lucene99ScalarQuantizedVectorsWriter(IndexOutput quantizedVectorData, Float quantile) {
-    this.quantile = quantile;
-    this.quantizedVectorData = quantizedVectorData;
-  }
-
-  QuantizationFieldVectorWriter addField(FieldInfo fieldInfo, InfoStream infoStream) {
-    if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "Only float32 vector fields are supported for quantization");
-    }
-    float quantile =
-        this.quantile == null
-            ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
-            : this.quantile;
-    if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
-      infoStream.message(
-          QUANTIZED_VECTOR_COMPONENT,
-          "quantizing field="
-              + fieldInfo.name
-              + " dimension="
-              + fieldInfo.getVectorDimension()
-              + " quantile="
-              + quantile);
-    }
-    return QuantizationFieldVectorWriter.create(fieldInfo, quantile, infoStream);
-  }
-
-  long[] flush(
-      Sorter.DocMap sortMap, QuantizationFieldVectorWriter field, DocsWithFieldSet docsWithField)
+  Lucene99ScalarQuantizedVectorsWriter(
+      SegmentWriteState state, Float quantile, FlatVectorsWriter rawVectorDelegate)
       throws IOException {
-    field.finish();
-    return sortMap == null ? writeField(field) : writeSortingField(field, sortMap, docsWithField);
+    this.quantile = quantile;
+    segmentWriteState = state;
+    String metaFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene99ScalarQuantizedVectorsFormat.META_EXTENSION);
+
+    String quantizedVectorDataFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
+    this.rawVectorDelegate = rawVectorDelegate;
+    boolean success = false;
+    try {
+      meta = state.directory.createOutput(metaFileName, state.context);
+      quantizedVectorData =
+          state.directory.createOutput(quantizedVectorDataFileName, state.context);
+
+      CodecUtil.writeIndexHeader(
+          meta,
+          Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+      CodecUtil.writeIndexHeader(
+          quantizedVectorData,
+          Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+      success = true;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(this);
+      }
+    }
   }
 
-  void finish() throws IOException {
+  @Override
+  public FlatFieldVectorsWriter<?> addField(
+      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
+    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      float quantile =
+          this.quantile == null
+              ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
+              : this.quantile;
+      FieldWriter quantizedWriter =
+          new FieldWriter(quantile, fieldInfo, segmentWriteState.infoStream, indexWriter);
+      fields.add(quantizedWriter);
+      indexWriter = quantizedWriter;
+    }
+    return rawVectorDelegate.addField(fieldInfo, indexWriter);
+  }
+
+  @Override
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+    // Since we know we will not be searching for additional indexing, we can just write the
+    // the vectors directly to the new segment.
+    // No need to use temporary file as we don't have to re-open for reading
+    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      ScalarQuantizer mergedQuantizationState = mergeQuantiles(fieldInfo, mergeState);
+      MergedQuantizedVectorValues byteVectorValues =
+          MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
+              fieldInfo, mergeState, mergedQuantizationState);
+      long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
+      DocsWithFieldSet docsWithField =
+          writeQuantizedVectorData(quantizedVectorData, byteVectorValues);
+      long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
+      float quantile =
+          this.quantile == null
+              ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
+              : this.quantile;
+      writeMeta(
+          fieldInfo,
+          segmentWriteState.segmentInfo.maxDoc(),
+          vectorDataOffset,
+          vectorDataLength,
+          quantile,
+          mergedQuantizationState.getLowerQuantile(),
+          mergedQuantizationState.getUpperQuantile(),
+          docsWithField);
+    }
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
+      FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      // Simply merge the underlying delegate, which just copies the raw vector data to a new
+      // segment file
+      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+      ScalarQuantizer mergedQuantizationState = mergeQuantiles(fieldInfo, mergeState);
+      return mergeOneFieldToIndex(
+          segmentWriteState, fieldInfo, mergeState, mergedQuantizationState);
+    }
+    // We only merge the delegate, since the field type isn't float32, quantization wasn't
+    // supported, so bypass it.
+    return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
+  }
+
+  @Override
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    rawVectorDelegate.flush(maxDoc, sortMap);
+    for (FieldWriter field : fields) {
+      field.finish();
+      if (sortMap == null) {
+        writeField(field, maxDoc);
+      } else {
+        writeSortingField(field, maxDoc, sortMap);
+      }
+    }
+  }
+
+  @Override
+  public void finish() throws IOException {
     if (finished) {
       throw new IllegalStateException("already finished");
     }
     finished = true;
+    rawVectorDelegate.finish();
+    if (meta != null) {
+      // write end of fields marker
+      meta.writeInt(-1);
+      CodecUtil.writeFooter(meta);
+    }
     if (quantizedVectorData != null) {
       CodecUtil.writeFooter(quantizedVectorData);
     }
   }
 
-  private long[] writeField(QuantizationFieldVectorWriter fieldData) throws IOException {
-    long quantizedVectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
-    writeQuantizedVectors(fieldData);
-    long quantizedVectorDataLength =
-        quantizedVectorData.getFilePointer() - quantizedVectorDataOffset;
-    return new long[] {quantizedVectorDataOffset, quantizedVectorDataLength};
+  @Override
+  public long ramBytesUsed() {
+    long total = SHALLOW_RAM_BYTES_USED;
+    for (FieldWriter field : fields) {
+      total += field.ramBytesUsed();
+    }
+    return total;
   }
 
-  private void writeQuantizedVectors(QuantizationFieldVectorWriter fieldData) throws IOException {
+  private void writeField(FieldWriter fieldData, int maxDoc) throws IOException {
+    // write vector values
+    long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
+    writeQuantizedVectors(fieldData);
+    long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
+
+    writeMeta(
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        quantile,
+        fieldData.minQuantile,
+        fieldData.maxQuantile,
+        fieldData.docsWithField);
+  }
+
+  private void writeMeta(
+      FieldInfo field,
+      int maxDoc,
+      long vectorDataOffset,
+      long vectorDataLength,
+      Float configuredQuantizationQuantile,
+      Float lowerQuantile,
+      Float upperQuantile,
+      DocsWithFieldSet docsWithField)
+      throws IOException {
+    meta.writeInt(field.number);
+    meta.writeInt(field.getVectorEncoding().ordinal());
+    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeVLong(vectorDataOffset);
+    meta.writeVLong(vectorDataLength);
+    meta.writeVInt(field.getVectorDimension());
+    int count = docsWithField.cardinality();
+    meta.writeInt(count);
+    if (count > 0) {
+      assert Float.isFinite(lowerQuantile) && Float.isFinite(upperQuantile);
+      meta.writeInt(
+          Float.floatToIntBits(
+              configuredQuantizationQuantile != null
+                  ? configuredQuantizationQuantile
+                  : calculateDefaultQuantile(field.getVectorDimension())));
+      meta.writeInt(Float.floatToIntBits(lowerQuantile));
+      meta.writeInt(Float.floatToIntBits(upperQuantile));
+    }
+    // write docIDs
+    OrdToDocDISIReaderConfiguration.writeStoredMeta(
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, quantizedVectorData, count, maxDoc, docsWithField);
+  }
+
+  private void writeQuantizedVectors(FieldWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
-    byte[] vector = new byte[fieldData.dim];
+    byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
+    float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (float[] v : fieldData.floatVectors) {
       if (fieldData.normalize) {
         System.arraycopy(v, 0, copy, 0, copy.length);
@@ -151,7 +303,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       }
 
       float offsetCorrection =
-          scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
+          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -159,14 +311,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     }
   }
 
-  private long[] writeSortingField(
-      QuantizationFieldVectorWriter fieldData,
-      Sorter.DocMap sortMap,
-      DocsWithFieldSet docsWithField)
+  private void writeSortingField(FieldWriter fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
-    DocIdSetIterator iterator = docsWithField.iterator();
+    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
     for (int docID = iterator.nextDoc();
         docID != DocIdSetIterator.NO_MORE_DOCS;
         docID = iterator.nextDoc()) {
@@ -175,13 +324,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     }
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
     final int[] ordMap = new int[offset - 1]; // new ord to old ord
-    final int[] oldOrdMap = new int[offset - 1]; // old ord to new ord
     int ord = 0;
     int doc = 0;
     for (int docIdOffset : docIdOffsets) {
       if (docIdOffset != 0) {
         ordMap[ord] = docIdOffset - 1;
-        oldOrdMap[docIdOffset - 1] = ord;
         newDocsWithField.add(doc);
         ord++;
       }
@@ -192,16 +339,22 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     writeSortedQuantizedVectors(fieldData, ordMap);
     long quantizedVectorLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
-
-    return new long[] {vectorDataOffset, quantizedVectorLength};
+    writeMeta(
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        quantizedVectorLength,
+        quantile,
+        fieldData.minQuantile,
+        fieldData.maxQuantile,
+        newDocsWithField);
   }
 
-  void writeSortedQuantizedVectors(QuantizationFieldVectorWriter fieldData, int[] ordMap)
-      throws IOException {
+  private void writeSortedQuantizedVectors(FieldWriter fieldData, int[] ordMap) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
-    byte[] vector = new byte[fieldData.dim];
+    byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    float[] copy = fieldData.normalize ? new float[fieldData.dim] : null;
+    float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
       if (fieldData.normalize) {
@@ -209,9 +362,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
         VectorUtil.l2normalize(copy);
         v = copy;
       }
-
       float offsetCorrection =
-          scalarQuantizer.quantize(v, vector, fieldData.vectorSimilarityFunction);
+          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -219,10 +371,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     }
   }
 
-  ScalarQuantizer mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      return null;
-    }
+  private ScalarQuantizer mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    assert fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32;
     float quantile =
         this.quantile == null
             ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
@@ -230,15 +381,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return mergeAndRecalculateQuantiles(mergeState, fieldInfo, quantile);
   }
 
-  ScalarQuantizedCloseableRandomVectorScorerSupplier mergeOneField(
+  private ScalarQuantizedCloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       SegmentWriteState segmentWriteState,
       FieldInfo fieldInfo,
       MergeState mergeState,
       ScalarQuantizer mergedQuantizationState)
       throws IOException {
-    if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      return null;
-    }
+    long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempQuantizedVectorData =
         segmentWriteState.directory.createTempOutput(
             quantizedVectorData.getName(), "temp", segmentWriteState.context);
@@ -257,7 +406,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
               tempQuantizedVectorData.getName(), segmentWriteState.context);
       quantizedVectorData.copyBytes(
           quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
+      long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(quantizationDataInput);
+      float quantile =
+          this.quantile == null
+              ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
+              : this.quantile;
+      writeMeta(
+          fieldInfo,
+          segmentWriteState.segmentInfo.maxDoc(),
+          vectorDataOffset,
+          vectorDataLength,
+          quantile,
+          mergedQuantizationState.getLowerQuantile(),
+          mergedQuantizationState.getUpperQuantile(),
+          docsWithField);
       success = true;
       final IndexInput finalQuantizationDataInput = quantizationDataInput;
       return new ScalarQuantizedCloseableRandomVectorScorerSupplier(
@@ -265,6 +428,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
             IOUtils.close(finalQuantizationDataInput);
             segmentWriteState.directory.deleteFile(tempQuantizedVectorData.getName());
           },
+          docsWithField.cardinality(),
           new ScalarQuantizedRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(),
               mergedQuantizationState,
@@ -427,43 +591,35 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
   }
 
   @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED;
+  public void close() throws IOException {
+    IOUtils.close(meta, quantizedVectorData, rawVectorDelegate);
   }
 
-  static class QuantizationFieldVectorWriter implements Accountable {
-    private static final long SHALLOW_SIZE =
-        shallowSizeOfInstance(QuantizationFieldVectorWriter.class);
-    private final int dim;
+  static class FieldWriter extends FlatFieldVectorsWriter<float[]> {
+    private static final long SHALLOW_SIZE = shallowSizeOfInstance(FieldWriter.class);
     private final List<float[]> floatVectors;
-    private final boolean normalize;
-    private final VectorSimilarityFunction vectorSimilarityFunction;
+    private final FieldInfo fieldInfo;
     private final float quantile;
     private final InfoStream infoStream;
+    private final boolean normalize;
     private float minQuantile = Float.POSITIVE_INFINITY;
     private float maxQuantile = Float.NEGATIVE_INFINITY;
     private boolean finished;
+    private final DocsWithFieldSet docsWithField;
 
-    static QuantizationFieldVectorWriter create(
-        FieldInfo fieldInfo, float quantile, InfoStream infoStream) {
-      return new QuantizationFieldVectorWriter(
-          fieldInfo.getVectorDimension(),
-          quantile,
-          fieldInfo.getVectorSimilarityFunction(),
-          infoStream);
-    }
-
-    QuantizationFieldVectorWriter(
-        int dim,
+    @SuppressWarnings("unchecked")
+    FieldWriter(
         float quantile,
-        VectorSimilarityFunction vectorSimilarityFunction,
-        InfoStream infoStream) {
-      this.dim = dim;
+        FieldInfo fieldInfo,
+        InfoStream infoStream,
+        KnnFieldVectorsWriter<?> indexWriter) {
+      super((KnnFieldVectorsWriter<float[]>) indexWriter);
       this.quantile = quantile;
-      this.normalize = vectorSimilarityFunction == VectorSimilarityFunction.COSINE;
-      this.vectorSimilarityFunction = vectorSimilarityFunction;
+      this.fieldInfo = fieldInfo;
+      this.normalize = fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE;
       this.floatVectors = new ArrayList<>();
       this.infoStream = infoStream;
+      this.docsWithField = new DocsWithFieldSet();
     }
 
     void finish() throws IOException {
@@ -475,15 +631,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
         return;
       }
       ScalarQuantizer quantizer =
-          ScalarQuantizer.fromVectors(new FloatVectorWrapper(floatVectors, normalize), quantile);
+          ScalarQuantizer.fromVectors(
+              new FloatVectorWrapper(
+                  floatVectors,
+                  fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
+              quantile);
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
         infoStream.message(
             QUANTIZED_VECTOR_COMPONENT,
             "quantized field="
-                + " dimension="
-                + dim
                 + " quantile="
                 + quantile
                 + " minQuantile="
@@ -494,24 +652,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       finished = true;
     }
 
-    public void addValue(float[] vectorValue) throws IOException {
-      floatVectors.add(vectorValue);
-    }
-
-    float getMinQuantile() {
-      assert finished;
-      return minQuantile;
-    }
-
-    float getMaxQuantile() {
-      assert finished;
-      return maxQuantile;
-    }
-
-    float getQuantile() {
-      return quantile;
-    }
-
     ScalarQuantizer createQuantizer() {
       assert finished;
       return new ScalarQuantizer(minQuantile, maxQuantile, quantile);
@@ -519,8 +659,26 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      if (floatVectors.size() == 0) return SHALLOW_SIZE;
-      return SHALLOW_SIZE + (long) floatVectors.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      long size = SHALLOW_SIZE;
+      if (indexingDelegate != null) {
+        size += indexingDelegate.ramBytesUsed();
+      }
+      if (floatVectors.size() == 0) return size;
+      return size + (long) floatVectors.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    }
+
+    @Override
+    public void addValue(int docID, float[] vectorValue) throws IOException {
+      docsWithField.add(docID);
+      floatVectors.add(vectorValue);
+      if (indexingDelegate != null) {
+        indexingDelegate.addValue(docID, vectorValue);
+      }
+    }
+
+    @Override
+    public float[] copyValue(float[] vectorValue) {
+      throw new UnsupportedOperationException();
     }
   }
 
@@ -613,6 +771,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
           // Either our quantization parameters are way different than the merged ones
           // Or we have never been quantized.
           if (reader == null
+              || reader.getQuantizationState(fieldInfo.name) == null
               || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
             sub =
                 new QuantizedByteVectorValueSub(
@@ -702,6 +861,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
+    private final float[] normalizedVector;
     private float offsetValue = 0f;
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
@@ -714,6 +874,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
+      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+        this.normalizedVector = new float[values.dimension()];
+      } else {
+        this.normalizedVector = null;
+      }
     }
 
     @Override
@@ -745,8 +910,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     public int nextDoc() throws IOException {
       int doc = values.nextDoc();
       if (doc != NO_MORE_DOCS) {
-        offsetValue =
-            quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
+        quantize();
       }
       return doc;
     }
@@ -755,10 +919,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     public int advance(int target) throws IOException {
       int doc = values.advance(target);
       if (doc != NO_MORE_DOCS) {
+        quantize();
+      }
+      return doc;
+    }
+
+    private void quantize() throws IOException {
+      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
+        VectorUtil.l2normalize(normalizedVector);
+        offsetValue =
+            quantizer.quantize(normalizedVector, quantizedVector, vectorSimilarityFunction);
+      } else {
         offsetValue =
             quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
       }
-      return doc;
     }
   }
 
@@ -767,11 +942,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
 
     private final ScalarQuantizedRandomVectorScorerSupplier supplier;
     private final Closeable onClose;
+    private final int numVectors;
 
     ScalarQuantizedCloseableRandomVectorScorerSupplier(
-        Closeable onClose, ScalarQuantizedRandomVectorScorerSupplier supplier) {
+        Closeable onClose, int numVectors, ScalarQuantizedRandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
+      this.numVectors = numVectors;
     }
 
     @Override
@@ -787,6 +964,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     public void close() throws IOException {
       onClose.close();
+    }
+
+    @Override
+    public int totalVectorCount() {
+      return numVectors;
     }
   }
 
