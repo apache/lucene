@@ -32,9 +32,9 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -83,12 +83,7 @@ public class TestKnnGraph extends LuceneTestCase {
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     vectorEncoding = randomVectorEncoding();
-
-    Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat =
-        vectorEncoding.equals(VectorEncoding.FLOAT32) && randomBoolean()
-            ? new Lucene99ScalarQuantizedVectorsFormat(1f)
-            : null;
-
+    boolean quantized = randomBoolean();
     codec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           @Override
@@ -96,14 +91,16 @@ public class TestKnnGraph extends LuceneTestCase {
             return new PerFieldKnnVectorsFormat() {
               @Override
               public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene99HnswVectorsFormat(
-                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+                return quantized
+                    ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                        M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
+                    : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
               }
             };
           }
         };
 
-    if (vectorEncoding == VectorEncoding.FLOAT32 && scalarQuantizedVectorsFormat == null) {
+    if (vectorEncoding == VectorEncoding.FLOAT32) {
       float32Codec = codec;
     } else {
       float32Codec =

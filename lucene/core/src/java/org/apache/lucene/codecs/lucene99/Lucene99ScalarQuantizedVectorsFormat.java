@@ -17,20 +17,31 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.FlatVectorsFormat;
+import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
+
 /**
  * Format supporting vector quantization, storage, and retrieval
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsFormat {
+public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsData";
-  static final String QUANTIZED_VECTOR_DATA_EXTENSION = "veq";
+  static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
+  static final String META_EXTENSION = "vemq";
+  static final String VECTOR_DATA_EXTENSION = "veq";
+
+  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
 
   /** The minimum quantile */
   private static final float MINIMUM_QUANTILE = 0.9f;
@@ -74,6 +85,24 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
 
   @Override
   public String toString() {
-    return NAME + "(name=" + NAME + ", quantile=" + quantile + ")";
+    return NAME
+        + "(name="
+        + NAME
+        + ", quantile="
+        + quantile
+        + ", rawVectorFormat="
+        + rawVectorFormat
+        + ")";
+  }
+
+  @Override
+  public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsWriter(
+        state, quantile, rawVectorFormat.fieldsWriter(state));
+  }
+
+  @Override
+  public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
   }
 }

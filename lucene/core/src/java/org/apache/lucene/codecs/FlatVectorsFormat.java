@@ -15,17 +15,25 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.codecs;
 
-import java.io.Closeable;
+import java.io.IOException;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
+ * Encodes/decodes per-document vectors
  *
- * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
- * closeable
+ * @lucene.experimental
  */
-public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
-  int totalVectorCount();
+public abstract class FlatVectorsFormat {
+
+  /** Sole constructor */
+  protected FlatVectorsFormat() {}
+
+  /** Returns a {@link FlatVectorsWriter} to write the vectors to the index. */
+  public abstract FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
+
+  /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
+  public abstract FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 }

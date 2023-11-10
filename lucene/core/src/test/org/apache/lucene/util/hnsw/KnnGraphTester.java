@@ -701,7 +701,7 @@ public class KnnGraphTester {
             return new PerFieldKnnVectorsFormat() {
               @Override
               public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene99HnswVectorsFormat(maxConn, beamWidth, null);
+                return new Lucene99HnswVectorsFormat(maxConn, beamWidth, 1, null);
               }
             };
           }
