@@ -117,7 +117,7 @@ Java_org_apache_lucene_sandbox_pim_TestPimNativeInterface_getNrOfDpus(JNIEnv *en
 }
 
 typedef uint32_t index_t;
-typedef uint8_t result_t;
+typedef uint64_t result_t;
 
 #define MAX(a, b)                                                                                                                \
     ({                                                                                                                           \
