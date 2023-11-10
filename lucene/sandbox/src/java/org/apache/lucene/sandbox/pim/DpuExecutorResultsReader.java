@@ -69,7 +69,7 @@ public class DpuExecutorResultsReader extends DpuResultsReader {
 
     // read the result for this doc ID
     // use method specific to the query
-    match.score = query.readResultAndScore(input, match.docId, simScorer);
+    match.score = query.scorePimResult(input.readInt(), match.docId, simScorer);
     return true;
   }
 }

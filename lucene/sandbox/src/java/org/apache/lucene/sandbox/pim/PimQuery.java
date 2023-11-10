@@ -43,11 +43,11 @@ public interface PimQuery {
    * Reads the PIM query result, performs the scoring and returns the score. This function specifies
    * how results returned by the PIM system should be interpreted and scored.
    *
-   * @param input the input to read the results from
    * @param docId the document to be scored
+   * @param freq the frequency of the term in the document
    * @param scorer the LeafSimScorer used to score results
    * @return the score for this docID
    * @throws IOException if failing to read results from the input
    */
-  float readResultAndScore(DpuDataInput input, int docId, LeafSimScorer scorer) throws IOException;
+  float scorePimResult(int docId, int freq, LeafSimScorer scorer) throws IOException;
 }
