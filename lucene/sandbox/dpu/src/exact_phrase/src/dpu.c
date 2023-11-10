@@ -193,7 +193,7 @@ int main() {
     // read the segment offsets for this query and prefix sum the values and write it back
     prefix_sum_each_query(results_segment_offset, 1 << nr_segments_log2);
     // read the lucene segment offsets for this query and prefix sum the values and write it back
-    prefix_sum_each_query(results_index_lucene_segments, nr_lucene_segments);
+    /*prefix_sum_each_query(results_index_lucene_segments, nr_lucene_segments);*/
 
     barrier_wait(&barrier);
 
