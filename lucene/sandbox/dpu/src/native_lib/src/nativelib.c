@@ -325,7 +325,7 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     // TODO(sbrocard): use callback to make transfer per rank to not share the max transfer size
     THROW_ON_ERROR(dpu_push_sg_xfer(set,
         DPU_XFER_FROM_DPU,
-        "results_batch",
+        "results_batch_sorted",
         0,
         sizeof(result_t[max_nr_results]),
         &get_block_info,
