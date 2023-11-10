@@ -248,8 +248,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer
     SGReturn results = sgXferResults(queryBuffers.size(), nbLuceneSegments);
+    results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
+    results.byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+    results.segmentsIndices.order(ByteOrder.LITTLE_ENDIAN);
 
-    // 4) barrier to wait for all transfers to be finished
+    // 4) barrier to wait for transfers to be finished
+    // TODO sg transfer in asynchronous mode ?
     dpuSystem.async().sync();
 
     // 5) Update the results map for the client threads to read their results
