@@ -42,7 +42,7 @@ cmake {
 task cmakeInstall (type: dev.welbyseely.CMakeBuildTask) {
   configureFromProject()
   buildTarget = 'install'
-  inputs.dir('dpu/src')
+  inputs.files(fileTree('dpu/src'))
   outputs.files('dpu/build/libdpuLucene.so', 'dpu/build/dpu_program_exact_phrase')
 }
 
