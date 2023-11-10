@@ -41,8 +41,9 @@ public class TestTopKnnResults extends LuceneTestCase {
 
   public void testConcurrentGlobalMinSimilarity() {
     MaxScoreAccumulator globalMinSimAcc = new MaxScoreAccumulator();
-    TopKnnCollector results1 = new TopKnnCollector(5, Integer.MAX_VALUE, globalMinSimAcc);
-    TopKnnCollector results2 = new TopKnnCollector(5, Integer.MAX_VALUE, globalMinSimAcc);
+    // greediness = 0.2; allowing to consider 4 top results out of 5
+    TopKnnCollector results1 = new TopKnnCollector(5, Integer.MAX_VALUE, globalMinSimAcc, 0.2f);
+    TopKnnCollector results2 = new TopKnnCollector(5, Integer.MAX_VALUE, globalMinSimAcc, 0.2f);
 
     int[] nodes1 = new int[] {1, 2, 3, 4, 5, 6, 7};
     float[] scores1 = new float[] {1f, 2f, 3f, 4f, 5f, 6f, 7f};
@@ -58,19 +59,17 @@ public class TestTopKnnResults extends LuceneTestCase {
       results1.collect(nodes1[i], scores1[i]);
       results1.incVisitedCount(1);
     }
-    // as soon as top k results are collected, both collectors should see the same global
-    // competitive similarity
-    assertEquals(8f, results1.minCompetitiveSimilarity(), 0f);
+    // as soon as top k results are collected,
+    // both collectors should start to see the global min similarity with greediness
     assertEquals(8f, results2.minCompetitiveSimilarity(), 0f);
+    assertEquals(2f, results1.minCompetitiveSimilarity(), 0f);
 
     results2.collect(nodes2[5], scores2[5]);
     results2.incVisitedCount(1);
     results1.collect(nodes1[5], scores1[5]);
     results1.incVisitedCount(1);
     assertEquals(9f, results2.minCompetitiveSimilarity(), 0f);
-    // as global similarity is updated periodically, the collect1 still sees the old cached global
-    // value
-    assertEquals(8f, results1.minCompetitiveSimilarity(), 0f);
+    assertEquals(3f, results1.minCompetitiveSimilarity(), 0f);
 
     results2.collect(nodes2[6], scores2[6]);
     results2.incVisitedCount(1);
@@ -79,7 +78,7 @@ public class TestTopKnnResults extends LuceneTestCase {
     assertEquals(10f, results2.minCompetitiveSimilarity(), 0f);
     // as global similarity is updated periodically, the collect1 still sees the old cached global
     // value
-    assertEquals(8f, results1.minCompetitiveSimilarity(), 0f);
+    assertEquals(4f, results1.minCompetitiveSimilarity(), 0f);
 
     TopDocs topDocs1 = results1.topDocs();
     TopDocs topDocs2 = results2.topDocs();
