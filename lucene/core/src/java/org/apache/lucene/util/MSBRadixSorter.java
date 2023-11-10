@@ -129,7 +129,7 @@ public abstract class MSBRadixSorter extends Sorter {
     sort(from, to, 0, 0);
   }
 
-  private void sort(int from, int to, int k, int l) {
+  protected void sort(int from, int to, int k, int l) {
     if (shouldFallback(from, to, l)) {
       getFallbackSorter(k).sort(from, to);
     } else {
