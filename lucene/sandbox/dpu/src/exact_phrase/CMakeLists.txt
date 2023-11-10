@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.16)
 project(dpu_program_exact_phrase VERSION 0.0.0)
 
 set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -Og")

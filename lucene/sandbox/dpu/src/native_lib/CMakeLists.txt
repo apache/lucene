@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.16)
 project(dpuLucene VERSION 0.0.0)
 
 find_package(JNI REQUIRED)
@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLGS_DEBUG
     "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra")
-link_directories("${DPU_HOST_LINK_DIRECTORIES}")
+link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
 add_library(${PROJECT_NAME} src/nativelib.c)
 target_include_directories(

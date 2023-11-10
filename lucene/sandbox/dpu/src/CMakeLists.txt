@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.16)
 project(lucene_pim)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
