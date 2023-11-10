@@ -47,8 +47,6 @@ static jfieldID dpuSystemField;
 static jclass byteBufferClass;
 static jmethodID allocateDirectMethod;
 
-static jclass SGReturnClass;
-static jmethodID SGReturnConstructor;
 static jfieldID SGReturnByteBufferField;
 static jfieldID SGReturnQueriesIndicesField;
 static jfieldID SGReturnSegmentsIndicesField;
@@ -332,6 +330,8 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
         DPU_SG_XFER_DISABLE_LENGTH_CHECK));
 
     // Build output object
+    jclass SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
+    jmethodID SGReturnConstructor = (*env)->GetMethodID(env, SGReturnClass, "<init>", "()V");
     jobject result = (*env)->NewObject(env, SGReturnClass, SGReturnConstructor);
 
     (*env)->SetObjectField(env, result, SGReturnByteBufferField, byteBuffer);
@@ -362,8 +362,7 @@ cache_callback(JNIEnv *env)
     byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
     allocateDirectMethod = (*env)->GetStaticMethodID(env, byteBufferClass, "allocateDirect", "(I)Ljava/nio/ByteBuffer;");
 
-    SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
-    SGReturnConstructor = (*env)->GetMethodID(env, SGReturnClass, "<init>", "()V");
+    jclass SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
     SGReturnByteBufferField = (*env)->GetFieldID(env, SGReturnClass, "byteBuffer", "Ljava/nio/ByteBuffer;");
     SGReturnQueriesIndicesField = (*env)->GetFieldID(env, SGReturnClass, "queriesIndices", "Ljava/nio/ByteBuffer;");
     SGReturnSegmentsIndicesField = (*env)->GetFieldID(env, SGReturnClass, "segmentsIndices", "Ljava/nio/ByteBuffer;");
@@ -388,15 +387,11 @@ release_callback(JNIEnv *env)
     (*env)->DeleteGlobalRef(env, byteBufferClass);
     byteBufferClass = NULL;
 
-    (*env)->DeleteGlobalRef(env, SGReturnClass);
-    SGReturnClass = NULL;
-
     // jmethodIDs are safe to keep without an explicit global reference, for this reason, we don't need to delete the reference
     // either.
     dpuSystemField = NULL;
     nativeDpuSetField = NULL;
     allocateDirectMethod = NULL;
-    SGReturnConstructor = NULL;
     SGReturnByteBufferField = NULL;
     SGReturnQueriesIndicesField = NULL;
     SGReturnSegmentsIndicesField = NULL;
