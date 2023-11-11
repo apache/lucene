@@ -336,6 +336,8 @@ Other
   overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
   (Stefan Vodita)
 
+* GITHUB#11023: Making CheckIndex -fast the default. (Jakub Slowinski)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
