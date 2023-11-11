@@ -53,7 +53,7 @@ public final class TaskExecutor {
 
   private final Executor executor;
 
-  TaskExecutor(Executor executor) {
+  public TaskExecutor(Executor executor) {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 

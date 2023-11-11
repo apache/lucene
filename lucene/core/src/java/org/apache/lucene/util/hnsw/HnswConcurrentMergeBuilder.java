@@ -22,15 +22,13 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -77,42 +75,17 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           HNSW_COMPONENT,
           "build graph from " + maxOrd + " vectors, with " + workers.length + " workers");
     }
-    List<Future<?>> futures = new ArrayList<>();
+    List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
       int finalI = i;
       futures.add(
-          exec.submit(
-              () -> {
-                try {
-                  workers[finalI].run(maxOrd);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
-                }
-              }));
+          () -> {
+            workers[finalI].run(maxOrd);
+            return null;
+          });
     }
-    Throwable exc = null;
-    for (Future<?> future : futures) {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        var newException = new ThreadInterruptedException(e);
-        if (exc == null) {
-          exc = newException;
-        } else {
-          exc.addSuppressed(newException);
-        }
-      } catch (ExecutionException e) {
-        if (exc == null) {
-          exc = e.getCause();
-        } else {
-          exc.addSuppressed(e.getCause());
-        }
-      }
-    }
-    if (exc != null) {
-      // The error handling was copied from TaskExecutor. should we just use TaskExecutor instead?
-      throw IOUtils.rethrowAlways(exc);
-    }
+    TaskExecutor taskExecutor = new TaskExecutor(exec);
+    taskExecutor.invokeAll(futures);
     return workers[0].getGraph();
   }
 

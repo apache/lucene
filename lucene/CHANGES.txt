@@ -166,6 +166,9 @@ API Changes
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
+* GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
+  HNSW graph build. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
