@@ -76,6 +76,84 @@ public final class TaskExecutor {
     return taskGroup.invokeAll(executor);
   }
 
+  /**
+   * Takes the collection of {@link Future} as input and wait for those to complete and return the
+   * retrieved results if asked i.e. when collect is true else return null
+   *
+   * @param futures Collection of futures
+   * @param collect Whether to return the retrieved results or not
+   * @return The retrieved results for the futures if collect is true else null
+   * @param <T> the type each future returns
+   * @throws IOException on error
+   */
+  public static <T> List<T> getFutureResults(Collection<Future<T>> futures, boolean collect)
+      throws IOException {
+    Throwable exc = null;
+    if (collect) {
+      // when collect is true, wait for the futures to complete and store the retrieved results from
+      // the futures in a list and returns it
+      List<T> results = new ArrayList<>(futures.size());
+      for (Future<T> future : futures) {
+        try {
+          results.add(future.get());
+        } catch (InterruptedException e) {
+          var newException = new ThreadInterruptedException(e);
+          if (exc == null) {
+            exc = newException;
+          } else {
+            exc.addSuppressed(newException);
+          }
+        } catch (ExecutionException e) {
+          if (exc == null) {
+            exc = e.getCause();
+          } else {
+            exc.addSuppressed(e.getCause());
+          }
+        }
+      }
+      assert assertAllFuturesCompleted(futures) : "Some tasks are still running?";
+      if (exc != null) {
+        throw IOUtils.rethrowAlways(exc);
+      }
+      return results;
+    } else {
+      // when collect is false, wait for the futures to complete but don't store the retrieved
+      // results and just return null
+      for (Future<T> future : futures) {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          var newException = new ThreadInterruptedException(e);
+          if (exc == null) {
+            exc = newException;
+          } else {
+            exc.addSuppressed(newException);
+          }
+        } catch (ExecutionException e) {
+          if (exc == null) {
+            exc = e.getCause();
+          } else {
+            exc.addSuppressed(e.getCause());
+          }
+        }
+      }
+      assert assertAllFuturesCompleted(futures) : "Some tasks are still running?";
+      if (exc != null) {
+        throw IOUtils.rethrowAlways(exc);
+      }
+      return null;
+    }
+  }
+
+  private static <T> boolean assertAllFuturesCompleted(Collection<Future<T>> futures) {
+    for (Future<T> future : futures) {
+      if (future.isDone() == false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public String toString() {
     return "TaskExecutor(" + "executor=" + executor + ')';
@@ -146,47 +224,16 @@ public final class TaskExecutor {
 
     List<T> invokeAll(Executor executor) throws IOException {
       boolean runOnCallerThread = numberOfRunningTasksInCurrentThread.get() > 0;
-      for (Runnable runnable : futures) {
+      Collection<Future<T>> taskfutures = new ArrayList<>();
+      for (RunnableFuture<T> runnable : futures) {
+        taskfutures.add(runnable);
         if (runOnCallerThread) {
           runnable.run();
         } else {
           executor.execute(runnable);
         }
       }
-      Throwable exc = null;
-      List<T> results = new ArrayList<>(futures.size());
-      for (Future<T> future : futures) {
-        try {
-          results.add(future.get());
-        } catch (InterruptedException e) {
-          var newException = new ThreadInterruptedException(e);
-          if (exc == null) {
-            exc = newException;
-          } else {
-            exc.addSuppressed(newException);
-          }
-        } catch (ExecutionException e) {
-          if (exc == null) {
-            exc = e.getCause();
-          } else {
-            exc.addSuppressed(e.getCause());
-          }
-        }
-      }
-      assert assertAllFuturesCompleted() : "Some tasks are still running?";
-      if (exc != null) {
-        throw IOUtils.rethrowAlways(exc);
-      }
-      return results;
-    }
-
-    private boolean assertAllFuturesCompleted() {
-      for (RunnableFuture<T> future : futures) {
-        if (future.isDone() == false) {
-          return false;
-        }
-      }
-      return true;
+      return getFutureResults(taskfutures, true);
     }
 
     private void cancelAll() {

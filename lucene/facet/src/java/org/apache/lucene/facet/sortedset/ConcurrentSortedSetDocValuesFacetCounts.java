@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -41,8 +40,8 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 
 /**
@@ -274,7 +273,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
   }
 
   /** Does all the "real work" of tallying up the counts. */
-  private void count(List<MatchingDocs> matchingDocs) throws IOException, InterruptedException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException {
 
     OrdinalMap ordinalMap;
 
@@ -304,20 +303,11 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
           exec.submit(
               new CountOneSegment(hits.context.reader(), hits, ordinalMap, hits.context.ord)));
     }
-
-    for (Future<Void> result : results) {
-      try {
-        result.get();
-      } catch (ExecutionException ee) {
-        // Theoretically cause can be null; guard against that.
-        Throwable cause = ee.getCause();
-        throw IOUtils.rethrowAlways(cause != null ? cause : ee);
-      }
-    }
+    TaskExecutor.getFutureResults(results, false);
   }
 
   /** Does all the "real work" of tallying up the counts. */
-  private void countAll() throws IOException, InterruptedException {
+  private void countAll() throws IOException {
 
     OrdinalMap ordinalMap;
 
@@ -336,15 +326,6 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
       results.add(
           exec.submit(new CountOneSegment(context.reader(), null, ordinalMap, context.ord)));
     }
-
-    for (Future<Void> result : results) {
-      try {
-        result.get();
-      } catch (ExecutionException ee) {
-        // Theoretically cause can be null; guard against that.
-        Throwable cause = ee.getCause();
-        throw IOUtils.rethrowAlways(cause != null ? cause : ee);
-      }
-    }
+    TaskExecutor.getFutureResults(results, false);
   }
 }

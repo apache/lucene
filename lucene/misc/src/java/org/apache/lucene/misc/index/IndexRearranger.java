@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -37,6 +36,7 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -182,7 +182,7 @@ public class IndexRearranger {
       IndexReader reader,
       List<DocumentSelector> selectors,
       ExecutorService executor)
-      throws ExecutionException, InterruptedException {
+      throws IOException {
 
     ArrayList<Future<Void>> futures = new ArrayList<>();
     for (DocumentSelector selector : selectors) {
@@ -193,10 +193,7 @@ public class IndexRearranger {
           };
       futures.add(executor.submit(addSegment));
     }
-
-    for (Future<Void> future : futures) {
-      future.get();
-    }
+    TaskExecutor.getFutureResults(futures, false);
   }
 
   private static void addOneSegment(
@@ -211,7 +208,7 @@ public class IndexRearranger {
 
   private static void applyDeletes(
       IndexWriter writer, IndexReader reader, DocumentSelector selector, ExecutorService executor)
-      throws ExecutionException, InterruptedException {
+      throws IOException {
     if (selector == null) {
       // There are no deletes to be applied
       return;
@@ -226,10 +223,7 @@ public class IndexRearranger {
           };
       futures.add(executor.submit(applyDeletesToSegment));
     }
-
-    for (Future<Void> future : futures) {
-      future.get();
-    }
+    TaskExecutor.getFutureResults(futures, false);
   }
 
   private static void applyDeletesToOneSegment(

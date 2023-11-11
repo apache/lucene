@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assume;
@@ -137,15 +138,18 @@ public class TestPerformance extends LuceneTestCase {
           "Multi-threaded stemming " + code,
           words.size(),
           blackHole -> {
-            List<Future<?>> futures = new ArrayList<>();
+            List<Future<Void>> futures = new ArrayList<>();
             for (int i = 0; i < cpus; i++) {
               Stemmer localStemmer = new Stemmer(dictionary);
-              futures.add(executor.submit(() -> stemWords(halfWords, localStemmer, blackHole)));
+              futures.add(
+                  executor.submit(
+                      () -> {
+                        stemWords(halfWords, localStemmer, blackHole);
+                        return null;
+                      }));
             }
             try {
-              for (Future<?> future : futures) {
-                future.get();
-              }
+              TaskExecutor.getFutureResults(futures, false);
             } catch (Exception e) {
               throw new RuntimeException(e);
             }
