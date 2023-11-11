@@ -3974,7 +3974,7 @@ public final class CheckIndex implements Closeable {
     boolean doExorcise = false;
     boolean doSlowChecks = false;
     boolean verbose = false;
-    boolean doChecksumsOnly = false;
+    boolean doChecksumsOnly = true;
     int threadCount;
     List<String> onlySegments = new ArrayList<>();
     String indexPath = null;
@@ -4052,14 +4052,19 @@ public final class CheckIndex implements Closeable {
     while (i < args.length) {
       String arg = args[i];
       if ("-fast".equals(arg)) {
-        opts.doChecksumsOnly = true;
+        System.err.println(
+            "-fast is deprecated, verifying file checksums only is now the default");
+      } else if ("-slow".equals(arg)) {
+        opts.doChecksumsOnly = false;
+      } else if ("-slower".equals(arg)) {
+        opts.doSlowChecks = true;
+        opts.doChecksumsOnly = false;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
       } else if ("-crossCheckTermVectors".equals(arg)) {
-        System.err.println("-crossCheckTermVectors is deprecated, use -slow instead");
+        System.err.println("-crossCheckTermVectors is deprecated, use -slower instead");
         opts.doSlowChecks = true;
-      } else if ("-slow".equals(arg)) {
-        opts.doSlowChecks = true;
+        opts.doChecksumsOnly = false;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {
@@ -4099,8 +4104,8 @@ public final class CheckIndex implements Closeable {
               + "\nUsage: java org.apache.lucene.index.CheckIndex pathToIndex [-exorcise] [-slow] [-segment X] [-segment Y] [-threadCount X] [-dir-impl X]\n"
               + "\n"
               + "  -exorcise: actually write a new segments_N file, removing any problematic segments\n"
-              + "  -fast: just verify file checksums, omitting logical integrity checks\n"
-              + "  -slow: do additional slow checks; THIS IS VERY SLOW!\n"
+              + "  -slow: do additional logical integrity checks\n"
+              + "  -slower: do additional logical integrity checks and slow checks; THIS IS VERY SLOW!\n"
               + "  -codec X: when exorcising, codec to write the new segments_N file with\n"
               + "  -verbose: print additional details\n"
               + "  -segment X: only check the specified segments.  This can be specified multiple\n"
@@ -4116,6 +4121,8 @@ public final class CheckIndex implements Closeable {
               + FSDirectory.class.getPackage().getName()
               + " package will be used.\n"
               + "\n"
+              + "CheckIndex only verifies file checksums as default.\n"
+              + "Use -slow if you also want to check segment file contents.\n\n"
               + "**WARNING**: -exorcise *LOSES DATA*. This should only be used on an emergency basis as it will cause\n"
               + "documents (perhaps many) to be permanently removed from the index.  Always make\n"
               + "a backup copy of your index before running this!  Do not run this tool on an index\n"
@@ -4135,10 +4142,6 @@ public final class CheckIndex implements Closeable {
       opts.onlySegments = null;
     } else if (opts.doExorcise) {
       throw new IllegalArgumentException("ERROR: cannot specify both -exorcise and -segment");
-    }
-
-    if (opts.doChecksumsOnly && opts.doSlowChecks) {
-      throw new IllegalArgumentException("ERROR: cannot specify both -fast and -slow");
     }
 
     return opts;
