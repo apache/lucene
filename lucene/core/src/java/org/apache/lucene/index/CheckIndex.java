@@ -4052,8 +4052,7 @@ public final class CheckIndex implements Closeable {
     while (i < args.length) {
       String arg = args[i];
       if ("-fast".equals(arg)) {
-        System.err.println(
-            "-fast is deprecated, verifying file checksums only is now the default");
+        System.err.println("-fast is deprecated, verifying file checksums only is now the default");
       } else if ("-slow".equals(arg)) {
         opts.doChecksumsOnly = false;
       } else if ("-slower".equals(arg)) {
