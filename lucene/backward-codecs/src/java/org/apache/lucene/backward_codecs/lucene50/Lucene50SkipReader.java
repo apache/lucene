@@ -20,7 +20,8 @@ import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.codecs.MultiLevelSkipListReader;
+
+import org.apache.lucene.backward_codecs.LegacyMultiLevelSkipListReader;
 import org.apache.lucene.store.IndexInput;
 
 /**
@@ -50,7 +51,7 @@ import org.apache.lucene.store.IndexInput;
  *
  * <p>Therefore, we'll trim df before passing it to the interface. see trim(int)
  */
-class Lucene50SkipReader extends MultiLevelSkipListReader {
+class Lucene50SkipReader extends LegacyMultiLevelSkipListReader {
   private final int version;
   private long[] docPointer;
   private long[] posPointer;
@@ -124,7 +125,7 @@ class Lucene50SkipReader extends MultiLevelSkipListReader {
 
   /**
    * Returns the doc pointer of the doc to which the last call of {@link
-   * MultiLevelSkipListReader#skipTo(int)} has skipped.
+   * LegacyMultiLevelSkipListReader#skipTo(int)} has skipped.
    */
   public long getDocPointer() {
     return lastDocPointer;

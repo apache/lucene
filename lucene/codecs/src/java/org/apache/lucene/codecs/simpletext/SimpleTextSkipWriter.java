@@ -41,7 +41,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
 
   static final int BLOCK_SIZE = 8;
   private Map<Integer, Boolean> wroteHeaderPerLevelMap = new HashMap<>();
-  private int curDoc;
+  private int curDoc = -1;
   private long curDocFilePointer;
   private CompetitiveImpactAccumulator[] curCompetitiveFreqNorms;
   private final BytesRefBuilder scratch = new BytesRefBuilder();
@@ -77,7 +77,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
 
       wroteHeaderPerLevelMap.put(level, true);
     }
-    SimpleTextUtil.write(skipBuffer, SKIP_DOC);
+    SimpleTextUtil.write(skipBuffer, SKIP_DOC);assert curDoc != -1;
     SimpleTextUtil.write(skipBuffer, curDoc + "", scratch);
     SimpleTextUtil.writeNewline(skipBuffer);
 

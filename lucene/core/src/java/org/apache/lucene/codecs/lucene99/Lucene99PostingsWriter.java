@@ -203,7 +203,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
         payStartFP = payOut.getFilePointer();
       }
     }
-    lastDocID = 0;
+    lastDocID = -1;
     lastBlockDocID = -1;
     skipWriter.resetSkip();
     this.norms = norms;
@@ -367,7 +367,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     final int singletonDocID;
     if (state.docFreq == 1) {
       // pulse the singleton docid into the term dictionary, freq is implicitly totalTermFreq
-      singletonDocID = (int) docDeltaBuffer[0];
+      singletonDocID = (int) docDeltaBuffer[0] - 1;
     } else {
       singletonDocID = -1;
       // vInt encode the remaining doc deltas and freqs:
@@ -464,7 +464,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     state.lastPosBlockOffset = lastPosBlockOffset;
     docBufferUpto = 0;
     posBufferUpto = 0;
-    lastDocID = 0;
+    lastDocID = -1;
     docCount = 0;
   }
 

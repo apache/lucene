@@ -400,7 +400,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           freqBuffer[i] = 1;
         }
       }
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
@@ -728,7 +728,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.needsPayloads = PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
       if (docFreq > BLOCK_SIZE) {
         nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
@@ -1098,7 +1098,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       docIn.seek(termState.docStartFP);
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
       docBufferUpto = BLOCK_SIZE;
 
@@ -1339,7 +1339,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       docUpto = 0;
       docBufferUpto = BLOCK_SIZE;
 
@@ -1698,7 +1698,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       docUpto = 0;
       posDocUpTo = 0;
       isFreqsRead = true;
