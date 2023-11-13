@@ -1179,17 +1179,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   static class OutputAccumulator extends DataInput {
 
-    /** We could have at most 10 no-empty arcs: 9 for vLong and 1 for floor data. */
-    private static final int MAX_ARC = 10;
-
-    BytesRef[] outputs = new BytesRef[MAX_ARC];
+    BytesRef[] outputs = new BytesRef[16];
     BytesRef current;
-    int num = 0;
-    int outputIndex = 0;
-    int index = 0;
+    int num;
+    int outputIndex;
+    int index;
 
     void push(BytesRef output) {
       if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        outputs = ArrayUtil.grow(outputs, num + 1);
         outputs[num++] = output;
       }
     }
