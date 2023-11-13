@@ -21,5 +21,14 @@ import org.apache.lucene.store.DataInput;
 
 /** A type of {@link FSTReader} which needs data to be initialized before use */
 public interface FSTStore extends FSTReader {
-  void init(DataInput in, long numBytes) throws IOException;
+
+  /**
+   * Initialize the FSTStore
+   *
+   * @param in the DataInput to read from
+   * @param numBytes the number of bytes to read
+   * @return this FSTStore
+   * @throws IOException if exception occurred during reading the DataInput
+   */
+  FSTStore init(DataInput in, long numBytes) throws IOException;
 }

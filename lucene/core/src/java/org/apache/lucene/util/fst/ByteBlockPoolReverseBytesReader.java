@@ -58,11 +58,6 @@ final class ByteBlockPoolReverseBytesReader extends FST.BytesReader {
     this.pos = pos - posDelta;
   }
 
-  @Override
-  public boolean reversed() {
-    return true;
-  }
-
   public void setPosDelta(long posDelta) {
     this.posDelta = posDelta;
   }

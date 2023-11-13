@@ -38,17 +38,18 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.ScalarQuantizer;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+
   @Override
   protected Codec getCodec() {
     return new Lucene99Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99HnswVectorsFormat(
+        return new Lucene99HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-            new Lucene99ScalarQuantizedVectorsFormat());
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
       }
     };
   }
@@ -57,6 +58,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
+    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
     for (int i = 0; i < numVectors; i++) {
@@ -65,13 +67,22 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     float quantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(dim);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectors(
-            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, false), quantile);
+            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
+            quantile);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
+      float[] vector = vectors.get(i);
+      if (normalize) {
+        float[] copy = new float[vector.length];
+        System.arraycopy(vector, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        vector = copy;
+      }
+
       expectedVectors[i] = new byte[dim];
       expectedCorrections[i] =
-          scalarQuantizer.quantize(vectors.get(i), expectedVectors[i], similarityFunction);
+          scalarQuantizer.quantize(vector, expectedVectors[i], similarityFunction);
     }
     float[] randomlyReusedVector = new float[dim];
 
@@ -133,12 +144,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99HnswVectorsFormat(
-                10, 20, new Lucene99ScalarQuantizedVectorsFormat(0.9f));
+            return new Lucene99HnswScalarQuantizedVectorsFormat(10, 20, 1, 0.9f, null);
           }
         };
     String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9))";
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9, rawVectorFormat=Lucene99FlatVectorsFormat()))";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 }
