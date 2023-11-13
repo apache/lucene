@@ -21,7 +21,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
-public class TestUnsignedIntsLSBRadixSorter extends LuceneTestCase {
+public class TestUnsignedIntLSBRadixSorter extends LuceneTestCase {
 
   private void test(int maxLen) {
     UnsignedIntLSBRadixSorter sorter = new UnsignedIntLSBRadixSorter();

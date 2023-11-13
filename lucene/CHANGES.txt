@@ -67,6 +67,8 @@ API Changes
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
+* GITHUB#12800: Remove deprecated LSBRadixSorter in favor of UnsignedIntLSBRadixSorter. (Guo Feng)
+
 New Features
 ---------------------
 
@@ -168,6 +170,8 @@ API Changes
 
 * GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
   FacetLabel at once. (Egor Potemkin)
+
+* GITHUB#12800: Deprecate LSBRadixSorter in favor of UnsignedIntLSBRadixSorter. (Guo Feng)
 
 New Features
 ---------------------
@@ -275,6 +279,8 @@ Optimizations
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
+* GITHUB#12800: Generalize LSB radix sorter for SortingPostingsEnum. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
