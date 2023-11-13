@@ -271,8 +271,9 @@ public final class DocIdSetBuilder {
         return new BitDocIdSet(bitSet, cost);
       } else {
         Buffer concatenated = concat(buffers);
-        LSBRadixSorter sorter = new LSBRadixSorter();
-        sorter.sort(PackedInts.bitsRequired(maxDoc - 1), concatenated.array, concatenated.length);
+        UnsignedIntLSBRadixSorter sorter =
+            new UnsignedIntLSBRadixSorter(PackedInts.bitsRequired(maxDoc - 1), concatenated.array);
+        sorter.sort(0, concatenated.length);
         final int l;
         if (multivalued) {
           l = dedup(concatenated.array, concatenated.length);

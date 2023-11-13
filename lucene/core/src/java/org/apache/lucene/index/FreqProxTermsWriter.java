@@ -27,6 +27,7 @@ import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
@@ -34,9 +35,8 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LSBRadixSorter;
 import org.apache.lucene.util.LongsRef;
-import org.apache.lucene.util.TimSorter;
+import org.apache.lucene.util.UnsignedIntLSBRadixSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -224,14 +224,14 @@ final class FreqProxTermsWriter extends TermsHash {
 
   static class SortingDocsEnum extends PostingsEnum {
 
-    private final LSBRadixSorter sorter;
+    private final UnsignedIntLSBRadixSorter sorter;
     private PostingsEnum in;
     private int[] docs = IntsRef.EMPTY_INTS;
     private int docIt;
     private int upTo;
 
     SortingDocsEnum() {
-      sorter = new LSBRadixSorter();
+      sorter = new UnsignedIntLSBRadixSorter();
     }
 
     void reset(Sorter.DocMap docMap, PostingsEnum in) throws IOException {
@@ -252,7 +252,7 @@ final class FreqProxTermsWriter extends TermsHash {
       final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
       // Even though LSBRadixSorter cannot take advantage of partial ordering like TimSorter it is
       // often still faster for nearly-sorted inputs.
-      sorter.sort(numBits, docs, upTo);
+      sorter.reset(numBits, docs).sort(0, upTo);
       docIt = -1;
     }
 
@@ -310,69 +310,78 @@ final class FreqProxTermsWriter extends TermsHash {
 
   static class SortingPostingsEnum extends PostingsEnum {
 
-    /**
-     * A {@link TimSorter} which sorts two parallel arrays of doc IDs and offsets in one go. Everyti
-     * me a doc ID is 'swapped', its corresponding offset is swapped too.
-     */
-    private static final class DocOffsetSorter extends TimSorter {
+    private static final class DocOffsetSorter extends BaseLSBRadixSorter {
 
       private int[] docs;
-      private long[] offsets;
-      private int[] tmpDocs;
-      private long[] tmpOffsets;
+      private int[] srcDocs;
+      private int[] destDocs;
 
-      public DocOffsetSorter(int numTempSlots) {
-        super(numTempSlots);
-        this.tmpDocs = IntsRef.EMPTY_INTS;
-        this.tmpOffsets = LongsRef.EMPTY_LONGS;
+      private long[] offsets;
+      private long[] srcOffsets;
+      private long[] destOffsets;
+
+      public DocOffsetSorter() {
+        super(-1);
+        destDocs = IntsRef.EMPTY_INTS;
+        destOffsets = LongsRef.EMPTY_LONGS;
       }
 
-      public void reset(int[] docs, long[] offsets) {
+      public DocOffsetSorter reset(int bits, int[] docs, long[] offsets) {
+        this.bits = bits;
         this.docs = docs;
+        this.srcDocs = docs;
+        this.destDocs = ArrayUtil.growNoCopy(destDocs, docs.length);
         this.offsets = offsets;
+        this.srcOffsets = offsets;
+        this.destOffsets = ArrayUtil.growNoCopy(destOffsets, offsets.length);
+        return this;
+      }
+
+      @Override
+      protected void switchBuffer() {
+        int[] tmp = srcDocs;
+        srcDocs = destDocs;
+        destDocs = tmp;
+
+        long[] tmpOff = srcOffsets;
+        srcOffsets = destOffsets;
+        destOffsets = tmpOff;
+      }
+
+      @Override
+      protected int bucket(int i, int shift) {
+        return (srcDocs[i] >>> shift) & 0xFF;
+      }
+
+      @Override
+      protected void save(int i, int j) {
+        destDocs[j] = srcDocs[i];
+        destOffsets[j] = srcOffsets[i];
+      }
+
+      @Override
+      protected void restore(int from, int to) {
+        if (srcDocs != docs) {
+          System.arraycopy(srcDocs, from, docs, from, to - from);
+          assert srcOffsets != offsets;
+          System.arraycopy(srcOffsets, from, offsets, from, to - from);
+        }
       }
 
       @Override
       protected int compare(int i, int j) {
-        return docs[i] - docs[j];
+        return srcDocs[i] - srcDocs[j];
       }
 
       @Override
       protected void swap(int i, int j) {
-        int tmpDoc = docs[i];
-        docs[i] = docs[j];
-        docs[j] = tmpDoc;
+        int tmp = srcDocs[i];
+        srcDocs[i] = srcDocs[j];
+        srcDocs[j] = tmp;
 
-        long tmpOffset = offsets[i];
-        offsets[i] = offsets[j];
-        offsets[j] = tmpOffset;
-      }
-
-      @Override
-      protected void copy(int src, int dest) {
-        docs[dest] = docs[src];
-        offsets[dest] = offsets[src];
-      }
-
-      @Override
-      protected void save(int i, int len) {
-        if (tmpDocs.length < len) {
-          tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
-          tmpOffsets = new long[tmpDocs.length];
-        }
-        System.arraycopy(docs, i, tmpDocs, 0, len);
-        System.arraycopy(offsets, i, tmpOffsets, 0, len);
-      }
-
-      @Override
-      protected void restore(int i, int j) {
-        docs[j] = tmpDocs[i];
-        offsets[j] = tmpOffsets[i];
-      }
-
-      @Override
-      protected int compareSaved(int i, int j) {
-        return tmpDocs[i] - docs[j];
+        long tmpOffset = srcOffsets[i];
+        srcOffsets[i] = srcOffsets[j];
+        srcOffsets[j] = tmpOffset;
       }
     }
 
@@ -400,8 +409,7 @@ final class FreqProxTermsWriter extends TermsHash {
       this.storePositions = storePositions;
       this.storeOffsets = storeOffsets;
       if (sorter == null) {
-        final int numTempSlots = docMap.size() / 8;
-        sorter = new DocOffsetSorter(numTempSlots);
+        sorter = new DocOffsetSorter();
       }
       docIt = -1;
       startOffset = -1;
@@ -422,9 +430,9 @@ final class FreqProxTermsWriter extends TermsHash {
         i++;
       }
       upto = i;
-      sorter.reset(docs, offsets);
-      sorter.sort(0, upto);
-
+      final int maxDoc = docMap.size();
+      final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
+      sorter.reset(numBits, docs, offsets).sort(0, upto);
       this.postingInput = buffer.toDataInput();
     }
 
