@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.termdict;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermType;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;

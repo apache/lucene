@@ -14,22 +14,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/** Various third party contributions and new ideas */
-module org.apache.lucene.sandbox {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.queries;
-
-  exports org.apache.lucene.payloads;
-  exports org.apache.lucene.sandbox.codecs.idversion;
-  exports org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
-  exports org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
-  exports org.apache.lucene.sandbox.document;
-  exports org.apache.lucene.sandbox.queries;
-  exports org.apache.lucene.sandbox.search;
-  exports org.apache.lucene.sandbox.index;
-  exports org.apache.lucene.sandbox.codecs.lucene99.randomaccess.termdict;
-
-  provides org.apache.lucene.codecs.PostingsFormat with
-      org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
-}
+/** Class for term dictionary implementation. */
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.termdict;
