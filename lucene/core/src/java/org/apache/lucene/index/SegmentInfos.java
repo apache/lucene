@@ -122,7 +122,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   static final int VERSION_CURRENT = VERSION_86;
 
   /** Name of the generation reference file name */
-  private static final String OLD_SEGMENTS_GEN = "segments.gen";
+  static final String OLD_SEGMENTS_GEN = "segments.gen";
 
   /** Used to name new segments. */
   public long counter;
