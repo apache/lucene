@@ -24,13 +24,6 @@ import org.apache.lucene.util.Accountable;
 public interface FSTReader extends Accountable {
 
   /**
-   * The raw size in bytes of the FST
-   *
-   * @return the FST size
-   */
-  long size();
-
-  /**
    * Get the reverse BytesReader for this FST
    *
    * @return the reverse BytesReader

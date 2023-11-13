@@ -332,11 +332,6 @@ class BytesStore extends DataOutput implements FSTReader {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
-  @Override
-  public long size() {
-    return getPosition();
-  }
-
   /**
    * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
    * this!
