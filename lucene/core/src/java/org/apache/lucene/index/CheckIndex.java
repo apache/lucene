@@ -29,6 +29,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -606,49 +607,69 @@ public final class CheckIndex implements Closeable {
 
     SegmentInfos lastCommit = null;
 
+    List<String> allSegmentsFiles = new ArrayList<>();
     for (String fileName : files) {
       if (fileName.startsWith(IndexFileNames.SEGMENTS)
           && fileName.equals(SegmentInfos.OLD_SEGMENTS_GEN) == false) {
+        allSegmentsFiles.add(fileName);
+      }
+    }
 
-        boolean isLastCommit = fileName.equals(lastSegmentsFile);
+    // Sort descending by generation so that we always attempt to read the last commit first.  This
+    // way if an index has a broken last commit AND a broken old commit, we report the last commit
+    // error first:
+    allSegmentsFiles.sort(
+        new Comparator<String>() {
+          @Override
+          public int compare(String a, String b) {
+            long genA = SegmentInfos.generationFromSegmentsFileName(a);
+            long genB = SegmentInfos.generationFromSegmentsFileName(b);
 
-        SegmentInfos infos;
-
-        try {
-          // Do not use SegmentInfos.read(Directory) since the spooky
-          // retrying it does is not necessary here (we hold the write lock):
-          // always open old indices if codecs are around
-          infos = SegmentInfos.readCommit(dir, fileName, 0);
-        } catch (Throwable t) {
-          if (failFast) {
-            throw IOUtils.rethrowAlways(t);
+            // reversed natural sort (largest generation first):
+            return -Long.compare(genA, genB);
           }
+        });
 
-          String message;
+    for (String fileName : allSegmentsFiles) {
 
-          if (isLastCommit) {
-            message =
-                "ERROR: could not read latest commit point from segments file \""
-                    + fileName
-                    + "\" in directory";
-          } else {
-            message =
-                "ERROR: could not read old (not latest) commit point segments file \""
-                    + fileName
-                    + "\" in directory";
-          }
-          msg(infoStream, message);
-          result.missingSegments = true;
-          if (infoStream != null) {
-            t.printStackTrace(infoStream);
-          }
-          return result;
+      boolean isLastCommit = fileName.equals(lastSegmentsFile);
+
+      SegmentInfos infos;
+
+      try {
+        // Do not use SegmentInfos.read(Directory) since the spooky
+        // retrying it does is not necessary here (we hold the write lock):
+        // always open old indices if codecs are around
+        infos = SegmentInfos.readCommit(dir, fileName, 0);
+      } catch (Throwable t) {
+        if (failFast) {
+          throw IOUtils.rethrowAlways(t);
         }
+
+        String message;
 
         if (isLastCommit) {
-          // record the latest commit point: we will deeply check all segments referenced by it
-          lastCommit = infos;
+          message =
+              "ERROR: could not read latest commit point from segments file \""
+                  + fileName
+                  + "\" in directory";
+        } else {
+          message =
+              "ERROR: could not read old (not latest) commit point segments file \""
+                  + fileName
+                  + "\" in directory";
         }
+        msg(infoStream, message);
+        result.missingSegments = true;
+        if (infoStream != null) {
+          t.printStackTrace(infoStream);
+        }
+        return result;
+      }
+
+      if (isLastCommit) {
+        // record the latest commit point: we will deeply check all segments referenced by it
+        lastCommit = infos;
       }
     }
 

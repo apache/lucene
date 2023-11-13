@@ -146,7 +146,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    *
    * @see #setInfoStream
    */
-  private static PrintStream infoStream = null;
+  private static PrintStream infoStream;
 
   /** Id for this commit; only written starting with Lucene 5.0 */
   private byte[] id;
