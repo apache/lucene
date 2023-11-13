@@ -605,14 +605,14 @@ public final class CheckIndex implements Closeable {
     // exceptions which we (still) will not detect here.  progress not perfection!
 
     SegmentInfos lastCommit = null;
-    
+
     for (String fileName : files) {
       if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
 
         boolean isLastCommit = fileName.equals(lastSegmentsFile);
 
         SegmentInfos infos;
-        
+
         try {
           // Do not use SegmentInfos.read(Directory) since the spooky
           // retrying it does is not necessary here (we hold the write lock):
@@ -626,12 +626,18 @@ public final class CheckIndex implements Closeable {
           String message;
 
           if (isLastCommit) {
-            message = "ERROR: could not read latest commit point from segments file \"" + fileName + "\" in directory";
+            message =
+                "ERROR: could not read latest commit point from segments file \""
+                    + fileName
+                    + "\" in directory";
           } else {
-            message = "ERROR: could not read old (not latest) commit point segments file \"" + fileName + "\" in directory";
+            message =
+                "ERROR: could not read old (not latest) commit point segments file \""
+                    + fileName
+                    + "\" in directory";
           }
           msg(infoStream, message);
-              
+
           result.missingSegments = true;
           if (infoStream != null) {
             t.printStackTrace(infoStream);
