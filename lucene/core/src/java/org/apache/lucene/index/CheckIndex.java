@@ -586,7 +586,6 @@ public final class CheckIndex implements Closeable {
     ensureOpen();
     long startNS = System.nanoTime();
 
-    SegmentInfos sis = null;
     Status result = new Status();
     result.dir = dir;
     String[] files = dir.listAll();
@@ -594,21 +593,6 @@ public final class CheckIndex implements Closeable {
     if (lastSegmentsFile == null) {
       throw new IndexNotFoundException(
           "no segments* file found in " + dir + ": files: " + Arrays.toString(files));
-    }
-    try {
-      // Do not use SegmentInfos.read(Directory) since the spooky
-      // retrying it does is not necessary here (we hold the write lock):
-      sis =
-          SegmentInfos.readCommit(
-              dir, lastSegmentsFile, 0 /* always open old indices if codecs are around */);
-    } catch (Throwable t) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(t);
-      }
-      msg(infoStream, "ERROR: could not read any segments file in directory");
-      result.missingSegments = true;
-      if (infoStream != null) t.printStackTrace(infoStream);
-      return result;
     }
 
     // https://github.com/apache/lucene/issues/7820: also attempt to open any older commit
@@ -620,26 +604,44 @@ public final class CheckIndex implements Closeable {
     // corruption, e.g. a reader opened on those old commit points can hit corruption
     // exceptions which we (still) will not detect here.  progress not perfection!
 
+    SegmentInfos lastCommit = null;
+    
     for (String fileName : files) {
-      if (fileName.startsWith(IndexFileNames.SEGMENTS)
-          && fileName.equals(lastSegmentsFile) == false) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
+
+        boolean isLastCommit = fileName.equals(lastSegmentsFile);
+
+        SegmentInfos infos;
+        
         try {
           // Do not use SegmentInfos.read(Directory) since the spooky
           // retrying it does is not necessary here (we hold the write lock):
           // always open old indices if codecs are around
-          SegmentInfos.readCommit(dir, fileName, 0);
+          infos = SegmentInfos.readCommit(dir, fileName, 0);
         } catch (Throwable t) {
           if (failFast) {
             throw IOUtils.rethrowAlways(t);
           }
-          msg(
-              infoStream,
-              "ERROR: could not read old (not latest) commit point segments file \""
-                  + fileName
-                  + "\" in directory");
+
+          String message;
+
+          if (isLastCommit) {
+            message = "ERROR: could not read latest commit point from segments file \"" + fileName + "\" in directory";
+          } else {
+            message = "ERROR: could not read old (not latest) commit point segments file \"" + fileName + "\" in directory";
+          }
+          msg(infoStream, message);
+              
           result.missingSegments = true;
-          if (infoStream != null) t.printStackTrace(infoStream);
+          if (infoStream != null) {
+            t.printStackTrace(infoStream);
+          }
           return result;
+        }
+
+        if (isLastCommit) {
+          // record the latest commit point: we will deeply check all segments referenced by it
+          lastCommit = infos;
         }
       }
     }
@@ -647,7 +649,7 @@ public final class CheckIndex implements Closeable {
     if (infoStream != null) {
       int maxDoc = 0;
       int delCount = 0;
-      for (SegmentCommitInfo info : sis) {
+      for (SegmentCommitInfo info : lastCommit) {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();
       }
@@ -664,7 +666,7 @@ public final class CheckIndex implements Closeable {
     Version oldest = null;
     Version newest = null;
     String oldSegs = null;
-    for (SegmentCommitInfo si : sis) {
+    for (SegmentCommitInfo si : lastCommit) {
       Version version = si.info.getVersion();
       if (version == null) {
         // pre-3.1 segment
@@ -679,14 +681,14 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    final int numSegments = sis.size();
-    final String segmentsFileName = sis.getSegmentsFileName();
+    final int numSegments = lastCommit.size();
+    final String segmentsFileName = lastCommit.getSegmentsFileName();
     result.segmentsFileName = segmentsFileName;
     result.numSegments = numSegments;
-    result.userData = sis.getUserData();
+    result.userData = lastCommit.getUserData();
     String userDataString;
-    if (sis.getUserData().size() > 0) {
-      userDataString = " userData=" + sis.getUserData();
+    if (lastCommit.getUserData().size() > 0) {
+      userDataString = " userData=" + lastCommit.getUserData();
     } else {
       userDataString = "";
     }
@@ -714,7 +716,7 @@ public final class CheckIndex implements Closeable {
             + " "
             + versionString
             + " id="
-            + StringHelper.idToString(sis.getId())
+            + StringHelper.idToString(lastCommit.getId())
             + userDataString);
 
     if (onlySegments != null) {
@@ -729,14 +731,14 @@ public final class CheckIndex implements Closeable {
       msg(infoStream, ":");
     }
 
-    result.newSegments = sis.clone();
+    result.newSegments = lastCommit.clone();
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
     // checks segments sequentially
     if (executorService == null) {
       for (int i = 0; i < numSegments; i++) {
-        final SegmentCommitInfo info = sis.info(i);
+        final SegmentCommitInfo info = lastCommit.info(i);
         updateMaxSegmentName(result, info);
         if (onlySegments != null && !onlySegments.contains(info.info.name)) {
           continue;
@@ -751,7 +753,7 @@ public final class CheckIndex implements Closeable {
                 + info.info.name
                 + " maxDoc="
                 + info.info.maxDoc());
-        Status.SegmentInfoStatus segmentInfoStatus = testSegment(sis, info, infoStream);
+        Status.SegmentInfoStatus segmentInfoStatus = testSegment(lastCommit, info, infoStream);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
@@ -762,7 +764,7 @@ public final class CheckIndex implements Closeable {
 
       // checks segments concurrently
       List<SegmentCommitInfo> segmentCommitInfos = new ArrayList<>();
-      for (SegmentCommitInfo sci : sis) {
+      for (SegmentCommitInfo sci : lastCommit) {
         segmentCommitInfos.add(sci);
       }
 
@@ -790,7 +792,7 @@ public final class CheckIndex implements Closeable {
           continue;
         }
 
-        SegmentInfos finalSis = sis;
+        SegmentInfos finalSis = lastCommit;
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         PrintStream stream = new PrintStream(output, true, IOUtils.UTF_8);
@@ -856,14 +858,14 @@ public final class CheckIndex implements Closeable {
               + " documents) detected");
     }
 
-    result.validCounter = result.maxSegmentName < sis.counter;
+    result.validCounter = result.maxSegmentName < lastCommit.counter;
     if (result.validCounter == false) {
       result.clean = false;
       result.newSegments.counter = result.maxSegmentName + 1;
       msg(
           infoStream,
           "ERROR: Next segment name counter "
-              + sis.counter
+              + lastCommit.counter
               + " is not greater than max segment name "
               + result.maxSegmentName);
     }
