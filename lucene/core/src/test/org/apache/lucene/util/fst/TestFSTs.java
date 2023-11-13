@@ -568,7 +568,6 @@ public class TestFSTs extends LuceneTestCase {
         System.out.println(
             ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
-        assert fstCompiler.getTermCount() == ord;
         FST<T> fst = fstCompiler.compile();
         long tEnd = System.nanoTime();
         System.out.println(
@@ -1283,7 +1282,7 @@ public class TestFSTs extends LuceneTestCase {
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fstCompiler.addNode(rootNode));
+    fstCompiler.finish(fstCompiler.addNode(rootNode));
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));

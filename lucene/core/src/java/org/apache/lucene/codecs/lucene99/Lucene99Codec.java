@@ -20,7 +20,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.*;
 import org.apache.lucene.codecs.lucene90.*;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -99,9 +98,9 @@ public class Lucene99Codec extends Codec {
     super("Lucene99");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
-    this.defaultPostingsFormat = new Lucene90PostingsFormat();
+    this.defaultPostingsFormat = new Lucene99PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene95HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene99HnswVectorsFormat();
   }
 
   @Override
@@ -152,7 +151,7 @@ public class Lucene99Codec extends Codec {
   /**
    * Returns the postings format that should be used for writing new segments of <code>field</code>.
    *
-   * <p>The default implementation always returns "Lucene90".
+   * <p>The default implementation always returns "Lucene99".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation,
@@ -165,7 +164,7 @@ public class Lucene99Codec extends Codec {
    * Returns the docvalues format that should be used for writing new segments of <code>field</code>
    * .
    *
-   * <p>The default implementation always returns "Lucene90".
+   * <p>The default implementation always returns "Lucene99".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.

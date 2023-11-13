@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.randSeed;
@@ -31,8 +32,9 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -78,23 +80,10 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
-    codec =
-        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-              }
-            };
-          }
-        };
-
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     vectorEncoding = randomVectorEncoding();
-
+    boolean quantized = randomBoolean();
     codec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           @Override
@@ -102,7 +91,10 @@ public class TestKnnGraph extends LuceneTestCase {
             return new PerFieldKnnVectorsFormat() {
               @Override
               public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+                return quantized
+                    ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                        M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
+                    : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
               }
             };
           }
@@ -118,7 +110,7 @@ public class TestKnnGraph extends LuceneTestCase {
               return new PerFieldKnnVectorsFormat() {
                 @Override
                 public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                  return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+                  return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
                 }
               };
             }
@@ -409,8 +401,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene95HnswVectorsReader vectorReader =
-            (Lucene95HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene99HnswVectorsReader vectorReader =
+            (Lucene99HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }

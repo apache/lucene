@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene95;
 
 import java.util.Objects;
+import org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -36,11 +37,9 @@ import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -145,7 +144,7 @@ public class Lucene95Codec extends Codec {
   }
 
   @Override
-  public final SegmentInfoFormat segmentInfoFormat() {
+  public SegmentInfoFormat segmentInfoFormat() {
     return segmentInfosFormat;
   }
 
@@ -165,7 +164,7 @@ public class Lucene95Codec extends Codec {
   }
 
   @Override
-  public final KnnVectorsFormat knnVectorsFormat() {
+  public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
   }
 

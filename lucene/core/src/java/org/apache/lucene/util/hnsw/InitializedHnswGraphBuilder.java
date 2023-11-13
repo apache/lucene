@@ -55,6 +55,18 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       BitSet initializedNodes,
       int totalNumberOfVectors)
       throws IOException {
+    return new InitializedHnswGraphBuilder(
+        scorerSupplier,
+        M,
+        beamWidth,
+        seed,
+        initGraph(M, initializerGraph, newOrdMap, totalNumberOfVectors),
+        initializedNodes);
+  }
+
+  public static OnHeapHnswGraph initGraph(
+      int M, HnswGraph initializerGraph, int[] newOrdMap, int totalNumberOfVectors)
+      throws IOException {
     OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M, totalNumberOfVectors);
     for (int level = initializerGraph.numLevels() - 1; level >= 0; level--) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
@@ -62,6 +74,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         int oldOrd = it.nextInt();
         int newOrd = newOrdMap[oldOrd];
         hnsw.addNode(level, newOrd);
+        hnsw.trySetNewEntryNode(newOrd, level);
         NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
         for (int oldNeighbor = initializerGraph.nextNeighbor();
@@ -73,8 +86,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         }
       }
     }
-    return new InitializedHnswGraphBuilder(
-        scorerSupplier, M, beamWidth, seed, hnsw, initializedNodes);
+    return hnsw;
   }
 
   private final BitSet initializedNodes;

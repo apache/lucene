@@ -42,12 +42,14 @@ module org.apache.lucene.backward_codecs {
       org.apache.lucene.backward_codecs.lucene80.Lucene80DocValuesFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat,
-      org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat;
+      org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat,
+      org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsFormat,
       org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat,
       org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat,
-      org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat;
+      org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat,
+      org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat;
   provides org.apache.lucene.codecs.Codec with
       org.apache.lucene.backward_codecs.lucene80.Lucene80Codec,
       org.apache.lucene.backward_codecs.lucene84.Lucene84Codec,

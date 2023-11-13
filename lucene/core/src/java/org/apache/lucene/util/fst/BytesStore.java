@@ -21,13 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 // TODO: merge with PagedBytes, except PagedBytes doesn't
 // let you read while writing which FST needs
 
-class BytesStore extends DataOutput implements Accountable {
+class BytesStore extends DataOutput implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(BytesStore.class)
@@ -333,6 +332,11 @@ class BytesStore extends DataOutput implements Accountable {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
+  @Override
+  public long size() {
+    return getPosition();
+  }
+
   /**
    * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
    * this!
@@ -365,6 +369,7 @@ class BytesStore extends DataOutput implements Accountable {
   }
 
   /** Writes all of our bytes to the target {@link DataOutput}. */
+  @Override
   public void writeTo(DataOutput out) throws IOException {
     for (byte[] block : blocks) {
       out.writeBytes(block, 0, block.length);
@@ -429,20 +434,12 @@ class BytesStore extends DataOutput implements Accountable {
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos;
       }
-
-      @Override
-      public boolean reversed() {
-        return false;
-      }
     };
   }
 
-  public FST.BytesReader getReverseReader() {
-    return getReverseReader(true);
-  }
-
-  FST.BytesReader getReverseReader(boolean allowSingle) {
-    if (allowSingle && blocks.size() == 1) {
+  @Override
+  public FST.BytesReader getReverseBytesReader() {
+    if (blocks.size() == 1) {
       return new ReverseBytesReader(blocks.get(0));
     }
     return new FST.BytesReader() {
@@ -489,11 +486,6 @@ class BytesStore extends DataOutput implements Accountable {
         }
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos : "pos=" + pos + " getPos()=" + getPosition();
-      }
-
-      @Override
-      public boolean reversed() {
-        return true;
       }
     };
   }

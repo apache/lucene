@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 
 /** Lucene Core. */
@@ -70,9 +69,10 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      Lucene95HnswVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
+      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
-      org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,

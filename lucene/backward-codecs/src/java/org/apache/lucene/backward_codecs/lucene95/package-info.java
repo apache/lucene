@@ -151,17 +151,17 @@
  *       field names. These are used to store auxiliary information about the document, such as its
  *       title, url, or an identifier to access a database. The set of stored fields are what is
  *       returned for each hit when searching. This is keyed by document number.
- *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Term dictionary}. A
- *       dictionary containing all of the terms used in all of the indexed fields of all of the
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Term dictionary}.
+ *       A dictionary containing all of the terms used in all of the indexed fields of all of the
  *       documents. The dictionary also contains the number of documents which contain the term, and
  *       pointers to the term's frequency and proximity data.
- *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Term Frequency data}. For
- *       each term in the dictionary, the numbers of all the documents that contain that term, and
- *       the frequency of the term in that document, unless frequencies are omitted ({@link
- *       org.apache.lucene.index.IndexOptions#DOCS IndexOptions.DOCS})
- *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Term Proximity data}. For
- *       each term in the dictionary, the positions that the term occurs in each document. Note that
- *       this will not exist if all fields in all documents omit position data.
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Term Frequency
+ *       data}. For each term in the dictionary, the numbers of all the documents that contain that
+ *       term, and the frequency of the term in that document, unless frequencies are omitted
+ *       ({@link org.apache.lucene.index.IndexOptions#DOCS IndexOptions.DOCS})
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Term Proximity
+ *       data}. For each term in the dictionary, the positions that the term occurs in each
+ *       document. Note that this will not exist if all fields in all documents omit position data.
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90NormsFormat Normalization factors}. For
  *       each field in each document, a value is stored that is multiplied into the score for hits
  *       on that field.
@@ -180,8 +180,8 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat Vector values}. The
- *       vector format stores numeric vectors in a format optimized for random access and
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat Vector values}.
+ *       The vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
  *
@@ -255,27 +255,27 @@
  * <td>The stored fields for documents</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Term Dictionary}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Term Dictionary}</td>
  * <td>.tim</td>
  * <td>The term dictionary, stores term info</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Term Index}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Term Index}</td>
  * <td>.tip</td>
  * <td>The index into the Term Dictionary</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Frequencies}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Frequencies}</td>
  * <td>.doc</td>
  * <td>Contains the list of docs which contain each term along with frequency</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Positions}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Positions}</td>
  * <td>.pos</td>
  * <td>Stores position information about where a term occurs in the index</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat Payloads}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat Payloads}</td>
  * <td>.pay</td>
  * <td>Stores additional per-position metadata information such as character offsets and user payloads</td>
  * </tr>
@@ -310,7 +310,7 @@
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat Vector values}</td>
  * <td>.vec, .vem</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>

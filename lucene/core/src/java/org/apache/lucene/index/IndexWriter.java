@@ -2464,6 +2464,17 @@ public class IndexWriter
       infoStream.message("IW", "rollback");
     }
 
+    Closeable cleanupAndNotify =
+        () -> {
+          assert Thread.holdsLock(this);
+          writeLock = null;
+          closed = true;
+          closing = false;
+          // So any "concurrently closing" threads wake up and see that the close has now
+          // completed:
+          notifyAll();
+        };
+
     try {
       synchronized (this) {
         // must be synced otherwise register merge might throw and exception if merges
@@ -2532,42 +2543,35 @@ public class IndexWriter
         // below that sets closed:
         closed = true;
 
-        IOUtils.close(writeLock); // release write lock
-        writeLock = null;
-        closed = true;
-        closing = false;
-        // So any "concurrently closing" threads wake up and see that the close has now completed:
-        notifyAll();
+        IOUtils.close(writeLock, cleanupAndNotify);
       }
     } catch (Throwable throwable) {
       try {
         // Must not hold IW's lock while closing
         // mergeScheduler: this can lead to deadlock,
         // e.g. TestIW.testThreadInterruptDeadlock
-        IOUtils.closeWhileHandlingException(mergeScheduler);
-        synchronized (this) {
-          // we tried to be nice about it: do the minimum
-          // don't leak a segments_N file if there is a pending commit
-          if (pendingCommit != null) {
-            try {
-              pendingCommit.rollbackCommit(directory);
-              deleter.decRef(pendingCommit);
-            } catch (Throwable t) {
-              throwable.addSuppressed(t);
-            }
-            pendingCommit = null;
-          }
+        IOUtils.closeWhileHandlingException(
+            mergeScheduler,
+            () -> {
+              synchronized (this) {
+                // we tried to be nice about it: do the minimum
+                // don't leak a segments_N file if there is a pending commit
+                if (pendingCommit != null) {
+                  try {
+                    pendingCommit.rollbackCommit(directory);
+                    deleter.decRef(pendingCommit);
+                  } catch (Throwable t) {
+                    throwable.addSuppressed(t);
+                  }
+                  pendingCommit = null;
+                }
 
-          // close all the closeables we can (but important is readerPool and writeLock to prevent
-          // leaks)
-          IOUtils.closeWhileHandlingException(readerPool, deleter, writeLock);
-          writeLock = null;
-          closed = true;
-          closing = false;
-
-          // So any "concurrently closing" threads wake up and see that the close has now completed:
-          notifyAll();
-        }
+                // close all the closeables we can (but important is readerPool and writeLock to
+                // prevent leaks)
+                IOUtils.closeWhileHandlingException(
+                    readerPool, deleter, writeLock, cleanupAndNotify);
+              }
+            });
       } catch (Throwable t) {
         throwable.addSuppressed(t);
       } finally {
@@ -3680,7 +3684,7 @@ public class IndexWriter
               // merge completes which would otherwise have
               // removed the files we are now syncing.
               deleter.incRef(toCommit.files(false));
-              if (anyChanges && maxCommitMergeWaitMillis > 0) {
+              if (maxCommitMergeWaitMillis > 0) {
                 // we can safely call preparePointInTimeMerge since writeReaderPool(true) above
                 // wrote all
                 // necessary files to disk and checkpointed them.
@@ -4232,7 +4236,6 @@ public class IndexWriter
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
-          ;
           docWriter.finishFullFlush(flushSuccess);
           processEvents(false);
         }
