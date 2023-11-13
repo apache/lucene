@@ -104,8 +104,8 @@ final class SegmentTermsEnumFrame {
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
-  public void setFloorData(SegmentTermsEnum.OutputAccumulator accumulator) {
-    accumulator.setFloorData(floorDataReader);
+  public void setFloorData(SegmentTermsEnum.OutputAccumulator outputAccumulator) {
+    outputAccumulator.setFloorData(floorDataReader);
     rewindPos = floorDataReader.getPosition();
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
