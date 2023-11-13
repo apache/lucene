@@ -1152,13 +1152,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           isFreqsRead = false;
         }
         blockUpto += BLOCK_SIZE;
+        accum = docBuffer[BLOCK_SIZE - 1];
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
+        accum = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
@@ -1210,10 +1211,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         if (seekTo >= 0) {
           docIn.seek(seekTo);
           isFreqsRead = true; // reset isFreqsRead
@@ -1371,12 +1370,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (left >= BLOCK_SIZE) {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
+        accum = docBuffer[BLOCK_SIZE - 1];
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+
       docBufferUpto = 0;
     }
 
@@ -1448,10 +1449,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         if (seekTo >= 0) {
           docIn.seek(seekTo);
           seekTo = -1;
@@ -1765,12 +1764,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           isFreqsRead =
               false; // freq block will be loaded lazily when necessary, we don't load it here
         }
+        accum = docBuffer[BLOCK_SIZE - 1];
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+
       docBufferUpto = 0;
     }
 
@@ -1888,10 +1889,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         if (seekTo >= 0) {
           docIn.seek(seekTo);
           seekTo = -1;

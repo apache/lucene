@@ -29,7 +29,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.MathUtil;
 
 /**
- * Legacy variant of {@link MultiLevelSkipListReader} for Lucene postings formats up to {@link Lucene90PostingsFormat} included. It used to start postings at 0 rather than -1.
+ * Legacy variant of {@link MultiLevelSkipListReader} for Lucene postings formats up to {@link Lucene90PostingsFormat} included. It starts postings at 0 rather than -1.
  */
 public abstract class LegacyMultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */
