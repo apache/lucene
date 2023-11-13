@@ -21,6 +21,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.RecyclingByteBlockAllocator;
 
 public class TestByteSlicePool extends LuceneTestCase {
   public void testAllocKnownSizeSlice() {
@@ -223,57 +224,66 @@ public class TestByteSlicePool extends LuceneTestCase {
    * that we read back the same data we wrote.
    */
   public void testRandomInterleavedSlices() {
-    ByteBlockPool blockPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+    ByteBlockPool blockPool = new ByteBlockPool(new RecyclingByteBlockAllocator());
     ByteSlicePool slicePool = new ByteSlicePool(blockPool);
 
-    int n = TestUtil.nextInt(random(), 2, 3); // 2 or 3 writers and readers
-    SliceWriter[] sliceWriters = new SliceWriter[n];
-    SliceReader[] sliceReaders = new SliceReader[n];
+    int nIterations =
+        TestUtil.nextInt(random(), 1, 3); // 1-3 iterations with buffer resets in between
+    for (int iter = 0; iter < nIterations; iter++) {
+      int n = TestUtil.nextInt(random(), 2, 3); // 2 or 3 writers and readers
+      SliceWriter[] sliceWriters = new SliceWriter[n];
+      SliceReader[] sliceReaders = new SliceReader[n];
 
-    // Init slice writers
-    for (int i = 0; i < n; i++) {
-      sliceWriters[i] = new SliceWriter(slicePool);
-    }
-
-    // Write slices
-    while (true) {
-      int i = random().nextInt(n);
-      boolean succeeded = sliceWriters[i].writeSlice();
-      if (succeeded == false) {
-        for (int j = 0; j < n; j++) {
-          while (sliceWriters[j].writeSlice())
-            ;
-        }
-        break;
+      // Init slice writers
+      for (int i = 0; i < n; i++) {
+        sliceWriters[i] = new SliceWriter(slicePool);
       }
-    }
 
-    // Init slice readers
-    for (int i = 0; i < n; i++) {
-      sliceReaders[i] =
-          new SliceReader(
-              slicePool,
-              sliceWriters[i].size,
-              sliceWriters[i].firstSliceOffset,
-              sliceWriters[i].firstSlice);
-    }
-
-    // Read slices
-    while (true) {
-      int i = random().nextInt(n);
-      boolean succeeded = sliceReaders[i].readSlice();
-      if (succeeded == false) {
-        for (int j = 0; j < n; j++) {
-          while (sliceReaders[j].readSlice())
-            ;
+      // Write slices
+      while (true) {
+        int i = random().nextInt(n);
+        boolean succeeded = sliceWriters[i].writeSlice();
+        if (succeeded == false) {
+          for (int j = 0; j < n; j++) {
+            while (sliceWriters[j].writeSlice())
+              ;
+          }
+          break;
         }
-        break;
       }
-    }
 
-    // Compare written data with read data
-    for (int i = 0; i < n; i++) {
-      assertArrayEquals(sliceWriters[i].randomData, sliceReaders[i].readData);
+      // Init slice readers
+      for (int i = 0; i < n; i++) {
+        sliceReaders[i] =
+            new SliceReader(
+                slicePool,
+                sliceWriters[i].size,
+                sliceWriters[i].firstSliceOffset,
+                sliceWriters[i].firstSlice);
+      }
+
+      // Read slices
+      while (true) {
+        int i = random().nextInt(n);
+        boolean succeeded = sliceReaders[i].readSlice();
+        if (succeeded == false) {
+          for (int j = 0; j < n; j++) {
+            while (sliceReaders[j].readSlice())
+              ;
+          }
+          break;
+        }
+      }
+
+      // Compare written data with read data
+      for (int i = 0; i < n; i++) {
+        assertArrayEquals(sliceWriters[i].randomData, sliceReaders[i].readData);
+      }
+
+      // We don't rely on the buffers being filled with zeros because the SliceWriter keeps the
+      // slice length as state, but ByteSlicePool.allocKnownSizeSlice asserts on zeros in the
+      // buffer.
+      blockPool.reset(true, random().nextBoolean());
     }
   }
 }

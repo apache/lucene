@@ -132,18 +132,11 @@ public final class ByteBlockPool implements Accountable {
   }
 
   /**
-   * Resets the pool to its initial state, reusing the first buffer and filling all buffers with
-   * {@code 0} bytes before they are reused or passed to {@link
-   * Allocator#recycleByteBlocks(byte[][], int, int)}. Calling {@link ByteBlockPool#nextBuffer()} is
-   * not needed after reset.
-   */
-  public void reset() {
-    reset(true, true);
-  }
-
-  /**
-   * Expert: Resets the pool to its initial state, while reusing the first buffer. Calling {@link
-   * ByteBlockPool#nextBuffer()} is not needed after reset.
+   * Expert: Resets the pool to its initial state, while optionally reusing the first buffer.
+   * Buffers that are not reused are reclaimed by {@link Allocator#recycleByteBlocks(byte[][], int,
+   * int)}. Buffers can be filled with zeros before recycling them. This is useful if a slice pool
+   * works on top of this byte pool and relies on the buffers being filled with zeros to find the
+   * non-zero end of slices.
    *
    * @param zeroFillBuffers if {@code true} the buffers are filled with {@code 0}. This should be
    *     set to {@code true} if this pool is used with slices.
@@ -188,7 +181,8 @@ public final class ByteBlockPool implements Accountable {
   /**
    * Allocates a new buffer and advances the pool to it. This method should be called once after the
    * constructor to initialize the pool. In contrast to the constructor, a {@link
-   * ByteBlockPool#reset()} call will advance the pool to its first buffer immediately.
+   * ByteBlockPool#reset(boolean, boolean)} call will advance the pool to its first buffer
+   * immediately.
    */
   public void nextBuffer() {
     if (1 + bufferUpto == buffers.length) {
