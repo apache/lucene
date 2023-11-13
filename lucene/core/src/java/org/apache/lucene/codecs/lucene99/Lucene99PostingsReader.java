@@ -340,10 +340,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // no skip data for this term):
     private long skipOffset;
 
-    // docID for next skip point, we won't use skipper if
-    // target docID is not larger than this
-    private int nextSkipDoc;
-
     private boolean needsFreq; // true if the caller actually needs frequencies
     // as we read freqBuffer lazily, isFreqsRead shows if freqBuffer are read for the current block
     // always true when we don't have freqBuffer (indexHasFreq=false) or don't need freqBuffer
@@ -402,7 +398,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
       accum = -1;
       blockUpto = 0;
-      nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
       return this;
@@ -464,19 +459,21 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           }
         }
         blockUpto += BLOCK_SIZE;
+        accum = docBuffer[BLOCK_SIZE - 1];
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto++;
       } else {
         // Read vInts:
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
@@ -497,62 +494,53 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public int advance(int target) throws IOException {
       // current skip docID < docIDs generated from current buffer <= next skip docID
       // we don't need to skip if target is buffered already
-      if (docFreq > BLOCK_SIZE && target > nextSkipDoc) {
+      if (target > accum) {
+        if (docFreq > BLOCK_SIZE) {
 
-        if (skipper == null) {
-          // Lazy init: first time this enum has ever been used for skipping
-          skipper =
-              new Lucene99SkipReader(
-                  docIn.clone(), MAX_SKIP_LEVELS, indexHasPos, indexHasOffsets, indexHasPayloads);
+          if (skipper == null) {
+            // Lazy init: first time this enum has ever been used for skipping
+            skipper =
+                new Lucene99SkipReader(
+                    docIn.clone(), MAX_SKIP_LEVELS, indexHasPos, indexHasOffsets, indexHasPayloads);
+          }
+
+          if (!skipped) {
+            assert skipOffset != -1;
+            // This is the first time this enum has skipped
+            // since reset() was called; load the skip data:
+            skipper.init(docTermStartFP + skipOffset, docTermStartFP, 0, 0, docFreq);
+            skipped = true;
+          }
+
+          // always plus one to fix the result, since skip position in Lucene99SkipReader
+          // is a little different from MultiLevelSkipListReader
+          final int newDocUpto = skipper.skipTo(target) + 1;
+
+          if (newDocUpto >= blockUpto) {
+            // Skipper moved
+            assert newDocUpto % BLOCK_SIZE == 0 : "got " + newDocUpto;
+            blockUpto = newDocUpto;
+
+            // Force to read next block
+            docBufferUpto = BLOCK_SIZE;
+            accum = skipper.getDoc(); // actually, this is just lastSkipEntry
+            docIn.seek(skipper.getDocPointer()); // now point to the block we want to search
+            // even if freqBuffer were not read from the previous block, we will mark them as read,
+            // as we don't need to skip the previous block freqBuffer in refillDocs,
+            // as we have already positioned docIn where in needs to be.
+            isFreqsRead = true;
+          }
         }
-
-        if (!skipped) {
-          assert skipOffset != -1;
-          // This is the first time this enum has skipped
-          // since reset() was called; load the skip data:
-          skipper.init(docTermStartFP + skipOffset, docTermStartFP, 0, 0, docFreq);
-          skipped = true;
-        }
-
-        // always plus one to fix the result, since skip position in Lucene99SkipReader
-        // is a little different from MultiLevelSkipListReader
-        final int newDocUpto = skipper.skipTo(target) + 1;
-
-        if (newDocUpto >= blockUpto) {
-          // Skipper moved
-          assert newDocUpto % BLOCK_SIZE == 0 : "got " + newDocUpto;
-          blockUpto = newDocUpto;
-
-          // Force to read next block
-          docBufferUpto = BLOCK_SIZE;
-          accum = skipper.getDoc(); // actually, this is just lastSkipEntry
-          docIn.seek(skipper.getDocPointer()); // now point to the block we want to search
-          // even if freqBuffer were not read from the previous block, we will mark them as read,
-          // as we don't need to skip the previous block freqBuffer in refillDocs,
-          // as we have already positioned docIn where in needs to be.
-          isFreqsRead = true;
-        }
-        // next time we call advance, this is used to
-        // foresee whether skipper is necessary.
-        nextSkipDoc = skipper.getNextSkipDoc();
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
 
       // Now scan... this is an inlined/pared down version
       // of nextDoc():
       long doc;
-      while (true) {
-        doc = docBuffer[docBufferUpto];
+      do {
+        doc = docBuffer[docBufferUpto++];
+      } while (doc < target);
 
-        if (doc >= target) {
-          break;
-        }
-        ++docBufferUpto;
-      }
-
-      docBufferUpto++;
       return this.doc = (int) doc;
     }
 
@@ -905,16 +893,12 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
       // Now scan:
       long doc;
-      while (true) {
+      do {
         doc = docBuffer[docBufferUpto];
         freq = (int) freqBuffer[docBufferUpto];
         posPendingCount += freq;
         docBufferUpto++;
-
-        if (doc >= target) {
-          break;
-        }
-      }
+      } while (doc < target);
 
       position = 0;
       lastStartOffset = 0;
