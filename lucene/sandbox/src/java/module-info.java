@@ -28,7 +28,6 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;
   exports org.apache.lucene.sandbox.index;
-  exports org.apache.lucene.sandbox.codecs.lucene99.randomaccess.termdict;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;

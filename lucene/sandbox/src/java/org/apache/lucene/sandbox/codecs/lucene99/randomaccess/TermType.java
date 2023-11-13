@@ -26,7 +26,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermStat
  * <p>It captures -- 1) if a term has a singleton docid (i.e. only one doc contains this term). 2)
  * if the term has skip data. 3) if the term has an VINT encoded position block.
  */
-public final class TermType {
+final class TermType {
   private static final byte SINGLETON_DOC_MASK = (byte) 1;
 
   private static final byte HAS_SKIP_DATA_MASK = (byte) 1 << 1;
@@ -41,24 +41,24 @@ public final class TermType {
     this.flag = flag;
   }
 
-  public int getId() {
+  int getId() {
     assert this.flag >= 0 && this.flag <= 8;
     return this.flag;
   }
 
-  public boolean hasSingletonDoc() {
+  boolean hasSingletonDoc() {
     return (this.flag & SINGLETON_DOC_MASK) > 0;
   }
 
-  public boolean hasSkipData() {
+  boolean hasSkipData() {
     return (this.flag & HAS_SKIP_DATA_MASK) > 0;
   }
 
-  public boolean hasLastPositionBlockOffset() {
+  boolean hasLastPositionBlockOffset() {
     return (this.flag & HAS_LAST_POSITION_BLOCK_OFFEST_MASK) > 0;
   }
 
-  public static TermType fromTermState(IntBlockTermState state) {
+  static TermType fromTermState(IntBlockTermState state) {
     byte flag = 0;
     if (state.singletonDocID != -1) {
       flag |= SINGLETON_DOC_MASK;
@@ -72,7 +72,7 @@ public final class TermType {
     return new TermType(flag);
   }
 
-  public static TermType fromId(int id) {
+  static TermType fromId(int id) {
     if (id < 0 || id > 8) {
       throw new IllegalArgumentException("id must be within range [0, 8]");
     }
