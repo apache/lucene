@@ -607,7 +607,8 @@ public final class CheckIndex implements Closeable {
     SegmentInfos lastCommit = null;
 
     for (String fileName : files) {
-      if (fileName.startsWith(IndexFileNames.SEGMENTS) && fileName.equals(SegmentInfos.OLD_SEGMENTS_GEN) == false) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)
+          && fileName.equals(SegmentInfos.OLD_SEGMENTS_GEN) == false) {
 
         boolean isLastCommit = fileName.equals(lastSegmentsFile);
 
@@ -651,9 +652,9 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    // we know there is a lastSegmentsFileName, so we must've attempted to load it in the above for loop.  if it failed to load,
-    // we threw the exception (fastFail == true) or we returned the failure (fastFail == false).  so if we get here, we should
-    // always have a valid lastCommit:
+    // we know there is a lastSegmentsFileName, so we must've attempted to load it in the above for
+    // loop.  if it failed to load, we threw the exception (fastFail == true) or we returned the
+    // failure (fastFail == false).  so if we get here, we should // always have a valid lastCommit:
     assert lastCommit != null;
 
     if (lastCommit == null) {
