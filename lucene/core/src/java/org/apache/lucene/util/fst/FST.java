@@ -404,18 +404,8 @@ public final class FST<T> implements Accountable {
    * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs) throws IOException {
-    this(metaIn, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
-  }
-
-  /**
-   * Load a previously saved FST with a DataInput for metdata and a FSTStore. If using {@link
-   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
-   * to hold the FST bytes.
-   */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
-      throws IOException {
-    this(readMetadata(metaIn, outputs), in, outputs, fstStore);
+  public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs) throws IOException {
+    this(metadata, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
   }
 
   /**
@@ -574,7 +564,7 @@ public final class FST<T> implements Accountable {
   public static <T> FST<T> read(Path path, Outputs<T> outputs) throws IOException {
     try (InputStream is = Files.newInputStream(path)) {
       DataInput in = new InputStreamDataInput(new BufferedInputStream(is));
-      return new FST<>(in, in, outputs);
+      return new FST<>(readMetadata(in, outputs), in, outputs);
     }
   }
 

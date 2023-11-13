@@ -140,7 +140,8 @@ public class WFSTCompletionLookup extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    FST.FSTMetadata<Long> metadata = FST.readMetadata(input, PositiveIntOutputs.getSingleton());
+    this.fst = new FST<>(metadata, input, PositiveIntOutputs.getSingleton());
     return true;
   }
 

@@ -300,8 +300,9 @@ public class FSTCompletionLookup extends Lookup {
   @Override
   public synchronized boolean load(DataInput input) throws IOException {
     count = input.readVLong();
+    FST.FSTMetadata<Object> metadata = FST.readMetadata(input, NoOutputs.getSingleton());
     this.higherWeightsCompletion =
-        new FSTCompletion(new FST<>(input, input, NoOutputs.getSingleton()));
+        new FSTCompletion(new FST<>(metadata, input, NoOutputs.getSingleton()));
     this.normalCompletion =
         new FSTCompletion(higherWeightsCompletion.getFST(), false, exactMatchFirst);
     return true;

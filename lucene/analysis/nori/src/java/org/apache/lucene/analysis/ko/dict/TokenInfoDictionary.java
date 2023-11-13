@@ -102,7 +102,8 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
     FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
-      fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
+      FST.FSTMetadata<Long> metadata = FST.readMetadata(in, PositiveIntOutputs.getSingleton());
+      fst = new FST<>(metadata, in, PositiveIntOutputs.getSingleton());
     }
     this.fst = new TokenInfoFST(fst);
   }

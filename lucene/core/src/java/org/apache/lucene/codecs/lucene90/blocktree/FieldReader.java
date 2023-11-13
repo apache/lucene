@@ -91,7 +91,9 @@ public final class FieldReader extends Terms {
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();
     clone.seek(indexStartFP);
-    index = new FST<>(metaIn, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+    FST.FSTMetadata<BytesRef> metadata =
+        FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
+    index = new FST<>(metadata, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
     /*
      if (false) {
      final String dotFileName = segment + "_" + fieldInfo.name + ".dot";

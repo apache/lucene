@@ -140,7 +140,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in, outputs);
             in.close();
           } else {
             dir.deleteFile("fst");
@@ -226,7 +226,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in, outputs);
             in.close();
           } else {
             dir.deleteFile("fst");
@@ -317,7 +317,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in, outputs);
             in.close();
           } else {
             dir.deleteFile("fst");

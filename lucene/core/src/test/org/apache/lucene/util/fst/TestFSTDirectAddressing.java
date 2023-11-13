@@ -218,7 +218,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
   private static void countFSTArcs(String fstFilePath) throws IOException {
     byte[] buf = Files.readAllBytes(Paths.get(fstFilePath));
     DataInput in = new ByteArrayDataInput(buf);
-    FST<BytesRef> fst = new FST<>(in, in, ByteSequenceOutputs.getSingleton());
+    FST.FSTMetadata<BytesRef> metadata = FST.readMetadata(in, ByteSequenceOutputs.getSingleton());
+    FST<BytesRef> fst = new FST<>(metadata, in, ByteSequenceOutputs.getSingleton());
     BytesRefFSTEnum<BytesRef> fstEnum = new BytesRefFSTEnum<>(fst);
     int binarySearchArcCount = 0,
         directAddressingArcCount = 0,
@@ -285,7 +286,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
 
       System.out.println("Reading FST");
       long startTimeMs = System.nanoTime();
-      FST<CharsRef> originalFst = new FST<>(in, in, CharSequenceOutputs.getSingleton());
+      FST.FSTMetadata<CharsRef> metadata = FST.readMetadata(in, CharSequenceOutputs.getSingleton());
+      FST<CharsRef> originalFst = new FST<>(metadata, in, CharSequenceOutputs.getSingleton());
       long endTimeMs = System.nanoTime();
       System.out.println(
           "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");

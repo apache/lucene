@@ -58,7 +58,8 @@ public class KnnVectorDict implements Closeable {
    */
   public KnnVectorDict(Directory directory, String dictName) throws IOException {
     try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.READ)) {
-      fst = new FST<>(fstIn, fstIn, PositiveIntOutputs.getSingleton());
+      FST.FSTMetadata<Long> metadata = FST.readMetadata(fstIn, PositiveIntOutputs.getSingleton());
+      fst = new FST<>(metadata, fstIn, PositiveIntOutputs.getSingleton());
     }
 
     vectors = directory.openInput(dictName + ".bin", IOContext.READ);

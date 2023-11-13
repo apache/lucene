@@ -89,9 +89,13 @@ public final class FieldReader extends Terms {
     final IndexInput clone = indexIn.clone();
     clone.seek(indexStartFP);
     if (metaIn == indexIn) { // Only true before Lucene 8.6
-      index = new FST<>(clone, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      FST.FSTMetadata<BytesRef> metadata =
+          FST.readMetadata(clone, ByteSequenceOutputs.getSingleton());
+      index = new FST<>(metadata, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
     } else {
-      index = new FST<>(metaIn, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      FST.FSTMetadata<BytesRef> metadata =
+          FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
+      index = new FST<>(metadata, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
     }
     /*
      if (false) {

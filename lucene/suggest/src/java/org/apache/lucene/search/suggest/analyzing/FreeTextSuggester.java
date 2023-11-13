@@ -383,7 +383,8 @@ public class FreeTextSuggester extends Lookup {
     }
     totTokens = input.readVLong();
 
-    fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    FST.FSTMetadata<Long> metadata = FST.readMetadata(input, PositiveIntOutputs.getSingleton());
+    fst = new FST<>(metadata, input, PositiveIntOutputs.getSingleton());
 
     return true;
   }

@@ -85,7 +85,9 @@ final class OrdsFieldReader extends Terms {
       final IndexInput clone = indexIn.clone();
       // System.out.println("start=" + indexStartFP + " field=" + fieldInfo.name);
       clone.seek(indexStartFP);
-      index = new FST<>(clone, clone, OrdsBlockTreeTermsWriter.FST_OUTPUTS);
+      FST.FSTMetadata<Output> metadata =
+          FST.readMetadata(clone, OrdsBlockTreeTermsWriter.FST_OUTPUTS);
+      index = new FST<>(metadata, clone, OrdsBlockTreeTermsWriter.FST_OUTPUTS);
 
       /*
       if (true) {
