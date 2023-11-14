@@ -82,7 +82,8 @@ public final class UserDictionary implements Dictionary {
     entries.sort(Comparator.comparing(e -> e.split("\\s+")[0]));
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
 
     String lastToken = null;
