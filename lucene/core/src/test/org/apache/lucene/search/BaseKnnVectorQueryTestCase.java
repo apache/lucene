@@ -198,7 +198,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("id", "id2"));
-      Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 100, filter);
+      Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(1, topDocs.totalHits.value);
       assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
