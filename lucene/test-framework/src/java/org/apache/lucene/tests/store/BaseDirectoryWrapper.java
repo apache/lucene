@@ -65,7 +65,7 @@ public abstract class BaseDirectoryWrapper extends FilterDirectory {
     if (value == true) {
       this.detailLevelForCheckOnClose = getSlowCheckLevelOnClose();
     } else {
-      this.detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
+      this.detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_INTEGRITY_CHECKS;
     }
   }
 
