@@ -23,13 +23,6 @@ import org.apache.lucene.store.DataInput;
 public interface FSTStore extends FSTReader {
 
   /**
-   * The raw size in bytes of the FST
-   *
-   * @return the FST size
-   */
-  long size();
-
-  /**
    * Initialize the FSTStore
    *
    * @param in the DataInput to read from
