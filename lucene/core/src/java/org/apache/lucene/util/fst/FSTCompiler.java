@@ -122,18 +122,6 @@ public class FSTCompiler<T> {
 
   final BytesStore bytes;
 
-  /**
-   * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
-   * tuning and tweaking, see {@link Builder}.
-   *
-   * @deprecated Use FSTCompiler.Builder instead. This method will be removed in an upcoming major
-   *     release.
-   */
-  @Deprecated
-  public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    this(inputType, 32.0, outputs, true, 15, 1f);
-  }
-
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
       double suffixRAMLimitMB,
