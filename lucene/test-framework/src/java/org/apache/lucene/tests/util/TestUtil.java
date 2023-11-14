@@ -306,12 +306,11 @@ public final class TestUtil {
    * thrown; else, true is returned.
    */
   public static CheckIndex.Status checkIndex(Directory dir) throws IOException {
-    return checkIndex(dir, true);
+    return checkIndex(dir, CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS);
   }
 
-  public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
-      throws IOException {
-    return checkIndex(dir, doSlowChecks, false, true, null);
+  public static CheckIndex.Status checkIndex(Directory dir, int detailLevel) throws IOException {
+    return checkIndex(dir, detailLevel, false, true, null);
   }
 
   /**
@@ -320,7 +319,7 @@ public final class TestUtil {
    */
   public static CheckIndex.Status checkIndex(
       Directory dir,
-      boolean doSlowChecks,
+      int detailLevel,
       boolean failFast,
       boolean concurrent,
       ByteArrayOutputStream output)
@@ -332,7 +331,7 @@ public final class TestUtil {
     // some tests e.g. exception tests become much more complicated if they have to close the writer
     try (CheckIndex checker =
         new CheckIndex(dir, NoLockFactory.INSTANCE.obtainLock(dir, "bogus"))) {
-      checker.setDoSlowChecks(doSlowChecks);
+      checker.setDetailLevel(detailLevel);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
       if (concurrent) {
@@ -361,11 +360,11 @@ public final class TestUtil {
    */
   public static void checkReader(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      checkReader(context.reader(), true);
+      checkReader(context.reader(), CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS);
     }
   }
 
-  public static void checkReader(LeafReader reader, boolean doSlowChecks) throws IOException {
+  public static void checkReader(LeafReader reader, int detailLevel) throws IOException {
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     PrintStream infoStream = new PrintStream(bos, false, IOUtils.UTF_8);
 
@@ -379,9 +378,9 @@ public final class TestUtil {
     CheckIndex.testLiveDocs(codecReader, infoStream, true);
     CheckIndex.testFieldInfos(codecReader, infoStream, true);
     CheckIndex.testFieldNorms(codecReader, infoStream, true);
-    CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testPostings(codecReader, infoStream, false, detailLevel, true);
     CheckIndex.testStoredFields(codecReader, infoStream, true);
-    CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testTermVectors(codecReader, infoStream, false, detailLevel, true);
     CheckIndex.testDocValues(codecReader, infoStream, true);
     CheckIndex.testPoints(codecReader, infoStream, true);
 

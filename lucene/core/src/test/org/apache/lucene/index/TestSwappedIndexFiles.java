@@ -121,7 +121,9 @@ public class TestSwappedIndexFiles extends LuceneTestCase {
               EOFException.class,
               IndexFormatTooOldException.class,
               CheckIndex.CheckIndexException.class),
-          () -> TestUtil.checkIndex(dirCopy, true, true, true, null));
+          () ->
+              TestUtil.checkIndex(
+                  dirCopy, CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
     }
   }
 }

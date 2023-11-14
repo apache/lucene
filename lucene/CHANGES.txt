@@ -67,6 +67,8 @@ API Changes
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
+* GITHUB#11023: Adding -detailLevel param to CheckIndex, making the old -fast the default. (Jakub Slowinski)
+
 New Features
 ---------------------
 
@@ -335,8 +337,6 @@ Other
   own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
   overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
   (Stefan Vodita)
-
-* GITHUB#11023: Making CheckIndex -fast the default. (Jakub Slowinski)
 
 ======================== Lucene 9.8.0 =======================
 

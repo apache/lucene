@@ -1269,7 +1269,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
+      CheckIndex.Status status =
+          TestUtil.checkIndex(
+              dir, CheckIndex.DetailLevel.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, output);
       assertEquals(1, status.segmentInfos.size());
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
       // total 3 vector values were indexed:

@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -29,7 +30,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public abstract class BaseDirectoryWrapper extends FilterDirectory {
 
   private boolean checkIndexOnClose = true;
-  private boolean doSlowChecksOnClose = true;
+  private int detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
   protected volatile boolean isOpen = true;
 
   protected BaseDirectoryWrapper(Directory delegate) {
@@ -41,7 +42,7 @@ public abstract class BaseDirectoryWrapper extends FilterDirectory {
     if (isOpen) {
       isOpen = false;
       if (checkIndexOnClose && DirectoryReader.indexExists(this)) {
-        TestUtil.checkIndex(this, doSlowChecksOnClose);
+        TestUtil.checkIndex(this, detailLevelForCheckOnClose);
       }
     }
     super.close();
@@ -61,10 +62,14 @@ public abstract class BaseDirectoryWrapper extends FilterDirectory {
   }
 
   public void setCrossCheckTermVectorsOnClose(boolean value) {
-    this.doSlowChecksOnClose = value;
+    if (value == true) {
+      this.detailLevelForCheckOnClose = getSlowCheckLevelOnClose();
+    } else {
+      this.detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
+    }
   }
 
-  public boolean getCrossCheckTermVectorsOnClose() {
-    return doSlowChecksOnClose;
+  public int getSlowCheckLevelOnClose() {
+    return CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
   }
 }
