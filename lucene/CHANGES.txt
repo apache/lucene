@@ -41,7 +41,7 @@ New Features
 
 * GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
   storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
-  
+
 * GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
   (Patrick Zhai)
 
@@ -170,13 +170,16 @@ Bug Fixes
 
 * GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
 
+* GITHUB#12640: Ensure #finish is called on all drill-sideways collectors even if one throws a
+  CollectionTerminatedException (Greg Miller)
+
 Build
 ---------------------
 
 * GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
   nightly mode). (Dawid Weiss)
 
-* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
 
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
