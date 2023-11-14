@@ -233,7 +233,6 @@ public class ToParentBlockJoinSortField extends SortField {
           }
         };
       }
-      ;
     };
   }
 

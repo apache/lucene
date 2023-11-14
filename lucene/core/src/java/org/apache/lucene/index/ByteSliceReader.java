@@ -22,11 +22,11 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 
-/* IndexInput that knows how to read the byte slices written
- * by Posting and PostingVector.  We read the bytes in
- * each slice until we hit the end of that slice at which
- * point we read the forwarding address of the next slice
- * and then jump to it.*/
+/**
+ * IndexInput that knows how to read the byte slices written by Posting and PostingVector. We read
+ * the bytes in each slice until we hit the end of that slice at which point we read the forwarding
+ * address of the next slice and then jump to it.
+ */
 final class ByteSliceReader extends DataInput {
   ByteBlockPool pool;
   int bufferUpto;
