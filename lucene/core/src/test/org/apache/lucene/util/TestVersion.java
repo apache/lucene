@@ -34,7 +34,6 @@ public class TestVersion extends LuceneTestCase {
       }
     }
     assertTrue(Version.LUCENE_9_0_0.onOrAfter(Version.LUCENE_8_0_0));
-    ;
   }
 
   public void testToString() {

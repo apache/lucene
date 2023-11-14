@@ -26,7 +26,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   private static final ByteBuffer EMPTY_BYTEBUFFER =
       ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
 
   /** Default buffer size set to {@value #BUFFER_SIZE}. */
   public static final int BUFFER_SIZE = 1024;

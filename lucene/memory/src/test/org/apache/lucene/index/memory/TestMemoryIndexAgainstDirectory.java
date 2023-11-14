@@ -283,7 +283,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
       }
     }
   }
-  ;
 
   /**
    * Some terms to be indexed, in addition to random words. These terms are commonly used in the

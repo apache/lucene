@@ -1341,8 +1341,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           for (int i = 0; i < numdocs; i++) {
             // randomly advance to i
             if (random().nextInt(4) == 3) {
-              while (vectorDocs[++cur] < i)
-                ;
+              while (vectorDocs[++cur] < i) {}
               assertEquals(vectorDocs[cur], vectorValues.advance(i));
               assertEquals(vectorDocs[cur], vectorValues.docID());
               if (vectorValues.docID() == NO_MORE_DOCS) {

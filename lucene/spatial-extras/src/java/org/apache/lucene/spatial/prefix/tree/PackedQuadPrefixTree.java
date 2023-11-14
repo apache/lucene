@@ -522,8 +522,7 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
       if (rel == SpatialRelation.INTERSECTS && leafyPrune && level == detailLevel - 1) {
         for (leaves = 0, pruneIter = thisCell.getNextLevelCells(shape);
             pruneIter.hasNext();
-            pruneIter.next(), ++leaves)
-          ;
+            pruneIter.next(), ++leaves) {}
         return leaves == 4;
       }
       return false;

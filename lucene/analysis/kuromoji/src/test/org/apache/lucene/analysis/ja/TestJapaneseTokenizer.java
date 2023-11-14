@@ -784,8 +784,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     for (int i = 0; i < numIterations; i++) {
       try (TokenStream ts = analyzer.tokenStream("ignored", line)) {
         ts.reset();
-        while (ts.incrementToken())
-          ;
+        while (ts.incrementToken()) {}
         ts.end();
       }
     }
@@ -801,8 +800,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
       for (String sentence : sentences) {
         try (TokenStream ts = analyzer.tokenStream("ignored", sentence)) {
           ts.reset();
-          while (ts.incrementToken())
-            ;
+          while (ts.incrementToken()) {}
           ts.end();
         }
       }
@@ -857,8 +855,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
         new JapaneseTokenizer(newAttributeFactory(), readDict(), false, Mode.NORMAL);
     tokenizer.setReader(new StringReader(doc));
     tokenizer.reset();
-    while (tokenizer.incrementToken())
-      ;
+    while (tokenizer.incrementToken()) {}
   }
 
   public void testPatchedSystemDict() throws Exception {

@@ -472,7 +472,6 @@ public final class ByteBuffersDataInput extends DataInput
 
     if (buffers.size() == 1) {
       ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-      ;
       cloned.position(Math.toIntExact(cloned.position() + offset));
       cloned.limit(Math.toIntExact(cloned.position() + length));
       return Arrays.asList(cloned);

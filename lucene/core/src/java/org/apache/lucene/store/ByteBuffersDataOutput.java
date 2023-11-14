@@ -241,7 +241,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     } else {
       for (ByteBuffer bb : blocks) {
         bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
-        ;
         result.add(bb);
       }
     }
@@ -501,7 +500,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
     final int requiredBlockSize = 1 << blockBits;
     currentBlock = blockAllocate.apply(requiredBlockSize).order(ByteOrder.LITTLE_ENDIAN);
-    ;
     assert currentBlock.capacity() == requiredBlockSize;
     blocks.add(currentBlock);
     ramBytesUsed += RamUsageEstimator.NUM_BYTES_OBJECT_REF + currentBlock.capacity();

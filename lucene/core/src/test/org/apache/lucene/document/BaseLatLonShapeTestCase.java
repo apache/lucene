@@ -230,7 +230,6 @@ public abstract class BaseLatLonShapeTestCase extends BaseLatLonSpatialTestCase 
     }
     // different shape
     Polygon newPolygon = GeoTestUtil.nextPolygon();
-    ;
     Query q5 = newPolygonQuery(fieldName, queryRelation, newPolygon);
     if (polygon.equals(newPolygon)) {
       QueryUtils.checkEqual(q1, q5);
