@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 
@@ -25,8 +25,8 @@ import org.apache.lucene.util.BitUtil;
  * Decode integers using group-varint. It will fully read the bytes for the block, to avoid repeated
  * expensive bounds checking per readBytes.
  */
-class GroupVIntReader {
-  IndexInput in;
+public class GroupVIntReader {
+  DataInput in;
 
   // buffer for all groups
   private int offset = 0;
@@ -35,13 +35,16 @@ class GroupVIntReader {
   private byte numGroups = 0;
   private byte flag;
 
+  // for testing only
+  private byte finalNumGroups;
+
   // the next int will be read in the single group. in the range [0-3].
   private int posInGroup = 0;
 
   public GroupVIntReader() {}
 
   /** Called when decode a new block. */
-  public void reset(IndexInput indexInput, int num) throws IOException {
+  public void reset(DataInput indexInput, int num) throws IOException {
     this.in = indexInput;
     offset = 0;
     posInGroup = 0;
@@ -51,6 +54,7 @@ class GroupVIntReader {
       int len = in.readVInt();
       if (len > 0) {
         numGroups = in.readByte();
+        finalNumGroups = numGroups;
         // + 3 bytes to avoid BitUtil.VH_LE_INT.get out of array bounds when reading the last value
         bytes = ArrayUtil.growNoCopy(bytes, len + 3);
         in.readBytes(bytes, 0, len);
@@ -110,5 +114,12 @@ class GroupVIntReader {
     posInGroup = ++posInGroup % 4;
     assert v >= 0;
     return v;
+  }
+
+  // for testing only
+  public void rewind() {
+    offset = 0;
+    posInGroup = 0;
+    numGroups = finalNumGroups;
   }
 }

@@ -17,21 +17,21 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for a
  * group
  */
-class GroupVIntWriter {
+public class GroupVIntWriter {
   private int[] buffer = new int[4];
   private byte[] bytes = new byte[16];
   private int byteOffset = 0;
   private int bufferOffset = 0;
-  private final IndexOutput output;
+  private final DataOutput output;
 
-  public GroupVIntWriter(IndexOutput output) {
+  public GroupVIntWriter(DataOutput output) {
     this.output = output;
   }
 
