@@ -24,6 +24,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -118,11 +119,10 @@ public abstract class ReadTask extends PerfTask {
             hits = searcher.search(q, numHits);
           }
         } else {
-          int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
-          TopScoreDocCollectorManager collectorManager =
-              new TopScoreDocCollectorManager(
-                  numHits(), null, totalHitsThreshold, searcher.getSlices().length > 1);
-          hits = searcher.search(q, collectorManager);
+          Collector collector = createCollector();
+
+          searcher.search(q, collector);
+          // hits = collector.topDocs();
         }
 
         if (hits != null) {
@@ -182,6 +182,11 @@ public abstract class ReadTask extends PerfTask {
       }
     }
     return res;
+  }
+
+  protected Collector createCollector() throws Exception {
+    return new TopScoreDocCollectorManager(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1)
+        .newCollector();
   }
 
   protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {
