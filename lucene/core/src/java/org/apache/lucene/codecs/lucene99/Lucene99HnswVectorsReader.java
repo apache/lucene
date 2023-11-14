@@ -24,11 +24,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.FlatVectorsReader;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
-import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
-import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -67,49 +65,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
-  private final IndexInput vectorData;
   private final IndexInput vectorIndex;
-  private final IndexInput quantizedVectorData;
-  private final Lucene99ScalarQuantizedVectorsReader quantizedVectorsReader;
+  private final FlatVectorsReader flatVectorsReader;
 
-  Lucene99HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
-    int versionMeta = readMetadata(state);
+  Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+      throws IOException {
+    this.flatVectorsReader = flatVectorsReader;
     boolean success = false;
-    try {
-      vectorData =
-          openDataInput(
-              state,
-              versionMeta,
-              Lucene99HnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
-      vectorIndex =
-          openDataInput(
-              state,
-              versionMeta,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
-      if (fields.values().stream().anyMatch(FieldEntry::hasQuantizedVectors)) {
-        quantizedVectorData =
-            openDataInput(
-                state,
-                versionMeta,
-                Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
-                Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
-        quantizedVectorsReader = new Lucene99ScalarQuantizedVectorsReader(quantizedVectorData);
-      } else {
-        quantizedVectorData = null;
-        quantizedVectorsReader = null;
-      }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
-    }
-  }
-
-  private int readMetadata(SegmentReadState state) throws IOException {
+    this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
@@ -129,10 +92,30 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
-        CodecUtil.checkFooter(meta, priorE);
+        try {
+          CodecUtil.checkFooter(meta, priorE);
+          success = true;
+        } finally {
+          if (success == false) {
+            IOUtils.close(flatVectorsReader);
+          }
+        }
       }
     }
-    return versionMeta;
+    success = false;
+    try {
+      vectorIndex =
+          openDataInput(
+              state,
+              versionMeta,
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+      success = true;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(this);
+      }
+    }
   }
 
   private static IndexInput openDataInput(
@@ -194,31 +177,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + " != "
               + fieldEntry.dimension);
     }
-
-    int byteSize =
-        switch (info.getVectorEncoding()) {
-          case BYTE -> Byte.BYTES;
-          case FLOAT32 -> Float.BYTES;
-        };
-    long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
-    long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);
-    if (numBytes != fieldEntry.vectorDataLength) {
-      throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
-              + " not matching size="
-              + fieldEntry.size
-              + " * dim="
-              + dimension
-              + " * byteSize="
-              + byteSize
-              + " = "
-              + numBytes);
-    }
-    if (fieldEntry.hasQuantizedVectors()) {
-      Lucene99ScalarQuantizedVectorsReader.validateFieldEntry(
-          info, fieldEntry.dimension, fieldEntry.size, fieldEntry.quantizedVectorDataLength);
-    }
   }
 
   private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
@@ -249,58 +207,24 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public long ramBytesUsed() {
     return Lucene99HnswVectorsReader.SHALLOW_SIZE
         + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
+            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class))
+        + flatVectorsReader.ramBytesUsed();
   }
 
   @Override
   public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
+    flatVectorsReader.checkIntegrity();
     CodecUtil.checksumEntireFile(vectorIndex);
-    if (quantizedVectorsReader != null) {
-      quantizedVectorsReader.checkIntegrity();
-    }
   }
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + VectorEncoding.FLOAT32);
-    }
-    return OffHeapFloatVectorValues.load(
-        fieldEntry.ordToDoc,
-        fieldEntry.vectorEncoding,
-        fieldEntry.dimension,
-        fieldEntry.vectorDataOffset,
-        fieldEntry.vectorDataLength,
-        vectorData);
+    return flatVectorsReader.getFloatVectorValues(field);
   }
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + VectorEncoding.FLOAT32);
-    }
-    return OffHeapByteVectorValues.load(
-        fieldEntry.ordToDoc,
-        fieldEntry.vectorEncoding,
-        fieldEntry.dimension,
-        fieldEntry.vectorDataOffset,
-        fieldEntry.vectorDataLength,
-        vectorData);
+    return flatVectorsReader.getByteVectorValues(field);
   }
 
   @Override
@@ -313,42 +237,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return;
     }
-    if (fieldEntry.hasQuantizedVectors()) {
-      OffHeapQuantizedByteVectorValues vectorValues =
-          quantizedVectorsReader.getQuantizedVectorValues(
-              fieldEntry.quantizedOrdToDoc,
-              fieldEntry.dimension,
-              fieldEntry.size,
-              fieldEntry.quantizedVectorDataOffset,
-              fieldEntry.quantizedVectorDataLength);
-      if (vectorValues == null) {
-        return;
-      }
-      RandomVectorScorer scorer =
-          new ScalarQuantizedRandomVectorScorer(
-              fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, vectorValues, target);
-      HnswGraphSearcher.search(
-          scorer,
-          new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-          getGraph(fieldEntry),
-          vectorValues.getAcceptOrds(acceptDocs));
-    } else {
-      OffHeapFloatVectorValues vectorValues =
-          OffHeapFloatVectorValues.load(
-              fieldEntry.ordToDoc,
-              fieldEntry.vectorEncoding,
-              fieldEntry.dimension,
-              fieldEntry.vectorDataOffset,
-              fieldEntry.vectorDataLength,
-              vectorData);
-      RandomVectorScorer scorer =
-          RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
-      HnswGraphSearcher.search(
-          scorer,
-          new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-          getGraph(fieldEntry),
-          vectorValues.getAcceptOrds(acceptDocs));
-    }
+    RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    HnswGraphSearcher.search(
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
+        getGraph(fieldEntry),
+        scorer.getAcceptOrds(acceptDocs));
   }
 
   @Override
@@ -361,22 +255,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return;
     }
-
-    OffHeapByteVectorValues vectorValues =
-        OffHeapByteVectorValues.load(
-            fieldEntry.ordToDoc,
-            fieldEntry.vectorEncoding,
-            fieldEntry.dimension,
-            fieldEntry.vectorDataOffset,
-            fieldEntry.vectorDataLength,
-            vectorData);
-    RandomVectorScorer scorer =
-        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
+    RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
     HnswGraphSearcher.search(
         scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        scorer.getAcceptOrds(acceptDocs));
   }
 
   @Override
@@ -399,32 +283,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, vectorIndex, quantizedVectorData);
+    IOUtils.close(flatVectorsReader, vectorIndex);
   }
 
   @Override
-  public OffHeapQuantizedByteVectorValues getQuantizedVectorValues(String field)
-      throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.hasQuantizedVectors() == false) {
-      return null;
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader) {
+      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
     }
-    assert quantizedVectorsReader != null && fieldEntry.quantizedOrdToDoc != null;
-    return quantizedVectorsReader.getQuantizedVectorValues(
-        fieldEntry.quantizedOrdToDoc,
-        fieldEntry.dimension,
-        fieldEntry.size,
-        fieldEntry.quantizedVectorDataOffset,
-        fieldEntry.quantizedVectorDataLength);
+    return null;
   }
 
   @Override
-  public ScalarQuantizer getQuantizationState(String fieldName) {
-    FieldEntry field = fields.get(fieldName);
-    if (field == null || field.hasQuantizedVectors() == false) {
-      return null;
+  public ScalarQuantizer getQuantizationState(String field) {
+    if (flatVectorsReader instanceof QuantizedVectorsReader) {
+      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
     }
-    return field.scalarQuantizer;
+    return null;
   }
 
   static class FieldEntry implements Accountable {
@@ -432,8 +307,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
     final VectorSimilarityFunction similarityFunction;
     final VectorEncoding vectorEncoding;
-    final long vectorDataOffset;
-    final long vectorDataLength;
     final long vectorIndexOffset;
     final long vectorIndexLength;
     final int M;
@@ -446,13 +319,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final long offsetsOffset;
     final int offsetsBlockShift;
     final long offsetsLength;
-    final OrdToDocDISIReaderConfiguration ordToDoc;
-
-    final float configuredQuantile, lowerQuantile, upperQuantile;
-    final long quantizedVectorDataOffset, quantizedVectorDataLength;
-    final ScalarQuantizer scalarQuantizer;
-    final boolean isQuantized;
-    final OrdToDocDISIReaderConfiguration quantizedOrdToDoc;
 
     FieldEntry(
         IndexInput input,
@@ -461,36 +327,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
-      this.isQuantized = input.readByte() == 1;
-      // Has int8 quantization
-      if (isQuantized) {
-        configuredQuantile = Float.intBitsToFloat(input.readInt());
-        lowerQuantile = Float.intBitsToFloat(input.readInt());
-        upperQuantile = Float.intBitsToFloat(input.readInt());
-        quantizedVectorDataOffset = input.readVLong();
-        quantizedVectorDataLength = input.readVLong();
-        scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, configuredQuantile);
-      } else {
-        configuredQuantile = -1;
-        lowerQuantile = -1;
-        upperQuantile = -1;
-        quantizedVectorDataOffset = -1;
-        quantizedVectorDataLength = -1;
-        scalarQuantizer = null;
-      }
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();
       vectorIndexLength = input.readVLong();
       dimension = input.readVInt();
       size = input.readInt();
-      if (isQuantized) {
-        quantizedOrdToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
-      } else {
-        quantizedOrdToDoc = null;
-      }
-      ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
-
       // read nodes by level
       M = input.readVInt();
       numLevels = input.readVInt();
@@ -526,16 +366,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return size;
     }
 
-    boolean hasQuantizedVectors() {
-      return isQuantized;
-    }
-
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE
           + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(ordToDoc)
-          + (quantizedOrdToDoc == null ? 0 : RamUsageEstimator.sizeOf(quantizedOrdToDoc))
           + RamUsageEstimator.sizeOf(offsetsMeta);
     }
   }
