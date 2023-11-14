@@ -365,7 +365,7 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     results_cache[me()][buffer_size].result.freq = 1;
 
     // update lucene segment for the current did, then add 1 to the count of results per lucene segment
-    while(did > lucene_segment_maxdoc[current_segment[me()]] && current_segment[me()] < nr_lucene_segments) {
+    while(did >= lucene_segment_maxdoc[current_segment[me()]] && current_segment[me()] < nr_lucene_segments) {
        current_segment[me()]++;
     }
     assert(current_segment[me()] < nr_lucene_segments);
