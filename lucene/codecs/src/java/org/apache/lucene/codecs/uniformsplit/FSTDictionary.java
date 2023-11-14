@@ -92,8 +92,8 @@ public class FSTDictionary implements IndexDictionary {
     FST.FSTMetadata<Long> metadata = FST.readMetadata(fstDataInput, fstOutputs);
     FST<Long> fst =
         isFSTOnHeap
-            ? new FST<>(metadata, fstDataInput, fstOutputs)
-            : new FST<>(metadata, fstDataInput, fstOutputs, new OffHeapFSTStore());
+            ? new FST<>(metadata, fstDataInput)
+            : new FST<>(metadata, fstDataInput, new OffHeapFSTStore());
     return new FSTDictionary(fst);
   }
 

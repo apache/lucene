@@ -195,7 +195,7 @@ public class FSTTermsReader extends FieldsProducer {
       this.docCount = docCount;
       OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore();
       FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
-      this.dict = new FST<>(FST.readMetadata(in, outputs), in, outputs, offHeapFSTStore);
+      this.dict = new FST<>(FST.readMetadata(in, outputs), in, offHeapFSTStore);
       in.skipBytes(offHeapFSTStore.size());
     }
 

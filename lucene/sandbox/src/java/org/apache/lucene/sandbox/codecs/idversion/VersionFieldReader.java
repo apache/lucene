@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.codecs.idversion;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -86,11 +88,7 @@ final class VersionFieldReader extends Terms {
       final IndexInput clone = indexIn.clone();
       // System.out.println("start=" + indexStartFP + " field=" + fieldInfo.name);
       clone.seek(indexStartFP);
-      index =
-          new FST<>(
-              FST.readMetadata(clone, VersionBlockTreeTermsWriter.FST_OUTPUTS),
-              clone,
-              VersionBlockTreeTermsWriter.FST_OUTPUTS);
+      index = new FST<>(readMetadata(clone, VersionBlockTreeTermsWriter.FST_OUTPUTS), clone);
 
       /*
         if (false) {

@@ -404,8 +404,8 @@ public final class FST<T> implements Accountable {
    * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
-  public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs) throws IOException {
-    this(metadata, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
+  public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
+    this(metadata, in, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
   }
 
   /**
@@ -413,15 +413,14 @@ public final class FST<T> implements Accountable {
    * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
    * to hold the FST bytes.
    */
-  public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs, FSTStore fstStore)
-      throws IOException {
-    this(metadata, outputs, fstStore.init(in, metadata.numBytes));
+  public FST(FSTMetadata<T> metadata, DataInput in, FSTStore fstStore) throws IOException {
+    this(metadata, fstStore.init(in, metadata.numBytes));
   }
 
   /** Create the FST with a metadata object and a FSTReader. */
-  FST(FSTMetadata<T> metadata, Outputs<T> outputs, FSTReader fstReader) {
+  FST(FSTMetadata<T> metadata, FSTReader fstReader) {
     this.metadata = metadata;
-    this.outputs = outputs;
+    this.outputs = metadata.outputs;
     this.fstReader = fstReader;
   }
 
@@ -476,7 +475,7 @@ public final class FST<T> implements Accountable {
     }
     long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
-    return new FSTMetadata<>(inputType, emptyOutput, startNode, version, numBytes);
+    return new FSTMetadata<>(inputType, outputs, emptyOutput, startNode, version, numBytes);
   }
 
   @Override
@@ -564,7 +563,7 @@ public final class FST<T> implements Accountable {
   public static <T> FST<T> read(Path path, Outputs<T> outputs) throws IOException {
     try (InputStream is = Files.newInputStream(path)) {
       DataInput in = new InputStreamDataInput(new BufferedInputStream(is));
-      return new FST<>(readMetadata(in, outputs), in, outputs);
+      return new FST<>(readMetadata(in, outputs), in);
     }
   }
 
@@ -1192,6 +1191,7 @@ public final class FST<T> implements Accountable {
    */
   public static final class FSTMetadata<T> {
     final INPUT_TYPE inputType;
+    final Outputs<T> outputs;
     final int version;
     // if non-null, this FST accepts the empty string and
     // produces this output
@@ -1200,8 +1200,14 @@ public final class FST<T> implements Accountable {
     long numBytes;
 
     public FSTMetadata(
-        INPUT_TYPE inputType, T emptyOutput, long startNode, int version, long numBytes) {
+        INPUT_TYPE inputType,
+        Outputs<T> outputs,
+        T emptyOutput,
+        long startNode,
+        int version,
+        long numBytes) {
       this.inputType = inputType;
+      this.outputs = outputs;
       this.emptyOutput = emptyOutput;
       this.startNode = startNode;
       this.version = version;

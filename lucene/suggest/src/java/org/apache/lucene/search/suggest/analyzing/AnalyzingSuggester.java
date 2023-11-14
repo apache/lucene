@@ -614,7 +614,7 @@ public class AnalyzingSuggester extends Lookup {
     count = input.readVLong();
     PairOutputs<Long, BytesRef> outputs =
         new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
-    this.fst = new FST<>(FST.readMetadata(input, outputs), input, outputs);
+    this.fst = new FST<>(FST.readMetadata(input, outputs), input);
     maxAnalyzedPathsForOneInput = input.readVInt();
     hasPayloads = input.readByte() == 1;
     return true;

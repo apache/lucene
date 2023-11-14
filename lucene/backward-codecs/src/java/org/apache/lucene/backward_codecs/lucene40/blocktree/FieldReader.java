@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -89,13 +91,17 @@ public final class FieldReader extends Terms {
     final IndexInput clone = indexIn.clone();
     clone.seek(indexStartFP);
     if (metaIn == indexIn) { // Only true before Lucene 8.6
-      FST.FSTMetadata<BytesRef> metadata =
-          FST.readMetadata(clone, ByteSequenceOutputs.getSingleton());
-      index = new FST<>(metadata, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      index =
+          new FST<>(
+              readMetadata(clone, ByteSequenceOutputs.getSingleton()),
+              clone,
+              new OffHeapFSTStore());
     } else {
-      FST.FSTMetadata<BytesRef> metadata =
-          FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-      index = new FST<>(metadata, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      index =
+          new FST<>(
+              readMetadata(metaIn, ByteSequenceOutputs.getSingleton()),
+              clone,
+              new OffHeapFSTStore());
     }
     /*
      if (false) {

@@ -343,10 +343,10 @@ public final class NRTSuggester implements Accountable {
       OffHeapFSTStore store = new OffHeapFSTStore();
       IndexInput clone = input.clone();
       clone.seek(input.getFilePointer());
-      fst = new FST<>(FST.readMetadata(clone, outputs), clone, outputs, store);
+      fst = new FST<>(FST.readMetadata(clone, outputs), clone, store);
       input.seek(clone.getFilePointer() + store.size());
     } else {
-      fst = new FST<>(FST.readMetadata(input, outputs), input, outputs);
+      fst = new FST<>(FST.readMetadata(input, outputs), input);
     }
 
     /* read some meta info */

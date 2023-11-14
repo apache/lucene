@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -103,8 +105,7 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
     FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
-      FST.FSTMetadata<Long> metadata = FST.readMetadata(in, PositiveIntOutputs.getSingleton());
-      fst = new FST<>(metadata, in, PositiveIntOutputs.getSingleton());
+      fst = new FST<>(readMetadata(in, PositiveIntOutputs.getSingleton()), in);
     }
     // TODO: some way to configure?
     this.fst = new TokenInfoFST(fst, true);
