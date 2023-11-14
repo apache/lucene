@@ -17,8 +17,8 @@
 
 def skipReason
 
-if (rootProject.usesAltJvm && rootProject.runtimeJavaVersion > JavaVersion.VERSION_15) {
-  skipReason = "won't work with JDK ${rootProject.runtimeJavaVersion} if used as alternative java toolchain"
+if (rootProject.usesAltJvm) {
+  skipReason = "won't work with alternative java toolchain"
 }
 
 if (!propertyOrDefault("validation.errorprone", isCIBuild).asBoolean()) {
