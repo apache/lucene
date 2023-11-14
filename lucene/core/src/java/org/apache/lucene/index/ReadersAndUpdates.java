@@ -526,7 +526,6 @@ final class ReadersAndUpdates {
       return docIDOut;
     }
   }
-  ;
 
   private synchronized Set<String> writeFieldInfosGen(
       FieldInfos fieldInfos, Directory dir, FieldInfosFormat infosFormat) throws IOException {

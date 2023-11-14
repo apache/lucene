@@ -37,7 +37,6 @@ public class SimpleTextStoredFieldsFormat extends StoredFieldsFormat {
   @Override
   public StoredFieldsReader fieldsReader(
       Directory directory, SegmentInfo si, FieldInfos fn, IOContext context) throws IOException {
-    ;
     return new SimpleTextStoredFieldsReader(directory, si, fn, context);
   }
 

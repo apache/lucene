@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB-12695: Deprecated public constructor of FSTCompiler. Please use FSTCompiler.Builder
+  instead. (Juan M. Caicedo)
 
 * LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
   instead. (Vigya Sharma)
@@ -71,6 +73,8 @@ New Features
 ---------------------
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
+
+* GITHUB-12767: Add a flag to enable executing using NFA in RegexpQuery. (Patrick Zhai)
 
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
@@ -178,9 +182,13 @@ New Features
 
 * GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
   storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
-  
+
 * GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
   (Patrick Zhai)
+
+* GITHUB#12729: Add new Lucene99FlatVectorsFormat for writing vectors in a flat format and refactor
+  Lucene99HnswVectorsFormat to reuse the flat format. Added new Lucene99HnswQuantizedVectorsFormat that uses
+  quantized vectors for its flat storage. (Ben Trent)
 
 Improvements
 ---------------------
@@ -218,6 +226,9 @@ Improvements
 
 * GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
   if SecurityManager prevents access.  (Uwe Schindler)
+
+* GITHUB#12801: Remove possible contention on a ReentrantReadWriteLock in
+  Monitor which could result in searches waiting for commits. (Davis Cook)
 
 Optimizations
 ---------------------
@@ -272,6 +283,8 @@ Optimizations
 
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
@@ -303,13 +316,16 @@ Bug Fixes
 
 * GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
 
+* GITHUB#12640: Ensure #finish is called on all drill-sideways collectors even if one throws a
+  CollectionTerminatedException (Greg Miller)
+
 Build
 ---------------------
 
 * GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
   nightly mode). (Dawid Weiss)
 
-* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
 
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)

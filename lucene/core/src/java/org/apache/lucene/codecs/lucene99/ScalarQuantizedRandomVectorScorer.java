@@ -25,7 +25,8 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /** Quantized vector scorer */
-final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
+final class ScalarQuantizedRandomVectorScorer
+    extends RandomVectorScorer.AbstractRandomVectorScorer<byte[]> {
 
   private static float quantizeQuery(
       float[] query,
@@ -54,6 +55,7 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
       RandomAccessQuantizedByteVectorValues values,
       byte[] query,
       float queryOffset) {
+    super(values);
     this.quantizedQuery = query;
     this.queryOffset = queryOffset;
     this.similarity = similarityFunction;
@@ -65,6 +67,7 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
       ScalarQuantizer scalarQuantizer,
       RandomAccessQuantizedByteVectorValues values,
       float[] query) {
+    super(values);
     byte[] quantizedQuery = new byte[query.length];
     float correction = quantizeQuery(query, quantizedQuery, similarityFunction, scalarQuantizer);
     this.quantizedQuery = quantizedQuery;

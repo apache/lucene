@@ -26,5 +26,6 @@ import java.io.Closeable;
  * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
  * closeable
  */
-public interface CloseableRandomVectorScorerSupplier
-    extends Closeable, RandomVectorScorerSupplier {}
+public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
+  int totalVectorCount();
+}

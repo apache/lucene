@@ -61,6 +61,7 @@ Otherwise you are stuck wrestling down full dependencies of OpenJDK (metal etc) 
 Also you must run benchmarks as root to use dtrace, but it works.
 
   $ git clone --depth 1 https://github.com/openjdk/jdk/
+  $ curl -f https://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.gz | tar -zxf -
   $ curl -fo jdk/src/utils/hsdis/binutils/Makefile https://raw.githubusercontent.com/openjdk/jdk/3c7ae1225f0d5575fd927a9b76fb40dc30e208cd/src/utils/hsdis/Makefile
   $ vi jdk/src/utils/hsdis/binutils/Makefile, change SOURCE = hsdis.c to SOURCE = hsdis-binutils.c
   $ vi jdk/src/utils/hsdis/binutils/hsdis-binutils.c, change #include "hsdis.h" to #include "../hsdis.h"
