@@ -216,9 +216,11 @@ public class DocSorterBenchmark {
     @Override
     protected void restore(int from, int to) {
       if (srcDocs != docs) {
-        System.arraycopy(srcDocs, from, docs, from, to - from);
         assert srcOffsets != offsets;
+        System.arraycopy(srcDocs, from, docs, from, to - from);
         System.arraycopy(srcOffsets, from, offsets, from, to - from);
+        this.destDocs = srcDocs;
+        this.destOffsets = srcOffsets;
       }
     }
 

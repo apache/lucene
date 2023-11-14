@@ -71,6 +71,7 @@ public final class UnsignedIntLSBRadixSorter extends BaseLSBRadixSorter {
   protected void restore(int from, int to) {
     if (src != array) {
       System.arraycopy(src, from, array, from, to - from);
+      dest = src;
     }
   }
 
