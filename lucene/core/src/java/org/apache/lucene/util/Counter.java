@@ -69,7 +69,6 @@ public abstract class Counter {
     public long get() {
       return count;
     }
-    ;
   }
 
   private static final class AtomicCounter extends Counter {

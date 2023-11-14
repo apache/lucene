@@ -694,7 +694,7 @@ abstract class SpatialQuery extends Query {
       final SpatialVisitor spatialVisitor, QueryRelation queryRelation, final FixedBitSet result) {
     final BiFunction<byte[], byte[], Relation> innerFunction =
         spatialVisitor.getInnerFunction(queryRelation);
-    ;
+
     return new IntersectVisitor() {
 
       @Override

@@ -105,7 +105,6 @@ public class TestWildcardRandom extends LuceneTestCase {
   }
 
   public void testWildcards() throws Exception {
-    ;
     int num = atLeast(1);
     for (int i = 0; i < num; i++) {
       assertPatternHits("NNN", 1);
