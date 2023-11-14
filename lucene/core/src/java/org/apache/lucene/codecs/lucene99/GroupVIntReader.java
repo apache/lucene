@@ -106,12 +106,16 @@ public class GroupVIntReader {
     // get int from groups buffer
     int shift = 6 - (posInGroup << 1);
     int len = ((flag >>> shift) & 3) + 1;
+    if (len == 1) {
+      posInGroup = ++posInGroup & 0x3;
+      return bytes[offset++] & 0xFF;
+    }
     int mask = 0xFFFFFFFF >>> ((4 - len) << 3);
 
     assert offset + 4 <= bytes.length;
     int v = (int) BitUtil.VH_LE_INT.get(bytes, offset) & mask;
     offset += len;
-    posInGroup = ++posInGroup % 4;
+    posInGroup = ++posInGroup & 0x3;
     assert v >= 0;
     return v;
   }
