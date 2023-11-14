@@ -245,8 +245,8 @@ public class TestByteSlicePool extends LuceneTestCase {
         boolean succeeded = sliceWriters[i].writeSlice();
         if (succeeded == false) {
           for (int j = 0; j < n; j++) {
-            while (sliceWriters[j].writeSlice())
-              ;
+            while (sliceWriters[j].writeSlice()) {
+            }
           }
           break;
         }
@@ -268,8 +268,8 @@ public class TestByteSlicePool extends LuceneTestCase {
         boolean succeeded = sliceReaders[i].readSlice();
         if (succeeded == false) {
           for (int j = 0; j < n; j++) {
-            while (sliceReaders[j].readSlice())
-              ;
+            while (sliceReaders[j].readSlice()) {
+            }
           }
           break;
         }

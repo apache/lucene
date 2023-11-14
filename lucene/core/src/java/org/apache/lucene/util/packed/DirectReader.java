@@ -233,7 +233,6 @@ public class DirectReader {
     DirectPackedReader4(RandomAccessInput in, long offset) {
       this.in = in;
       this.offset = offset;
-      ;
     }
 
     @Override

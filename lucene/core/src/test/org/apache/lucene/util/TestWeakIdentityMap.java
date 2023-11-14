@@ -219,8 +219,8 @@ public class TestWeakIdentityMap extends LuceneTestCase {
       }
     } finally {
       exec.shutdown();
-      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS))
-        ;
+      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS)) {
+      }
     }
 
     // clear strong refs
