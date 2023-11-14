@@ -174,6 +174,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
     label_1:
     while (true) {
       if (jj_2_1(2)) {
+        ;
       } else {
         break label_1;
       }
