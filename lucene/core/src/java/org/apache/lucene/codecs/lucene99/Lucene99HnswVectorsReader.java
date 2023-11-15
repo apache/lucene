@@ -237,22 +237,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return;
     }
-    RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final KnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(
-          scorer,
-          new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
-          getGraph(fieldEntry),
-          scorer.getAcceptOrds(acceptDocs));
-      return;
-    }
-    // if k is larger than the number of vectors, we can just iterate over all vectors
-    // and collect them
-    FloatVectorValues values = getFloatVectorValues(field);
-    int doc;
-    while ((doc = values.nextDoc()) != NO_MORE_DOCS) {
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        knnCollector.collect(doc, scorer.score(doc));
+      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    } else {
+      // if k is larger than the number of vectors, we can just iterate over all vectors
+      // and collect them
+      for (int i = 0; i < scorer.maxOrd(); i++) {
+        if (acceptedOrds == null || acceptedOrds.get(i)) {
+          knnCollector.incVisitedCount(1);
+          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+        }
       }
     }
   }
@@ -267,22 +265,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return;
     }
-    RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final KnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(
-          scorer,
-          new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
-          getGraph(fieldEntry),
-          scorer.getAcceptOrds(acceptDocs));
-      return;
-    }
-    // if k is larger than the number of vectors, we can just iterate over all vectors
-    // and collect them
-    ByteVectorValues values = getByteVectorValues(field);
-    int doc;
-    while ((doc = values.nextDoc()) != NO_MORE_DOCS) {
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        knnCollector.collect(doc, scorer.score(doc));
+      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    } else {
+      // if k is larger than the number of vectors, we can just iterate over all vectors
+      // and collect them
+      for (int i = 0; i < scorer.maxOrd(); i++) {
+        if (acceptedOrds == null || acceptedOrds.get(i)) {
+          knnCollector.incVisitedCount(1);
+          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+        }
       }
     }
   }
