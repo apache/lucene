@@ -92,18 +92,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
-        try {
-          CodecUtil.checkFooter(meta, priorE);
-          success = true;
-        } finally {
-          if (success == false) {
-            IOUtils.close(flatVectorsReader);
-          }
-        }
+        CodecUtil.checkFooter(meta, priorE);
       }
-    }
-    success = false;
-    try {
       vectorIndex =
           openDataInput(
               state,

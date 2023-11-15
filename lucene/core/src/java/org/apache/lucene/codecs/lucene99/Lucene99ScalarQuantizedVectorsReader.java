@@ -58,6 +58,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
+    this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -80,19 +81,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
-        try {
-          CodecUtil.checkFooter(meta, priorE);
-          success = true;
-        } finally {
-          if (success == false) {
-            IOUtils.close(rawVectorsReader);
-          }
-        }
+        CodecUtil.checkFooter(meta, priorE);
       }
-    }
-    success = false;
-    this.rawVectorsReader = rawVectorsReader;
-    try {
       quantizedVectorData =
           openDataInput(
               state,
