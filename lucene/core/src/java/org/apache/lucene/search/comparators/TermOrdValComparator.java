@@ -30,6 +30,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -98,8 +99,8 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
    * missing values at the end.
    */
   public TermOrdValComparator(
-      int numHits, String field, boolean sortMissingLast, boolean reverse, boolean enableSkipping) {
-    canSkipDocuments = enableSkipping;
+      int numHits, String field, boolean sortMissingLast, boolean reverse, Pruning pruning) {
+    canSkipDocuments = pruning != Pruning.NONE;
     ords = new int[numHits];
     values = new BytesRef[numHits];
     tempBRs = new BytesRefBuilder[numHits];

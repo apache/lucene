@@ -2372,7 +2372,13 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testHasUncommittedChanges() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                // Disable merging to simplify this test, otherwise a commit might trigger
+                // uncommitted merges.
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     assertTrue(
         writer.hasUncommittedChanges()); // this will be true because a commit will create an empty
     // index
@@ -2395,21 +2401,12 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.addDocument(doc);
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
     writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.deleteDocuments(new Term("id", "xyz"));
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit and wait for merges as long as the commit triggers merges to be certain that
-    // hasUncommittedChanges returns false
-    do {
-      writer.waitForMerges();
-      writer.commit();
-    } while (writer.hasPendingMerges());
+    writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.close();
 
@@ -3031,7 +3028,6 @@ public class TestIndexWriter extends LuceneTestCase {
         assertEquals(1, writer.getDocStats().maxDoc);
         // now check that we moved to 3
         dir.openInput("segments_3", IOContext.READ).close();
-        ;
       }
       reader.close();
       in.close();
@@ -3764,7 +3760,6 @@ public class TestIndexWriter extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.numDocs());
       }
-      ;
       t.join();
     }
   }

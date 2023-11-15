@@ -60,7 +60,7 @@ public class BytesRefBlockPool implements Accountable {
    * @see #fillBytesRef(BytesRef, int)
    */
   public void fillBytesRef(BytesRef term, int start) {
-    final byte[] bytes = term.bytes = byteBlockPool.buffers[start >> BYTE_BLOCK_SHIFT];
+    final byte[] bytes = term.bytes = byteBlockPool.getBuffer(start >> BYTE_BLOCK_SHIFT);
     int pos = start & BYTE_BLOCK_MASK;
     if ((bytes[pos] & 0x80) == 0) {
       // length is 1 byte
@@ -126,7 +126,7 @@ public class BytesRefBlockPool implements Accountable {
    */
   int hash(int start) {
     final int offset = start & BYTE_BLOCK_MASK;
-    final byte[] bytes = byteBlockPool.buffers[start >> BYTE_BLOCK_SHIFT];
+    final byte[] bytes = byteBlockPool.getBuffer(start >> BYTE_BLOCK_SHIFT);
     final int len;
     int pos;
     if ((bytes[offset] & 0x80) == 0) {
@@ -153,7 +153,7 @@ public class BytesRefBlockPool implements Accountable {
    * It just saves the work of filling the BytesRef.
    */
   boolean equals(int start, BytesRef b) {
-    final byte[] bytes = byteBlockPool.buffers[start >> BYTE_BLOCK_SHIFT];
+    final byte[] bytes = byteBlockPool.getBuffer(start >> BYTE_BLOCK_SHIFT);
     int pos = start & BYTE_BLOCK_MASK;
     final int length;
     final int offset;

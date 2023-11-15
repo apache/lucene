@@ -29,6 +29,7 @@ import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * VectorUtil methods implemented with Panama incubating vector API.
@@ -77,44 +78,21 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
   }
 
-  private static final String MANAGEMENT_FACTORY_CLASS = "java.lang.management.ManagementFactory";
-  private static final String HOTSPOT_BEAN_CLASS = "com.sun.management.HotSpotDiagnosticMXBean";
-
-  // best effort to see if FMA is fast (this is architecture-independent option)
-  private static boolean hasFastFMA() {
-    // on ARM cpus, FMA works fine but is a slight slowdown: don't use it.
-    if (Constants.OS_ARCH.equals("amd64") == false) {
-      return false;
-    }
-    try {
-      final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
-      // we use reflection for this, because the management factory is not part
-      // of Java 8's compact profile:
-      final Object hotSpotBean =
-          Class.forName(MANAGEMENT_FACTORY_CLASS)
-              .getMethod("getPlatformMXBean", Class.class)
-              .invoke(null, beanClazz);
-      if (hotSpotBean != null) {
-        final var getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
-        final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "UseFMA");
-        return Boolean.parseBoolean(
-            vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-      }
-      return false;
-    } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
-      return false;
-    }
-  }
-
-  // true if we know FMA is supported, to deliver less error
-  static final boolean HAS_FAST_FMA = hasFastFMA();
-
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
-    if (HAS_FAST_FMA) {
+    if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
     } else {
       return a.mul(b).add(c);
+    }
+  }
+
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
+  private static float fma(float a, float b, float c) {
+    if (Constants.HAS_FAST_SCALAR_FMA) {
+      return Math.fma(a, b, c);
+    } else {
+      return a * b + c;
     }
   }
 
@@ -131,7 +109,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // scalar tail
     for (; i < a.length; i++) {
-      res += b[i] * a[i];
+      res = fma(a[i], b[i], res);
     }
     return res;
   }
@@ -197,11 +175,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // scalar tail
     for (; i < a.length; i++) {
-      float elem1 = a[i];
-      float elem2 = b[i];
-      sum += elem1 * elem2;
-      norm1 += elem1 * elem1;
-      norm2 += elem2 * elem2;
+      sum = fma(a[i], b[i], sum);
+      norm1 = fma(a[i], a[i], norm1);
+      norm2 = fma(b[i], b[i], norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
@@ -262,7 +238,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // scalar tail
     for (; i < a.length; i++) {
       float diff = a[i] - b[i];
-      res += diff * diff;
+      res = fma(diff, diff, res);
     }
     return res;
   }

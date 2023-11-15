@@ -134,7 +134,7 @@ public class KnnVectorDict implements Closeable {
 
     private final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
     private final FSTCompiler<Long> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton()).build();
     private float[] scratch;
     private ByteBuffer byteBuffer;
     private long ordinal = 1;

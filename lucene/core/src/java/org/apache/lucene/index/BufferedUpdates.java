@@ -263,11 +263,10 @@ class BufferedUpdates implements Accountable {
         scratch.field = deleteFieldEntry.getKey();
         BufferedUpdates.BytesRefIntMap terms = deleteFieldEntry.getValue();
         int[] indices = terms.bytesRefHash.sort();
-        for (int index : indices) {
-          if (index != -1) {
-            terms.bytesRefHash.get(index, scratch.bytes);
-            consumer.accept(scratch, terms.values[index]);
-          }
+        for (int i = 0; i < terms.bytesRefHash.size(); i++) {
+          int index = indices[i];
+          terms.bytesRefHash.get(index, scratch.bytes);
+          consumer.accept(scratch, terms.values[index]);
         }
       }
     }

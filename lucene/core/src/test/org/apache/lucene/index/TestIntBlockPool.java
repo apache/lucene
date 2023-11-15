@@ -50,7 +50,7 @@ public class TestIntBlockPool extends LuceneTestCase {
 
     // Reset and fill with zeros, then check there is no data left
     pool.intUpto = count;
-    pool.reset();
+    pool.reset(true, true);
     for (int i = 0; i < count; i++) {
       assertEquals(0, pool.buffers[0][i]);
     }
