@@ -158,8 +158,8 @@ import org.apache.lucene.util.packed.PackedInts;
  *   <dd><b>Frequencies and Skip Data</b>
  *       <p>The .doc file contains the lists of documents which contain each term, along with the
  *       frequency of the term in that document (except when frequencies are omitted: {@link
- *       IndexOptions#DOCS}). It also saves skip data to the beginning of each packed or VInt block,
- *       when the length of document list is larger than packed block size.
+ *       IndexOptions#DOCS}). Skip data is saved at the end of each term's postings. The skip data
+ *       is saved once for the entire postings list.
  *       <ul>
  *         <li>docFile(.doc) --&gt; Header, &lt;TermFreqs, SkipData?&gt;<sup>TermCount</sup>, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
@@ -174,7 +174,8 @@ import org.apache.lucene.util.packed.PackedInts;
  *         <li>SkipDatum --&gt; DocSkip, DocFPSkip, &lt;PosFPSkip, PosBlockOffset, PayLength?,
  *             PayFPSkip?&gt;?, ImpactLength, &lt;CompetitiveFreqDelta, CompetitiveNormDelta?&gt;
  *             <sup>ImpactCount</sup>, SkipChildLevelPointer?
- *         <li>PackedDocDeltaBlock, PackedFreqBlock --&gt; {@link PackedInts PackedInts}
+ *         <li>PackedFreqBlock --&gt; {@link PackedInts PackedInts}, uses patching
+ *         <li>PackedDocDeltaBlock --&gt; {@link PackedInts PackedInts}, does not use patching
  *         <li>DocDelta, Freq, DocSkip, DocFPSkip, PosFPSkip, PosBlockOffset, PayByteUpto,
  *             PayFPSkip, ImpactLength, CompetitiveFreqDelta --&gt; {@link DataOutput#writeVInt
  *             VInt}

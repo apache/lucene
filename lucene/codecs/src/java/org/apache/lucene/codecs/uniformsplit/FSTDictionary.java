@@ -173,7 +173,7 @@ public class FSTDictionary implements IndexDictionary {
 
     public Builder() {
       PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
       scratchInts = new IntsRefBuilder();
     }
 

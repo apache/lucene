@@ -683,7 +683,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       final PairOutputs<Long, Long> outputsInner = new PairOutputs<>(posIntOutputs, posIntOutputs);
       final PairOutputs<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> outputs =
           new PairOutputs<>(outputsOuter, outputsInner);
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
       IndexInput in = SimpleTextFieldsReader.this.in.clone();
       in.seek(termsStart);
       final BytesRefBuilder lastTerm = new BytesRefBuilder();
