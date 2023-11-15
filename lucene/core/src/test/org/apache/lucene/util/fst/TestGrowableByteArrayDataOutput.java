@@ -29,7 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 
-public class TestBytesStore extends LuceneTestCase {
+public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
 
   public void testRandom() throws Exception {
 
@@ -38,7 +38,7 @@ public class TestBytesStore extends LuceneTestCase {
     for (int iter = 0; iter < iters; iter++) {
       final int numBytes = TestUtil.nextInt(random(), 1, maxBytes);
       final byte[] expected = new byte[numBytes];
-      final BytesStore bytes = new BytesStore();
+      final GrowableByteArrayDataOutput bytes = new GrowableByteArrayDataOutput();
       if (VERBOSE) {
         System.out.println("TEST: iter=" + iter + " numBytes=" + numBytes);
       }
@@ -189,7 +189,7 @@ public class TestBytesStore extends LuceneTestCase {
         }
       }
 
-      BytesStore bytesToVerify;
+      GrowableByteArrayDataOutput bytesToVerify;
 
       if (random().nextBoolean()) {
         if (VERBOSE) {
@@ -200,7 +200,7 @@ public class TestBytesStore extends LuceneTestCase {
         bytes.writeTo(out);
         out.close();
         IndexInput in = dir.openInput("bytes", IOContext.DEFAULT);
-        bytesToVerify = new BytesStore();
+        bytesToVerify = new GrowableByteArrayDataOutput();
         bytesToVerify.copyBytes(in, numBytes);
         in.close();
         dir.close();
@@ -219,7 +219,7 @@ public class TestBytesStore extends LuceneTestCase {
     int offset = TestUtil.nextInt(random(), 0, 100);
     int len = bytes.length - offset;
     ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
-    final BytesStore o = new BytesStore();
+    final GrowableByteArrayDataOutput o = new GrowableByteArrayDataOutput();
     o.copyBytes(in, len);
     o.copyBytes(0, bytesout, 0, len);
     assertArrayEquals(
@@ -227,7 +227,8 @@ public class TestBytesStore extends LuceneTestCase {
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
-  private void verify(BytesStore bytes, byte[] expected, int totalLength) throws Exception {
+  private void verify(GrowableByteArrayDataOutput bytes, byte[] expected, int totalLength)
+      throws Exception {
     assertEquals(totalLength, bytes.getPosition());
     if (totalLength == 0) {
       return;

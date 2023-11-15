@@ -23,11 +23,12 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
-// Storing a byte[] for the current node of the FST we are writing
-class BytesStore extends DataOutput implements Accountable {
+// Storing a byte[] for the current node of the FST we are writing. The byte[] will only grow, never
+// shrink.
+class GrowableByteArrayDataOutput extends DataOutput implements Accountable {
 
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(BytesStore.class);
+      RamUsageEstimator.shallowSizeOfInstance(GrowableByteArrayDataOutput.class);
 
   private static final int INITIAL_SIZE = 1 << 8;
 
@@ -35,12 +36,6 @@ class BytesStore extends DataOutput implements Accountable {
   byte[] bytes = new byte[INITIAL_SIZE];
 
   private int nextWrite;
-
-  /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
-  public void writeByte(int dest, byte b) {
-    assert dest < nextWrite;
-    bytes[dest] = b;
-  }
 
   @Override
   public void writeByte(byte b) {
@@ -64,15 +59,6 @@ class BytesStore extends DataOutput implements Accountable {
     bytes = ArrayUtil.grow(bytes, nextWrite + capacityToWrite);
   }
 
-  /**
-   * Absolute writeBytes without changing the current position. Note: this cannot "grow" the bytes,
-   * so you must only call it on already written parts.
-   */
-  void writeBytes(int dest, byte[] b, int offset, int len) {
-    assert dest + len <= getPosition() : "dest=" + dest + " pos=" + getPosition() + " len=" + len;
-    System.arraycopy(b, offset, bytes, dest, len);
-  }
-
   @Override
   public void copyBytes(DataInput input, long numBytes) throws IOException {
     assert numBytes >= 0 : "numBytes=" + numBytes;
@@ -81,6 +67,21 @@ class BytesStore extends DataOutput implements Accountable {
     ensureCapacity(length);
     input.readBytes(bytes, nextWrite, length);
     nextWrite += length;
+  }
+
+  /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
+  public void writeByte(int dest, byte b) {
+    assert dest < nextWrite;
+    bytes[dest] = b;
+  }
+
+  /**
+   * Absolute writeBytes without changing the current position. Note: this cannot "grow" the bytes,
+   * so you must only call it on already written parts.
+   */
+  public void writeBytes(int dest, byte[] b, int offset, int len) {
+    assert dest + len <= getPosition() : "dest=" + dest + " pos=" + getPosition() + " len=" + len;
+    System.arraycopy(b, offset, bytes, dest, len);
   }
 
   /**

@@ -126,7 +126,7 @@ public class FSTCompiler<T> {
   final DataOutput dataOutput;
 
   // buffer to store bytes for the one node we are currently writing
-  final BytesStore scratchBytes = new BytesStore();
+  final GrowableByteArrayDataOutput scratchBytes = new GrowableByteArrayDataOutput();
 
   private long numBytesWritten;
 

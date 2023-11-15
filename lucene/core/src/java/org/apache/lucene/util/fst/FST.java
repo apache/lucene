@@ -124,10 +124,7 @@ public final class FST<T> implements Accountable {
   /** If arc has this label then that arc is final/accepted */
   public static final int END_LABEL = -1;
 
-  /**
-   * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
-   * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
-   */
+  /** The reader of the FST */
   private final FSTReader fstReader;
 
   public final Outputs<T> outputs;
