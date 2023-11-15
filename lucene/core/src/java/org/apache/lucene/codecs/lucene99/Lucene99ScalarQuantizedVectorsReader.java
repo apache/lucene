@@ -303,10 +303,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       dimension = input.readVInt();
       size = input.readInt();
       if (size > 0) {
-        float configuredQuantile = Float.intBitsToFloat(input.readInt());
+        float confidenceInterval = Float.intBitsToFloat(input.readInt());
         float minQuantile = Float.intBitsToFloat(input.readInt());
         float maxQuantile = Float.intBitsToFloat(input.readInt());
-        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, configuredQuantile);
+        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, confidenceInterval);
       } else {
         scalarQuantizer = null;
       }
