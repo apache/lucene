@@ -53,10 +53,13 @@ public class TestBoolean2 extends LuceneTestCase {
   private static IndexReader reader;
   private static IndexReader littleReader;
   private static IndexReader singleSegmentReader;
+
   /** num of empty docs injected between every doc in the (main) index */
   private static int NUM_FILLER_DOCS;
+
   /** num of empty docs injected prior to the first doc in the (main) index */
   private static int PRE_FILLER_DOCS;
+
   /** num "extra" docs containing value in "field2" added to the "big" clone of the index */
   private static final int NUM_EXTRA_DOCS = 6000;
 

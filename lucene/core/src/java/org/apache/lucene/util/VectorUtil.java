@@ -20,7 +20,31 @@ package org.apache.lucene.util;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
-/** Utilities for computations with numeric arrays */
+/**
+ * Utilities for computations with numeric arrays, especially algebraic operations like vector dot
+ * products. This class uses SIMD vectorization if the corresponding Java module is available and
+ * enabled. To enable vectorized code, pass {@code --add-modules jdk.incubator.vector} to Java's
+ * command line.
+ *
+ * <p>It will use CPU's <a href="https://en.wikipedia.org/wiki/Fused_multiply%E2%80%93add">FMA
+ * instructions</a> if it is known to perform faster than separate multiply+add. This requires at
+ * least Hotspot C2 enabled, which is the default for OpenJDK based JVMs.
+ *
+ * <p>To explicitly disable or enable FMA usage, pass the following system properties:
+ *
+ * <ul>
+ *   <li>{@code -Dlucene.useScalarFMA=(auto|true|false)} for scalar operations
+ *   <li>{@code -Dlucene.useVectorFMA=(auto|true|false)} for vectorized operations (with vector
+ *       incubator module)
+ * </ul>
+ *
+ * <p>The default is {@code auto}, which enables this for known CPU types and JVM settings. If
+ * Hotspot C2 is disabled, FMA and vectorization are <strong>not</strong> used.
+ *
+ * <p>Vectorization and FMA is only supported for Hotspot-based JVMs; it won't work on OpenJ9-based
+ * JVMs unless they provide {@link com.sun.management.HotSpotDiagnosticMXBean}. Please also make
+ * sure that you have the {@code jdk.management} module enabled in modularized applications.
+ */
 public final class VectorUtil {
 
   private static final VectorUtilSupport IMPL =
@@ -106,18 +130,21 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = IMPL.dotProduct(v, v);
-    int dim = v.length;
-    if (squareSum == 0) {
+    double l1norm = IMPL.dotProduct(v, v);
+    if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    double length = Math.sqrt(squareSum);
+    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
     for (int i = 0; i < dim; i++) {
-      v[i] /= length;
+      v[i] /= (float) l2norm;
     }
     return v;
   }

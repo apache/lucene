@@ -378,7 +378,6 @@ public class Automaton implements Accountable, TransitionAccessor {
           swapOne(iStart + 1, jStart + 1);
           swapOne(iStart + 2, jStart + 2);
         }
-        ;
 
         @Override
         protected int compare(int i, int j) {
@@ -434,7 +433,6 @@ public class Automaton implements Accountable, TransitionAccessor {
           swapOne(iStart + 1, jStart + 1);
           swapOne(iStart + 2, jStart + 2);
         }
-        ;
 
         @Override
         protected int compare(int i, int j) {
@@ -810,7 +808,6 @@ public class Automaton implements Accountable, TransitionAccessor {
             swapOne(iStart + 2, jStart + 2);
             swapOne(iStart + 3, jStart + 3);
           }
-          ;
 
           @Override
           protected int compare(int i, int j) {

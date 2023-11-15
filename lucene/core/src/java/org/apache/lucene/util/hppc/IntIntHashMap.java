@@ -523,7 +523,6 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       return new KeysIterator();
     }
   }
-  ;
 
   /** An iterator over the set of assigned keys. */
   private final class KeysIterator extends AbstractIterator<IntCursor> {
