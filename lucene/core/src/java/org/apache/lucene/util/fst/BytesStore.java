@@ -32,7 +32,7 @@ class BytesStore extends DataOutput implements Accountable {
   private static final int INITIAL_SIZE = 1 << 8;
 
   // holds an initial size of 256 bytes. this byte array will only grow, but not shrink
-  private byte[] bytes = new byte[INITIAL_SIZE];
+  byte[] bytes = new byte[INITIAL_SIZE];
 
   private int nextWrite;
 

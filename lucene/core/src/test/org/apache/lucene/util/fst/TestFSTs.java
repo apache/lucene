@@ -521,8 +521,7 @@ public class TestFSTs extends LuceneTestCase {
     private final FSTCompiler<T> fstCompiler;
 
     public VisitTerms(
-        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays)
-        throws IOException {
+        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays) {
       this.dirOut = dirOut;
       this.wordsFileIn = wordsFileIn;
       this.inputMode = inputMode;

@@ -30,7 +30,7 @@ public class TestNodeHash extends LuceneTestCase {
     int nodeLength = atLeast(500);
     long fallbackHashSlot = 1;
     byte[] fallbackBytes = RandomBytes.randomBytesOfLength(random(), nodeLength);
-    fallbackHashTable.copyNodeBytes(fallbackHashSlot, fallbackBytes);
+    fallbackHashTable.copyNodeBytes(fallbackHashSlot, fallbackBytes, nodeLength);
 
     // check if the bytes we wrote are the same as the original bytes
     byte[] storedBytes = fallbackHashTable.getBytes(fallbackHashSlot, nodeLength);
