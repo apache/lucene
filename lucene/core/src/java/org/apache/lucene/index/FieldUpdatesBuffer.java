@@ -270,7 +270,6 @@ final class FieldUpdatesBuffer {
   static class BufferedUpdate {
 
     private BufferedUpdate() {}
-    ;
 
     /** the max document ID this update should be applied to */
     int docUpTo;

@@ -272,7 +272,6 @@ public final class FeatureField extends Field {
       return true;
     }
   }
-  ;
 
   static final class LogFunction extends FeatureFunction {
 
