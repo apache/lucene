@@ -142,6 +142,8 @@ Optimizations
 
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
 
+* GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
+
 Changes in runtime behavior
 ---------------------
 
