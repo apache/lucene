@@ -25,7 +25,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 
 // Storing a byte[] for the current node of the FST we are writing. The byte[] will only grow, never
 // shrink.
-class GrowableByteArrayDataOutput extends DataOutput implements Accountable {
+final class GrowableByteArrayDataOutput extends DataOutput implements Accountable {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(GrowableByteArrayDataOutput.class);
