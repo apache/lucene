@@ -18,14 +18,12 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.KnnCollector;
@@ -180,8 +178,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       this.query = query;
       this.values = values;
       this.similarity = similarity;
-      this.acceptedChildrenIterator =
-          ConjunctionUtils.intersectIterators(List.of(acceptedChildrenIterator, values));
+      this.acceptedChildrenIterator = acceptedChildrenIterator;
       this.parentBitSet = parentBitSet;
     }
 
@@ -201,6 +198,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       currentScore = Float.NEGATIVE_INFINITY;
       currentParent = parentBitSet.nextSetBit(nextChild);
       do {
+        values.advance(nextChild);
         float score = similarity.compare(query, values.vectorValue());
         if (score > currentScore) {
           bestChild = nextChild;

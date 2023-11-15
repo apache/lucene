@@ -238,11 +238,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
-    HnswGraphSearcher.search(
-        scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
-        getGraph(fieldEntry),
-        scorer.getAcceptOrds(acceptDocs));
+    if (knnCollector.k() < scorer.maxOrd()) {
+      HnswGraphSearcher.search(
+          scorer,
+          new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
+          getGraph(fieldEntry),
+          scorer.getAcceptOrds(acceptDocs));
+      return;
+    }
+    // if k is larger than the number of vectors, we can just iterate over all vectors
+    // and collect them
+    FloatVectorValues values = getFloatVectorValues(field);
+    int doc;
+    while ((doc = values.nextDoc()) != NO_MORE_DOCS) {
+      if (acceptDocs == null || acceptDocs.get(doc)) {
+        knnCollector.collect(doc, scorer.score(doc));
+      }
+    }
   }
 
   @Override
@@ -256,11 +268,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
-    HnswGraphSearcher.search(
-        scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
-        getGraph(fieldEntry),
-        scorer.getAcceptOrds(acceptDocs));
+    if (knnCollector.k() < scorer.maxOrd()) {
+      HnswGraphSearcher.search(
+          scorer,
+          new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc),
+          getGraph(fieldEntry),
+          scorer.getAcceptOrds(acceptDocs));
+      return;
+    }
+    // if k is larger than the number of vectors, we can just iterate over all vectors
+    // and collect them
+    ByteVectorValues values = getByteVectorValues(field);
+    int doc;
+    while ((doc = values.nextDoc()) != NO_MORE_DOCS) {
+      if (acceptDocs == null || acceptDocs.get(doc)) {
+        knnCollector.collect(doc, scorer.score(doc));
+      }
+    }
   }
 
   @Override

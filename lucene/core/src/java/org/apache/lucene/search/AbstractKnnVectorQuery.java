@@ -110,12 +110,6 @@ abstract class AbstractKnnVectorQuery extends Query {
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      int cost = liveDocs == null ? maxDoc : liveDocs.length();
-      if (k >= cost || k >= numVectorsInLeaf(ctx)) {
-        return exactSearch(
-            ctx,
-            new BitSetIterator(createBitSet(DocIdSetIterator.all(maxDoc), liveDocs, maxDoc), cost));
-      }
       return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
     }
 
@@ -177,13 +171,13 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
-    // Iterate over the vector docs that match the filter and find the top k
-    DocIdSetIterator iterator =
-        ConjunctionUtils.intersectIterators(List.of(acceptIterator, vectorScorer.iterator()));
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
-    while ((doc = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      boolean advanced = vectorScorer.advanceExact(doc);
+      assert advanced;
+
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
@@ -205,12 +199,6 @@ abstract class AbstractKnnVectorQuery extends Query {
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
     return new TopDocs(totalHits, topScoreDocs);
   }
-
-  /**
-   * @param ctx the leaf reader context
-   * @return the number of vectors in the given leaf.
-   */
-  protected abstract int numVectorsInLeaf(LeafReaderContext ctx) throws IOException;
 
   /**
    * Merges all segment-level kNN results to get the index-level kNN results.

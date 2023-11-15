@@ -91,17 +91,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected int numVectorsInLeaf(LeafReaderContext ctx) throws IOException {
-    FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      return 0;
-    }
-    return ctx.reader().getByteVectorValues(field).size();
-  }
-
-  @Override
   public String toString(String field) {
     return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
   }

@@ -61,8 +61,6 @@ abstract class VectorScorer {
 
   abstract boolean advanceExact(int doc) throws IOException;
 
-  public abstract DocIdSetIterator iterator();
-
   private static class ByteVectorScorer extends VectorScorer {
     private final byte[] query;
     private final ByteVectorValues values;
@@ -72,11 +70,6 @@ abstract class VectorScorer {
       super(similarity);
       this.values = values;
       this.query = query;
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
-      return values;
     }
 
     /**
@@ -107,11 +100,6 @@ abstract class VectorScorer {
       super(similarity);
       this.query = query;
       this.values = values;
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
-      return values;
     }
 
     /**
