@@ -532,7 +532,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
-      
+
       int next = findFirstGreater(docBuffer, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
@@ -624,8 +624,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // no skip data for this term):
     private long skipOffset;
 
-    private int nextSkipDoc;
-
     private boolean needsOffsets; // true if we actually need offsets
     private boolean needsPayloads; // true if we actually need payloads
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
@@ -713,11 +711,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       doc = -1;
       accum = -1;
       blockUpto = 0;
-      if (docFreq > BLOCK_SIZE) {
-        nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
-      } else {
-        nextSkipDoc = NO_MORE_DOCS; // not enough docs for skipping
-      }
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
       return this;
@@ -848,7 +841,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (docFreq > BLOCK_SIZE && target > accum) {
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
           skipper =
@@ -882,7 +875,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           lastStartOffset = 0; // new document
           payloadByteUpto = skipper.getPayloadByteUpto();
         }
-        nextSkipDoc = skipper.getNextSkipDoc();
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
