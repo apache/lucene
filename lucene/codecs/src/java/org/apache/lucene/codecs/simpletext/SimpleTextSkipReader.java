@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.codecs.MultiLevelSkipListReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;

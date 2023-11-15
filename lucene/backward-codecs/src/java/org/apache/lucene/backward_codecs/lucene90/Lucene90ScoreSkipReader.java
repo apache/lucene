@@ -21,7 +21,6 @@ import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.RandomAccess;
-
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.store.ByteArrayDataInput;

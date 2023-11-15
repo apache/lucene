@@ -24,7 +24,17 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.MathUtil;
 
-/** Legacy variant of */
+/**
+ * This abstract class reads skip lists with multiple levels.
+ *
+ * <p>See {@link MultiLevelSkipListWriter} for the information about the encoding of the multi level
+ * skip lists.
+ *
+ * <p>Subclasses must implement the abstract method {@link #readSkipData(int, IndexInput)} which
+ * defines the actual format of the skip data.
+ *
+ * @lucene.experimental
+ */
 public abstract class MultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */
   protected int maxNumberOfSkipLevels;

@@ -77,7 +77,7 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
 
       wroteHeaderPerLevelMap.put(level, true);
     }
-    SimpleTextUtil.write(skipBuffer, SKIP_DOC);assert curDoc != -1;
+    SimpleTextUtil.write(skipBuffer, SKIP_DOC);
     SimpleTextUtil.write(skipBuffer, curDoc + "", scratch);
     SimpleTextUtil.writeNewline(skipBuffer);
 

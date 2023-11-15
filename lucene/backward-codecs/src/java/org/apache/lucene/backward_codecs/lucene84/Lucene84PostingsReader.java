@@ -28,7 +28,6 @@ import static org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat.IntBlockTermState;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.BlockTermState;

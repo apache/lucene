@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene84;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.backward_codecs.LegacyMultiLevelSkipListReader;
 import org.apache.lucene.store.IndexInput;
 
