@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.fst;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -23,6 +24,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
@@ -36,16 +38,14 @@ public class TestBytesStore extends LuceneTestCase {
     for (int iter = 0; iter < iters; iter++) {
       final int numBytes = TestUtil.nextInt(random(), 1, maxBytes);
       final byte[] expected = new byte[numBytes];
-      final int blockBits = TestUtil.nextInt(random(), 8, 15);
-      final BytesStore bytes = new BytesStore(blockBits);
+      final BytesStore bytes = new BytesStore();
       if (VERBOSE) {
-        System.out.println(
-            "TEST: iter=" + iter + " numBytes=" + numBytes + " blockBits=" + blockBits);
+        System.out.println("TEST: iter=" + iter + " numBytes=" + numBytes);
       }
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(8);
+        int op = random().nextInt(7);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -80,39 +80,12 @@ public class TestBytesStore extends LuceneTestCase {
 
           case 2:
             {
-              // write int @ absolute pos
-              if (pos > 4) {
-                int x = random().nextInt();
-                int randomPos = random().nextInt(pos - 4);
-                if (VERBOSE) {
-                  System.out.println("    abs writeInt pos=" + randomPos + " x=" + x);
-                }
-                bytes.writeInt(randomPos, x);
-                expected[randomPos++] = (byte) (x >> 24);
-                expected[randomPos++] = (byte) (x >> 16);
-                expected[randomPos++] = (byte) (x >> 8);
-                expected[randomPos++] = (byte) x;
-              }
-            }
-            break;
-
-          case 3:
-            {
               // reverse bytes
               if (pos > 1) {
-                int len = TestUtil.nextInt(random(), 2, Math.min(100, pos));
-                int start;
-                if (len == pos) {
-                  start = 0;
-                } else {
-                  start = random().nextInt(pos - len);
-                }
-                int end = start + len - 1;
-                if (VERBOSE) {
-                  System.out.println(
-                      "    reverse start=" + start + " end=" + end + " len=" + len + " pos=" + pos);
-                }
-                bytes.reverse(start, end);
+                bytes.reverse();
+
+                int start = 0;
+                int end = bytes.getPosition() - 1;
 
                 while (start <= end) {
                   byte b = expected[end];
@@ -125,7 +98,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 4:
+          case 3:
             {
               // abs write random byte[]
               if (pos > 2) {
@@ -148,7 +121,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 5:
+          case 4:
             {
               // copyBytes
               if (pos > 1) {
@@ -164,7 +137,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 6:
+          case 5:
             {
               // skip
               int len = random().nextInt(Math.min(100, numBytes - pos));
@@ -185,7 +158,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 7:
+          case 6:
             {
               // absWriteByte
               if (pos > 0) {
@@ -227,7 +200,7 @@ public class TestBytesStore extends LuceneTestCase {
         bytes.writeTo(out);
         out.close();
         IndexInput in = dir.openInput("bytes", IOContext.DEFAULT);
-        bytesToVerify = new BytesStore(TestUtil.nextInt(random(), 8, 20));
+        bytesToVerify = new BytesStore();
         bytesToVerify.copyBytes(in, numBytes);
         in.close();
         dir.close();
@@ -246,8 +219,7 @@ public class TestBytesStore extends LuceneTestCase {
     int offset = TestUtil.nextInt(random(), 0, 100);
     int len = bytes.length - offset;
     ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
-    final int blockBits = TestUtil.nextInt(random(), 8, 15);
-    final BytesStore o = new BytesStore(blockBits);
+    final BytesStore o = new BytesStore();
     o.copyBytes(in, len);
     o.copyBytes(0, bytesout, 0, len);
     assertArrayEquals(
@@ -265,128 +237,14 @@ public class TestBytesStore extends LuceneTestCase {
     }
 
     // First verify whole thing in one blast:
-    byte[] actual = new byte[totalLength];
-    if (random().nextBoolean()) {
-      if (VERBOSE) {
-        System.out.println("    bulk: reversed");
-      }
-      // reversed
-      FST.BytesReader r = bytes.getReverseBytesReader();
-      r.setPosition(totalLength - 1);
-      r.readBytes(actual, 0, actual.length);
-      int start = 0;
-      int end = totalLength - 1;
-      while (start < end) {
-        byte b = actual[start];
-        actual[start] = actual[end];
-        actual[end] = b;
-        start++;
-        end--;
-      }
-    } else {
-      // forward
-      if (VERBOSE) {
-        System.out.println("    bulk: forward");
-      }
-      FST.BytesReader r = bytes.getForwardReader();
-      r.readBytes(actual, 0, actual.length);
-    }
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    bytes.writeTo(new OutputStreamDataOutput(baos));
+    byte[] actual = baos.toByteArray();
+
+    assertEquals(totalLength, actual.length);
 
     for (int i = 0; i < totalLength; i++) {
       assertEquals("byte @ index=" + i, expected[i], actual[i]);
-    }
-
-    FST.BytesReader r;
-
-    // Then verify ops:
-    boolean reversed = random().nextBoolean();
-    if (reversed) {
-      if (VERBOSE) {
-        System.out.println("    ops: reversed");
-      }
-      r = bytes.getReverseBytesReader();
-    } else {
-      if (VERBOSE) {
-        System.out.println("    ops: forward");
-      }
-      r = bytes.getForwardReader();
-    }
-
-    if (totalLength > 1) {
-      int numOps = TestUtil.nextInt(random(), 100, 200);
-      for (int op = 0; op < numOps; op++) {
-
-        int numBytes = random().nextInt(Math.min(1000, totalLength - 1));
-        int pos;
-        if (reversed) {
-          pos = TestUtil.nextInt(random(), numBytes, totalLength - 1);
-        } else {
-          pos = random().nextInt(totalLength - numBytes);
-        }
-        if (VERBOSE) {
-          System.out.println(
-              "    op iter="
-                  + op
-                  + " reversed="
-                  + reversed
-                  + " numBytes="
-                  + numBytes
-                  + " pos="
-                  + pos);
-        }
-        byte[] temp = new byte[numBytes];
-        r.setPosition(pos);
-        assertEquals(pos, r.getPosition());
-        r.readBytes(temp, 0, temp.length);
-        for (int i = 0; i < numBytes; i++) {
-          byte expectedByte;
-          if (reversed) {
-            expectedByte = expected[pos - i];
-          } else {
-            expectedByte = expected[pos + i];
-          }
-          assertEquals("byte @ index=" + i, expectedByte, temp[i]);
-        }
-
-        int left;
-        int expectedPos;
-
-        if (reversed) {
-          expectedPos = pos - numBytes;
-          left = (int) r.getPosition();
-        } else {
-          expectedPos = pos + numBytes;
-          left = (int) (totalLength - r.getPosition());
-        }
-        assertEquals(expectedPos, r.getPosition());
-
-        if (left > 4) {
-          int skipBytes = random().nextInt(left - 4);
-
-          int expectedInt = 0;
-          if (reversed) {
-            expectedPos -= skipBytes;
-            expectedInt |= (expected[expectedPos--] & 0xFF);
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 8;
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 16;
-            expectedInt |= (expected[expectedPos--] & 0xFF) << 24;
-          } else {
-            expectedPos += skipBytes;
-            expectedInt |= (expected[expectedPos++] & 0xFF);
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 8;
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 16;
-            expectedInt |= (expected[expectedPos++] & 0xFF) << 24;
-          }
-
-          if (VERBOSE) {
-            System.out.println("    skip numBytes=" + skipBytes);
-            System.out.println("    readInt");
-          }
-
-          r.skipBytes(skipBytes);
-          assertEquals(expectedInt, r.readInt());
-        }
-      }
     }
   }
 }

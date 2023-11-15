@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
+import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_CONTINUOUS;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
@@ -32,14 +34,12 @@ import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
-
-// TODO: could we somehow stream an FST to disk while we
-// build it?
 
 /**
  * Builds a minimal FST (maps an IntsRef term to an arbitrary output) from pre-sorted terms with
@@ -58,6 +58,8 @@ import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
  * @lucene.experimental
  */
 public class FSTCompiler<T> {
+
+  static final int DEFAULT_BLOCK_BITS = 15;
 
   static final float DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR = 1f;
 
@@ -120,22 +122,45 @@ public class FSTCompiler<T> {
   final float directAddressingMaxOversizingFactor;
   long directAddressingExpansionCredit;
 
-  final BytesStore bytes;
+  // the DataOutput to write the FST to
+  final DataOutput dataOutput;
+
+  // buffer to store bytes for the one node we are currently writing
+  final BytesStore scratchBytes = new BytesStore();
+
+  private long numBytesWritten;
+
+  /**
+   * Get an on-heap DataOutput that allows the FST to be read immediately after writing.
+   *
+   * @param blockBits how many bits wide to make each block of the DataOutput
+   * @return the DataOutput
+   */
+  public static DataOutput getOnHeapDataOutput(int blockBits) {
+    return new ByteBuffersFSTReader(
+        new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
+  }
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
       double suffixRAMLimitMB,
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
-      int bytesPageBits,
-      float directAddressingMaxOversizingFactor) {
+      DataOutput dataOutput,
+      float directAddressingMaxOversizingFactor)
+      throws IOException {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
-    bytes = new BytesStore(bytesPageBits);
     // pad: ensure no node gets address 0 which is reserved to mean
     // the stop state w/ no arcs
-    bytes.writeByte((byte) 0);
-    fst = new FST<>(new FST.FSTMetadata<>(inputType, null, -1, VERSION_CURRENT, 0), outputs, bytes);
+    dataOutput.writeByte((byte) 0);
+    numBytesWritten++;
+    this.dataOutput = dataOutput;
+    fst =
+        new FST<>(
+            new FST.FSTMetadata<>(inputType, null, -1, VERSION_CURRENT, 0),
+            outputs,
+            toFSTReader(dataOutput));
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
@@ -153,6 +178,34 @@ public class FSTCompiler<T> {
     }
   }
 
+  // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
+  // will use it. Otherwise, we will use NullFSTReader, which does not allow reading.
+  private FSTReader toFSTReader(DataOutput dataOutput) {
+    if (dataOutput instanceof FSTReader) {
+      return (FSTReader) dataOutput;
+    }
+    return new NullFSTReader();
+  }
+
+  private static final class NullFSTReader implements FSTReader {
+
+    @Override
+    public FST.BytesReader getReverseBytesReader() {
+      return null;
+    }
+
+    @Override
+    public void writeTo(DataOutput out) {
+      throw new UnsupportedOperationException("writeTo(DataOutput) is not supported");
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return 0;
+    }
+  }
+  ;
+
   /**
    * Fluent-style constructor for FST {@link FSTCompiler}.
    *
@@ -165,7 +218,7 @@ public class FSTCompiler<T> {
     private final Outputs<T> outputs;
     private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
-    private int bytesPageBits = 15;
+    private DataOutput dataOutput = getOnHeapDataOutput(DEFAULT_BLOCK_BITS);
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
 
     /**
@@ -218,13 +271,19 @@ public class FSTCompiler<T> {
     }
 
     /**
-     * How many bits wide to make each byte[] block in the BytesStore; if you know the FST will be
-     * large then make this larger. For example 15 bits = 32768 byte pages.
+     * Set the {@link DataOutput} which is used for low-level writing of FST. If you want the FST to
+     * be readable, you need to use a DataOutput that also implements {@link FSTReader}, such as
+     * {@link FSTCompiler#getOnHeapDataOutput(int)}.
      *
-     * <p>Default = 15.
+     * <p>Otherwise you need to construct the corresponding {@link
+     * org.apache.lucene.store.DataInput} and use the FST constructor to read it.
+     *
+     * @param dataOutput the DataOutput
+     * @return this builder
+     * @see FSTCompiler#getOnHeapDataOutput(int)
      */
-    public Builder<T> bytesPageBits(int bytesPageBits) {
-      this.bytesPageBits = bytesPageBits;
+    public Builder<T> dataOutput(DataOutput dataOutput) {
+      this.dataOutput = dataOutput;
       return this;
     }
 
@@ -248,15 +307,17 @@ public class FSTCompiler<T> {
 
     /** Creates a new {@link FSTCompiler}. */
     public FSTCompiler<T> build() {
-      FSTCompiler<T> fstCompiler =
-          new FSTCompiler<>(
-              inputType,
-              suffixRAMLimitMB,
-              outputs,
-              allowFixedLengthArcs,
-              bytesPageBits,
-              directAddressingMaxOversizingFactor);
-      return fstCompiler;
+      try {
+        return new FSTCompiler<>(
+            inputType,
+            suffixRAMLimitMB,
+            outputs,
+            allowFixedLengthArcs,
+            dataOutput,
+            directAddressingMaxOversizingFactor);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -277,9 +338,9 @@ public class FSTCompiler<T> {
     return dedupHash == null ? 0 : nodeCount;
   }
 
-  private CompiledNode compileNode(UnCompiledNode<T> nodeIn, int tailLength) throws IOException {
+  private CompiledNode compileNode(UnCompiledNode<T> nodeIn) throws IOException {
     final long node;
-    long bytesPosStart = bytes.getPosition();
+    long bytesPosStart = numBytesWritten;
     if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
         node = addNode(nodeIn);
@@ -290,9 +351,10 @@ public class FSTCompiler<T> {
     } else {
       node = addNode(nodeIn);
     }
+
     assert node != -2;
 
-    long bytesPosEnd = bytes.getPosition();
+    long bytesPosEnd = numBytesWritten;
     if (bytesPosEnd != bytesPosStart) {
       // The FST added a new node:
       assert bytesPosEnd > bytesPosStart;
@@ -317,8 +379,11 @@ public class FSTCompiler<T> {
         return NON_FINAL_END_NODE;
       }
     }
-    final long startAddress = bytes.getPosition();
-    // System.out.println("  startAddr=" + startAddress);
+    // reset the scratch writer to prepare for new write
+    scratchBytes.truncate(0);
+
+    // the scratch writer must be cleaned at this point
+    assert scratchBytes.getPosition() == 0;
 
     final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(nodeIn);
     if (doFixedLengthArcs) {
@@ -333,7 +398,7 @@ public class FSTCompiler<T> {
 
     final int lastArc = nodeIn.numArcs - 1;
 
-    long lastArcStart = bytes.getPosition();
+    long lastArcStart = 0;
     int maxBytesPerArc = 0;
     int maxBytesPerArcWithoutLabel = 0;
     for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
@@ -373,38 +438,38 @@ public class FSTCompiler<T> {
         flags += BIT_ARC_HAS_OUTPUT;
       }
 
-      bytes.writeByte((byte) flags);
-      long labelStart = bytes.getPosition();
-      writeLabel(bytes, arc.label);
-      int numLabelBytes = (int) (bytes.getPosition() - labelStart);
+      scratchBytes.writeByte((byte) flags);
+      long labelStart = scratchBytes.getPosition();
+      writeLabel(scratchBytes, arc.label);
+      int numLabelBytes = (int) (scratchBytes.getPosition() - labelStart);
 
       // System.out.println("  write arc: label=" + (char) arc.label + " flags=" + flags + "
       // target=" + target.node + " pos=" + bytes.getPosition() + " output=" +
       // outputs.outputToString(arc.output));
 
       if (arc.output != NO_OUTPUT) {
-        fst.outputs.write(arc.output, bytes);
+        fst.outputs.write(arc.output, scratchBytes);
         // System.out.println("    write output");
       }
 
       if (arc.nextFinalOutput != NO_OUTPUT) {
         // System.out.println("    write final output");
-        fst.outputs.writeFinalOutput(arc.nextFinalOutput, bytes);
+        fst.outputs.writeFinalOutput(arc.nextFinalOutput, scratchBytes);
       }
 
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
         assert target.node > 0;
         // System.out.println("    write target");
-        bytes.writeVLong(target.node);
+        scratchBytes.writeVLong(target.node);
       }
 
       // just write the arcs "like normal" on first pass, but record how many bytes each one took
       // and max byte size:
       if (doFixedLengthArcs) {
-        int numArcBytes = (int) (bytes.getPosition() - lastArcStart);
+        int numArcBytes = (int) (scratchBytes.getPosition() - lastArcStart);
         numBytesPerArc[arcIdx] = numArcBytes;
         numLabelBytesPerArc[arcIdx] = numLabelBytes;
-        lastArcStart = bytes.getPosition();
+        lastArcStart = scratchBytes.getPosition();
         maxBytesPerArc = Math.max(maxBytesPerArc, numArcBytes);
         maxBytesPerArcWithoutLabel =
             Math.max(maxBytesPerArcWithoutLabel, numArcBytes - numLabelBytes);
@@ -441,23 +506,25 @@ public class FSTCompiler<T> {
       boolean continuousLabel = labelRange == nodeIn.numArcs;
       if (continuousLabel) {
         writeNodeForDirectAddressingOrContinuous(
-            nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, true);
+            nodeIn, maxBytesPerArcWithoutLabel, labelRange, true);
         continuousNodeCount++;
       } else if (shouldExpandNodeWithDirectAddressing(
           nodeIn, maxBytesPerArc, maxBytesPerArcWithoutLabel, labelRange)) {
         writeNodeForDirectAddressingOrContinuous(
-            nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, false);
+            nodeIn, maxBytesPerArcWithoutLabel, labelRange, false);
         directAddressingNodeCount++;
       } else {
-        writeNodeForBinarySearch(nodeIn, startAddress, maxBytesPerArc);
+        writeNodeForBinarySearch(nodeIn, maxBytesPerArc);
         binarySearchNodeCount++;
       }
     }
 
-    final long thisNodeAddress = bytes.getPosition() - 1;
-    bytes.reverse(startAddress, thisNodeAddress);
+    scratchBytes.reverse();
+    scratchBytes.writeTo(dataOutput);
+    numBytesWritten += scratchBytes.getPosition();
+
     nodeCount++;
-    return thisNodeAddress;
+    return numBytesWritten - 1;
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
@@ -532,8 +599,7 @@ public class FSTCompiler<T> {
     return false;
   }
 
-  private void writeNodeForBinarySearch(
-      FSTCompiler.UnCompiledNode<T> nodeIn, long startAddress, int maxBytesPerArc) {
+  private void writeNodeForBinarySearch(FSTCompiler.UnCompiledNode<T> nodeIn, int maxBytesPerArc) {
     // Build the header in a buffer.
     // It is a false/special arc which is in fact a node header with node flags followed by node
     // metadata.
@@ -545,11 +611,11 @@ public class FSTCompiler<T> {
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
     // Expand the arcs in place, backwards.
-    long srcPos = bytes.getPosition();
-    long destPos = startAddress + headerLen + nodeIn.numArcs * (long) maxBytesPerArc;
+    int srcPos = scratchBytes.getPosition();
+    int destPos = headerLen + nodeIn.numArcs * maxBytesPerArc;
     assert destPos >= srcPos;
     if (destPos > srcPos) {
-      bytes.skipBytes((int) (destPos - srcPos));
+      scratchBytes.skipBytes(destPos - srcPos);
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
@@ -568,18 +634,17 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          bytes.copyBytes(srcPos, destPos, arcLen);
+          scratchBytes.copyBytes(srcPos, destPos, arcLen);
         }
       }
     }
 
     // Write the header.
-    bytes.writeBytes(startAddress, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+    scratchBytes.writeBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
   private void writeNodeForDirectAddressingOrContinuous(
       FSTCompiler.UnCompiledNode<T> nodeIn,
-      long startAddress,
       int maxBytesPerArcWithoutLabel,
       int labelRange,
       boolean continuous) {
@@ -590,7 +655,7 @@ public class FSTCompiler<T> {
     // the presence bits, and the first label. Keep the first label.
     int headerMaxLen = 11;
     int numPresenceBytes = continuous ? 0 : getNumPresenceBytes(labelRange);
-    long srcPos = bytes.getPosition();
+    int srcPos = scratchBytes.getPosition();
     int totalArcBytes = numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
     int bufferOffset = headerMaxLen + numPresenceBytes + totalArcBytes;
     byte[] buffer = fixedLengthArcsBuffer.ensureCapacity(bufferOffset).getBytes();
@@ -601,16 +666,16 @@ public class FSTCompiler<T> {
       srcPos -= srcArcLen;
       int labelLen = numLabelBytesPerArc[arcIdx];
       // Copy the flags.
-      bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
+      scratchBytes.copyBytes(srcPos, buffer, bufferOffset, 1);
       // Skip the label, copy the remaining.
       int remainingArcLen = srcArcLen - 1 - labelLen;
       if (remainingArcLen != 0) {
-        bytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+        scratchBytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
       }
       if (arcIdx == 0) {
         // Copy the label of the first arc only.
         bufferOffset -= labelLen;
-        bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+        scratchBytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
       }
     }
     assert bufferOffset == headerMaxLen + numPresenceBytes;
@@ -627,19 +692,18 @@ public class FSTCompiler<T> {
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
     // Prepare the builder byte store. Enlarge or truncate if needed.
-    long nodeEnd = startAddress + headerLen + numPresenceBytes + totalArcBytes;
-    long currentPosition = bytes.getPosition();
+    int nodeEnd = headerLen + numPresenceBytes + totalArcBytes;
+    int currentPosition = scratchBytes.getPosition();
     if (nodeEnd >= currentPosition) {
-      bytes.skipBytes((int) (nodeEnd - currentPosition));
+      scratchBytes.skipBytes(nodeEnd - currentPosition);
     } else {
-      bytes.truncate(nodeEnd);
+      scratchBytes.truncate(nodeEnd);
     }
-    assert bytes.getPosition() == nodeEnd;
+    assert scratchBytes.getPosition() == nodeEnd;
 
     // Write the header.
-    long writeOffset = startAddress;
-    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-    writeOffset += headerLen;
+    scratchBytes.writeBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+    int writeOffset = headerLen;
 
     // Write the presence bits
     if (continuous == false) {
@@ -648,12 +712,13 @@ public class FSTCompiler<T> {
     }
 
     // Write the first label and the arcs.
-    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+    scratchBytes.writeBytes(
+        writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
   }
 
   private void writePresenceBits(
-      FSTCompiler.UnCompiledNode<T> nodeIn, long dest, int numPresenceBytes) {
-    long bytePos = dest;
+      FSTCompiler.UnCompiledNode<T> nodeIn, int dest, int numPresenceBytes) {
+    int bytePos = dest;
     byte presenceBits = 1; // The first arc is always present.
     int presenceIndex = 0;
     int previousLabel = nodeIn.arcs[0].label;
@@ -662,7 +727,7 @@ public class FSTCompiler<T> {
       assert label > previousLabel;
       presenceIndex += label - previousLabel;
       while (presenceIndex >= Byte.SIZE) {
-        bytes.writeByte(bytePos++, presenceBits);
+        scratchBytes.writeByte(bytePos++, presenceBits);
         presenceBits = 0;
         presenceIndex -= Byte.SIZE;
       }
@@ -673,7 +738,7 @@ public class FSTCompiler<T> {
     assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
     assert presenceBits != 0; // The last byte is not 0.
     assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
-    bytes.writeByte(bytePos++, presenceBits);
+    scratchBytes.writeByte(bytePos++, presenceBits);
     assert bytePos - dest == numPresenceBytes;
   }
 
@@ -700,11 +765,7 @@ public class FSTCompiler<T> {
       // this node makes it and we now compile it.  first,
       // compile any targets that were previously
       // undecided:
-      parent.replaceLast(
-          lastInput.intAt(idx - 1),
-          compileNode(node, 1 + lastInput.length() - idx),
-          nextFinalOutput,
-          isFinal);
+      parent.replaceLast(lastInput.intAt(idx - 1), compileNode(node), nextFinalOutput, isFinal);
     }
   }
 
@@ -840,7 +901,7 @@ public class FSTCompiler<T> {
   }
 
   void finish(long newStartNode) {
-    assert newStartNode <= bytes.getPosition();
+    assert newStartNode <= numBytesWritten;
     if (fst.metadata.startNode != -1) {
       throw new IllegalStateException("already finished");
     }
@@ -848,7 +909,8 @@ public class FSTCompiler<T> {
       newStartNode = 0;
     }
     fst.metadata.startNode = newStartNode;
-    fst.metadata.numBytes = bytes.getPosition();
+    fst.metadata.numBytes = numBytesWritten;
+    scratchBytes.truncate(0);
   }
 
   private boolean validOutput(T output) {
@@ -856,6 +918,8 @@ public class FSTCompiler<T> {
   }
 
   /** Returns final FST. NOTE: this will return null if nothing is accepted by the FST. */
+  // TODO: make this method to only return the FSTMetadata and user needs to construct the FST
+  // themselves
   public FST<T> compile() throws IOException {
 
     final UnCompiledNode<T> root = frontier[0];
@@ -870,8 +934,7 @@ public class FSTCompiler<T> {
 
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
-    finish(compileNode(root, lastInput.length()).node);
-    bytes.finish();
+    finish(compileNode(root).node);
 
     return fst;
   }
@@ -894,7 +957,7 @@ public class FSTCompiler<T> {
   }
 
   public long fstRamBytesUsed() {
-    return fst.ramBytesUsed();
+    return scratchBytes.ramBytesUsed();
   }
 
   static final class CompiledNode implements Node {

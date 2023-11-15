@@ -255,10 +255,7 @@ public class FSTTester<T> {
 
   public FST<T> doTest() throws IOException {
 
-    final FSTCompiler<T> fstCompiler =
-        new FSTCompiler.Builder<>(
-                inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-            .build();
+    final FSTCompiler<T> fstCompiler = getFSTBuilder().build();
 
     for (InputOutput<T> pair : pairs) {
       if (pair.output instanceof List) {
@@ -273,7 +270,7 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = fstCompiler.compile();
+    FST<T> fst = compile(fstCompiler);
 
     if (random.nextBoolean() && fst != null) {
       IOContext context = LuceneTestCase.newIOContext(random);
@@ -314,6 +311,15 @@ public class FSTTester<T> {
     arcCount = fstCompiler.getArcCount();
 
     return fst;
+  }
+
+  protected FST<T> compile(FSTCompiler<T> fstCompiler) throws IOException {
+    return fstCompiler.compile();
+  }
+
+  protected FSTCompiler.Builder<T> getFSTBuilder() {
+    return new FSTCompiler.Builder<>(
+        inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs);
   }
 
   protected boolean outputsEqual(T a, T b) {

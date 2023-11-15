@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import static org.apache.lucene.util.fst.FST.Arc.BitTable;
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapDataOutput;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -436,6 +437,13 @@ public final class FST<T> implements Accountable {
   }
 
   /**
+   * @return true if and only if this FST is readable (i.e. has a reverse BytesReader)
+   */
+  public boolean hasReverseBytesReader() {
+    return fstReader.getReverseBytesReader() != null;
+  }
+
+  /**
    * Read the FST metadata from DataInput
    *
    * @param metaIn the DataInput of the metadata
@@ -453,12 +461,12 @@ public final class FST<T> implements Accountable {
     if (metaIn.readByte() == 1) {
       // accepts empty string
       // 1 KB blocks:
-      BytesStore emptyBytes = new BytesStore(10);
+      DataOutput emptyBytes = getOnHeapDataOutput(10);
       int numBytes = metaIn.readVInt();
       emptyBytes.copyBytes(metaIn, numBytes);
 
       // De-serialize empty-string output:
-      BytesReader reader = emptyBytes.getReverseBytesReader();
+      BytesReader reader = ((FSTReader) emptyBytes).getReverseBytesReader();
       // NoOutputs uses 0 bytes when writing its output,
       // so we have to check here else BytesStore gets
       // angry:
@@ -1181,7 +1189,11 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
+  /**
+   * Returns a {@link BytesReader} for this FST, positioned at position 0.
+   *
+   * @see #hasReverseBytesReader()
+   */
   public BytesReader getBytesReader() {
     return fstReader.getReverseBytesReader();
   }

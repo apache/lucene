@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapDataOutput;
+
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -32,10 +34,10 @@ public final class OnHeapFSTStore implements FSTStore {
       RamUsageEstimator.shallowSizeOfInstance(OnHeapFSTStore.class);
 
   /**
-   * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
-   * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
+   * A {@link ByteBuffersFSTReader}, used during reading when the FST is very large (more than 1
+   * GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
-  private BytesStore bytes;
+  private ByteBuffersFSTReader byteBuffersReader;
 
   /** Used at read time when the FST fits into a single byte[]. */
   private byte[] bytesArray;
@@ -54,8 +56,8 @@ public final class OnHeapFSTStore implements FSTStore {
   public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (numBytes > 1 << this.maxBlockBits) {
       // FST is big: we need multiple pages
-      bytes = new BytesStore(this.maxBlockBits);
-      bytes.copyBytes(in, numBytes);
+      byteBuffersReader = (ByteBuffersFSTReader) getOnHeapDataOutput(maxBlockBits);
+      byteBuffersReader.copyBytes(in, numBytes);
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead
       bytesArray = new byte[(int) numBytes];
@@ -70,7 +72,7 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       size += bytesArray.length;
     } else {
-      size += bytes.ramBytesUsed();
+      size += byteBuffersReader.ramBytesUsed();
     }
     return size;
   }
@@ -80,14 +82,14 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return new ReverseBytesReader(bytesArray);
     } else {
-      return bytes.getReverseBytesReader();
+      return byteBuffersReader.getReverseBytesReader();
     }
   }
 
   @Override
   public void writeTo(DataOutput out) throws IOException {
-    if (bytes != null) {
-      bytes.writeTo(out);
+    if (byteBuffersReader != null) {
+      byteBuffersReader.writeTo(out);
     } else {
       assert bytesArray != null;
       out.writeBytes(bytesArray, 0, bytesArray.length);

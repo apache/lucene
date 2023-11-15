@@ -129,7 +129,6 @@ final class NodeHash<T> {
         } else {
           // not in fallback either -- freeze & add the incoming node
 
-          long startAddress = fstCompiler.bytes.getPosition();
           // freeze & add
           nodeAddress = fstCompiler.addNode(nodeIn);
 
@@ -137,8 +136,8 @@ final class NodeHash<T> {
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
           assert nodeAddress != FST.FINAL_END_NODE && nodeAddress != FST.NON_FINAL_END_NODE;
-          byte[] buf = new byte[Math.toIntExact(nodeAddress - startAddress + 1)];
-          fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
+          byte[] buf = new byte[Math.toIntExact(fstCompiler.scratchBytes.getPosition())];
+          fstCompiler.scratchBytes.copyBytes(0, buf, 0, buf.length);
 
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
           primaryTable.copyNodeBytes(hashSlot, buf);
