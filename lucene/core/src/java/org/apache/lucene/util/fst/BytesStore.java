@@ -330,9 +330,7 @@ class BytesStore extends DataOutput implements FSTReader {
     return getPosition();
   }
 
-  /**
-   * Set the position of this BytesStore, truncating or expanding if needed
-   */
+  /** Set the position of this BytesStore, truncating or expanding if needed */
   public void setPosition(long newLen) {
     assert newLen >= 0;
     long oldPosition = getPosition();
