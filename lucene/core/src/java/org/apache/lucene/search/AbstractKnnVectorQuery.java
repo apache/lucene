@@ -32,6 +32,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.InfoStream;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -52,6 +53,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final String field;
   protected final int k;
   private final Query filter;
+  private final InfoStream infoStream = InfoStream.getDefault();
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
@@ -89,6 +91,9 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     // Merge sort the results
     TopDocs topK = mergeLeafResults(perLeafResults);
+    if (infoStream.isEnabled("knn")) {
+      infoStream.message("knn", "visited:" + topK.totalHits.value);
+    }
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
