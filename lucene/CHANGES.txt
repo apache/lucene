@@ -171,7 +171,7 @@ API Changes
 * GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
   FacetLabel at once. (Egor Potemkin)
 
-* GITHUB#12816: Add optional queryDescription to AbstractKnnVectorQuery. (Jakub Slowinski)
+* GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
 
 New Features
 ---------------------
