@@ -90,7 +90,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     System.arraycopy(b, offset, bytes, dest, len);
   }
 
-  /** Reverse from srcPos, inclusive, to destPos, inclusive. */
+  /** Reverse the written byte[]. */
   public void reverse() {
     int src = 0;
     int dest = nextWrite - 1;

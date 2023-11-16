@@ -893,7 +893,6 @@ public class FSTCompiler<T> {
     }
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
-    scratchBytes.setPosition(0);
   }
 
   private boolean validOutput(T output) {
