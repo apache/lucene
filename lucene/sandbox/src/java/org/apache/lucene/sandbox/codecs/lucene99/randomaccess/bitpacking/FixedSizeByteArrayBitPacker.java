@@ -23,7 +23,7 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
  */
 public final class FixedSizeByteArrayBitPacker extends BitPackerImplBase {
   private final byte[] bytes;
-  private int numBytesUsed = 0;
+  private int numBytesUsed;
 
   public FixedSizeByteArrayBitPacker(int capacity) {
     this.bytes = new byte[capacity];
