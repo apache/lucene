@@ -52,14 +52,16 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final String field;
   protected final int k;
   private final Query filter;
+  private final String queryDescription;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter) {
+  public AbstractKnnVectorQuery(String field, int k, Query filter, String queryDescription) {
     this.field = Objects.requireNonNull(field, "field");
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
     this.filter = filter;
+    this.queryDescription = queryDescription;
   }
 
   @Override
@@ -276,6 +278,13 @@ abstract class AbstractKnnVectorQuery extends Query {
    */
   public String getField() {
     return field;
+  }
+
+  /**
+   * @return the optional, human-readable description
+   */
+  public String getQueryDescription() {
+    return queryDescription;
   }
 
   /**

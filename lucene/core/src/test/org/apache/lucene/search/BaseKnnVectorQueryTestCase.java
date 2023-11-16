@@ -54,13 +54,16 @@ import org.apache.lucene.util.FixedBitSet;
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
+      String field, float[] query, int k, Query queryFilter, String queryDescription);
+
+  abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
-    return getKnnVectorQuery(field, query, k, null);
+    return getKnnVectorQuery(field, query, k, null, "");
   }
 
   abstract float[] randomVector(int dim);
@@ -119,6 +122,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
     assertNull(q1.getFilter());
     assertEquals(filter1, q2.getFilter());
+  }
+
+  public void testGetQueryDescription() {
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    String queryDescription1 = "TestQuery";
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6, filter1, null);
+    AbstractKnnVectorQuery q2 =
+        getKnnVectorQuery("f2", new float[] {0, 1}, 7, filter1, queryDescription1);
+
+    assertNull(q1.getQueryDescription());
+    assertEquals(queryDescription1, q2.getQueryDescription());
   }
 
   /**
