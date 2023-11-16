@@ -14,12 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.misc.search;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -35,6 +41,7 @@ public class TestHumanReadableQuery extends LuceneTestCase {
   private static IndexSearcher searcher;
   private static IndexReader reader;
   private static Directory directory;
+  private static final String field = "field";
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -49,7 +56,7 @@ public class TestHumanReadableQuery extends LuceneTestCase {
     // writer.infoStream = System.out;
     for (int i = 0; i < 1000; i++) {
       Document doc = new Document();
-      doc.add(newTextField("field", English.intToEnglish(i), Field.Store.YES));
+      doc.add(newTextField(field, English.intToEnglish(i), Field.Store.YES));
       writer.addDocument(doc);
     }
     reader = writer.getReader();
@@ -67,11 +74,11 @@ public class TestHumanReadableQuery extends LuceneTestCase {
   }
 
   public void testHitsEqualPhraseQuery() throws Exception {
-    PhraseQuery pQuery = new PhraseQuery("field", "seventy", "seven");
+    PhraseQuery pQuery = new PhraseQuery(field, "seventy", "seven");
     CheckHits.checkHits(
         random(),
         pQuery,
-        "field",
+        field,
         searcher,
         new int[] {77, 177, 277, 377, 477, 577, 677, 777, 877, 977});
 
@@ -80,7 +87,7 @@ public class TestHumanReadableQuery extends LuceneTestCase {
     CheckHits.checkHits(
         random(),
         hQuery,
-        "field",
+        field,
         searcher,
         new int[] {77, 177, 277, 377, 477, 577, 677, 777, 877, 977});
     assertEquals(hQuery.toString(), description + ":" + pQuery);
@@ -88,13 +95,13 @@ public class TestHumanReadableQuery extends LuceneTestCase {
 
   public void testHitsEqualBooleanQuery() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    query.add(new TermQuery(new Term("field", "seventy")), BooleanClause.Occur.MUST);
-    query.add(new TermQuery(new Term("field", "seven")), BooleanClause.Occur.MUST);
+    query.add(new TermQuery(new Term(field, "seventy")), BooleanClause.Occur.MUST);
+    query.add(new TermQuery(new Term(field, "seven")), BooleanClause.Occur.MUST);
     BooleanQuery bQuery = query.build();
     CheckHits.checkHits(
         random(),
         bQuery,
-        "field",
+        field,
         searcher,
         new int[] {
           77, 177, 277, 377, 477, 577, 677, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 877,
@@ -106,7 +113,7 @@ public class TestHumanReadableQuery extends LuceneTestCase {
     CheckHits.checkHits(
         random(),
         hQuery,
-        "field",
+        field,
         searcher,
         new int[] {
           77, 177, 277, 377, 477, 577, 677, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 877,

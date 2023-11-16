@@ -14,13 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.misc.search;
 
-import java.io.IOException;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Weight;
 
 /**
- * A query for wrapping other queries for debug purposes. Behaves like the given query, but when
- * printing to a string, it will prepend the description parameter to the query.
+ * A simple query wrapper for debug purposes. Behaves like the given query, but when printing to a
+ * string, it will prepend the description parameter to the query output.
  */
 public final class HumanReadableQuery extends Query {
 
@@ -53,12 +57,8 @@ public final class HumanReadableQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    Query rewritten = in.rewrite(indexSearcher);
-    if (rewritten == in) {
-      return this;
-    }
-    return new HumanReadableQuery(rewritten, description);
+  public Query rewrite(IndexSearcher indexSearcher) {
+    return in;
   }
 
   @Override
@@ -77,9 +77,8 @@ public final class HumanReadableQuery extends Query {
   }
 
   @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-      throws IOException {
-    return in.createWeight(searcher, scoreMode, boost);
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
+    throw new UnsupportedOperationException("HumanReadableQuery does not support #createWeight()");
   }
 
   @Override
