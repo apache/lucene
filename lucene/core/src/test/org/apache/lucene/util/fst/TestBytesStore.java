@@ -159,7 +159,7 @@ public class TestBytesStore extends LuceneTestCase {
                   System.out.println("    copyBytes src=" + src + " dest=" + dest + " len=" + len);
                 }
                 System.arraycopy(expected, src, expected, dest, len);
-                bytes.writeTo(src, dest, len);
+                bytes.copyBytes(src, dest, len);
               }
             }
             break;

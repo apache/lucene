@@ -568,7 +568,7 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          bytes.writeTo(srcPos, destPos, arcLen);
+          bytes.copyBytes(srcPos, destPos, arcLen);
         }
       }
     }
