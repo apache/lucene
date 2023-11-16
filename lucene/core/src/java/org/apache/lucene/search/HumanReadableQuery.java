@@ -33,7 +33,7 @@ public final class HumanReadableQuery extends Query {
    * @param in the query to wrap
    * @param description a human-readable description, used in toString()
    */
-  HumanReadableQuery(Query in, String description) {
+  public HumanReadableQuery(Query in, String description) {
     this.in = in;
     this.description = description;
   }
