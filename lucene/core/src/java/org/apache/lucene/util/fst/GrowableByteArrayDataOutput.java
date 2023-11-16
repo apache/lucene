@@ -50,15 +50,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     nextWrite += len;
   }
 
-  /**
-   * Ensure we can write additional capacityToWrite bytes. The array will preferably grow x2 size.
-   *
-   * @param capacityToWrite the additional bytes to write
-   */
-  private void ensureCapacity(int capacityToWrite) {
-    bytes = ArrayUtil.grow(bytes, nextWrite + capacityToWrite);
-  }
-
   @Override
   public void copyBytes(DataInput input, long numBytes) throws IOException {
     assert numBytes >= 0 : "numBytes=" + numBytes;
@@ -67,6 +58,21 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     ensureCapacity(length);
     input.readBytes(bytes, nextWrite, length);
     nextWrite += length;
+  }
+
+  /** Skip a number of bytes, increasing capacity if needed */
+  public void skipBytes(int len) {
+    ensureCapacity(len);
+    nextWrite += len;
+  }
+
+  /**
+   * Ensure we can write additional capacityToWrite bytes.
+   *
+   * @param capacityToWrite the additional bytes to write
+   */
+  private void ensureCapacity(int capacityToWrite) {
+    bytes = ArrayUtil.grow(bytes, nextWrite + capacityToWrite);
   }
 
   /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
@@ -108,11 +114,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
       bytes[src + i] = bytes[dest - i];
       bytes[dest - i] = b;
     }
-  }
-
-  public void skipBytes(int len) {
-    ensureCapacity(len);
-    nextWrite += len;
   }
 
   public int getPosition() {
