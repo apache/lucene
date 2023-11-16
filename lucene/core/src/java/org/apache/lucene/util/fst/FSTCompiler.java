@@ -607,13 +607,8 @@ public class FSTCompiler<T> {
         .writeVInt(maxBytesPerArc);
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
-    int srcPos = scratchBytes.getPosition();
-
-    // First write the header
-    scratchBytes.setPosition(0);
-    scratchBytes.writeBytes(fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-
     // Expand the arcs in place, backwards.
+    int srcPos = scratchBytes.getPosition();
     int destPos = headerLen + nodeIn.numArcs * maxBytesPerArc;
     assert destPos >= srcPos;
     scratchBytes.setPosition(destPos);
@@ -636,14 +631,28 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          assert destPos + arcLen <= scratchBytes.getPosition();
           // copy the bytes from srcPos to destPos, essentially expanding the arc from variable
           // length to fixed length
-          System.arraycopy(
-              scratchBytes.getBytes(), srcPos, scratchBytes.getBytes(), destPos, arcLen);
+          writeScratchBytes(destPos, scratchBytes.getBytes(), srcPos, arcLen);
         }
       }
     }
+
+    // Finally write the header
+    writeScratchBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+  }
+
+  /**
+   * Write bytes from a source byte[] to the scratch bytes
+   *
+   * @param destPos the position in the scratch bytes
+   * @param bytes the source byte[]
+   * @param offset the offset inside the source byte[]
+   * @param length the number of bytes to write
+   */
+  private void writeScratchBytes(int destPos, byte[] bytes, int offset, int length) {
+    assert destPos + length <= scratchBytes.getPosition();
+    System.arraycopy(bytes, offset, scratchBytes.getBytes(), destPos, length);
   }
 
   private void writeNodeForDirectAddressingOrContinuous(

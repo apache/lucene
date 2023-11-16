@@ -87,13 +87,11 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
 
   /** Reverse the written byte[]. */
   public void reverse() {
-    int src = 0;
-    int dest = nextWrite - 1;
-    int limit = (dest - src + 1) / 2;
+    int limit = nextWrite / 2;
     for (int i = 0; i < limit; i++) {
-      byte b = bytes[src + i];
-      bytes[src + i] = bytes[dest - i];
-      bytes[dest - i] = b;
+      byte b = bytes[i];
+      bytes[i] = bytes[nextWrite - 1 - i];
+      bytes[nextWrite - 1 - i] = b;
     }
   }
 
