@@ -159,7 +159,7 @@ public class TestBytesStore extends LuceneTestCase {
                   System.out.println("    copyBytes src=" + src + " dest=" + dest + " len=" + len);
                 }
                 System.arraycopy(expected, src, expected, dest, len);
-                bytes.copyBytes(src, dest, len);
+                bytes.writeTo(src, dest, len);
               }
             }
             break;
@@ -237,7 +237,7 @@ public class TestBytesStore extends LuceneTestCase {
     final int blockBits = TestUtil.nextInt(random(), 8, 15);
     final BytesStore o = new BytesStore(blockBits);
     o.copyBytes(in, len);
-    o.copyBytes(0, bytesout, 0, len);
+    o.writeTo(0, bytesout, 0, len);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(bytesout, 0, len),
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len));

@@ -568,7 +568,7 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          bytes.copyBytes(srcPos, destPos, arcLen);
+          bytes.writeTo(srcPos, destPos, arcLen);
         }
       }
     }
@@ -601,16 +601,16 @@ public class FSTCompiler<T> {
       srcPos -= srcArcLen;
       int labelLen = numLabelBytesPerArc[arcIdx];
       // Copy the flags.
-      bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
+      bytes.writeTo(srcPos, buffer, bufferOffset, 1);
       // Skip the label, copy the remaining.
       int remainingArcLen = srcArcLen - 1 - labelLen;
       if (remainingArcLen != 0) {
-        bytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+        bytes.writeTo(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
       }
       if (arcIdx == 0) {
         // Copy the label of the first arc only.
         bufferOffset -= labelLen;
-        bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+        bytes.writeTo(srcPos + 1, buffer, bufferOffset, labelLen);
       }
     }
     assert bufferOffset == headerMaxLen + numPresenceBytes;

@@ -172,7 +172,7 @@ class BytesStore extends DataOutput implements FSTReader {
    * Absolute copy bytes self to self, without changing the position. Note: this cannot "grow" the
    * bytes, so must only call it on already written parts.
    */
-  public void copyBytes(long src, long dest, int len) {
+  public void writeTo(long src, long dest, int len) {
     // System.out.println("BS.copyBytes src=" + src + " dest=" + dest + " len=" + len);
     assert src < dest;
 
@@ -230,7 +230,7 @@ class BytesStore extends DataOutput implements FSTReader {
   }
 
   /** Copies bytes from this store to a target byte array. */
-  public void copyBytes(long src, byte[] dest, int offset, int len) {
+  public void writeTo(long src, byte[] dest, int offset, int len) {
     int blockIndex = (int) (src >> blockBits);
     int upto = (int) (src & blockMask);
     byte[] block = blocks.get(blockIndex);
