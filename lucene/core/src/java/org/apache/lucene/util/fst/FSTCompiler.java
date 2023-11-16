@@ -631,12 +631,11 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          scratchBytes.copyBytes(srcPos, destPos, arcLen);
+          scratchBytes.writeBytes(destPos, scratchBytes.bytes, srcPos, arcLen);
         }
       }
     }
 
-    // Write the header.
     scratchBytes.writeBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
@@ -663,16 +662,16 @@ public class FSTCompiler<T> {
       srcPos -= srcArcLen;
       int labelLen = numLabelBytesPerArc[arcIdx];
       // Copy the flags.
-      scratchBytes.copyBytes(srcPos, buffer, bufferOffset, 1);
+      scratchBytes.writeTo(srcPos, buffer, bufferOffset, 1);
       // Skip the label, copy the remaining.
       int remainingArcLen = srcArcLen - 1 - labelLen;
       if (remainingArcLen != 0) {
-        scratchBytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+        scratchBytes.writeTo(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
       }
       if (arcIdx == 0) {
         // Copy the label of the first arc only.
         bufferOffset -= labelLen;
-        scratchBytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+        scratchBytes.writeTo(srcPos + 1, buffer, bufferOffset, labelLen);
       }
     }
     assert bufferOffset == headerMaxLen + numPresenceBytes;
@@ -688,29 +687,22 @@ public class FSTCompiler<T> {
             maxBytesPerArcWithoutLabel); // maxBytesPerArcWithoutLabel instead of maxBytesPerArc.
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
-    // Prepare the builder byte store. Enlarge or truncate if needed.
-    int nodeEnd = headerLen + numPresenceBytes + totalArcBytes;
-    scratchBytes.setPosition(nodeEnd);
-    assert scratchBytes.getPosition() == nodeEnd;
-
     // Write the header.
-    scratchBytes.writeBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-    int writeOffset = headerLen;
+    scratchBytes.setPosition(0);
+    scratchBytes.writeBytes(fixedLengthArcsBuffer.getBytes(), 0, headerLen);
 
     // Write the presence bits
     if (continuous == false) {
-      writePresenceBits(nodeIn, writeOffset, numPresenceBytes);
-      writeOffset += numPresenceBytes;
+      writePresenceBits(nodeIn, numPresenceBytes);
+      assert scratchBytes.getPosition() - headerLen == numPresenceBytes;
     }
 
     // Write the first label and the arcs.
-    scratchBytes.writeBytes(
-        writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+    scratchBytes.writeBytes(fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+    assert scratchBytes.getPosition() == headerLen + numPresenceBytes + totalArcBytes;
   }
 
-  private void writePresenceBits(
-      FSTCompiler.UnCompiledNode<T> nodeIn, int dest, int numPresenceBytes) {
-    int bytePos = dest;
+  private void writePresenceBits(FSTCompiler.UnCompiledNode<T> nodeIn, int numPresenceBytes) {
     byte presenceBits = 1; // The first arc is always present.
     int presenceIndex = 0;
     int previousLabel = nodeIn.arcs[0].label;
@@ -719,7 +711,7 @@ public class FSTCompiler<T> {
       assert label > previousLabel;
       presenceIndex += label - previousLabel;
       while (presenceIndex >= Byte.SIZE) {
-        scratchBytes.writeByte(bytePos++, presenceBits);
+        scratchBytes.writeByte(presenceBits);
         presenceBits = 0;
         presenceIndex -= Byte.SIZE;
       }
@@ -730,8 +722,7 @@ public class FSTCompiler<T> {
     assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
     assert presenceBits != 0; // The last byte is not 0.
     assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
-    scratchBytes.writeByte(bytePos++, presenceBits);
-    assert bytePos - dest == numPresenceBytes;
+    scratchBytes.writeByte(presenceBits);
   }
 
   private void freezeTail(int prefixLenPlus1) throws IOException {

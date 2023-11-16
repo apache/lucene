@@ -53,9 +53,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     return nextWrite;
   }
 
-  /**
-   * Set the position of the byte[], increasing the capacity if needed
-   */
+  /** Set the position of the byte[], increasing the capacity if needed */
   public void setPosition(int newLen) {
     assert newLen >= 0;
     if (newLen > nextWrite) {
@@ -78,10 +76,9 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     out.writeBytes(bytes, 0, nextWrite);
   }
 
-  /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
-  public void writeByte(int dest, byte b) {
-    assert dest < nextWrite;
-    bytes[dest] = b;
+  /** Copies bytes from this store to a target byte array. */
+  public void writeTo(int src, byte[] dest, int offset, int len) {
+    System.arraycopy(bytes, src, dest, offset, len);
   }
 
   /**
@@ -91,20 +88,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
   public void writeBytes(int dest, byte[] b, int offset, int len) {
     assert dest + len <= nextWrite : "dest=" + dest + " pos=" + nextWrite + " len=" + len;
     System.arraycopy(b, offset, bytes, dest, len);
-  }
-
-  /**
-   * Absolute copy bytes self to self, without changing the position. Note: this cannot "grow" the
-   * bytes, so must only call it on already written parts.
-   */
-  public void copyBytes(int src, int dest, int len) {
-    assert src < dest;
-    writeBytes(dest, bytes, src, len);
-  }
-
-  /** Copies bytes from this store to a target byte array. */
-  public void copyBytes(int src, byte[] dest, int offset, int len) {
-    System.arraycopy(bytes, src, dest, offset, len);
   }
 
   /** Reverse from srcPos, inclusive, to destPos, inclusive. */

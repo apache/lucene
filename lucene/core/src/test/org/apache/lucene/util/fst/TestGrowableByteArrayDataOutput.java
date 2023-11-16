@@ -45,7 +45,7 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(6);
+        int op = random().nextInt(4);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -120,34 +120,6 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
               }
             }
             break;
-
-          case 4:
-            {
-              // copyBytes
-              if (pos > 1) {
-                int src = random().nextInt(pos - 1);
-                int dest = TestUtil.nextInt(random(), src + 1, pos - 1);
-                int len = TestUtil.nextInt(random(), 1, Math.min(300, pos - dest));
-                if (VERBOSE) {
-                  System.out.println("    copyBytes src=" + src + " dest=" + dest + " len=" + len);
-                }
-                System.arraycopy(expected, src, expected, dest, len);
-                bytes.copyBytes(src, dest, len);
-              }
-            }
-            break;
-
-          case 5:
-            {
-              // absWriteByte
-              if (pos > 0) {
-                int dest = random().nextInt(pos);
-                byte b = (byte) random().nextInt(256);
-                expected[dest] = b;
-                bytes.writeByte(dest, b);
-              }
-              break;
-            }
         }
 
         assertEquals(pos, bytes.getPosition());
@@ -200,7 +172,7 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
     ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
     final GrowableByteArrayDataOutput o = new GrowableByteArrayDataOutput();
     o.copyBytes(in, len);
-    o.copyBytes(0, bytesout, 0, len);
+    o.writeTo(0, bytesout, 0, len);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(bytesout, 0, len),
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
