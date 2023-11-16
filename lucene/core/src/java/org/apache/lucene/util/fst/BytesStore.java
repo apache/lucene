@@ -48,13 +48,6 @@ class BytesStore extends DataOutput implements FSTReader {
     nextWrite = blockSize;
   }
 
-  /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
-  public void writeByte(long dest, byte b) {
-    int blockIndex = (int) (dest >> blockBits);
-    byte[] block = blocks.get(blockIndex);
-    block[(int) (dest & blockMask)] = b;
-  }
-
   @Override
   public void writeByte(byte b) {
     if (nextWrite == blockSize) {
@@ -237,7 +230,7 @@ class BytesStore extends DataOutput implements FSTReader {
   }
 
   /** Copies bytes from this store to a target byte array. */
-  public void copyBytes(long src, byte[] dest, int offset, int len) {
+  public void writeTo(long src, byte[] dest, int offset, int len) {
     int blockIndex = (int) (src >> blockBits);
     int upto = (int) (src & blockMask);
     byte[] block = blocks.get(blockIndex);
@@ -313,7 +306,7 @@ class BytesStore extends DataOutput implements FSTReader {
     }
   }
 
-  public void skipBytes(int len) {
+  private void skipBytes(int len) {
     while (len > 0) {
       int chunk = blockSize - nextWrite;
       if (len <= chunk) {
@@ -337,13 +330,14 @@ class BytesStore extends DataOutput implements FSTReader {
     return getPosition();
   }
 
-  /**
-   * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
-   * this!
-   */
-  public void truncate(long newLen) {
-    assert newLen <= getPosition();
+  /** Set the position of this BytesStore, truncating or expanding if needed */
+  public void setPosition(long newLen) {
     assert newLen >= 0;
+    long oldPosition = getPosition();
+    if (newLen > oldPosition) {
+      skipBytes((int) (newLen - oldPosition));
+      return;
+    }
     int blockIndex = (int) (newLen >> blockBits);
     nextWrite = (int) (newLen & blockMask);
     if (nextWrite == 0) {
