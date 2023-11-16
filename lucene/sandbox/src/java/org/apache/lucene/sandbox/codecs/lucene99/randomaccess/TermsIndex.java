@@ -18,8 +18,12 @@
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.fst.FST;
+import org.apache.lucene.util.fst.OffHeapFSTStore;
+import org.apache.lucene.util.fst.PositiveIntOutputs;
 import org.apache.lucene.util.fst.Util;
 
 record TermsIndex(FST<Long> fst) {
@@ -32,4 +36,19 @@ record TermsIndex(FST<Long> fst) {
   }
 
   public record TypeAndOrd(TermType termType, long ord) {}
+
+  public void serialize(DataOutput metaOut, DataOutput dataOut) throws IOException {
+    fst.save(metaOut, dataOut);
+  }
+
+  public TermsIndex deserialize(DataInput metaIn, DataInput dataIn, boolean loadOffHeap)
+      throws IOException {
+    FST<Long> fst;
+    if (loadOffHeap) {
+      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton(), new OffHeapFSTStore());
+    } else {
+      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton());
+    }
+    return new TermsIndex(fst);
+  }
 }

@@ -56,6 +56,10 @@ public class BitPerBytePacker implements BitPacker, BitUnpacker {
   }
 
   public byte[] getCompactBytes() {
+    if (totalNumBits == 0) {
+      return new byte[0];
+    }
+
     int len = (totalNumBits - 1) / 8 + 1; // round up
     byte[] bytes = new byte[len];
 

@@ -31,14 +31,17 @@ abstract class TermStateCodecComponent {
     return "TermStateCodecComponent{" + "name='" + name + '\'' + '}';
   }
 
-  static byte getBitWidth(IntBlockTermState[] termStates, TermStateCodecComponent component) {
+  static byte getBitWidth(
+      IntBlockTermState[] termStates, int upTo, TermStateCodecComponent component) {
     assert termStates.length > 0;
+    assert upTo > 0 && upTo <= termStates.length;
 
     long maxValSeen = -1;
     long referenceValue =
         component.isMonotonicallyIncreasing() ? component.getTargetValue(termStates[0]) : 0;
 
-    for (var termState : termStates) {
+    for (int i = 0; i < upTo; i++) {
+      var termState = termStates[i];
       maxValSeen = Math.max(maxValSeen, component.getTargetValue(termState) - referenceValue);
     }
     return (byte) (64 - Long.numberOfLeadingZeros(maxValSeen));

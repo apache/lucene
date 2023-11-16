@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
@@ -48,6 +49,16 @@ final class TermStateCodecImpl implements TermStateCodec {
       metadataBytesLength += getMetadataLength(component);
     }
     this.metadataBytesLength = metadataBytesLength;
+  }
+
+  @Override
+  public int getMetadataBytesLength() {
+    return metadataBytesLength;
+  }
+
+  @Override
+  public int getNumBitsPerRecord(BytesRef metadataBytes) {
+    return deserializedMetadata(metadataBytes).totalBitsPerTermState;
   }
 
   private static int getMetadataLength(TermStateCodecComponent component) {
@@ -119,24 +130,25 @@ final class TermStateCodecImpl implements TermStateCodec {
   }
 
   @Override
-  public byte[] encodeBlock(IntBlockTermState[] inputs, BitPacker bitPacker) {
-    Metadata[] metadataPerComponent = getMetadataPerComponent(inputs);
+  public byte[] encodeBlockUpTo(IntBlockTermState[] inputs, int uptop, BitPacker bitPacker)
+      throws IOException {
+    Metadata[] metadataPerComponent = getMetadataPerComponent(inputs, uptop);
     byte[] metadataBytes = serializeMetadata(metadataPerComponent);
 
     // Encode inputs via the bitpacker
-    for (var termState : inputs) {
-      encodeOne(bitPacker, termState, metadataPerComponent);
+    for (int i = 0; i < uptop; i++) {
+      encodeOne(bitPacker, inputs[i], metadataPerComponent);
     }
     bitPacker.flush();
 
     return metadataBytes;
   }
 
-  private Metadata[] getMetadataPerComponent(IntBlockTermState[] inputs) {
-    Metadata[] metadataPerComponent = new Metadata[components.length];
+  private Metadata[] getMetadataPerComponent(IntBlockTermState[] inputs, int upTo) {
+    Metadata[] metadataPerComponent = new Metadata[upTo];
     for (int i = 0; i < components.length; i++) {
       var component = components[i];
-      byte bitWidth = TermStateCodecComponent.getBitWidth(inputs, component);
+      byte bitWidth = TermStateCodecComponent.getBitWidth(inputs, upTo, component);
       long referenceValue =
           component.isMonotonicallyIncreasing() ? component.getTargetValue(inputs[0]) : 0L;
       metadataPerComponent[i] = new Metadata(bitWidth, referenceValue);
@@ -159,7 +171,8 @@ final class TermStateCodecImpl implements TermStateCodec {
   }
 
   private void encodeOne(
-      BitPacker bitPacker, IntBlockTermState termState, Metadata[] metadataPerComponent) {
+      BitPacker bitPacker, IntBlockTermState termState, Metadata[] metadataPerComponent)
+      throws IOException {
     for (int i = 0; i < components.length; i++) {
       var component = components[i];
       var metadata = metadataPerComponent[i];

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
@@ -24,13 +25,30 @@ import org.apache.lucene.util.BytesRef;
 
 interface TermStateCodec {
 
+  /** Get the number of bytes that the metadata per block needs. */
+  int getMetadataBytesLength();
+
+  /** Get the number of bits per data record within the block, based on the provided metadata. */
+  int getNumBitsPerRecord(BytesRef metadataBytes);
+
   /**
    * Encode the sequence of {@link IntBlockTermState}s with the given bitPacker into a block of
    * bytes.
    *
    * @return the metadata associated with the encoded bytes
    */
-  byte[] encodeBlock(IntBlockTermState[] inputs, BitPacker bitPacker);
+  default byte[] encodeBlock(IntBlockTermState[] inputs, BitPacker bitPacker) throws IOException {
+    return encodeBlockUpTo(inputs, inputs.length, bitPacker);
+  }
+
+  /**
+   * Encode the sequence of {@link IntBlockTermState}s up to length, with the given bitPacker into a
+   * block of bytes.
+   *
+   * @return the metadata associated with the encoded bytes
+   */
+  byte[] encodeBlockUpTo(IntBlockTermState[] inputs, int upto, BitPacker bitPacker)
+      throws IOException;
 
   /**
    * Decode out a {@link IntBlockTermState} with the provided bit-unpacker, metadata byte slice and

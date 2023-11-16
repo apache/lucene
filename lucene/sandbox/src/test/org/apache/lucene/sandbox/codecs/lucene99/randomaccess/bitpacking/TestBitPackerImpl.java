@@ -17,12 +17,13 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
+import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBitPackerImpl extends LuceneTestCase {
 
-  public void testBasic() {
+  public void testBasic() throws IOException {
     FixedSizeByteArrayBitPacker fixedSizeByteArrayBitPacker = new FixedSizeByteArrayBitPacker(5);
     for (int i = 1; i <= 10; i++) {
       fixedSizeByteArrayBitPacker.add(i, 4);
@@ -33,7 +34,7 @@ public class TestBitPackerImpl extends LuceneTestCase {
     assertArrayEquals(expectedBytes, fixedSizeByteArrayBitPacker.getBytes());
   }
 
-  public void testRandom() {
+  public void testRandom() throws IOException {
     ValueAndBitWidth[] randomInputs = ValueAndBitWidth.getRandomArray(random(), 1000);
     int totalNumberBits = Arrays.stream(randomInputs).mapToInt(ValueAndBitWidth::bitWidth).sum();
 

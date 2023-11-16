@@ -15,16 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
-import java.io.IOException;
+import org.apache.lucene.util.BytesRef;
 
-/** Interface for bit-packing */
-public interface BitPacker {
-
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits) throws IOException;
-
-  /** Flush any pending byte */
-  void flush() throws IOException;
-}
+/** Data class that holds starts for term stats for a field */
+record TermsStats(
+    long size,
+    long sumTotalTermFreq,
+    long sumDocFreq,
+    int docCount,
+    BytesRef minTerm,
+    BytesRef maxTerm) {}

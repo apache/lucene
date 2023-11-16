@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.IndexOptions;
@@ -30,7 +31,76 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestTermStateCodecImpl extends LuceneTestCase {
 
-  public void testEncodeDecode() {
+  public void testEncodeDecode() throws IOException {
+    TermStateTestFixture result = getTermStateTestFixture(256);
+
+    BitPerBytePacker bitPerBytePacker = new BitPerBytePacker();
+    byte[] metadata = result.codec().encodeBlock(result.termStatesArray(), bitPerBytePacker);
+
+    // For the metadata, we expect
+    // 0: DocFreq.bitWidth,
+    // 1: DocStartFP.bitWidth,
+    // [2-10]: DocStartFP.referenceValue;
+    int expectedDocFreqBitWidth = 64 - Long.numberOfLeadingZeros(result.maxDocFreqSeen());
+    int expectedDocStartFPBitWidth =
+        64 - Long.numberOfLeadingZeros(result.maxDocStartFPDeltaSeen());
+    assertEquals(10, metadata.length);
+    assertEquals(expectedDocFreqBitWidth, metadata[0]);
+    assertEquals(expectedDocStartFPBitWidth, metadata[1]);
+    ByteArrayDataInput byteArrayDataInput = new ByteArrayDataInput(metadata, 2, 8);
+    assertEquals(result.docStartFPBase(), byteArrayDataInput.readLong());
+
+    // Assert with real bit-packer we get the same bytes
+    FixedSizeByteArrayBitPacker fixedSizeByteArrayBitPacker =
+        new FixedSizeByteArrayBitPacker(bitPerBytePacker.getCompactBytes().length);
+    result.codec().encodeBlock(result.termStatesArray(), fixedSizeByteArrayBitPacker);
+    assertArrayEquals(bitPerBytePacker.getCompactBytes(), fixedSizeByteArrayBitPacker.getBytes());
+
+    // Assert that each term state is the same after the encode-decode roundtrip.
+    BytesRef metadataBytes = new BytesRef(metadata);
+    BytesRef dataBytes = new BytesRef(bitPerBytePacker.getBytes());
+    assertBlockRoundTrip(
+        result.termStatesArray(), result.codec(), metadataBytes, dataBytes, bitPerBytePacker);
+
+    // With real compact bits instead of bit-per-byte
+    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes());
+    assertBlockRoundTrip(
+        result.termStatesArray(),
+        result.codec(),
+        metadataBytes,
+        dataBytes,
+        BitUnpackerImpl.INSTANCE);
+
+    // Also test decoding that doesn't begin at the start of the block.
+    int pos = random().nextInt(result.termStatesArray().length);
+    int startBitIndex = pos > 0 ? random().nextInt(pos) : 0;
+    int recordSize = expectedDocFreqBitWidth + expectedDocStartFPBitWidth;
+    // With bit-per-byte bytes
+    dataBytes =
+        new BytesRef(bitPerBytePacker.getBytes(), pos * recordSize - startBitIndex, recordSize);
+    assertDecodeAt(
+        result.codec(),
+        metadataBytes,
+        dataBytes,
+        bitPerBytePacker,
+        startBitIndex,
+        result.termStatesArray()[pos]);
+
+    // With compact bytes
+    int startByteIndex = pos * recordSize / 8;
+    int endByteIndex = (pos + 1) * recordSize / 8;
+    int length = endByteIndex - startByteIndex + ((pos + 1) * recordSize % 8 == 0 ? 0 : 1);
+    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes(), startByteIndex, length);
+    assertDecodeAt(
+        result.codec(),
+        metadataBytes,
+        dataBytes,
+        BitUnpackerImpl.INSTANCE,
+        (pos * recordSize) % 8,
+        result.termStatesArray()[pos]);
+  }
+
+  public static TermStateTestFixture getTermStateTestFixture(int size) {
     TermStateCodecImpl codec =
         new TermStateCodecImpl(
             new TermStateCodecComponent[] {
@@ -41,7 +111,7 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     long maxDocFreqSeen = -1;
     long docStartFPBase = random().nextLong(Long.MAX_VALUE >> 1);
     long maxDocStartFPDeltaSeen = -1;
-    for (int i = 0; i < random().nextInt(2, 256); i++) {
+    for (int i = 0; i < size; i++) {
       var termState = new IntBlockTermState();
       termState.docFreq = random().nextInt(1, 1 << random().nextInt(1, 31));
       if (i == 0) {
@@ -56,61 +126,16 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
     }
 
     IntBlockTermState[] termStatesArray = termStates.toArray(IntBlockTermState[]::new);
-
-    BitPerBytePacker bitPerBytePacker = new BitPerBytePacker();
-    byte[] metadata = codec.encodeBlock(termStatesArray, bitPerBytePacker);
-
-    // For the metadata, we expect
-    // 0: DocFreq.bitWidth,
-    // 1: DocStartFP.bitWidth,
-    // [2-10]: DocStartFP.referenceValue;
-    int expectedDocFreqBitWidth = 64 - Long.numberOfLeadingZeros(maxDocFreqSeen);
-    int expectedDocStartFPBitWidth = 64 - Long.numberOfLeadingZeros(maxDocStartFPDeltaSeen);
-    assertEquals(10, metadata.length);
-    assertEquals(expectedDocFreqBitWidth, metadata[0]);
-    assertEquals(expectedDocStartFPBitWidth, metadata[1]);
-    ByteArrayDataInput byteArrayDataInput = new ByteArrayDataInput(metadata, 2, 8);
-    assertEquals(docStartFPBase, byteArrayDataInput.readLong());
-
-    // Assert with real bit-packer we get the same bytes
-    FixedSizeByteArrayBitPacker fixedSizeByteArrayBitPacker =
-        new FixedSizeByteArrayBitPacker(bitPerBytePacker.getCompactBytes().length);
-    codec.encodeBlock(termStatesArray, fixedSizeByteArrayBitPacker);
-    assertArrayEquals(bitPerBytePacker.getCompactBytes(), fixedSizeByteArrayBitPacker.getBytes());
-
-    // Assert that each term state is the same after the encode-decode roundtrip.
-    BytesRef metadataBytes = new BytesRef(metadata);
-    BytesRef dataBytes = new BytesRef(bitPerBytePacker.getBytes());
-    assertBlockRoundTrip(termStatesArray, codec, metadataBytes, dataBytes, bitPerBytePacker);
-
-    // With real compact bits instead of bit-per-byte
-    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes());
-    assertBlockRoundTrip(
-        termStatesArray, codec, metadataBytes, dataBytes, BitUnpackerImpl.INSTANCE);
-
-    // Also test decoding that doesn't begin at the start of the block.
-    int pos = random().nextInt(termStatesArray.length);
-    int startBitIndex = pos > 0 ? random().nextInt(pos) : 0;
-    int recordSize = expectedDocFreqBitWidth + expectedDocStartFPBitWidth;
-    // With bit-per-byte bytes
-    dataBytes =
-        new BytesRef(bitPerBytePacker.getBytes(), pos * recordSize - startBitIndex, recordSize);
-    assertDecodeAt(
-        codec, metadataBytes, dataBytes, bitPerBytePacker, startBitIndex, termStatesArray[pos]);
-
-    // With compact bytes
-    int startByteIndex = pos * recordSize / 8;
-    int endByteIndex = (pos + 1) * recordSize / 8;
-    int length = endByteIndex - startByteIndex + ((pos + 1) * recordSize % 8 == 0 ? 0 : 1);
-    dataBytes = new BytesRef(bitPerBytePacker.getCompactBytes(), startByteIndex, length);
-    assertDecodeAt(
-        codec,
-        metadataBytes,
-        dataBytes,
-        BitUnpackerImpl.INSTANCE,
-        (pos * recordSize) % 8,
-        termStatesArray[pos]);
+    return new TermStateTestFixture(
+        codec, maxDocFreqSeen, docStartFPBase, maxDocStartFPDeltaSeen, termStatesArray);
   }
+
+  public record TermStateTestFixture(
+      TermStateCodecImpl codec,
+      long maxDocFreqSeen,
+      long docStartFPBase,
+      long maxDocStartFPDeltaSeen,
+      IntBlockTermState[] termStatesArray) {}
 
   private static void assertDecodeAt(
       TermStateCodecImpl codec,

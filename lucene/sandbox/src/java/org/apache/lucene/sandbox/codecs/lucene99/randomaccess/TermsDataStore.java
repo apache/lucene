@@ -15,16 +15,34 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
-import java.io.IOException;
+import java.util.Arrays;
 
-/** Interface for bit-packing */
-public interface BitPacker {
+/** Holds all {@link TermData} for all {@link TermType} for a field. */
+class TermsDataStore {
+  private final TermData[] dataPerTermType;
 
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits) throws IOException;
+  private TermsDataStore(TermData[] dataPerTermType) {
+    this.dataPerTermType = dataPerTermType;
+  }
 
-  /** Flush any pending byte */
-  void flush() throws IOException;
+  static class Builder {
+    private final TermData[] dataPerTermType;
+
+    Builder() {
+      dataPerTermType = new TermData[TermType.NUM_TOTAL_TYPES];
+      Arrays.fill(dataPerTermType, null);
+    }
+
+    void add(TermData termData) {
+      assert dataPerTermType[termData.termType().getId()] == null;
+
+      dataPerTermType[termData.termType().getId()] = termData;
+    }
+
+    TermsDataStore build() {
+      return new TermsDataStore(dataPerTermType);
+    }
+  }
 }

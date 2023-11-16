@@ -18,13 +18,27 @@
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
 import java.io.IOException;
+import org.apache.lucene.store.DataOutput;
 
-/** Interface for bit-packing */
-public interface BitPacker {
+/**
+ * A {@link BitPacker} implementation that writes to a {@link org.apache.lucene.store.DataOutput}
+ */
+public final class DataOutputBitPacker extends BitPackerImplBase {
+  private final DataOutput dataOut;
 
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits) throws IOException;
+  private long numBytesWritten;
 
-  /** Flush any pending byte */
-  void flush() throws IOException;
+  public DataOutputBitPacker(DataOutput dataOut) {
+    this.dataOut = dataOut;
+  }
+
+  @Override
+  void writeByte(byte b) throws IOException {
+    dataOut.writeByte(b);
+    numBytesWritten++;
+  }
+
+  public long getNumBytesWritten() {
+    return numBytesWritten;
+  }
 }

@@ -17,6 +17,8 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
 
+import java.io.IOException;
+
 /**
  * Implementation of {@link BitPacker}. The behavior the is abstracted out here is how to write a
  * byte. This is useful as we can wire the byte-writing to byte[], stream or IndexInput, etc.
@@ -25,11 +27,11 @@ abstract class BitPackerImplBase implements BitPacker {
   private byte buffer;
   private int bufferNumBitsUsed;
 
-  abstract void writeByte(byte b);
+  abstract void writeByte(byte b) throws IOException;
 
   /** {@inheritDoc}. value could be larger than 2^numBits - 1 but the higher bits won't be used. */
   @Override
-  public void add(long value, int numBits) {
+  public void add(long value, int numBits) throws IOException {
     assert numBits < 64;
     // clear bits higher than `numBits`
     value &= (1L << numBits) - 1;
@@ -53,7 +55,7 @@ abstract class BitPackerImplBase implements BitPacker {
   }
 
   @Override
-  public void flush() {
+  public void flush() throws IOException {
     if (bufferNumBitsUsed > 0) {
       writeByte(buffer);
       bufferNumBitsUsed = 0;

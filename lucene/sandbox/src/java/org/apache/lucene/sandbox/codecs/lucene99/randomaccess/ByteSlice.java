@@ -15,16 +15,18 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
+import org.apache.lucene.store.DataOutput;
 
-/** Interface for bit-packing */
-public interface BitPacker {
+/** A slice of bytes */
+interface ByteSlice {
+  long size();
 
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits) throws IOException;
+  void writeAll(DataOutput output) throws IOException;
 
-  /** Flush any pending byte */
-  void flush() throws IOException;
+  long getLong(long pos) throws IOException;
+
+  byte[] getBytes(long pos, int length) throws IOException;
 }

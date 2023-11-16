@@ -15,16 +15,8 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking;
+package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
-import java.io.IOException;
-
-/** Interface for bit-packing */
-public interface BitPacker {
-
-  /** Pack the low `numBits` bits of `value` */
-  void add(long value, int numBits) throws IOException;
-
-  /** Flush any pending byte */
-  void flush() throws IOException;
-}
+/** A term dictionary that offer random-access to read a specific term */
+record RandomAccessTermsDict(
+    TermsStats termsStats, TermsIndex termsIndex, TermsDataStore termsDataStore) {}
