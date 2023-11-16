@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.DocValuesConsumer;
@@ -47,16 +48,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
-import org.apache.lucene.util.Counter;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** Default general purpose indexing chain, which handles indexing all types of fields. */
 final class IndexingChain implements Accountable {
@@ -219,7 +212,16 @@ final class IndexingChain implements Accountable {
     }
 
     LeafReader docValuesReader = getDocValuesLeafReader();
-
+    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
+    if (state.segmentInfo.getHasBlocks()) {
+      final NumericDocValues readerValues =
+          docValuesReader.getNumericDocValues("parent"); // NOCOMMIT hard coded
+      BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
+      comparatorWrapper =
+          in ->
+              (docID1, docID2) ->
+                  in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
+    }
     List<IndexSorter.DocComparator> comparators = new ArrayList<>();
     for (int i = 0; i < indexSort.getSort().length; i++) {
       SortField sortField = indexSort.getSort()[i];
@@ -227,7 +229,10 @@ final class IndexingChain implements Accountable {
       if (sorter == null) {
         throw new UnsupportedOperationException("Cannot sort index using sort field " + sortField);
       }
-      comparators.add(sorter.getDocComparator(docValuesReader, state.segmentInfo.maxDoc()));
+
+      IndexSorter.DocComparator docComparator =
+          sorter.getDocComparator(docValuesReader, state.segmentInfo.maxDoc());
+      comparators.add(comparatorWrapper.apply(docComparator));
     }
     Sorter sorter = new Sorter(indexSort);
     // returns null if the documents are already sorted

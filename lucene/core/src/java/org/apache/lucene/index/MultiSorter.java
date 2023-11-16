@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.index.MergeState.DocMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.packed.PackedInts;
@@ -50,6 +51,17 @@ final class MultiSorter {
             "Cannot use sort field " + fields[i] + " for index sorting");
       }
       comparables[i] = sorter.getComparableProviders(readers);
+      for (int j = 0; j < readers.size(); j++) {
+        CodecReader codecReader = readers.get(j);
+        if (codecReader.getMetaData().hasBlocks()) {
+          final NumericDocValues readerValues =
+              codecReader.getNumericDocValues(codecReader.getMetaData().getRootField());
+          BitSet parents = BitSet.of(readerValues, codecReader.maxDoc());
+          IndexSorter.ComparableProvider[] providers = comparables[i];
+          IndexSorter.ComparableProvider provider = providers[j];
+          providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
+        }
+      }
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;
     }
     int leafCount = readers.size();

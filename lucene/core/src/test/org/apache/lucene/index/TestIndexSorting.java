@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.core.StringContains.containsString;
 
+import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3170,5 +3171,87 @@ public class TestIndexSorting extends LuceneTestCase {
     assertNull(fieldTerms.next());
     reader.close();
     dir.close();
+  }
+
+  @Repeat(iterations = 100)
+  public void testIndexSortWithBlocks() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
+      iwc.setCodec(codec);
+      String parentField = "parent";
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      LogMergePolicy policy = newLogMergePolicy();
+      // make sure that merge factor is always > 2
+      if (policy.getMergeFactor() <= 2) {
+        policy.setMergeFactor(3);
+      }
+      iwc.setMergePolicy(policy);
+
+      // add already sorted documents
+      codec.numCalls = 0;
+      codec.needsIndexSort = false;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        int numDocs = random().nextInt(50, 100);
+        for (int i = 0; i < numDocs; i++) {
+          Document child1 = new Document();
+          child1.add(new StringField("id", Integer.toString(i), Store.YES));
+          child1.add(new NumericDocValuesField("id", i));
+          child1.add(new NumericDocValuesField("child", 1));
+          child1.add(new NumericDocValuesField("foo", random().nextInt()));
+          Document child2 = new Document();
+          child2.add(new StringField("id", Integer.toString(i), Store.YES));
+          child2.add(new NumericDocValuesField("id", i));
+          child2.add(new NumericDocValuesField("child", 2));
+          child2.add(new NumericDocValuesField("foo", random().nextInt()));
+          Document parent = new Document();
+          parent.add(new StringField("id", Integer.toString(i), Store.YES));
+          parent.add(new NumericDocValuesField("id", i));
+          parent.add(new NumericDocValuesField("foo", random().nextInt()));
+          parent.add(new NumericDocValuesField(parentField, 0));
+          w.addDocuments(Arrays.asList(child1, child2, parent));
+          if (rarely()) {
+            w.commit();
+          }
+        }
+        w.commit();
+        if (random().nextBoolean()) {
+          w.forceMerge(1, true);
+        }
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          LeafReader leaf = ctx.reader();
+          NumericDocValues parentDV = leaf.getNumericDocValues(parentField);
+          NumericDocValues ids = leaf.getNumericDocValues("id");
+          NumericDocValues children = leaf.getNumericDocValues("child");
+          int doc = -1;
+          int expectedDocID = 2;
+          while ((doc = parentDV.nextDoc()) != NO_MORE_DOCS) {
+            assertEquals(expectedDocID, doc);
+            int id = ids.nextDoc();
+            long child1ID = ids.longValue();
+            assertEquals(id, children.nextDoc());
+            long child1 = children.longValue();
+            assertEquals(1, child1);
+
+            id = ids.nextDoc();
+            long child2ID = ids.longValue();
+            assertEquals(id, children.nextDoc());
+            long child2 = children.longValue();
+            assertEquals(2, child2);
+
+            int idParent = ids.nextDoc();
+            assertEquals(id + 1, idParent);
+            long parent = ids.longValue();
+            assertEquals(child1ID, parent);
+            assertEquals(child2ID, parent);
+            expectedDocID += 3;
+          }
+        }
+      }
+    }
   }
 }

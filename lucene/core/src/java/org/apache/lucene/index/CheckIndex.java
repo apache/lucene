@@ -70,7 +70,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -88,6 +87,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
+
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -1183,20 +1183,25 @@ public final class CheckIndex implements Closeable {
       int maxDoc = reader.maxDoc();
 
       try {
-
-        for (int docID = 1; docID < maxDoc; docID++) {
-
+        LeafMetaData metaData = reader.getMetaData();
+        DocIdSetIterator iter = DocIdSetIterator.all(reader.maxDoc());
+        if (metaData.hasBlocks()) {
+          iter = reader.getNumericDocValues("parent"); // NOCOMMIT hard coded
+        }
+        int prevDoc = iter.nextDoc();
+        int nextDoc;
+        while ((nextDoc = iter.nextDoc()) != NO_MORE_DOCS) {
           int cmp = 0;
-
           for (int i = 0; i < comparators.length; i++) {
             // TODO: would be better if copy() didnt cause a term lookup in TermOrdVal & co,
             // the segments are always the same here...
-            comparators[i].copy(0, docID - 1);
+            comparators[i].copy(0, prevDoc);
             comparators[i].setBottom(0);
-            cmp = reverseMul[i] * comparators[i].compareBottom(docID);
+            cmp = reverseMul[i] * comparators[i].compareBottom(nextDoc);
             if (cmp != 0) {
               break;
             }
+            prevDoc = nextDoc;
           }
 
           if (cmp > 0) {
@@ -1204,9 +1209,9 @@ public final class CheckIndex implements Closeable {
                 "segment has indexSort="
                     + sort
                     + " but docID="
-                    + (docID - 1)
+                    + (prevDoc)
                     + " sorts after docID="
-                    + docID);
+                    + nextDoc);
           }
         }
         msg(
