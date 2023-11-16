@@ -693,7 +693,7 @@ public class FSTCompiler<T> {
 
     // Write the presence bits
     if (continuous == false) {
-      writePresenceBits(nodeIn, numPresenceBytes);
+      writePresenceBits(nodeIn);
       assert scratchBytes.getPosition() - headerLen == numPresenceBytes;
     }
 
@@ -702,7 +702,7 @@ public class FSTCompiler<T> {
     assert scratchBytes.getPosition() == headerLen + numPresenceBytes + totalArcBytes;
   }
 
-  private void writePresenceBits(FSTCompiler.UnCompiledNode<T> nodeIn, int numPresenceBytes) {
+  private void writePresenceBits(FSTCompiler.UnCompiledNode<T> nodeIn) {
     byte presenceBits = 1; // The first arc is always present.
     int presenceIndex = 0;
     int previousLabel = nodeIn.arcs[0].label;
