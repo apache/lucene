@@ -19,23 +19,35 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /**
- * A query for debug purposes only. Takes a query and a description. Behaves like the given query,
- * but when printing to a string, it will prepend the description parameter to the given query.
+ * A query for wrapping other queries for debug purposes. Behaves like the given query, but when
+ * printing to a string, it will prepend the description parameter to the query.
  */
 public final class HumanReadableQuery extends Query {
 
   private final Query in;
   private final String description;
 
+  /**
+   * Create a new HumanReadableQuery
+   *
+   * @param in the query to wrap
+   * @param description a human-readable description, used in toString()
+   */
   HumanReadableQuery(Query in, String description) {
     this.in = in;
     this.description = description;
   }
 
-  public Query getIn() {
+  /**
+   * @return the wrapped Query
+   */
+  public Query getWrappedQuery() {
     return in;
   }
 
+  /**
+   * @return the query description
+   */
   public String getDescription() {
     return description;
   }

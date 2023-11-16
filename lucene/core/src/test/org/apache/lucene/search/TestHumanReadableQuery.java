@@ -115,10 +115,11 @@ public class TestHumanReadableQuery extends LuceneTestCase {
     assertEquals(hQuery.toString(), description + ":" + bQuery);
   }
 
-  public void testKnnVectorQueryToString() {
+  public void testKnnVectorQuery() {
     String description = "TestingKnnVectorQuery";
     KnnFloatVectorQuery kFVQ = new KnnFloatVectorQuery("f1", new float[] {0, 1}, 6);
     HumanReadableQuery hQuery = new HumanReadableQuery(kFVQ, description);
     assertEquals(hQuery.toString(), description + ":" + kFVQ);
+    assertEquals(hQuery.getWrappedQuery(), kFVQ);
   }
 }
