@@ -138,7 +138,7 @@ final class NodeHash<T> {
           // at 0:
           assert nodeAddress != FST.FINAL_END_NODE && nodeAddress != FST.NON_FINAL_END_NODE;
           byte[] buf = new byte[Math.toIntExact(nodeAddress - startAddress + 1)];
-          fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
+          fstCompiler.bytes.writeTo(startAddress, buf, 0, buf.length);
 
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
           primaryTable.copyNodeBytes(hashSlot, buf);
