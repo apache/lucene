@@ -380,10 +380,7 @@ public class FSTCompiler<T> {
       }
     }
     // reset the scratch writer to prepare for new write
-    scratchBytes.truncate(0);
-
-    // the scratch writer must be cleaned at this point
-    assert scratchBytes.getPosition() == 0;
+    scratchBytes.setPosition(0);
 
     final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(nodeIn);
     if (doFixedLengthArcs) {
@@ -615,7 +612,7 @@ public class FSTCompiler<T> {
     int destPos = headerLen + nodeIn.numArcs * maxBytesPerArc;
     assert destPos >= srcPos;
     if (destPos > srcPos) {
-      scratchBytes.skipBytes(destPos - srcPos);
+      scratchBytes.setPosition(destPos);
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
@@ -693,12 +690,7 @@ public class FSTCompiler<T> {
 
     // Prepare the builder byte store. Enlarge or truncate if needed.
     int nodeEnd = headerLen + numPresenceBytes + totalArcBytes;
-    int currentPosition = scratchBytes.getPosition();
-    if (nodeEnd >= currentPosition) {
-      scratchBytes.skipBytes(nodeEnd - currentPosition);
-    } else {
-      scratchBytes.truncate(nodeEnd);
-    }
+    scratchBytes.setPosition(nodeEnd);
     assert scratchBytes.getPosition() == nodeEnd;
 
     // Write the header.
@@ -910,7 +902,7 @@ public class FSTCompiler<T> {
     }
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
-    scratchBytes.truncate(0);
+    scratchBytes.setPosition(0);
   }
 
   private boolean validOutput(T output) {

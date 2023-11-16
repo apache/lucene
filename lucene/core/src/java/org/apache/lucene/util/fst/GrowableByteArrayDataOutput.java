@@ -17,7 +17,6 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -50,10 +49,19 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     nextWrite += len;
   }
 
-  /** Skip a number of bytes, increasing capacity if needed */
-  public void skipBytes(int len) {
-    ensureCapacity(len);
-    nextWrite += len;
+  public int getPosition() {
+    return nextWrite;
+  }
+
+  /**
+   * Set the position of the byte[], increasing the capacity if needed
+   */
+  public void setPosition(int newLen) {
+    assert newLen >= 0;
+    if (newLen > nextWrite) {
+      ensureCapacity(newLen - nextWrite);
+    }
+    nextWrite = newLen;
   }
 
   /**
@@ -63,6 +71,11 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
    */
   private void ensureCapacity(int capacityToWrite) {
     bytes = ArrayUtil.grow(bytes, nextWrite + capacityToWrite);
+  }
+
+  /** Writes all of our bytes to the target {@link DataOutput}. */
+  public void writeTo(DataOutput out) throws IOException {
+    out.writeBytes(bytes, 0, nextWrite);
   }
 
   /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
@@ -76,7 +89,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
    * so you must only call it on already written parts.
    */
   public void writeBytes(int dest, byte[] b, int offset, int len) {
-    assert dest + len <= getPosition() : "dest=" + dest + " pos=" + getPosition() + " len=" + len;
+    assert dest + len <= nextWrite : "dest=" + dest + " pos=" + nextWrite + " len=" + len;
     System.arraycopy(b, offset, bytes, dest, len);
   }
 
@@ -106,31 +119,8 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     }
   }
 
-  public int getPosition() {
-    return nextWrite;
-  }
-
-  /**
-   * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
-   * this!
-   */
-  public void truncate(int newLen) {
-    assert newLen >= 0 && newLen <= getPosition();
-    nextWrite = newLen;
-  }
-
-  /** Writes all of our bytes to the target {@link DataOutput}. */
-  public void writeTo(DataOutput out) throws IOException {
-    out.writeBytes(bytes, 0, nextWrite);
-  }
-
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(bytes);
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + "(pos=" + nextWrite + ")";
   }
 }

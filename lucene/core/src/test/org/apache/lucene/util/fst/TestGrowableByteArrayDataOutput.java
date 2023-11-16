@@ -45,7 +45,7 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(7);
+        int op = random().nextInt(6);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -139,27 +139,6 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
 
           case 5:
             {
-              // skip
-              int len = random().nextInt(Math.min(100, numBytes - pos));
-
-              if (VERBOSE) {
-                System.out.println("    skip len=" + len);
-              }
-
-              pos += len;
-              bytes.skipBytes(len);
-
-              // NOTE: must fill in zeros in case truncate was
-              // used, else we get false fails:
-              if (len > 0) {
-                byte[] zeros = new byte[len];
-                bytes.writeBytes(pos - len, zeros, 0, len);
-              }
-            }
-            break;
-
-          case 6:
-            {
               // absWriteByte
               if (pos > 0) {
                 int dest = random().nextInt(pos);
@@ -176,7 +155,7 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
         if (pos > 0 && random().nextInt(50) == 17) {
           // truncate
           int len = TestUtil.nextInt(random(), 1, Math.min(pos, 100));
-          bytes.truncate(pos - len);
+          bytes.setPosition(pos - len);
           pos -= len;
           Arrays.fill(expected, pos, pos + len, (byte) 0);
           if (VERBOSE) {
