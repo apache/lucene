@@ -17,6 +17,10 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.io.IOException;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;
 
 /** Data class that holds starts for term stats for a field */
@@ -26,4 +30,41 @@ record TermsStats(
     long sumDocFreq,
     int docCount,
     BytesRef minTerm,
-    BytesRef maxTerm) {}
+    BytesRef maxTerm) {
+
+  void serialize(DataOutput output) throws IOException {
+    output.writeVLong(size);
+    output.writeVLong(sumTotalTermFreq);
+    output.writeVLong(sumDocFreq);
+    output.writeVInt(docCount);
+    writeBytesRef(output, minTerm);
+    writeBytesRef(output, maxTerm);
+  }
+
+  static TermsStats deserialize(DataInput input) throws IOException {
+    return new TermsStats(
+        input.readVLong(),
+        input.readVLong(),
+        input.readVLong(),
+        input.readVInt(),
+        readBytesRef(input),
+        readBytesRef(input));
+  }
+
+  static void writeBytesRef(DataOutput output, BytesRef bytes) throws IOException {
+    output.writeVInt(bytes.length);
+    output.writeBytes(bytes.bytes, bytes.offset, bytes.length);
+  }
+
+  static BytesRef readBytesRef(DataInput input) throws IOException {
+    int numBytes = input.readVInt();
+    if (numBytes < 0) {
+      throw new CorruptIndexException("invalid bytes length: " + numBytes, input);
+    }
+
+    byte[] bytes = new byte[numBytes];
+    input.readBytes(bytes, 0, numBytes);
+
+    return new BytesRef(bytes);
+  }
+}
