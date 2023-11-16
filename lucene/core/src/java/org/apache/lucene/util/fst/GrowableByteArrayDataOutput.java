@@ -32,7 +32,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
   private static final int INITIAL_SIZE = 1 << 8;
 
   // holds an initial size of 256 bytes. this byte array will only grow, but not shrink
-  byte[] bytes = new byte[INITIAL_SIZE];
+  private byte[] bytes = new byte[INITIAL_SIZE];
 
   private int nextWrite;
 
@@ -51,6 +51,10 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
 
   public int getPosition() {
     return nextWrite;
+  }
+
+  public byte[] getBytes() {
+    return bytes;
   }
 
   /** Set the position of the byte[], increasing the capacity if needed */
@@ -79,15 +83,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
   /** Copies bytes from this store to a target byte array. */
   public void writeTo(int src, byte[] dest, int offset, int len) {
     System.arraycopy(bytes, src, dest, offset, len);
-  }
-
-  /**
-   * Absolute writeBytes without changing the current position. Note: this cannot "grow" the bytes,
-   * so you must only call it on already written parts.
-   */
-  public void writeBytes(int dest, byte[] b, int offset, int len) {
-    assert dest + len <= nextWrite : "dest=" + dest + " pos=" + nextWrite + " len=" + len;
-    System.arraycopy(b, offset, bytes, dest, len);
   }
 
   /** Reverse the written byte[]. */

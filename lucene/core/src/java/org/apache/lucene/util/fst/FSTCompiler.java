@@ -607,12 +607,17 @@ public class FSTCompiler<T> {
         .writeVInt(maxBytesPerArc);
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
-    // Expand the arcs in place, backwards.
     int srcPos = scratchBytes.getPosition();
+
+    // First write the header
+    scratchBytes.setPosition(0);
+    scratchBytes.writeBytes(fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+
+    // Expand the arcs in place, backwards.
     int destPos = headerLen + nodeIn.numArcs * maxBytesPerArc;
     assert destPos >= srcPos;
+    scratchBytes.setPosition(destPos);
     if (destPos > srcPos) {
-      scratchBytes.setPosition(destPos);
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
@@ -631,12 +636,14 @@ public class FSTCompiler<T> {
                   + arcLen
                   + " nodeIn.numArcs="
                   + nodeIn.numArcs;
-          scratchBytes.writeBytes(destPos, scratchBytes.bytes, srcPos, arcLen);
+          assert destPos + arcLen <= scratchBytes.getPosition();
+          // copy the bytes from srcPos to destPos, essentially expanding the arc from variable
+          // length to fixed length
+          System.arraycopy(
+              scratchBytes.getBytes(), srcPos, scratchBytes.getBytes(), destPos, arcLen);
         }
       }
     }
-
-    scratchBytes.writeBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
   private void writeNodeForDirectAddressingOrContinuous(

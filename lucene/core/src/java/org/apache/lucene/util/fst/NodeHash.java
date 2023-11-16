@@ -138,7 +138,9 @@ final class NodeHash<T> {
 
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
           primaryTable.copyNodeBytes(
-              hashSlot, fstCompiler.scratchBytes.bytes, fstCompiler.scratchBytes.getPosition());
+              hashSlot,
+              fstCompiler.scratchBytes.getBytes(),
+              fstCompiler.scratchBytes.getPosition());
 
           // confirm frozen hash and unfrozen hash are the same
           assert primaryTable.hash(nodeAddress, hashSlot) == hash
