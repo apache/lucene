@@ -45,7 +45,7 @@ public class TestBytesStore extends LuceneTestCase {
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(8);
+        int op = random().nextInt(7);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -174,7 +174,7 @@ public class TestBytesStore extends LuceneTestCase {
               }
 
               pos += len;
-              bytes.skipBytes(len);
+              bytes.setPosition(pos);
 
               // NOTE: must fill in zeros in case truncate was
               // used, else we get false fails:
@@ -184,18 +184,6 @@ public class TestBytesStore extends LuceneTestCase {
               }
             }
             break;
-
-          case 7:
-            {
-              // absWriteByte
-              if (pos > 0) {
-                int dest = random().nextInt(pos);
-                byte b = (byte) random().nextInt(256);
-                expected[dest] = b;
-                bytes.writeByte(dest, b);
-              }
-              break;
-            }
         }
 
         assertEquals(pos, bytes.getPosition());
@@ -203,7 +191,7 @@ public class TestBytesStore extends LuceneTestCase {
         if (pos > 0 && random().nextInt(50) == 17) {
           // truncate
           int len = TestUtil.nextInt(random(), 1, Math.min(pos, 100));
-          bytes.truncate(pos - len);
+          bytes.setPosition(pos - len);
           pos -= len;
           Arrays.fill(expected, pos, pos + len, (byte) 0);
           if (VERBOSE) {
