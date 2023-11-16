@@ -28,12 +28,6 @@ import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter, String queryDescription) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter, queryDescription);
-  }
-
-  @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
     return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
   }
@@ -80,7 +74,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0, 1}, 10);
-      assertEquals("KnnByteVectorQuery:field:[0,...][10]", query.toString("ignored"));
+      assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
     }

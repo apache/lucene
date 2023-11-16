@@ -43,12 +43,6 @@ import org.apache.lucene.util.VectorUtil;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter, String queryDescription) {
-    return new KnnFloatVectorQuery(field, query, k, queryFilter, queryDescription);
-  }
-
-  @Override
   KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
     return new KnnFloatVectorQuery(field, query, k, queryFilter);
   }
@@ -78,34 +72,8 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
-      AbstractKnnVectorQuery query =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, null, "");
-      assertEquals("KnnFloatVectorQuery:field:[0.0,...][10]", query.toString("ignored"));
-
-      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
-    }
-  }
-
-  public void testToStringWithNullDescription() throws IOException {
-    try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      AbstractKnnVectorQuery query =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, null, null);
-      assertEquals("KnnFloatVectorQuery:field:null[0.0,...][10]", query.toString("ignored"));
-
-      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
-    }
-  }
-
-  public void testToStringWithDescription() throws IOException {
-    try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      AbstractKnnVectorQuery query =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, null, "TestDescription");
-      assertEquals(
-          "KnnFloatVectorQuery:field:TestDescription[0.0,...][10]", query.toString("ignored"));
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
+      assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
     }
