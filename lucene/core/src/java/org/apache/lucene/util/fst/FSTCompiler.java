@@ -827,7 +827,7 @@ public class FSTCompiler<T> {
   }
 
   void finish(long newStartNode) {
-    assert newStartNode <= bytes.size();
+    assert newStartNode <= bytes.getPosition();
     if (fst.metadata.startNode != -1) {
       throw new IllegalStateException("already finished");
     }
