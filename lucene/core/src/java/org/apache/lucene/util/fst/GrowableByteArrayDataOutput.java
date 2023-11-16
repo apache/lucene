@@ -50,16 +50,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     nextWrite += len;
   }
 
-  @Override
-  public void copyBytes(DataInput input, long numBytes) throws IOException {
-    assert numBytes >= 0 : "numBytes=" + numBytes;
-    assert input != null;
-    int length = Math.toIntExact(numBytes);
-    ensureCapacity(length);
-    input.readBytes(bytes, nextWrite, length);
-    nextWrite += length;
-  }
-
   /** Skip a number of bytes, increasing capacity if needed */
   public void skipBytes(int len) {
     ensureCapacity(len);
@@ -125,8 +115,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
    * this!
    */
   public void truncate(int newLen) {
-    assert newLen <= getPosition();
-    assert newLen >= 0;
+    assert newLen >= 0 && newLen <= getPosition();
     nextWrite = newLen;
   }
 
