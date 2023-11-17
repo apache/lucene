@@ -134,6 +134,7 @@ import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NoDeletionPolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.ParallelCompositeReader;
 import org.apache.lucene.index.ParallelLeafReader;
@@ -142,6 +143,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SimpleMergedSegmentWarmer;
+import org.apache.lucene.index.SnapshotDeletionPolicy;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -954,6 +956,13 @@ public abstract class LuceneTestCase extends Assert {
   public static void dumpArray(String label, Object[] objs, PrintStream stream) {
     Iterator<?> iter = (null == objs) ? null : Arrays.asList(objs).iterator();
     dumpIterator(label, iter, stream);
+  }
+
+  /** create a new index writer config with a snapshot deletion policy */
+  public static IndexWriterConfig newSnapshotIndexWriterConfig(Analyzer analyzer) {
+    IndexWriterConfig c = newIndexWriterConfig(analyzer);
+    c.setIndexDeletionPolicy(new SnapshotDeletionPolicy(NoDeletionPolicy.INSTANCE));
+    return c;
   }
 
   /** create a new index writer config with random defaults */
