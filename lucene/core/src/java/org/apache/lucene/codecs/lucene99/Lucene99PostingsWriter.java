@@ -373,20 +373,24 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     } else {
       singletonDocID = -1;
       // Group vInt encode the remaining doc deltas and freqs:
-      docGroupVIntWriter.reset(docBufferUpto);
-      for (int i = 0; i < docBufferUpto; i++) {
-        final int docDelta = (int) docDeltaBuffer[i];
-        final int freq = (int) freqBuffer[i];
-        if (!writeFreqs) {
-          docGroupVIntWriter.add(docDelta);
-        } else if (freq == 1) {
-          docGroupVIntWriter.add((docDelta << 1) | 1);
-        } else {
-          docGroupVIntWriter.add(docDelta << 1);
-          docGroupVIntWriter.add(freq);
+      if (writeFreqs) {
+        for (int i = 0; i < docBufferUpto; i++) {
+          docDeltaBuffer[i] = (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
         }
       }
+      docGroupVIntWriter.reset(docBufferUpto);
+      for (int i = 0; i < docBufferUpto; i++) {
+        docGroupVIntWriter.add((int) docDeltaBuffer[i]);
+      }
       docGroupVIntWriter.flush();
+      if (writeFreqs) {
+        for (int i = 0; i < docBufferUpto; i++) {
+          final int freq = (int) freqBuffer[i];
+          if (freq != 1) {
+            docOut.writeVInt(freq);
+          }
+        }
+      }
     }
 
     final long lastPosBlockOffset;

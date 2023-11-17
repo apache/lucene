@@ -55,7 +55,7 @@ import org.openjdk.jmh.annotations.Warmup;
 public class GroupVIntBenchmark {
 
   final int maxSize = 256;
-  final int[] values = new int[maxSize];
+  final long[] values = new long[maxSize];
 
   IndexInput byteBufferGVIntIn;
   IndexInput byteBufferVIntIn;
@@ -86,7 +86,7 @@ public class GroupVIntBenchmark {
     w.flush();
     byteArrayVIntIn = new ByteArrayDataInput(vIntBytes);
     byteArrayGVIntIn = new ByteArrayDataInput(gVIntBytes);
-    byteArrayGVIntReader.reset(byteArrayGVIntIn, maxSize);
+    byteArrayGVIntReader.reset(byteArrayGVIntIn);
   }
 
   void initByteBufferInput(List<Integer> docs) throws Exception {
@@ -104,7 +104,7 @@ public class GroupVIntBenchmark {
     gvintOut.close();
     byteBufferGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
     byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
-    byteBufferGVIntReader.reset(byteBufferGVIntIn, maxSize);
+    byteBufferGVIntReader.reset(byteBufferGVIntIn);
   }
 
   @Setup(Level.Trial)
@@ -131,10 +131,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void byteBufferReadGroupVInt() throws IOException {
     byteBufferGVIntIn.seek(0);
-    byteBufferGVIntReader.rewind();
-    for (int i = 0; i < size; i++) {
-      values[i] = byteBufferGVIntReader.nextInt();
-    }
+    byteBufferGVIntReader.readValues(values, size);
   }
 
   @Benchmark
@@ -147,9 +144,7 @@ public class GroupVIntBenchmark {
 
   @Benchmark
   public void byteArrayReadGroupVInt() throws IOException {
-    byteArrayGVIntReader.rewind();
-    for (int i = 0; i < size; i++) {
-      values[i] = byteArrayGVIntReader.nextInt();
-    }
+    byteArrayGVIntIn.rewind();
+    byteArrayGVIntReader.readValues(values, size);
   }
 }

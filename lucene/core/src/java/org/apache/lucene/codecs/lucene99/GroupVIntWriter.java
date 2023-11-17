@@ -65,7 +65,6 @@ public class GroupVIntWriter {
 
   private void encodeValues(int[] values, int limit) throws IOException {
     int off = 0;
-    byte numGroup = 0;
 
     // encode each group
     while ((limit - off) >= 4) {
@@ -78,15 +77,10 @@ public class GroupVIntWriter {
       flag |= (encodeValue(values[off++]) - 1) << 2;
       flag |= (encodeValue(values[off++]) - 1);
       bytes[flagPos] = flag;
-      numGroup++;
     }
 
     if (limit >= 4) {
-      output.writeVInt(byteOffset);
-      output.writeByte(numGroup);
       output.writeBytes(bytes, byteOffset);
-    } else {
-      output.writeVInt(0);
     }
 
     // tail vints
