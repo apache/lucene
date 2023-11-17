@@ -21,13 +21,14 @@ import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
 
-  private final ExecutorService exec;
+  private final TaskExecutor taskExecutor;
   private final int numWorker;
 
   /**
@@ -41,7 +42,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       ExecutorService exec,
       int numWorker) {
     super(fieldInfo, scorerSupplier, M, beamWidth);
-    this.exec = exec;
+    this.taskExecutor = new TaskExecutor(exec);
     this.numWorker = numWorker;
   }
 
@@ -50,7 +51,13 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       throws IOException {
     if (initReader == null) {
       return new HnswConcurrentMergeBuilder(
-          exec, numWorker, scorerSupplier, M, beamWidth, new OnHeapHnswGraph(M, maxOrd), null);
+          taskExecutor,
+          numWorker,
+          scorerSupplier,
+          M,
+          beamWidth,
+          new OnHeapHnswGraph(M, maxOrd),
+          null);
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
@@ -58,7 +65,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
 
     return new HnswConcurrentMergeBuilder(
-        exec,
+        taskExecutor,
         numWorker,
         scorerSupplier,
         M,

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
@@ -39,12 +38,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
 
-  private final ExecutorService exec;
+  private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private InfoStream infoStream = InfoStream.getDefault();
 
   public HnswConcurrentMergeBuilder(
-      ExecutorService exec,
+      TaskExecutor taskExecutor,
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int M,
@@ -52,7 +51,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
       throws IOException {
-    this.exec = exec;
+    this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     for (int i = 0; i < numWorker; i++) {
@@ -84,7 +83,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
             return null;
           });
     }
-    TaskExecutor taskExecutor = new TaskExecutor(exec);
     taskExecutor.invokeAll(futures);
     return workers[0].getGraph();
   }
