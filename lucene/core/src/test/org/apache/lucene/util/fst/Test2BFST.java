@@ -25,12 +25,20 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
+// TODO: soon we will be able to run this test with small heaps!  Once #12633 and #12543
+// are done
+//
+// Run something like this:
+//    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
+
 @Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
+@SuppressSysoutChecks(bugUrl = "test prints helpful progress reports with time")
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFST extends LuceneTestCase {
 
@@ -48,10 +56,11 @@ public class Test2BFST extends LuceneTestCase {
     for (int iter = 0; iter < 1; iter++) {
       // Build FST w/ NoOutputs and stop when nodeCount > 2.2B
       {
-        System.out.println("\nTEST: 3B nodes; doPack=false output=NO_OUTPUTS");
+        System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
         Outputs<Object> outputs = NoOutputs.getSingleton();
         Object NO_OUTPUT = outputs.getNoOutput();
-        final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Object> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         int count = 0;
         Random r = new Random(seed);
@@ -145,7 +154,8 @@ public class Test2BFST extends LuceneTestCase {
       {
         System.out.println("\nTEST: 3 GB size; outputs=bytes");
         Outputs<BytesRef> outputs = ByteSequenceOutputs.getSingleton();
-        final FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<BytesRef> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         byte[] outputBytes = new byte[20];
         BytesRef output = new BytesRef(outputBytes);
@@ -231,7 +241,8 @@ public class Test2BFST extends LuceneTestCase {
       {
         System.out.println("\nTEST: 3 GB size; outputs=long");
         Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-        final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Long> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         long output = 1;
 

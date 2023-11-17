@@ -40,6 +40,16 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
   protected Sorter getFallbackSorter(int k) {
     return new MergeSorter() {
       @Override
+      protected void save(int i, int j) {
+        StableMSBRadixSorter.this.save(i, j);
+      }
+
+      @Override
+      protected void restore(int i, int j) {
+        StableMSBRadixSorter.this.restore(i, j);
+      }
+
+      @Override
       protected void swap(int i, int j) {
         StableMSBRadixSorter.this.swap(i, j);
       }
@@ -80,7 +90,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
   }
 
   /** A MergeSorter taking advantage of temporary storage. */
-  protected abstract class MergeSorter extends Sorter {
+  protected abstract static class MergeSorter extends Sorter {
     @Override
     public void sort(int from, int to) {
       checkRange(from, to);
@@ -97,6 +107,14 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
         merge(from, to, mid);
       }
     }
+
+    /** Save the i-th value into the j-th position in temporary storage. */
+    protected abstract void save(int i, int j);
+
+    /**
+     * Restore values between i-th and j-th(excluding) in temporary storage into original storage.
+     */
+    protected abstract void restore(int i, int j);
 
     /**
      * We tried to expose this to implementations to get a bulk copy optimization. But it did not

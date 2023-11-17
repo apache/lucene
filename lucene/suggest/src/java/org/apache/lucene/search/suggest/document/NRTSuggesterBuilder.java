@@ -59,7 +59,7 @@ final class NRTSuggesterBuilder {
     this.outputs =
         new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
     this.entries = new PriorityQueue<>();
-    this.fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
   }
 
   /** Initializes an FST input term to add entries against */

@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -518,11 +519,10 @@ public class TestIndexWriter extends LuceneTestCase {
     doc.add(newField("field", "aaa", customType));
     for (int i = 0; i < 19; i++) writer.addDocument(doc);
     writer.flush(false, true);
-    writer.close();
-    SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     // Since we flushed w/o allowing merging we should now
     // have 10 segments
-    assertEquals(10, sis.size());
+    assertEquals(10, writer.getSegmentCount());
+    writer.close();
     dir.close();
   }
 
@@ -1733,15 +1733,82 @@ public class TestIndexWriter extends LuceneTestCase {
     d.close();
   }
 
-  public void testOnlyUpdateDocuments() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+  public void testHasBlocksMergeFullyDelSegments() throws IOException {
+    Supplier<Document> documentSupplier =
+        () -> {
+          Document doc = new Document();
+          doc.add(new StringField("foo", "bar", Field.Store.NO));
+          return doc;
+        };
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        final List<Document> docs = new ArrayList<>();
+        docs.add(documentSupplier.get());
+        docs.add(documentSupplier.get());
+        writer.updateDocuments(new Term("foo", "bar"), docs);
+        writer.commit();
+        if (random().nextBoolean()) {
+          writer.updateDocuments(new Term("foo", "bar"), docs);
+          writer.commit(); // second segment
+        }
+        writer.updateDocument(new Term("foo", "bar"), documentSupplier.get());
+        if (random().nextBoolean()) {
+          writer.forceMergeDeletes(true);
+        } else {
+          writer.forceMerge(1, true);
+        }
+        writer.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          assertFalse(
+              "hasBlocks should be cleared",
+              reader.leaves().get(0).reader().getMetaData().hasBlocks());
+        }
+      }
+    }
+  }
 
-    final List<Document> docs = new ArrayList<>();
-    docs.add(new Document());
-    w.updateDocuments(new Term("foo", "bar"), docs);
-    w.close();
-    dir.close();
+  public void testCarryOverHasBlocks() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+
+        final List<Document> docs = new ArrayList<>();
+        docs.add(new Document());
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(segmentInfo.info.getHasBlocks());
+        }
+
+        docs.add(new Document()); // now we have 2 docs
+        w.updateDocuments(new Term("foo", "bar"), docs);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(2, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertFalse(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+          segmentInfo = ((SegmentReader) reader.leaves().get(1).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.forceMerge(1, true);
+        w.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          SegmentCommitInfo segmentInfo =
+              ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
+          assertTrue(
+              "codec: " + segmentInfo.info.getCodec().toString(), segmentInfo.info.getHasBlocks());
+        }
+        w.commit();
+      }
+    }
   }
 
   // LUCENE-3872
@@ -2305,7 +2372,13 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testHasUncommittedChanges() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                // Disable merging to simplify this test, otherwise a commit might trigger
+                // uncommitted merges.
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     assertTrue(
         writer.hasUncommittedChanges()); // this will be true because a commit will create an empty
     // index
@@ -2328,19 +2401,11 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.addDocument(doc);
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
     writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.deleteDocuments(new Term("id", "xyz"));
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit, waitForMerges, commit again, to be
-    // certain that hasUncommittedChanges returns false:
-    writer.commit();
-    writer.waitForMerges();
     writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.close();
@@ -2963,7 +3028,6 @@ public class TestIndexWriter extends LuceneTestCase {
         assertEquals(1, writer.getDocStats().maxDoc);
         // now check that we moved to 3
         dir.openInput("segments_3", IOContext.READ).close();
-        ;
       }
       reader.close();
       in.close();
@@ -3696,7 +3760,6 @@ public class TestIndexWriter extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.numDocs());
       }
-      ;
       t.join();
     }
   }

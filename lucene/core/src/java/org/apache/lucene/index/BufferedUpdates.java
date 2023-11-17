@@ -58,7 +58,6 @@ class BufferedUpdates implements Accountable {
           + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
           + 2 * Integer.BYTES
           + 24;
-  final AtomicInteger numTermDeletes = new AtomicInteger();
   final AtomicInteger numFieldUpdates = new AtomicInteger();
 
   final DeletedTerms deleteTerms = new DeletedTerms();
@@ -85,16 +84,14 @@ class BufferedUpdates implements Accountable {
   public String toString() {
     if (VERBOSE_DELETES) {
       return ("gen=" + gen)
-          + (" numTerms=" + numTermDeletes)
           + (", deleteTerms=" + deleteTerms)
           + (", deleteQueries=" + deleteQueries)
           + (", fieldUpdates=" + fieldUpdates)
           + (", bytesUsed=" + bytesUsed);
     } else {
       String s = "gen=" + gen;
-      if (numTermDeletes.get() != 0) {
-        s +=
-            " " + numTermDeletes.get() + " deleted terms (unique count=" + deleteTerms.size() + ")";
+      if (!deleteTerms.isEmpty()) {
+        s += " " + deleteTerms.size() + " unique deleted terms ";
       }
       if (deleteQueries.size() != 0) {
         s += " " + deleteQueries.size() + " deleted queries";
@@ -132,10 +129,6 @@ class BufferedUpdates implements Accountable {
     }
 
     deleteTerms.put(term, docIDUpto);
-    // note that if current != -1 then it means there's already a buffered
-    // delete on that term, therefore we seem to over-count. this over-counting
-    // is done to respect IndexWriterConfig.setMaxBufferedDeleteTerms.
-    numTermDeletes.incrementAndGet();
   }
 
   void addNumericUpdate(NumericDocValuesUpdate update, int docIDUpto) {
@@ -163,14 +156,12 @@ class BufferedUpdates implements Accountable {
   }
 
   void clearDeleteTerms() {
-    numTermDeletes.set(0);
     deleteTerms.clear();
   }
 
   void clear() {
     deleteTerms.clear();
     deleteQueries.clear();
-    numTermDeletes.set(0);
     numFieldUpdates.set(0);
     fieldUpdates.clear();
     bytesUsed.addAndGet(-bytesUsed.get());
@@ -272,11 +263,10 @@ class BufferedUpdates implements Accountable {
         scratch.field = deleteFieldEntry.getKey();
         BufferedUpdates.BytesRefIntMap terms = deleteFieldEntry.getValue();
         int[] indices = terms.bytesRefHash.sort();
-        for (int index : indices) {
-          if (index != -1) {
-            terms.bytesRefHash.get(index, scratch.bytes);
-            consumer.accept(scratch, terms.values[index]);
-          }
+        for (int i = 0; i < terms.bytesRefHash.size(); i++) {
+          int index = indices[i];
+          terms.bytesRefHash.get(index, scratch.bytes);
+          consumer.accept(scratch, terms.values[index]);
         }
       }
     }

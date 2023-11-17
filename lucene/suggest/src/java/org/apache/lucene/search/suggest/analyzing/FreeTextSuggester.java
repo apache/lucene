@@ -295,7 +295,8 @@ public class FreeTextSuggester extends Lookup {
       TermsEnum termsEnum = terms.iterator();
 
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-      FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      FSTCompiler<Long> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
       IntsRefBuilder scratchInts = new IntsRefBuilder();
       while (true) {

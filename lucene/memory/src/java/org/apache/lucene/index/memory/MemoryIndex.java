@@ -446,9 +446,7 @@ public class MemoryIndex {
             + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
-        new ByteBlockPool(
-            new RecyclingByteBlockAllocator(
-                ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
+        new ByteBlockPool(new RecyclingByteBlockAllocator(maxBufferedByteBlocks, bytesUsed));
     slicedIntBlockPool =
         new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
@@ -2124,7 +2122,7 @@ public class MemoryIndex {
 
     @Override
     public LeafMetaData getMetaData() {
-      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
     }
 
     @Override

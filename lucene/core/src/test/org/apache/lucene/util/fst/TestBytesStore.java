@@ -271,8 +271,7 @@ public class TestBytesStore extends LuceneTestCase {
         System.out.println("    bulk: reversed");
       }
       // reversed
-      FST.BytesReader r = bytes.getReverseReader();
-      assertTrue(r.reversed());
+      FST.BytesReader r = bytes.getReverseBytesReader();
       r.setPosition(totalLength - 1);
       r.readBytes(actual, 0, actual.length);
       int start = 0;
@@ -290,7 +289,6 @@ public class TestBytesStore extends LuceneTestCase {
         System.out.println("    bulk: forward");
       }
       FST.BytesReader r = bytes.getForwardReader();
-      assertFalse(r.reversed());
       r.readBytes(actual, 0, actual.length);
     }
 
@@ -306,7 +304,7 @@ public class TestBytesStore extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println("    ops: reversed");
       }
-      r = bytes.getReverseReader();
+      r = bytes.getReverseBytesReader();
     } else {
       if (VERBOSE) {
         System.out.println("    ops: forward");

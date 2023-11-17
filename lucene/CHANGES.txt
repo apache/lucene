@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB-12695: Deprecated public constructor of FSTCompiler. Please use FSTCompiler.Builder
+  instead. (Juan M. Caicedo)
 
 * LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
   instead. (Vigya Sharma)
@@ -62,10 +64,17 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
+
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
 New Features
 ---------------------
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
+
+* GITHUB-12767: Add a flag to enable executing using NFA in RegexpQuery. (Patrick Zhai)
 
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
@@ -81,6 +90,13 @@ Improvements
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
+* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
+  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
+  result in a more minimal FST (more common suffixes are shard).  Pass
+  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
+  minimal FST.  Inspired by this Rust FST implemention:
+  https://blog.burntsushi.net/transducers (Mike McCandless)
 
 Optimizations
 ---------------------
@@ -143,12 +159,36 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
+* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
+  between FST and FSTCompiler (Anh Dung Bui)
+
+* GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
+
+* GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
+  Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
+  instead of relying on assert. (Shubham Chaudhary)
+
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
 
 New Features
 ---------------------
+
 * GITHUB#12548: Added similarityToQueryVector API to compute vector similarity scores
   with DoubleValuesSource. (Shubham Chaudhary)
+
+* GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
+  segment basis and maintained across merges. The property is exposed via LeafReaderMetadata. (Simon Willnauer)
+
+* GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
+  storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
+
+* GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
+  (Patrick Zhai)
+
+* GITHUB#12729: Add new Lucene99FlatVectorsFormat for writing vectors in a flat format and refactor
+  Lucene99HnswVectorsFormat to reuse the flat format. Added new Lucene99HnswQuantizedVectorsFormat that uses
+  quantized vectors for its flat storage. (Ben Trent)
 
 Improvements
 ---------------------
@@ -164,6 +204,32 @@ Improvements
 * GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
   order to simplify consumer's code (Luca Cavanna)
 
+* GITHUB#12676: Improve logging of vector support if vector module was enabled but Java version
+  is too old. It also logs partial vectorization support if old CPU or disabled AVX.
+  (Uwe Schindler, Robert Muir)
+
+* GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
+  (Uwe Schindler)
+
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731, GITHUB#12737: Speed up
+  Panama vector support and test improvements. (Uwe Schindler, Robert Muir)
+
+* GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
+
+* GITHUB#12705, GITHUB#12705, GITHUB#12785: Improve handling of NullPointerException and
+  IllegalStateException in MMapDirectory's IndexInputs. Also makes sure to close master
+  MemorySegmentIndexInput while not throwing IllegalStateException (retry in spin loop).
+  Also improve TestMmapDirectory.testAceWithThreads to run faster and use less resources.
+  (Uwe Schindler, Maurizio Cimadamore, Michael Sokolov)
+
+* GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
+
+* GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
+  if SecurityManager prevents access.  (Uwe Schindler)
+
+* GITHUB#12801: Remove possible contention on a ReentrantReadWriteLock in
+  Monitor which could result in searches waiting for commits. (Davis Cook)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -172,8 +238,10 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
-  
+
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
+
+* GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
 
 * GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
   to reduce GC load during indexing. (Guo Feng)
@@ -186,31 +254,97 @@ Optimizations
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
 
+* GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
+
+* GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
+
+* GITHUB#12589: Disjunctions now sometimes run as conjunctions when the minimum
+  competitive score requires multiple clauses to match. (Adrien Grand)
+
+* GITHUB#12710: Use Arrays#mismatch for Outputs#common operations. (Guo Feng)
+
+* GITHUB#12712: Speed up sorting postings file with an offline radix sorter in BPIndexReader. (Guo Feng)
+
+* GITHUB#12702: Disable suffix sharing for block tree index, making writing the terms dictionary index faster
+  and less RAM hungry, while making the index a bit (~1.X% for the terms index file on wikipedia). (Guo Feng, Mike McCandless)
+
+* GITHUB#12726: Return the same input vector if its a unit vector in VectorUtil#l2normalize. (Shubham Chaudhary)
+
+* GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
+  specialized bulk scorer. (Adrien Grand)
+
+* GITHUB#12696: Change Postings back to using FOR in Lucene99PostingsFormat. Freqs, positions and offset keep using PFOR. (Jakub Slowinski)
+
+* GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
+
+* GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
+
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
+* GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
+
 Changes in runtime behavior
 ---------------------
 
 * GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
 
+* GITHUB#12765: Disable vectorization on VMs that are not Hotspot-based.  (Uwe Schindler, Robert Muir)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#12654: TestIndexWriterOnVMError.testUnknownError times out (fixes potential IndexWriter
+  deadlock with tragic exceptions). (Benjamin Trent, Dawid Weiss, Simon Willnauer)
 
 * GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
   (Grigoriy Troitskiy)
 
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
+* GITHUB#12698: Fix IndexOutOfBoundsException when saving FSTStore-backed FST with different DataOutput for metadata (Anh Dung Bui)
+
 * GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
+
+* GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
+
+* GITHUB#12727: Ensure negative scores are not returned by vector similarity functions (Ben Trent)
+
+* GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
+
+* GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
+
+* GITHUB#12640: Ensure #finish is called on all drill-sideways collectors even if one throws a
+  CollectionTerminatedException (Greg Miller)
 
 Build
 ---------------------
 
+* GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
+  nightly mode). (Dawid Weiss)
+
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed
+  leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
+
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
+
+* GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
+
+* GITHUB#6675: Various improvements related to ByteBlockPool. Slice functionality on top of ByteBlockPool moved to its
+  own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
+  overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
+  (Stefan Vodita)
 
 ======================== Lucene 9.8.0 =======================
 

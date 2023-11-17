@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -92,7 +93,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     List<int[]> segmentations = new ArrayList<>(featureEntries.size());
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     long ord = 0;
 

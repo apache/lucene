@@ -595,8 +595,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         }
     }
     Reader reader = new HTMLStripCharFilter(new StringReader(text.toString()));
-    while (reader.read() != -1)
-      ;
+    while (reader.read() != -1) {}
   }
 
   public void testUTF16Surrogates() throws Exception {

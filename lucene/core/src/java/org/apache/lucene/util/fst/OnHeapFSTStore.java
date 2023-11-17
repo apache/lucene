@@ -51,7 +51,7 @@ public final class OnHeapFSTStore implements FSTStore {
   }
 
   @Override
-  public void init(DataInput in, long numBytes) throws IOException {
+  public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (numBytes > 1 << this.maxBlockBits) {
       // FST is big: we need multiple pages
       bytes = new BytesStore(this.maxBlockBits);
@@ -61,6 +61,7 @@ public final class OnHeapFSTStore implements FSTStore {
       bytesArray = new byte[(int) numBytes];
       in.readBytes(bytesArray, 0, bytesArray.length);
     }
+    return this;
   }
 
   @Override
@@ -68,13 +69,19 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return bytesArray.length;
     } else {
-      return bytes.ramBytesUsed();
+      return bytes.getPosition();
     }
   }
 
   @Override
   public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + size();
+    long size = BASE_RAM_BYTES_USED;
+    if (bytesArray != null) {
+      size += bytesArray.length;
+    } else {
+      size += bytes.ramBytesUsed();
+    }
+    return size;
   }
 
   @Override
@@ -82,19 +89,16 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return new ReverseBytesReader(bytesArray);
     } else {
-      return bytes.getReverseReader();
+      return bytes.getReverseBytesReader();
     }
   }
 
   @Override
   public void writeTo(DataOutput out) throws IOException {
     if (bytes != null) {
-      long numBytes = bytes.getPosition();
-      out.writeVLong(numBytes);
       bytes.writeTo(out);
     } else {
       assert bytesArray != null;
-      out.writeVLong(bytesArray.length);
       out.writeBytes(bytesArray, 0, bytesArray.length);
     }
   }
