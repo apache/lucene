@@ -32,6 +32,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.InfoStream;
 
 /**
  * This selects the biggest Hnsw graph from the provided merge state and initializes a new
@@ -39,15 +40,16 @@ import org.apache.lucene.util.FixedBitSet;
  *
  * @lucene.experimental
  */
-public class IncrementalHnswGraphMerger {
+public class IncrementalHnswGraphMerger implements HnswGraphMerger {
 
-  private KnnVectorsReader initReader;
-  private MergeState.DocMap initDocMap;
-  private int initGraphSize;
-  private final FieldInfo fieldInfo;
-  private final RandomVectorScorerSupplier scorerSupplier;
-  private final int M;
-  private final int beamWidth;
+  protected final FieldInfo fieldInfo;
+  protected final RandomVectorScorerSupplier scorerSupplier;
+  protected final int M;
+  protected final int beamWidth;
+
+  protected KnnVectorsReader initReader;
+  protected MergeState.DocMap initDocMap;
+  protected int initGraphSize;
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
@@ -64,13 +66,8 @@ public class IncrementalHnswGraphMerger {
    * Adds a reader to the graph merger if it meets the following criteria: 1. Does not contain any
    * deleted docs 2. Is a HnswGraphProvider/PerFieldKnnVectorReader 3. Has the most docs of any
    * previous reader that met the above criteria
-   *
-   * @param reader KnnVectorsReader to add to the merger
-   * @param docMap MergeState.DocMap for the reader
-   * @param liveDocs Bits representing live docs, can be null
-   * @return this
-   * @throws IOException If an error occurs while reading from the merge state
    */
+  @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
     KnnVectorsReader currKnnVectorsReader = reader;
@@ -113,18 +110,20 @@ public class IncrementalHnswGraphMerger {
    * If no valid readers were added to the merge state, a new graph is created.
    *
    * @param mergedVectorIterator iterator over the vectors in the merged segment
+   * @param maxOrd max num of vectors that will be merged into the graph
    * @return HnswGraphBuilder
    * @throws IOException If an error occurs while reading from the merge state
    */
-  public HnswGraphBuilder createBuilder(DocIdSetIterator mergedVectorIterator) throws IOException {
+  protected HnswBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
+      throws IOException {
     if (initReader == null) {
-      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+      return HnswGraphBuilder.create(
+          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    final int numVectors = Math.toIntExact(mergedVectorIterator.cost());
 
-    BitSet initializedNodes = new FixedBitSet(numVectors + 1);
+    BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
     return InitializedHnswGraphBuilder.fromGraph(
         scorerSupplier,
@@ -134,7 +133,15 @@ public class IncrementalHnswGraphMerger {
         initializerGraph,
         oldToNewOrdinalMap,
         initializedNodes,
-        numVectors);
+        maxOrd);
+  }
+
+  @Override
+  public OnHeapHnswGraph merge(
+      DocIdSetIterator mergedVectorIterator, InfoStream infoStream, int maxOrd) throws IOException {
+    HnswBuilder builder = createBuilder(mergedVectorIterator, maxOrd);
+    builder.setInfoStream(infoStream);
+    return builder.build(maxOrd);
   }
 
   /**
@@ -146,8 +153,8 @@ public class IncrementalHnswGraphMerger {
    * @return the mapping from old ordinals to new ordinals
    * @throws IOException If an error occurs while reading from the merge state
    */
-  private int[] getNewOrdMapping(DocIdSetIterator mergedVectorIterator, BitSet initializedNodes)
-      throws IOException {
+  protected final int[] getNewOrdMapping(
+      DocIdSetIterator mergedVectorIterator, BitSet initializedNodes) throws IOException {
     DocIdSetIterator initializerIterator = null;
 
     switch (fieldInfo.getVectorEncoding()) {

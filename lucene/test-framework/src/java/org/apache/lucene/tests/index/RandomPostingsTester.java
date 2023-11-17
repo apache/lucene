@@ -696,6 +696,7 @@ public class RandomPostingsTester {
             "_0",
             maxDoc,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),

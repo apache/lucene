@@ -66,7 +66,7 @@ public class MultiSimilarity extends Similarity {
       for (SimScorer subScorer : subScorers) {
         sum += subScorer.score(freq, norm);
       }
-      return (float)sum;
+      return (float) sum;
     }
 
     @Override

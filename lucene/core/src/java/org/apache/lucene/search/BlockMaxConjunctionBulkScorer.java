@@ -37,7 +37,8 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
   private final Scorer[] scorers;
   private final DocIdSetIterator[] iterators;
-  private final DocIdSetIterator lead;
+  private final DocIdSetIterator lead1, lead2;
+  private final Scorer scorer1, scorer2;
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
@@ -50,7 +51,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     Arrays.sort(this.scorers, Comparator.comparingLong(scorer -> scorer.iterator().cost()));
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead = iterators[0];
+    lead1 = iterators[0];
+    lead2 = iterators[1];
+    scorer1 = this.scorers[0];
+    scorer2 = this.scorers[1];
     this.sumOfOtherClauses = new double[this.scorers.length];
     this.maxDoc = maxDoc;
   }
@@ -59,7 +63,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = Math.max(lead.docID(), min);
+    int windowMin = Math.max(lead1.docID(), min);
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
@@ -78,7 +82,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
       }
       scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
-      windowMin = Math.max(lead.docID(), windowMax + 1);
+      windowMin = Math.max(lead1.docID(), windowMax + 1);
     }
 
     return windowMin >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : windowMin;
@@ -92,13 +96,16 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       return;
     }
 
-    if (lead.docID() < min) {
-      lead.advance(min);
+    if (lead1.docID() < min) {
+      lead1.advance(min);
     }
+
+    final double sumOfOtherMaxScoresAt1 = sumOfOtherClauses[1];
+
     advanceHead:
-    for (int doc = lead.docID(); doc < max; ) {
+    for (int doc = lead1.docID(); doc < max; ) {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
-        doc = lead.nextDoc();
+        doc = lead1.nextDoc();
         continue;
       }
 
@@ -109,26 +116,50 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
       double currentScore;
       if (hasMinCompetitiveScore) {
-        currentScore = scorers[0].score();
+        currentScore = scorer1.score();
       } else {
         currentScore = 0;
       }
 
-      for (int i = 1; i < iterators.length; ++i) {
-        // First check if we have a chance of having a match
+      // This is the same logic as in the below for loop, specialized for the 2nd least costly
+      // clause. This seems to help the JVM.
+
+      // First check if we have a chance of having a match based on max scores
+      if (hasMinCompetitiveScore
+          && (float) MathUtil.sumUpperBound(currentScore + sumOfOtherMaxScoresAt1, scorers.length)
+              < scorable.minCompetitiveScore) {
+        doc = lead1.nextDoc();
+        continue advanceHead;
+      }
+
+      // NOTE: lead2 may be on `doc` already if we `continue`d on the previous loop iteration.
+      if (lead2.docID() < doc) {
+        int next = lead2.advance(doc);
+        if (next != doc) {
+          doc = lead1.advance(next);
+          continue advanceHead;
+        }
+      }
+      assert lead2.docID() == doc;
+      if (hasMinCompetitiveScore) {
+        currentScore += scorer2.score();
+      }
+
+      for (int i = 2; i < iterators.length; ++i) {
+        // First check if we have a chance of having a match based on max scores
         if (hasMinCompetitiveScore
             && (float) MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
                 < scorable.minCompetitiveScore) {
-          doc = lead.nextDoc();
+          doc = lead1.nextDoc();
           continue advanceHead;
         }
 
-        // NOTE: these iterators may already be on `doc` already if we called `continue advanceHead`
-        // on the previous loop iteration.
+        // NOTE: these iterators may be on `doc` already if we called `continue advanceHead` on the
+        // previous loop iteration.
         if (iterators[i].docID() < doc) {
           int next = iterators[i].advance(doc);
           if (next != doc) {
-            doc = lead.advance(next);
+            doc = lead1.advance(next);
             continue advanceHead;
           }
         }
@@ -151,13 +182,13 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         return;
       }
 
-      doc = lead.nextDoc();
+      doc = lead1.nextDoc();
     }
   }
 
   @Override
   public long cost() {
-    return lead.cost();
+    return lead1.cost();
   }
 
   private static class DocAndScore extends Scorable {

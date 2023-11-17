@@ -215,7 +215,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public LeafMetaData getMetaData() {
-    return new LeafMetaData(Version.LATEST.major, null, null);
+    return new LeafMetaData(Version.LATEST.major, null, null, false);
   }
 
   @Override

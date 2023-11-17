@@ -263,7 +263,6 @@ public class LevenshteinAutomata {
     int size() {
       return minErrors.length * (w + 1);
     }
-    ;
 
     /**
      * Returns true if the <code>state</code> in any Levenshtein DFA is an accept state (final

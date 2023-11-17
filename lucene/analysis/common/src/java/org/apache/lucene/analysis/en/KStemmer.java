@@ -777,7 +777,6 @@ class KStemmer {
   private int stemLength() {
     return j + 1;
   }
-  ;
 
   private boolean endsIn(char[] s) {
     if (s.length > k) return false;

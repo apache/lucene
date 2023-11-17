@@ -43,7 +43,7 @@ public class TestOnHeapHnswGraph extends LuceneTestCase {
 
   /* assert exception will be thrown when we call getNodeOnLevel for an incomplete graph */
   public void testIncompleteGraphThrow() {
-    OnHeapHnswGraph graph = new OnHeapHnswGraph(10, 10);
+    OnHeapHnswGraph graph = new OnHeapHnswGraph(10, -1);
     graph.addNode(1, 0);
     graph.addNode(0, 0);
     assertEquals(1, graph.getNodesOnLevel(1).size());
@@ -62,6 +62,10 @@ public class TestOnHeapHnswGraph extends LuceneTestCase {
       int level = random().nextInt(maxLevel);
       for (int l = level; l >= 0; l--) {
         graph.addNode(l, i);
+        graph.trySetNewEntryNode(i, l);
+        if (l > graph.numLevels() - 1) {
+          graph.tryPromoteNewEntryNode(i, l, graph.numLevels() - 1);
+        }
         levelToNodes.get(l).add(i);
       }
     }
@@ -93,6 +97,10 @@ public class TestOnHeapHnswGraph extends LuceneTestCase {
       int level = random().nextInt(maxLevel);
       for (int l = level; l >= 0; l--) {
         graph.addNode(l, i);
+        graph.trySetNewEntryNode(i, l);
+        if (l > graph.numLevels() - 1) {
+          graph.tryPromoteNewEntryNode(i, l, graph.numLevels() - 1);
+        }
         levelToNodes.get(l).add(i);
       }
     }

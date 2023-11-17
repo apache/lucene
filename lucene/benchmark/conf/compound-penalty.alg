@@ -37,8 +37,8 @@ doc.term.vector=vector:true:true:false:false
 log.step=500
 log.step.DeleteDoc=100
 
-docs.dir=reuters-out
-#docs.dir=reuters-111
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 
