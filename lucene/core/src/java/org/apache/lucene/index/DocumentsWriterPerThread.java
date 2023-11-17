@@ -247,6 +247,11 @@ final class DocumentsWriterPerThread implements Accountable {
         }
         allDocsIndexed = true;
         if (numDocsInRAM - docsInRamBefore > 1) {
+          if (segmentInfo.getIndexSort() != null) {
+            if (segmentInfo.getIndexSort().getRootDocField() == null) {
+              throw new IllegalArgumentException("A root doc field must be set");
+            }
+          }
           segmentInfo.setHasBlocks();
         }
         return finishDocuments(deleteNode, docsInRamBefore);

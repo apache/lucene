@@ -20,7 +20,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.core.StringContains.containsString;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3173,14 +3172,16 @@ public class TestIndexSorting extends LuceneTestCase {
     dir.close();
   }
 
-  @Repeat(iterations = 100)
   public void testIndexSortWithBlocks() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
       iwc.setCodec(codec);
       String parentField = "parent";
-      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
+      Sort.RootDocs rootDocs = new Sort.RootDocs(parentField, DocValuesType.NUMERIC);
+      Sort indexSort =
+          new Sort(rootDocs,
+              new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       LogMergePolicy policy = newLogMergePolicy();
       // make sure that merge factor is always > 2
@@ -3209,7 +3210,11 @@ public class TestIndexSorting extends LuceneTestCase {
           parent.add(new StringField("id", Integer.toString(i), Store.YES));
           parent.add(new NumericDocValuesField("id", i));
           parent.add(new NumericDocValuesField("foo", random().nextInt()));
-          parent.add(new NumericDocValuesField(parentField, 0));
+          if (rootDocs.type() == DocValuesType.NONE) {
+            parent.add(new NumericDocValuesField(parentField, 0));
+          } else {
+            parent.add(new StringField(parentField, parentField, Store.NO));
+          }
           w.addDocuments(Arrays.asList(child1, child2, parent));
           if (rarely()) {
             w.commit();
@@ -3224,12 +3229,12 @@ public class TestIndexSorting extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           LeafReader leaf = ctx.reader();
-          NumericDocValues parentDV = leaf.getNumericDocValues(parentField);
+          DocIdSetIterator parentDISI = rootDocs.rootDocs(leaf);
           NumericDocValues ids = leaf.getNumericDocValues("id");
           NumericDocValues children = leaf.getNumericDocValues("child");
           int doc = -1;
           int expectedDocID = 2;
-          while ((doc = parentDV.nextDoc()) != NO_MORE_DOCS) {
+          while ((doc = parentDISI.nextDoc()) != NO_MORE_DOCS) {
             assertEquals(expectedDocID, doc);
             int id = ids.nextDoc();
             long child1ID = ids.longValue();

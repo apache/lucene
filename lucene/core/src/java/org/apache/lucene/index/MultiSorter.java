@@ -54,9 +54,8 @@ final class MultiSorter {
       for (int j = 0; j < readers.size(); j++) {
         CodecReader codecReader = readers.get(j);
         if (codecReader.getMetaData().hasBlocks()) {
-          final NumericDocValues readerValues =
-              codecReader.getNumericDocValues(codecReader.getMetaData().getRootField());
-          BitSet parents = BitSet.of(readerValues, codecReader.maxDoc());
+          BitSet parents =
+              BitSet.of(sort.getRootDocs().rootDocs(codecReader), codecReader.maxDoc());
           IndexSorter.ComparableProvider[] providers = comparables[i];
           IndexSorter.ComparableProvider provider = providers[j];
           providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));

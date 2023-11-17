@@ -91,8 +91,4 @@ public final class LeafMetaData {
   public boolean hasBlocks() {
     return hasBlocks;
   }
-
-  public String getRootField() {
-    return "parent"; // nocommit
-  }
 }

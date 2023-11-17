@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Encapsulates sort criteria for returned hits.
@@ -43,6 +44,7 @@ public final class Sort {
 
   // internal representation of the sort criteria
   private final SortField[] fields;
+  private final String rootDocField;
 
   /**
    * Sorts by computed relevance. This is the same sort criteria as calling {@link
@@ -59,10 +61,15 @@ public final class Sort {
    * is still a tie after all SortFields are checked, the internal Lucene docid is used to break it.
    */
   public Sort(SortField... fields) {
+    this(null, fields);
+  }
+
+  public Sort(String rootDocField, SortField... fields) {
     if (fields.length == 0) {
       throw new IllegalArgumentException("There must be at least 1 sort field");
     }
     this.fields = fields;
+    this.rootDocField = rootDocField;
   }
 
   /**
@@ -72,6 +79,10 @@ public final class Sort {
    */
   public SortField[] getSort() {
     return fields;
+  }
+
+  public String getRootDocField() {
+    return rootDocField;
   }
 
   /**
@@ -85,7 +96,7 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-
+    assert rootDocField == null;
     SortField[] rewrittenSortFields = new SortField[fields.length];
     for (int i = 0; i < fields.length; i++) {
       rewrittenSortFields[i] = fields[i].rewrite(searcher);
@@ -100,7 +111,9 @@ public final class Sort {
   @Override
   public String toString() {
     StringBuilder buffer = new StringBuilder();
-
+    if (rootDocField != null) {
+      buffer.append("RootDocField: ").append(rootDocField).append(' ');
+    }
     for (int i = 0; i < fields.length; i++) {
       buffer.append(fields[i].toString());
       if ((i + 1) < fields.length) buffer.append(',');
@@ -115,13 +128,13 @@ public final class Sort {
     if (this == o) return true;
     if (!(o instanceof Sort)) return false;
     final Sort other = (Sort) o;
-    return Arrays.equals(this.fields, other.fields);
+    return Objects.equals(rootDocField, other.rootDocField) && Arrays.equals(this.fields, other.fields);
   }
 
   /** Returns a hash code value for this object. */
   @Override
   public int hashCode() {
-    return 0x45aaf665 + Arrays.hashCode(fields);
+    return 0x45aaf665 + Arrays.hashCode(fields) + Objects.hashCode(rootDocField);
   }
 
   /** Returns true if the relevance score is needed to sort documents. */

@@ -210,9 +210,8 @@ public final class Sorter {
 
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
     if (reader.getMetaData().hasBlocks()) {
-      final NumericDocValues readerValues =
-          reader.getNumericDocValues(reader.getMetaData().getRootField());
-      BitSet parents = BitSet.of(readerValues, reader.maxDoc());
+      assert sort.getRootDocField() != null;
+      BitSet parents = BitSet.of(reader.getNumericDocValues(sort.getRootDocField()), reader.maxDoc());
       comparatorWrapper =
           in ->
               (docID1, docID2) ->

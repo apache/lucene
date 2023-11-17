@@ -214,8 +214,7 @@ final class IndexingChain implements Accountable {
     LeafReader docValuesReader = getDocValuesLeafReader();
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
     if (state.segmentInfo.getHasBlocks()) {
-      final NumericDocValues readerValues =
-          docValuesReader.getNumericDocValues("parent"); // NOCOMMIT hard coded
+      final DocIdSetIterator readerValues = docValuesReader.getNumericDocValues(indexSort.getRootDocField());
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
       comparatorWrapper =
           in ->

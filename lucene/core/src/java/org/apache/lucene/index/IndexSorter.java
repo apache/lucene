@@ -102,12 +102,6 @@ public interface IndexSorter {
     SortedDocValues get(LeafReader reader) throws IOException;
   }
 
-  /** Provide a TermsEnum instance for a LeafReader */
-  interface TermsEnumProvider {
-    /** Returns the TermsEnum instance for this LeafReader */
-    TermsEnum get(LeafReader reader) throws IOException;
-  }
-
   /** Sorts documents based on integer values from a NumericDocValues instance */
   final class IntSorter implements IndexSorter {
 

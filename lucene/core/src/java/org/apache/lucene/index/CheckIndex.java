@@ -1180,20 +1180,18 @@ public final class CheckIndex implements Closeable {
         comparators[i] = fields[i].getComparator(1, Pruning.NONE).getLeafComparator(readerContext);
       }
 
-      int maxDoc = reader.maxDoc();
-
       try {
         LeafMetaData metaData = reader.getMetaData();
-        DocIdSetIterator iter = DocIdSetIterator.all(reader.maxDoc());
-        if (metaData.hasBlocks()) {
-          iter = reader.getNumericDocValues("parent"); // NOCOMMIT hard coded
-        }
+        final DocIdSetIterator iter =
+            metaData.hasBlocks()
+                ? reader.getNumericDocValues(sort.getRootDocField())
+                : DocIdSetIterator.all(reader.maxDoc());
         int prevDoc = iter.nextDoc();
         int nextDoc;
         while ((nextDoc = iter.nextDoc()) != NO_MORE_DOCS) {
           int cmp = 0;
           for (int i = 0; i < comparators.length; i++) {
-            // TODO: would be better if copy() didnt cause a term lookup in TermOrdVal & co,
+            // TODO: would be better if copy() didn't cause a term lookup in TermOrdVal & co,
             // the segments are always the same here...
             comparators[i].copy(0, prevDoc);
             comparators[i].setBottom(0);
@@ -1221,7 +1219,7 @@ public final class CheckIndex implements Closeable {
         if (failFast) {
           throw IOUtils.rethrowAlways(e);
         }
-        msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+        msg(infoStream, "ERROR [" + e.getMessage() + "]");
         status.error = e;
         if (infoStream != null) {
           e.printStackTrace(infoStream);
