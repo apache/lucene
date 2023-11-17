@@ -45,28 +45,28 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
   }
 
-  public void testQuantiles() {
+  public void testconfidenceIntervals() {
     float[] percs = new float[1000];
     for (int i = 0; i < 1000; i++) {
       percs[i] = (float) i;
     }
     shuffleArray(percs);
-    float[] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.9f);
+    float[] upperAndLower = ScalarQuantizer.getUpperAndLowerconfidenceInterval(percs, 0.9f);
     assertEquals(50f, upperAndLower[0], 1e-7);
     assertEquals(949f, upperAndLower[1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.95f);
+    upperAndLower = ScalarQuantizer.getUpperAndLowerconfidenceInterval(percs, 0.95f);
     assertEquals(25f, upperAndLower[0], 1e-7);
     assertEquals(974f, upperAndLower[1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.99f);
+    upperAndLower = ScalarQuantizer.getUpperAndLowerconfidenceInterval(percs, 0.99f);
     assertEquals(5f, upperAndLower[0], 1e-7);
     assertEquals(994f, upperAndLower[1], 1e-7);
   }
 
   public void testEdgeCase() {
     float[] upperAndLower =
-        ScalarQuantizer.getUpperAndLowerQuantile(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
+        ScalarQuantizer.getUpperAndLowerconfidenceInterval(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
     assertEquals(1f, upperAndLower[0], 1e-7f);
     assertEquals(1f, upperAndLower[1], 1e-7f);
   }
