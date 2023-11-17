@@ -89,6 +89,8 @@ Improvements
 * GITHUB#12801: Remove possible contention on a ReentrantReadWriteLock in
   Monitor which could result in searches waiting for commits. (Davis Cook)
 
+* GITHUB#11277, LUCENE-10241: Upgrade to OpenNLP to 1.9.4. (Jeff Zemerick)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
