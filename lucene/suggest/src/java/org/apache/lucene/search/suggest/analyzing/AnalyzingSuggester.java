@@ -499,7 +499,7 @@ public class AnalyzingSuggester extends Lookup {
       PairOutputs<Long, BytesRef> outputs =
           new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
       FSTCompiler<Pair<Long, BytesRef>> fstCompiler =
-          new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
       // Build FST:
       BytesRefBuilder previousAnalyzed = null;
