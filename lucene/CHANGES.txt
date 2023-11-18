@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB-12695: Deprecated public constructor of FSTCompiler. Please use FSTCompiler.Builder
+  instead. (Juan M. Caicedo)
 
 * LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
   instead. (Vigya Sharma)
@@ -169,6 +171,8 @@ API Changes
 * GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
   FacetLabel at once. (Egor Potemkin)
 
+* GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
+
 New Features
 ---------------------
 
@@ -225,6 +229,11 @@ Improvements
 * GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
   if SecurityManager prevents access.  (Uwe Schindler)
 
+* GITHUB#12801: Remove possible contention on a ReentrantReadWriteLock in
+  Monitor which could result in searches waiting for commits. (Davis Cook)
+
+* GITHUB#11277, LUCENE-10241: Upgrade to OpenNLP to 1.9.4. (Jeff Zemerick)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -280,6 +289,8 @@ Optimizations
 
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
 
+* GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
+
 Changes in runtime behavior
 ---------------------
 
@@ -313,6 +324,8 @@ Bug Fixes
 
 * GITHUB#12640: Ensure #finish is called on all drill-sideways collectors even if one throws a
   CollectionTerminatedException (Greg Miller)
+
+* GITHUB#12626: Fix segmentInfos replace to set userData (Shibi Balamurugan, Uwe Schindler, Marcus Eagan, Michael Froh)
 
 Build
 ---------------------
