@@ -43,17 +43,17 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
 
   private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
 
-  /** The minimum quantile */
-  private static final float MINIMUM_QUANTILE = 0.9f;
+  /** The minimum confidence interval */
+  private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
 
-  /** The maximum quantile */
-  private static final float MAXIMUM_QUANTILE = 1f;
+  /** The maximum confidence interval */
+  private static final float MAXIMUM_CONFIDENCE_INTERVAL = 1f;
 
   /**
-   * Controls the quantile used to scalar quantize the vectors the default quantile is calculated as
-   * `1-1/(vector_dimensions + 1)`
+   * Controls the confidence interval used to scalar quantize the vectors the default value is
+   * calculated as `1-1/(vector_dimensions + 1)`
    */
-  final Float quantile;
+  final Float confidenceInterval;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -63,24 +63,26 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   /**
    * Constructs a format using the given graph construction parameters.
    *
-   * @param quantile the quantile for scalar quantizing the vectors, when `null` it is calculated
-   *     based on the vector field dimensions.
+   * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
+   *     it is calculated based on the vector field dimensions.
    */
-  public Lucene99ScalarQuantizedVectorsFormat(Float quantile) {
-    if (quantile != null && (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE)) {
+  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval) {
+    if (confidenceInterval != null
+        && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
+            || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
       throw new IllegalArgumentException(
-          "quantile must be between "
-              + MINIMUM_QUANTILE
+          "confidenceInterval must be between "
+              + MINIMUM_CONFIDENCE_INTERVAL
               + " and "
-              + MAXIMUM_QUANTILE
-              + "; quantile="
-              + quantile);
+              + MAXIMUM_CONFIDENCE_INTERVAL
+              + "; confidenceInterval="
+              + confidenceInterval);
     }
-    this.quantile = quantile;
+    this.confidenceInterval = confidenceInterval;
   }
 
-  static float calculateDefaultQuantile(int vectorDimension) {
-    return Math.max(MINIMUM_QUANTILE, 1f - (1f / (vectorDimension + 1)));
+  static float calculateDefaultConfidenceInterval(int vectorDimension) {
+    return Math.max(MINIMUM_CONFIDENCE_INTERVAL, 1f - (1f / (vectorDimension + 1)));
   }
 
   @Override
@@ -88,8 +90,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
     return NAME
         + "(name="
         + NAME
-        + ", quantile="
-        + quantile
+        + ", confidenceInterval="
+        + confidenceInterval
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -98,7 +100,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, quantile, rawVectorFormat.fieldsWriter(state));
+        state, confidenceInterval, rawVectorFormat.fieldsWriter(state));
   }
 
   @Override
