@@ -250,23 +250,6 @@ class BytesStore extends DataOutput implements FSTReader {
     }
   }
 
-  /** Writes an int at the absolute position without changing the current pointer. */
-  public void writeInt(long pos, int value) {
-    int blockIndex = (int) (pos >> blockBits);
-    int upto = (int) (pos & blockMask);
-    byte[] block = blocks.get(blockIndex);
-    int shift = 24;
-    for (int i = 0; i < 4; i++) {
-      block[upto++] = (byte) (value >> shift);
-      shift -= 8;
-      if (upto == blockSize) {
-        upto = 0;
-        blockIndex++;
-        block = blocks.get(blockIndex);
-      }
-    }
-  }
-
   /** Reverse from srcPos, inclusive, to destPos, inclusive. */
   public void reverse(long srcPos, long destPos) {
     assert srcPos < destPos;

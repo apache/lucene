@@ -45,7 +45,7 @@ public class TestBytesStore extends LuceneTestCase {
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(7);
+        int op = random().nextInt(6);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -80,24 +80,6 @@ public class TestBytesStore extends LuceneTestCase {
 
           case 2:
             {
-              // write int @ absolute pos
-              if (pos > 4) {
-                int x = random().nextInt();
-                int randomPos = random().nextInt(pos - 4);
-                if (VERBOSE) {
-                  System.out.println("    abs writeInt pos=" + randomPos + " x=" + x);
-                }
-                bytes.writeInt(randomPos, x);
-                expected[randomPos++] = (byte) (x >> 24);
-                expected[randomPos++] = (byte) (x >> 16);
-                expected[randomPos++] = (byte) (x >> 8);
-                expected[randomPos++] = (byte) x;
-              }
-            }
-            break;
-
-          case 3:
-            {
               // reverse bytes
               if (pos > 1) {
                 int len = TestUtil.nextInt(random(), 2, Math.min(100, pos));
@@ -125,7 +107,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 4:
+          case 3:
             {
               // abs write random byte[]
               if (pos > 2) {
@@ -148,7 +130,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 5:
+          case 4:
             {
               // copyBytes
               if (pos > 1) {
@@ -164,7 +146,7 @@ public class TestBytesStore extends LuceneTestCase {
             }
             break;
 
-          case 6:
+          case 5:
             {
               // skip
               int len = random().nextInt(Math.min(100, numBytes - pos));
