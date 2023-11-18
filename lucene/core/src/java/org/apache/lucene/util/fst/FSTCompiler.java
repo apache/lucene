@@ -59,8 +59,6 @@ import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
  */
 public class FSTCompiler<T> {
 
-  static final int DEFAULT_BLOCK_BITS = 15;
-
   static final float DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR = 1f;
 
   /**
@@ -218,7 +216,7 @@ public class FSTCompiler<T> {
     private final Outputs<T> outputs;
     private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
-    private DataOutput dataOutput = getOnHeapDataOutput(DEFAULT_BLOCK_BITS);
+    private DataOutput dataOutput = getOnHeapDataOutput(15);
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
 
     /**
