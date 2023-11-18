@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.DataOutput;

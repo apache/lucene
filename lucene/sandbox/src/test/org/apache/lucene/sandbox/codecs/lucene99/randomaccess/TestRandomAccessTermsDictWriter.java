@@ -101,14 +101,16 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
       assertEquals(expectedDocCount, deserialized.termsStats().docCount());
       assertEquals(expectedTermAndState.length, deserialized.termsStats().size());
       assertEquals(
-              Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.docFreq).sum(),
-              deserialized.termsStats().sumDocFreq());
+          Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.docFreq).sum(),
+          deserialized.termsStats().sumDocFreq());
       assertEquals(
-              Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.totalTermFreq).sum(),
-              deserialized.termsStats().sumTotalTermFreq());
+          Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.totalTermFreq).sum(),
+          deserialized.termsStats().sumTotalTermFreq());
       assertEquals(expectedTermAndState.length, deserialized.termsStats().size());
       assertEquals(expectedTermAndState[0].term, deserialized.termsStats().minTerm());
-      assertEquals(expectedTermAndState[expectedTermAndState.length - 1].term, deserialized.termsStats().maxTerm());
+      assertEquals(
+          expectedTermAndState[expectedTermAndState.length - 1].term,
+          deserialized.termsStats().maxTerm());
 
       for (var x : expectedTermAndState) {
         IntBlockTermState expectedState = x.state;

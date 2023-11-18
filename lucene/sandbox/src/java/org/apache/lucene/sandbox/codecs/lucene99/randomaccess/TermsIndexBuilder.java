@@ -35,7 +35,7 @@ final class TermsIndexBuilder {
 
   private final long[] countPerType = new long[TermType.NUM_TOTAL_TYPES];
   private final FSTCompiler<Long> fstCompiler =
-      new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
+      new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton()).build();
 
   TermsIndexBuilder() {
     Arrays.fill(countPerType, -1);
