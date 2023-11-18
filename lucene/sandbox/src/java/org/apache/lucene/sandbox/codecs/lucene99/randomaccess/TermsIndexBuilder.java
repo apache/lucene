@@ -31,11 +31,11 @@ import org.apache.lucene.util.fst.Util;
  * ordinals are scoped to type (not global).
  */
 final class TermsIndexBuilder {
-  private static long MAX_ORD = (1L << 60) - 1;
+  private static final long MAX_ORD = (1L << 60) - 1;
 
   private final long[] countPerType = new long[TermType.NUM_TOTAL_TYPES];
   private final FSTCompiler<Long> fstCompiler =
-      new FSTCompiler<Long>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
+      new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
 
   TermsIndexBuilder() {
     Arrays.fill(countPerType, -1);

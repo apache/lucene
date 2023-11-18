@@ -33,7 +33,6 @@ public class TestTermDataWriter extends LuceneTestCase {
 
   public void testWriterAndDeserialize() throws IOException {
     TermStateTestFixture testFixture = TestTermStateCodecImpl.getTermStateTestFixture(777);
-    TermType expectedTermType = TermType.fromId(7);
 
     try (Directory testDir = newDirectory()) {
       IndexOutput metaOut = testDir.createOutput("segment_meta", IOContext.DEFAULT);
@@ -44,7 +43,6 @@ public class TestTermDataWriter extends LuceneTestCase {
         writer.addTermState(termState);
       }
       writer.finish();
-      metaOut.writeByte((byte) expectedTermType.getId());
       metaOut.writeVLong(writer.getTotalMetaDataBytesWritten());
       metaOut.writeVLong(writer.getTotalDataBytesWritten());
       metaOut.close();
@@ -75,7 +73,7 @@ public class TestTermDataWriter extends LuceneTestCase {
       }
       ByteSlice expectedDataSlice = new ByteArrayByteSlice(referenceBitPacker.getCompactBytes());
       ByteSlice expectedMetadataSlice = new ByteArrayByteSlice(expectedMetadata);
-      TermData expected = new TermData(expectedTermType, expectedMetadataSlice, expectedDataSlice);
+      TermData expected = new TermData(expectedMetadataSlice, expectedDataSlice);
 
       IndexInput metaIn = testDir.openInput("segment_meta", IOContext.DEFAULT);
       IndexInput metadataIn = testDir.openInput("term_meta_1", IOContext.DEFAULT);
@@ -83,13 +81,11 @@ public class TestTermDataWriter extends LuceneTestCase {
 
       TermData actual =
           TermData.deserializeOnHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
-      assertEquals(expected.termType().getId(), actual.termType().getId());
       assertByteSlice(expected.metadata(), actual.metadata());
       assertByteSlice(expected.data(), actual.data());
       testDecodeTermState(testFixture, actual);
 
       actual = TermData.deserializeOffHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
-      assertEquals(expected.termType().getId(), actual.termType().getId());
       assertByteSlice(expected.metadata(), actual.metadata());
       assertByteSlice(expected.data(), actual.data());
       testDecodeTermState(testFixture, actual);

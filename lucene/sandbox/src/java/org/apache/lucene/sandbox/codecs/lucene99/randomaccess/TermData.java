@@ -29,7 +29,7 @@ import org.apache.lucene.util.BytesRef;
  * Holds the bit-packed {@link IntBlockTermState} for a given {@link
  * org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermType}
  */
-record TermData(TermType termType, ByteSlice metadata, ByteSlice data) {
+record TermData(ByteSlice metadata, ByteSlice data) {
 
   IntBlockTermState getTermState(TermStateCodec codec, long ord) throws IOException {
     long blockId = ord / TermDataWriter.NUM_TERMS_PER_BLOCK;
@@ -53,7 +53,6 @@ record TermData(TermType termType, ByteSlice metadata, ByteSlice data) {
 
   static TermData deserializeOnHeap(
       DataInput metaInput, DataInput metadataInput, DataInput dataInput) throws IOException {
-    TermType termType = TermType.fromId(metaInput.readByte());
     long metadataSize = metaInput.readVLong();
     long dataSize = metaInput.readVLong();
 
@@ -72,13 +71,11 @@ record TermData(TermType termType, ByteSlice metadata, ByteSlice data) {
     metadataInput.readBytes(metadataBytes, 0, metadataBytes.length);
     dataInput.readBytes(dataBytes, 0, dataBytes.length);
 
-    return new TermData(
-        termType, new ByteArrayByteSlice(metadataBytes), new ByteArrayByteSlice(dataBytes));
+    return new TermData(new ByteArrayByteSlice(metadataBytes), new ByteArrayByteSlice(dataBytes));
   }
 
   static TermData deserializeOffHeap(
       DataInput metaInput, IndexInput metadataInput, IndexInput dataInput) throws IOException {
-    TermType termType = TermType.fromId(metaInput.readByte());
     long metadataSize = metaInput.readVLong();
     long dataSize = metaInput.readVLong();
 
@@ -89,6 +86,6 @@ record TermData(TermType termType, ByteSlice metadata, ByteSlice data) {
     dataInput.skipBytes(dataSize);
 
     return new TermData(
-        termType, new RandomAccessInputByteSlice(metadata), new RandomAccessInputByteSlice(data));
+        new RandomAccessInputByteSlice(metadata), new RandomAccessInputByteSlice(data));
   }
 }

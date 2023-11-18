@@ -73,31 +73,24 @@ final class TermStateCodecImpl implements TermStateCodec {
     assert !(termType.hasSkipData() && termType.hasSingletonDoc());
 
     ArrayList<TermStateCodecComponent> components = new ArrayList<>();
-    // handle docs
+    // handle docs and docFreq
     if (termType.hasSingletonDoc()) {
       components.add(SingletonDocId.INSTANCE);
     } else {
       components.add(DocStartFP.INSTANCE);
+      components.add(DocFreq.INSTANCE);
     }
     // handle skip data
     if (termType.hasSkipData()) {
       components.add(SkipOffset.INSTANCE);
     }
-    // handle docFreq
-    boolean totalTermFeqAdded = false;
+
+    // handle freq
     if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
-      if (termType.hasSingletonDoc()) {
-        components.add(TotalTermFreq.INSTANCE);
-        totalTermFeqAdded = true;
-      } else {
-        components.add(DocFreq.INSTANCE);
-      }
+      components.add(TotalTermFreq.INSTANCE);
     }
     // handle positions
     if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
-      if (!totalTermFeqAdded) {
-        components.add(TotalTermFreq.INSTANCE);
-      }
       components.add(PositionStartFP.INSTANCE);
       if (termType.hasLastPositionBlockOffset()) {
         components.add(LastPositionBlockOffset.INSTANCE);
@@ -145,7 +138,7 @@ final class TermStateCodecImpl implements TermStateCodec {
   }
 
   private Metadata[] getMetadataPerComponent(IntBlockTermState[] inputs, int upTo) {
-    Metadata[] metadataPerComponent = new Metadata[upTo];
+    Metadata[] metadataPerComponent = new Metadata[components.length];
     for (int i = 0; i < components.length; i++) {
       var component = components[i];
       byte bitWidth = TermStateCodecComponent.getBitWidth(inputs, upTo, component);

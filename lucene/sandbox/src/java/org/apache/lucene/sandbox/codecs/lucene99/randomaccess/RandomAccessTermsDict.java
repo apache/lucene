@@ -17,6 +17,64 @@
 
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.BytesRef;
+
 /** A term dictionary that offer random-access to read a specific term */
 record RandomAccessTermsDict(
-    TermsStats termsStats, TermsIndex termsIndex, TermsDataStore termsDataStore) {}
+    TermsStats termsStats, TermsIndex termsIndex, TermDataReader termDataReader) {
+
+  IntBlockTermState getTermState(BytesRef term) throws IOException {
+    TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(term);
+    return termDataReader.getTermState(typeAndOrd.termType(), typeAndOrd.ord());
+  }
+
+  static RandomAccessTermsDict deserialize(
+      IndexOptionsProvider indexOptionsProvider,
+      DataInput metaInput,
+      DataInput termIndexInput,
+      TermDataInputProvider termDataInputProvider)
+      throws IOException {
+
+    // (1) deserialize field stats
+    TermsStats termsStats = TermsStats.deserialize(metaInput);
+    IndexOptions indexOptions = indexOptionsProvider.getIndexOptions(termsStats.fieldNumber());
+
+    // (2) deserialize terms index
+    TermsIndex termsIndex =
+        TermsIndex.deserialize(metaInput, termIndexInput, /* load off heap */ true);
+
+    // (3) deserialize all the term data by each TermType
+    // (3.1) number of unique TermType this field has
+    int numTermTypes = metaInput.readByte();
+
+    // (3.2) read per TermType
+    TermDataReader.Builder termDataReaderBuilder = new TermDataReader.Builder(indexOptions);
+    for (int i = 0; i < numTermTypes; i++) {
+      TermType termType = TermType.fromId(metaInput.readByte());
+      TermDataInput termDataInput = termDataInputProvider.getTermDataInputForType(termType);
+      termDataReaderBuilder.readOne(
+          termType, metaInput, termDataInput.metadataInput, termDataInput.dataInput);
+    }
+
+    return new RandomAccessTermsDict(termsStats, termsIndex, termDataReaderBuilder.build());
+  }
+
+  @FunctionalInterface
+  interface IndexOptionsProvider {
+
+    IndexOptions getIndexOptions(int fieldNumber);
+  }
+
+  record TermDataInput(IndexInput metadataInput, IndexInput dataInput) {}
+
+  @FunctionalInterface
+  interface TermDataInputProvider {
+
+    TermDataInput getTermDataInputForType(TermType termType) throws IOException;
+  }
+}

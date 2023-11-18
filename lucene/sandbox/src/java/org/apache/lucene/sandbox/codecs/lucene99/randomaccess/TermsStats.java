@@ -25,6 +25,7 @@ import org.apache.lucene.util.BytesRef;
 
 /** Data class that holds starts for term stats for a field */
 record TermsStats(
+    int fieldNumber,
     long size,
     long sumTotalTermFreq,
     long sumDocFreq,
@@ -33,6 +34,7 @@ record TermsStats(
     BytesRef maxTerm) {
 
   void serialize(DataOutput output) throws IOException {
+    output.writeVInt(fieldNumber);
     output.writeVLong(size);
     output.writeVLong(sumTotalTermFreq);
     output.writeVLong(sumDocFreq);
@@ -43,6 +45,7 @@ record TermsStats(
 
   static TermsStats deserialize(DataInput input) throws IOException {
     return new TermsStats(
+        input.readVInt(),
         input.readVLong(),
         input.readVLong(),
         input.readVLong(),

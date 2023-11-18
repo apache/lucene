@@ -35,13 +35,13 @@ record TermsIndex(FST<Long> fst) {
     return new TypeAndOrd(termType, ord);
   }
 
-  public record TypeAndOrd(TermType termType, long ord) {}
+  record TypeAndOrd(TermType termType, long ord) {}
 
-  public void serialize(DataOutput metaOut, DataOutput dataOut) throws IOException {
+  void serialize(DataOutput metaOut, DataOutput dataOut) throws IOException {
     fst.save(metaOut, dataOut);
   }
 
-  public TermsIndex deserialize(DataInput metaIn, DataInput dataIn, boolean loadOffHeap)
+  static TermsIndex deserialize(DataInput metaIn, DataInput dataIn, boolean loadOffHeap)
       throws IOException {
     FST<Long> fst;
     if (loadOffHeap) {

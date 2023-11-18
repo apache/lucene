@@ -195,11 +195,11 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
             && !termType.hasSkipData()
             && !termType.hasSingletonDoc();
         components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.DocFreq.INSTANCE);
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
-          components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         }
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
-          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
           components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
         }
         if (indexOptions.ordinal()
@@ -233,12 +233,12 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
             && termType.hasSkipData()
             && !termType.hasSingletonDoc();
         components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
+        components.add(TermStateCodecComponent.DocFreq.INSTANCE);
         components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
-          components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         }
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
-          components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
           components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
         }
         if (indexOptions.ordinal()
@@ -290,8 +290,8 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
             && !termType.hasSingletonDoc();
         assert indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal();
         components.add(TermStateCodecComponent.DocStartFP.INSTANCE);
-        components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
         components.add(TermStateCodecComponent.DocFreq.INSTANCE);
+        components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
         components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
         components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);

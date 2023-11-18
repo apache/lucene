@@ -22,7 +22,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermStat
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.DataOutputBitPacker;
 import org.apache.lucene.store.DataOutput;
 
-/** Writes TermData to */
+/** Writes TermData to two separate {@link DataOutput} one for metadata, another for term data */
 final class TermDataWriter {
   static final int NUM_TERMS_PER_BLOCK = 256;
 

@@ -25,7 +25,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
-class TermsImpl extends Terms {
+final class TermsImpl extends Terms {
   private final FieldInfo fieldInfo;
 
   private final RandomAccessTermsDict termsDict;
