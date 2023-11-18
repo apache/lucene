@@ -173,7 +173,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     skipWriter =
         new Lucene99SkipWriter(
             MAX_SKIP_LEVELS, BLOCK_SIZE, state.segmentInfo.maxDoc(), docOut, posOut, payOut);
-    docGroupVIntWriter = new GroupVIntWriter(docOut);
+    docGroupVIntWriter = new GroupVIntWriter();
   }
 
   @Override
@@ -378,11 +378,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
           docDeltaBuffer[i] = (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
         }
       }
-      docGroupVIntWriter.reset(docBufferUpto);
-      for (int i = 0; i < docBufferUpto; i++) {
-        docGroupVIntWriter.add((int) docDeltaBuffer[i]);
-      }
-      docGroupVIntWriter.flush();
+      docGroupVIntWriter.writeValues(docOut, docDeltaBuffer, docBufferUpto);
       if (writeFreqs) {
         for (int i = 0; i < docBufferUpto; i++) {
           final int freq = (int) freqBuffer[i];

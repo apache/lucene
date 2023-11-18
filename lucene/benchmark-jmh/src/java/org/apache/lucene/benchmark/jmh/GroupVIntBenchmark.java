@@ -18,8 +18,6 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.lucene99.GroupVIntReader;
@@ -43,6 +41,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -59,11 +58,9 @@ public class GroupVIntBenchmark {
 
   IndexInput byteBufferGVIntIn;
   IndexInput byteBufferVIntIn;
-  GroupVIntReader byteBufferGVIntReader = new GroupVIntReader();
 
   ByteArrayDataInput byteArrayVIntIn;
   ByteArrayDataInput byteArrayGVIntIn;
-  GroupVIntReader byteArrayGVIntReader = new GroupVIntReader();
 
   // @Param({"16", "32", "64", "128", "248"})
   @Param({"64"})
@@ -74,77 +71,77 @@ public class GroupVIntBenchmark {
 
   private final int[] maxValues = new int[] {0, 1 << 4, 1 << 12, 1 << 18, 1 << 25};
 
-  void initArrayInput(List<Integer> docs) throws Exception {
+  void initArrayInput(long[] docs) throws Exception {
     byte[] gVIntBytes = new byte[Integer.BYTES * maxSize * 2];
     byte[] vIntBytes = new byte[Integer.BYTES * maxSize * 2];
     ByteArrayDataOutput vIntOut = new ByteArrayDataOutput(vIntBytes);
-    GroupVIntWriter w = new GroupVIntWriter(new ByteArrayDataOutput(gVIntBytes));
-    for (int v : docs) {
-      vIntOut.writeVInt(v);
-      w.add(v);
+    GroupVIntWriter w = new GroupVIntWriter();
+    w.writeValues(new ByteArrayDataOutput(gVIntBytes), docs, docs.length);
+    for (long v : docs) {
+      vIntOut.writeVInt((int) v);
     }
-    w.flush();
     byteArrayVIntIn = new ByteArrayDataInput(vIntBytes);
     byteArrayGVIntIn = new ByteArrayDataInput(gVIntBytes);
-    byteArrayGVIntReader.reset(byteArrayGVIntIn);
   }
 
-  void initByteBufferInput(List<Integer> docs) throws Exception {
+  void initByteBufferInput(long[] docs) throws Exception {
     Directory dir = MMapDirectory.open(Files.createTempDirectory("groupvintdata"));
     IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
     IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
 
-    GroupVIntWriter w = new GroupVIntWriter(gvintOut);
-    for (int v : docs) {
-      w.add(v);
-      vintOut.writeVInt(v);
+    GroupVIntWriter w = new GroupVIntWriter();
+    w.writeValues(gvintOut, docs, docs.length);
+    for (long v : docs) {
+      vintOut.writeVInt((int) v);
     }
-    w.flush();
     vintOut.close();
     gvintOut.close();
     byteBufferGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
     byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
-    byteBufferGVIntReader.reset(byteBufferGVIntIn);
   }
 
   @Setup(Level.Trial)
   public void init() throws Exception {
-    List<Integer> docs = new ArrayList<>();
+    long[] docs = new long[maxSize];
     int max = maxValues[numBytesPerInt];
     int min = max >> 1;
     for (int i = 0; i < maxSize; i++) {
-      int v = ThreadLocalRandom.current().nextInt(min, max);
-      docs.add(v);
+      long v = ThreadLocalRandom.current().nextInt(min, max);
+      docs[i] = v;
     }
     initByteBufferInput(docs);
     initArrayInput(docs);
   }
 
   @Benchmark
-  public void byteBufferReadVInt() throws IOException {
+  public void byteBufferReadVInt(Blackhole bh) throws IOException {
     byteBufferVIntIn.seek(0);
     for (int i = 0; i < size; i++) {
       values[i] = byteBufferVIntIn.readVInt();
     }
+    bh.consume(values);
   }
 
   @Benchmark
-  public void byteBufferReadGroupVInt() throws IOException {
+  public void byteBufferReadGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
-    byteBufferGVIntReader.readValues(values, size);
+    GroupVIntReader.readValues(byteBufferGVIntIn, values, size);
+    bh.consume(values);
   }
 
   @Benchmark
-  public void byteArrayReadVInt() {
+  public void byteArrayReadVInt(Blackhole bh) {
     byteArrayVIntIn.rewind();
     for (int i = 0; i < size; i++) {
       values[i] = byteArrayVIntIn.readVInt();
     }
+    bh.consume(values);
   }
 
   @Benchmark
-  public void byteArrayReadGroupVInt() throws IOException {
+  public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
     byteArrayGVIntIn.rewind();
-    byteArrayGVIntReader.readValues(values, size);
+    GroupVIntReader.readValues(byteArrayGVIntIn, values, size);
+    bh.consume(values);
   }
 }

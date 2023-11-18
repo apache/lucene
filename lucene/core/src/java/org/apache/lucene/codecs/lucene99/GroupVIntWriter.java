@@ -18,40 +18,18 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for a
  * group
  */
 public class GroupVIntWriter {
-  private int[] buffer = new int[4];
-  private byte[] bytes = new byte[16];
+
+  // the maximum size of one group is 4 integers + 1 byte flag.
+  private byte[] bytes = new byte[17];
   private int byteOffset = 0;
-  private int bufferOffset = 0;
-  private final DataOutput output;
 
-  public GroupVIntWriter(DataOutput output) {
-    this.output = output;
-  }
-
-  public void add(int v) throws IOException {
-    buffer = ArrayUtil.grow(buffer, bufferOffset + 1);
-    buffer[bufferOffset++] = v;
-  }
-
-  public void reset(int numValues) {
-    buffer = ArrayUtil.grow(buffer, numValues);
-    bufferOffset = 0;
-    byteOffset = 0;
-  }
-
-  public void flush() throws IOException {
-    if (bufferOffset == 0) {
-      return;
-    }
-    encodeValues(buffer, bufferOffset);
-  }
+  public GroupVIntWriter() {}
 
   private int encodeValue(int v) {
     int lastOff = byteOffset;
@@ -63,29 +41,24 @@ public class GroupVIntWriter {
     return byteOffset - lastOff;
   }
 
-  private void encodeValues(int[] values, int limit) throws IOException {
+  public void writeValues(DataOutput out, long[] values, int limit) throws IOException {
     int off = 0;
 
     // encode each group
     while ((limit - off) >= 4) {
-      // the maximum size of one group is 4 ints + 1 byte flag.
-      bytes = ArrayUtil.grow(bytes, byteOffset + 17);
       byte flag = 0;
-      int flagPos = byteOffset++;
-      flag |= (encodeValue(values[off++]) - 1) << 6;
-      flag |= (encodeValue(values[off++]) - 1) << 4;
-      flag |= (encodeValue(values[off++]) - 1) << 2;
-      flag |= (encodeValue(values[off++]) - 1);
-      bytes[flagPos] = flag;
-    }
-
-    if (limit >= 4) {
-      output.writeBytes(bytes, byteOffset);
+      byteOffset = 1;
+      flag |= (encodeValue((int) values[off++]) - 1) << 6;
+      flag |= (encodeValue((int) values[off++]) - 1) << 4;
+      flag |= (encodeValue((int) values[off++]) - 1) << 2;
+      flag |= (encodeValue((int) values[off++]) - 1);
+      bytes[0] = flag;
+      out.writeBytes(bytes, byteOffset);
     }
 
     // tail vints
     for (; off < limit; off++) {
-      output.writeVInt(values[off]);
+      out.writeVInt((int) values[off]);
     }
   }
 }

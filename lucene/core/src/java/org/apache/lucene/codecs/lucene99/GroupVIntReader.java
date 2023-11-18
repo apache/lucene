@@ -19,22 +19,10 @@ package org.apache.lucene.codecs.lucene99;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 
-/**
- * Decode integers using group-varint. It will fully read the bytes for the block, to avoid repeated
- * expensive bounds checking per readBytes.
- */
+/** Decode integers using group-varint. */
 public class GroupVIntReader {
-  DataInput in;
 
-  public GroupVIntReader() {}
-
-  /** Called when decode a new block. */
-  public void reset(DataInput indexInput) throws IOException {
-    this.in = indexInput;
-  }
-
-  /** only readValues or nextInt can be called after reset */
-  public void readValues(long[] docs, int limit) throws IOException {
+  public static void readValues(DataInput in, long[] docs, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
       final int flag = in.readByte() & 0xFF;
