@@ -44,7 +44,7 @@ public final class Sort {
 
   // internal representation of the sort criteria
   private final SortField[] fields;
-  private final String rootDocField;
+  private final String parentField;
 
   /**
    * Sorts by computed relevance. This is the same sort criteria as calling {@link
@@ -64,12 +64,12 @@ public final class Sort {
     this(null, fields);
   }
 
-  public Sort(String rootDocField, SortField... fields) {
+  public Sort(String parentField, SortField... fields) {
     if (fields.length == 0) {
       throw new IllegalArgumentException("There must be at least 1 sort field");
     }
     this.fields = fields;
-    this.rootDocField = rootDocField;
+    this.parentField = parentField;
   }
 
   /**
@@ -81,8 +81,12 @@ public final class Sort {
     return fields;
   }
 
-  public String getRootDocField() {
-    return rootDocField;
+  /**
+   * Returns the field name that marks a document as a parent in a document block.
+   *
+   */
+  public String getParentField() {
+    return parentField;
   }
 
   /**
@@ -96,7 +100,7 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-    assert rootDocField == null;
+    assert parentField == null;
     SortField[] rewrittenSortFields = new SortField[fields.length];
     for (int i = 0; i < fields.length; i++) {
       rewrittenSortFields[i] = fields[i].rewrite(searcher);
@@ -111,8 +115,8 @@ public final class Sort {
   @Override
   public String toString() {
     StringBuilder buffer = new StringBuilder();
-    if (rootDocField != null) {
-      buffer.append("RootDocField: ").append(rootDocField).append(' ');
+    if (parentField != null) {
+      buffer.append("RootDocField: ").append(parentField).append(' ');
     }
     for (int i = 0; i < fields.length; i++) {
       buffer.append(fields[i].toString());
@@ -128,13 +132,13 @@ public final class Sort {
     if (this == o) return true;
     if (!(o instanceof Sort)) return false;
     final Sort other = (Sort) o;
-    return Objects.equals(rootDocField, other.rootDocField) && Arrays.equals(this.fields, other.fields);
+    return Objects.equals(parentField, other.parentField) && Arrays.equals(this.fields, other.fields);
   }
 
   /** Returns a hash code value for this object. */
   @Override
   public int hashCode() {
-    return 0x45aaf665 + Arrays.hashCode(fields) + Objects.hashCode(rootDocField);
+    return 0x45aaf665 + Arrays.hashCode(fields) + Objects.hashCode(parentField);
   }
 
   /** Returns true if the relevance score is needed to sort documents. */

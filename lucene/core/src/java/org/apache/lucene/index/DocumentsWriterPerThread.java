@@ -28,9 +28,12 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
@@ -135,6 +138,8 @@ final class DocumentsWriterPerThread implements Accountable {
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
 
+  private final DocValidator validator;
+
   DocumentsWriterPerThread(
       int indexVersionCreated,
       String segmentName,
@@ -189,6 +194,8 @@ final class DocumentsWriterPerThread implements Accountable {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
+    validator = indexWriterConfig.getIndexSort() != null ? new ParentBlockValidator(indexWriterConfig.getIndexSort())
+            : DocValidator.EMPTY;
   }
 
   final void testPoint(String message) {
@@ -230,6 +237,7 @@ final class DocumentsWriterPerThread implements Accountable {
       }
       final int docsInRamBefore = numDocsInRAM;
       boolean allDocsIndexed = false;
+      validator.reset();
       try {
         for (Iterable<? extends IndexableField> doc : docs) {
           // Even on exception, the document is still added (but marked
@@ -239,21 +247,22 @@ final class DocumentsWriterPerThread implements Accountable {
           // it's very hard to fix (we can't easily distinguish aborting
           // vs non-aborting exceptions):
           reserveOneDoc();
+
           try {
-            indexingChain.processDocument(numDocsInRAM++, doc);
+            validator.beforeDocument();
+            indexingChain.processDocument(numDocsInRAM++, doc, validator);
+            validator.afterDocument();
           } finally {
             onNewDocOnRAM.run();
           }
         }
-        allDocsIndexed = true;
-        if (numDocsInRAM - docsInRamBefore > 1) {
-          if (segmentInfo.getIndexSort() != null) {
-            if (segmentInfo.getIndexSort().getRootDocField() == null) {
-              throw new IllegalArgumentException("A root doc field must be set");
-            }
-          }
+
+        final int numDocs = numDocsInRAM - docsInRamBefore;
+        validator.afterDocuments(numDocs);
+        if (numDocs > 1) {
           segmentInfo.setHasBlocks();
         }
+        allDocsIndexed = true;
         return finishDocuments(deleteNode, docsInRamBefore);
       } finally {
         if (!allDocsIndexed && !aborted) {
@@ -264,6 +273,79 @@ final class DocumentsWriterPerThread implements Accountable {
       }
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
+    }
+  }
+
+  private  interface DocValidator extends Consumer<IndexableField> {
+
+    DocValidator EMPTY = indexableField -> {};
+    default void afterDocument() {}
+    default void beforeDocument() {}
+    default void afterDocuments(int numDocs) {}
+    default void reset() {}
+  }
+
+  private static class ParentBlockValidator implements DocValidator {
+    private boolean lastDocHasParentField = false;
+    private boolean childDocHasParentField = false;
+    private final String parentFieldName;
+
+    @Override
+    public void reset() {
+      lastDocHasParentField = false;
+      childDocHasParentField = false;
+    }
+
+    private ParentBlockValidator(Sort sort) {
+      this.parentFieldName = sort.getParentField();
+    }
+
+    @Override
+    public void beforeDocument() {
+      if (childDocHasParentField == false && lastDocHasParentField) {
+        childDocHasParentField = true;
+      }
+      lastDocHasParentField = false;
+    }
+    @Override
+    public void accept(IndexableField field) {
+      if (parentFieldName != null) {
+        if (parentFieldName.equals(field.name()) && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
+          lastDocHasParentField = true;
+        }
+      }
+    }
+
+    @Override
+    public void afterDocument() {
+      if (childDocHasParentField) {
+        throw new IllegalArgumentException("only the last document in the block must contain a numeric doc values field named: " + parentFieldName);
+      }
+    }
+
+    @Override
+    public void afterDocuments(int numDocs) {
+      if (numDocs > 1 && parentFieldName == null) {
+        throw new IllegalArgumentException("A parent field must be set in order to use document blocks with index sorting");
+      }
+      if (parentFieldName != null && lastDocHasParentField == false) {
+        throw new IllegalArgumentException("the last document in the block must contain a numeric doc values field named: " + parentFieldName);
+      }
+    }
+  }
+
+  private void validateIndexSortWithBlocks(Iterable<? extends IndexableField> lastDoc) {
+    if (segmentInfo.getIndexSort() != null) {
+      String parentField = segmentInfo.getIndexSort().getParentField();
+
+      boolean valid = false;
+      for (IndexableField field : lastDoc) {
+        if (parentField.equals(field.name()) && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
+          valid = true;
+          break;
+        }
+      }
+
     }
   }
 

@@ -214,7 +214,7 @@ final class IndexingChain implements Accountable {
     LeafReader docValuesReader = getDocValuesLeafReader();
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
     if (state.segmentInfo.getHasBlocks()) {
-      final DocIdSetIterator readerValues = docValuesReader.getNumericDocValues(indexSort.getRootDocField());
+      final DocIdSetIterator readerValues = docValuesReader.getNumericDocValues(indexSort.getParentField());
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
       comparatorWrapper =
           in ->
@@ -530,7 +530,7 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
+  void processDocument(int docID, Iterable<? extends IndexableField> document, Consumer<IndexableField> fieldConsumer) throws IOException {
     // number of unique fields by names (collapses multiple field instances by the same name)
     int fieldCount = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
@@ -549,6 +549,7 @@ final class IndexingChain implements Accountable {
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
       for (IndexableField field : document) {
+        fieldConsumer.accept(field);
         IndexableFieldType fieldType = field.fieldType();
         PerField pf = getOrAddPerField(field.name());
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
@@ -560,7 +561,7 @@ final class IndexingChain implements Accountable {
         docFields[docFieldIdx++] = pf;
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
-      // For each field, if it the first time we see this field in this segment,
+      // For each field, if it's the first time we see this field in this segment,
       // initialize its FieldInfo.
       // If we have already seen this field, verify that its schema
       // within the current doc matches its schema in the index.

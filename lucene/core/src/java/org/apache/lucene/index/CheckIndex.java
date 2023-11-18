@@ -1184,7 +1184,7 @@ public final class CheckIndex implements Closeable {
         LeafMetaData metaData = reader.getMetaData();
         final DocIdSetIterator iter =
             metaData.hasBlocks()
-                ? reader.getNumericDocValues(sort.getRootDocField())
+                ? reader.getNumericDocValues(sort.getParentField())
                 : DocIdSetIterator.all(reader.maxDoc());
         int prevDoc = iter.nextDoc();
         int nextDoc;

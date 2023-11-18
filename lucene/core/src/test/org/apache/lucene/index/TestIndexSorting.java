@@ -3178,9 +3178,8 @@ public class TestIndexSorting extends LuceneTestCase {
       AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
       iwc.setCodec(codec);
       String parentField = "parent";
-      Sort.RootDocs rootDocs = new Sort.RootDocs(parentField, DocValuesType.NUMERIC);
       Sort indexSort =
-          new Sort(rootDocs,
+          new Sort(parentField,
               new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       LogMergePolicy policy = newLogMergePolicy();
@@ -3210,11 +3209,7 @@ public class TestIndexSorting extends LuceneTestCase {
           parent.add(new StringField("id", Integer.toString(i), Store.YES));
           parent.add(new NumericDocValuesField("id", i));
           parent.add(new NumericDocValuesField("foo", random().nextInt()));
-          if (rootDocs.type() == DocValuesType.NONE) {
-            parent.add(new NumericDocValuesField(parentField, 0));
-          } else {
-            parent.add(new StringField(parentField, parentField, Store.NO));
-          }
+          parent.add(new NumericDocValuesField(parentField, 0));
           w.addDocuments(Arrays.asList(child1, child2, parent));
           if (rarely()) {
             w.commit();
@@ -3229,7 +3224,7 @@ public class TestIndexSorting extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           LeafReader leaf = ctx.reader();
-          DocIdSetIterator parentDISI = rootDocs.rootDocs(leaf);
+          DocIdSetIterator parentDISI = leaf.getNumericDocValues(parentField);
           NumericDocValues ids = leaf.getNumericDocValues("id");
           NumericDocValues children = leaf.getNumericDocValues("child");
           int doc = -1;

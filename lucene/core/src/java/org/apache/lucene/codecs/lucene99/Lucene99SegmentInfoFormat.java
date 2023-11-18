@@ -142,8 +142,8 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
         String name = input.readString();
         sortFields[i] = SortFieldProvider.forName(name).readSortField(input);
       }
-      String rootDocfield = input.readByte() == SegmentInfo.YES ? input.readString() : null;
-      indexSort = new Sort(rootDocfield, sortFields);
+      String parentField = input.readByte() == SegmentInfo.YES ? input.readString() : null;
+      indexSort = new Sort(parentField, sortFields);
     } else if (numSortFields < 0) {
       throw new CorruptIndexException("invalid index sort field count: " + numSortFields, input);
     } else {
@@ -234,10 +234,10 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
       SortFieldProvider.write(sortField, output);
     }
     if (numSortFields > 0) {
-      String rootDocField = indexSort.getRootDocField();
-      output.writeByte((byte) (rootDocField != null ? SegmentInfo.YES : SegmentInfo.NO));
-      if (rootDocField != null) {
-        output.writeString(rootDocField);
+      String parentField = indexSort.getParentField();
+      output.writeByte((byte) (parentField != null ? SegmentInfo.YES : SegmentInfo.NO));
+      if (parentField != null) {
+        output.writeString(parentField);
       }
     }
   }
