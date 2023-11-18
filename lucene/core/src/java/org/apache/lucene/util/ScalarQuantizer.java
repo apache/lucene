@@ -28,15 +28,15 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 /**
  * Will scalar quantize float vectors into `int8` byte values. This is a lossy transformation.
  * Scalar quantization works by first calculating the quantiles of the float vector values. The
- * quantiles are calculated using the configured quantile/confidence interval. The [minQuantile,
- * maxQuantile] are then used to scale the values into the range [0, 127] and bucketed into the
- * nearest byte values.
+ * quantiles are calculated using the configured confidence interval. The [minQuantile, maxQuantile]
+ * are then used to scale the values into the range [0, 127] and bucketed into the nearest byte
+ * values.
  *
  * <h2>How Scalar Quantization Works</h2>
  *
- * <p>The basic mathematical equations behind this are fairly straight forward. Given a float vector
- * `v` and a quantile `q` we can calculate the quantiles of the vector values [minQuantile,
- * maxQuantile].
+ * <p>The basic mathematical equations behind this are fairly straight forward and based on min/max
+ * normalization. Given a float vector `v` and a confidenceInterval `q` we can calculate the
+ * quantiles of the vector values [minQuantile, maxQuantile].
  *
  * <pre class="prettyprint">
  *   byte = (float - minQuantile) * 127/(maxQuantile - minQuantile)
@@ -69,21 +69,20 @@ public class ScalarQuantizer {
 
   private final float alpha;
   private final float scale;
-  private final float minQuantile, maxQuantile, configuredQuantile;
+  private final float minQuantile, maxQuantile, confidenceInterval;
 
   /**
    * @param minQuantile the lower quantile of the distribution
    * @param maxQuantile the upper quantile of the distribution
-   * @param configuredQuantile The configured quantile/confidence interval used to calculate the
-   *     quantiles.
+   * @param confidenceInterval The configured confidence interval used to calculate the quantiles.
    */
-  public ScalarQuantizer(float minQuantile, float maxQuantile, float configuredQuantile) {
+  public ScalarQuantizer(float minQuantile, float maxQuantile, float confidenceInterval) {
     assert maxQuantile >= minQuantile;
     this.minQuantile = minQuantile;
     this.maxQuantile = maxQuantile;
     this.scale = 127f / (maxQuantile - minQuantile);
     this.alpha = (maxQuantile - minQuantile) / 127f;
-    this.configuredQuantile = configuredQuantile;
+    this.confidenceInterval = confidenceInterval;
   }
 
   /**
@@ -171,8 +170,8 @@ public class ScalarQuantizer {
     return maxQuantile;
   }
 
-  public float getConfiguredQuantile() {
-    return configuredQuantile;
+  public float getConfidenceInterval() {
+    return confidenceInterval;
   }
 
   public float getConstantMultiplier() {
@@ -186,8 +185,8 @@ public class ScalarQuantizer {
         + minQuantile
         + ", maxQuantile="
         + maxQuantile
-        + ", configuredQuantile="
-        + configuredQuantile
+        + ", confidenceInterval="
+        + confidenceInterval
         + '}';
   }
 
@@ -201,17 +200,17 @@ public class ScalarQuantizer {
    * #SCALAR_QUANTIZATION_SAMPLE_SIZE} will be read and the quantiles calculated.
    *
    * @param floatVectorValues the float vector values from which to calculate the quantiles
-   * @param quantile the quantile/confidence interval used to calculate the quantiles
+   * @param confidenceInterval the confidence interval used to calculate the quantiles
    * @return A new {@link ScalarQuantizer} instance
    * @throws IOException if there is an error reading the float vector values
    */
-  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, float quantile)
-      throws IOException {
-    assert 0.9f <= quantile && quantile <= 1f;
+  public static ScalarQuantizer fromVectors(
+      FloatVectorValues floatVectorValues, float confidenceInterval) throws IOException {
+    assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
     if (floatVectorValues.size() == 0) {
-      return new ScalarQuantizer(0f, 0f, quantile);
+      return new ScalarQuantizer(0f, 0f, confidenceInterval);
     }
-    if (quantile == 1f) {
+    if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
@@ -220,7 +219,7 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(min, max, quantile);
+      return new ScalarQuantizer(min, max, confidenceInterval);
     }
     int dim = floatVectorValues.dimension();
     if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
@@ -231,8 +230,8 @@ public class ScalarQuantizer {
         System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
         copyOffset += dim;
       }
-      float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
-      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], quantile);
+      float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
+      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
     }
     int numFloatVecs = floatVectorValues.size();
     // Reservoir sample the vector ordinals we want to read
@@ -258,22 +257,23 @@ public class ScalarQuantizer {
       System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
       copyOffset += dim;
     }
-    float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
-    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], quantile);
+    float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
+    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
   }
 
   /**
    * Takes an array of floats, sorted or not, and returns a minimum and maximum value. These values
-   * are such that they reside on the `(1 - quantile)/2` and `quantile/2` percentiles. Example:
-   * providing floats `[0..100]` and asking for `90` quantiles will return `5` and `95`.
+   * are such that they reside on the `(1 - confidenceInterval)/2` and `confidenceInterval/2`
+   * percentiles. Example: providing floats `[0..100]` and asking for `90` quantiles will return `5`
+   * and `95`.
    *
    * @param arr array of floats
-   * @param quantileFloat the configured quantile
+   * @param confidenceInterval the configured confidence interval
    * @return lower and upper quantile values
    */
-  static float[] getUpperAndLowerQuantile(float[] arr, float quantileFloat) {
-    assert 0.9f <= quantileFloat && quantileFloat <= 1f;
-    int selectorIndex = (int) (arr.length * (1f - quantileFloat) / 2f + 0.5f);
+  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval) {
+    assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
+    int selectorIndex = (int) (arr.length * (1f - confidenceInterval) / 2f + 0.5f);
     if (selectorIndex > 0) {
       Selector selector = new FloatSelector(arr);
       selector.select(0, arr.length, arr.length - selectorIndex);
