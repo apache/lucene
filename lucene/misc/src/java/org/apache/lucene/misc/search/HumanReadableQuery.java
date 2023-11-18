@@ -83,6 +83,6 @@ public final class HumanReadableQuery extends Query {
 
   @Override
   public int hashCode() {
-    return in.hashCode();
+    return 31 * classHash() + in.hashCode();
   }
 }
