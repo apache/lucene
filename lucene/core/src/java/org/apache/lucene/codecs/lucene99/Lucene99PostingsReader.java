@@ -1073,8 +1073,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private int nextSkipDoc = -1;
 
-    private long seekTo = -1;
-
     // as we read freqBuffer lazily, isFreqsRead shows if freqBuffer are read for the current block
     // always true when we don't have freqBuffer (indexHasFreq=false) or don't need freqBuffer
     // (needsFreq=false)
@@ -1178,7 +1176,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // Force to read next block
           docBufferUpto = BLOCK_SIZE;
           accum = skipper.getDoc();
-          seekTo = skipper.getDocPointer(); // delay the seek
+          docIn.seek(skipper.getDocPointer());
+          isFreqsRead = true;
         }
         // next time we call advance, this is used to
         // foresee whether skipper is necessary.
@@ -1198,11 +1197,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     @Override
     public int nextDoc() throws IOException {
       if (docBufferUpto == BLOCK_SIZE) {
-        if (seekTo >= 0) {
-          docIn.seek(seekTo);
-          isFreqsRead = true; // reset isFreqsRead
-          seekTo = -1;
-        }
         refillDocs();
       }
       return this.doc = (int) docBuffer[docBufferUpto++];
@@ -1214,11 +1208,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         advanceShallow(target);
       }
       if (docBufferUpto == BLOCK_SIZE) {
-        if (seekTo >= 0) {
-          docIn.seek(seekTo);
-          isFreqsRead = true; // reset isFreqsRead
-          seekTo = -1;
-        }
         refillDocs();
       }
 
@@ -1306,8 +1295,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private long lastPosBlockFP;
 
     private int nextSkipDoc = -1;
-
-    private long seekTo = -1;
 
     public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1426,7 +1413,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           accum = skipper.getDoc();
           posPendingFP = skipper.getPosPointer();
           posPendingCount = skipper.getPosBufferUpto();
-          seekTo = skipper.getDocPointer(); // delay the seek
+          docIn.seek(skipper.getDocPointer());
         }
         // next time we call advance, this is used to
         // foresee whether skipper is necessary.
@@ -1452,10 +1439,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         advanceShallow(target);
       }
       if (docBufferUpto == BLOCK_SIZE) {
-        if (seekTo >= 0) {
-          docIn.seek(seekTo);
-          seekTo = -1;
-        }
         refillDocs();
       }
 
