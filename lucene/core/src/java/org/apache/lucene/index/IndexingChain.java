@@ -214,7 +214,8 @@ final class IndexingChain implements Accountable {
     LeafReader docValuesReader = getDocValuesLeafReader();
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
     if (state.segmentInfo.getHasBlocks()) {
-      final DocIdSetIterator readerValues = docValuesReader.getNumericDocValues(indexSort.getParentField());
+      final DocIdSetIterator readerValues =
+          docValuesReader.getNumericDocValues(indexSort.getParentField());
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
       comparatorWrapper =
           in ->
@@ -530,7 +531,11 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  void processDocument(int docID, Iterable<? extends IndexableField> document, Consumer<IndexableField> fieldConsumer) throws IOException {
+  void processDocument(
+      int docID,
+      Iterable<? extends IndexableField> document,
+      Consumer<IndexableField> fieldConsumer)
+      throws IOException {
     // number of unique fields by names (collapses multiple field instances by the same name)
     int fieldCount = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings

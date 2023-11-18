@@ -81,10 +81,7 @@ public final class Sort {
     return fields;
   }
 
-  /**
-   * Returns the field name that marks a document as a parent in a document block.
-   *
-   */
+  /** Returns the field name that marks a document as a parent in a document block. */
   public String getParentField() {
     return parentField;
   }
@@ -132,7 +129,8 @@ public final class Sort {
     if (this == o) return true;
     if (!(o instanceof Sort)) return false;
     final Sort other = (Sort) o;
-    return Objects.equals(parentField, other.parentField) && Arrays.equals(this.fields, other.fields);
+    return Objects.equals(parentField, other.parentField)
+        && Arrays.equals(this.fields, other.fields);
   }
 
   /** Returns a hash code value for this object. */

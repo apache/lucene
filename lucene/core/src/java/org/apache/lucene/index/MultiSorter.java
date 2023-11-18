@@ -55,7 +55,8 @@ final class MultiSorter {
         CodecReader codecReader = readers.get(j);
         if (codecReader.getMetaData().hasBlocks()) {
           NumericDocValues parentDocs = codecReader.getNumericDocValues(sort.getParentField());
-          assert parentDocs != null : "parent field must be present if index sorting is used with blocks";
+          assert parentDocs != null
+              : "parent field must be present if index sorting is used with blocks";
           BitSet parents = BitSet.of(parentDocs, codecReader.maxDoc());
           IndexSorter.ComparableProvider[] providers = comparables[i];
           IndexSorter.ComparableProvider provider = providers[j];

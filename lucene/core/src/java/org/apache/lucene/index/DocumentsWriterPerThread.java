@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -194,8 +193,10 @@ final class DocumentsWriterPerThread implements Accountable {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
-    validator = indexWriterConfig.getIndexSort() != null ? new ParentBlockValidator(indexWriterConfig.getIndexSort())
-            : DocValidator.EMPTY;
+    validator =
+        indexWriterConfig.getIndexSort() != null
+            ? new ParentBlockValidator(indexWriterConfig.getIndexSort())
+            : indexableField -> {};
   }
 
   final void testPoint(String message) {
@@ -276,12 +277,14 @@ final class DocumentsWriterPerThread implements Accountable {
     }
   }
 
-  private  interface DocValidator extends Consumer<IndexableField> {
+  private interface DocValidator extends Consumer<IndexableField> {
 
-    DocValidator EMPTY = indexableField -> {};
     default void afterDocument() {}
+
     default void beforeDocument() {}
+
     default void afterDocuments(int numDocs) {}
+
     default void reset() {}
   }
 
@@ -307,10 +310,12 @@ final class DocumentsWriterPerThread implements Accountable {
       }
       lastDocHasParentField = false;
     }
+
     @Override
     public void accept(IndexableField field) {
       if (parentFieldName != null) {
-        if (parentFieldName.equals(field.name()) && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
+        if (parentFieldName.equals(field.name())
+            && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
           lastDocHasParentField = true;
         }
       }
@@ -319,17 +324,22 @@ final class DocumentsWriterPerThread implements Accountable {
     @Override
     public void afterDocument() {
       if (childDocHasParentField) {
-        throw new IllegalArgumentException("only the last document in the block must contain a numeric doc values field named: " + parentFieldName);
+        throw new IllegalArgumentException(
+            "only the last document in the block must contain a numeric doc values field named: "
+                + parentFieldName);
       }
     }
 
     @Override
     public void afterDocuments(int numDocs) {
       if (numDocs > 1 && parentFieldName == null) {
-        throw new IllegalArgumentException("A parent field must be set in order to use document blocks with index sorting");
+        throw new IllegalArgumentException(
+            "A parent field must be set in order to use document blocks with index sorting");
       }
       if (parentFieldName != null && lastDocHasParentField == false) {
-        throw new IllegalArgumentException("the last document in the block must contain a numeric doc values field named: " + parentFieldName);
+        throw new IllegalArgumentException(
+            "the last document in the block must contain a numeric doc values field named: "
+                + parentFieldName);
       }
     }
   }
@@ -340,12 +350,12 @@ final class DocumentsWriterPerThread implements Accountable {
 
       boolean valid = false;
       for (IndexableField field : lastDoc) {
-        if (parentField.equals(field.name()) && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
+        if (parentField.equals(field.name())
+            && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
           valid = true;
           break;
         }
       }
-
     }
   }
 

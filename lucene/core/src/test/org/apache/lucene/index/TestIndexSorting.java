@@ -3178,9 +3178,7 @@ public class TestIndexSorting extends LuceneTestCase {
       AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
       iwc.setCodec(codec);
       String parentField = "parent";
-      Sort indexSort =
-          new Sort(parentField,
-              new SortField("foo", SortField.Type.INT));
+      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       LogMergePolicy policy = newLogMergePolicy();
       // make sure that merge factor is always > 2
