@@ -90,7 +90,7 @@ public class TestHumanReadableQuery extends LuceneTestCase {
         field,
         searcher,
         new int[] {77, 177, 277, 377, 477, 577, 677, 777, 877, 977});
-    assertEquals(hQuery.toString(), description + ":" + pQuery);
+    assertEquals(description + ":" + pQuery, hQuery.toString());
   }
 
   public void testHitsEqualBooleanQuery() throws Exception {
@@ -119,14 +119,14 @@ public class TestHumanReadableQuery extends LuceneTestCase {
           77, 177, 277, 377, 477, 577, 677, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 877,
           977
         });
-    assertEquals(hQuery.toString(), description + ":" + bQuery);
+    assertEquals(description + ":" + bQuery, hQuery.toString());
   }
 
   public void testKnnVectorQuery() {
     String description = "TestingKnnVectorQuery";
     KnnFloatVectorQuery kFVQ = new KnnFloatVectorQuery("f1", new float[] {0, 1}, 6);
     HumanReadableQuery hQuery = new HumanReadableQuery(kFVQ, description);
-    assertEquals(hQuery.toString(), description + ":" + kFVQ);
-    assertEquals(hQuery.getWrappedQuery(), kFVQ);
+    assertEquals(description + ":" + kFVQ, hQuery.toString());
+    assertEquals(kFVQ, hQuery.getWrappedQuery());
   }
 }
