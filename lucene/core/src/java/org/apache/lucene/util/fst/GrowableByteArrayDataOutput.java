@@ -82,6 +82,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
 
   /** Copies bytes from this store to a target byte array. */
   public void writeTo(int src, byte[] dest, int offset, int len) {
+    assert src + len <= nextWrite;
     System.arraycopy(bytes, src, dest, offset, len);
   }
 
