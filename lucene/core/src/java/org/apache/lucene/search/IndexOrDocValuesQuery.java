@@ -85,7 +85,11 @@ public final class IndexOrDocValuesQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return indexQuery.toString(field);
+    return "IndexOrDocValuesQuery(indexQuery="
+        + indexQuery.toString(field)
+        + ", dvQuery="
+        + dvQuery.toString(field)
+        + ")";
   }
 
   @Override

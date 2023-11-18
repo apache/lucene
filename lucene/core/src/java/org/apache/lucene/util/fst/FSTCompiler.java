@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
+import static org.apache.lucene.util.fst.FST.ARCS_FOR_CONTINUOUS;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
 import static org.apache.lucene.util.fst.FST.BIT_ARC_HAS_FINAL_OUTPUT;
 import static org.apache.lucene.util.fst.FST.BIT_ARC_HAS_OUTPUT;
@@ -113,21 +114,13 @@ public class FSTCompiler<T> {
   long nodeCount;
   long binarySearchNodeCount;
   long directAddressingNodeCount;
+  long continuousNodeCount;
 
   final boolean allowFixedLengthArcs;
   final float directAddressingMaxOversizingFactor;
   long directAddressingExpansionCredit;
 
   final BytesStore bytes;
-
-  /**
-   * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
-   * tuning and tweaking, see {@link Builder}.
-   */
-  // TODO: remove this?  Builder API should be the only entry point?
-  public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    this(inputType, 32.0, outputs, true, 15, 1f);
-  }
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
@@ -445,9 +438,15 @@ public class FSTCompiler<T> {
 
       int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
       assert labelRange > 0;
-      if (shouldExpandNodeWithDirectAddressing(
+      boolean continuousLabel = labelRange == nodeIn.numArcs;
+      if (continuousLabel) {
+        writeNodeForDirectAddressingOrContinuous(
+            nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, true);
+        continuousNodeCount++;
+      } else if (shouldExpandNodeWithDirectAddressing(
           nodeIn, maxBytesPerArc, maxBytesPerArcWithoutLabel, labelRange)) {
-        writeNodeForDirectAddressing(nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange);
+        writeNodeForDirectAddressingOrContinuous(
+            nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, false);
         directAddressingNodeCount++;
       } else {
         writeNodeForBinarySearch(nodeIn, startAddress, maxBytesPerArc);
@@ -578,18 +577,19 @@ public class FSTCompiler<T> {
     bytes.writeBytes(startAddress, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
-  private void writeNodeForDirectAddressing(
+  private void writeNodeForDirectAddressingOrContinuous(
       FSTCompiler.UnCompiledNode<T> nodeIn,
       long startAddress,
       int maxBytesPerArcWithoutLabel,
-      int labelRange) {
+      int labelRange,
+      boolean continuous) {
     // Expand the arcs backwards in a buffer because we remove the labels.
     // So the obtained arcs might occupy less space. This is the reason why this
     // whole method is more complex.
     // Drop the label bytes since we can infer the label based on the arc index,
     // the presence bits, and the first label. Keep the first label.
     int headerMaxLen = 11;
-    int numPresenceBytes = getNumPresenceBytes(labelRange);
+    int numPresenceBytes = continuous ? 0 : getNumPresenceBytes(labelRange);
     long srcPos = bytes.getPosition();
     int totalArcBytes = numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
     int bufferOffset = headerMaxLen + numPresenceBytes + totalArcBytes;
@@ -620,7 +620,7 @@ public class FSTCompiler<T> {
     // metadata.
     fixedLengthArcsBuffer
         .resetPosition()
-        .writeByte(ARCS_FOR_DIRECT_ADDRESSING)
+        .writeByte(continuous ? ARCS_FOR_CONTINUOUS : ARCS_FOR_DIRECT_ADDRESSING)
         .writeVInt(labelRange) // labelRange instead of numArcs.
         .writeVInt(
             maxBytesPerArcWithoutLabel); // maxBytesPerArcWithoutLabel instead of maxBytesPerArc.
@@ -642,8 +642,10 @@ public class FSTCompiler<T> {
     writeOffset += headerLen;
 
     // Write the presence bits
-    writePresenceBits(nodeIn, writeOffset, numPresenceBytes);
-    writeOffset += numPresenceBytes;
+    if (continuous == false) {
+      writePresenceBits(nodeIn, writeOffset, numPresenceBytes);
+      writeOffset += numPresenceBytes;
+    }
 
     // Write the first label and the arcs.
     bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);

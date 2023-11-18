@@ -69,7 +69,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public abstract BytesRef next();
   }
-  ;
 
   /** The {@code packedPoints} iterator must be in sorted order. */
   protected PointInSetQuery(String field, int numDims, int bytesPerDim, Stream packedPoints) {

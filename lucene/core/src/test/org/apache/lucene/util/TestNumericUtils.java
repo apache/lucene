@@ -616,4 +616,32 @@ public class TestNumericUtils extends LuceneTestCase {
           Integer.signum(leftValue.compareTo(rightValue)), Integer.signum(left.compareTo(right)));
     }
   }
+
+  public void testNextUp() {
+    for (int i : new int[] {Integer.MIN_VALUE, -256, -255, -1, 0, 1, 255, 256, Integer.MAX_VALUE}) {
+      byte[] b = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(i, b, 0);
+      if (i == Integer.MAX_VALUE) {
+        assertFalse(NumericUtils.nextUp(b));
+        assertEquals(i, NumericUtils.sortableBytesToInt(b, 0));
+      } else {
+        assertTrue(NumericUtils.nextUp(b));
+        assertEquals(i + 1, NumericUtils.sortableBytesToInt(b, 0));
+      }
+    }
+  }
+
+  public void testNextDown() {
+    for (int i : new int[] {Integer.MIN_VALUE, -256, -255, -1, 0, 1, 255, 256, Integer.MAX_VALUE}) {
+      byte[] b = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(i, b, 0);
+      if (i == Integer.MIN_VALUE) {
+        assertFalse(NumericUtils.nextDown(b));
+        assertEquals(i, NumericUtils.sortableBytesToInt(b, 0));
+      } else {
+        assertTrue(NumericUtils.nextDown(b));
+        assertEquals(i - 1, NumericUtils.sortableBytesToInt(b, 0));
+      }
+    }
+  }
 }
