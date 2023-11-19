@@ -36,8 +36,9 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
+  int nextFieldNumber;
 
-  public void testBuildIndexAndRead() throws IOException {
+  public void testBuildIndexAndReadMultipleFields() throws IOException {
     try (Directory testDir = newDirectory()) {
       IndexOutput metaOut = testDir.createOutput("segment_meta", IOContext.DEFAULT);
       IndexOutput termIndexOut = testDir.createOutput("term_index", IOContext.DEFAULT);
@@ -56,19 +57,10 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
                     }
                   });
 
-      int fieldNumber = random().nextInt(0, 10);
-      IndexOptions indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
-      RandomAccessTermsDictWriter randomAccessTermsDictWriter =
-          new RandomAccessTermsDictWriter(
-              fieldNumber, indexOptions, metaOut, termIndexOut, outputProvider);
-
-      TermAndState[] expectedTermAndState = getRandoms(1000, 2000);
-      int expectedDocCount = random().nextInt(1, 2000);
-
-      for (var x : expectedTermAndState) {
-        randomAccessTermsDictWriter.add(x.term, x.state);
+      ExpectedResults[] manyExpectedResults = new ExpectedResults[random().nextInt(1, 20)];
+      for (int i = 0; i < manyExpectedResults.length; i++) {
+        manyExpectedResults[i] = indexOneField(metaOut, termIndexOut, outputProvider);
       }
-      randomAccessTermsDictWriter.finish(expectedDocCount);
 
       metaOut.close();
       termIndexOut.close();
@@ -93,39 +85,10 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
                       throw new RuntimeException(e);
                     }
                   });
-      RandomAccessTermsDict deserialized =
-          RandomAccessTermsDict.deserialize(
-              _fieldNumber -> indexOptions, metaInput, termIndexInput, termDataInputProvider);
 
-      assertEquals(fieldNumber, deserialized.termsStats().fieldNumber());
-      assertEquals(expectedDocCount, deserialized.termsStats().docCount());
-      assertEquals(expectedTermAndState.length, deserialized.termsStats().size());
-      assertEquals(
-          Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.docFreq).sum(),
-          deserialized.termsStats().sumDocFreq());
-      assertEquals(
-          Arrays.stream(expectedTermAndState).mapToLong(x -> x.state.totalTermFreq).sum(),
-          deserialized.termsStats().sumTotalTermFreq());
-      assertEquals(expectedTermAndState.length, deserialized.termsStats().size());
-      assertEquals(expectedTermAndState[0].term, deserialized.termsStats().minTerm());
-      assertEquals(
-          expectedTermAndState[expectedTermAndState.length - 1].term,
-          deserialized.termsStats().maxTerm());
-
-      for (var x : expectedTermAndState) {
-        IntBlockTermState expectedState = x.state;
-        IntBlockTermState actualState = deserialized.getTermState(x.term);
-        if (expectedState.singletonDocID != -1) {
-          assertEquals(expectedState.singletonDocID, actualState.singletonDocID);
-        } else {
-          assertEquals(expectedState.docStartFP, actualState.docStartFP);
-        }
-        assertEquals(expectedState.docFreq, actualState.docFreq);
-        assertEquals(expectedState.totalTermFreq, actualState.totalTermFreq);
-        assertEquals(expectedState.skipOffset, actualState.skipOffset);
-        assertEquals(expectedState.posStartFP, actualState.posStartFP);
-        assertEquals(expectedState.payStartFP, actualState.payStartFP);
-        assertEquals(expectedState.lastPosBlockOffset, actualState.lastPosBlockOffset);
+      for (var expectedResult : manyExpectedResults) {
+        assertDeserializedMatchingExpected(
+            expectedResult, metaInput, termIndexInput, termDataInputProvider);
       }
 
       metaInput.close();
@@ -137,7 +100,85 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
     }
   }
 
-  TermAndState[] getRandoms(int size, int maxDoc) {
+  private static void assertDeserializedMatchingExpected(
+      ExpectedResults result,
+      IndexInput metaInput,
+      IndexInput termIndexInput,
+      TermDataInputProvider termDataInputProvider)
+      throws IOException {
+    RandomAccessTermsDict deserialized =
+        RandomAccessTermsDict.deserialize(
+            _fieldNumber -> result.indexOptions(),
+            metaInput,
+            termIndexInput,
+            termDataInputProvider);
+
+    assertEquals(result.fieldNumber(), deserialized.termsStats().fieldNumber());
+    assertEquals(result.expectedDocCount(), deserialized.termsStats().docCount());
+    assertEquals(result.expectedTermAndState().length, deserialized.termsStats().size());
+    assertEquals(
+        Arrays.stream(result.expectedTermAndState()).mapToLong(x -> x.state.docFreq).sum(),
+        deserialized.termsStats().sumDocFreq());
+    assertEquals(
+        Arrays.stream(result.expectedTermAndState()).mapToLong(x -> x.state.totalTermFreq).sum(),
+        deserialized.termsStats().sumTotalTermFreq());
+    assertEquals(result.expectedTermAndState().length, deserialized.termsStats().size());
+    assertEquals(result.expectedTermAndState()[0].term, deserialized.termsStats().minTerm());
+    assertEquals(
+        result.expectedTermAndState()[result.expectedTermAndState().length - 1].term,
+        deserialized.termsStats().maxTerm());
+
+    for (var x : result.expectedTermAndState()) {
+      IntBlockTermState expectedState = x.state;
+      IntBlockTermState actualState = deserialized.getTermState(x.term);
+      if (expectedState.singletonDocID != -1) {
+        assertEquals(expectedState.singletonDocID, actualState.singletonDocID);
+      } else {
+        assertEquals(expectedState.docStartFP, actualState.docStartFP);
+      }
+      assertEquals(expectedState.docFreq, actualState.docFreq);
+      if (result.indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS.ordinal()) {
+        assertEquals(expectedState.totalTermFreq, actualState.totalTermFreq);
+      }
+      assertEquals(expectedState.skipOffset, actualState.skipOffset);
+      if (result.indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+        assertEquals(expectedState.posStartFP, actualState.posStartFP);
+        assertEquals(expectedState.lastPosBlockOffset, actualState.lastPosBlockOffset);
+      }
+      if (result.indexOptions.ordinal()
+          >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
+        assertEquals(expectedState.payStartFP, actualState.payStartFP);
+      }
+    }
+  }
+
+  private ExpectedResults indexOneField(
+      IndexOutput metaOut, IndexOutput termIndexOut, TermDataOutputProvider outputProvider)
+      throws IOException {
+    int fieldNumber = nextFieldNumber++;
+    IndexOptions indexOptions =
+        IndexOptions.values()[random().nextInt(1, IndexOptions.values().length)];
+    RandomAccessTermsDictWriter randomAccessTermsDictWriter =
+        new RandomAccessTermsDictWriter(
+            fieldNumber, indexOptions, metaOut, termIndexOut, outputProvider);
+
+    TermAndState[] expectedTermAndState = getRandoms(1000, 2000);
+    int expectedDocCount = random().nextInt(1, 2000);
+
+    for (var x : expectedTermAndState) {
+      randomAccessTermsDictWriter.add(x.term, x.state);
+    }
+    randomAccessTermsDictWriter.finish(expectedDocCount);
+    return new ExpectedResults(fieldNumber, indexOptions, expectedTermAndState, expectedDocCount);
+  }
+
+  private record ExpectedResults(
+      int fieldNumber,
+      IndexOptions indexOptions,
+      TermAndState[] expectedTermAndState,
+      int expectedDocCount) {}
+
+  static TermAndState[] getRandoms(int size, int maxDoc) {
     IntBlockTermState lastTermState = null;
 
     ArrayList<TermAndState> result = new ArrayList<>(size);

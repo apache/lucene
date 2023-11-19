@@ -45,7 +45,9 @@ record TermsIndex(FST<Long> fst) {
       throws IOException {
     FST<Long> fst;
     if (loadOffHeap) {
-      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton(), new OffHeapFSTStore());
+      var fstStore = new OffHeapFSTStore();
+      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton(), fstStore);
+      dataIn.skipBytes(fstStore.size());
     } else {
       fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton());
     }
