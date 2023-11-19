@@ -609,8 +609,8 @@ public class FSTCompiler<T> {
     int srcPos = scratchBytes.getPosition();
     int destPos = headerLen + nodeIn.numArcs * maxBytesPerArc;
     assert destPos >= srcPos;
-    scratchBytes.setPosition(destPos);
     if (destPos > srcPos) {
+      scratchBytes.setPosition(destPos);
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
