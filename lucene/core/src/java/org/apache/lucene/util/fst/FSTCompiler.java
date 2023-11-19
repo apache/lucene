@@ -514,7 +514,7 @@ public class FSTCompiler<T> {
       }
     }
 
-    scratchBytes.reverse();
+    reverseScratchBytes();
     scratchBytes.writeTo(dataOutput);
     numBytesWritten += scratchBytes.getPosition();
 
@@ -638,6 +638,18 @@ public class FSTCompiler<T> {
 
     // Finally write the header
     writeScratchBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+  }
+
+  /** Reverse the scratch bytes */
+  private void reverseScratchBytes() {
+    int pos = scratchBytes.getPosition();
+    byte[] bytes = scratchBytes.getBytes();
+    int limit = pos / 2;
+    for (int i = 0; i < limit; i++) {
+      byte b = bytes[i];
+      bytes[i] = bytes[pos - 1 - i];
+      bytes[pos - 1 - i] = b;
+    }
   }
 
   /**

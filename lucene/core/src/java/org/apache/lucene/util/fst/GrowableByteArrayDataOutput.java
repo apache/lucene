@@ -86,16 +86,6 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
     System.arraycopy(bytes, srcOffset, dest, destOffset, len);
   }
 
-  /** Reverse the written byte[]. */
-  public void reverse() {
-    int limit = nextWrite / 2;
-    for (int i = 0; i < limit; i++) {
-      byte b = bytes[i];
-      bytes[i] = bytes[nextWrite - 1 - i];
-      bytes[nextWrite - 1 - i] = b;
-    }
-  }
-
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(bytes);

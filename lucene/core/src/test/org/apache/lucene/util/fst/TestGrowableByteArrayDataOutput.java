@@ -45,7 +45,7 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
 
       int pos = 0;
       while (pos < numBytes) {
-        int op = random().nextInt(3);
+        int op = random().nextInt(2);
         if (VERBOSE) {
           System.out.println("  cycle pos=" + pos);
         }
@@ -75,26 +75,6 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
               System.arraycopy(temp, 0, expected, pos, temp.length);
               bytes.writeBytes(temp, 0, temp.length);
               pos += len;
-            }
-            break;
-
-          case 2:
-            {
-              // reverse bytes
-              if (pos > 1) {
-                bytes.reverse();
-
-                int start = 0;
-                int end = bytes.getPosition() - 1;
-
-                while (start <= end) {
-                  byte b = expected[end];
-                  expected[end] = expected[start];
-                  expected[start] = b;
-                  start++;
-                  end--;
-                }
-              }
             }
             break;
         }
