@@ -110,7 +110,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+      KnnCollector collector = createCollector(ctx, Integer.MAX_VALUE);
+      if (collector == null) {
+        return NO_RESULTS;
+      }
+
+      approximateSearch(ctx, liveDocs, collector);
+
+      // This will always complete graph search, no need to fall back
+      return collector.topDocs();
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -121,19 +129,24 @@ abstract class AbstractKnnVectorQuery extends Query {
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
     int cost = acceptDocs.cardinality();
 
+    KnnCollector collector = createCollector(ctx, cost);
+    if (collector == null) {
+      return NO_RESULTS;
+    }
+
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), collector);
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
-    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      return results;
-    } else {
+    approximateSearch(ctx, acceptDocs, collector);
+    if (collector.earlyTerminated()) {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), collector);
+    } else {
+      return collector.topDocs();
     }
   }
 
@@ -155,14 +168,20 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
-  protected abstract TopDocs approximateSearch(
-      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
+  protected KnnCollector createCollector(LeafReaderContext context, int visitedLimit)
+      throws IOException {
+    return new TopKnnCollector(k, visitedLimit);
+  }
+
+  protected abstract void approximateSearch(
+      LeafReaderContext context, Bits acceptDocs, KnnCollector collector) throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected TopDocs exactSearch(
+      LeafReaderContext context, DocIdSetIterator acceptIterator, KnnCollector collector)
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -171,33 +190,23 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      if (collector.visit(doc)) {
+        continue;
+      }
+
       boolean advanced = vectorScorer.advanceExact(doc);
       assert advanced;
 
       float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
+      if (score > collector.minCompetitiveSimilarity()) {
+        collector.collect(doc, score);
       }
     }
 
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
+    return new TopDocs(totalHits, collector.topDocs().scoreDocs);
   }
 
   /**

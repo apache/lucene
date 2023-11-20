@@ -42,9 +42,6 @@ import org.apache.lucene.util.VectorUtil;
  * </ul>
  */
 public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
-
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
-
   private final float[] target;
 
   /**
@@ -76,11 +73,11 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-    return results != null ? results : NO_RESULTS;
+  protected void approximateSearch(
+      LeafReaderContext context, Bits acceptDocs, KnnCollector collector) throws IOException {
+    if (collector != null) {
+      context.reader().searchNearestVectors(field, target, collector, acceptDocs);
+    }
   }
 
   @Override

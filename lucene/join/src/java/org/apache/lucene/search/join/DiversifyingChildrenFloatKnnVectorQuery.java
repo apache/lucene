@@ -19,22 +19,11 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
@@ -50,8 +39,6 @@ import org.apache.lucene.util.Bits;
  * </pre>
  */
 public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery {
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
-
   private final BitSetProducer parentsFilter;
   private final Query childFilter;
   private final int k;
@@ -76,63 +63,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   }
 
   @Override
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected KnnCollector createCollector(LeafReaderContext context, int visitedLimit)
       throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return NO_RESULTS;
-    }
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+    BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
       return null;
     }
-    BitSet parentBitSet = parentsFilter.getBitSet(context);
-    if (parentBitSet == null) {
-      return NO_RESULTS;
-    }
-    DiversifyingChildrenFloatVectorScorer vectorScorer =
-        new DiversifyingChildrenFloatVectorScorer(
-            context.reader().getFloatVectorValues(field),
-            acceptIterator,
-            parentBitSet,
-            query,
-            fi.getVectorSimilarityFunction());
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = vectorScorer.bestChild();
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
-  }
-
-  @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    BitSet parentBitSet = parentsFilter.getBitSet(context);
-    if (parentBitSet == null) {
-      return NO_RESULTS;
-    }
-    KnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
-    context.reader().searchNearestVectors(field, query, collector, acceptDocs);
-    return collector.topDocs();
+    return new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
   }
 
   @Override
@@ -157,60 +94,5 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k);
     result = 31 * result + Arrays.hashCode(query);
     return result;
-  }
-
-  private static class DiversifyingChildrenFloatVectorScorer {
-    private final float[] query;
-    private final FloatVectorValues values;
-    private final VectorSimilarityFunction similarity;
-    private final DocIdSetIterator acceptedChildrenIterator;
-    private final BitSet parentBitSet;
-    private int currentParent = -1;
-    private int bestChild = -1;
-    private float currentScore = Float.NEGATIVE_INFINITY;
-
-    protected DiversifyingChildrenFloatVectorScorer(
-        FloatVectorValues values,
-        DocIdSetIterator acceptedChildrenIterator,
-        BitSet parentBitSet,
-        float[] query,
-        VectorSimilarityFunction similarity) {
-      this.query = query;
-      this.values = values;
-      this.similarity = similarity;
-      this.acceptedChildrenIterator = acceptedChildrenIterator;
-      this.parentBitSet = parentBitSet;
-    }
-
-    public int bestChild() {
-      return bestChild;
-    }
-
-    public int nextParent() throws IOException {
-      int nextChild = acceptedChildrenIterator.docID();
-      if (nextChild == -1) {
-        nextChild = acceptedChildrenIterator.nextDoc();
-      }
-      if (nextChild == DocIdSetIterator.NO_MORE_DOCS) {
-        currentParent = DocIdSetIterator.NO_MORE_DOCS;
-        return currentParent;
-      }
-      currentScore = Float.NEGATIVE_INFINITY;
-      currentParent = parentBitSet.nextSetBit(nextChild);
-      do {
-        values.advance(nextChild);
-        float score = similarity.compare(query, values.vectorValue());
-        if (score > currentScore) {
-          bestChild = nextChild;
-          currentScore = score;
-        }
-      } while ((nextChild = acceptedChildrenIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS
-          && nextChild < currentParent);
-      return currentParent;
-    }
-
-    public float score() throws IOException {
-      return currentScore;
-    }
   }
 }
