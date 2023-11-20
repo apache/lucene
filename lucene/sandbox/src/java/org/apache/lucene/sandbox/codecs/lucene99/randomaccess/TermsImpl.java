@@ -30,7 +30,7 @@ final class TermsImpl extends Terms {
 
   private final RandomAccessTermsDict termsDict;
 
-  public TermsImpl(TermsStats stats, FieldInfo fieldInfo, RandomAccessTermsDict termsDict) {
+  public TermsImpl(FieldInfo fieldInfo, RandomAccessTermsDict termsDict) {
     this.fieldInfo = fieldInfo;
     this.termsDict = termsDict;
   }

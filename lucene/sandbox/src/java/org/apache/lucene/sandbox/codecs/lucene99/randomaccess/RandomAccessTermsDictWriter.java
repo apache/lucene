@@ -28,6 +28,7 @@ import org.apache.lucene.util.BytesRef;
 final class RandomAccessTermsDictWriter {
   /** externally provided * */
   private final IndexOptions indexOptions;
+
   private final DataOutput metaOutput;
 
   private final DataOutput indexOutput;

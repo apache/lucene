@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TestTermStateCodecImpl.TermStateTestFixture;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPerBytePacker;
@@ -28,6 +27,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TestTermDataWriter extends LuceneTestCase {
 
@@ -62,7 +62,7 @@ public class TestTermDataWriter extends LuceneTestCase {
             testFixture
                 .codec()
                 .encodeBlock(
-                    Arrays.copyOfRange(
+                    ArrayUtil.copyOfSubArray(
                         testFixture.termStatesArray(),
                         start,
                         Math.min(

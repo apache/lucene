@@ -20,8 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
@@ -35,6 +33,15 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene99RandomAccessDictionaryPostingsFormat extends PostingsFormat {
+  static String TERM_DICT_META_HEADER_CODEC_NAME = "RandomAccessTermsDict";
+  static String TERM_INDEX_HEADER_CODEC_NAME = "RandomAccessTermsDictIndex";
+  static String TERM_DATA_META_HEADER_CODEC_NAME_PREFIX = "RandomAccessTermsDictTermDataMeta";
+  static String TERM_DATA_HEADER_CODEC_NAME_PREFIX = "RandomAccessTermsDictTermData";
+
+  static String TERM_DICT_META_INFO_EXTENSION = "tmeta";
+  static String TERM_INDEX_EXTENSION = "tidx";
+  static String TERM_DATA_META_EXTENSION_PREFIX = "tdm";
+  static String TERM_DATA_EXTENSION_PREFIX = "tdd";
 
   // Increment version to change it
   static final int VERSION_START = 0;
@@ -42,7 +49,7 @@ public final class Lucene99RandomAccessDictionaryPostingsFormat extends Postings
 
   /** Creates {@code Lucene90RandomAccessDictionaryPostingsFormat} */
   public Lucene99RandomAccessDictionaryPostingsFormat() {
-    super("Lucene90RandomAccess");
+    super("Lucene99RandomAccess");
   }
 
   @Override
@@ -52,10 +59,10 @@ public final class Lucene99RandomAccessDictionaryPostingsFormat extends Postings
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
+    Lucene99PostingsWriter postingsWriter = new Lucene99PostingsWriter(state);
     boolean success = false;
     try {
-      FieldsConsumer ret = new Lucene99RandomAccessTermsWriter();
+      FieldsConsumer ret = new Lucene99RandomAccessTermsWriter(state, postingsWriter);
       success = true;
       return ret;
     } finally {
@@ -67,10 +74,10 @@ public final class Lucene99RandomAccessDictionaryPostingsFormat extends Postings
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
+    Lucene99PostingsReader postingsReader = new Lucene99PostingsReader(state);
     boolean success = false;
     try {
-      FieldsProducer ret = new Lucene99RandomAccessTermsReader();
+      FieldsProducer ret = new Lucene99RandomAccessTermsReader(postingsReader, state);
       success = true;
       return ret;
     } finally {
