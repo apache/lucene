@@ -311,6 +311,10 @@ final class FreqProxTermsWriter extends TermsHash {
 
   static class SortingPostingsEnum extends PostingsEnum {
 
+    /**
+     * A {@link TimSorter} which sorts two parallel arrays of doc IDs and offsets in one go. Everyti
+     * me a doc ID is 'swapped', its corresponding offset is swapped too.
+     */
     private static final class DocOffsetSorter extends TimSorter {
 
       private int bits;
@@ -498,6 +502,7 @@ final class FreqProxTermsWriter extends TermsHash {
       final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
       sorter.reset(numBits, docs, offsets);
       sorter.sort(0, upto);
+
       this.postingInput = buffer.toDataInput();
     }
 
