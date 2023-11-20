@@ -75,7 +75,7 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
   @Override
   public void close() throws IOException {
     try {
-      IOUtils.close(indexFilesManager);
+      IOUtils.close(indexFilesManager, postingsReader);
     } finally {
       // The per-field term dictionary would be invalid once the underlying index files have been
       // closed.

@@ -154,7 +154,9 @@ final class RandomAccessTermsDictWriter {
     void recordTerm(IntBlockTermState termState) {
       size += 1;
       sumDocFreq += termState.docFreq;
-      sumTotalTermFreq += termState.totalTermFreq;
+      if (termState.totalTermFreq > 0) {
+        sumTotalTermFreq += termState.totalTermFreq;
+      }
     }
 
     void setDocCount(int docCount) {

@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 
 import static org.apache.lucene.sandbox.codecs.lucene99.randomaccess.Lucene99RandomAccessDictionaryPostingsFormat.*;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import org.apache.lucene.codecs.CodecUtil;
@@ -99,7 +100,8 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
     if (closed) {
       return;
     }
-    indexFilesManager.close();
+    IOUtils.close(indexFilesManager, postingsWriter);
+
     closed = true;
   }
 
@@ -107,7 +109,7 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
    * Manages the output index files needed. It handles adding indexing header on creation and footer
    * upon closing.
    */
-  class IndexFilesManager implements RandomAccessTermsDictWriter.TermDataOutputProvider {
+  class IndexFilesManager implements RandomAccessTermsDictWriter.TermDataOutputProvider, Closeable {
 
     private final IndexOutput metaInfoOut;
 
@@ -196,7 +198,7 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
      *
      * <p>Assume all index files are valid upto time of calling.
      */
-    void close() throws IOException {
+    public void close() throws IOException {
       boolean success = false;
       try {
         CodecUtil.writeFooter(metaInfoOut);
