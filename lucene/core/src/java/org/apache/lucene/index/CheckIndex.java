@@ -1199,9 +1199,8 @@ public final class CheckIndex implements Closeable {
             if (cmp != 0) {
               break;
             }
-            prevDoc = nextDoc;
           }
-
+          prevDoc = nextDoc;
           if (cmp > 0) {
             throw new CheckIndexException(
                 "segment has indexSort="
