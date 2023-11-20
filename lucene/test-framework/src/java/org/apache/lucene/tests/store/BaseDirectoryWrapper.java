@@ -62,14 +62,15 @@ public abstract class BaseDirectoryWrapper extends FilterDirectory {
   }
 
   public void setCrossCheckTermVectorsOnClose(boolean value) {
+    // If true, we are enabling slow checks.
     if (value == true) {
-      this.detailLevelForCheckOnClose = getSlowCheckLevelOnClose();
+      this.detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
     } else {
       this.detailLevelForCheckOnClose = CheckIndex.DetailLevel.MIN_LEVEL_FOR_INTEGRITY_CHECKS;
     }
   }
 
-  public int getSlowCheckLevelOnClose() {
-    return CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
+  public int getDetailLevelForCheckOnClose() {
+    return detailLevelForCheckOnClose;
   }
 }
