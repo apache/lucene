@@ -344,21 +344,6 @@ final class DocumentsWriterPerThread implements Accountable {
     }
   }
 
-  private void validateIndexSortWithBlocks(Iterable<? extends IndexableField> lastDoc) {
-    if (segmentInfo.getIndexSort() != null) {
-      String parentField = segmentInfo.getIndexSort().getParentField();
-
-      boolean valid = false;
-      for (IndexableField field : lastDoc) {
-        if (parentField.equals(field.name())
-            && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
-          valid = true;
-          break;
-        }
-      }
-    }
-  }
-
   private long finishDocuments(DocumentsWriterDeleteQueue.Node<?> deleteNode, int docIdUpTo) {
     /*
      * here we actually finish the document in two steps 1. push the delete into
