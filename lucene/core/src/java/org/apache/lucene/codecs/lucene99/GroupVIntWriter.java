@@ -33,11 +33,10 @@ public class GroupVIntWriter {
 
   private int encodeValue(int v) {
     int lastOff = byteOffset;
-    while ((v & ~0xFF) != 0) {
+    do {
       bytes[byteOffset++] = (byte) (v & 0xFF);
       v >>>= 8;
-    }
-    bytes[byteOffset++] = (byte) v;
+    } while (v != 0);
     return byteOffset - lastOff;
   }
 

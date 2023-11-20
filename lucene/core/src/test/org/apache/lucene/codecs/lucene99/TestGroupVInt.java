@@ -30,7 +30,7 @@ public class TestGroupVInt extends LuceneTestCase {
   public void testEncodeDecode() throws IOException {
     long[] values = new long[ForUtil.BLOCK_SIZE];
     long[] restored = new long[ForUtil.BLOCK_SIZE];
-    final int iterations = RandomNumbers.randomIntBetween(random(), 50, 1000);
+    final int iterations = atLeast(100);
 
     final GroupVIntWriter w = new GroupVIntWriter();
     byte[] encoded = new byte[(int) (Integer.BYTES * ForUtil.BLOCK_SIZE * 1.25)];
