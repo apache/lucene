@@ -88,8 +88,6 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
   }
 
-  public abstract Bits getAcceptOrds(Bits acceptDocs);
-
   /**
    * Dense vector values that are stored off-heap. This is the most common case when every doc has a
    * vector.

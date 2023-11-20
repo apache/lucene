@@ -271,8 +271,7 @@ class SimpleCopyJob extends CopyJob {
 
   @Override
   public void runBlocking() throws IOException {
-    while (visit() == false)
-      ;
+    while (visit() == false) {}
 
     if (getFailed()) {
       throw new RuntimeException("copy failed: " + cancelReason, exc);

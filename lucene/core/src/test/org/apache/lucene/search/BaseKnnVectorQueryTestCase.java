@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -222,7 +224,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
-      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 10);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 1);
       IllegalArgumentException e =
           expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
       assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
@@ -779,6 +781,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       doc.add(getKnnVectorField(field, contents[i], vectorSimilarityFunction));
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
+      if (randomBoolean()) {
+        // Add some documents without a vector
+        for (int j = 0; j < randomIntBetween(1, 5); j++) {
+          doc = new Document();
+          doc.add(new StringField("other", "value", Field.Store.NO));
+          // Add fields that will be matched by our test filters but won't have vectors
+          doc.add(new StringField("id", "id" + j, Field.Store.YES));
+          writer.addDocument(doc);
+        }
+      }
     }
     // Add some documents without a vector
     for (int i = 0; i < 5; i++) {

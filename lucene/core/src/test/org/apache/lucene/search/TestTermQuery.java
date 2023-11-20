@@ -288,5 +288,4 @@ public class TestTermQuery extends LuceneTestCase {
       return in.getReaderCacheHelper();
     }
   }
-  ;
 }

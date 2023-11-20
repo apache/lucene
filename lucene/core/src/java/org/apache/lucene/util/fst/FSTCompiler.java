@@ -122,15 +122,6 @@ public class FSTCompiler<T> {
 
   final BytesStore bytes;
 
-  /**
-   * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
-   * tuning and tweaking, see {@link Builder}.
-   */
-  // TODO: remove this?  Builder API should be the only entry point?
-  public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    this(inputType, 32.0, outputs, true, 15, 1f);
-  }
-
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
       double suffixRAMLimitMB,
