@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -103,9 +102,7 @@ public final class Lucene91HnswGraphBuilder {
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
-    this.graphSearcher =
-        new HnswGraphSearcher(
-            new NeighborQueue(beamWidth, true), new FixedBitSet(vectorValues.size()));
+    this.graphSearcher = new HnswGraphSearcher(new NeighborQueue(beamWidth, true));
     bound = Lucene91BoundsChecker.create(false);
     scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }

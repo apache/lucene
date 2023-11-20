@@ -22,10 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -38,17 +35,13 @@ public class HnswGraphSearcher {
    */
   private final NeighborQueue candidates;
 
-  private BitSet visited;
-
   /**
    * Creates a new graph searcher.
    *
    * @param candidates max heap that will track the candidate nodes to explore
-   * @param visited bit set that will track nodes that have already been visited
    */
-  public HnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
+  public HnswGraphSearcher(NeighborQueue candidates) {
     this.candidates = candidates;
-    this.visited = visited;
   }
 
   /**
@@ -65,8 +58,7 @@ public class HnswGraphSearcher {
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
     HnswGraphSearcher graphSearcher =
-        new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
+        new HnswGraphSearcher(new NeighborQueue(knnCollector.k(), true));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
@@ -87,8 +79,7 @@ public class HnswGraphSearcher {
       throws IOException {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher graphSearcher =
-        new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
+        new OnHeapHnswGraphSearcher(new NeighborQueue(topK, true));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     return knnCollector;
   }
@@ -104,14 +95,10 @@ public class HnswGraphSearcher {
     if (initialEp == -1) {
       return;
     }
-    int[] epAndVisited = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector.visitLimit());
-    int numVisited = epAndVisited[1];
-    int ep = epAndVisited[0];
+    int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
     if (ep == -1) {
-      knnCollector.incVisitedCount(numVisited);
       return;
     }
-    knnCollector.incVisitedCount(numVisited);
     graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
   }
 
@@ -143,22 +130,24 @@ public class HnswGraphSearcher {
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param graph the HNSWGraph
-   * @param visitLimit How many vectors are allowed to be visited
    * @return An integer array whose first element is the best entry point, and second is the number
    *     of candidates visited. Entry point of `-1` indicates visitation limit exceed
    * @throws IOException When accessing the vector fails
    */
-  private int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, long visitLimit)
+  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
     int size = getGraphSize(graph);
-    int visitedCount = 1;
-    prepareScratchState(size);
+    collector.prepareScratchState(size - 1);
+    candidates.clear();
+
     int currentEp = graph.entryNode();
     float currentScore = scorer.score(currentEp);
+    collector.incVisitedCount(1);
+
     boolean foundBetter;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       foundBetter = true;
-      visited.set(currentEp);
+      collector.visit(currentEp);
       // Keep searching the given level until we stop finding a better candidate entry point
       while (foundBetter) {
         foundBetter = false;
@@ -166,14 +155,17 @@ public class HnswGraphSearcher {
         int friendOrd;
         while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-          if (visited.getAndSet(friendOrd)) {
+          if (collector.earlyTerminated()) {
+            // Collector has visited nodes but not collected any results, reset state
+            collector.prepareScratchState(size - 1);
+            return -1;
+          } else if (collector.visit(friendOrd)) {
             continue;
           }
-          if (visitedCount >= visitLimit) {
-            return new int[] {-1, visitedCount};
-          }
+
           float friendSimilarity = scorer.score(friendOrd);
-          visitedCount++;
+          collector.incVisitedCount(1);
+
           if (friendSimilarity > currentScore) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
@@ -182,7 +174,7 @@ public class HnswGraphSearcher {
         }
       }
     }
-    return new int[] {currentEp, visitedCount};
+    return currentEp;
   }
 
   /**
@@ -201,20 +193,21 @@ public class HnswGraphSearcher {
       throws IOException {
 
     int size = getGraphSize(graph);
-
-    prepareScratchState(size);
+    results.prepareScratchState(size - 1);
+    candidates.clear();
 
     for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float score = scorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
+      if (results.earlyTerminated()) {
+        break;
+      } else if (results.visit(ep)) {
+        continue;
+      }
+
+      float score = scorer.score(ep);
+      results.incVisitedCount(1);
+      candidates.add(ep, score);
+      if (acceptOrds == null || acceptOrds.get(ep)) {
+        results.collect(ep, score);
       }
     }
 
@@ -233,13 +226,12 @@ public class HnswGraphSearcher {
       int friendOrd;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+        if (results.earlyTerminated()) {
+          break;
+        } else if (results.visit(friendOrd)) {
           continue;
         }
 
-        if (results.earlyTerminated()) {
-          break;
-        }
         float friendSimilarity = scorer.score(friendOrd);
         results.incVisitedCount(1);
         if (friendSimilarity > minAcceptedSimilarity) {
@@ -252,14 +244,6 @@ public class HnswGraphSearcher {
         }
       }
     }
-  }
-
-  private void prepareScratchState(int capacity) {
-    candidates.clear();
-    if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
-    }
-    visited.clear();
   }
 
   /**
@@ -301,8 +285,8 @@ public class HnswGraphSearcher {
     private NeighborArray cur;
     private int upto;
 
-    private OnHeapHnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
-      super(candidates, visited);
+    private OnHeapHnswGraphSearcher(NeighborQueue candidates) {
+      super(candidates);
     }
 
     @Override

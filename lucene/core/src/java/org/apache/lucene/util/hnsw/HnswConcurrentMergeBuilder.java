@@ -27,7 +27,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -167,8 +166,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           beamWidth,
           seed,
           hnsw,
-          new MergeSearcher(
-              new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.maxNodeId() + 1)));
+          new MergeSearcher(new NeighborQueue(beamWidth, true)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
     }
@@ -217,8 +215,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private int upto;
     private int size;
 
-    private MergeSearcher(NeighborQueue candidates, BitSet visited) {
-      super(candidates, visited);
+    private MergeSearcher(NeighborQueue candidates) {
+      super(candidates);
     }
 
     @Override

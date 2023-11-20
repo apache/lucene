@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.util.FixedBitSet;
+
 /**
  * AbstractKnnCollector is the default implementation for a knn collector used for gathering kNN
  * results and providing topDocs from the gathered neighbors
@@ -26,6 +28,7 @@ public abstract class AbstractKnnCollector implements KnnCollector {
   private long visitedCount;
   private final long visitLimit;
   private final int k;
+  private FixedBitSet visited;
 
   protected AbstractKnnCollector(int k, long visitLimit) {
     this.visitLimit = visitLimit;
@@ -66,4 +69,19 @@ public abstract class AbstractKnnCollector implements KnnCollector {
 
   @Override
   public abstract TopDocs topDocs();
+
+  @Override
+  public void prepareScratchState(int maxDoc) {
+    if (visited == null) {
+      visited = new FixedBitSet(maxDoc + 1);
+    } else {
+      visited = FixedBitSet.ensureCapacity(visited, maxDoc);
+      visited.clear();
+    }
+  }
+
+  @Override
+  public boolean visit(int docId) {
+    return visited != null && visited.getAndSet(docId);
+  }
 }

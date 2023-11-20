@@ -109,7 +109,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         beamWidth,
         seed,
         hnsw,
-        new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
+        new HnswGraphSearcher(new NeighborQueue(beamWidth, true)));
   }
 
   /**
@@ -452,6 +452,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     private final NeighborQueue queue;
     private final int k;
     private long visitedCount;
+    private FixedBitSet visited;
 
     /**
      * @param k the number of neighbors to collect
@@ -523,6 +524,21 @@ public class HnswGraphBuilder implements HnswBuilder {
     @Override
     public TopDocs topDocs() {
       throw new IllegalArgumentException();
+    }
+
+    @Override
+    public void prepareScratchState(int maxDoc) {
+      if (visited == null) {
+        visited = new FixedBitSet(maxDoc + 1);
+      } else {
+        visited = FixedBitSet.ensureCapacity(visited, maxDoc);
+        visited.clear();
+      }
+    }
+
+    @Override
+    public boolean visit(int docId) {
+      return visited != null && visited.getAndSet(docId);
     }
   }
 }

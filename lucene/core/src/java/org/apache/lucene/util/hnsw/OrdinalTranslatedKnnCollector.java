@@ -80,4 +80,14 @@ public final class OrdinalTranslatedKnnCollector implements KnnCollector {
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);
   }
+
+  @Override
+  public void prepareScratchState(int maxVector) {
+    in.prepareScratchState(vectorOrdinalToDocId.apply(maxVector));
+  }
+
+  @Override
+  public boolean visit(int vectorId) {
+    return in.visit(vectorOrdinalToDocId.apply(vectorId));
+  }
 }

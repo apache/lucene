@@ -85,4 +85,8 @@ public interface KnnCollector {
    * @return The collected top documents
    */
   TopDocs topDocs();
+
+  void prepareScratchState(int maxDoc);
+
+  boolean visit(int docId);
 }
