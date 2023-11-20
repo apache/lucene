@@ -33,7 +33,9 @@ module org.apache.lucene.codecs {
       org.apache.lucene.codecs.memory.DirectPostingsFormat,
       org.apache.lucene.codecs.memory.FSTPostingsFormat,
       org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat,
-      org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat;
+      org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat,
+      org.apache.lucene.sandbox.codecs.lucene99.randomaccess
+          .Lucene99RandomAccessDictionaryPostingsFormat;
   provides org.apache.lucene.codecs.Codec with
       org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 }
