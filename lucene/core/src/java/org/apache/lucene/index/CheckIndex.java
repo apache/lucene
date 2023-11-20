@@ -442,19 +442,19 @@ public final class CheckIndex implements Closeable {
     IOUtils.close(writeLock);
   }
 
-  private int detailLevel;
+  private int level;
 
   /**
-   * Sets DetailLevel, the higher the value, the more additional checks are performed. This will
-   * likely drastically increase time it takes to run CheckIndex! See {@link DetailLevel}
+   * Sets Level, the higher the value, the more additional checks are performed. This will likely
+   * drastically increase time it takes to run CheckIndex! See {@link Level}
    */
-  public void setDetailLevel(int v) {
-    detailLevel = v;
+  public void setLevel(int v) {
+    level = v;
   }
 
-  /** See {@link #setDetailLevel}. */
-  public int getDetailLevel() {
-    return detailLevel;
+  /** See {@link #setLevel}. */
+  public int getLevel() {
+    return level;
   }
 
   private boolean failFast;
@@ -1050,7 +1050,7 @@ public final class CheckIndex implements Closeable {
                   + (info.info.maxDoc() - reader.numDocs()));
         }
       }
-      if (detailLevel >= DetailLevel.MIN_LEVEL_FOR_INTEGRITY_CHECKS) {
+      if (level >= Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS) {
         // Test Livedocs
         segInfoStat.liveDocStatus = testLiveDocs(reader, infoStream, failFast);
 
@@ -1061,15 +1061,14 @@ public final class CheckIndex implements Closeable {
         segInfoStat.fieldNormStatus = testFieldNorms(reader, infoStream, failFast);
 
         // Test the Term Index
-        segInfoStat.termIndexStatus =
-            testPostings(reader, infoStream, verbose, detailLevel, failFast);
+        segInfoStat.termIndexStatus = testPostings(reader, infoStream, verbose, level, failFast);
 
         // Test Stored Fields
         segInfoStat.storedFieldStatus = testStoredFields(reader, infoStream, failFast);
 
         // Test Term Vectors
         segInfoStat.termVectorStatus =
-            testTermVectors(reader, infoStream, verbose, detailLevel, failFast);
+            testTermVectors(reader, infoStream, verbose, level, failFast);
 
         // Test Docvalues
         segInfoStat.docValuesStatus = testDocValues(reader, infoStream, failFast);
@@ -1400,7 +1399,7 @@ public final class CheckIndex implements Closeable {
       boolean isVectors,
       PrintStream infoStream,
       boolean verbose,
-      int detailLevel)
+      int level)
       throws IOException {
     // TODO: we should probably return our own stats thing...?!
     long startNS;
@@ -1985,12 +1984,12 @@ public final class CheckIndex implements Closeable {
         // Checking score blocks is heavy, we only do it on long postings lists, on every 1024th
         // term
         // or if slow checks are enabled.
-        if (detailLevel >= DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS
+        if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS
             || docFreq > 1024
             || (status.termCount + status.delTermCount) % 1024 == 0) {
           // First check max scores and block uptos
           // But only if slok checks are enabled since we visit all docs
-          if (detailLevel >= DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS) {
+          if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
             int max = -1;
             int maxFreq = 0;
             ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
@@ -2057,9 +2056,9 @@ public final class CheckIndex implements Closeable {
               Impacts impacts = impactsEnum.getImpacts();
               checkImpacts(impacts, doc);
               maxFreq = Integer.MAX_VALUE;
-              for (int level = 0; level < impacts.numLevels(); ++level) {
-                if (impacts.getDocIdUpTo(level) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(level);
+              for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
+                if (impacts.getDocIdUpTo(impactsLevel) >= max) {
+                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
                   maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
                   break;
                 }
@@ -2099,9 +2098,9 @@ public final class CheckIndex implements Closeable {
               Impacts impacts = impactsEnum.getImpacts();
               checkImpacts(impacts, doc);
               maxFreq = Integer.MAX_VALUE;
-              for (int level = 0; level < impacts.numLevels(); ++level) {
-                if (impacts.getDocIdUpTo(level) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(level);
+              for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
+                if (impacts.getDocIdUpTo(impactsLevel) >= max) {
+                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
                   maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
                   break;
                 }
@@ -2366,7 +2365,7 @@ public final class CheckIndex implements Closeable {
   static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {
-      throw new CheckIndexException("The number of levels must be >= 1, got " + numLevels);
+      throw new CheckIndexException("The number of impactsLevels must be >= 1, got " + numLevels);
     }
 
     int docIdUpTo0 = impacts.getDocIdUpTo(0);
@@ -2378,17 +2377,17 @@ public final class CheckIndex implements Closeable {
               + lastTarget);
     }
 
-    for (int level = 1; level < numLevels; ++level) {
-      int docIdUpTo = impacts.getDocIdUpTo(level);
-      int previousDocIdUpTo = impacts.getDocIdUpTo(level - 1);
+    for (int impactsLevel = 1; impactsLevel < numLevels; ++impactsLevel) {
+      int docIdUpTo = impacts.getDocIdUpTo(impactsLevel);
+      int previousDocIdUpTo = impacts.getDocIdUpTo(impactsLevel - 1);
       if (docIdUpTo < previousDocIdUpTo) {
         throw new CheckIndexException(
             "Decreasing return for getDocIdUpTo: level "
-                + (level - 1)
+                + (impactsLevel - 1)
                 + " returned "
                 + previousDocIdUpTo
                 + " but level "
-                + level
+                + impactsLevel
                 + " returned "
                 + docIdUpTo
                 + " for target "
@@ -2396,10 +2395,10 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    for (int level = 0; level < numLevels; ++level) {
-      List<Impact> perLevelImpacts = impacts.getImpacts(level);
+    for (int impactsLevel = 0; impactsLevel < numLevels; ++impactsLevel) {
+      List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
       if (perLevelImpacts.isEmpty()) {
-        throw new CheckIndexException("Got empty list of impacts on level " + level);
+        throw new CheckIndexException("Got empty list of impacts on level " + impactsLevel);
       }
       Impact first = perLevelImpacts.get(0);
       if (first.freq < 1) {
@@ -2417,9 +2416,9 @@ public final class CheckIndex implements Closeable {
               "Impacts are not ordered or contain dups, got " + previous + " then " + impact);
         }
       }
-      if (level > 0) {
-        // Make sure that impacts at level N trigger better scores than an level N-1
-        Iterator<Impact> previousIt = impacts.getImpacts(level - 1).iterator();
+      if (impactsLevel > 0) {
+        // Make sure that impacts at level N trigger better scores than an impactsLevel N-1
+        Iterator<Impact> previousIt = impacts.getImpacts(impactsLevel - 1).iterator();
         previous = previousIt.next();
         Iterator<Impact> it = perLevelImpacts.iterator();
         Impact impact = it.next();
@@ -2435,9 +2434,9 @@ public final class CheckIndex implements Closeable {
                 "Found impact "
                     + previous
                     + " on level "
-                    + (level - 1)
+                    + (impactsLevel - 1)
                     + " but no impact on level "
-                    + level
+                    + impactsLevel
                     + " triggers a better score: "
                     + perLevelImpacts);
           }
@@ -2454,7 +2453,7 @@ public final class CheckIndex implements Closeable {
    */
   public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testPostings(reader, infoStream, false, DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS, false);
+    return testPostings(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
   }
 
   /**
@@ -2463,14 +2462,10 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.TermIndexStatus testPostings(
-      CodecReader reader,
-      PrintStream infoStream,
-      boolean verbose,
-      int detailLevel,
-      boolean failFast)
+      CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
 
-    // TODO: we should go and verify term vectors match, if the DetailLevel is high enough to
+    // TODO: we should go and verify term vectors match, if the Level is high enough to
     // include slow checks
     Status.TermIndexStatus status;
     final int maxDoc = reader.maxDoc();
@@ -2502,7 +2497,7 @@ public final class CheckIndex implements Closeable {
               false,
               infoStream,
               verbose,
-              detailLevel);
+              level);
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
@@ -3645,7 +3640,7 @@ public final class CheckIndex implements Closeable {
    */
   public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testTermVectors(reader, infoStream, false, DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS, false);
+    return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
   }
 
   /**
@@ -3654,11 +3649,7 @@ public final class CheckIndex implements Closeable {
    * @lucene.experimental
    */
   public static Status.TermVectorStatus testTermVectors(
-      CodecReader reader,
-      PrintStream infoStream,
-      boolean verbose,
-      int detailLevel,
-      boolean failFast)
+      CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
     long startNS = System.nanoTime();
     final Status.TermVectorStatus status = new Status.TermVectorStatus();
@@ -3671,14 +3662,14 @@ public final class CheckIndex implements Closeable {
 
       PostingsEnum postings = null;
 
-      // Only used if the DetailLevel is high enough to include slow checks:
+      // Only used if the Level is high enough to include slow checks:
       PostingsEnum postingsDocs = null;
 
       final Bits liveDocs = reader.getLiveDocs();
 
       FieldsProducer postingsFields;
       // TODO: testTermsIndex
-      if (detailLevel >= DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS) {
+      if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
         postingsFields = reader.getPostingsReader();
         if (postingsFields != null) {
           postingsFields = postingsFields.getMergeInstance();
@@ -3702,8 +3693,7 @@ public final class CheckIndex implements Closeable {
 
           if (tfv != null) {
             // First run with no deletions:
-            checkFields(
-                tfv, null, 1, fieldInfos, null, false, true, infoStream, verbose, detailLevel);
+            checkFields(tfv, null, 1, fieldInfos, null, false, true, infoStream, verbose, level);
 
             // Only agg stats if the doc is live:
             final boolean doStats = liveDocs == null || liveDocs.get(j);
@@ -3728,7 +3718,7 @@ public final class CheckIndex implements Closeable {
                         + " but FieldInfo has storeTermVector=false");
               }
 
-              if (detailLevel >= DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS) {
+              if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
                 Terms terms = tfv.terms(field);
                 TermsEnum termsEnum = terms.iterator();
                 final boolean postingsHasFreq =
@@ -4032,7 +4022,7 @@ public final class CheckIndex implements Closeable {
   public static class Options {
     boolean doExorcise = false;
     boolean verbose = false;
-    int detailLevel = DetailLevel.DEFAULT_VALUE;
+    int level = Level.DEFAULT_VALUE;
     int threadCount;
     List<String> onlySegments = new ArrayList<>();
     String indexPath = null;
@@ -4096,9 +4086,9 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /** Class with static variables with information about CheckIndex's -detailLevel parameter. */
-  public static class DetailLevel {
-    private DetailLevel() {}
+  /** Class with static variables with information about CheckIndex's -level parameter. */
+  public static class Level {
+    private Level() {}
 
     /** Minimum valid level. */
     public static final int MIN_VALUE = 1;
@@ -4133,33 +4123,33 @@ public final class CheckIndex implements Closeable {
     int i = 0;
     while (i < args.length) {
       String arg = args[i];
-      if ("-detailLevel".equals(arg)) {
+      if ("-level".equals(arg)) {
         if (i == args.length - 1) {
-          throw new IllegalArgumentException("ERROR: missing value for -detailLevel option");
+          throw new IllegalArgumentException("ERROR: missing value for -level option");
         }
         i++;
-        int detailLevel = Integer.parseInt(args[i]);
-        if (detailLevel < DetailLevel.MIN_VALUE || detailLevel > DetailLevel.MAX_VALUE) {
+        int level = Integer.parseInt(args[i]);
+        if (level < Level.MIN_VALUE || level > Level.MAX_VALUE) {
           throw new IllegalArgumentException(
               String.format(
-                  "ERROR: value for -detailLevel option is out of bounds. Please use a value "
+                  "ERROR: value for -level option is out of bounds. Please use a value "
                       + "from '%d'->'%d'",
-                  DetailLevel.MIN_VALUE, DetailLevel.MAX_VALUE));
+                  Level.MIN_VALUE, Level.MAX_VALUE));
         }
-        opts.detailLevel = detailLevel;
+        opts.level = level;
       } else if ("-fast".equals(arg)) {
         // Deprecated. Remove in Lucene 11.
         System.err.println("-fast is deprecated, verifying file checksums only is now the default");
       } else if ("-slow".equals(arg)) {
         // Deprecated. Remove in Lucene 11.
-        System.err.println("-slow is deprecated, use '-detailLevel 3' instead for slow checks");
-        opts.detailLevel = DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
+        System.err.println("-slow is deprecated, use '-level 3' instead for slow checks");
+        opts.level = Level.MIN_LEVEL_FOR_SLOW_CHECKS;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
       } else if ("-crossCheckTermVectors".equals(arg)) {
         // Deprecated. Remove in Lucene 11.
-        System.err.println("-crossCheckTermVectors is deprecated, use '-detailLevel 3' instead");
-        opts.detailLevel = DetailLevel.MAX_VALUE;
+        System.err.println("-crossCheckTermVectors is deprecated, use '-level 3' instead");
+        opts.level = Level.MAX_VALUE;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {
@@ -4196,13 +4186,13 @@ public final class CheckIndex implements Closeable {
     if (opts.indexPath == null) {
       throw new IllegalArgumentException(
           "\nERROR: index path not specified"
-              + "\nUsage: java org.apache.lucene.index.CheckIndex pathToIndex [-exorcise] [-detailLevel X] [-segment X] [-segment Y] [-threadCount X] [-dir-impl X]\n"
+              + "\nUsage: java org.apache.lucene.index.CheckIndex pathToIndex [-exorcise] [-level X] [-segment X] [-segment Y] [-threadCount X] [-dir-impl X]\n"
               + "\n"
               + "  -exorcise: actually write a new segments_N file, removing any problematic segments\n"
-              + "  -detailLevel X: sets the detail level of the check. The higher the value, the more checks are done.\n"
-              + "               1 - (Default) Checksum checks only.\n"
-              + "               2 - All level 1 checks + logical integrity checks.\n"
-              + "               3 - All level 2 checks + slow checks.\n"
+              + "  -level X: sets the detail level of the check. The higher the value, the more checks are done.\n"
+              + "         1 - (Default) Checksum checks only.\n"
+              + "         2 - All level 1 checks + logical integrity checks.\n"
+              + "         3 - All level 2 checks + slow checks.\n"
               + "  -codec X: when exorcising, codec to write the new segments_N file with\n"
               + "  -verbose: print additional details\n"
               + "  -segment X: only check the specified segments.  This can be specified multiple\n"
@@ -4218,7 +4208,7 @@ public final class CheckIndex implements Closeable {
               + FSDirectory.class.getPackage().getName()
               + " package will be used.\n"
               + "CheckIndex only verifies file checksums as default.\n"
-              + "Use -detailLevel with value of '2' or higher if you also want to check segment file contents.\n\n"
+              + "Use -level with value of '2' or higher if you also want to check segment file contents.\n\n"
               + "**WARNING**: -exorcise *LOSES DATA*. This should only be used on an emergency basis as it will cause\n"
               + "documents (perhaps many) to be permanently removed from the index.  Always make\n"
               + "a backup copy of your index before running this!  Do not run this tool on an index\n"
@@ -4250,7 +4240,7 @@ public final class CheckIndex implements Closeable {
    * @return 0 iff the index is clean, 1 otherwise
    */
   public int doCheck(Options opts) throws IOException, InterruptedException {
-    setDetailLevel(opts.detailLevel);
+    setLevel(opts.level);
     setInfoStream(opts.out, opts.verbose);
     // user provided thread count via command line argument, overriding the default with user
     // provided value

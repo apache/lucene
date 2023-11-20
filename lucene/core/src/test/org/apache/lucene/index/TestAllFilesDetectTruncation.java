@@ -170,7 +170,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
           Exception.class,
           () ->
               TestUtil.checkIndex(
-                  dirCopy, CheckIndex.DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
+                  dirCopy, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
     }
   }
 }

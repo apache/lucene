@@ -71,8 +71,7 @@ public class TestManyPointsInOldIndex extends LuceneTestCase {
     dir.setCheckIndexOnClose(false);
 
     // ... because we check ourselves here:
-    TestUtil.checkIndex(
-        dir, CheckIndex.DetailLevel.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, null);
+    TestUtil.checkIndex(dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, null);
     dir.close();
   }
 }
