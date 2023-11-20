@@ -212,7 +212,7 @@ public abstract class Sorter {
     binarySort(from, to, from + 1);
   }
 
-  void binarySort(int from, int to, int i) {
+  protected void binarySort(int from, int to, int i) {
     for (; i < to; ++i) {
       setPivot(i);
       int l = from;

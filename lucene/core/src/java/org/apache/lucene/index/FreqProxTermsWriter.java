@@ -36,6 +36,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
+import org.apache.lucene.util.TimSorter;
 import org.apache.lucene.util.UnsignedIntLSBRadixSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.packed.PackedInts;
@@ -310,80 +311,140 @@ final class FreqProxTermsWriter extends TermsHash {
 
   static class SortingPostingsEnum extends PostingsEnum {
 
-    private static final class DocOffsetSorter extends BaseLSBRadixSorter {
+    private static final class DocOffsetSorter extends TimSorter {
 
+      private int bits;
       private int[] docs;
-      private int[] srcDocs;
-      private int[] destDocs;
-
       private long[] offsets;
-      private long[] srcOffsets;
-      private long[] destOffsets;
+      private int[] tmpDocs;
+      private long[] tmpOffsets;
 
-      public DocOffsetSorter() {
-        super(-1);
-        destDocs = IntsRef.EMPTY_INTS;
-        destOffsets = LongsRef.EMPTY_LONGS;
+      public DocOffsetSorter(int numTempSlots) {
+        super(numTempSlots);
+        this.tmpDocs = IntsRef.EMPTY_INTS;
+        this.tmpOffsets = LongsRef.EMPTY_LONGS;
       }
 
-      public DocOffsetSorter reset(int bits, int[] docs, long[] offsets) {
+      public void reset(int bits, int[] docs, long[] offsets) {
         this.bits = bits;
         this.docs = docs;
-        this.srcDocs = docs;
-        this.destDocs = ArrayUtil.growNoCopy(destDocs, docs.length);
         this.offsets = offsets;
-        this.srcOffsets = offsets;
-        this.destOffsets = ArrayUtil.growNoCopy(destOffsets, offsets.length);
-        return this;
-      }
-
-      @Override
-      protected void switchBuffer() {
-        int[] tmp = srcDocs;
-        srcDocs = destDocs;
-        destDocs = tmp;
-
-        long[] tmpOff = srcOffsets;
-        srcOffsets = destOffsets;
-        destOffsets = tmpOff;
-      }
-
-      @Override
-      protected int bucket(int i, int shift) {
-        return (srcDocs[i] >>> shift) & 0xFF;
-      }
-
-      @Override
-      protected void save(int i, int j) {
-        destDocs[j] = srcDocs[i];
-        destOffsets[j] = srcOffsets[i];
-      }
-
-      @Override
-      protected void restore(int from, int to) {
-        if (srcDocs != docs) {
-          assert srcOffsets != offsets;
-          System.arraycopy(srcDocs, from, docs, from, to - from);
-          System.arraycopy(srcOffsets, from, offsets, from, to - from);
-          this.destDocs = srcDocs;
-          this.destOffsets = srcOffsets;
-        }
       }
 
       @Override
       protected int compare(int i, int j) {
-        return srcDocs[i] - srcDocs[j];
+        return docs[i] - docs[j];
+      }
+
+      @Override
+      protected void doSort(int from, int to, int sortedTo) {
+        if (to - from <= 64) {
+          binarySort(from, to, sortedTo);
+        } else {
+          new BaseLSBRadixSorter(bits) {
+
+            int srcOff = 0;
+            int[] srcDocs = DocOffsetSorter.this.docs;
+            long[] srcOffsets = DocOffsetSorter.this.offsets;
+            int destOff = from;
+            int[] destDocs = DocOffsetSorter.this.tmpDocs;
+            long[] destOffsets = DocOffsetSorter.this.tmpOffsets;
+
+            @Override
+            protected int compare(int i, int j) {
+              return DocOffsetSorter.this.compare(i, j);
+            }
+
+            @Override
+            protected void swap(int i, int j) {
+              DocOffsetSorter.this.swap(i, j);
+            }
+
+            @Override
+            protected void switchBuffer() {
+              int[] tmp = srcDocs;
+              srcDocs = destDocs;
+              destDocs = tmp;
+
+              long[] tmpOff = srcOffsets;
+              srcOffsets = destOffsets;
+              destOffsets = tmpOff;
+
+              int tmpOffset = srcOff;
+              srcOff = destOff;
+              destOff = tmpOffset;
+            }
+
+            @Override
+            protected int bucket(int i, int shift) {
+              return (srcDocs[i - srcOff] >>> shift) & 0xFF;
+            }
+
+            @Override
+            protected void save(int i, int j) {
+              destDocs[j - destOff] = srcDocs[i - srcOff];
+              destOffsets[j - destOff] = srcOffsets[i - srcOff];
+            }
+
+            @Override
+            protected void restore(int from, int to) {
+              if (srcDocs != docs) {
+                assert srcOffsets != offsets;
+                System.arraycopy(srcDocs, from - srcOff, docs, destOff + from, to - from);
+                System.arraycopy(srcOffsets, from - srcOff, offsets, destOff + from, to - from);
+              }
+            }
+          }.sort(from, to);
+        }
+      }
+
+      @Override
+      protected int minRunLength(int length) {
+        int run = Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
+        if (run > tmpDocs.length) {
+          int overSize = ArrayUtil.oversize(run, 4);
+          this.tmpDocs = new int[overSize];
+          this.tmpOffsets = new long[overSize];
+        }
+        return run;
       }
 
       @Override
       protected void swap(int i, int j) {
-        int tmp = srcDocs[i];
-        srcDocs[i] = srcDocs[j];
-        srcDocs[j] = tmp;
+        int tmpDoc = docs[i];
+        docs[i] = docs[j];
+        docs[j] = tmpDoc;
 
-        long tmpOffset = srcOffsets[i];
-        srcOffsets[i] = srcOffsets[j];
-        srcOffsets[j] = tmpOffset;
+        long tmpOffset = offsets[i];
+        offsets[i] = offsets[j];
+        offsets[j] = tmpOffset;
+      }
+
+      @Override
+      protected void copy(int src, int dest) {
+        docs[dest] = docs[src];
+        offsets[dest] = offsets[src];
+      }
+
+      @Override
+      protected void save(int i, int len) {
+        if (tmpDocs.length < len) {
+          tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
+          tmpOffsets = new long[tmpDocs.length];
+        }
+        System.arraycopy(docs, i, tmpDocs, 0, len);
+        System.arraycopy(offsets, i, tmpOffsets, 0, len);
+      }
+
+      @Override
+      protected void restore(int i, int j) {
+        docs[j] = tmpDocs[i];
+        offsets[j] = tmpOffsets[i];
+      }
+
+      @Override
+      protected int compareSaved(int i, int j) {
+        return tmpDocs[i] - docs[j];
       }
     }
 
@@ -411,7 +472,8 @@ final class FreqProxTermsWriter extends TermsHash {
       this.storePositions = storePositions;
       this.storeOffsets = storeOffsets;
       if (sorter == null) {
-        sorter = new DocOffsetSorter();
+        final int numTempSlots = docMap.size() / 8;
+        sorter = new DocOffsetSorter(numTempSlots);
       }
       docIt = -1;
       startOffset = -1;
@@ -434,7 +496,8 @@ final class FreqProxTermsWriter extends TermsHash {
       upto = i;
       final int maxDoc = docMap.size();
       final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
-      sorter.reset(numBits, docs, offsets).sort(0, upto);
+      sorter.reset(numBits, docs, offsets);
+      sorter.sort(0, upto);
       this.postingInput = buffer.toDataInput();
     }
 

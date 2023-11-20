@@ -49,6 +49,7 @@ public class DocSorterBenchmark {
   private DocOffsetTimSorter timSorter;
   private DocOffsetLSBRadixSorter lsbRadixSorter;
   private DocOffsetMSBRadixSorter msbRadixSorter;
+  private DocOffsetSorter docOffsetSorter;
 
   @Param({"100000"})
   int size;
@@ -68,6 +69,7 @@ public class DocSorterBenchmark {
     docSorterBenchmark.msbSorter();
     docSorterBenchmark.lsbSorter();
     docSorterBenchmark.timSorter();
+    docSorterBenchmark.offSorter();
     int size = docSorterBenchmark.size;
     if (!Arrays.equals(
         docSorterBenchmark.timSorter.docs,
@@ -86,6 +88,15 @@ public class DocSorterBenchmark {
         0,
         size)) {
       throw new RuntimeException("msb wrong");
+    }
+    if (!Arrays.equals(
+        docSorterBenchmark.timSorter.docs,
+        0,
+        size,
+        docSorterBenchmark.docOffsetSorter.docs,
+        0,
+        size)) {
+      throw new RuntimeException("off wrong");
     }
   }
 
@@ -120,7 +131,7 @@ public class DocSorterBenchmark {
       }
       case "natural_exception" -> {
         Arrays.sort(doc);
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 5; i++) {
           doc[random.nextInt(doc.length)] = random.nextInt(maxDoc);
         }
       }
@@ -128,7 +139,7 @@ public class DocSorterBenchmark {
         List<Integer> docs = Arrays.stream(doc).sorted().boxed().collect(Collectors.toList());
         Collections.reverse(docs);
         doc = docs.stream().mapToInt(i -> i).toArray();
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 5; i++) {
           doc[random.nextInt(doc.length)] = random.nextInt(maxDoc);
         }
       }
@@ -138,6 +149,8 @@ public class DocSorterBenchmark {
     timSorter.reset(doc.clone(), off.clone());
     lsbRadixSorter = new DocOffsetLSBRadixSorter().reset(bit, doc.clone(), off.clone());
     msbRadixSorter = new DocOffsetMSBRadixSorter(bit, doc.clone(), off.clone());
+    docOffsetSorter = new DocOffsetSorter(size / 8);
+    docOffsetSorter.reset(bit, doc.clone(), off.clone());
   }
 
   @Benchmark
@@ -150,9 +163,14 @@ public class DocSorterBenchmark {
     lsbRadixSorter.sort(0, size);
   }
 
-  @Benchmark
+  //  @Benchmark
   public void msbSorter() {
     msbRadixSorter.sort(0, size);
+  }
+
+  @Benchmark
+  public void offSorter() {
+    docOffsetSorter.sort(0, size);
   }
 
   private static final class DocOffsetTimSorter extends TimSorter {
@@ -385,6 +403,143 @@ public class DocSorterBenchmark {
       long tmpOffset = offsets[i];
       offsets[i] = offsets[j];
       offsets[j] = tmpOffset;
+    }
+  }
+
+  private static final class DocOffsetSorter extends TimSorter {
+
+    private int bits;
+    private int[] docs;
+    private long[] offsets;
+    private int[] tmpDocs;
+    private long[] tmpOffsets;
+
+    public DocOffsetSorter(int numTempSlots) {
+      super(numTempSlots);
+      this.tmpDocs = IntsRef.EMPTY_INTS;
+      this.tmpOffsets = LongsRef.EMPTY_LONGS;
+    }
+
+    public void reset(int bits, int[] docs, long[] offsets) {
+      this.bits = bits;
+      this.docs = docs;
+      this.offsets = offsets;
+    }
+
+    @Override
+    protected int compare(int i, int j) {
+      return docs[i] - docs[j];
+    }
+
+    @Override
+    protected void doSort(int from, int to, int sortedTo) {
+      if (to - from <= 64) {
+        binarySort(from, to, sortedTo);
+      } else {
+        new BaseLSBRadixSorter(bits) {
+
+          int srcOff = 0;
+          int[] srcDocs = DocOffsetSorter.this.docs;
+          long[] srcOffsets = DocOffsetSorter.this.offsets;
+          int destOff = from;
+          int[] destDocs = DocOffsetSorter.this.tmpDocs;
+          long[] destOffsets = DocOffsetSorter.this.tmpOffsets;
+
+          @Override
+          protected int compare(int i, int j) {
+            return DocOffsetSorter.this.compare(i, j);
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            DocOffsetSorter.this.swap(i, j);
+          }
+
+          @Override
+          protected void switchBuffer() {
+            int[] tmp = srcDocs;
+            srcDocs = destDocs;
+            destDocs = tmp;
+
+            long[] tmpOff = srcOffsets;
+            srcOffsets = destOffsets;
+            destOffsets = tmpOff;
+
+            int tmpOffset = srcOff;
+            srcOff = destOff;
+            destOff = tmpOffset;
+          }
+
+          @Override
+          protected int bucket(int i, int shift) {
+            return (srcDocs[i - srcOff] >>> shift) & 0xFF;
+          }
+
+          @Override
+          protected void save(int i, int j) {
+            destDocs[j - destOff] = srcDocs[i - srcOff];
+            destOffsets[j - destOff] = srcOffsets[i - srcOff];
+          }
+
+          @Override
+          protected void restore(int from, int to) {
+            if (srcDocs != docs) {
+              assert srcOffsets != offsets;
+              System.arraycopy(srcDocs, from - srcOff, docs, destOff + from, to - from);
+              System.arraycopy(srcOffsets, from - srcOff, offsets, destOff + from, to - from);
+            }
+          }
+        }.sort(from, to);
+      }
+    }
+
+    @Override
+    protected int minRunLength(int length) {
+      int run = Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
+      if (run > tmpDocs.length) {
+        int overSize = ArrayUtil.oversize(run, 4);
+        this.tmpDocs = new int[overSize];
+        this.tmpOffsets = new long[overSize];
+      }
+      return run;
+    }
+
+    @Override
+    protected void swap(int i, int j) {
+      int tmpDoc = docs[i];
+      docs[i] = docs[j];
+      docs[j] = tmpDoc;
+
+      long tmpOffset = offsets[i];
+      offsets[i] = offsets[j];
+      offsets[j] = tmpOffset;
+    }
+
+    @Override
+    protected void copy(int src, int dest) {
+      docs[dest] = docs[src];
+      offsets[dest] = offsets[src];
+    }
+
+    @Override
+    protected void save(int i, int len) {
+      if (tmpDocs.length < len) {
+        tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
+        tmpOffsets = new long[tmpDocs.length];
+      }
+      System.arraycopy(docs, i, tmpDocs, 0, len);
+      System.arraycopy(offsets, i, tmpOffsets, 0, len);
+    }
+
+    @Override
+    protected void restore(int i, int j) {
+      docs[j] = tmpDocs[i];
+      offsets[j] = tmpOffsets[i];
+    }
+
+    @Override
+    protected int compareSaved(int i, int j) {
+      return tmpDocs[i] - docs[j];
     }
   }
 }

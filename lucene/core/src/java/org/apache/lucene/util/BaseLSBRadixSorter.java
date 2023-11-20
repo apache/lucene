@@ -86,7 +86,7 @@ public abstract class BaseLSBRadixSorter extends Sorter {
   protected void reorder(int from, int to, int[] histogram, int shift) {
     for (int i = from; i < to; ++i) {
       final int b = bucket(i, shift);
-      save(i, histogram[b]++);
+      save(i, from + histogram[b]++);
     }
   }
 
