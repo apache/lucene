@@ -56,6 +56,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -1087,7 +1088,7 @@ public class Dictionary {
 
   private String sortWordsOffline(
       Directory tempDir, String tempFileNamePrefix, IndexOutput unsorted) throws IOException {
-    var sorter = new OfflineSorter(tempDir, tempFileNamePrefix, Comparator.naturalOrder());
+    var sorter = new OfflineSorter(tempDir, tempFileNamePrefix, BytesRefComparator.NATURAL);
 
     String sorted;
     boolean success = false;
