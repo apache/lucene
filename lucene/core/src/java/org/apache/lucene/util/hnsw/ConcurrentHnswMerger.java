@@ -17,7 +17,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -39,10 +38,10 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       RandomVectorScorerSupplier scorerSupplier,
       int M,
       int beamWidth,
-      ExecutorService exec,
+      TaskExecutor taskExecutor,
       int numWorker) {
     super(fieldInfo, scorerSupplier, M, beamWidth);
-    this.taskExecutor = new TaskExecutor(exec);
+    this.taskExecutor = taskExecutor;
     this.numWorker = numWorker;
   }
 

@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -53,6 +54,8 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 100, 100, null));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
+        () ->
+            new Lucene99HnswVectorsFormat(
+                20, 100, 1, new TaskExecutor(new SameThreadExecutorService())));
   }
 }
