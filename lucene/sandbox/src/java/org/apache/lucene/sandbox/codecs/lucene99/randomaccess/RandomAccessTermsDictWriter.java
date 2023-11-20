@@ -27,8 +27,6 @@ import org.apache.lucene.util.BytesRef;
 /** Class to write the index files for one field. */
 final class RandomAccessTermsDictWriter {
   /** externally provided * */
-  private final int filedNumber;
-
   private final IndexOptions indexOptions;
   private final DataOutput metaOutput;
 
@@ -55,7 +53,6 @@ final class RandomAccessTermsDictWriter {
       DataOutput metaOutput,
       DataOutput indexOutput,
       TermDataOutputProvider termDataOutputProvider) {
-    this.filedNumber = filedNumber;
     this.indexOptions = indexOptions;
     this.metaOutput = metaOutput;
     this.indexOutput = indexOutput;
