@@ -285,11 +285,13 @@ Optimizations
 
 * GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
 
-* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
 
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
 
 * GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
+
+* GITHUB#12782: Use group-varint encoding for the tail of postings. (Adrien Grand, Zhang Chao)
 
 Changes in runtime behavior
 ---------------------
@@ -402,7 +404,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Chao Zhang)
+* GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Zhang Chao)
 
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
@@ -417,7 +419,7 @@ Optimizations
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
 
-* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Zhang Chao)
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
 
@@ -484,7 +486,7 @@ Other
 * GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
   (Shubham Chaudhary)
 
-* GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
+* GITHUB#12512: Remove unused variable in BKDWriter. (Zhang Chao)
 
 ======================== Lucene 9.7.0 =======================
 

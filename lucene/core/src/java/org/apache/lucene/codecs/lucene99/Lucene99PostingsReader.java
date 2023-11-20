@@ -144,19 +144,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
   static void readVIntBlock(
       IndexInput docIn, long[] docBuffer, long[] freqBuffer, int num, boolean indexHasFreq)
       throws IOException {
+    GroupVIntReader.readValues(docIn, docBuffer, num);
     if (indexHasFreq) {
-      for (int i = 0; i < num; i++) {
-        final int code = docIn.readVInt();
-        docBuffer[i] = code >>> 1;
-        if ((code & 1) != 0) {
-          freqBuffer[i] = 1;
-        } else {
+      for (int i = 0; i < num; ++i) {
+        freqBuffer[i] = docBuffer[i] & 0x01;
+        docBuffer[i] >>= 1;
+        if (freqBuffer[i] == 0) {
           freqBuffer[i] = docIn.readVInt();
         }
-      }
-    } else {
-      for (int i = 0; i < num; i++) {
-        docBuffer[i] = docIn.readVInt();
       }
     }
   }
