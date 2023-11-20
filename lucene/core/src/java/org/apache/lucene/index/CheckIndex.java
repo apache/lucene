@@ -4148,13 +4148,16 @@ public final class CheckIndex implements Closeable {
         }
         opts.detailLevel = detailLevel;
       } else if ("-fast".equals(arg)) {
+        // Deprecated. Remove in Lucene 11.
         System.err.println("-fast is deprecated, verifying file checksums only is now the default");
       } else if ("-slow".equals(arg)) {
+        // Deprecated. Remove in Lucene 11.
         System.err.println("-slow is deprecated, use '-detailLevel 3' instead for slow checks");
         opts.detailLevel = DetailLevel.MIN_LEVEL_FOR_SLOW_CHECKS;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
       } else if ("-crossCheckTermVectors".equals(arg)) {
+        // Deprecated. Remove in Lucene 11.
         System.err.println("-crossCheckTermVectors is deprecated, use '-detailLevel 3' instead");
         opts.detailLevel = DetailLevel.MAX_VALUE;
       } else if (arg.equals("-verbose")) {
