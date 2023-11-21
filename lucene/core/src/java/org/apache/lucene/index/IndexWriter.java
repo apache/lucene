@@ -1225,6 +1225,9 @@ public class IndexWriter
 
   /** Returns true if <code>indexSort</code> is a prefix of <code>otherSort</code>. */
   static boolean isCongruentSort(Sort indexSort, Sort otherSort) {
+    if (Objects.equals(indexSort.getParentField(), otherSort.getParentField()) == false) {
+      return false;
+    }
     final SortField[] fields1 = indexSort.getSort();
     final SortField[] fields2 = otherSort.getSort();
     if (fields1.length > fields2.length) {

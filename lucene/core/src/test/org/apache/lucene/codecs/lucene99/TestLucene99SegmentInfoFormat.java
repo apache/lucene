@@ -33,4 +33,5 @@ public class TestLucene99SegmentInfoFormat extends BaseSegmentInfoFormatTestCase
   protected Codec getCodec() {
     return TestUtil.getDefaultCodec();
   }
+
 }

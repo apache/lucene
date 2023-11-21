@@ -33,4 +33,5 @@ public class TestSimpleTextSegmentInfoFormat extends BaseSegmentInfoFormatTestCa
   protected Codec getCodec() {
     return codec;
   }
+
 }

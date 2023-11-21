@@ -64,6 +64,17 @@ public final class Sort {
     this(null, fields);
   }
 
+  /**
+   * Sets the sort to the given criteria in succession: the first SortField is checked first, but if
+   * it produces a tie, then the second SortField is used to break the tie, etc. Finally, if there
+   * is still a tie after all SortFields are checked, the internal Lucene docid is used to break it.
+   *
+   * @param parentField the name of a numeric doc values field that marks the last document of a document blocks
+   *                    indexed with {@link org.apache.lucene.index.IndexWriter#addDocuments(Iterable)} or it's update relatives.
+   *                    This is required for indices that use index sorting in combination with document blocks in order to maintain the document order
+   *                    of the blocks documents. Index sorting will effectively compare the parent (last document) of a block in order to stable sort
+   *                    all it's adjacent documents that belong to a block. This field must be a numeric doc values field a
+   */
   public Sort(String parentField, SortField... fields) {
     if (fields.length == 0) {
       throw new IllegalArgumentException("There must be at least 1 sort field");
@@ -113,7 +124,7 @@ public final class Sort {
   public String toString() {
     StringBuilder buffer = new StringBuilder();
     if (parentField != null) {
-      buffer.append("RootDocField: ").append(parentField).append(' ');
+      buffer.append("parent field: ").append(parentField).append(' ');
     }
     for (int i = 0; i < fields.length; i++) {
       buffer.append(fields[i].toString());
