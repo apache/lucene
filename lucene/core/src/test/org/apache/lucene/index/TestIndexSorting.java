@@ -3172,6 +3172,58 @@ public class TestIndexSorting extends LuceneTestCase {
     dir.close();
   }
 
+  public void testBlockIsMissingParentField() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      String parentField = "parent";
+      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        List<Runnable> runables =
+            Arrays.asList(
+                () -> {
+                  IllegalArgumentException ex =
+                      expectThrows(
+                          IllegalArgumentException.class,
+                          () -> {
+                            writer.addDocuments(Arrays.asList(new Document(), new Document()));
+                          });
+                  assertEquals(
+                      "the last document in the block must contain a numeric doc values field named: parent",
+                      ex.getMessage());
+                },
+                () -> {
+                  IllegalArgumentException ex =
+                      expectThrows(
+                          IllegalArgumentException.class,
+                          () -> {
+                            Document doc = new Document();
+                            doc.add(new NumericDocValuesField("parent", 0));
+                            writer.addDocuments(Arrays.asList(doc, new Document()));
+                          });
+                  assertEquals(
+                      "only the last document in the block must contain a numeric doc values field named: parent",
+                      ex.getMessage());
+                },
+                () -> {
+                  IllegalArgumentException ex =
+                      expectThrows(
+                          IllegalArgumentException.class,
+                          () -> {
+                            writer.addDocuments(Arrays.asList(new Document()));
+                          });
+                  assertEquals(
+                      "the last document in the block must contain a numeric doc values field named: parent",
+                      ex.getMessage());
+                });
+        Collections.shuffle(runables, random());
+        for (Runnable runnable : runables) {
+          runnable.run();
+        }
+      }
+    }
+  }
+
   public void testIndexSortWithBlocks() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
