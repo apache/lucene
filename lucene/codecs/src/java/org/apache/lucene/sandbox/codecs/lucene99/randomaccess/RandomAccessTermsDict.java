@@ -26,11 +26,14 @@ import org.apache.lucene.util.BytesRef;
 
 /** A term dictionary that offer random-access to read a specific term */
 record RandomAccessTermsDict(
-    TermsStats termsStats, TermsIndex termsIndex, TermDataReader termDataReader) {
+    TermsStats termsStats,
+    TermsIndex termsIndex,
+    TermDataReader termDataReader,
+    IndexOptions indexOptions) {
 
   IntBlockTermState getTermState(BytesRef term) throws IOException {
     TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(term);
-    return termDataReader.getTermState(typeAndOrd.termType(), typeAndOrd.ord());
+    return termDataReader.getTermState(typeAndOrd.termType(), typeAndOrd.ord(), indexOptions);
   }
 
   static RandomAccessTermsDict deserialize(
@@ -43,17 +46,21 @@ record RandomAccessTermsDict(
     // (1) deserialize field stats
     TermsStats termsStats = TermsStats.deserialize(metaInput);
     IndexOptions indexOptions = indexOptionsProvider.getIndexOptions(termsStats.fieldNumber());
+    boolean hasPayloads = indexOptionsProvider.hasPayloads(termsStats.fieldNumber());
 
     // (2) deserialize terms index
-    TermsIndex termsIndex =
-        TermsIndex.deserialize(metaInput, termIndexInput, /* load off heap */ true);
+    TermsIndex termsIndex = null;
+    if (termsStats.size() > 0) {
+      termsIndex = TermsIndex.deserialize(metaInput, termIndexInput, /* load off heap */ true);
+    }
 
     // (3) deserialize all the term data by each TermType
     // (3.1) number of unique TermType this field has
     int numTermTypes = metaInput.readByte();
 
     // (3.2) read per TermType
-    TermDataReader.Builder termDataReaderBuilder = new TermDataReader.Builder(indexOptions);
+    TermDataReader.Builder termDataReaderBuilder =
+        new TermDataReader.Builder(indexOptions, hasPayloads);
     for (int i = 0; i < numTermTypes; i++) {
       TermType termType = TermType.fromId(metaInput.readByte());
       TermDataInput termDataInput = termDataInputProvider.getTermDataInputForType(termType);
@@ -61,13 +68,15 @@ record RandomAccessTermsDict(
           termType, metaInput, termDataInput.metadataInput, termDataInput.dataInput);
     }
 
-    return new RandomAccessTermsDict(termsStats, termsIndex, termDataReaderBuilder.build());
+    return new RandomAccessTermsDict(
+        termsStats, termsIndex, termDataReaderBuilder.build(), indexOptions);
   }
 
-  @FunctionalInterface
   interface IndexOptionsProvider {
 
     IndexOptions getIndexOptions(int fieldNumber);
+
+    boolean hasPayloads(int fieldNumber);
   }
 
   record TermDataInput(IndexInput metadataInput, IndexInput dataInput) {}

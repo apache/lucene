@@ -23,14 +23,15 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 /** Class to write the index files for one field. */
 final class RandomAccessTermsDictWriter {
   /** externally provided * */
   private final IndexOptions indexOptions;
 
+  private final boolean hasPayloads;
   private final DataOutput metaOutput;
-
   private final DataOutput indexOutput;
 
   private final TermDataOutputProvider termDataOutputProvider;
@@ -46,15 +47,17 @@ final class RandomAccessTermsDictWriter {
 
   private final TermStatsTracker termStatsTracker;
 
-  private BytesRef previousTerm;
+  private BytesRefBuilder previousTerm;
 
   RandomAccessTermsDictWriter(
       int filedNumber,
       IndexOptions indexOptions,
+      boolean hasPayloads,
       DataOutput metaOutput,
       DataOutput indexOutput,
       TermDataOutputProvider termDataOutputProvider) {
     this.indexOptions = indexOptions;
+    this.hasPayloads = hasPayloads;
     this.metaOutput = metaOutput;
     this.indexOutput = indexOutput;
     this.termDataOutputProvider = termDataOutputProvider;
@@ -66,9 +69,22 @@ final class RandomAccessTermsDictWriter {
     if (previousTerm == null) {
       // first term, which is also the minimum term
       termStatsTracker.setMinTerm(term);
+      previousTerm = new BytesRefBuilder();
     }
+
+    /* There is interesting conventions to follow...
+     * <pre>
+     *     org.apache.lucene.index.CheckIndex$CheckIndexException:
+     *     field "id" hasFreqs is false, but TermsEnum.totalTermFreq()=0 (should be 1)
+     * </pre>
+     */
+    // for field that do not have freq enabled, as if each posting only has one occurrence.
+    if (indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS.ordinal()) {
+      termState.totalTermFreq = termState.docFreq;
+    }
+
     termStatsTracker.recordTerm(termState);
-    previousTerm = term;
+    previousTerm.copyBytes(term);
     termsIndexBuilder.addTerm(term, termType);
     TermDataWriter termDataWriter = getTermDataWriterForType(termType);
     termDataWriter.addTermState(termState);
@@ -82,7 +98,7 @@ final class RandomAccessTermsDictWriter {
     TermDataOutput termDataOutput = getTermDataOutput(termType);
     TermDataWriter termDataWriter =
         new TermDataWriter(
-            TermStateCodecImpl.getCodec(termType, indexOptions),
+            TermStateCodecImpl.getCodec(termType, indexOptions, hasPayloads),
             termDataOutput.metadataOutput(),
             termDataOutput.dataOutput());
     termDataWriterPerType[termType.getId()] = termDataWriter;
@@ -99,7 +115,9 @@ final class RandomAccessTermsDictWriter {
 
   void finish(int docCount) throws IOException {
     // finish up TermsStats for this field
-    termStatsTracker.setMaxTerm(previousTerm);
+    if (previousTerm != null) {
+      termStatsTracker.setMaxTerm(previousTerm.toBytesRef());
+    }
     termStatsTracker.setDocCount(docCount);
     TermsStats termsStats = termStatsTracker.finish();
     // (1) Write field metadata
@@ -164,16 +182,14 @@ final class RandomAccessTermsDictWriter {
     }
 
     void setMinTerm(BytesRef minTerm) {
-      this.minTerm = minTerm;
+      this.minTerm = BytesRef.deepCopyOf(minTerm);
     }
 
     void setMaxTerm(BytesRef maxTerm) {
-      this.maxTerm = maxTerm;
+      this.maxTerm = BytesRef.deepCopyOf(maxTerm);
     }
 
     TermsStats finish() {
-      assert docCount > 0 && minTerm != null && maxTerm != null;
-
       return new TermsStats(
           fieldNumber, size, sumTotalTermFreq, sumDocFreq, docCount, minTerm, maxTerm);
     }

@@ -30,6 +30,10 @@ public class BitUnpackerImpl implements BitUnpacker {
     assert (startBitIndex + bitWidth) <= bytesRef.length * 8;
     assert bitWidth < 64;
 
+    if (bitWidth == 0) {
+      return 0;
+    }
+
     int firstByteIndex = startBitIndex / 8;
     int numBitsToExcludeInFirstByte = startBitIndex % 8;
     int lastByteIndex = (startBitIndex + bitWidth) / 8;

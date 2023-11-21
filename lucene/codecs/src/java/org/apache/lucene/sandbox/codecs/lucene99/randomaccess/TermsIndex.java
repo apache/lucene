@@ -30,15 +30,21 @@ record TermsIndex(FST<Long> fst) {
 
   TypeAndOrd getTerm(BytesRef term) throws IOException {
     long encoded = Util.get(fst, term);
-    TermType termType = TermType.fromId((int) ((encoded & 0b1110L) >>> 1));
-    long ord = encoded >>> 4;
-    return new TypeAndOrd(termType, ord);
+    return decodeLong(encoded);
   }
 
   record TypeAndOrd(TermType termType, long ord) {}
 
   void serialize(DataOutput metaOut, DataOutput dataOut) throws IOException {
-    fst.save(metaOut, dataOut);
+    if (fst != null) {
+      fst.save(metaOut, dataOut);
+    }
+  }
+
+  static TypeAndOrd decodeLong(long encoded) {
+    TermType termType = TermType.fromId((int) ((encoded & 0b1110L) >>> 1));
+    long ord = encoded >>> 4;
+    return new TypeAndOrd(termType, ord);
   }
 
   static TermsIndex deserialize(DataInput metaIn, DataInput dataIn, boolean loadOffHeap)
@@ -46,7 +52,7 @@ record TermsIndex(FST<Long> fst) {
     FST<Long> fst;
     if (loadOffHeap) {
       var fstStore = new OffHeapFSTStore();
-      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton(), fstStore);
+      fst = new FST<>(metaIn, dataIn.clone(), PositiveIntOutputs.getSingleton(), fstStore);
       dataIn.skipBytes(fstStore.size());
     } else {
       fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton());

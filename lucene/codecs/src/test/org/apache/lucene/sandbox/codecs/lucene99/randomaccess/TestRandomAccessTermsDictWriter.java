@@ -108,7 +108,17 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
       throws IOException {
     RandomAccessTermsDict deserialized =
         RandomAccessTermsDict.deserialize(
-            _fieldNumber -> result.indexOptions(),
+            new RandomAccessTermsDict.IndexOptionsProvider() {
+              @Override
+              public IndexOptions getIndexOptions(int fieldNumber) {
+                return result.indexOptions;
+              }
+
+              @Override
+              public boolean hasPayloads(int fieldNumber) {
+                return result.hasPayloads();
+              }
+            },
             metaInput,
             termIndexInput,
             termDataInputProvider);
@@ -158,9 +168,13 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
     int fieldNumber = nextFieldNumber++;
     IndexOptions indexOptions =
         IndexOptions.values()[random().nextInt(1, IndexOptions.values().length)];
+    boolean hasPayloads = random().nextBoolean();
+    if (indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+      hasPayloads = false;
+    }
     RandomAccessTermsDictWriter randomAccessTermsDictWriter =
         new RandomAccessTermsDictWriter(
-            fieldNumber, indexOptions, metaOut, termIndexOut, outputProvider);
+            fieldNumber, indexOptions, hasPayloads, metaOut, termIndexOut, outputProvider);
 
     TermAndState[] expectedTermAndState = getRandoms(1000, 2000);
     int expectedDocCount = random().nextInt(1, 2000);
@@ -169,12 +183,14 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
       randomAccessTermsDictWriter.add(x.term, x.state);
     }
     randomAccessTermsDictWriter.finish(expectedDocCount);
-    return new ExpectedResults(fieldNumber, indexOptions, expectedTermAndState, expectedDocCount);
+    return new ExpectedResults(
+        fieldNumber, indexOptions, hasPayloads, expectedTermAndState, expectedDocCount);
   }
 
   private record ExpectedResults(
       int fieldNumber,
       IndexOptions indexOptions,
+      boolean hasPayloads,
       TermAndState[] expectedTermAndState,
       int expectedDocCount) {}
 

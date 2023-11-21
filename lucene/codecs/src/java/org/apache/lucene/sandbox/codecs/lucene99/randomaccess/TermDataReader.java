@@ -29,7 +29,8 @@ import org.apache.lucene.store.IndexInput;
  */
 record TermDataReader(TermDataAndCodec[] termDataAndCodecs) {
 
-  IntBlockTermState getTermState(TermType termType, long ord) throws IOException {
+  IntBlockTermState getTermState(TermType termType, long ord, IndexOptions indexOptions)
+      throws IOException {
     assert termDataAndCodecs[termType.getId()] != null;
     var dataAndCodec = termDataAndCodecs[termType.getId()];
     IntBlockTermState termState = dataAndCodec.termData.getTermState(dataAndCodec.codec, ord);
@@ -46,22 +47,35 @@ record TermDataReader(TermDataAndCodec[] termDataAndCodecs) {
       termState.lastPosBlockOffset = -1;
     }
 
+    /* There is interesting conventions to follow...
+     * <pre>
+     *     org.apache.lucene.index.CheckIndex$CheckIndexException:
+     *     field "id" hasFreqs is false, but TermsEnum.totalTermFreq()=0 (should be 1)
+     * </pre>
+     */
+    // for field that do not have freq enabled, as if each posting only has one occurrence.
+    if (indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS.ordinal()) {
+      termState.totalTermFreq = termState.docFreq;
+    }
+
     return termState;
   }
 
   static class Builder {
     final IndexOptions indexOptions;
+    final boolean hasPayloads;
     final TermDataAndCodec[] termDataAndCodecs = new TermDataAndCodec[TermType.NUM_TOTAL_TYPES];
 
-    Builder(IndexOptions indexOptions) {
+    Builder(IndexOptions indexOptions, boolean hasPayloads) {
       this.indexOptions = indexOptions;
+      this.hasPayloads = hasPayloads;
     }
 
     void readOne(
         TermType termType, DataInput metaIn, IndexInput termMetadataIn, IndexInput termDataIn)
         throws IOException {
       TermData termData = TermData.deserializeOffHeap(metaIn, termMetadataIn, termDataIn);
-      TermStateCodec codec = TermStateCodecImpl.getCodec(termType, indexOptions);
+      TermStateCodec codec = TermStateCodecImpl.getCodec(termType, indexOptions, hasPayloads);
       termDataAndCodecs[termType.getId()] = new TermDataAndCodec(termData, codec);
     }
 

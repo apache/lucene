@@ -176,16 +176,24 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
             && indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
           continue;
         }
-        TermType termType = TermType.fromId(i);
-        var expected = getExpectedCodec(termType, indexOptions);
-        var got = TermStateCodecImpl.getCodec(termType, indexOptions);
-        assertEquals(expected, got);
+        for (int dice = 0; dice < 2; dice++) {
+          boolean hasPayloads = dice == 0;
+          if (hasPayloads
+              && indexOptions.ordinal() < IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
+            continue;
+          }
+          TermType termType = TermType.fromId(i);
+          var expected = getExpectedCodec(termType, indexOptions, hasPayloads);
+          var got = TermStateCodecImpl.getCodec(termType, indexOptions, hasPayloads);
+          assertEquals(expected, got);
+        }
       }
     }
   }
 
   // Enumerate the expected Codec we get for (TermType, IndexOptions) pairs.
-  static TermStateCodecImpl getExpectedCodec(TermType termType, IndexOptions indexOptions) {
+  static TermStateCodecImpl getExpectedCodec(
+      TermType termType, IndexOptions indexOptions, boolean hasPayloads) {
     ArrayList<TermStateCodecComponent> components = new ArrayList<>();
     // Wish I can code this better in java...
     switch (termType.getId()) {
@@ -201,6 +209,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         }
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
           components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+          if (hasPayloads) {
+            components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+          }
         }
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
@@ -220,6 +231,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         }
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
           components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+          if (hasPayloads) {
+            components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+          }
         }
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
@@ -240,6 +254,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         }
         if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
           components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+          if (hasPayloads) {
+            components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+          }
         }
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
@@ -262,6 +279,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         components.add(TermStateCodecComponent.DocFreq.INSTANCE);
         components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        if (hasPayloads) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
         components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
@@ -277,6 +297,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         components.add(TermStateCodecComponent.SingletonDocId.INSTANCE);
         components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        if (hasPayloads) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
         components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {
@@ -294,6 +317,9 @@ public class TestTermStateCodecImpl extends LuceneTestCase {
         components.add(TermStateCodecComponent.SkipOffset.INSTANCE);
         components.add(TermStateCodecComponent.TotalTermFreq.INSTANCE);
         components.add(TermStateCodecComponent.PositionStartFP.INSTANCE);
+        if (hasPayloads) {
+          components.add(TermStateCodecComponent.PayloadStartFP.INSTANCE);
+        }
         components.add(TermStateCodecComponent.LastPositionBlockOffset.INSTANCE);
         if (indexOptions.ordinal()
             >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS.ordinal()) {

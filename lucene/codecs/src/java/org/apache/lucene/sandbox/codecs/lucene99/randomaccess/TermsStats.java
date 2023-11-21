@@ -39,19 +39,27 @@ record TermsStats(
     output.writeVLong(sumTotalTermFreq);
     output.writeVLong(sumDocFreq);
     output.writeVInt(docCount);
-    writeBytesRef(output, minTerm);
-    writeBytesRef(output, maxTerm);
+    if (minTerm != null) {
+      writeBytesRef(output, minTerm);
+    }
+    if (maxTerm != null) {
+      writeBytesRef(output, maxTerm);
+    }
   }
 
   static TermsStats deserialize(DataInput input) throws IOException {
+    int fieldNumber = input.readVInt();
+    long size = input.readVLong();
+    long sumTotalTermFreq = input.readVLong();
+    long sumDocFreq = input.readVLong();
+    int docCount = input.readVInt();
+    BytesRef minTerm = null, maxTerm = null;
+    if (size > 0) {
+      minTerm = readBytesRef(input);
+      maxTerm = readBytesRef(input);
+    }
     return new TermsStats(
-        input.readVInt(),
-        input.readVLong(),
-        input.readVLong(),
-        input.readVLong(),
-        input.readVInt(),
-        readBytesRef(input),
-        readBytesRef(input));
+        fieldNumber, size, sumTotalTermFreq, sumDocFreq, docCount, minTerm, maxTerm);
   }
 
   static void writeBytesRef(DataOutput output, BytesRef bytes) throws IOException {

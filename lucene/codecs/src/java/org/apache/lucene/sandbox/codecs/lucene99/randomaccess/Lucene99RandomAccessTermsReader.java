@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.IOContext;
@@ -56,14 +57,25 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
       for (int i = 0; i < numFields; i++) {
         RandomAccessTermsDict termsDict =
             RandomAccessTermsDict.deserialize(
-                fieldNumber -> segmentReadState.fieldInfos.fieldInfo(fieldNumber).getIndexOptions(),
+                new RandomAccessTermsDict.IndexOptionsProvider() {
+                  @Override
+                  public IndexOptions getIndexOptions(int fieldNumber) {
+                    return segmentReadState.fieldInfos.fieldInfo(fieldNumber).getIndexOptions();
+                  }
+
+                  @Override
+                  public boolean hasPayloads(int fieldNumber) {
+                    return segmentReadState.fieldInfos.fieldInfo(fieldNumber).hasPayloads();
+                  }
+                },
                 indexFilesManager.metaInfoIn,
                 indexFilesManager.termIndexIn,
                 indexFilesManager);
         FieldInfo fieldInfo =
             segmentReadState.fieldInfos.fieldInfo(termsDict.termsStats().fieldNumber());
         String fieldName = fieldInfo.name;
-        perFieldTermDict.put(fieldName, new TermsImpl(fieldInfo, termsDict));
+        perFieldTermDict.put(fieldName, new TermsImpl(fieldInfo, termsDict, postingsReader));
+        success = true;
       }
     } finally {
       if (!success) {
@@ -151,7 +163,7 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
      * error happened during open and verification.
      */
     private IndexInput openAndChecksumIndexInputSafe(
-        String segmentLocalName, boolean needRandomAcees) throws IOException {
+        String segmentLocalName, boolean needRandomAccess) throws IOException {
       String name =
           IndexFileNames.segmentFileName(
               segmentReadState.segmentInfo.name, segmentReadState.segmentSuffix, segmentLocalName);
@@ -161,7 +173,7 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
       try {
         input =
             segmentReadState.directory.openInput(
-                name, needRandomAcees ? IOContext.LOAD : IOContext.READ);
+                name, needRandomAccess ? IOContext.LOAD : IOContext.READ);
         success = true;
       } finally {
         if (!success) {

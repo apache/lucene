@@ -22,16 +22,18 @@ import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermStat
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpackerImpl;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * Holds the bit-packed {@link IntBlockTermState} for a given {@link
  * org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermType}
  */
-record TermData(ByteSlice metadata, ByteSlice data) {
+record TermData(ByteSliceProvider metadataProvider, ByteSliceProvider dataProvider) {
 
   IntBlockTermState getTermState(TermStateCodec codec, long ord) throws IOException {
+    var metadata = metadataProvider.newByteSlice();
+    var data = dataProvider.newByteSlice();
+
     long blockId = ord / TermDataWriter.NUM_TERMS_PER_BLOCK;
     long metadataStartPos = blockId * (codec.getMetadataBytesLength() + 8);
     long dataStartPos = metadata.getLong(metadataStartPos);
@@ -71,21 +73,30 @@ record TermData(ByteSlice metadata, ByteSlice data) {
     metadataInput.readBytes(metadataBytes, 0, metadataBytes.length);
     dataInput.readBytes(dataBytes, 0, dataBytes.length);
 
-    return new TermData(new ByteArrayByteSlice(metadataBytes), new ByteArrayByteSlice(dataBytes));
+    return new TermData(
+        () -> new ByteArrayByteSlice(metadataBytes), () -> new ByteArrayByteSlice(dataBytes));
   }
 
   static TermData deserializeOffHeap(
       DataInput metaInput, IndexInput metadataInput, IndexInput dataInput) throws IOException {
-    long metadataSize = metaInput.readVLong();
-    long dataSize = metaInput.readVLong();
+    final long metadataSize = metaInput.readVLong();
+    final long dataSize = metaInput.readVLong();
 
-    RandomAccessInput metadata =
-        metadataInput.randomAccessSlice(metadataInput.getFilePointer(), metadataSize);
+    final long metadataStart = metadataInput.getFilePointer();
+    final long dataStart = dataInput.getFilePointer();
+
     metadataInput.skipBytes(metadataSize);
-    RandomAccessInput data = dataInput.randomAccessSlice(dataInput.getFilePointer(), dataSize);
     dataInput.skipBytes(dataSize);
 
     return new TermData(
-        new RandomAccessInputByteSlice(metadata), new RandomAccessInputByteSlice(data));
+        () ->
+            new RandomAccessInputByteSlice(
+                metadataInput.randomAccessSlice(metadataStart, metadataSize)),
+        () -> new RandomAccessInputByteSlice(dataInput.randomAccessSlice(dataStart, dataSize)));
+  }
+
+  @FunctionalInterface
+  interface ByteSliceProvider {
+    ByteSlice newByteSlice() throws IOException;
   }
 }

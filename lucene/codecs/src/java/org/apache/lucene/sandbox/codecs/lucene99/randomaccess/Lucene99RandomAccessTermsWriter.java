@@ -75,6 +75,7 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
           new RandomAccessTermsDictWriter(
               fieldInfo.number,
               fieldInfo.getIndexOptions(),
+              fieldInfo.hasPayloads(),
               indexFilesManager.metaInfoOut,
               indexFilesManager.termIndexOut,
               indexFilesManager);
@@ -89,7 +90,10 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
 
         IntBlockTermState termState =
             (IntBlockTermState) postingsWriter.writeTerm(term, termsEnum, docSeen, norms);
-        termsDictWriter.add(term, termState);
+        // TermState can be null
+        if (termState != null) {
+          termsDictWriter.add(term, termState);
+        }
       }
       termsDictWriter.finish(docSeen.cardinality());
     }

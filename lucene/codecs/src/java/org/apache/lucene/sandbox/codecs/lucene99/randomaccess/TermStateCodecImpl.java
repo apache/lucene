@@ -66,11 +66,16 @@ final class TermStateCodecImpl implements TermStateCodec {
     return 1 + (component.isMonotonicallyIncreasing() ? 8 : 0);
   }
 
-  public static TermStateCodecImpl getCodec(TermType termType, IndexOptions indexOptions) {
+  public static TermStateCodecImpl getCodec(
+      TermType termType, IndexOptions indexOptions, boolean hasPayloads) {
     assert indexOptions.ordinal() > IndexOptions.NONE.ordinal();
     // A term can't have skip data (has more than one block's worth of doc),
     // while having a singleton doc at the same time!
     assert !(termType.hasSkipData() && termType.hasSingletonDoc());
+
+    // Can't have payload for index options that is less than POSITIONS
+    assert indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()
+        || !hasPayloads;
 
     ArrayList<TermStateCodecComponent> components = new ArrayList<>();
     // handle docs and docFreq
@@ -92,6 +97,9 @@ final class TermStateCodecImpl implements TermStateCodec {
     // handle positions
     if (indexOptions.ordinal() >= IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.ordinal()) {
       components.add(PositionStartFP.INSTANCE);
+      if (hasPayloads) {
+        components.add(PayloadStartFP.INSTANCE);
+      }
       if (termType.hasLastPositionBlockOffset()) {
         components.add(LastPositionBlockOffset.INSTANCE);
       }
