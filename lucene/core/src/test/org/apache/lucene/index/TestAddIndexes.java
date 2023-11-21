@@ -1702,22 +1702,26 @@ public class TestAddIndexes extends LuceneTestCase {
 
     IndexReader r1 = DirectoryReader.open(dir1);
     String message =
-            expectThrows(
-                    IllegalArgumentException.class,
-                    () -> {
-                      w2.addIndexes((SegmentReader) getOnlyLeafReader(r1));
-                    })
-                    .getMessage();
-    assertEquals("cannot change index sort from parent field: foobar <int: \"foo\"> to <int: \"foo\">", message);
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes((SegmentReader) getOnlyLeafReader(r1));
+                })
+            .getMessage();
+    assertEquals(
+        "cannot change index sort from parent field: foobar <int: \"foo\"> to <int: \"foo\">",
+        message);
 
     message =
-            expectThrows(
-                    IllegalArgumentException.class,
-                    () -> {
-                      w2.addIndexes(dir1);
-                    })
-                    .getMessage();
-    assertEquals("cannot change index sort from parent field: foobar <int: \"foo\"> to <int: \"foo\">", message);
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes(dir1);
+                })
+            .getMessage();
+    assertEquals(
+        "cannot change index sort from parent field: foobar <int: \"foo\"> to <int: \"foo\">",
+        message);
     IOUtils.close(r1, dir1, w2, dir2);
   }
 

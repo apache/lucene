@@ -206,7 +206,8 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         String parentField = null;
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SI_SORT_HAS_PARENT_FIELD);
-        final boolean hasParent = Boolean.parseBoolean(readString(SI_SORT_HAS_PARENT_FIELD.length, scratch));
+        final boolean hasParent =
+            Boolean.parseBoolean(readString(SI_SORT_HAS_PARENT_FIELD.length, scratch));
         if (hasParent) {
           SimpleTextUtil.readLine(input, scratch);
           assert StringHelper.startsWith(scratch.get(), SI_SORT_PARENT_FIELD);

@@ -87,19 +87,19 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     Codec codec = getCodec();
     byte[] id = StringHelper.randomId();
     SegmentInfo info =
-            new SegmentInfo(
-                    dir,
-                    getVersions()[0],
-                    getVersions()[0],
-                    "_123",
-                    1,
-                    false,
-                    random().nextBoolean(),
-                    codec,
-                    Collections.emptyMap(),
-                    id,
-                    Collections.emptyMap(),
-                    null);
+        new SegmentInfo(
+            dir,
+            getVersions()[0],
+            getVersions()[0],
+            "_123",
+            1,
+            false,
+            random().nextBoolean(),
+            codec,
+            Collections.emptyMap(),
+            id,
+            Collections.emptyMap(),
+            null);
     info.setFiles(Collections.<String>emptySet());
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
@@ -392,8 +392,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
           sortFields[j] = randomIndexSortField();
         }
         if (supportsHasBlocks()) {
-          String parentField = random().nextBoolean() ? null :
-                  TestUtil.randomSimpleString(random(), 1, 10);
+          String parentField =
+              random().nextBoolean() ? null : TestUtil.randomSimpleString(random(), 1, 10);
           sort = new Sort(parentField, sortFields);
         } else {
           sort = new Sort(sortFields);
