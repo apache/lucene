@@ -45,6 +45,9 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
 
   @Override
   public void writeBytes(byte[] b, int offset, int len) {
+    if (len == 0) {
+      return;
+    }
     ensureCapacity(len);
     System.arraycopy(b, offset, bytes, nextWrite, len);
     nextWrite += len;
