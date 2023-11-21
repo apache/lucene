@@ -487,11 +487,10 @@ public class DocSorterBenchmark {
             final int srcTo = to - srcOff;
             final int destFrom = from - destOff;
             for (int i = srcFrom; i < srcTo; ++i) {
-              int srcDoc = srcDocs[i];
-              final int b = (srcDoc >>> shift) & 0xFF;
+              final int b = (srcDocs[i] >>> shift) & 0xFF;
               int j = destFrom + histogram[b]++;
-              destDocs[j] = srcDoc;
-              destOffsets[j] = srcDoc;
+              destDocs[j] = srcDocs[i];
+              destOffsets[j] = srcOffsets[i];
             }
           }
 
@@ -514,8 +513,8 @@ public class DocSorterBenchmark {
           protected void restore(int from, int to) {
             if (srcDocs != docs) {
               assert srcOffsets != offsets;
-              System.arraycopy(srcDocs, from - srcOff, docs, destOff + from, to - from);
-              System.arraycopy(srcOffsets, from - srcOff, offsets, destOff + from, to - from);
+              System.arraycopy(srcDocs, from - srcOff, docs, from - destOff, to - from);
+              System.arraycopy(srcOffsets, from - srcOff, offsets, from - destOff, to - from);
             }
           }
         }.sort(from, to);
