@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -60,7 +61,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
   private final FlatVectorsFormat flatVectorsFormat;
 
   private final int numMergeWorkers;
-  private final ExecutorService mergeExec;
+  private final TaskExecutor mergeExec;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
@@ -121,7 +122,11 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
           "No executor service is needed as we'll use single thread to merge");
     }
     this.numMergeWorkers = numMergeWorkers;
-    this.mergeExec = mergeExec;
+    if (mergeExec != null) {
+      this.mergeExec = new TaskExecutor(mergeExec);
+    } else {
+      this.mergeExec = null;
+    }
     this.flatVectorsFormat = new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval);
   }
 
