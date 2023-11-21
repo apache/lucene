@@ -49,6 +49,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   final int chunkSizePower;
   final Arena arena;
   final MemorySegment[] segments;
+  private static final int[] MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -301,6 +302,30 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
+  }
+
+  @Override
+  public void readGroupVInt(long[] docs, int pos) throws IOException {
+    if (curSegment.byteSize() - curPosition < 17) {
+      super.readGroupVInt(docs, pos);
+      return;
+    }
+
+    final int flag = readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    docs[pos] = curSegment.get(LAYOUT_LE_INT, curPosition) & MASKS[n1Minus1];
+    curPosition += 1 + n1Minus1;
+    docs[pos + 1] = curSegment.get(LAYOUT_LE_INT, curPosition) & MASKS[n2Minus1];
+    curPosition += 1 + n2Minus1;
+    docs[pos + 2] = curSegment.get(LAYOUT_LE_INT, curPosition) & MASKS[n3Minus1];
+    curPosition += 1 + n3Minus1;
+    docs[pos + 3] = curSegment.get(LAYOUT_LE_INT, curPosition) & MASKS[n4Minus1];
+    curPosition += 1 + n4Minus1;
   }
 
   @Override

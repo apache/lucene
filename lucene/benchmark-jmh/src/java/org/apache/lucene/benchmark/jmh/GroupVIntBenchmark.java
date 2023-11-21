@@ -21,8 +21,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.lucene99.GroupVIntReader;
-import org.apache.lucene.codecs.lucene99.GroupVIntWriter;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
@@ -99,8 +97,8 @@ public class GroupVIntBenchmark {
     byte[] gVIntBytes = new byte[Integer.BYTES * maxSize * 2];
     byte[] vIntBytes = new byte[Integer.BYTES * maxSize * 2];
     ByteArrayDataOutput vIntOut = new ByteArrayDataOutput(vIntBytes);
-    GroupVIntWriter w = new GroupVIntWriter();
-    w.writeValues(new ByteArrayDataOutput(gVIntBytes), docs, docs.length);
+    ByteArrayDataOutput out = new ByteArrayDataOutput(gVIntBytes);
+    out.writeGroupVInts(docs, docs.length);
     for (long v : docs) {
       vIntOut.writeVInt((int) v);
     }
@@ -113,8 +111,7 @@ public class GroupVIntBenchmark {
     IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
     IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
 
-    GroupVIntWriter w = new GroupVIntWriter();
-    w.writeValues(gvintOut, docs, docs.length);
+    gvintOut.writeGroupVInts(docs, docs.length);
     for (long v : docs) {
       vintOut.writeVInt((int) v);
     }
@@ -154,7 +151,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void byteBufferReadGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
-    GroupVIntReader.readValues(byteBufferGVIntIn, values, size);
+    byteBufferGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 
@@ -170,7 +167,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
     byteArrayGVIntIn.rewind();
-    GroupVIntReader.readValues(byteArrayGVIntIn, values, size);
+    byteArrayGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 }

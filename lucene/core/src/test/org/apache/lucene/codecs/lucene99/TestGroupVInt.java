@@ -18,8 +18,11 @@ package org.apache.lucene.codecs.lucene99;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
-import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
@@ -31,9 +34,7 @@ public class TestGroupVInt extends LuceneTestCase {
     long[] values = new long[ForUtil.BLOCK_SIZE];
     long[] restored = new long[ForUtil.BLOCK_SIZE];
     final int iterations = atLeast(100);
-
-    final GroupVIntWriter w = new GroupVIntWriter();
-    byte[] encoded = new byte[(int) (Integer.BYTES * ForUtil.BLOCK_SIZE * 1.25)];
+    Directory dir = FSDirectory.open(createTempDir());
 
     for (int i = 0; i < iterations; i++) {
       final int bpv = TestUtil.nextInt(random(), 1, 31);
@@ -43,13 +44,19 @@ public class TestGroupVInt extends LuceneTestCase {
       for (int j = 0; j < numValues; j++) {
         values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
       }
-      w.writeValues(new ByteArrayDataOutput(encoded), values, numValues);
+      IndexOutput out = dir.createOutput("group-varint", IOContext.DEFAULT);
+      out.writeGroupVInts(values, numValues);
+      out.close();
 
       // decode
-      GroupVIntReader.readValues(new ByteArrayDataInput(encoded), restored, numValues);
+      IndexInput in = dir.openInput("group-varint", IOContext.DEFAULT);
+      in.readGroupVInts(restored, numValues);
+      in.close();
       assertArrayEquals(
           ArrayUtil.copyOfSubArray(values, 0, numValues),
           ArrayUtil.copyOfSubArray(restored, 0, numValues));
+       dir.deleteFile("group-varint");
     }
+    dir.close();
   }
 }

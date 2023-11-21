@@ -99,6 +99,55 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
+   * Read all group ints, include the tail vints.
+   *
+   * @param docs the array to read ints into.
+   * @param limit the number of int values to read.
+   */
+  public void readGroupVInts(long[] docs, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVInt(docs, i);
+    }
+    for (; i < limit; ++i) {
+      docs[i] = readVInt();
+    }
+  }
+
+  /**
+   * Read single group ints. we need a long[] because this is what postings are using.
+   *
+   * @param docs the array to read ints into.
+   * @param offset the offset in the array to start storing ints.
+   */
+  public void readGroupVInt(long[] docs, int offset) throws IOException {
+    final int flag = readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    docs[offset] = readLongInGroup(n1Minus1);
+    docs[offset + 1] = readLongInGroup(n2Minus1);
+    docs[offset + 2] = readLongInGroup(n3Minus1);
+    docs[offset + 3] = readLongInGroup(n4Minus1);
+  }
+
+  private long readLongInGroup(int numBytesMinus1) throws IOException {
+    switch (numBytesMinus1) {
+      case 0:
+        return readByte() & 0xFFL;
+      case 1:
+        return readShort() & 0xFFFFL;
+      case 2:
+        return (readShort() & 0xFFFFL) | ((readByte() & 0xFFL) << 16);
+      default:
+        return readInt() & 0xFFFFFFFFL;
+    }
+  }
+
+  /**
    * Reads an int stored in variable-length format. Reads between one and five bytes. Smaller values
    * take fewer bytes. Negative numbers are supported, but should be avoided.
    *

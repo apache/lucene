@@ -29,6 +29,7 @@ import org.apache.lucene.util.BytesRef;
  * internal state like file position).
  */
 public abstract class DataOutput {
+  BytesRef groupVIntBytes;
 
   /**
    * Writes a single byte.
@@ -323,5 +324,43 @@ public abstract class DataOutput {
     for (String value : set) {
       writeString(value);
     }
+  }
+
+  /**
+   * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for
+   * a group
+   */
+  public void writeGroupVInts(long[] values, int limit) throws IOException {
+    if (groupVIntBytes == null) {
+      // the maximum size of one group is 4 integers + 1 byte flag.
+      groupVIntBytes = new BytesRef(17);
+    }
+    int off = 0;
+
+    // encode each group
+    while ((limit - off) >= 4) {
+      byte flag = 0;
+      groupVIntBytes.offset = 1;
+      flag |= (encodeGroupValue((int) values[off++]) - 1) << 6;
+      flag |= (encodeGroupValue((int) values[off++]) - 1) << 4;
+      flag |= (encodeGroupValue((int) values[off++]) - 1) << 2;
+      flag |= (encodeGroupValue((int) values[off++]) - 1);
+      groupVIntBytes.bytes[0] = flag;
+      writeBytes(groupVIntBytes.bytes, groupVIntBytes.offset);
+    }
+
+    // tail vints
+    for (; off < limit; off++) {
+      writeVInt((int) values[off]);
+    }
+  }
+
+  private int encodeGroupValue(int v) {
+    int lastOff = groupVIntBytes.offset;
+    do {
+      groupVIntBytes.bytes[groupVIntBytes.offset++] = (byte) (v & 0xFF);
+      v >>>= 8;
+    } while (v != 0);
+    return groupVIntBytes.offset - lastOff;
   }
 }
