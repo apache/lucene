@@ -7,9 +7,6 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB-12695: Deprecated public constructor of FSTCompiler. Please use FSTCompiler.Builder
-  instead. (Juan M. Caicedo)
-
 * LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
   instead. (Vigya Sharma)
 
@@ -93,13 +90,6 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
-* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
-  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
-  result in a more minimal FST (more common suffixes are shard).  Pass
-  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
-  minimal FST.  Inspired by this Rust FST implemention:
-  https://blog.burntsushi.net/transducers (Mike McCandless)
-
 Optimizations
 ---------------------
 
@@ -177,6 +167,14 @@ API Changes
 
 * GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
 
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
+
+* GITHUB-12695: Remove public constructor of FSTCompiler. Please use FSTCompiler.Builder
+  instead. (Juan M. Caicedo)
+
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -237,6 +235,13 @@ Improvements
   Monitor which could result in searches waiting for commits. (Davis Cook)
 
 * GITHUB#11277, LUCENE-10241: Upgrade to OpenNLP to 1.9.4. (Jeff Zemerick)
+
+* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
+  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
+  result in a more minimal FST (more common suffixes are shard).  Pass
+  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
+  minimal FST.  Inspired by this Rust FST implemention:
+  https://blog.burntsushi.net/transducers (Mike McCandless)
 
 Optimizations
 ---------------------
