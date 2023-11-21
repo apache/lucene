@@ -53,7 +53,12 @@ public final class TaskExecutor {
 
   private final Executor executor;
 
-  TaskExecutor(Executor executor) {
+  /**
+   * Creates a TaskExecutor instance
+   *
+   * @param executor the executor to be used for running tasks concurrently
+   */
+  public TaskExecutor(Executor executor) {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 

@@ -65,15 +65,6 @@ public final class OnHeapFSTStore implements FSTStore {
   }
 
   @Override
-  public long size() {
-    if (bytesArray != null) {
-      return bytesArray.length;
-    } else {
-      return bytes.getPosition();
-    }
-  }
-
-  @Override
   public long ramBytesUsed() {
     long size = BASE_RAM_BYTES_USED;
     if (bytesArray != null) {

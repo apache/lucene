@@ -549,7 +549,7 @@ public class FSTCompiler<T> {
     long destPos = startAddress + headerLen + nodeIn.numArcs * (long) maxBytesPerArc;
     assert destPos >= srcPos;
     if (destPos > srcPos) {
-      bytes.skipBytes((int) (destPos - srcPos));
+      bytes.setPosition(destPos);
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
@@ -601,16 +601,16 @@ public class FSTCompiler<T> {
       srcPos -= srcArcLen;
       int labelLen = numLabelBytesPerArc[arcIdx];
       // Copy the flags.
-      bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
+      bytes.writeTo(srcPos, buffer, bufferOffset, 1);
       // Skip the label, copy the remaining.
       int remainingArcLen = srcArcLen - 1 - labelLen;
       if (remainingArcLen != 0) {
-        bytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+        bytes.writeTo(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
       }
       if (arcIdx == 0) {
         // Copy the label of the first arc only.
         bufferOffset -= labelLen;
-        bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+        bytes.writeTo(srcPos + 1, buffer, bufferOffset, labelLen);
       }
     }
     assert bufferOffset == headerMaxLen + numPresenceBytes;
@@ -626,34 +626,22 @@ public class FSTCompiler<T> {
             maxBytesPerArcWithoutLabel); // maxBytesPerArcWithoutLabel instead of maxBytesPerArc.
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
-    // Prepare the builder byte store. Enlarge or truncate if needed.
-    long nodeEnd = startAddress + headerLen + numPresenceBytes + totalArcBytes;
-    long currentPosition = bytes.getPosition();
-    if (nodeEnd >= currentPosition) {
-      bytes.skipBytes((int) (nodeEnd - currentPosition));
-    } else {
-      bytes.truncate(nodeEnd);
-    }
-    assert bytes.getPosition() == nodeEnd;
-
     // Write the header.
-    long writeOffset = startAddress;
-    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-    writeOffset += headerLen;
+    bytes.setPosition(startAddress);
+    bytes.writeBytes(fixedLengthArcsBuffer.getBytes(), 0, headerLen);
 
     // Write the presence bits
     if (continuous == false) {
-      writePresenceBits(nodeIn, writeOffset, numPresenceBytes);
-      writeOffset += numPresenceBytes;
+      writePresenceBits(nodeIn);
+      assert bytes.getPosition() == startAddress + headerLen + numPresenceBytes;
     }
 
     // Write the first label and the arcs.
-    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+    bytes.writeBytes(fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
+    assert bytes.getPosition() == startAddress + headerLen + numPresenceBytes + totalArcBytes;
   }
 
-  private void writePresenceBits(
-      FSTCompiler.UnCompiledNode<T> nodeIn, long dest, int numPresenceBytes) {
-    long bytePos = dest;
+  private void writePresenceBits(FSTCompiler.UnCompiledNode<T> nodeIn) {
     byte presenceBits = 1; // The first arc is always present.
     int presenceIndex = 0;
     int previousLabel = nodeIn.arcs[0].label;
@@ -662,7 +650,7 @@ public class FSTCompiler<T> {
       assert label > previousLabel;
       presenceIndex += label - previousLabel;
       while (presenceIndex >= Byte.SIZE) {
-        bytes.writeByte(bytePos++, presenceBits);
+        bytes.writeByte(presenceBits);
         presenceBits = 0;
         presenceIndex -= Byte.SIZE;
       }
@@ -673,8 +661,7 @@ public class FSTCompiler<T> {
     assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
     assert presenceBits != 0; // The last byte is not 0.
     assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
-    bytes.writeByte(bytePos++, presenceBits);
-    assert bytePos - dest == numPresenceBytes;
+    bytes.writeByte(presenceBits);
   }
 
   private void freezeTail(int prefixLenPlus1) throws IOException {
@@ -840,7 +827,7 @@ public class FSTCompiler<T> {
   }
 
   void finish(long newStartNode) {
-    assert newStartNode <= bytes.size();
+    assert newStartNode <= bytes.getPosition();
     if (fst.metadata.startNode != -1) {
       throw new IllegalStateException("already finished");
     }

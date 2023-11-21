@@ -90,6 +90,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
+* GITHUB#12825: Hunspell: improved dictionary loading performance (Peter Gromov)
+
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
@@ -167,6 +169,9 @@ API Changes
   instead. (Juan M. Caicedo)
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
+* GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
+  HNSW graph build. (Shubham Chaudhary)
 
 New Features
 ---------------------
