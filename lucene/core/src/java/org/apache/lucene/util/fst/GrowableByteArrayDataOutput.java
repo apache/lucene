@@ -22,7 +22,8 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
-// Storing a byte[] for the current node of the FST we are writing. The byte[] will only grow, never
+// Storing a single contiguous byte[] for the current node of the FST we are writing. The byte[]
+// will only grow, never
 // shrink.
 final class GrowableByteArrayDataOutput extends DataOutput implements Accountable {
 
@@ -72,6 +73,7 @@ final class GrowableByteArrayDataOutput extends DataOutput implements Accountabl
    * @param capacityToWrite the additional bytes to write
    */
   private void ensureCapacity(int capacityToWrite) {
+    assert capacityToWrite > 0;
     bytes = ArrayUtil.grow(bytes, nextWrite + capacityToWrite);
   }
 

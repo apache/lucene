@@ -21,11 +21,11 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
 /** An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader} */
-final class ByteBuffersFSTReader extends DataOutput implements FSTReader {
+final class ByteBuffersDataOutputFSTReaderAdapter extends DataOutput implements FSTReader {
 
   private final ByteBuffersDataOutput dataOutput;
 
-  public ByteBuffersFSTReader(ByteBuffersDataOutput dataOutput) {
+  public ByteBuffersDataOutputFSTReaderAdapter(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
   }
 

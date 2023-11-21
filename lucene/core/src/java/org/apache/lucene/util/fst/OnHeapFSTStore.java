@@ -34,10 +34,10 @@ public final class OnHeapFSTStore implements FSTStore {
       RamUsageEstimator.shallowSizeOfInstance(OnHeapFSTStore.class);
 
   /**
-   * A {@link ByteBuffersFSTReader}, used during reading when the FST is very large (more than 1
-   * GB). If the FST is less than 1 GB then bytesArray is set instead.
+   * A {@link ByteBuffersDataOutputFSTReaderAdapter}, used during reading when the FST is very large
+   * (more than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
-  private ByteBuffersFSTReader byteBuffersReader;
+  private ByteBuffersDataOutputFSTReaderAdapter byteBuffersReader;
 
   /** Used at read time when the FST fits into a single byte[]. */
   private byte[] bytesArray;
@@ -56,7 +56,7 @@ public final class OnHeapFSTStore implements FSTStore {
   public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (numBytes > 1 << this.maxBlockBits) {
       // FST is big: we need multiple pages
-      byteBuffersReader = (ByteBuffersFSTReader) getOnHeapDataOutput(maxBlockBits);
+      byteBuffersReader = (ByteBuffersDataOutputFSTReaderAdapter) getOnHeapDataOutput(maxBlockBits);
       byteBuffersReader.copyBytes(in, numBytes);
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead

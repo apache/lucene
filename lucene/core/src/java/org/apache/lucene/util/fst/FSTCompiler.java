@@ -120,7 +120,7 @@ public class FSTCompiler<T> {
   final float directAddressingMaxOversizingFactor;
   long directAddressingExpansionCredit;
 
-  // the DataOutput to write the FST to
+  // the DataOutput to stream the FST bytes to
   final DataOutput dataOutput;
 
   // buffer to store bytes for the one node we are currently writing
@@ -135,7 +135,7 @@ public class FSTCompiler<T> {
    * @return the DataOutput
    */
   public static DataOutput getOnHeapDataOutput(int blockBits) {
-    return new ByteBuffersFSTReader(
+    return new ByteBuffersDataOutputFSTReaderAdapter(
         new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
   }
 
@@ -182,27 +182,8 @@ public class FSTCompiler<T> {
     if (dataOutput instanceof FSTReader) {
       return (FSTReader) dataOutput;
     }
-    return new NullFSTReader();
+    return null;
   }
-
-  private static final class NullFSTReader implements FSTReader {
-
-    @Override
-    public FST.BytesReader getReverseBytesReader() {
-      return null;
-    }
-
-    @Override
-    public void writeTo(DataOutput out) {
-      throw new UnsupportedOperationException("writeTo(DataOutput) is not supported");
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return 0;
-    }
-  }
-  ;
 
   /**
    * Fluent-style constructor for FST {@link FSTCompiler}.
@@ -270,8 +251,8 @@ public class FSTCompiler<T> {
 
     /**
      * Set the {@link DataOutput} which is used for low-level writing of FST. If you want the FST to
-     * be readable, you need to use a DataOutput that also implements {@link FSTReader}, such as
-     * {@link FSTCompiler#getOnHeapDataOutput(int)}.
+     * be immediately readable, you need to use a DataOutput that also implements {@link FSTReader},
+     * such as {@link FSTCompiler#getOnHeapDataOutput(int)}.
      *
      * <p>Otherwise you need to construct the corresponding {@link
      * org.apache.lucene.store.DataInput} and use the FST constructor to read it.
@@ -640,7 +621,9 @@ public class FSTCompiler<T> {
     writeScratchBytes(0, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
-  /** Reverse the scratch bytes */
+  /**
+   * Reverse the scratch bytes in place. This operation does not affect scratchBytes.getPosition().
+   */
   private void reverseScratchBytes() {
     int pos = scratchBytes.getPosition();
     byte[] bytes = scratchBytes.getBytes();
@@ -653,7 +636,10 @@ public class FSTCompiler<T> {
   }
 
   /**
-   * Write bytes from a source byte[] to the scratch bytes
+   * Write bytes from a source byte[] to the scratch bytes. The written bytes must fit within what
+   * was already written in the scratch bytes.
+   *
+   * <p>This operation does not affect scratchBytes.getPosition().
    *
    * @param destPos the position in the scratch bytes
    * @param bytes the source byte[]

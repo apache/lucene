@@ -124,7 +124,7 @@ public final class FST<T> implements Accountable {
   /** If arc has this label then that arc is final/accepted */
   public static final int END_LABEL = -1;
 
-  /** The reader of the FST */
+  /** The reader of the FST, used to read bytes from the underlying FST storage */
   private final FSTReader fstReader;
 
   public final Outputs<T> outputs;
@@ -434,10 +434,10 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * @return true if and only if this FST is readable (i.e. has a reverse BytesReader)
+   * @return true if and only if this FST is readable (e.g has a reverse BytesReader)
    */
-  public boolean hasReverseBytesReader() {
-    return fstReader.getReverseBytesReader() != null;
+  public boolean isReadable() {
+    return fstReader != null;
   }
 
   /**
@@ -496,7 +496,11 @@ public final class FST<T> implements Accountable {
 
   @Override
   public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
+    long size = BASE_RAM_BYTES_USED;
+    if (isReadable()) {
+      size += fstReader.ramBytesUsed();
+    }
+    return size;
   }
 
   @Override
@@ -516,7 +520,18 @@ public final class FST<T> implements Accountable {
     return metadata;
   }
 
+  /**
+   * Save the FST to DataOutput. You should call {@link #isReadable()} to verify if the FST is
+   * readable first.
+   *
+   * @param metaOut the DataOutput to write the metadata to
+   * @param out the DataOutput to write the FST bytes to
+   * @see #isReadable()
+   */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
+    if (isReadable() == false) {
+      throw new IllegalStateException("This FST is non-readable and cannot be saved");
+    }
     saveMetadata(metaOut);
     fstReader.writeTo(out);
   }
@@ -524,7 +539,7 @@ public final class FST<T> implements Accountable {
   /**
    * Save the metadata to a DataOutput
    *
-   * @param metaOut the DataOutput to save
+   * @param metaOut the DataOutput to write the metadata to
    */
   public void saveMetadata(DataOutput metaOut) throws IOException {
     CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
@@ -1187,11 +1202,15 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Returns a {@link BytesReader} for this FST, positioned at position 0.
+   * Returns a {@link BytesReader} for this FST, positioned at position 0. You should call {@link
+   * #isReadable()} to verify if the FST is readable first.
    *
-   * @see #hasReverseBytesReader()
+   * @see #isReadable()
    */
   public BytesReader getBytesReader() {
+    if (isReadable() == false) {
+      throw new IllegalStateException("FST is not readable");
+    }
     return fstReader.getReverseBytesReader();
   }
 
