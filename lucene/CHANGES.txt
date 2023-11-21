@@ -170,6 +170,8 @@ Optimizations
 
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Chao Zhang)
 
+* GITHUB#12825: Hunspell: improved dictionary loading performance (Peter Gromov)
+
 Changes in runtime behavior
 ---------------------
 
