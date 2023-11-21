@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.IntroSorter;
@@ -66,7 +64,9 @@ public class DocSorterBenchmark {
     DocSorterBenchmark docSorterBenchmark = new DocSorterBenchmark();
     docSorterBenchmark.size = 100000;
     docSorterBenchmark.bit = 31;
-    for (String order: Arrays.asList("natural", "reverse", "random", "partial", "natural_exception", "reverse_exception")) {
+    for (String order :
+        Arrays.asList(
+            "natural", "reverse", "random", "partial", "natural_exception", "reverse_exception")) {
       docSorterBenchmark.order = order;
       docSorterBenchmark.init();
       docSorterBenchmark.msbSorter();
