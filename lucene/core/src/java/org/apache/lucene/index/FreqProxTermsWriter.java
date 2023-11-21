@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -131,7 +132,7 @@ final class FreqProxTermsWriter extends TermsHash {
     }
 
     try (FieldsConsumer consumer =
-        state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state)) {
+             state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state)) {
       consumer.write(fields, norms);
     }
   }
@@ -366,6 +367,30 @@ final class FreqProxTermsWriter extends TermsHash {
             }
 
             @Override
+            protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+              final int srcFrom = from - srcOff;
+              final int srcTo = to - srcOff;
+              for (int i = srcFrom; i < srcTo; ++i) {
+                final int b = (srcDocs[i] >>> shift) & 0xFF;
+                histogram[b] += 1;
+              }
+            }
+
+            @Override
+            protected void reorder(int from, int to, int[] histogram, int shift) {
+              final int srcFrom = from - srcOff;
+              final int srcTo = to - srcOff;
+              final int destFrom = from - destOff;
+              for (int i = srcFrom; i < srcTo; ++i) {
+                int srcDoc = srcDocs[i];
+                final int b = (srcDoc >>> shift) & 0xFF;
+                int j = destFrom + histogram[b]++;
+                destDocs[j] = srcDoc;
+                destOffsets[j] = srcDoc;
+              }
+            }
+
+            @Override
             protected void switchBuffer() {
               int[] tmp = srcDocs;
               srcDocs = destDocs;
@@ -378,17 +403,6 @@ final class FreqProxTermsWriter extends TermsHash {
               int tmpOffset = srcOff;
               srcOff = destOff;
               destOff = tmpOffset;
-            }
-
-            @Override
-            protected int bucket(int i, int shift) {
-              return (srcDocs[i - srcOff] >>> shift) & 0xFF;
-            }
-
-            @Override
-            protected void save(int i, int j) {
-              destDocs[j - destOff] = srcDocs[i - srcOff];
-              destOffsets[j - destOff] = srcOffsets[i - srcOff];
             }
 
             @Override
@@ -405,7 +419,7 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected int minRunLength(int length) {
-        return Math.min(Math.max(tmpDocs.length, length / 64), maxTempSlots);
+        return Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
       }
 
       @Override
@@ -601,7 +615,9 @@ final class FreqProxTermsWriter extends TermsHash {
       return startOffset;
     }
 
-    /** Returns the wrapped {@link PostingsEnum}. */
+    /**
+     * Returns the wrapped {@link PostingsEnum}.
+     */
     PostingsEnum getWrapped() {
       return in;
     }

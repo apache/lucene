@@ -58,13 +58,20 @@ public final class UnsignedIntLSBRadixSorter extends BaseLSBRadixSorter {
   }
 
   @Override
-  protected int bucket(int i, int shift) {
-    return (src[i] >>> shift) & 0xFF;
+  protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+    for (int i = from; i < to; ++i) {
+      final int b = (src[i] >>> shift) & 0xFF;
+      histogram[b] += 1;
+    }
   }
 
   @Override
-  protected void save(int i, int j) {
-    dest[j] = src[i];
+  protected void reorder(int from, int to, int[] histogram, int shift) {
+    for (int i = from; i < to; ++i) {
+      final int b = (src[i] >>> shift) & 0xFF;
+      int j = from + histogram[b]++;
+      dest[j] = src[i];
+    }
   }
 
   @Override

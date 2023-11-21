@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.IntroSorter;
@@ -101,10 +104,10 @@ public class DocSorterBenchmark {
           size)) {
         throw new RuntimeException("off wrong");
       }
-      System.out.println("tmp slots usage for order " + order + " : ");
-      System.out.println("tim sorter: " + docSorterBenchmark.timSorter.tmpDocs.length);
-      System.out.println("lsb sorter: " + docSorterBenchmark.lsbRadixSorter.destDocs.length);
-      System.out.println("off sorter: " + docSorterBenchmark.docOffsetSorter.tmpDocs.length);
+//      System.out.println("tmp slots usage for order " + order + " : ");
+//      System.out.println("tim sorter: " + docSorterBenchmark.timSorter.tmpDocs.length);
+//      System.out.println("lsb sorter: " + docSorterBenchmark.lsbRadixSorter.destDocs.length);
+//      System.out.println("off sorter: " + docSorterBenchmark.docOffsetSorter.tmpDocs.length);
     }
   }
 
@@ -115,12 +118,8 @@ public class DocSorterBenchmark {
     int maxDoc = 1 << (bit - 1);
     assert PackedInts.bitsRequired(maxDoc) == bit;
     // random byte arrays for binary methods
-    int[] doc = new int[size];
-    long[] off = new long[size];
-    for (int i = 0; i < size; ++i) {
-      doc[i] = random.nextInt(maxDoc);
-      off[i] = random.nextLong(Long.MAX_VALUE);
-    }
+    int[] doc = IntStream.generate(() -> random.nextInt(maxDoc)).distinct().limit(size).toArray();
+    long[] off = LongStream.generate(() -> random.nextLong(Long.MAX_VALUE)).limit(size).toArray();
 
     switch (order) {
       case "natural" -> Arrays.sort(doc);
@@ -282,14 +281,21 @@ public class DocSorterBenchmark {
     }
 
     @Override
-    protected int bucket(int i, int shift) {
-      return (srcDocs[i] >>> shift) & 0xFF;
+    protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+      for (int i = from; i < to; ++i) {
+        final int b = (srcDocs[i] >>> shift) & 0xFF;
+        histogram[b] += 1;
+      }
     }
 
     @Override
-    protected void save(int i, int j) {
-      destDocs[j] = srcDocs[i];
-      destOffsets[j] = srcOffsets[i];
+    protected void reorder(int from, int to, int[] histogram, int shift) {
+      for (int i = from; i < to; ++i) {
+        final int b = (srcDocs[i] >>> shift) & 0xFF;
+        int j = from + histogram[b]++;
+        destDocs[j] = srcDocs[i];
+        destOffsets[j] = srcOffsets[i];
+      }
     }
 
     @Override
@@ -465,6 +471,30 @@ public class DocSorterBenchmark {
           }
 
           @Override
+          protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+            final int srcFrom = from - srcOff;
+            final int srcTo = to - srcOff;
+            for (int i = srcFrom; i < srcTo; ++i) {
+              final int b = (srcDocs[i] >>> shift) & 0xFF;
+              histogram[b] += 1;
+            }
+          }
+
+          @Override
+          protected void reorder(int from, int to, int[] histogram, int shift) {
+            final int srcFrom = from - srcOff;
+            final int srcTo = to - srcOff;
+            final int destFrom = from - destOff;
+            for (int i = srcFrom; i < srcTo; ++i) {
+              int srcDoc = srcDocs[i];
+              final int b = (srcDoc >>> shift) & 0xFF;
+              int j = destFrom + histogram[b]++;
+              destDocs[j] = srcDoc;
+              destOffsets[j] = srcDoc;
+            }
+          }
+
+          @Override
           protected void switchBuffer() {
             int[] tmp = srcDocs;
             srcDocs = destDocs;
@@ -477,17 +507,6 @@ public class DocSorterBenchmark {
             int tmpOffset = srcOff;
             srcOff = destOff;
             destOff = tmpOffset;
-          }
-
-          @Override
-          protected int bucket(int i, int shift) {
-            return (srcDocs[i - srcOff] >>> shift) & 0xFF;
-          }
-
-          @Override
-          protected void save(int i, int j) {
-            destDocs[j - destOff] = srcDocs[i - srcOff];
-            destOffsets[j - destOff] = srcOffsets[i - srcOff];
           }
 
           @Override
@@ -504,7 +523,7 @@ public class DocSorterBenchmark {
 
     @Override
     protected int minRunLength(int length) {
-      return Math.min(Math.max(tmpDocs.length, length / 64), maxTempSlots);
+      return Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
     }
 
     @Override

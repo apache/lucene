@@ -67,13 +67,6 @@ public abstract class BaseLSBRadixSorter extends Sorter {
     return true;
   }
 
-  private void buildHistogram(int from, int to, int[] histogram, int shift) {
-    for (int i = from; i < to; ++i) {
-      final int b = bucket(i, shift);
-      histogram[b] += 1;
-    }
-  }
-
   private static void sumHistogram(int[] histogram) {
     int accum = 0;
     for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
@@ -83,21 +76,46 @@ public abstract class BaseLSBRadixSorter extends Sorter {
     }
   }
 
-  protected void reorder(int from, int to, int[] histogram, int shift) {
-    for (int i = from; i < to; ++i) {
-      final int b = bucket(i, shift);
-      save(i, from + histogram[b]++);
-    }
-  }
+  /**
+   * Build histogram with specified shift. Implementations should witten like:
+   *
+   * <pre>{@code
+   * protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+   *   for (int i = from; i < to; ++i) {
+   *     final int b = bucket(i, shift);
+   *     histogram[b] += 1;
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param from inclusive from
+   * @param to exclusive to
+   * @param histogram histograms
+   * @param shift specified shift
+   */
+  protected abstract void buildHistogram(int from, int to, int[] histogram, int shift);
+
+  /**
+   * Reorder with specified shift. Implementations should witten like:
+   *
+   * <pre>{@code
+   * protected void reorder(int from, int to, int[] histogram, int shift) {
+   *   for (int i = from; i < to; ++i) {
+   *     final int b = bucket(i, shift);
+   *     save(i, from + histogram[b]++);
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param from inclusive from
+   * @param to exclusive to
+   * @param histogram histograms
+   * @param shift specified shift
+   */
+  protected abstract void reorder(int from, int to, int[] histogram, int shift);
 
   /** Switch the src and dest array */
   protected abstract void switchBuffer();
-
-  /** Get the least significant byte after shift right. */
-  protected abstract int bucket(int i, int shift);
-
-  /** Save the i-th value into the j-th position in temporary storage. */
-  protected abstract void save(int i, int j);
 
   /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
   protected abstract void restore(int i, int j);
