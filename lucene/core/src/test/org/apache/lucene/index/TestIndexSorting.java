@@ -3179,7 +3179,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        List<Runnable> runables =
+        List<Runnable> runnabels =
             Arrays.asList(
                 () -> {
                   IllegalArgumentException ex =
@@ -3216,11 +3216,58 @@ public class TestIndexSorting extends LuceneTestCase {
                       "the last document in the block must contain a numeric doc values field named: parent",
                       ex.getMessage());
                 });
-        Collections.shuffle(runables, random());
-        for (Runnable runnable : runables) {
+        Collections.shuffle(runnabels, random());
+        for (Runnable runnable : runnabels) {
           runnable.run();
         }
       }
+    }
+  }
+
+  public void testIndexWithSortIsCongruent() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      String parentField = "parent";
+      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document child1 = new Document();
+        child1.add(new StringField("id", Integer.toString(1), Store.YES));
+        Document child2 = new Document();
+        child2.add(new StringField("id", Integer.toString(1), Store.YES));
+        Document parent = new Document();
+        parent.add(new StringField("id", Integer.toString(1), Store.YES));
+        parent.add(new NumericDocValuesField(parentField, 0));
+        writer.addDocuments(Arrays.asList(child1, child2, parent));
+        writer.flush();
+        if (random().nextBoolean()) {
+          writer.addDocuments(Arrays.asList(child1, child2, parent));
+        }
+        writer.commit();
+      }
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                Sort sort = new Sort("someOther", new SortField("foo", SortField.Type.INT));
+                config.setIndexSort(sort);
+                new IndexWriter(dir, config);
+              });
+      assertTrue(
+          ex.getMessage(),
+          ex.getMessage().endsWith(" to new indexSort=parent field: someOther <int: \"foo\">"));
+
+      ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                Sort sort = new Sort(new SortField("foo", SortField.Type.INT));
+                config.setIndexSort(sort);
+                new IndexWriter(dir, config);
+              });
+      assertTrue(ex.getMessage(), ex.getMessage().endsWith(" to new indexSort=<int: \"foo\">"));
     }
   }
 
