@@ -68,6 +68,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1008,10 +1009,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     ExecutorService exec = Executors.newFixedThreadPool(4, new NamedThreadFactory("hnswMerge"));
+    TaskExecutor taskExecutor = new TaskExecutor(exec);
     HnswGraphBuilder.randSeed = random().nextLong();
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
-            exec, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
+            taskExecutor, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
