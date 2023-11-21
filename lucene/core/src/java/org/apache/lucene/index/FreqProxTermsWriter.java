@@ -345,6 +345,7 @@ final class FreqProxTermsWriter extends TermsHash {
         if (to - from <= 64) {
           binarySort(from, to, sortedTo);
         } else {
+          growTmp(to - from);
           new BaseLSBRadixSorter(bits) {
 
             int srcOff = 0;
@@ -404,13 +405,7 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected int minRunLength(int length) {
-        int run = Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
-        if (run > tmpDocs.length) {
-          int overSize = ArrayUtil.oversize(run, 4);
-          this.tmpDocs = new int[overSize];
-          this.tmpOffsets = new long[overSize];
-        }
-        return run;
+        return Math.min(Math.max(tmpDocs.length, length / 64), maxTempSlots);
       }
 
       @Override
@@ -432,12 +427,16 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected void save(int i, int len) {
+        growTmp(len);
+        System.arraycopy(docs, i, tmpDocs, 0, len);
+        System.arraycopy(offsets, i, tmpOffsets, 0, len);
+      }
+
+      private void growTmp(int len) {
         if (tmpDocs.length < len) {
           tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
           tmpOffsets = new long[tmpDocs.length];
         }
-        System.arraycopy(docs, i, tmpDocs, 0, len);
-        System.arraycopy(offsets, i, tmpOffsets, 0, len);
       }
 
       @Override

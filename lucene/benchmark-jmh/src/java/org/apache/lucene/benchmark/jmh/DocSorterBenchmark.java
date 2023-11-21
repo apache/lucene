@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.IntroSorter;
@@ -63,40 +65,46 @@ public class DocSorterBenchmark {
   static {
     DocSorterBenchmark docSorterBenchmark = new DocSorterBenchmark();
     docSorterBenchmark.size = 100000;
-    docSorterBenchmark.order = "random";
     docSorterBenchmark.bit = 31;
-    docSorterBenchmark.init();
-    docSorterBenchmark.msbSorter();
-    docSorterBenchmark.lsbSorter();
-    docSorterBenchmark.timSorter();
-    docSorterBenchmark.offSorter();
-    int size = docSorterBenchmark.size;
-    if (!Arrays.equals(
-        docSorterBenchmark.timSorter.docs,
-        0,
-        size,
-        docSorterBenchmark.lsbRadixSorter.docs,
-        0,
-        size)) {
-      throw new RuntimeException("lsb wrong");
-    }
-    if (!Arrays.equals(
-        docSorterBenchmark.timSorter.docs,
-        0,
-        size,
-        docSorterBenchmark.msbRadixSorter.docs,
-        0,
-        size)) {
-      throw new RuntimeException("msb wrong");
-    }
-    if (!Arrays.equals(
-        docSorterBenchmark.timSorter.docs,
-        0,
-        size,
-        docSorterBenchmark.docOffsetSorter.docs,
-        0,
-        size)) {
-      throw new RuntimeException("off wrong");
+    for (String order: Arrays.asList("natural", "reverse", "random", "partial", "natural_exception", "reverse_exception")) {
+      docSorterBenchmark.order = order;
+      docSorterBenchmark.init();
+      docSorterBenchmark.msbSorter();
+      docSorterBenchmark.lsbSorter();
+      docSorterBenchmark.timSorter();
+      docSorterBenchmark.offSorter();
+      int size = docSorterBenchmark.size;
+      if (!Arrays.equals(
+          docSorterBenchmark.timSorter.docs,
+          0,
+          size,
+          docSorterBenchmark.lsbRadixSorter.docs,
+          0,
+          size)) {
+        throw new RuntimeException("lsb wrong");
+      }
+      if (!Arrays.equals(
+          docSorterBenchmark.timSorter.docs,
+          0,
+          size,
+          docSorterBenchmark.msbRadixSorter.docs,
+          0,
+          size)) {
+        throw new RuntimeException("msb wrong");
+      }
+      if (!Arrays.equals(
+          docSorterBenchmark.timSorter.docs,
+          0,
+          size,
+          docSorterBenchmark.docOffsetSorter.docs,
+          0,
+          size)) {
+        throw new RuntimeException("off wrong");
+      }
+      System.out.println("tmp slots usage for order " + order + " : ");
+      System.out.println("tim sorter: " + docSorterBenchmark.timSorter.tmpDocs.length);
+      System.out.println("lsb sorter: " + docSorterBenchmark.lsbRadixSorter.destDocs.length);
+      System.out.println("off sorter: " + docSorterBenchmark.docOffsetSorter.tmpDocs.length);
     }
   }
 
@@ -131,7 +139,7 @@ public class DocSorterBenchmark {
       }
       case "natural_exception" -> {
         Arrays.sort(doc);
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 16; i++) {
           doc[random.nextInt(doc.length)] = random.nextInt(maxDoc);
         }
       }
@@ -139,17 +147,17 @@ public class DocSorterBenchmark {
         List<Integer> docs = Arrays.stream(doc).sorted().boxed().collect(Collectors.toList());
         Collections.reverse(docs);
         doc = docs.stream().mapToInt(i -> i).toArray();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 16; i++) {
           doc[random.nextInt(doc.length)] = random.nextInt(maxDoc);
         }
       }
     }
 
-    timSorter = new DocOffsetTimSorter(size / 8);
+    timSorter = new DocOffsetTimSorter(size);
     timSorter.reset(doc.clone(), off.clone());
     lsbRadixSorter = new DocOffsetLSBRadixSorter().reset(bit, doc.clone(), off.clone());
     msbRadixSorter = new DocOffsetMSBRadixSorter(bit, doc.clone(), off.clone());
-    docOffsetSorter = new DocOffsetSorter(size / 8);
+    docOffsetSorter = new DocOffsetSorter(size);
     docOffsetSorter.reset(bit, doc.clone(), off.clone());
   }
 
@@ -436,6 +444,7 @@ public class DocSorterBenchmark {
       if (to - from <= 64) {
         binarySort(from, to, sortedTo);
       } else {
+        growTmp(to - from);
         new BaseLSBRadixSorter(bits) {
 
           int srcOff = 0;
@@ -495,13 +504,7 @@ public class DocSorterBenchmark {
 
     @Override
     protected int minRunLength(int length) {
-      int run = Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
-      if (run > tmpDocs.length) {
-        int overSize = ArrayUtil.oversize(run, 4);
-        this.tmpDocs = new int[overSize];
-        this.tmpOffsets = new long[overSize];
-      }
-      return run;
+      return Math.min(Math.max(tmpDocs.length, length / 64), maxTempSlots);
     }
 
     @Override
@@ -523,12 +526,16 @@ public class DocSorterBenchmark {
 
     @Override
     protected void save(int i, int len) {
+      growTmp(len);
+      System.arraycopy(docs, i, tmpDocs, 0, len);
+      System.arraycopy(offsets, i, tmpOffsets, 0, len);
+    }
+
+    private void growTmp(int len) {
       if (tmpDocs.length < len) {
         tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
         tmpOffsets = new long[tmpDocs.length];
       }
-      System.arraycopy(docs, i, tmpDocs, 0, len);
-      System.arraycopy(offsets, i, tmpOffsets, 0, len);
     }
 
     @Override
