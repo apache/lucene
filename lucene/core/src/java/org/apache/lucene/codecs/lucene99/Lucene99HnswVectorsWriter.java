@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -35,6 +34,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -67,7 +67,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final int beamWidth;
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
-  private final ExecutorService mergeExec;
+  private final TaskExecutor mergeExec;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -78,7 +78,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int beamWidth,
       FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
-      ExecutorService mergeExec)
+      TaskExecutor mergeExec)
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;

@@ -40,6 +40,9 @@ API Changes
 * GITHUB-12695: Remove public constructor of FSTCompiler. Please use FSTCompiler.Builder
   instead. (Juan M. Caicedo)
 
+* GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
+  HNSW graph build. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
