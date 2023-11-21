@@ -16,7 +16,6 @@
  */
 
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
@@ -70,7 +69,8 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      Lucene99HnswVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
+      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with

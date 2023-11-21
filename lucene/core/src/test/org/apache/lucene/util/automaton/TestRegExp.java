@@ -222,7 +222,6 @@ public class TestRegExp extends LuceneTestCase {
         caseSensitiveQuery
             ? Pattern.compile(regexPattern)
             : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
-    ;
     Matcher matcher = pattern.matcher(docValue);
     assertTrue(
         "Java regex " + regexPattern + " did not match doc value " + docValue, matcher.matches());
