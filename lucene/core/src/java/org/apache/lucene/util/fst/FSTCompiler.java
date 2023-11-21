@@ -177,7 +177,7 @@ public class FSTCompiler<T> {
   }
 
   // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
-  // will use it. Otherwise, we will use NullFSTReader, which does not allow reading.
+  // will use it, otherwise we will return null.
   private FSTReader toFSTReader(DataOutput dataOutput) {
     if (dataOutput instanceof FSTReader) {
       return (FSTReader) dataOutput;
@@ -286,6 +286,7 @@ public class FSTCompiler<T> {
 
     /** Creates a new {@link FSTCompiler}. */
     public FSTCompiler<T> build() {
+      // TODO: throw the IOException instead of catching it
       try {
         return new FSTCompiler<>(
             inputType,
