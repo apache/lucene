@@ -308,11 +308,6 @@ class BytesStore extends DataOutput implements FSTReader {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
-  @Override
-  public long size() {
-    return getPosition();
-  }
-
   /** Set the position of this BytesStore, truncating or expanding if needed */
   public void setPosition(long newLen) {
     assert newLen >= 0;

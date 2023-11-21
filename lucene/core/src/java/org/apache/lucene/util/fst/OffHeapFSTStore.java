@@ -56,7 +56,6 @@ public final class OffHeapFSTStore implements FSTStore {
     return BASE_RAM_BYTES_USED;
   }
 
-  @Override
   public long size() {
     return numBytes;
   }
