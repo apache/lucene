@@ -720,7 +720,7 @@ public class FSTCompiler<T> {
     // Write the presence bits
     if (continuous == false) {
       writePresenceBits(nodeIn);
-      assert scratchBytes.getPosition() - headerLen == numPresenceBytes;
+      assert scratchBytes.getPosition() == headerLen + numPresenceBytes;
     }
 
     // Write the first label and the arcs.
