@@ -2365,7 +2365,7 @@ public final class CheckIndex implements Closeable {
   static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {
-      throw new CheckIndexException("The number of impactsLevels must be >= 1, got " + numLevels);
+      throw new CheckIndexException("The number of impact levels must be >= 1, got " + numLevels);
     }
 
     int docIdUpTo0 = impacts.getDocIdUpTo(0);
