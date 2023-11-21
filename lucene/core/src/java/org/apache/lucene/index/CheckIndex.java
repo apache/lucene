@@ -449,6 +449,7 @@ public final class CheckIndex implements Closeable {
    * drastically increase time it takes to run CheckIndex! See {@link Level}
    */
   public void setLevel(int v) {
+    Level.checkIfLevelInBounds(v);
     level = v;
   }
 
@@ -1982,8 +1983,7 @@ public final class CheckIndex implements Closeable {
         }
 
         // Checking score blocks is heavy, we only do it on long postings lists, on every 1024th
-        // term
-        // or if slow checks are enabled.
+        // term or if slow checks are enabled.
         if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS
             || docFreq > 1024
             || (status.termCount + status.delTermCount) % 1024 == 0) {
@@ -3640,7 +3640,7 @@ public final class CheckIndex implements Closeable {
    */
   public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
+    return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, false);
   }
 
   /**
@@ -4107,6 +4107,19 @@ public final class CheckIndex implements Closeable {
 
     /** Minimum level required to run slow checks. */
     public static final int MIN_LEVEL_FOR_SLOW_CHECKS = 3;
+
+    /** Checks if given level value is within the allowed bounds else it raises an Exception. */
+    public static void checkIfLevelInBounds(int levelVal) throws IllegalArgumentException {
+      if (levelVal < Level.MIN_VALUE || levelVal > Level.MAX_VALUE) {
+        throw new IllegalArgumentException(
+            String.format(
+                Locale.ROOT,
+                "ERROR: given value: '%d' for -level option is out of bounds. Please use a value from '%d'->'%d'",
+                levelVal,
+                Level.MIN_VALUE,
+                Level.MAX_VALUE));
+      }
+    }
   }
 
   /**
@@ -4129,17 +4142,13 @@ public final class CheckIndex implements Closeable {
         }
         i++;
         int level = Integer.parseInt(args[i]);
-        if (level < Level.MIN_VALUE || level > Level.MAX_VALUE) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "ERROR: value for -level option is out of bounds. Please use a value "
-                      + "from '%d'->'%d'",
-                  Level.MIN_VALUE, Level.MAX_VALUE));
-        }
+        Level.checkIfLevelInBounds(level);
         opts.level = level;
       } else if ("-fast".equals(arg)) {
         // Deprecated. Remove in Lucene 11.
-        System.err.println("-fast is deprecated, verifying file checksums only is now the default");
+        System.err.println(
+            "-fast is deprecated, use '-level 1' for explicitly verifying file checksums only. This is also now the default "
+                + "behaviour!");
       } else if ("-slow".equals(arg)) {
         // Deprecated. Remove in Lucene 11.
         System.err.println("-slow is deprecated, use '-level 3' instead for slow checks");
