@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
-
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.IntroSorter;
@@ -104,10 +103,12 @@ public class DocSorterBenchmark {
           size)) {
         throw new RuntimeException("off wrong");
       }
-//      System.out.println("tmp slots usage for order " + order + " : ");
-//      System.out.println("tim sorter: " + docSorterBenchmark.timSorter.tmpDocs.length);
-//      System.out.println("lsb sorter: " + docSorterBenchmark.lsbRadixSorter.destDocs.length);
-//      System.out.println("off sorter: " + docSorterBenchmark.docOffsetSorter.tmpDocs.length);
+      //      System.out.println("tmp slots usage for order " + order + " : ");
+      //      System.out.println("tim sorter: " + docSorterBenchmark.timSorter.tmpDocs.length);
+      //      System.out.println("lsb sorter: " +
+      // docSorterBenchmark.lsbRadixSorter.destDocs.length);
+      //      System.out.println("off sorter: " +
+      // docSorterBenchmark.docOffsetSorter.tmpDocs.length);
     }
   }
 

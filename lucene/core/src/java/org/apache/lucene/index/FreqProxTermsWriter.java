@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -132,7 +131,7 @@ final class FreqProxTermsWriter extends TermsHash {
     }
 
     try (FieldsConsumer consumer =
-             state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state)) {
+        state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state)) {
       consumer.write(fields, norms);
     }
   }
@@ -615,9 +614,7 @@ final class FreqProxTermsWriter extends TermsHash {
       return startOffset;
     }
 
-    /**
-     * Returns the wrapped {@link PostingsEnum}.
-     */
+    /** Returns the wrapped {@link PostingsEnum}. */
     PostingsEnum getWrapped() {
       return in;
     }
