@@ -1195,17 +1195,18 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     void pop() {
-      this.num--;
+      assert num > 0;
+      num--;
     }
 
     void reset() {
-      this.num = 0;
+      num = 0;
     }
 
     void prepareRead() {
-      this.index = 0;
-      this.outputIndex = 0;
-      this.current = outputs[0];
+      index = 0;
+      outputIndex = 0;
+      current = outputs[0];
     }
 
     void setFloorData(ByteArrayDataInput floorData) {

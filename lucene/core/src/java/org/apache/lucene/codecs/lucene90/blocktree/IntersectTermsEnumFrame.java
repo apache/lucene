@@ -144,14 +144,16 @@ final class IntersectTermsEnumFrame {
 
   void load(SegmentTermsEnum.OutputAccumulator accumulator) throws IOException {
     accumulator.prepareRead();
-    final long code = ite.fr.readVLongOutput(accumulator);
+    long code = ite.fr.readVLongOutput(accumulator);
     accumulator.setFloorData(floorDataReader);
     load(code);
   }
 
-  void load(Long boxCode) throws IOException {
-    if (boxCode != null) {
-      if ((boxCode & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
+  void load(Long blockCode) throws IOException {
+    if (blockCode != null) {
+      // This block is the first one in a possible sequence of floor blocks corresponding to a
+      // single seek point from the FST terms index
+      if ((blockCode & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
         nextFloorLabel = floorDataReader.readByte() & 0xff;
