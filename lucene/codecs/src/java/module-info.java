@@ -39,5 +39,6 @@ module org.apache.lucene.codecs {
       org.apache.lucene.sandbox.codecs.lucene99.randomaccess
           .Lucene99RandomAccessDictionaryPostingsFormat;
   provides org.apache.lucene.codecs.Codec with
-      org.apache.lucene.codecs.simpletext.SimpleTextCodec;
+      org.apache.lucene.codecs.simpletext.SimpleTextCodec,
+      org.apache.lucene.sandbox.codecs.lucene99.randomaccess.Lucene99RandomAccessTermDictCodec;
 }
