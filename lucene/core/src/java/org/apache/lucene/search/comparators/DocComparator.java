@@ -22,6 +22,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 
 /** Comparator that sorts by asc _doc */
@@ -35,10 +36,10 @@ public class DocComparator extends FieldComparator<Integer> {
   private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
-  public DocComparator(int numHits, boolean reverse, boolean enableSkipping) {
+  public DocComparator(int numHits, boolean reverse, Pruning pruning) {
     this.docIDs = new int[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
-    this.enableSkipping = (reverse == false && enableSkipping);
+    this.enableSkipping = (reverse == false && pruning != Pruning.NONE);
   }
 
   @Override

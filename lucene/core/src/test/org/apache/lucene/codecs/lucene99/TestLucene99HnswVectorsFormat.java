@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.SameThreadExecutorService;
 
 public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
@@ -33,22 +34,25 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99HnswVectorsFormat(10, 20, null);
+            return new Lucene99HnswVectorsFormat(10, 20);
           }
         };
     String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=none)";
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat())";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 
   public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1, null));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20, null));
+        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 100, 100, null));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201, null));
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
   }
 }

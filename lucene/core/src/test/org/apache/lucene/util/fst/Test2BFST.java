@@ -56,10 +56,11 @@ public class Test2BFST extends LuceneTestCase {
     for (int iter = 0; iter < 1; iter++) {
       // Build FST w/ NoOutputs and stop when nodeCount > 2.2B
       {
-        System.out.println("\nTEST: 3B nodes; doPack=false output=NO_OUTPUTS");
+        System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
         Outputs<Object> outputs = NoOutputs.getSingleton();
         Object NO_OUTPUT = outputs.getNoOutput();
-        final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Object> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         int count = 0;
         Random r = new Random(seed);
@@ -140,7 +141,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in);
             in.close();
           } else {
             dir.deleteFile("fst");
@@ -153,7 +154,8 @@ public class Test2BFST extends LuceneTestCase {
       {
         System.out.println("\nTEST: 3 GB size; outputs=bytes");
         Outputs<BytesRef> outputs = ByteSequenceOutputs.getSingleton();
-        final FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<BytesRef> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         byte[] outputBytes = new byte[20];
         BytesRef output = new BytesRef(outputBytes);
@@ -226,7 +228,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in);
             in.close();
           } else {
             dir.deleteFile("fst");
@@ -239,7 +241,8 @@ public class Test2BFST extends LuceneTestCase {
       {
         System.out.println("\nTEST: 3 GB size; outputs=long");
         Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-        final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Long> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         long output = 1;
 
@@ -317,7 +320,7 @@ public class Test2BFST extends LuceneTestCase {
             fst.save(out, out);
             out.close();
             IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(in, in, outputs);
+            fst = new FST<>(FST.readMetadata(in, outputs), in);
             in.close();
           } else {
             dir.deleteFile("fst");
