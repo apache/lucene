@@ -61,7 +61,7 @@ public abstract class SortingStrategy {
   /**
    * An "offline" strategy that creates temporary files in the given directory and uses them for
    * sorting with {@link OfflineSorter}. It's slower than {@link #inMemory()}, but doesn't need to
-   * load the entire dictionary to the memory.
+   * load the entire dictionary into memory.
    */
   public static SortingStrategy offline(Directory tempDir, String tempFileNamePrefix) {
     return new SortingStrategy() {
