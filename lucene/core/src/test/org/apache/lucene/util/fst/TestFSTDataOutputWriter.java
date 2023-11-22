@@ -217,7 +217,7 @@ public class TestFSTDataOutputWriter extends LuceneTestCase {
           new InputStreamDataInput(
               new ByteArrayInputStream(
                   baos.toByteArray(), previousOffset, baos.size() - previousOffset));
-      return new FST<>(fst.getMetadata(), dataIn, outputs, new OnHeapFSTStore(5));
+      return new FST<>(fst.getMetadata(), dataIn, new OnHeapFSTStore(5));
     }
   }
 
