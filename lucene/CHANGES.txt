@@ -350,6 +350,9 @@ Build
 Other
 ---------------------
 
+* GITHUB#12817: Add demo for faceting with StringValueFacetCounts over KeywordField and SortedDocValuesField.
+  (Stefan Vodita)
+
 * GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
 * GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
