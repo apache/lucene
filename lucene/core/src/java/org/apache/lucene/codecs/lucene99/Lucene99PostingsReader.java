@@ -142,7 +142,12 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
   /** Read values that have been written using variable-length encoding instead of bit-packing. */
   static void readVIntBlock(
-      IndexInput docIn, long[] docBuffer, long[] freqBuffer, int num, boolean indexHasFreq, boolean decodeFreq)
+      IndexInput docIn,
+      long[] docBuffer,
+      long[] freqBuffer,
+      int num,
+      boolean indexHasFreq,
+      boolean decodeFreq)
       throws IOException {
     GroupVIntReader.readValues(docIn, docBuffer, num);
     if (indexHasFreq && decodeFreq) {
