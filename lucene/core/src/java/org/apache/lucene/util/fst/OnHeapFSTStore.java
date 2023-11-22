@@ -37,7 +37,7 @@ public final class OnHeapFSTStore implements FSTStore {
    * A {@link ReadWriteDataOutput}, used during reading when the FST is very large (more than 1 GB).
    * If the FST is less than 1 GB then bytesArray is set instead.
    */
-  private ReadWriteDataOutput byteBuffersReader;
+  private ReadWriteDataOutput dataOutput;
 
   /** Used at read time when the FST fits into a single byte[]. */
   private byte[] bytesArray;
@@ -56,8 +56,8 @@ public final class OnHeapFSTStore implements FSTStore {
   public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (numBytes > 1 << this.maxBlockBits) {
       // FST is big: we need multiple pages
-      byteBuffersReader = (ReadWriteDataOutput) getOnHeapReaderWriter(maxBlockBits);
-      byteBuffersReader.copyBytes(in, numBytes);
+      dataOutput = (ReadWriteDataOutput) getOnHeapReaderWriter(maxBlockBits);
+      dataOutput.copyBytes(in, numBytes);
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead
       bytesArray = new byte[(int) numBytes];
@@ -72,7 +72,7 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       size += bytesArray.length;
     } else {
-      size += byteBuffersReader.ramBytesUsed();
+      size += dataOutput.ramBytesUsed();
     }
     return size;
   }
@@ -82,14 +82,14 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return new ReverseBytesReader(bytesArray);
     } else {
-      return byteBuffersReader.getReverseBytesReader();
+      return dataOutput.getReverseBytesReader();
     }
   }
 
   @Override
   public void writeTo(DataOutput out) throws IOException {
-    if (byteBuffersReader != null) {
-      byteBuffersReader.writeTo(out);
+    if (dataOutput != null) {
+      dataOutput.writeTo(out);
     } else {
       assert bytesArray != null;
       out.writeBytes(bytesArray, 0, bytesArray.length);
