@@ -28,6 +28,7 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.misc.index.BPIndexReorderer.NotEnoughRAMException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.SetOnce;
 
 /**
  * A merge policy that reorders merged segments according to a {@link BPIndexReorderer}. When
@@ -120,7 +121,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
       newSpec.add(
           new OneMerge(oneMerge) {
 
-            private boolean reordered = false;
+            private final SetOnce<Boolean> reordered = new SetOnce<>();
 
             @Override
             public CodecReader wrapForMerge(CodecReader reader) throws IOException {
@@ -129,26 +130,29 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
 
             @Override
             public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
-              if (reader.numDocs() < minNumDocs) {
-                return null;
+              Sorter.DocMap docMap = null;
+              if (reader.numDocs() >= minNumDocs) {
+                try {
+                  docMap = reorderer.computeDocMap(reader, dir);
+                } catch (
+                    @SuppressWarnings("unused")
+                    NotEnoughRAMException e) {
+                  // skip reordering, we don't have enough RAM anyway
+                }
               }
-
-              try {
-                Sorter.DocMap docMap = reorderer.computeDocMap(reader, dir);
-                reordered = true;
-                return docMap;
-              } catch (
-                  @SuppressWarnings("unused")
-                  NotEnoughRAMException e) {
-                // skip reordering, we don't have enough RAM anyway
-                return null;
-              }
+              reordered.set(docMap != null);
+              return docMap;
             }
 
             @Override
             public void setMergeInfo(SegmentCommitInfo info) {
+              Boolean reordered = this.reordered.get();
+              if (reordered == null) {
+                // reordering was not called, likely because an index sort is configured
+                reordered = false;
+              }
               info.info.addDiagnostics(
-                  Collections.singletonMap("bp.reordered", Boolean.toString(reordered)));
+                  Collections.singletonMap(REORDERED, Boolean.toString(reordered)));
               super.setMergeInfo(info);
             }
           });

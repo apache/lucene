@@ -3422,7 +3422,7 @@ public class IndexWriter
       readers.add(reader);
     }
 
-    if (config.getIndexSort() == null) {
+    if (config.getIndexSort() == null && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
       DocMap docMap = merge.reorder(mergedReader, directory);
       if (docMap != null) {
@@ -5224,7 +5224,8 @@ public class IndexWriter
         // Since the reader was reordered, we passed a merged view to MergeState and from its
         // perspective there is a single input segment to the merge and the
         // SlowCompositeCodecReaderWrapper is effectively doing the merge.
-        assert mergeState.docMaps.length == 1;
+        assert mergeState.docMaps.length == 1
+            : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
         MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
         docMaps = new MergeState.DocMap[reorderDocMaps.length];
         for (int i = 0; i < docMaps.length; ++i) {
