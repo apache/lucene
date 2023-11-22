@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
@@ -137,7 +138,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private static final FlatVectorsFormat flatVectorsFormat = new Lucene99FlatVectorsFormat();
 
   private final int numMergeWorkers;
-  private final ExecutorService mergeExec;
+  private final TaskExecutor mergeExec;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswVectorsFormat() {
@@ -192,7 +193,11 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
           "No executor service is needed as we'll use single thread to merge");
     }
     this.numMergeWorkers = numMergeWorkers;
-    this.mergeExec = mergeExec;
+    if (mergeExec != null) {
+      this.mergeExec = new TaskExecutor(mergeExec);
+    } else {
+      this.mergeExec = null;
+    }
   }
 
   @Override
