@@ -247,16 +247,14 @@ public class FSTCompiler<T> {
     }
 
     /** Creates a new {@link FSTCompiler}. */
-    public FSTCompiler<T> build() {
-      FSTCompiler<T> fstCompiler =
-          new FSTCompiler<>(
-              inputType,
-              suffixRAMLimitMB,
-              outputs,
-              allowFixedLengthArcs,
-              bytesPageBits,
-              directAddressingMaxOversizingFactor);
-      return fstCompiler;
+    public FSTCompiler<T> build() throws IOException {
+      return new FSTCompiler<>(
+          inputType,
+          suffixRAMLimitMB,
+          outputs,
+          allowFixedLengthArcs,
+          bytesPageBits,
+          directAddressingMaxOversizingFactor);
     }
   }
 

@@ -172,7 +172,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 ((double) (fstCompiler.continuousNodeCount) / fixedLengthArcNodeCount * 100)));
   }
 
-  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor) {
+  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor)
+      throws IOException {
     return new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, NoOutputs.getSingleton())
         .directAddressingMaxOversizingFactor(directAddressingMaxOversizingFactor)
         .build();
