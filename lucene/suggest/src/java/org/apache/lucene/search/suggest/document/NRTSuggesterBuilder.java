@@ -53,7 +53,7 @@ final class NRTSuggesterBuilder {
   private int maxAnalyzedPathsPerOutput = 0;
 
   /** Create a builder for {@link NRTSuggester} */
-  public NRTSuggesterBuilder() {
+  public NRTSuggesterBuilder() throws IOException {
     this.payloadSep = PAYLOAD_SEP;
     this.endByte = END_BYTE;
     this.outputs =

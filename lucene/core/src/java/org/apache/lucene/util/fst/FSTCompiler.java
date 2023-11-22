@@ -134,8 +134,8 @@ public class FSTCompiler<T> {
    * @param blockBits how many bits wide to make each block of the DataOutput
    * @return the DataOutput
    */
-  public static DataOutput getOnHeapDataOutput(int blockBits) {
-    return new ByteBuffersDataOutputFSTReaderAdapter(
+  public static DataOutput getOnHeapReaderWriter(int blockBits) {
+    return new ReadWriteDataOutput(
         new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
   }
 
@@ -156,8 +156,7 @@ public class FSTCompiler<T> {
     this.dataOutput = dataOutput;
     fst =
         new FST<>(
-            new FST.FSTMetadata<>(inputType, null, -1, VERSION_CURRENT, 0),
-            outputs,
+            new FST.FSTMetadata<>(inputType, outputs, null, -1, VERSION_CURRENT, 0),
             toFSTReader(dataOutput));
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
@@ -197,7 +196,7 @@ public class FSTCompiler<T> {
     private final Outputs<T> outputs;
     private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
-    private DataOutput dataOutput = getOnHeapDataOutput(15);
+    private DataOutput dataOutput = getOnHeapReaderWriter(15);
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
 
     /**
@@ -252,14 +251,14 @@ public class FSTCompiler<T> {
     /**
      * Set the {@link DataOutput} which is used for low-level writing of FST. If you want the FST to
      * be immediately readable, you need to use a DataOutput that also implements {@link FSTReader},
-     * such as {@link FSTCompiler#getOnHeapDataOutput(int)}.
+     * such as {@link FSTCompiler#getOnHeapReaderWriter(int)}.
      *
      * <p>Otherwise you need to construct the corresponding {@link
      * org.apache.lucene.store.DataInput} and use the FST constructor to read it.
      *
      * @param dataOutput the DataOutput
      * @return this builder
-     * @see FSTCompiler#getOnHeapDataOutput(int)
+     * @see FSTCompiler#getOnHeapReaderWriter(int)
      */
     public Builder<T> dataOutput(DataOutput dataOutput) {
       this.dataOutput = dataOutput;
@@ -285,19 +284,14 @@ public class FSTCompiler<T> {
     }
 
     /** Creates a new {@link FSTCompiler}. */
-    public FSTCompiler<T> build() {
-      // TODO: throw the IOException instead of catching it
-      try {
-        return new FSTCompiler<>(
-            inputType,
-            suffixRAMLimitMB,
-            outputs,
-            allowFixedLengthArcs,
-            dataOutput,
-            directAddressingMaxOversizingFactor);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+    public FSTCompiler<T> build() throws IOException {
+      return new FSTCompiler<>(
+          inputType,
+          suffixRAMLimitMB,
+          outputs,
+          allowFixedLengthArcs,
+          dataOutput,
+          directAddressingMaxOversizingFactor);
     }
   }
 
@@ -774,21 +768,6 @@ public class FSTCompiler<T> {
    * IntSequenceOutputs}) then you cannot reuse across calls.
    */
   public void add(IntsRef input, T output) throws IOException {
-    /*
-    if (DEBUG) {
-      BytesRef b = new BytesRef(input.length);
-      for(int x=0;x<input.length;x++) {
-        b.bytes[x] = (byte) input.ints[x];
-      }
-      b.length = input.length;
-      if (output == NO_OUTPUT) {
-        System.out.println("\nFST ADD: input=" + toString(b) + " " + b);
-      } else {
-        System.out.println("\nFST ADD: input=" + toString(b) + " " + b + " output=" + fst.outputs.outputToString(output));
-      }
-    }
-    */
-
     // De-dup NO_OUTPUT since it must be a singleton:
     if (output.equals(NO_OUTPUT)) {
       output = NO_OUTPUT;

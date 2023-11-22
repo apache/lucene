@@ -251,7 +251,7 @@ public class FSTTermsWriter extends FieldsConsumer {
     private final IntsRefBuilder scratchTerm = new IntsRefBuilder();
     private final ByteBuffersDataOutput metaWriter = ByteBuffersDataOutput.newResettableInstance();
 
-    TermsWriter(FieldInfo fieldInfo) {
+    TermsWriter(FieldInfo fieldInfo) throws IOException {
       this.numTerms = 0;
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);

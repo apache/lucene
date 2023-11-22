@@ -20,12 +20,15 @@ import java.io.IOException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
-/** An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader} */
-final class ByteBuffersDataOutputFSTReaderAdapter extends DataOutput implements FSTReader {
+/**
+ * An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader}. It allows the FST
+ * to be readable immediately after writing
+ */
+final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   private final ByteBuffersDataOutput dataOutput;
 
-  public ByteBuffersDataOutputFSTReaderAdapter(ByteBuffersDataOutput dataOutput) {
+  public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
   }
 
