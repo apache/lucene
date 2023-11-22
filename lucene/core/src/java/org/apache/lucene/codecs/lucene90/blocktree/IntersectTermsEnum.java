@@ -65,7 +65,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private BytesRef savedStartTerm;
 
-  private final SegmentTermsEnum.OutputAccumulator accumulator =
+  private final SegmentTermsEnum.OutputAccumulator outputAccumulator =
       new SegmentTermsEnum.OutputAccumulator();
 
   // TODO: in some cases we can filter by length?  eg
@@ -184,8 +184,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
 
-    accumulator.reset();
-    accumulator.push(arc.output());
+    outputAccumulator.reset();
+    outputAccumulator.push(arc.output());
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -193,14 +193,14 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      accumulator.push(arc.output());
+      outputAccumulator.push(arc.output());
       idx++;
     }
 
     f.arc = arc;
     assert arc.isFinal();
-    accumulator.push(arc.nextFinalOutput());
-    f.load(accumulator);
+    outputAccumulator.push(arc.nextFinalOutput());
+    f.load(outputAccumulator);
     return f;
   }
 
