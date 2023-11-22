@@ -22,6 +22,10 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
+/**
+ * A Codec that uses {@link Lucene99RandomAccessDictionaryPostingsFormat} on top of {@link
+ * Lucene99Codec}
+ */
 public class Lucene99RandomAccessTermDictCodec extends FilterCodec {
   private final Lucene99RandomAccessDictionaryPostingsFormat lucene99RandomAccessPostingsFormat =
       new Lucene99RandomAccessDictionaryPostingsFormat();
