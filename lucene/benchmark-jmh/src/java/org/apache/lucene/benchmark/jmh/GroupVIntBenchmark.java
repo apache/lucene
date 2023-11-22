@@ -132,9 +132,9 @@ public class GroupVIntBenchmark {
       float randomFloat = r.nextFloat();
       // Reproduce the distribution of the number of bits per values that we're observing for tail
       // postings on wikibigall.
-      int numBits = Arrays.binarySearch(CUMULATIVE_FREQUENCY_BY_BITS_REQUIRED, randomFloat);
+      int numBits = 1 + Arrays.binarySearch(CUMULATIVE_FREQUENCY_BY_BITS_REQUIRED, randomFloat);
       if (numBits < 0) {
-        numBits = -1 - numBits;
+        numBits = -numBits;
       }
       docs[i] = r.nextInt(1 << (numBits - 1), 1 << numBits);
     }
