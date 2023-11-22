@@ -3808,7 +3808,7 @@ public class IndexWriter
             new OneMergeWrappingMergePolicy(
                 config.getMergePolicy(),
                 toWrap ->
-                    new MergePolicy.OneMerge(toWrap.segments) {
+                    new MergePolicy.OneMerge(toWrap) {
                       SegmentCommitInfo origInfo;
                       final AtomicBoolean onlyOnce = new AtomicBoolean(false);
 
@@ -3912,6 +3912,12 @@ public class IndexWriter
                       public Sorter.DocMap reorder(CodecReader reader, Directory dir)
                           throws IOException {
                         return toWrap.reorder(reader, dir); // must delegate
+                      }
+
+                      @Override
+                      public void setMergeInfo(SegmentCommitInfo info) {
+                        super.setMergeInfo(info);
+                        toWrap.setMergeInfo(info);
                       }
                     }),
             trigger,

@@ -899,7 +899,18 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
           public MergeSpecification findMerges(
               MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
               throws IOException {
-            MergeSpecification spec = super.findMerges(mergeTrigger, segmentInfos, mergeContext);
+            return wrapSpecification(super.findMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          @Override
+          public MergeSpecification findFullFlushMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(
+                super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          private MergeSpecification wrapSpecification(MergeSpecification spec) {
             if (spec == null) {
               return null;
             }
