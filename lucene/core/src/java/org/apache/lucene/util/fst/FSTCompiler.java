@@ -135,7 +135,7 @@ public class FSTCompiler<T> {
     // pad: ensure no node gets address 0 which is reserved to mean
     // the stop state w/ no arcs
     bytes.writeByte((byte) 0);
-    fst = new FST<>(new FST.FSTMetadata<>(inputType, null, -1, VERSION_CURRENT, 0), outputs, bytes);
+    fst = new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, VERSION_CURRENT, 0), bytes);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
@@ -702,21 +702,6 @@ public class FSTCompiler<T> {
    * IntSequenceOutputs}) then you cannot reuse across calls.
    */
   public void add(IntsRef input, T output) throws IOException {
-    /*
-    if (DEBUG) {
-      BytesRef b = new BytesRef(input.length);
-      for(int x=0;x<input.length;x++) {
-        b.bytes[x] = (byte) input.ints[x];
-      }
-      b.length = input.length;
-      if (output == NO_OUTPUT) {
-        System.out.println("\nFST ADD: input=" + toString(b) + " " + b);
-      } else {
-        System.out.println("\nFST ADD: input=" + toString(b) + " " + b + " output=" + fst.outputs.outputToString(output));
-      }
-    }
-    */
-
     // De-dup NO_OUTPUT since it must be a singleton:
     if (output.equals(NO_OUTPUT)) {
       output = NO_OUTPUT;
