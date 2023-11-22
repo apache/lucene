@@ -40,7 +40,7 @@ final class RandomAccessTermsDictWriter {
   private final TermDataOutput[] termDataOutputPerType =
       new TermDataOutput[TermType.NUM_TOTAL_TYPES];
 
-  private final TermsIndexBuilder termsIndexBuilder = new TermsIndexBuilder();
+  private final TermsIndexBuilder termsIndexBuilder;
 
   private final TermDataWriter[] termDataWriterPerType =
       new TermDataWriter[TermType.NUM_TOTAL_TYPES];
@@ -55,13 +55,15 @@ final class RandomAccessTermsDictWriter {
       boolean hasPayloads,
       DataOutput metaOutput,
       DataOutput indexOutput,
-      TermDataOutputProvider termDataOutputProvider) {
+      TermDataOutputProvider termDataOutputProvider)
+      throws IOException {
     this.indexOptions = indexOptions;
     this.hasPayloads = hasPayloads;
     this.metaOutput = metaOutput;
     this.indexOutput = indexOutput;
     this.termDataOutputProvider = termDataOutputProvider;
     this.termStatsTracker = new TermStatsTracker(filedNumber);
+    this.termsIndexBuilder = new TermsIndexBuilder();
   }
 
   void add(BytesRef term, IntBlockTermState termState) throws IOException {

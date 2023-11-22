@@ -34,10 +34,11 @@ final class TermsIndexBuilder {
   private static final long MAX_ORD = (1L << 60) - 1;
 
   private final long[] countPerType = new long[TermType.NUM_TOTAL_TYPES];
-  private final FSTCompiler<Long> fstCompiler =
-      new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton()).build();
+  private final FSTCompiler<Long> fstCompiler;
 
-  TermsIndexBuilder() {
+  TermsIndexBuilder() throws IOException {
+    fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton()).build();
     Arrays.fill(countPerType, -1);
   }
 

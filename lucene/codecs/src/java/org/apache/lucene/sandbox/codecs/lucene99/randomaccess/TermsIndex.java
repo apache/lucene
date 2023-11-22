@@ -52,10 +52,14 @@ record TermsIndex(FST<Long> fst) {
     FST<Long> fst;
     if (loadOffHeap) {
       var fstStore = new OffHeapFSTStore();
-      fst = new FST<>(metaIn, dataIn.clone(), PositiveIntOutputs.getSingleton(), fstStore);
+      fst =
+          new FST<>(
+              FST.readMetadata(metaIn, PositiveIntOutputs.getSingleton()),
+              dataIn.clone(),
+              fstStore);
       dataIn.skipBytes(fstStore.size());
     } else {
-      fst = new FST<>(metaIn, dataIn, PositiveIntOutputs.getSingleton());
+      fst = new FST<>(FST.readMetadata(metaIn, PositiveIntOutputs.getSingleton()), dataIn);
     }
     return new TermsIndex(fst);
   }
