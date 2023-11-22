@@ -133,12 +133,17 @@ public class KnnVectorDict implements Closeable {
     private static final Pattern SPACE_RE = Pattern.compile(" ");
 
     private final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
-    private final FSTCompiler<Long> fstCompiler =
-        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton()).build();
+    private final FSTCompiler<Long> fstCompiler;
     private float[] scratch;
     private ByteBuffer byteBuffer;
     private long ordinal = 1;
     private int numFields;
+
+    Builder() throws IOException {
+      fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton())
+              .build();
+    }
 
     void build(Path gloveInput, Directory directory, String dictName) throws IOException {
       try (BufferedReader in = Files.newBufferedReader(gloveInput);
