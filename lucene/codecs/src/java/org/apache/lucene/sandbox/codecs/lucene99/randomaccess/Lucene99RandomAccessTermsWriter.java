@@ -20,6 +20,7 @@ import static org.apache.lucene.sandbox.codecs.lucene99.randomaccess.Lucene99Ran
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -53,7 +54,17 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
       throws IOException {
     this.segmentWriteState = segmentWriteState;
     this.postingsWriter = postingsWriter;
-    this.indexFilesManager = new IndexFilesManager();
+    IndexFilesManager tmpIndexFilesManager = null;
+    boolean indexManagerInitSuccess = false;
+    try {
+      tmpIndexFilesManager = new IndexFilesManager();
+      this.indexFilesManager = tmpIndexFilesManager;
+      indexManagerInitSuccess = true;
+    } finally {
+      if (!indexManagerInitSuccess) {
+        IOUtils.closeWhileHandlingException(tmpIndexFilesManager, this);
+      }
+    }
   }
 
   @Override
@@ -65,37 +76,48 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
         nonEmptyFields.put(field, terms);
       }
     }
-    indexFilesManager.metaInfoOut.writeVInt(nonEmptyFields.size());
+    boolean success = false;
+    try {
+      indexFilesManager.writeAllHeaders();
+      postingsWriter.init(indexFilesManager.metaInfoOut, segmentWriteState);
+      indexFilesManager.metaInfoOut.writeVInt(nonEmptyFields.size());
 
-    FixedBitSet docSeen = new FixedBitSet(segmentWriteState.segmentInfo.maxDoc());
-    for (var entry : nonEmptyFields.entrySet()) {
-      TermsEnum termsEnum = entry.getValue().iterator();
-      FieldInfo fieldInfo = segmentWriteState.fieldInfos.fieldInfo(entry.getKey());
-      RandomAccessTermsDictWriter termsDictWriter =
-          new RandomAccessTermsDictWriter(
-              fieldInfo.number,
-              fieldInfo.getIndexOptions(),
-              fieldInfo.hasPayloads(),
-              indexFilesManager.metaInfoOut,
-              indexFilesManager.termIndexOut,
-              indexFilesManager);
-      postingsWriter.setField(fieldInfo);
+      FixedBitSet docSeen = new FixedBitSet(segmentWriteState.segmentInfo.maxDoc());
+      for (var entry : nonEmptyFields.entrySet()) {
+        TermsEnum termsEnum = entry.getValue().iterator();
+        FieldInfo fieldInfo = segmentWriteState.fieldInfos.fieldInfo(entry.getKey());
+        RandomAccessTermsDictWriter termsDictWriter =
+            new RandomAccessTermsDictWriter(
+                fieldInfo.number,
+                fieldInfo.getIndexOptions(),
+                fieldInfo.hasPayloads(),
+                indexFilesManager.metaInfoOut,
+                indexFilesManager.termIndexOut,
+                indexFilesManager);
+        postingsWriter.setField(fieldInfo);
 
-      docSeen.clear();
-      while (true) {
-        BytesRef term = termsEnum.next();
-        if (term == null) {
-          break;
+        docSeen.clear();
+        while (true) {
+          BytesRef term = termsEnum.next();
+          if (term == null) {
+            break;
+          }
+
+          IntBlockTermState termState =
+              (IntBlockTermState) postingsWriter.writeTerm(term, termsEnum, docSeen, norms);
+          // TermState can be null
+          if (termState != null) {
+            termsDictWriter.add(term, termState);
+          }
         }
-
-        IntBlockTermState termState =
-            (IntBlockTermState) postingsWriter.writeTerm(term, termsEnum, docSeen, norms);
-        // TermState can be null
-        if (termState != null) {
-          termsDictWriter.add(term, termState);
-        }
+        termsDictWriter.finish(docSeen.cardinality());
       }
-      termsDictWriter.finish(docSeen.cardinality());
+      indexFilesManager.writeAllFooters();
+      success = true;
+    } finally {
+      if (!success) {
+        IOUtils.closeWhileHandlingException(this);
+      }
     }
   }
 
@@ -121,25 +143,24 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
 
     private final HashMap<TermType, TermDataOutput> termDataOutputPerType;
 
+    private boolean closed;
+
+    private final ArrayList<IndexOutput> openedOutputs;
+
     public IndexFilesManager() throws IOException {
-      metaInfoOut = initMetaInfoOutput();
-      termIndexOut = initTermIndexOutput();
       // populate the per-TermType term data outputs on-demand.
       termDataOutputPerType = new HashMap<>();
+      openedOutputs = new ArrayList<>();
+      metaInfoOut = initMetaInfoOutput();
+      termIndexOut = initTermIndexOutput();
     }
 
     private IndexOutput initMetaInfoOutput() throws IOException {
-      final IndexOutput tmp;
-      tmp = getIndexOutputSafe(TERM_DICT_META_INFO_EXTENSION);
-      writeHeader(tmp, TERM_DICT_META_HEADER_CODEC_NAME);
-      postingsWriter.init(tmp, segmentWriteState);
-      return tmp;
+      return getIndexOutputSafe(TERM_DICT_META_INFO_EXTENSION);
     }
 
     private IndexOutput initTermIndexOutput() throws IOException {
-      final IndexOutput tmp = getIndexOutputSafe(TERM_INDEX_EXTENSION);
-      writeHeader(tmp, TERM_INDEX_HEADER_CODEC_NAME);
-      return tmp;
+      return getIndexOutputSafe(TERM_INDEX_EXTENSION);
     }
 
     private TermDataOutput initTermDataOutput(TermType termType) throws IOException {
@@ -169,6 +190,7 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
       IndexOutput output = null;
       try {
         output = segmentWriteState.directory.createOutput(name, segmentWriteState.context);
+        openedOutputs.add(output);
         success = true;
       } finally {
         if (!success) {
@@ -187,6 +209,17 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
           segmentWriteState.segmentSuffix);
     }
 
+    private void writeAllHeaders() throws IOException {
+      writeHeader(metaInfoOut, TERM_DICT_META_HEADER_CODEC_NAME);
+      writeHeader(termIndexOut, TERM_INDEX_HEADER_CODEC_NAME);
+    }
+
+    private void writeAllFooters() throws IOException {
+      for (var x : openedOutputs) {
+        CodecUtil.writeFooter(x);
+      }
+    }
+
     @Override
     public TermDataOutput getTermDataOutputForType(TermType termType) throws IOException {
       TermDataOutput current = termDataOutputPerType.get(termType);
@@ -197,36 +230,13 @@ final class Lucene99RandomAccessTermsWriter extends FieldsConsumer {
       return current;
     }
 
-    /**
-     * Write footers for all created index files and close them.
-     *
-     * <p>Assume all index files are valid upto time of calling.
-     */
+    @Override
     public void close() throws IOException {
-      boolean success = false;
-      try {
-        CodecUtil.writeFooter(metaInfoOut);
-        CodecUtil.writeFooter(termIndexOut);
-        for (var termDataOutput : termDataOutputPerType.values()) {
-          CodecUtil.writeFooter(termDataOutput.metadataOutput());
-          CodecUtil.writeFooter(termDataOutput.dataOutput());
-        }
-        success = true;
-      } finally {
-        if (success) {
-          IOUtils.close(metaInfoOut, termIndexOut);
-          for (var termDataOutput : termDataOutputPerType.values()) {
-            IOUtils.close(termDataOutput.metadataOutput());
-            IOUtils.close(termDataOutput.dataOutput());
-          }
-        } else {
-          IOUtils.closeWhileHandlingException(metaInfoOut, termIndexOut);
-          for (var termDataOutput : termDataOutputPerType.values()) {
-            IOUtils.closeWhileHandlingException(
-                termDataOutput.metadataOutput(), termDataOutput.dataOutput());
-          }
-        }
+      if (this.closed) {
+        return;
       }
+      this.closed = true;
+      IOUtils.close(openedOutputs);
     }
   }
 }

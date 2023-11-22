@@ -22,6 +22,7 @@ import static org.apache.lucene.sandbox.codecs.lucene99.randomaccess.Lucene99Ran
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import org.apache.lucene.codecs.CodecUtil;
@@ -44,14 +45,26 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
 
   private final HashMap<String, TermsImpl> perFieldTermDict;
 
+  private boolean closed;
+
   Lucene99RandomAccessTermsReader(
       Lucene99PostingsReader postingsReader, SegmentReadState segmentReadState) throws IOException {
     this.postingsReader = postingsReader;
     this.segmentReadState = segmentReadState;
-    this.indexFilesManager = new IndexFilesManager();
     this.perFieldTermDict = new HashMap<>();
     boolean success = false;
+    IndexFilesManager tmpIndexFilesManager = null;
     try {
+      boolean indexManagerInitSuccess = false;
+      try {
+        tmpIndexFilesManager = new IndexFilesManager();
+        this.indexFilesManager = tmpIndexFilesManager;
+        indexManagerInitSuccess = true;
+      } finally {
+        if (!indexManagerInitSuccess) {
+          IOUtils.closeWhileHandlingException(tmpIndexFilesManager);
+        }
+      }
       int numFields = indexFilesManager.metaInfoIn.readVInt();
       assert numFields > 0;
       for (int i = 0; i < numFields; i++) {
@@ -71,12 +84,15 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
                 indexFilesManager.metaInfoIn,
                 indexFilesManager.termIndexIn,
                 indexFilesManager);
-        FieldInfo fieldInfo =
-            segmentReadState.fieldInfos.fieldInfo(termsDict.termsStats().fieldNumber());
-        String fieldName = fieldInfo.name;
-        perFieldTermDict.put(fieldName, new TermsImpl(fieldInfo, termsDict, postingsReader));
-        success = true;
+
+        if (termsDict.termsStats().size() > 0) {
+          FieldInfo fieldInfo =
+              segmentReadState.fieldInfos.fieldInfo(termsDict.termsStats().fieldNumber());
+          String fieldName = fieldInfo.name;
+          perFieldTermDict.put(fieldName, new TermsImpl(fieldInfo, termsDict, postingsReader));
+        }
       }
+      success = true;
     } finally {
       if (!success) {
         IOUtils.closeWhileHandlingException(this);
@@ -86,11 +102,15 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
     try {
       IOUtils.close(indexFilesManager, postingsReader);
     } finally {
       // The per-field term dictionary would be invalid once the underlying index files have been
       // closed.
+      closed = true;
       perFieldTermDict.clear();
     }
   }
@@ -116,22 +136,25 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
   }
 
   class IndexFilesManager implements RandomAccessTermsDict.TermDataInputProvider, Closeable {
-    private final IndexInput metaInfoIn;
+    private IndexInput metaInfoIn;
 
-    private final IndexInput termIndexIn;
+    private IndexInput termIndexIn;
 
     private final HashMap<TermType, RandomAccessTermsDict.TermDataInput> termDataInputPerType;
 
+    private boolean closed;
+
+    private final ArrayList<IndexInput> openedInputs;
+
     public IndexFilesManager() throws IOException {
+      termDataInputPerType = new HashMap<>();
+      openedInputs = new ArrayList<>();
       metaInfoIn = initMetaInfoInput();
       termIndexIn = initTermIndexInput();
-      termDataInputPerType = new HashMap<>();
     }
 
     private IndexInput initMetaInfoInput() throws IOException {
-      final IndexInput tmp;
-      tmp = openAndChecksumIndexInputSafe(TERM_DICT_META_INFO_EXTENSION, false);
-
+      final IndexInput tmp = openAndChecksumIndexInputSafe(TERM_DICT_META_INFO_EXTENSION, false);
       checkHeader(tmp, TERM_DICT_META_HEADER_CODEC_NAME);
       postingsReader.init(tmp, segmentReadState);
       postingsReader.checkIntegrity();
@@ -174,10 +197,11 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
         input =
             segmentReadState.directory.openInput(
                 name, needRandomAccess ? IOContext.LOAD : IOContext.READ);
+        openedInputs.add(input);
         success = true;
       } finally {
         if (!success) {
-          IOUtils.closeWhileHandlingException(input);
+          IOUtils.closeWhileHandlingException(input, this);
         }
       }
       CodecUtil.checksumEntireFile(input);
@@ -207,10 +231,11 @@ final class Lucene99RandomAccessTermsReader extends FieldsProducer {
 
     @Override
     public void close() throws IOException {
-      IOUtils.close(metaInfoIn, termIndexIn);
-      for (var x : termDataInputPerType.values()) {
-        IOUtils.close(x.metadataInput(), x.dataInput());
+      if (this.closed) {
+        return;
       }
+      this.closed = true;
+      IOUtils.close(openedInputs);
     }
   }
 }

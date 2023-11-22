@@ -101,9 +101,6 @@ final class TermsImpl extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    if (size() == 0) {
-      return TermsEnum.EMPTY;
-    }
     return new RandomAccessTermsEnum();
   }
 
