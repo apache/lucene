@@ -31,7 +31,7 @@ import org.apache.lucene.util.MathUtil;
  * Legacy variant of {@link MultiLevelSkipListReader} for Lucene postings formats up to {@link
  * Lucene90PostingsFormat} included. It starts postings at 0 rather than -1.
  */
-public abstract class LegacyMultiLevelSkipListReader implements Closeable {
+public abstract class Lucene50MultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */
   protected int maxNumberOfSkipLevels;
 
@@ -70,7 +70,7 @@ public abstract class LegacyMultiLevelSkipListReader implements Closeable {
   private final int skipMultiplier;
 
   /** Creates a {@code MultiLevelSkipListReader}. */
-  protected LegacyMultiLevelSkipListReader(
+  protected Lucene50MultiLevelSkipListReader(
       IndexInput skipStream, int maxSkipLevels, int skipInterval, int skipMultiplier) {
     this.skipStream = new IndexInput[maxSkipLevels];
     this.skipPointer = new long[maxSkipLevels];
@@ -92,7 +92,7 @@ public abstract class LegacyMultiLevelSkipListReader implements Closeable {
    * Creates a {@code MultiLevelSkipListReader}, where {@code skipInterval} and {@code
    * skipMultiplier} are the same.
    */
-  protected LegacyMultiLevelSkipListReader(
+  protected Lucene50MultiLevelSkipListReader(
       IndexInput skipStream, int maxSkipLevels, int skipInterval) {
     this(skipStream, maxSkipLevels, skipInterval, skipInterval);
   }
