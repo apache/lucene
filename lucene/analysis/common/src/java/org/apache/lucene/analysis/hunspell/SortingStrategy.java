@@ -55,6 +55,7 @@ public abstract class SortingStrategy {
   interface EntrySupplier extends Closeable {
     int wordCount();
 
+    /** The next line or {@code null} if the end is reached */
     String next() throws IOException;
   }
 
