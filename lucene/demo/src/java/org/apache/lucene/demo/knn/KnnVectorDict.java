@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.demo.knn;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
@@ -58,7 +60,7 @@ public class KnnVectorDict implements Closeable {
    */
   public KnnVectorDict(Directory directory, String dictName) throws IOException {
     try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.READ)) {
-      fst = new FST<>(fstIn, fstIn, PositiveIntOutputs.getSingleton());
+      fst = new FST<>(readMetadata(fstIn, PositiveIntOutputs.getSingleton()), fstIn);
     }
 
     vectors = directory.openInput(dictName + ".bin", IOContext.READ);
