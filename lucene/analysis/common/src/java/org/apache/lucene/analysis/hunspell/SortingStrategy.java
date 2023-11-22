@@ -138,7 +138,7 @@ public abstract class SortingStrategy {
   }
 
   /**
-   * The strategy that loads all entries as {@link String} objects and sorts them in the memory. The
+   * The strategy that loads all entries as {@link String} objects and sorts them in memory. The
    * entries are then stored in a more compressed way, and the strings are gc-ed, but the loading
    * itself needs {@code O(dictionary_size)} memory.
    */
