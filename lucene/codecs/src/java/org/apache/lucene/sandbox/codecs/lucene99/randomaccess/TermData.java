@@ -20,20 +20,14 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpackerImpl;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * Holds the bit-packed {@link IntBlockTermState} for a given {@link
  * org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermType}
  */
-record TermData(ByteSliceProvider metadataProvider, ByteSliceProvider dataProvider) {
-
+record TermData(ByteSlice metadata, ByteSlice data) {
   IntBlockTermState getTermState(TermStateCodec codec, long ord) throws IOException {
-    var metadata = metadataProvider.newByteSlice();
-    var data = dataProvider.newByteSlice();
-
     long blockId = ord / TermDataWriter.NUM_TERMS_PER_BLOCK;
     long metadataStartPos = blockId * (codec.getMetadataBytesLength() + 8);
     long dataStartPos = metadata.getLong(metadataStartPos);
@@ -51,52 +45,5 @@ record TermData(ByteSliceProvider metadataProvider, ByteSliceProvider dataProvid
         new BytesRef(data.getBytes(dataStartPos + dataBitIndex / 8, numBytesToRead));
 
     return codec.decodeAt(metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex);
-  }
-
-  static TermData deserializeOnHeap(
-      DataInput metaInput, DataInput metadataInput, DataInput dataInput) throws IOException {
-    long metadataSize = metaInput.readVLong();
-    long dataSize = metaInput.readVLong();
-
-    if (metadataSize > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException(
-          "Metadata size it too large to store on heap. Must be less than " + Integer.MAX_VALUE);
-    }
-    if (dataSize > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException(
-          "Data size it too large to store on heap.Must be less than " + Integer.MAX_VALUE);
-    }
-
-    byte[] metadataBytes = new byte[(int) metadataSize];
-    byte[] dataBytes = new byte[(int) dataSize];
-
-    metadataInput.readBytes(metadataBytes, 0, metadataBytes.length);
-    dataInput.readBytes(dataBytes, 0, dataBytes.length);
-
-    return new TermData(
-        () -> new ByteArrayByteSlice(metadataBytes), () -> new ByteArrayByteSlice(dataBytes));
-  }
-
-  static TermData deserializeOffHeap(
-      DataInput metaInput, IndexInput metadataInput, IndexInput dataInput) throws IOException {
-    final long metadataSize = metaInput.readVLong();
-    final long dataSize = metaInput.readVLong();
-
-    final long metadataStart = metadataInput.getFilePointer();
-    final long dataStart = dataInput.getFilePointer();
-
-    metadataInput.skipBytes(metadataSize);
-    dataInput.skipBytes(dataSize);
-
-    return new TermData(
-        () ->
-            new RandomAccessInputByteSlice(
-                metadataInput.randomAccessSlice(metadataStart, metadataSize)),
-        () -> new RandomAccessInputByteSlice(dataInput.randomAccessSlice(dataStart, dataSize)));
-  }
-
-  @FunctionalInterface
-  interface ByteSliceProvider {
-    ByteSlice newByteSlice() throws IOException;
   }
 }

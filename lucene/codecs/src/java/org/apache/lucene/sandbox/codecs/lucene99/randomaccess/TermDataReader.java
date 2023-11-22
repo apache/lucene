@@ -27,13 +27,17 @@ import org.apache.lucene.store.IndexInput;
  * Holds all {@link TermData} per {@link TermType} for a field. Also manages the proper codec needed
  * per TermType.
  */
-record TermDataReader(TermDataAndCodec[] termDataAndCodecs) {
+record TermDataReader(TermDataProviderAndCodec[] termDataProviderAndCodecs) {
 
-  IntBlockTermState getTermState(TermType termType, long ord, IndexOptions indexOptions)
+  IntBlockTermState getTermState(
+      TermType termType, long ord, IndexOptions indexOptions, TermData[] termDataPerType)
       throws IOException {
-    assert termDataAndCodecs[termType.getId()] != null;
-    var dataAndCodec = termDataAndCodecs[termType.getId()];
-    IntBlockTermState termState = dataAndCodec.termData.getTermState(dataAndCodec.codec, ord);
+    assert termDataProviderAndCodecs[termType.getId()] != null;
+    assert termDataPerType.length == termDataProviderAndCodecs.length;
+    assert termDataPerType[termType.getId()] != null;
+
+    var codec = termDataProviderAndCodecs[termType.getId()].codec;
+    IntBlockTermState termState = termDataPerType[termType.getId()].getTermState(codec, ord);
 
     // need to filling some default values for the term state
     // in order to meet the expectations of the postings reader
@@ -61,10 +65,26 @@ record TermDataReader(TermDataAndCodec[] termDataAndCodecs) {
     return termState;
   }
 
+  TermData[] newPerTypeTermDataReference() throws IOException {
+    TermData[] result = new TermData[termDataProviderAndCodecs.length];
+    for (int i = 0; i < result.length; i++) {
+      if (termDataProviderAndCodecs[i] == null) {
+        continue;
+      }
+      TermDataProvider termDataProvider = termDataProviderAndCodecs[i].termDataProvider;
+      result[i] =
+          new TermData(
+              termDataProvider.metadataProvider().newByteSlice(),
+              termDataProvider.dataProvider().newByteSlice());
+    }
+    return result;
+  }
+
   static class Builder {
     final IndexOptions indexOptions;
     final boolean hasPayloads;
-    final TermDataAndCodec[] termDataAndCodecs = new TermDataAndCodec[TermType.NUM_TOTAL_TYPES];
+    final TermDataProviderAndCodec[] termDataProviderAndCodecs =
+        new TermDataProviderAndCodec[TermType.NUM_TOTAL_TYPES];
 
     Builder(IndexOptions indexOptions, boolean hasPayloads) {
       this.indexOptions = indexOptions;
@@ -74,15 +94,17 @@ record TermDataReader(TermDataAndCodec[] termDataAndCodecs) {
     void readOne(
         TermType termType, DataInput metaIn, IndexInput termMetadataIn, IndexInput termDataIn)
         throws IOException {
-      TermData termData = TermData.deserializeOffHeap(metaIn, termMetadataIn, termDataIn);
+      TermDataProvider termDataProvider =
+          TermDataProvider.deserializeOffHeap(metaIn, termMetadataIn, termDataIn);
       TermStateCodec codec = TermStateCodecImpl.getCodec(termType, indexOptions, hasPayloads);
-      termDataAndCodecs[termType.getId()] = new TermDataAndCodec(termData, codec);
+      termDataProviderAndCodecs[termType.getId()] =
+          new TermDataProviderAndCodec(termDataProvider, codec);
     }
 
     TermDataReader build() {
-      return new TermDataReader(termDataAndCodecs);
+      return new TermDataReader(termDataProviderAndCodecs);
     }
   }
 
-  record TermDataAndCodec(TermData termData, TermStateCodec codec) {}
+  record TermDataProviderAndCodec(TermDataProvider termDataProvider, TermStateCodec codec) {}
 }

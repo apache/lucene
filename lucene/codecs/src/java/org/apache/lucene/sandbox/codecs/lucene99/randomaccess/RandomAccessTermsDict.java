@@ -31,9 +31,10 @@ record RandomAccessTermsDict(
     TermDataReader termDataReader,
     IndexOptions indexOptions) {
 
-  IntBlockTermState getTermState(BytesRef term) throws IOException {
+  IntBlockTermState getTermState(BytesRef term, TermData[] termDataPerType) throws IOException {
     TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(term);
-    return termDataReader.getTermState(typeAndOrd.termType(), typeAndOrd.ord(), indexOptions);
+    return termDataReader.getTermState(
+        typeAndOrd.termType(), typeAndOrd.ord(), indexOptions, termDataPerType);
   }
 
   static RandomAccessTermsDict deserialize(

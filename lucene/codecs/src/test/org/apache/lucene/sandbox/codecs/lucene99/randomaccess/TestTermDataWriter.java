@@ -73,24 +73,23 @@ public class TestTermDataWriter extends LuceneTestCase {
       }
       ByteSlice expectedDataSlice = new ByteArrayByteSlice(referenceBitPacker.getCompactBytes());
       ByteSlice expectedMetadataSlice = new ByteArrayByteSlice(expectedMetadata);
-      TermData expected = new TermData(() -> expectedMetadataSlice, () -> expectedDataSlice);
+      TermData expected = new TermData(expectedMetadataSlice, expectedDataSlice);
 
       IndexInput metaIn = testDir.openInput("segment_meta", IOContext.DEFAULT);
       IndexInput metadataIn = testDir.openInput("term_meta_1", IOContext.DEFAULT);
       IndexInput dataIn = testDir.openInput("term_data_11", IOContext.DEFAULT);
 
-      TermData actual =
-          TermData.deserializeOnHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
-      assertByteSlice(
-          expected.metadataProvider().newByteSlice(), actual.metadataProvider().newByteSlice());
-      assertByteSlice(expected.dataProvider().newByteSlice(), actual.dataProvider().newByteSlice());
-      testDecodeTermState(testFixture, actual);
+      TermDataProvider actualProvider =
+          TermDataProvider.deserializeOnHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
+      assertByteSlice(expected.metadata(), actualProvider.metadataProvider().newByteSlice());
+      assertByteSlice(expected.data(), actualProvider.dataProvider().newByteSlice());
+      testDecodeTermState(testFixture, actualProvider);
 
-      actual = TermData.deserializeOffHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
-      assertByteSlice(
-          expected.metadataProvider().newByteSlice(), actual.metadataProvider().newByteSlice());
-      assertByteSlice(expected.dataProvider().newByteSlice(), actual.dataProvider().newByteSlice());
-      testDecodeTermState(testFixture, actual);
+      actualProvider =
+          TermDataProvider.deserializeOnHeap(metaIn.clone(), metadataIn.clone(), dataIn.clone());
+      assertByteSlice(expected.metadata(), actualProvider.metadataProvider().newByteSlice());
+      assertByteSlice(expected.data(), actualProvider.dataProvider().newByteSlice());
+      testDecodeTermState(testFixture, actualProvider);
 
       metaIn.close();
       metadataIn.close();
@@ -98,8 +97,12 @@ public class TestTermDataWriter extends LuceneTestCase {
     }
   }
 
-  private static void testDecodeTermState(TermStateTestFixture testFixture, TermData actual)
-      throws IOException {
+  private static void testDecodeTermState(
+      TermStateTestFixture testFixture, TermDataProvider actualProvider) throws IOException {
+    TermData actual =
+        new TermData(
+            actualProvider.metadataProvider().newByteSlice(),
+            actualProvider.dataProvider().newByteSlice());
     for (int i = 0; i < testFixture.termStatesArray().length; i++) {
       IntBlockTermState expectedTermState = testFixture.termStatesArray()[i];
       IntBlockTermState decoded = actual.getTermState(testFixture.codec(), i);

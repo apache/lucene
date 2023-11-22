@@ -138,9 +138,10 @@ public class TestRandomAccessTermsDictWriter extends LuceneTestCase {
         result.expectedTermAndState()[result.expectedTermAndState().length - 1].term,
         deserialized.termsStats().maxTerm());
 
+    TermData[] perTypeTermData = deserialized.termDataReader().newPerTypeTermDataReference();
     for (var x : result.expectedTermAndState()) {
       IntBlockTermState expectedState = x.state;
-      IntBlockTermState actualState = deserialized.getTermState(x.term);
+      IntBlockTermState actualState = deserialized.getTermState(x.term, perTypeTermData);
       if (expectedState.singletonDocID != -1) {
         assertEquals(expectedState.singletonDocID, actualState.singletonDocID);
       } else {
