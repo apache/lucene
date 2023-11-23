@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -116,6 +117,7 @@ public final class BPIndexReorderer {
   public static final int DEFAULT_MAX_ITERS = 20;
 
   private int minDocFreq;
+  private float maxDocFreq;
   private int minPartitionSize;
   private int maxIters;
   private ForkJoinPool forkJoinPool;
@@ -125,6 +127,7 @@ public final class BPIndexReorderer {
   /** Constructor. */
   public BPIndexReorderer() {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
+    setMaxDocFreq(1f);
     setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
     setMaxIters(DEFAULT_MAX_ITERS);
     setForkJoinPool(null);
@@ -139,6 +142,19 @@ public final class BPIndexReorderer {
       throw new IllegalArgumentException("minDocFreq must be at least 1, got " + minDocFreq);
     }
     this.minDocFreq = minDocFreq;
+  }
+
+  /**
+   * Set the maximum document frequency for terms to be considered, as a ratio of {@code maxDoc}.
+   * This is useful because very frequent terms (stop words) add significant overhead to the
+   * reordering logic while not being very relevant for ordering. This value must be in (0, 1].
+   * Default value is 1.
+   */
+  public void setMaxDocFreq(float maxDocFreq) {
+    if (maxDocFreq > 0 == false || maxDocFreq <= 1 == false) {
+      throw new IllegalArgumentException("maxDocFreq must be in (0, 1], got " + maxDocFreq);
+    }
+    this.maxDocFreq = maxDocFreq;
   }
 
   /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
@@ -616,6 +632,7 @@ public final class BPIndexReorderer {
             ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
                 / getParallelism()
                 / termRAMRequirementsPerThreadPerTerm());
+    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxDoc());
 
     int numTerms = 0;
     for (String field : fields) {
@@ -633,7 +650,8 @@ public final class BPIndexReorderer {
       TermsEnum iterator = terms.iterator();
       PostingsEnum postings = null;
       for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-        if (iterator.docFreq() < minDocFreq) {
+        final int docFreq = iterator.docFreq();
+        if (docFreq < minDocFreq || docFreq > maxDocFreq) {
           continue;
         }
         if (numTerms >= ArrayUtil.MAX_ARRAY_LENGTH) {
@@ -723,15 +741,11 @@ public final class BPIndexReorderer {
   }
 
   /**
-   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
-   * consecutive documents in postings, which usually helps improve space efficiency and query
-   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
-   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
-   *
-   * @throws NotEnoughRAMException if not enough RAM is provided
+   * Expert: Compute the {@link DocMap} that holds the new doc ID numbering. This is exposed to
+   * enable integration into {@link BPReorderingMergePolicy}, {@link #reorder(CodecReader,
+   * Directory)} should be preferred in general.
    */
-  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
-
+  public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir) throws IOException {
     if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
           "At least "
@@ -756,24 +770,35 @@ public final class BPIndexReorderer {
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
     }
-    final Sorter.DocMap docMap =
-        new Sorter.DocMap() {
+    return new Sorter.DocMap() {
 
-          @Override
-          public int size() {
-            return newToOld.length;
-          }
+      @Override
+      public int size() {
+        return newToOld.length;
+      }
 
-          @Override
-          public int oldToNew(int docID) {
-            return oldToNew[docID];
-          }
+      @Override
+      public int oldToNew(int docID) {
+        return oldToNew[docID];
+      }
 
-          @Override
-          public int newToOld(int docID) {
-            return newToOld[docID];
-          }
-        };
+      @Override
+      public int newToOld(int docID) {
+        return newToOld[docID];
+      }
+    };
+  }
+
+  /**
+   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
+   * consecutive documents in postings, which usually helps improve space efficiency and query
+   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
+   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * @throws NotEnoughRAMException if not enough RAM is provided
+   */
+  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
+    Sorter.DocMap docMap = computeDocMap(reader, tempDir);
     return SortingCodecReader.wrap(reader, docMap, null);
   }
 

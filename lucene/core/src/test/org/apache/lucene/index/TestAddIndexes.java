@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
@@ -1885,5 +1886,55 @@ public class TestAddIndexes extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testSetDiagnostics() throws IOException {
+    MergePolicy myMergePolicy =
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            MergeSpecification spec = super.findMerges(readers);
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
+    Directory sourceDir = newDirectory();
+    try (IndexWriter w = new IndexWriter(sourceDir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      w.addDocument(doc);
+    }
+    DirectoryReader reader = DirectoryReader.open(sourceDir);
+    CodecReader codecReader = SlowCodecReaderWrapper.wrap(reader.leaves().get(0).reader());
+
+    Directory targetDir = newDirectory();
+    try (IndexWriter w =
+        new IndexWriter(targetDir, newIndexWriterConfig().setMergePolicy(myMergePolicy))) {
+      w.addIndexes(codecReader);
+    }
+
+    SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
+    assertNotEquals(0, si.size());
+    for (SegmentCommitInfo sci : si) {
+      assertEquals(
+          IndexWriter.SOURCE_ADDINDEXES_READERS, sci.info.getDiagnostics().get(IndexWriter.SOURCE));
+      assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
+    }
+    reader.close();
+    targetDir.close();
+    sourceDir.close();
   }
 }
