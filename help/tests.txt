@@ -189,6 +189,19 @@ to increase the top-N count:
 
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.count=100
 
+nocommit - asyncprofile
+
+reqs: need to download async profiler 2.x (https://github.com/jvm-profiling-tools/async-profiler),
+need the .so lib in std shared folder or directories from LD_LIBRARY_PATH (Linux, not Arch by
+default), DYLD_LIBRARY_PATH (Mac OS), or -Djava.library.path. I think ${HOME}/libs also works
+on Linux. Could also allow specifying directly as an option the location.
+
+Debug version of Java is important for best results
+
+need
+# sysctl kernel.perf_event_paranoid=1
+# sysctl kernel.kptr_restrict=0
+
 
 Generating Coverage Reports
 ------------------------------

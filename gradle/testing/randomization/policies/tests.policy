@@ -113,6 +113,14 @@ grant {
   permission java.lang.RuntimePermission "defineClass";
 };
 
+// Permissions for asyncprofiler
+grant {
+  // needed by jacoco to instrument classes
+  permission java.lang.RuntimePermission "loadLibrary.asyncProfiler";
+  permission java.lang.RuntimePermission "manageProcess";
+
+};
+
 // Grant all permissions to Gradle test runner classes.
 grant codeBase "file:${gradle.lib.dir}${/}-" {
   permission java.security.AllPermission;
