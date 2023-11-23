@@ -26,10 +26,10 @@ import org.apache.lucene.util.BytesRef;
  * <p>The code from Apache Commons was adapted in the form here to work with BytesRefs with offsets
  * and lengths rather than raw byte arrays.
  */
-public class MurmurHash64 extends HashFunction {
+public class MurmurHash2 extends HashFunction {
   private static final long M64 = 0xc6a4a7935bd1e995L;
   private static final int R64 = 47;
-  public static final HashFunction INSTANCE = new MurmurHash64();
+  public static final HashFunction INSTANCE = new MurmurHash2();
 
   /**
    * Generates a 64-bit hash from byte array of the given length and seed.
@@ -74,8 +74,13 @@ public class MurmurHash64 extends HashFunction {
   }
 
   @Override
-  public final long hash(BytesRef br) {
+  public final long hash64(BytesRef br) {
     return hash64(br.bytes, 0xe17a1465, br.offset, br.length);
+  }
+
+  @Override
+  public long[] hash128(BytesRef bytes) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
