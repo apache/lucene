@@ -131,7 +131,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
   private void initSkip() {
     if (!initialized) {
       super.resetSkip();
-      Arrays.fill(lastSkipDoc, -1);
+      Arrays.fill(lastSkipDoc, 0);
       Arrays.fill(lastSkipDocPointer, lastDocFP);
       if (fieldHasPositions) {
         Arrays.fill(lastSkipPosPointer, lastPosFP);
