@@ -5233,12 +5233,7 @@ public class IndexWriter
         docMaps = new MergeState.DocMap[reorderDocMaps.length];
         for (int i = 0; i < docMaps.length; ++i) {
           MergeState.DocMap reorderDocMap = reorderDocMaps[i];
-          docMaps[i] =
-              docID -> {
-                int reorderedDocId = reorderDocMap.get(docID);
-                int compactedDocId = compactionDocMap.get(reorderedDocId);
-                return compactedDocId;
-              };
+          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
         }
       }
 
