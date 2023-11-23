@@ -334,7 +334,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
     private int blockUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private int accum; // accumulator for doc deltas
 
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
@@ -343,10 +343,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docTermStartFP) in the .doc file (or -1 if there is
     // no skip data for this term):
     private long skipOffset;
-
-    // docID for next skip point, we won't use skipper if
-    // target docID is not larger than this
-    private int nextSkipDoc;
 
     private boolean needsFreq; // true if the caller actually needs frequencies
     // as we read freqBuffer lazily, isFreqsRead shows if freqBuffer are read for the current block
@@ -404,9 +400,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           freqBuffer[i] = 1;
         }
       }
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
-      nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
       return this;
@@ -467,20 +462,22 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
             pforUtil.skip(docIn); // skip over freqBuffer if we don't need them at all
           }
         }
+        accum = (int) docBuffer[BLOCK_SIZE - 1];
         blockUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto++;
       } else {
         // Read vInts:
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
@@ -501,8 +498,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public int advance(int target) throws IOException {
       // current skip docID < docIDs generated from current buffer <= next skip docID
       // we don't need to skip if target is buffered already
-      if (docFreq > BLOCK_SIZE && target > nextSkipDoc) {
-
+      if (docFreq > BLOCK_SIZE && target > accum) {
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
           skipper =
@@ -536,28 +532,15 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // as we have already positioned docIn where in needs to be.
           isFreqsRead = true;
         }
-        // next time we call advance, this is used to
-        // foresee whether skipper is necessary.
-        nextSkipDoc = skipper.getNextSkipDoc();
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
 
-      // Now scan... this is an inlined/pared down version
-      // of nextDoc():
-      long doc;
-      while (true) {
-        doc = docBuffer[docBufferUpto];
-
-        if (doc >= target) {
-          break;
-        }
-        ++docBufferUpto;
-      }
-
-      docBufferUpto++;
-      return this.doc = (int) doc;
+      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      this.doc = (int) docBuffer[next];
+      docBufferUpto = next + 1;
+      return doc;
     }
 
     @Override
@@ -609,7 +592,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private long totalTermFreq; // number of positions in this posting list
     private int blockUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private int accum; // accumulator for doc deltas
     private int freq; // freq we last read
     private int position; // current position
 
@@ -644,8 +627,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docTermStartFP) in the .doc file (or -1 if there is
     // no skip data for this term):
     private long skipOffset;
-
-    private int nextSkipDoc;
 
     private boolean needsOffsets; // true if we actually need offsets
     private boolean needsPayloads; // true if we actually need payloads
@@ -732,13 +713,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.needsPayloads = PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
-      if (docFreq > BLOCK_SIZE) {
-        nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
-      } else {
-        nextSkipDoc = NO_MORE_DOCS; // not enough docs for skipping
-      }
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
       return this;
@@ -761,19 +737,21 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (left >= BLOCK_SIZE) {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
+        accum = (int) docBuffer[BLOCK_SIZE - 1];
         blockUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto++;
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
@@ -867,7 +845,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (docFreq > BLOCK_SIZE && target > accum) {
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
           skipper =
@@ -901,7 +879,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           lastStartOffset = 0; // new document
           payloadByteUpto = skipper.getPayloadByteUpto();
         }
-        nextSkipDoc = skipper.getNextSkipDoc();
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
@@ -909,16 +886,12 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
       // Now scan:
       long doc;
-      while (true) {
+      do {
         doc = docBuffer[docBufferUpto];
         freq = (int) freqBuffer[docBufferUpto];
         posPendingCount += freq;
         docBufferUpto++;
-
-        if (doc >= target) {
-          break;
-        }
-      }
+      } while (doc < target);
 
       position = 0;
       lastStartOffset = 0;
@@ -1073,7 +1046,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private int docFreq; // number of docs in this posting list
     private int blockUpto; // number of documents in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private int accum; // accumulator for doc deltas
 
     private int nextSkipDoc = -1;
 
@@ -1100,7 +1073,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       docIn.seek(termState.docStartFP);
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       blockUpto = 0;
       docBufferUpto = BLOCK_SIZE;
 
@@ -1153,14 +1126,15 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         if (indexHasFreqs) {
           isFreqsRead = false;
         }
+        accum = (int) docBuffer[BLOCK_SIZE - 1];
         blockUpto += BLOCK_SIZE;
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
@@ -1208,10 +1182,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
 
@@ -1271,7 +1243,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private long totalTermFreq; // number of positions in this posting list
     private int docUpto; // how many docs we've read
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private int accum; // accumulator for doc deltas
     private int freq; // freq we last read
     private int position; // current position
 
@@ -1330,7 +1302,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       docUpto = 0;
       docBufferUpto = BLOCK_SIZE;
 
@@ -1362,12 +1334,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (left >= BLOCK_SIZE) {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
+        accum = (int) docBuffer[BLOCK_SIZE - 1];
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+
       docBufferUpto = 0;
     }
 
@@ -1439,10 +1413,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
 
@@ -1576,7 +1548,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private int docUpto; // how many docs we've read
     private int posDocUpTo; // for how many docs we've read positions, offsets, and payloads
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private int accum; // accumulator for doc deltas
     private int position; // current position
 
     // how many positions "behind" we are; nextPosition must
@@ -1685,7 +1657,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       doc = -1;
-      accum = 0;
+      accum = -1;
       docUpto = 0;
       posDocUpTo = 0;
       isFreqsRead = true;
@@ -1752,12 +1724,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           isFreqsRead =
               false; // freq block will be loaded lazily when necessary, we don't load it here
         }
+        accum = (int) docBuffer[BLOCK_SIZE - 1];
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        accum = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+
       docBufferUpto = 0;
     }
 
@@ -1875,10 +1849,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      if (target > accum) {
         advanceShallow(target);
-      }
-      if (docBufferUpto == BLOCK_SIZE) {
         if (seekTo >= 0) {
           docIn.seek(seekTo);
           seekTo = -1;
