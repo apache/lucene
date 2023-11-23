@@ -95,11 +95,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     termDataHashCode = termData.hashCode();
   }
 
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
-  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
-    this(rewriteMethod, field, Arrays.asList(terms));
-  }
-
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
     super(field, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     this.field = field;
