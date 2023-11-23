@@ -827,7 +827,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   public void testIndexMultipleKnnVectorFields() throws Exception {
     try (Directory dir = newDirectory();
-        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter iw =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
       Document doc = new Document();
       float[] v = new float[] {1};
       doc.add(new KnnFloatVectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
