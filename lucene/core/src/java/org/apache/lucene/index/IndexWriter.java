@@ -5200,12 +5200,9 @@ public class IndexWriter
           for (CodecReader reader : mergeReaders) {
             final int currentDocBase = docBase;
             reorderDocMaps[i] =
-                new MergeState.DocMap() {
-                  @Override
-                  public int get(int docID) {
-                    Objects.checkIndex(docID, reader.maxDoc());
-                    return docMap.oldToNew(currentDocBase + docID);
-                  }
+                docID -> {
+                  Objects.checkIndex(docID, reader.maxDoc());
+                  return docMap.oldToNew(currentDocBase + docID);
                 };
             i++;
             docBase += reader.maxDoc();
@@ -5237,15 +5234,7 @@ public class IndexWriter
         docMaps = new MergeState.DocMap[reorderDocMaps.length];
         for (int i = 0; i < docMaps.length; ++i) {
           MergeState.DocMap reorderDocMap = reorderDocMaps[i];
-          docMaps[i] =
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  int reorderedDocId = reorderDocMap.get(docID);
-                  int compactedDocId = compactionDocMap.get(reorderedDocId);
-                  return compactedDocId;
-                }
-              };
+          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
         }
       }
 
