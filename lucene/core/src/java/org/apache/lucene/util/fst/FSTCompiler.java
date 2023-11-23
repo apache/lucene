@@ -85,6 +85,10 @@ public class FSTCompiler<T> {
    */
   private static final float DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR = 1.66f;
 
+  // a FSTReader used when a non-FSTReader DataOutput is configured.
+  // it will throw exceptions if attempt to call getReverseBytesReader() or writeTo(DataOutput)
+  private static final FSTReader NULL_FST_READER = new NullFSTReader();
+
   private final NodeHash<T> dedupHash;
   final FST<T> fst;
   private final T NO_OUTPUT;
@@ -176,12 +180,37 @@ public class FSTCompiler<T> {
   }
 
   // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
-  // will use it, otherwise we will return null.
+  // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
+  // NullFSTReader
+  // will throw UnsupportedOperationException
   private FSTReader toFSTReader(DataOutput dataOutput) {
     if (dataOutput instanceof FSTReader) {
       return (FSTReader) dataOutput;
     }
-    return null;
+    return NULL_FST_READER;
+  }
+
+  /**
+   * This class is used for FST backed by non-FSTReader DataOutput. It does not allow getting the
+   * reverse BytesReader nor writing to a DataOutput.
+   */
+  private static final class NullFSTReader implements FSTReader {
+
+    @Override
+    public long ramBytesUsed() {
+      return 0;
+    }
+
+    @Override
+    public FST.BytesReader getReverseBytesReader() {
+      throw new UnsupportedOperationException(
+          "NullFSTReader does not support getReverseBytesReader()");
+    }
+
+    @Override
+    public void writeTo(DataOutput out) {
+      throw new UnsupportedOperationException("NullFSTReader does not support writeTo(DataOutput)");
+    }
   }
 
   /**
@@ -306,10 +335,6 @@ public class FSTCompiler<T> {
 
   public long getArcCount() {
     return arcCount;
-  }
-
-  public long getMappedStateCount() {
-    return dedupHash == null ? 0 : nodeCount;
   }
 
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn) throws IOException {

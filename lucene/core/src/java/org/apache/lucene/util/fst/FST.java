@@ -417,16 +417,11 @@ public final class FST<T> implements Accountable {
 
   /** Create the FST with a metadata object and a FSTReader. */
   FST(FSTMetadata<T> metadata, FSTReader fstReader) {
+    assert metadata != null;
+    assert fstReader != null;
     this.metadata = metadata;
     this.outputs = metadata.outputs;
     this.fstReader = fstReader;
-  }
-
-  /**
-   * @return true if and only if this FST is readable (e.g has a reverse BytesReader)
-   */
-  public boolean isReadable() {
-    return fstReader != null;
   }
 
   /**
@@ -485,11 +480,7 @@ public final class FST<T> implements Accountable {
 
   @Override
   public long ramBytesUsed() {
-    long size = BASE_RAM_BYTES_USED;
-    if (isReadable()) {
-      size += fstReader.ramBytesUsed();
-    }
-    return size;
+    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
   }
 
   @Override
@@ -510,17 +501,12 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Save the FST to DataOutput. You should call {@link #isReadable()} to verify if the FST is
-   * readable first.
+   * Save the FST to DataOutput.
    *
    * @param metaOut the DataOutput to write the metadata to
    * @param out the DataOutput to write the FST bytes to
-   * @see #isReadable()
    */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
-    if (isReadable() == false) {
-      throw new IllegalStateException("This FST is non-readable and cannot be saved");
-    }
     saveMetadata(metaOut);
     fstReader.writeTo(out);
   }
@@ -1190,16 +1176,8 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  /**
-   * Returns a {@link BytesReader} for this FST, positioned at position 0. You should call {@link
-   * #isReadable()} to verify if the FST is readable first.
-   *
-   * @see #isReadable()
-   */
+  /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
   public BytesReader getBytesReader() {
-    if (isReadable() == false) {
-      throw new IllegalStateException("FST is not readable");
-    }
     return fstReader.getReverseBytesReader();
   }
 
