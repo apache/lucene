@@ -14,24 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.backward_codecs;
+package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.Lucene99MultiLevelSkipListReader;
-import org.apache.lucene.codecs.MultiLevelSkipListWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.MathUtil;
 
 /**
- * Legacy variant of {@link Lucene99MultiLevelSkipListReader} for Lucene postings formats up to
- * {@link Lucene90PostingsFormat} included. It starts postings at 0 rather than -1.
+ * This abstract class reads skip lists with multiple levels.
+ *
+ * <p>See {@link MultiLevelSkipListWriter} for the information about the encoding of the multi level
+ * skip lists.
+ *
+ * <p>Subclasses must implement the abstract method {@link #readSkipData(int, IndexInput)} which
+ * defines the actual format of the skip data.
+ *
+ * @lucene.experimental
  */
-public abstract class Lucene50MultiLevelSkipListReader implements Closeable {
+public abstract class MultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */
   protected int maxNumberOfSkipLevels;
 
@@ -70,7 +74,7 @@ public abstract class Lucene50MultiLevelSkipListReader implements Closeable {
   private final int skipMultiplier;
 
   /** Creates a {@code MultiLevelSkipListReader}. */
-  protected Lucene50MultiLevelSkipListReader(
+  protected MultiLevelSkipListReader(
       IndexInput skipStream, int maxSkipLevels, int skipInterval, int skipMultiplier) {
     this.skipStream = new IndexInput[maxSkipLevels];
     this.skipPointer = new long[maxSkipLevels];
@@ -92,8 +96,7 @@ public abstract class Lucene50MultiLevelSkipListReader implements Closeable {
    * Creates a {@code MultiLevelSkipListReader}, where {@code skipInterval} and {@code
    * skipMultiplier} are the same.
    */
-  protected Lucene50MultiLevelSkipListReader(
-      IndexInput skipStream, int maxSkipLevels, int skipInterval) {
+  protected MultiLevelSkipListReader(IndexInput skipStream, int maxSkipLevels, int skipInterval) {
     this(skipStream, maxSkipLevels, skipInterval, skipInterval);
   }
 
