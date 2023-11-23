@@ -87,21 +87,10 @@ public class Lucene99SkipReader extends Lucene99MultiLevelSkipListReader {
     }
   }
 
-  /**
-   * Trim original docFreq to tell skipReader read proper number of skip points.
-   *
-   * <p>Since our definition in Lucene99Skip* is a little different from MultiLevelSkip* This
-   * trimmed docFreq will prevent skipReader from: 1. silly reading a non-existed skip point after
-   * the last block boundary 2. moving into the vInt block
-   */
-  protected int trim(int df) {
-    return df % ForUtil.BLOCK_SIZE == 0 ? df - 1 : df;
-  }
-
   public void init(
       long skipPointer, long docBasePointer, long posBasePointer, long payBasePointer, int df)
       throws IOException {
-    super.init(skipPointer, trim(df));
+    super.init(skipPointer, df);
     lastDocPointer = docBasePointer;
     lastPosPointer = posBasePointer;
     lastPayPointer = payBasePointer;

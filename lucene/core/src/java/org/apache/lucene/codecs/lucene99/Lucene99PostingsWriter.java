@@ -78,12 +78,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
   private byte[] payloadBytes;
   private int payloadByteUpto;
 
-  private int lastBlockDocID;
-  private long lastBlockPosFP;
-  private long lastBlockPayFP;
-  private int lastBlockPosBufferUpto;
-  private int lastBlockPayloadByteUpto;
-
   private int lastDocID;
   private int lastPosition;
   private int lastStartOffset;
@@ -206,7 +200,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
       }
     }
     lastDocID = -1;
-    lastBlockDocID = -1;
     skipWriter.resetSkip();
     this.norms = norms;
     competitiveFreqNormAccumulator.clear();
@@ -214,21 +207,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
 
   @Override
   public void startDoc(int docID, int termDocFreq) throws IOException {
-    // Have collected a block of docs, and get a new doc.
-    // Should write skip data as well as postings list for
-    // current block.
-    if (lastBlockDocID != -1 && docBufferUpto == 0) {
-      skipWriter.bufferSkip(
-          lastBlockDocID,
-          competitiveFreqNormAccumulator,
-          docCount,
-          lastBlockPosFP,
-          lastBlockPayFP,
-          lastBlockPosBufferUpto,
-          lastBlockPayloadByteUpto);
-      competitiveFreqNormAccumulator.clear();
-    }
-
     final int docDelta = docID - lastDocID;
 
     if (docID < 0 || (docCount > 0 && docDelta <= 0)) {
@@ -243,16 +221,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
 
     docBufferUpto++;
     docCount++;
-
-    if (docBufferUpto == BLOCK_SIZE) {
-      forDeltaUtil.encodeDeltas(docDeltaBuffer, docOut);
-      if (writeFreqs) {
-        pforUtil.encode(freqBuffer, docOut);
-      }
-      // NOTE: don't set docBufferUpto back to 0 here;
-      // finishDoc will do so (because it needs to see that
-      // the block was filled so it can save skip data)
-    }
 
     lastDocID = docID;
     lastPosition = 0;
@@ -341,15 +309,22 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     // those skip data for each block, and when a new doc comes,
     // write them to skip file.
     if (docBufferUpto == BLOCK_SIZE) {
-      lastBlockDocID = lastDocID;
-      if (posOut != null) {
-        if (payOut != null) {
-          lastBlockPayFP = payOut.getFilePointer();
-        }
-        lastBlockPosFP = posOut.getFilePointer();
-        lastBlockPosBufferUpto = posBufferUpto;
-        lastBlockPayloadByteUpto = payloadByteUpto;
+      forDeltaUtil.encodeDeltas(docDeltaBuffer, docOut);
+      if (writeFreqs) {
+        pforUtil.encode(freqBuffer, docOut);
       }
+
+      skipWriter.bufferSkip(
+          lastDocID,
+          competitiveFreqNormAccumulator,
+          docCount,
+          posOut != null ? posOut.getFilePointer() : 0,
+          payOut != null ? payOut.getFilePointer() : 0,
+          posBufferUpto,
+          payloadByteUpto);
+
+      competitiveFreqNormAccumulator.clear();
+
       docBufferUpto = 0;
     }
   }
