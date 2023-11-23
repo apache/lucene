@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -33,13 +33,13 @@ import org.apache.lucene.store.IndexInput;
  * 0 1 2 3 4 5
  * d d d d d d    (posting list)
  *     ^     ^    (skip point in MultiLeveSkipWriter)
- *       ^        (skip point in Lucene90SkipWriter)
+ *       ^        (skip point in Lucene99SkipWriter)
  * </pre>
  *
  * <p>In this case, MultiLevelSkipListReader will use the last document as a skip point, while
- * Lucene90SkipReader should assume no skip point will comes.
+ * Lucene99SkipReader should assume no skip point will comes.
  *
- * <p>If we use the interface directly in Lucene90SkipReader, it may silly try to read another skip
+ * <p>If we use the interface directly in Lucene99SkipReader, it may silly try to read another skip
  * data after the only skip point is loaded.
  *
  * <p>To illustrate this, we can call skipTo(d[5]), since skip point d[3] has smaller docId, and
@@ -48,7 +48,7 @@ import org.apache.lucene.store.IndexInput;
  *
  * <p>Therefore, we'll trim df before passing it to the interface. see trim(int)
  */
-class Lucene90SkipReader extends MultiLevelSkipListReader {
+public class Lucene99SkipReader extends MultiLevelSkipListReader {
   private long[] docPointer;
   private long[] posPointer;
   private long[] payPointer;
@@ -61,7 +61,7 @@ class Lucene90SkipReader extends MultiLevelSkipListReader {
   private long lastDocPointer;
   private int lastPosBufferUpto;
 
-  public Lucene90SkipReader(
+  public Lucene99SkipReader(
       IndexInput skipStream,
       int maxSkipLevels,
       boolean hasPos,
@@ -90,7 +90,7 @@ class Lucene90SkipReader extends MultiLevelSkipListReader {
   /**
    * Trim original docFreq to tell skipReader read proper number of skip points.
    *
-   * <p>Since our definition in Lucene90Skip* is a little different from MultiLevelSkip* This
+   * <p>Since our definition in Lucene99Skip* is a little different from MultiLevelSkip* This
    * trimmed docFreq will prevent skipReader from: 1. silly reading a non-existed skip point after
    * the last block boundary 2. moving into the vInt block
    */

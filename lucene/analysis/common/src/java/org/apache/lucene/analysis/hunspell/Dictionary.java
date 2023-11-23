@@ -56,6 +56,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -631,7 +632,8 @@ public class Dictionary {
 
   private FST<IntsRef> affixFST(TreeMap<String, List<Integer>> affixes) throws IOException {
     IntSequenceOutputs outputs = IntSequenceOutputs.getSingleton();
-    FSTCompiler<IntsRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+    FSTCompiler<IntsRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     for (Map.Entry<String, List<Integer>> entry : affixes.entrySet()) {
       Util.toUTF32(entry.getKey(), scratch);
@@ -1086,42 +1088,7 @@ public class Dictionary {
 
   private String sortWordsOffline(
       Directory tempDir, String tempFileNamePrefix, IndexOutput unsorted) throws IOException {
-    OfflineSorter sorter =
-        new OfflineSorter(
-            tempDir,
-            tempFileNamePrefix,
-            new Comparator<>() {
-              final BytesRef scratch1 = new BytesRef();
-              final BytesRef scratch2 = new BytesRef();
-
-              private void initScratch(BytesRef o, BytesRef scratch) {
-                scratch.bytes = o.bytes;
-                scratch.offset = o.offset;
-                scratch.length = o.length;
-
-                for (int i = scratch.length - 1; i >= 0; i--) {
-                  if (scratch.bytes[scratch.offset + i] == FLAG_SEPARATOR
-                      || scratch.bytes[scratch.offset + i] == MORPH_SEPARATOR) {
-                    scratch.length = i;
-                    break;
-                  }
-                }
-              }
-
-              @Override
-              public int compare(BytesRef o1, BytesRef o2) {
-                initScratch(o1, scratch1);
-                initScratch(o2, scratch2);
-
-                int cmp = scratch1.compareTo(scratch2);
-                if (cmp == 0) {
-                  // tie break on whole row
-                  return o1.compareTo(o2);
-                } else {
-                  return cmp;
-                }
-              }
-            });
+    var sorter = new OfflineSorter(tempDir, tempFileNamePrefix, BytesRefComparator.NATURAL);
 
     String sorted;
     boolean success = false;

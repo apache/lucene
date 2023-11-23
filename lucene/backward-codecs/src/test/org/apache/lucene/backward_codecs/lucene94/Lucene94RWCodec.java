@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.backward_codecs.lucene94;
 
+import org.apache.lucene.backward_codecs.lucene90.Lucene90RWPostingsFormat;
 import org.apache.lucene.backward_codecs.lucene90.Lucene90RWSegmentInfoFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 
@@ -32,8 +34,8 @@ public class Lucene94RWCodec extends Lucene94Codec {
           return defaultKnnVectorsFormat;
         }
       };
-
   private final SegmentInfoFormat segmentInfosFormat = new Lucene90RWSegmentInfoFormat();
+  private final PostingsFormat postingsFormat = new Lucene90RWPostingsFormat();
 
   /** Instantiates a new codec. */
   public Lucene94RWCodec() {
@@ -51,5 +53,10 @@ public class Lucene94RWCodec extends Lucene94Codec {
   @Override
   public SegmentInfoFormat segmentInfoFormat() {
     return segmentInfosFormat;
+  }
+
+  @Override
+  public PostingsFormat getPostingsFormatForField(String field) {
+    return postingsFormat;
   }
 }

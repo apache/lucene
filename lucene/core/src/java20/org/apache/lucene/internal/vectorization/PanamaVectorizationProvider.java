@@ -63,7 +63,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
             Locale.ENGLISH,
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorUtilSupport.VECTOR_BITSIZE,
-            Constants.HAS_FAST_FMA ? "; FMA enabled" : "",
+            Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
             PanamaVectorUtilSupport.HAS_FAST_INTEGER_VECTORS
                 ? ""
                 : "; floating-point vectors only"));

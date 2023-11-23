@@ -7,7 +7,6 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-
 * LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
   instead. (Vigya Sharma)
 
@@ -62,15 +61,12 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
-* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
-  of the two (Anh Dung Bui)
-
-* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
-
 New Features
 ---------------------
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
+
+* GITHUB-12767: Add a flag to enable executing using NFA in RegexpQuery. (Patrick Zhai)
 
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
@@ -87,17 +83,12 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
-* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
-  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
-  result in a more minimal FST (more common suffixes are shard).  Pass
-  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
-  minimal FST.  Inspired by this Rust FST implemention:
-  https://blog.burntsushi.net/transducers (Mike McCandless)
-
 Optimizations
 ---------------------
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
+
+* GITHUB#12825: Hunspell: improved dictionary loading performance (Peter Gromov)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
@@ -164,6 +155,22 @@ API Changes
   Collection<BytesRef>. They also now explicitly throw IllegalArgumentException if input data is not properly sorted
   instead of relying on assert. (Shubham Chaudhary)
 
+* GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
+  FacetLabel at once. (Egor Potemkin)
+
+* GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
+
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+  of the two (Anh Dung Bui)
+
+* GITHUB-12695: Remove public constructor of FSTCompiler. Please use FSTCompiler.Builder
+  instead. (Juan M. Caicedo)
+
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
+* GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
+  HNSW graph build. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
@@ -175,9 +182,13 @@ New Features
 
 * GITHUB#12582: Add int8 scalar quantization to the HNSW vector format. This optionally allows for more compact lossy
   storage for the vectors, requiring about 75% memory for fast HNSW search. (Ben Trent)
-  
+
 * GITHUB#12660: HNSW graph now can be merged with multiple thread. Configurable in Lucene99HnswVectorsFormat.
   (Patrick Zhai)
+
+* GITHUB#12729: Add new Lucene99FlatVectorsFormat for writing vectors in a flat format and refactor
+  Lucene99HnswVectorsFormat to reuse the flat format. Added new Lucene99HnswQuantizedVectorsFormat that uses
+  quantized vectors for its flat storage. (Ben Trent)
 
 Improvements
 ---------------------
@@ -200,18 +211,33 @@ Improvements
 * GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
   (Uwe Schindler)
 
-* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731: Speed up Panama vector support
-  and test improvements. (Uwe Schindler, Robert Muir)
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681, GITHUB#12731, GITHUB#12737: Speed up
+  Panama vector support and test improvements. (Uwe Schindler, Robert Muir)
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
-* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
-  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
+* GITHUB#12705, GITHUB#12705, GITHUB#12785: Improve handling of NullPointerException and
+  IllegalStateException in MMapDirectory's IndexInputs. Also makes sure to close master
+  MemorySegmentIndexInput while not throwing IllegalStateException (retry in spin loop).
+  Also improve TestMmapDirectory.testAceWithThreads to run faster and use less resources.
+  (Uwe Schindler, Maurizio Cimadamore, Michael Sokolov)
 
 * GITHUB#12689: TaskExecutor to cancel all tasks on exception to avoid needless computation. (Luca Cavanna)
 
 * GITHUB#12754: Refactor lookup of Hotspot VM options and do not initialize constants with NULL
   if SecurityManager prevents access.  (Uwe Schindler)
+
+* GITHUB#12801: Remove possible contention on a ReentrantReadWriteLock in
+  Monitor which could result in searches waiting for commits. (Davis Cook)
+
+* GITHUB#11277, LUCENE-10241: Upgrade to OpenNLP to 1.9.4. (Jeff Zemerick)
+
+* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
+  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
+  result in a more minimal FST (more common suffixes are shard).  Pass
+  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
+  minimal FST.  Inspired by this Rust FST implemention:
+  https://blog.burntsushi.net/transducers (Mike McCandless)
 
 Optimizations
 ---------------------
@@ -256,10 +282,21 @@ Optimizations
 * GITHUB#12719: Top-level conjunctions that are not sorted by score now have a
   specialized bulk scorer. (Adrien Grand)
 
+* GITHUB#12696: Change Postings back to using FOR in Lucene99PostingsFormat. Freqs, positions and offset keep using PFOR. (Jakub Slowinski)
+
 * GITHUB#1052: Faster merging of terms enums. (Adrien Grand)
 
 * GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
 
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
+
+* GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
+* GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
+
+* GITHUB#12782: Use group-varint encoding for the tail of postings. (Adrien Grand, Zhang Chao)
 
 Changes in runtime behavior
 ---------------------
@@ -267,8 +304,13 @@ Changes in runtime behavior
 * GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
 
+* GITHUB#12765: Disable vectorization on VMs that are not Hotspot-based.  (Uwe Schindler, Robert Muir)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#12654: TestIndexWriterOnVMError.testUnknownError times out (fixes potential IndexWriter
+  deadlock with tragic exceptions). (Benjamin Trent, Dawid Weiss, Simon Willnauer)
 
 * GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
   (Grigoriy Troitskiy)
@@ -285,13 +327,20 @@ Bug Fixes
 
 * GITHUB#12736: Fix NullPointerException when Monitor.getQuery cannot find the requested queryId (Davis Cook)
 
+* GITHUB#12770: Stop exploring HNSW graph if scores are not getting better. (Ben Trent)
+
+* GITHUB#12640: Ensure #finish is called on all drill-sideways collectors even if one throws a
+  CollectionTerminatedException (Greg Miller)
+
+* GITHUB#12626: Fix segmentInfos replace to set userData (Shibi Balamurugan, Uwe Schindler, Marcus Eagan, Michael Froh)
+
 Build
 ---------------------
 
 * GITHUB#12752: tests.multiplier could be omitted in test failure reproduce lines (esp. in
   nightly mode). (Dawid Weiss)
 
-* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed 
+* GITHUB#12742: JavaCompile tasks may be in up-to-date state when modular dependencies have changed
   leading to odd runtime errors (Chris Hostetter, Dawid Weiss)
 
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
@@ -301,9 +350,17 @@ Build
 Other
 ---------------------
 
+* GITHUB#12817: Add demo for faceting with StringValueFacetCounts over KeywordField and SortedDocValuesField.
+  (Stefan Vodita)
+
 * GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
 * GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
+
+* GITHUB#6675: Various improvements related to ByteBlockPool. Slice functionality on top of ByteBlockPool moved to its
+  own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
+  overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
+  (Stefan Vodita)
 
 ======================== Lucene 9.8.0 =======================
 
@@ -355,7 +412,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Chao Zhang)
+* GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Zhang Chao)
 
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
@@ -370,7 +427,7 @@ Optimizations
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
 
-* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Zhang Chao)
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
 
@@ -437,7 +494,7 @@ Other
 * GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
   (Shubham Chaudhary)
 
-* GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
+* GITHUB#12512: Remove unused variable in BKDWriter. (Zhang Chao)
 
 ======================== Lucene 9.7.0 =======================
 

@@ -14,22 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene90.ForUtil.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.MAX_SKIP_LEVELS;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene99.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.MAX_SKIP_LEVELS;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.POS_CODEC;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -48,10 +48,10 @@ import org.apache.lucene.util.IOUtils;
  *
  * <p>Postings list for each term will be stored separately.
  *
- * @see Lucene90SkipWriter for details about skipping setting and postings layout.
+ * @see Lucene99SkipWriter for details about skipping setting and postings layout.
  * @lucene.experimental
  */
-public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
+public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
 
   IndexOutput docOut;
   IndexOutput posOut;
@@ -90,7 +90,9 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
   private int docCount;
 
   private final PForUtil pforUtil;
-  private final Lucene90SkipWriter skipWriter;
+  private final ForDeltaUtil forDeltaUtil;
+  private final Lucene99SkipWriter skipWriter;
+  private final GroupVIntWriter docGroupVIntWriter;
 
   private boolean fieldHasNorms;
   private NumericDocValues norms;
@@ -98,11 +100,11 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       new CompetitiveImpactAccumulator();
 
   /** Creates a postings writer */
-  public Lucene90PostingsWriter(SegmentWriteState state) throws IOException {
+  public Lucene99PostingsWriter(SegmentWriteState state) throws IOException {
 
     String docFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene90PostingsFormat.DOC_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.DOC_EXTENSION);
     docOut = state.directory.createOutput(docFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
@@ -110,12 +112,14 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     try {
       CodecUtil.writeIndexHeader(
           docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-      pforUtil = new PForUtil(new ForUtil());
+      final ForUtil forUtil = new ForUtil();
+      forDeltaUtil = new ForDeltaUtil(forUtil);
+      pforUtil = new PForUtil(forUtil);
       if (state.fieldInfos.hasProx()) {
         posDeltaBuffer = new long[BLOCK_SIZE];
         String posFileName =
             IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, Lucene90PostingsFormat.POS_EXTENSION);
+                state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.POS_EXTENSION);
         posOut = state.directory.createOutput(posFileName, state.context);
         CodecUtil.writeIndexHeader(
             posOut, POS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
@@ -141,7 +145,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
               IndexFileNames.segmentFileName(
                   state.segmentInfo.name,
                   state.segmentSuffix,
-                  Lucene90PostingsFormat.PAY_EXTENSION);
+                  Lucene99PostingsFormat.PAY_EXTENSION);
           payOut = state.directory.createOutput(payFileName, state.context);
           CodecUtil.writeIndexHeader(
               payOut, PAY_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
@@ -167,8 +171,9 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     // TODO: should we try skipping every 2/4 blocks...?
     skipWriter =
-        new Lucene90SkipWriter(
+        new Lucene99SkipWriter(
             MAX_SKIP_LEVELS, BLOCK_SIZE, state.segmentInfo.maxDoc(), docOut, posOut, payOut);
+    docGroupVIntWriter = new GroupVIntWriter();
   }
 
   @Override
@@ -240,7 +245,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     docCount++;
 
     if (docBufferUpto == BLOCK_SIZE) {
-      pforUtil.encode(docDeltaBuffer, docOut);
+      forDeltaUtil.encodeDeltas(docDeltaBuffer, docOut);
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, docOut);
       }
@@ -367,17 +372,19 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       singletonDocID = (int) docDeltaBuffer[0];
     } else {
       singletonDocID = -1;
-      // vInt encode the remaining doc deltas and freqs:
-      for (int i = 0; i < docBufferUpto; i++) {
-        final int docDelta = (int) docDeltaBuffer[i];
-        final int freq = (int) freqBuffer[i];
-        if (!writeFreqs) {
-          docOut.writeVInt(docDelta);
-        } else if (freq == 1) {
-          docOut.writeVInt((docDelta << 1) | 1);
-        } else {
-          docOut.writeVInt(docDelta << 1);
-          docOut.writeVInt(freq);
+      // Group vInt encode the remaining doc deltas and freqs:
+      if (writeFreqs) {
+        for (int i = 0; i < docBufferUpto; i++) {
+          docDeltaBuffer[i] = (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
+        }
+      }
+      docGroupVIntWriter.writeValues(docOut, docDeltaBuffer, docBufferUpto);
+      if (writeFreqs) {
+        for (int i = 0; i < docBufferUpto; i++) {
+          final int freq = (int) freqBuffer[i];
+          if (freq != 1) {
+            docOut.writeVInt(freq);
+          }
         }
       }
     }

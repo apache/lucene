@@ -163,7 +163,6 @@ public final class WordDelimiterFilter extends TokenFilter {
 
   private final CharTermAttribute termAttribute = addAttribute(CharTermAttribute.class);
   private final KeywordAttribute keywordAttribute = addAttribute(KeywordAttribute.class);
-  ;
   private final OffsetAttribute offsetAttribute = addAttribute(OffsetAttribute.class);
   private final PositionIncrementAttribute posIncAttribute =
       addAttribute(PositionIncrementAttribute.class);
