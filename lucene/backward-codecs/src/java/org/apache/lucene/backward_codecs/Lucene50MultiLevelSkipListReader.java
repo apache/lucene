@@ -20,7 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.MultiLevelSkipListReader;
+import org.apache.lucene.codecs.Lucene99MultiLevelSkipListReader;
 import org.apache.lucene.codecs.MultiLevelSkipListWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
@@ -28,8 +28,8 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.MathUtil;
 
 /**
- * Legacy variant of {@link MultiLevelSkipListReader} for Lucene postings formats up to {@link
- * Lucene90PostingsFormat} included. It starts postings at 0 rather than -1.
+ * Legacy variant of {@link Lucene99MultiLevelSkipListReader} for Lucene postings formats up to
+ * {@link Lucene90PostingsFormat} included. It starts postings at 0 rather than -1.
  */
 public abstract class Lucene50MultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */

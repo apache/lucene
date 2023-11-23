@@ -35,7 +35,7 @@ import org.apache.lucene.util.MathUtil;
  *
  * @lucene.experimental
  */
-public abstract class MultiLevelSkipListReader implements Closeable {
+public abstract class Lucene99MultiLevelSkipListReader implements Closeable {
   /** the maximum number of skip levels possible for this index */
   protected int maxNumberOfSkipLevels;
 
@@ -74,7 +74,7 @@ public abstract class MultiLevelSkipListReader implements Closeable {
   private final int skipMultiplier;
 
   /** Creates a {@code MultiLevelSkipListReader}. */
-  protected MultiLevelSkipListReader(
+  protected Lucene99MultiLevelSkipListReader(
       IndexInput skipStream, int maxSkipLevels, int skipInterval, int skipMultiplier) {
     this.skipStream = new IndexInput[maxSkipLevels];
     this.skipPointer = new long[maxSkipLevels];
@@ -96,7 +96,8 @@ public abstract class MultiLevelSkipListReader implements Closeable {
    * Creates a {@code MultiLevelSkipListReader}, where {@code skipInterval} and {@code
    * skipMultiplier} are the same.
    */
-  protected MultiLevelSkipListReader(IndexInput skipStream, int maxSkipLevels, int skipInterval) {
+  protected Lucene99MultiLevelSkipListReader(
+      IndexInput skipStream, int maxSkipLevels, int skipInterval) {
     this(skipStream, maxSkipLevels, skipInterval, skipInterval);
   }
 
