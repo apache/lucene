@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -81,10 +80,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
 
   public TermInSetQuery(String field, Collection<BytesRef> terms) {
     this(field, packTerms(field, terms));
-  }
-
-  public TermInSetQuery(String field, BytesRef... terms) {
-    this(field, packTerms(field, Arrays.asList(terms)));
   }
 
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
