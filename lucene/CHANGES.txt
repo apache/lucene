@@ -363,6 +363,8 @@ Other
   overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
   (Stefan Vodita)
 
+* GITHUB#12762: Refactor BKD HeapPointWriter to hide the internal data structure. (Ignacio Vera)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
