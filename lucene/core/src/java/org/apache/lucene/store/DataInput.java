@@ -99,7 +99,7 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Read all group ints, include the tail vints.
+   * Read all the group varints, including the tail vints.
    *
    * @param docs the array to read ints into.
    * @param limit the number of int values to read.
@@ -115,7 +115,7 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Read single group ints. we need a long[] because this is what postings are using.
+   * Read single group varint. we need a long[] because this is what postings are using.
    *
    * @param docs the array to read ints into.
    * @param offset the offset in the array to start storing ints.

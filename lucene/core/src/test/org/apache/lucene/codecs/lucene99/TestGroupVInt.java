@@ -55,7 +55,7 @@ public class TestGroupVInt extends LuceneTestCase {
       assertArrayEquals(
           ArrayUtil.copyOfSubArray(values, 0, numValues),
           ArrayUtil.copyOfSubArray(restored, 0, numValues));
-       dir.deleteFile("group-varint");
+      dir.deleteFile("group-varint");
     }
     dir.close();
   }
