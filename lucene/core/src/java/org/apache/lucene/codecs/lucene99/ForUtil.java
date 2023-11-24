@@ -140,7 +140,9 @@ public final class ForUtil {
   }
 
   private static void prefixSum16UpTo9BPV(long[] arr, long base) {
-    // When the number of bits per value is 9 or less, we can sum up all values in a block without risking overflowing a 16-bits integer. This allows computing the prefix sum by summing up 4 values at once.
+    // When the number of bits per value is 9 or less, we can sum up all values in a block without
+    // risking overflowing a 16-bits integer. This allows computing the prefix sum by summing up 4
+    // values at once.
     innerPrefixSum16(arr);
     expand16(arr);
     final long l0 = base;

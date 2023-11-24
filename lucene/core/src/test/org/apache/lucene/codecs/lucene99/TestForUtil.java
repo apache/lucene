@@ -110,7 +110,7 @@ public class TestForUtil extends LuceneTestCase {
           forUtil.decode(bpv, in, expected);
           expected[0] += base;
           for (int i = 1; i < 128; ++i) {
-            expected[i] += expected[i-1];
+            expected[i] += expected[i - 1];
           }
 
           long[] actual = new long[128];
