@@ -52,6 +52,9 @@ import org.apache.lucene.store.DataOutput;
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
 // public for benchmarking
+/**
+ * Logic for packing/unpacking intetgers on a fixed number of bits per value.
+ */
 public final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
@@ -550,7 +553,7 @@ if __name__ == '__main__':
 
   f.write("""
   /**
-   * Delta-decode 128 integers into {@code longs}.
+   * Delta-decode 128 integers into {@code longs} and compute their prefix sum in place.
    */
   public void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
