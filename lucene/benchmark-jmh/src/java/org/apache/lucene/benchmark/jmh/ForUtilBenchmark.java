@@ -59,7 +59,7 @@ public class ForUtilBenchmark {
   private final ForUtil forUtil = new ForUtil();
   private final long[] values = new long[128];
 
-  @Param({"6", "7", "8", "9", "10", "11"}) // some of the most common numbers of bits per value
+  @Param({"2", "16"}) // some of the most common numbers of bits per value
   public int bpv;
 
   @Setup(Level.Trial)

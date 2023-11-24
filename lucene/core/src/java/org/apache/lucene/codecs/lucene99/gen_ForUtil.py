@@ -52,9 +52,7 @@ import org.apache.lucene.store.DataOutput;
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
 // public for benchmarking
-/**
- * Logic for packing/unpacking intetgers on a fixed number of bits per value.
- */
+/** Logic for packing/unpacking integers on a fixed number of bits per value. */
 public final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
