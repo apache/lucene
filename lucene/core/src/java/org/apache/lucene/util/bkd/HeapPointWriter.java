@@ -93,8 +93,8 @@ public final class HeapPointWriter implements PointWriter {
     nextWrite++;
   }
 
-  /** Swaps the point at point {@code i} with the point at poition {@code j} */
-  public void swap(int i, int j) {
+  /** Swaps the point at point {@code i} with the point at position {@code j} */
+  void swap(int i, int j) {
     final int indexI = i * config.bytesPerDoc;
     final int indexJ = j * config.bytesPerDoc;
     // scratch1 = values[i]
@@ -106,7 +106,7 @@ public final class HeapPointWriter implements PointWriter {
   }
 
   /** Return the byte at position {@code k} of the point at position {@code i} */
-  public int byteAt(int i, int k) {
+  int byteAt(int i, int k) {
     return block[i * config.bytesPerDoc + k] & 0xff;
   }
 
@@ -114,7 +114,7 @@ public final class HeapPointWriter implements PointWriter {
    * Copy the dimension {@code dim} of the point at position {@code i} in the provided {@code bytes}
    * at the given offset
    */
-  public void copyDim(int i, int dim, byte[] bytes, int offset) {
+  void copyDim(int i, int dim, byte[] bytes, int offset) {
     System.arraycopy(block, i * config.bytesPerDoc + dim, bytes, offset, config.bytesPerDim);
   }
 
@@ -122,7 +122,7 @@ public final class HeapPointWriter implements PointWriter {
    * Copy the data dimensions and doc value of the point at position {@code i} in the provided
    * {@code bytes} at the given offset
    */
-  public void copyDataDimsAndDoc(int i, byte[] bytes, int offset) {
+  void copyDataDimsAndDoc(int i, byte[] bytes, int offset) {
     System.arraycopy(
         block,
         i * config.bytesPerDoc + config.packedIndexBytesLength,
@@ -135,7 +135,7 @@ public final class HeapPointWriter implements PointWriter {
    * Compares the dimension {@code dim} value of the point at position {@code i} with the point at
    * position {@code j}
    */
-  public int compareDim(int i, int j, int dim) {
+  int compareDim(int i, int j, int dim) {
     final int iOffset = i * config.bytesPerDoc + dim;
     final int jOffset = j * config.bytesPerDoc + dim;
     return compareDim(block, iOffset, block, jOffset);
@@ -145,7 +145,7 @@ public final class HeapPointWriter implements PointWriter {
    * Compares the dimension {@code dim} value of the point at position {@code j} with the provided
    * value
    */
-  public int compareDim(int j, byte[] dimValue, int offset, int dim) {
+  int compareDim(int j, byte[] dimValue, int offset, int dim) {
     final int jOffset = j * config.bytesPerDoc + dim;
     return compareDim(dimValue, offset, block, jOffset);
   }
@@ -158,7 +158,7 @@ public final class HeapPointWriter implements PointWriter {
    * Compares the data dimensions and doc values of the point at position {@code i} with the point
    * at position {@code j}
    */
-  public int compareDataDimsAndDoc(int i, int j) {
+  int compareDataDimsAndDoc(int i, int j) {
     final int iOffset = i * config.bytesPerDoc + config.packedIndexBytesLength;
     final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
     return compareDataDimsAndDoc(block, iOffset, block, jOffset);
@@ -168,7 +168,7 @@ public final class HeapPointWriter implements PointWriter {
    * Compares the data dimensions and doc values of the point at position {@code j} with the
    * provided value
    */
-  public int compareDataDimsAndDoc(int j, byte[] dataDimsAndDocs, int offset) {
+  int compareDataDimsAndDoc(int j, byte[] dataDimsAndDocs, int offset) {
     final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
     return compareDataDimsAndDoc(dataDimsAndDocs, offset, block, jOffset);
   }
