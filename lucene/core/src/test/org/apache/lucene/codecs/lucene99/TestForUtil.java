@@ -91,4 +91,34 @@ public class TestForUtil extends LuceneTestCase {
 
     d.close();
   }
+
+  public void testPrefixSum() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexOutput out = dir.createOutput("ints", IOContext.DEFAULT)) {
+        for (int i = 0; i < 64; ++i) {
+          out.writeLong(random().nextLong());
+        }
+      }
+      final ForUtil forUtil = new ForUtil();
+      try (IndexInput in = dir.openInput("ints", IOContext.DEFAULT)) {
+        for (int bpv = 1; bpv <= 24; ++bpv) {
+          final int offset = random().nextInt(8);
+          long base = random().nextInt(1_000_000);
+
+          long[] expected = new long[128];
+          in.seek(offset);
+          forUtil.decode(bpv, in, expected);
+          expected[0] += base;
+          for (int i = 1; i < 128; ++i) {
+            expected[i] += expected[i-1];
+          }
+
+          long[] actual = new long[128];
+          in.seek(offset);
+          forUtil.decodeAndPrefixSum(bpv, in, base, actual);
+          assertArrayEquals(expected, actual);
+        }
+      }
+    }
+  }
 }

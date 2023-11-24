@@ -27,10 +27,14 @@ import org.apache.lucene.store.DataOutput;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {
+// public for benchmarking
+public final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
+  private static final int ONE_BLOCK_SIZE_FOURTH = BLOCK_SIZE / 4;
+  private static final int TWO_BLOCK_SIZE_FOURTHS = BLOCK_SIZE / 2;
+  private static final int THREE_BLOCK_SIZE_FOURTHS = 3 * BLOCK_SIZE / 4;
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
@@ -70,13 +74,11 @@ final class ForUtil {
     }
   }
 
-  private static void expand8To32(long[] arr) {
+  private static void expand8To16(long[] arr) {
     for (int i = 0; i < 16; ++i) {
       long l = arr[i];
-      arr[i] = (l >>> 24) & 0x000000FF000000FFL;
-      arr[16 + i] = (l >>> 16) & 0x000000FF000000FFL;
-      arr[32 + i] = (l >>> 8) & 0x000000FF000000FFL;
-      arr[48 + i] = l & 0x000000FF000000FFL;
+      arr[i] = (l >>> 8) & 0x00FF00FF00FF00FFL;
+      arr[16 + i] = l & 0x00FF00FF00FF00FFL;
     }
   }
 
@@ -133,8 +135,25 @@ final class ForUtil {
   }
 
   private static void prefixSum8(long[] arr, long base) {
-    expand8To32(arr);
-    prefixSum32(arr, base);
+    expand8To16(arr);
+    prefixSum16UpTo9BPV(arr, base);
+  }
+
+  private static void prefixSum16UpTo9BPV(long[] arr, long base) {
+    // When the number of bits per value is 9 or less, we can sum up all values in a block without risking overflowing a 16-bits integer. This allows computing the prefix sum by summing up 4 values at once.
+    innerPrefixSum16(arr);
+    expand16(arr);
+    final long l0 = base;
+    final long l1 = l0 + arr[ONE_BLOCK_SIZE_FOURTH - 1];
+    final long l2 = l1 + arr[TWO_BLOCK_SIZE_FOURTHS - 1];
+    final long l3 = l2 + arr[THREE_BLOCK_SIZE_FOURTHS - 1];
+
+    for (int i = 0; i < ONE_BLOCK_SIZE_FOURTH; ++i) {
+      arr[i] += l0;
+      arr[ONE_BLOCK_SIZE_FOURTH + i] += l1;
+      arr[TWO_BLOCK_SIZE_FOURTHS + i] += l2;
+      arr[THREE_BLOCK_SIZE_FOURTHS + i] += l3;
+    }
   }
 
   private static void prefixSum16(long[] arr, long base) {
@@ -151,6 +170,40 @@ final class ForUtil {
     for (int i = BLOCK_SIZE / 2; i < BLOCK_SIZE; ++i) {
       arr[i] += l;
     }
+  }
+
+  private static void innerPrefixSum16(long[] arr) {
+    arr[1] += arr[0];
+    arr[2] += arr[1];
+    arr[3] += arr[2];
+    arr[4] += arr[3];
+    arr[5] += arr[4];
+    arr[6] += arr[5];
+    arr[7] += arr[6];
+    arr[8] += arr[7];
+    arr[9] += arr[8];
+    arr[10] += arr[9];
+    arr[11] += arr[10];
+    arr[12] += arr[11];
+    arr[13] += arr[12];
+    arr[14] += arr[13];
+    arr[15] += arr[14];
+    arr[16] += arr[15];
+    arr[17] += arr[16];
+    arr[18] += arr[17];
+    arr[19] += arr[18];
+    arr[20] += arr[19];
+    arr[21] += arr[20];
+    arr[22] += arr[21];
+    arr[23] += arr[22];
+    arr[24] += arr[23];
+    arr[25] += arr[24];
+    arr[26] += arr[25];
+    arr[27] += arr[26];
+    arr[28] += arr[27];
+    arr[29] += arr[28];
+    arr[30] += arr[29];
+    arr[31] += arr[30];
   }
 
   // For some reason unrolling seems to help
@@ -512,7 +565,7 @@ final class ForUtil {
   }
 
   /** Delta-decode 128 integers into {@code longs}. */
-  void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs)
+  public void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs)
       throws IOException {
     switch (bitsPerValue) {
       case 1:
@@ -549,7 +602,7 @@ final class ForUtil {
         break;
       case 9:
         decode9(in, tmp, longs);
-        prefixSum16(longs, base);
+        prefixSum16UpTo9BPV(longs, base);
         break;
       case 10:
         decode10(in, tmp, longs);
