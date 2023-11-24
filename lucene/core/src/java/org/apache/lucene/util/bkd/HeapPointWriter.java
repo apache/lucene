@@ -93,6 +93,7 @@ public final class HeapPointWriter implements PointWriter {
     nextWrite++;
   }
 
+  /** Swaps the point at point {@code i} with the point at poition {@code j} */
   public void swap(int i, int j) {
     final int indexI = i * config.bytesPerDoc;
     final int indexJ = j * config.bytesPerDoc;
@@ -104,14 +105,23 @@ public final class HeapPointWriter implements PointWriter {
     System.arraycopy(scratch, 0, block, indexJ, config.bytesPerDoc);
   }
 
+  /** Return the byte at position {@code k} of the point at position {@code i} */
   public int byteAt(int i, int k) {
     return block[i * config.bytesPerDoc + k] & 0xff;
   }
 
-  public void copyDim(int i, int dimStart, byte[] bytes, int offset) {
-    System.arraycopy(block, i * config.bytesPerDoc + dimStart, bytes, offset, config.bytesPerDim);
+  /**
+   * Copy the dimension {@code dim} of the point at position {@code i} in the provided {@code bytes}
+   * at the given offset
+   */
+  public void copyDim(int i, int dim, byte[] bytes, int offset) {
+    System.arraycopy(block, i * config.bytesPerDoc + dim, bytes, offset, config.bytesPerDim);
   }
 
+  /**
+   * Copy the data dimensions and doc value of the point at position {@code i} in the provided
+   * {@code bytes} at the given offset
+   */
   public void copyDataDimsAndDoc(int i, byte[] bytes, int offset) {
     System.arraycopy(
         block,
@@ -121,33 +131,49 @@ public final class HeapPointWriter implements PointWriter {
         dataDimsAndDocLength);
   }
 
-  public int compareDim(int i, int j, int dimStart) {
-    final int iOffset = i * config.bytesPerDoc + dimStart;
-    final int jOffset = j * config.bytesPerDoc + dimStart;
+  /**
+   * Compares the dimension {@code dim} value of the point at position {@code i} with the point at
+   * position {@code j}
+   */
+  public int compareDim(int i, int j, int dim) {
+    final int iOffset = i * config.bytesPerDoc + dim;
+    final int jOffset = j * config.bytesPerDoc + dim;
     return compareDim(block, iOffset, block, jOffset);
   }
 
-  public int compareDim(int j, byte[] pivot, int dimStart) {
-    final int jOffset = j * config.bytesPerDoc + dimStart;
-    return compareDim(pivot, 0, block, jOffset);
+  /**
+   * Compares the dimension {@code dim} value of the point at position {@code j} with the provided
+   * value
+   */
+  public int compareDim(int j, byte[] dimValue, int offset, int dim) {
+    final int jOffset = j * config.bytesPerDoc + dim;
+    return compareDim(dimValue, offset, block, jOffset);
   }
 
   private int compareDim(byte[] blockI, int offsetI, byte[] blockJ, int offsetJ) {
     return dimComparator.compare(blockI, offsetI, blockJ, offsetJ);
   }
 
+  /**
+   * Compares the data dimensions and doc values of the point at position {@code i} with the point
+   * at position {@code j}
+   */
   public int compareDataDimsAndDoc(int i, int j) {
     final int iOffset = i * config.bytesPerDoc + config.packedIndexBytesLength;
     final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
     return compareDataDimsAndDoc(block, iOffset, block, jOffset);
   }
 
-  public int compareDataDimsAndDoc(int j, byte[] pivot) {
+  /**
+   * Compares the data dimensions and doc values of the point at position {@code j} with the
+   * provided value
+   */
+  public int compareDataDimsAndDoc(int j, byte[] dataDimsAndDocs, int offset) {
     final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
-    return compareDataDimsAndDoc(pivot, config.bytesPerDim, block, jOffset);
+    return compareDataDimsAndDoc(dataDimsAndDocs, offset, block, jOffset);
   }
 
-  public int compareDataDimsAndDoc(byte[] blockI, int offsetI, byte[] blockJ, int offsetJ) {
+  private int compareDataDimsAndDoc(byte[] blockI, int offsetI, byte[] blockJ, int offsetJ) {
     return Arrays.compareUnsigned(
         blockI,
         offsetI,
@@ -157,6 +183,7 @@ public final class HeapPointWriter implements PointWriter {
         offsetJ + dataDimsAndDocLength);
   }
 
+  /** Computes the cardinality of the points between {@code from} tp {@code to} */
   public int computeCardinality(int from, int to, int[] commonPrefixLengths) {
     int leafCardinality = 1;
     for (int i = from + 1; i < to; i++) {

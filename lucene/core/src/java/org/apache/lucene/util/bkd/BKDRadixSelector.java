@@ -457,12 +457,12 @@ public final class BKDRadixSelector {
           @Override
           protected int comparePivot(int j) {
             if (skypedBytes < config.bytesPerDim) {
-              int cmp = points.compareDim(j, scratch, dimStart);
+              int cmp = points.compareDim(j, scratch, 0, dimStart);
               if (cmp != 0) {
                 return cmp;
               }
             }
-            return points.compareDataDimsAndDoc(j, scratch);
+            return points.compareDataDimsAndDoc(j, scratch, config.bytesPerDim);
           }
         };
       }
@@ -532,12 +532,12 @@ public final class BKDRadixSelector {
           @Override
           protected int comparePivot(int j) {
             if (skypedBytes < config.bytesPerDim) {
-              int cmp = points.compareDim(j, scratch, dimStart);
+              int cmp = points.compareDim(j, scratch, 0, dimStart);
               if (cmp != 0) {
                 return cmp;
               }
             }
-            return points.compareDataDimsAndDoc(j, scratch);
+            return points.compareDataDimsAndDoc(j, scratch, config.bytesPerDim);
           }
         };
       }
