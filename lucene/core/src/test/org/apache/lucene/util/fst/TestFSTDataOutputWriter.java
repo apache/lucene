@@ -210,7 +210,6 @@ public class TestFSTDataOutputWriter extends LuceneTestCase {
     @Override
     protected FST<T> compile(FSTCompiler<T> fstCompiler) throws IOException {
       FST<T> fst = fstCompiler.compile();
-      assertFalse(fst.isReadable());
 
       // the returned FST is not readable thus we need to reconstruct one with FSTStore
       DataInput dataIn =
