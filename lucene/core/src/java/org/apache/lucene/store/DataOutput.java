@@ -329,6 +329,7 @@ public abstract class DataOutput {
   /**
    * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for
    * a group
+   *
    * @param values the values to write
    * @param limit the number of values to write.
    */
