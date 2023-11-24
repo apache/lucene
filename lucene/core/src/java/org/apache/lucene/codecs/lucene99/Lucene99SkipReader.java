@@ -23,30 +23,6 @@ import org.apache.lucene.store.IndexInput;
 
 /**
  * Implements the skip list reader for block postings format that stores positions and payloads.
- *
- * <p>Although this skipper uses MultiLevelSkipListReader as an interface, its definition of skip
- * position will be a little different.
- *
- * <p>For example, when skipInterval = blockSize = 3, df = 2*skipInterval = 6,
- *
- * <pre>
- * 0 1 2 3 4 5
- * d d d d d d    (posting list)
- *     ^     ^    (skip point in MultiLeveSkipWriter)
- *       ^        (skip point in Lucene99SkipWriter)
- * </pre>
- *
- * <p>In this case, MultiLevelSkipListReader will use the last document as a skip point, while
- * Lucene99SkipReader should assume no skip point will comes.
- *
- * <p>If we use the interface directly in Lucene99SkipReader, it may silly try to read another skip
- * data after the only skip point is loaded.
- *
- * <p>To illustrate this, we can call skipTo(d[5]), since skip point d[3] has smaller docId, and
- * numSkipped+blockSize== df, the MultiLevelSkipListReader will assume the skip list isn't exhausted
- * yet, and try to load a non-existed skip point
- *
- * <p>Therefore, we'll trim df before passing it to the interface. see trim(int)
  */
 public class Lucene99SkipReader extends Lucene99MultiLevelSkipListReader {
   private long[] docPointer;
