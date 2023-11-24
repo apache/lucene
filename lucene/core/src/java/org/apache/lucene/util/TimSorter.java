@@ -45,7 +45,7 @@ public abstract class TimSorter extends Sorter {
   static final int STACKSIZE = 49; // depends on MINRUN
   static final int MIN_GALLOP = 7;
 
-  final int maxTempSlots;
+  protected final int maxTempSlots;
   int minRun;
   int to;
   int stackSize;
@@ -120,8 +120,14 @@ public abstract class TimSorter extends Sorter {
       }
     }
     final int runHi = Math.max(o, Math.min(to, runBase + minRun));
-    binarySort(runBase, runHi, o);
+    if (runHi != o) {
+      doSort(runBase, runHi, o);
+    }
     return runHi - runBase;
+  }
+
+  protected void doSort(int from, int to, int sortedTo) {
+    binarySort(from, to, sortedTo);
   }
 
   void ensureInvariants() {
@@ -164,7 +170,11 @@ public abstract class TimSorter extends Sorter {
     runEnds[0] = from;
     this.to = to;
     final int length = to - from;
-    this.minRun = length <= THRESHOLD ? length : minRun(length);
+    this.minRun = length <= THRESHOLD ? length : minRunLength(length);
+  }
+
+  protected int minRunLength(int length) {
+    return minRun(length);
   }
 
   void mergeAt(int n) {

@@ -61,6 +61,8 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
+* GITHUB#12800: Remove deprecated LSBRadixSorter in favor of UnsignedIntLSBRadixSorter. (Guo Feng)
+
 New Features
 ---------------------
 
@@ -157,6 +159,8 @@ API Changes
 
 * GITHUB#12180: Add TaxonomyReader#getBulkOrdinals method to more efficiently retrieve facet ordinals for multiple
   FacetLabel at once. (Egor Potemkin)
+
+* GITHUB#12800: Deprecate LSBRadixSorter in favor of UnsignedIntLSBRadixSorter. (Guo Feng)
 
 * GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
 
@@ -293,6 +297,8 @@ Optimizations
 * GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
 
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
+
+* GITHUB#12800: Generalize LSB radix sorter for SortingPostingsEnum. (Guo Feng)
 
 * GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
 

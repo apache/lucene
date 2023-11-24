@@ -27,6 +27,7 @@ import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BaseLSBRadixSorter;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
@@ -34,9 +35,9 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LSBRadixSorter;
 import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.TimSorter;
+import org.apache.lucene.util.UnsignedIntLSBRadixSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -224,14 +225,14 @@ final class FreqProxTermsWriter extends TermsHash {
 
   static class SortingDocsEnum extends PostingsEnum {
 
-    private final LSBRadixSorter sorter;
+    private final UnsignedIntLSBRadixSorter sorter;
     private PostingsEnum in;
     private int[] docs = IntsRef.EMPTY_INTS;
     private int docIt;
     private int upTo;
 
     SortingDocsEnum() {
-      sorter = new LSBRadixSorter();
+      sorter = new UnsignedIntLSBRadixSorter();
     }
 
     void reset(Sorter.DocMap docMap, PostingsEnum in) throws IOException {
@@ -252,7 +253,7 @@ final class FreqProxTermsWriter extends TermsHash {
       final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
       // Even though LSBRadixSorter cannot take advantage of partial ordering like TimSorter it is
       // often still faster for nearly-sorted inputs.
-      sorter.sort(numBits, docs, upTo);
+      sorter.reset(numBits, docs).sort(0, upTo);
       docIt = -1;
     }
 
@@ -316,6 +317,7 @@ final class FreqProxTermsWriter extends TermsHash {
      */
     private static final class DocOffsetSorter extends TimSorter {
 
+      private int bits;
       private int[] docs;
       private long[] offsets;
       private int[] tmpDocs;
@@ -327,7 +329,8 @@ final class FreqProxTermsWriter extends TermsHash {
         this.tmpOffsets = LongsRef.EMPTY_LONGS;
       }
 
-      public void reset(int[] docs, long[] offsets) {
+      public void reset(int bits, int[] docs, long[] offsets) {
+        this.bits = bits;
         this.docs = docs;
         this.offsets = offsets;
       }
@@ -335,6 +338,86 @@ final class FreqProxTermsWriter extends TermsHash {
       @Override
       protected int compare(int i, int j) {
         return docs[i] - docs[j];
+      }
+
+      @Override
+      protected void doSort(int from, int to, int sortedTo) {
+        if (to - from <= 64) {
+          binarySort(from, to, sortedTo);
+        } else {
+          growTmp(to - from);
+          new BaseLSBRadixSorter(bits) {
+
+            int srcOff = 0;
+            int[] srcDocs = DocOffsetSorter.this.docs;
+            long[] srcOffsets = DocOffsetSorter.this.offsets;
+            int destOff = from;
+            int[] destDocs = DocOffsetSorter.this.tmpDocs;
+            long[] destOffsets = DocOffsetSorter.this.tmpOffsets;
+
+            @Override
+            protected int compare(int i, int j) {
+              return DocOffsetSorter.this.compare(i, j);
+            }
+
+            @Override
+            protected void swap(int i, int j) {
+              DocOffsetSorter.this.swap(i, j);
+            }
+
+            @Override
+            protected void buildHistogram(int from, int to, int[] histogram, int shift) {
+              final int srcFrom = from - srcOff;
+              final int srcTo = to - srcOff;
+              for (int i = srcFrom; i < srcTo; ++i) {
+                final int b = (srcDocs[i] >>> shift) & 0xFF;
+                histogram[b] += 1;
+              }
+            }
+
+            @Override
+            protected void reorder(int from, int to, int[] histogram, int shift) {
+              final int srcFrom = from - srcOff;
+              final int srcTo = to - srcOff;
+              final int destFrom = from - destOff;
+              for (int i = srcFrom; i < srcTo; ++i) {
+                final int b = (srcDocs[i] >>> shift) & 0xFF;
+                int j = destFrom + histogram[b]++;
+                destDocs[j] = srcDocs[i];
+                destOffsets[j] = srcOffsets[i];
+              }
+            }
+
+            @Override
+            protected void switchBuffer() {
+              int[] tmp = srcDocs;
+              srcDocs = destDocs;
+              destDocs = tmp;
+
+              long[] tmpOff = srcOffsets;
+              srcOffsets = destOffsets;
+              destOffsets = tmpOff;
+
+              int tmpOffset = srcOff;
+              srcOff = destOff;
+              destOff = tmpOffset;
+            }
+
+            @Override
+            protected void restore(int from, int to) {
+              if (srcDocs != docs) {
+                assert srcOffsets != offsets;
+                System.arraycopy(srcDocs, from - srcOff, docs, from - destOff, to - from);
+                System.arraycopy(srcOffsets, from - srcOff, offsets, from - destOff, to - from);
+              }
+            }
+          }.sort(from, to);
+        }
+      }
+
+      @Override
+      protected int minRunLength(int length) {
+        return Math.min(Math.max(tmpDocs.length, length / 8), maxTempSlots);
       }
 
       @Override
@@ -356,12 +439,16 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected void save(int i, int len) {
+        growTmp(len);
+        System.arraycopy(docs, i, tmpDocs, 0, len);
+        System.arraycopy(offsets, i, tmpOffsets, 0, len);
+      }
+
+      private void growTmp(int len) {
         if (tmpDocs.length < len) {
           tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
           tmpOffsets = new long[tmpDocs.length];
         }
-        System.arraycopy(docs, i, tmpDocs, 0, len);
-        System.arraycopy(offsets, i, tmpOffsets, 0, len);
       }
 
       @Override
@@ -422,7 +509,9 @@ final class FreqProxTermsWriter extends TermsHash {
         i++;
       }
       upto = i;
-      sorter.reset(docs, offsets);
+      final int maxDoc = docMap.size();
+      final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
+      sorter.reset(numBits, docs, offsets);
       sorter.sort(0, upto);
 
       this.postingInput = buffer.toDataInput();

@@ -21,9 +21,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
-public class TestLSBRadixSorter extends LuceneTestCase {
+public class TestUnsignedIntLSBRadixSorter extends LuceneTestCase {
 
-  public void test(LSBRadixSorter sorter, int maxLen) {
+  private void test(int maxLen) {
+    UnsignedIntLSBRadixSorter sorter = new UnsignedIntLSBRadixSorter();
     for (int iter = 0; iter < 10; ++iter) {
       final int len = TestUtil.nextInt(random(), 0, maxLen);
       int[] arr = new int[len + random().nextInt(10)];
@@ -36,7 +37,7 @@ public class TestLSBRadixSorter extends LuceneTestCase {
     }
   }
 
-  public void test(LSBRadixSorter sorter, int[] arr, int len) {
+  private void test(UnsignedIntLSBRadixSorter sorter, int[] arr, int len) {
     final int[] expected = ArrayUtil.copyOfSubArray(arr, 0, len);
     Arrays.sort(expected);
 
@@ -49,33 +50,38 @@ public class TestLSBRadixSorter extends LuceneTestCase {
       numBits = TestUtil.nextInt(random(), numBits, 32);
     }
 
-    sorter.sort(numBits, arr, len);
+    sorter =
+        random().nextBoolean()
+            ? sorter.reset(numBits, arr)
+            : new UnsignedIntLSBRadixSorter(numBits, arr);
+
+    sorter.sort(0, len);
     final int[] actual = ArrayUtil.copyOfSubArray(arr, 0, len);
     assertArrayEquals(expected, actual);
   }
 
   public void testEmpty() {
-    test(new LSBRadixSorter(), 0);
+    test(0);
   }
 
   public void testOne() {
-    test(new LSBRadixSorter(), 1);
+    test(1);
   }
 
   public void testTwo() {
-    test(new LSBRadixSorter(), 2);
+    test(2);
   }
 
   public void testSimple() {
-    test(new LSBRadixSorter(), 100);
+    test(100);
   }
 
   public void testRandom() {
-    test(new LSBRadixSorter(), 10000);
+    test(10000);
   }
 
   public void testSorted() {
-    LSBRadixSorter sorter = new LSBRadixSorter();
+    UnsignedIntLSBRadixSorter sorter = new UnsignedIntLSBRadixSorter();
     for (int iter = 0; iter < 10; ++iter) {
       int[] arr = new int[10000];
       int a = 0;
