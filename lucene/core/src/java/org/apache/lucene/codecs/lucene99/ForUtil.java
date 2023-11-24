@@ -174,6 +174,7 @@ public final class ForUtil {
     }
   }
 
+  // For some reason, unrolling seems to help
   private static void innerPrefixSum16(long[] arr) {
     arr[1] += arr[0];
     arr[2] += arr[1];
