@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Abstract base class for performing write operations of Lucene's low-level data types.
@@ -29,7 +30,7 @@ import org.apache.lucene.util.BytesRef;
  * internal state like file position).
  */
 public abstract class DataOutput {
-  BytesRef groupVIntBytes;
+  private BytesRefBuilder groupVIntBytes = new BytesRefBuilder();
 
   /**
    * Writes a single byte.
@@ -334,36 +335,32 @@ public abstract class DataOutput {
    * @param limit the number of values to write.
    */
   public void writeGroupVInts(long[] values, int limit) throws IOException {
-    if (groupVIntBytes == null) {
-      // the maximum size of one group is 4 integers + 1 byte flag.
-      groupVIntBytes = new BytesRef(17);
-    }
     int off = 0;
 
     // encode each group
     while ((limit - off) >= 4) {
       byte flag = 0;
-      groupVIntBytes.offset = 1;
-      flag |= (encodeGroupValue((int) values[off++]) - 1) << 6;
-      flag |= (encodeGroupValue((int) values[off++]) - 1) << 4;
-      flag |= (encodeGroupValue((int) values[off++]) - 1) << 2;
-      flag |= (encodeGroupValue((int) values[off++]) - 1);
-      groupVIntBytes.bytes[0] = flag;
-      writeBytes(groupVIntBytes.bytes, groupVIntBytes.offset);
+      groupVIntBytes.setLength(1);
+      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 6;
+      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 4;
+      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 2;
+      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1);
+      groupVIntBytes.setByteAt(0, flag);
+      writeBytes(groupVIntBytes.bytes(), groupVIntBytes.length());
     }
 
     // tail vints
     for (; off < limit; off++) {
-      writeVInt((int) values[off]);
+      writeVInt(Math.toIntExact(values[off]));
     }
   }
 
   private int encodeGroupValue(int v) {
-    int lastOff = groupVIntBytes.offset;
+    int lastOff = groupVIntBytes.length();
     do {
-      groupVIntBytes.bytes[groupVIntBytes.offset++] = (byte) (v & 0xFF);
+      groupVIntBytes.append((byte) (v & 0xFF));
       v >>>= 8;
     } while (v != 0);
-    return groupVIntBytes.offset - lastOff;
+    return groupVIntBytes.length() - lastOff;
   }
 }

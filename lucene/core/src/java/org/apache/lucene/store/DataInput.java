@@ -107,7 +107,7 @@ public abstract class DataInput implements Cloneable {
   public void readGroupVInts(long[] docs, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(docs, i);
+      fallbackReadGroupVInt(docs, i);
     }
     for (; i < limit; ++i) {
       docs[i] = readVInt();
@@ -120,7 +120,7 @@ public abstract class DataInput implements Cloneable {
    * @param docs the array to read ints into.
    * @param offset the offset in the array to start storing ints.
    */
-  public void readGroupVInt(long[] docs, int offset) throws IOException {
+  protected void fallbackReadGroupVInt(long[] docs, int offset) throws IOException {
     final int flag = readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;

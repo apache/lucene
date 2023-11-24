@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene99;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -34,7 +33,7 @@ public class TestGroupVInt extends LuceneTestCase {
     long[] values = new long[ForUtil.BLOCK_SIZE];
     long[] restored = new long[ForUtil.BLOCK_SIZE];
     final int iterations = atLeast(100);
-    Directory dir = FSDirectory.open(createTempDir());
+    Directory dir = newFSDirectory(createTempDir());
 
     for (int i = 0; i < iterations; i++) {
       final int bpv = TestUtil.nextInt(random(), 1, 31);
