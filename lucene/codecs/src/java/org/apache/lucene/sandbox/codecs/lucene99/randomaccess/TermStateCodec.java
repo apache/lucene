@@ -28,6 +28,9 @@ interface TermStateCodec {
   /** Get the number of bytes that the metadata per block needs. */
   int getMetadataBytesLength();
 
+  /** Get the maximum span of a record in terms of bytes */
+  int getMaximumRecordSizeInBytes();
+
   /** Get the number of bits per data record within the block, based on the provided metadata. */
   int getNumBitsPerRecord(BytesRef metadataBytes);
 

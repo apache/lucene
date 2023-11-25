@@ -29,4 +29,6 @@ interface ByteSlice {
   long getLong(long pos) throws IOException;
 
   byte[] getBytes(long pos, int length) throws IOException;
+
+  void readBytesTo(byte[] destination, long pos, int length) throws IOException;
 }

@@ -46,4 +46,26 @@ record TermData(ByteSlice metadata, ByteSlice data) {
 
     return codec.decodeAt(metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex);
   }
+
+  IntBlockTermState getTermStateWithBuffer(
+      TermStateCodec codec, long ord, byte[] metaDataBuffer, byte[] dataBuffer) throws IOException {
+    long blockId = ord / TermDataWriter.NUM_TERMS_PER_BLOCK;
+    long metadataStartPos = blockId * (codec.getMetadataBytesLength() + 8);
+    long dataStartPos = metadata.getLong(metadataStartPos);
+
+    metadata.readBytesTo(metaDataBuffer, metadataStartPos + 8, codec.getMetadataBytesLength());
+    BytesRef metadataBytesRef = new BytesRef(metaDataBuffer);
+
+    int numBitsPerRecord = codec.getNumBitsPerRecord(metadataBytesRef);
+    int dataBitIndex = numBitsPerRecord * ((int) (ord % TermDataWriter.NUM_TERMS_PER_BLOCK));
+    int startBitIndex = dataBitIndex % 8;
+    int numBytesToRead = (startBitIndex + numBitsPerRecord) / 8;
+    if ((startBitIndex + numBitsPerRecord) % 8 > 0) {
+      numBytesToRead += 1;
+    }
+    data.readBytesTo(dataBuffer, dataStartPos + dataBitIndex / 8, numBytesToRead);
+    BytesRef dataBytesRef = new BytesRef(dataBuffer, 0, numBytesToRead);
+
+    return codec.decodeAt(metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex);
+  }
 }

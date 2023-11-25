@@ -28,13 +28,15 @@ import org.apache.lucene.util.BytesRef;
 record RandomAccessTermsDict(
     TermsStats termsStats,
     TermsIndex termsIndex,
-    TermDataReader termDataReader,
+    TermDataReaderProvider termDataReaderProvider,
     IndexOptions indexOptions) {
 
-  IntBlockTermState getTermState(BytesRef term, TermData[] termDataPerType) throws IOException {
+  /** test only * */
+  IntBlockTermState getTermState(BytesRef term) throws IOException {
     TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(term);
-    return termDataReader.getTermState(
-        typeAndOrd.termType(), typeAndOrd.ord(), indexOptions, termDataPerType);
+    return termDataReaderProvider
+        .newReader()
+        .getTermState(typeAndOrd.termType(), typeAndOrd.ord(), indexOptions);
   }
 
   static RandomAccessTermsDict deserialize(
@@ -60,8 +62,8 @@ record RandomAccessTermsDict(
     int numTermTypes = metaInput.readByte();
 
     // (3.2) read per TermType
-    TermDataReader.Builder termDataReaderBuilder =
-        new TermDataReader.Builder(indexOptions, hasPayloads);
+    TermDataReaderProvider.Builder termDataReaderBuilder =
+        new TermDataReaderProvider.Builder(indexOptions, hasPayloads);
     for (int i = 0; i < numTermTypes; i++) {
       TermType termType = TermType.fromId(metaInput.readByte());
       TermDataInput termDataInput = termDataInputProvider.getTermDataInputForType(termType);

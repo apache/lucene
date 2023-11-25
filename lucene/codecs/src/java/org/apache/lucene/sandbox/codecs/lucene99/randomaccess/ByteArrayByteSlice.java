@@ -52,4 +52,12 @@ final class ByteArrayByteSlice implements ByteSlice {
     System.arraycopy(bytes, (int) pos, result, 0, length);
     return result;
   }
+
+  @Override
+  public void readBytesTo(byte[] destination, long pos, int length) {
+    if (length == 0) {
+      return;
+    }
+    System.arraycopy(bytes, (int) pos, destination, 0, length);
+  }
 }

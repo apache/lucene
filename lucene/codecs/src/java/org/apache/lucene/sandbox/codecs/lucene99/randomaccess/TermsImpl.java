@@ -129,25 +129,20 @@ final class TermsImpl extends Terms {
     // We need to re-seek in next() calls to catch up to that term.
     private boolean needReSeekInNext;
 
-    private TermData[] perTypeTermData;
+    private final TermDataReaderProvider.TermDataReader termDataReader;
 
     RandomAccessTermsEnum() throws IOException {
       termState = (IntBlockTermState) lucene99PostingsReader.newTermState();
       fstEnum = new BytesRefFSTEnum<>(termsDict.termsIndex().fst());
-      perTypeTermData = termsDict.termDataReader().newPerTypeTermDataReference();
+      termDataReader = termsDict.termDataReaderProvider().newReader();
     }
 
     void updateTermStateIfNeeded() throws IOException {
       if (!isTermStateCurrent && !needReSeekInNext) {
         TermsIndex.TypeAndOrd typeAndOrd = TermsIndex.decodeLong(fstSeekState.output);
         termState =
-            termsDict
-                .termDataReader()
-                .getTermState(
-                    typeAndOrd.termType(),
-                    typeAndOrd.ord(),
-                    fieldInfo.getIndexOptions(),
-                    perTypeTermData);
+            termDataReader.getTermState(
+                typeAndOrd.termType(), typeAndOrd.ord(), fieldInfo.getIndexOptions());
         isTermStateCurrent = true;
       }
     }

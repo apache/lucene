@@ -52,13 +52,31 @@ final class TermStateCodecImpl implements TermStateCodec {
   }
 
   @Override
+  public int getMaximumRecordSizeInBytes() {
+    // worst case: no compression at all, so each component taks 8 byte.
+    // two extra bytes when the record takes partial byte at the start and end.
+    return components.length * 8 + 2;
+  }
+
+  @Override
   public int getMetadataBytesLength() {
     return metadataBytesLength;
   }
 
   @Override
   public int getNumBitsPerRecord(BytesRef metadataBytes) {
-    return deserializedMetadata(metadataBytes).totalBitsPerTermState;
+    int upto = metadataBytes.offset;
+    int totalBitsPerTermState = 0;
+
+    for (var component : components) {
+      byte bitWidth = metadataBytes.bytes[upto++];
+      if (component.isMonotonicallyIncreasing()) {
+        upto += 8;
+      }
+      totalBitsPerTermState += bitWidth;
+    }
+
+    return totalBitsPerTermState;
   }
 
   private static int getMetadataLength(TermStateCodecComponent component) {

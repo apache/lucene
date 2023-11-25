@@ -55,4 +55,12 @@ final class RandomAccessInputByteSlice implements ByteSlice {
     randomAccessInput.readBytes(pos, result, 0, length);
     return result;
   }
+
+  @Override
+  public void readBytesTo(byte[] destination, long pos, int length) throws IOException {
+    if (length == 0) {
+      return;
+    }
+    randomAccessInput.readBytes(pos, destination, 0, length);
+  }
 }
