@@ -219,6 +219,9 @@ Build
 
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
+* GITHUB#12845: Only enable support for tests.profile if jdk.jfr module is available
+  in Gradle runtime. (Uwe Schindler)
+
 Other
 ---------------------
 
