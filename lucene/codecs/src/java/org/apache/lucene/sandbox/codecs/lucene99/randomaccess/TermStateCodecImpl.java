@@ -32,8 +32,8 @@ import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComp
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.TermStateCodecComponent.TotalTermFreq;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitPacker;
 import org.apache.lucene.sandbox.codecs.lucene99.randomaccess.bitpacking.BitUnpacker;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 final class TermStateCodecImpl implements TermStateCodec {
@@ -205,10 +205,8 @@ final class TermStateCodecImpl implements TermStateCodec {
       BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int index) {
     assert metadataBytes.length == this.metadataBytesLength;
 
-    var metadata = deserializedMetadata(metadataBytes);
-
-    int startBitIndex = index * metadata.totalBitsPerTermState;
-    return extract(dataBytes, bitUnpacker, startBitIndex, metadata.metadataPerComponent);
+    int startBitIndex = index * getNumBitsPerRecord(metadataBytes);
+    return decodeAt(metadataBytes, dataBytes, bitUnpacker, startBitIndex);
   }
 
   @Override
@@ -216,51 +214,23 @@ final class TermStateCodecImpl implements TermStateCodec {
       BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int startBitIndex) {
     assert metadataBytes.length == this.metadataBytesLength;
 
-    var metadata = deserializedMetadata(metadataBytes);
-    return extract(dataBytes, bitUnpacker, startBitIndex, metadata.metadataPerComponent);
-  }
-
-  private MetadataAndTotalBitsPerTermState deserializedMetadata(BytesRef metadataBytes) {
-    Metadata[] metadataPerComponent = new Metadata[components.length];
-    ByteArrayDataInput byteArrayDataInput =
-        new ByteArrayDataInput(metadataBytes.bytes, metadataBytes.offset, metadataBytes.length);
-    int totalBitsPerTermState = 0;
-    for (int i = 0; i < components.length; i++) {
-      var component = components[i];
-      byte bitWidth = byteArrayDataInput.readByte();
-      long referenceValue = -1;
-      if (component.isMonotonicallyIncreasing()) {
-        referenceValue = byteArrayDataInput.readLong();
-      }
-      metadataPerComponent[i] = new Metadata(bitWidth, referenceValue);
-
-      totalBitsPerTermState += bitWidth;
-    }
-
-    return new MetadataAndTotalBitsPerTermState(metadataPerComponent, totalBitsPerTermState);
-  }
-
-  private IntBlockTermState extract(
-      BytesRef dataBytes,
-      BitUnpacker bitUnpacker,
-      int startBitIndex,
-      Metadata[] metadataPerComponent) {
+    int upto = metadataBytes.offset;
     IntBlockTermState decoded = new IntBlockTermState();
+
     for (int i = 0; i < components.length; i++) {
       var component = components[i];
-      var metadata = metadataPerComponent[i];
-      long val = bitUnpacker.unpack(dataBytes, startBitIndex, metadata.bitWidth);
-      if (metadata.referenceValue > 0) {
-        val += metadata.referenceValue;
+      int bitWidth = metadataBytes.bytes[upto++];
+      long val = bitUnpacker.unpack(dataBytes, startBitIndex, bitWidth);
+      if (component.isMonotonicallyIncreasing()) {
+        val += (long) BitUtil.VH_LE_LONG.get(metadataBytes.bytes, upto);
+        upto += 8;
       }
       component.setTargetValue(decoded, val);
-      startBitIndex += metadata.bitWidth;
+      startBitIndex += bitWidth;
     }
+
     return decoded;
   }
 
   private record Metadata(byte bitWidth, long referenceValue) {}
-
-  private record MetadataAndTotalBitsPerTermState(
-      Metadata[] metadataPerComponent, int totalBitsPerTermState) {}
 }
