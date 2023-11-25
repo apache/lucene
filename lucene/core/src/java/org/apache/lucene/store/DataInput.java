@@ -38,6 +38,9 @@ import org.apache.lucene.util.BitUtil;
  * positioned independently.
  */
 public abstract class DataInput implements Cloneable {
+  // the maximum length of a single group-varint is 4 integers + 1 byte flag.
+  static final int MAX_LENGTH_PER_GROUP = 17;
+  static final int[] GROUP_VINT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   /**
    * Reads and returns a single byte.
@@ -96,6 +99,17 @@ public abstract class DataInput implements Cloneable {
     final byte b3 = readByte();
     final byte b4 = readByte();
     return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
+  }
+
+  // just for benchmark only, it will be removed before the PR is merged
+  public void readGroupVIntsBaseline(long[] docs, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      fallbackReadGroupVInt(docs, i);
+    }
+    for (; i < limit; ++i) {
+      docs[i] = readVInt();
+    }
   }
 
   /**

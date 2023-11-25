@@ -43,7 +43,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
-  private static final int[] GROUP_VINT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   final long length;
   final long chunkSizeMask;
@@ -315,9 +314,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  private void readGroupVInt(long[] docs, int pos) throws IOException {
-    if (curSegment.byteSize() - curPosition < 17) {
-      super.fallbackReadGroupVInt(docs, pos);
+  private void readGroupVInt(long[] docs, int offset) throws IOException {
+    if (curSegment.byteSize() - curPosition < MAX_LENGTH_PER_GROUP) {
+      super.fallbackReadGroupVInt(docs, offset);
       return;
     }
 
@@ -329,13 +328,13 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       final int n3Minus1 = (flag >> 2) & 0x03;
       final int n4Minus1 = flag & 0x03;
 
-      docs[pos] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n1Minus1];
+      docs[offset] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n1Minus1];
       curPosition += 1 + n1Minus1;
-      docs[pos + 1] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n2Minus1];
+      docs[offset + 1] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n2Minus1];
       curPosition += 1 + n2Minus1;
-      docs[pos + 2] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n3Minus1];
+      docs[offset + 2] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n3Minus1];
       curPosition += 1 + n3Minus1;
-      docs[pos + 3] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n4Minus1];
+      docs[offset + 3] = curSegment.get(LAYOUT_LE_INT, curPosition) & GROUP_VINT_MASKS[n4Minus1];
       curPosition += 1 + n4Minus1;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);

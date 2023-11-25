@@ -27,8 +27,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -44,20 +46,30 @@ public final class ByteBuffersDataInput extends DataInput
   private final int blockMask;
   private final long length;
   private final long offset;
+  private final boolean asReadOnlyBuffer;
 
   private long pos;
+
+  public ByteBuffersDataInput(List<ByteBuffer> buffers) {
+    this(buffers, true);
+  }
 
   /**
    * Read data from a set of contiguous buffers. All data buffers except for the last one must have
    * an identical remaining number of bytes in the buffer (that is a power of two). The last buffer
    * can be of an arbitrary remaining length.
    */
-  public ByteBuffersDataInput(List<ByteBuffer> buffers) {
+  public ByteBuffersDataInput(List<ByteBuffer> buffers, boolean asReadOnlyBuffer) {
+    this.asReadOnlyBuffer = asReadOnlyBuffer;
     ensureAssumptions(buffers);
 
     this.blocks = buffers.toArray(ByteBuffer[]::new);
     for (int i = 0; i < blocks.length; ++i) {
-      blocks[i] = blocks[i].asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+      if (asReadOnlyBuffer) {
+        blocks[i] = blocks[i].asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+      } else {
+        blocks[i] = blocks[i].order(ByteOrder.LITTLE_ENDIAN);
+      }
     }
     // pre-allocate these arrays and create the view buffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
@@ -210,6 +222,51 @@ public final class ByteBuffersDataInput extends DataInput
     } else {
       return super.readLong();
     }
+  }
+
+  @Override
+  public void readGroupVInts(long[] docs, int limit) throws IOException {
+    if (asReadOnlyBuffer == true) {
+      super.readGroupVInts(docs, limit);
+      return;
+    }
+
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVInt(docs, i);
+    }
+    for (; i < limit; ++i) {
+      docs[i] = readVInt();
+    }
+  }
+
+  private void readGroupVInt(long[] docs, int offset) throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + MAX_LENGTH_PER_GROUP <= blockMask) {
+      super.fallbackReadGroupVInt(docs, offset);
+      return;
+    }
+
+    final int flag = readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    blockOffset = blockOffset(pos);
+    int curPosition = blockOffset;
+
+    byte[] bytes = blocks[blockIndex(pos)].array();
+    docs[offset] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n1Minus1];
+    curPosition += 1 + n1Minus1;
+    docs[offset + 1] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n2Minus1];
+    curPosition += 1 + n2Minus1;
+    docs[offset + 2] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n3Minus1];
+    curPosition += 1 + n3Minus1;
+    docs[offset + 3] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n4Minus1];
+    curPosition += 1 + n4Minus1;
+    pos += curPosition - blockOffset;
   }
 
   @Override
@@ -424,7 +481,9 @@ public final class ByteBuffersDataInput extends DataInput
               this));
     }
 
-    return new ByteBuffersDataInput(sliceBufferList(Arrays.asList(this.blocks), offset, length));
+    return new ByteBuffersDataInput(
+        sliceBufferList(Arrays.asList(this.blocks), offset, length, asReadOnlyBuffer),
+        asReadOnlyBuffer);
   }
 
   @Override
@@ -495,11 +554,16 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   private static List<ByteBuffer> sliceBufferList(
-      List<ByteBuffer> buffers, long offset, long length) {
+      List<ByteBuffer> buffers, long offset, long length, boolean asReadOnlyBuffer) {
     ensureAssumptions(buffers);
 
     if (buffers.size() == 1) {
-      ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer cloned;
+      if (asReadOnlyBuffer) {
+        cloned = buffers.get(0).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+      } else {
+        cloned = buffers.get(0).order(ByteOrder.LITTLE_ENDIAN);
+      }
       cloned.position(Math.toIntExact(cloned.position() + offset));
       cloned.limit(Math.toIntExact(cloned.position() + length));
       return Arrays.asList(cloned);
@@ -513,13 +577,17 @@ public final class ByteBuffersDataInput extends DataInput
 
       int endOffset = Math.toIntExact(absEnd & blockMask);
 
+      Function<ByteBuffer, ByteBuffer> order =
+          asReadOnlyBuffer
+              ? buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN)
+              : buf -> buf.order(ByteOrder.LITTLE_ENDIAN);
       ArrayList<ByteBuffer> cloned =
           buffers
               .subList(
                   Math.toIntExact(absStart / blockBytes),
                   Math.toIntExact(absEnd / blockBytes + (endOffset == 0 ? 0 : 1)))
               .stream()
-              .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
+              .map(order)
               .collect(Collectors.toCollection(ArrayList::new));
 
       if (endOffset == 0) {

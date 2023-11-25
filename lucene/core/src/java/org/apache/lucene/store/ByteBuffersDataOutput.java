@@ -235,12 +235,26 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
    * to the output.
    */
   public ArrayList<ByteBuffer> toBufferList() {
+    return toBufferList(true);
+  }
+
+  /**
+   * Return a list view of {@link ByteBuffer} blocks over the current content written to the output.
+   *
+   * @param asReadOnlyBuffer set to false can be optimized for group varint decoding. in fact, the
+   *     buffer is still used for reading only
+   */
+  public ArrayList<ByteBuffer> toBufferList(boolean asReadOnlyBuffer) {
     ArrayList<ByteBuffer> result = new ArrayList<>(Math.max(blocks.size(), 1));
     if (blocks.isEmpty()) {
       result.add(EMPTY);
     } else {
       for (ByteBuffer bb : blocks) {
-        bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
+        if (asReadOnlyBuffer) {
+          bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
+        } else {
+          bb = bb.flip().order(ByteOrder.LITTLE_ENDIAN);
+        }
         result.add(bb);
       }
     }
@@ -276,7 +290,17 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
    * Return a {@link ByteBuffersDataInput} for the set of current buffers ({@link #toBufferList()}).
    */
   public ByteBuffersDataInput toDataInput() {
-    return new ByteBuffersDataInput(toBufferList());
+    return toDataInput(true);
+  }
+
+  /**
+   * Return a {@link ByteBuffersDataInput} for the set of current buffers ({@link #toBufferList()}).
+   *
+   * @param asReadOnlyBuffer set to false can be optimized for group varint decoding. in fact, the
+   *     buffer is still used for reading only
+   */
+  public ByteBuffersDataInput toDataInput(boolean asReadOnlyBuffer) {
+    return new ByteBuffersDataInput(toBufferList(asReadOnlyBuffer), asReadOnlyBuffer);
   }
 
   /**
