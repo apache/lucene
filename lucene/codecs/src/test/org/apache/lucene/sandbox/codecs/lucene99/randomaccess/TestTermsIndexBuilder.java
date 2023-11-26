@@ -20,6 +20,9 @@ package org.apache.lucene.sandbox.codecs.lucene99.randomaccess;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
@@ -49,9 +52,20 @@ public class TestTermsIndexBuilder extends LuceneTestCase {
     }
     TermsIndex termsIndex = builder.build();
 
+    byte[] metaBytes = new byte[4096];
+    byte[] dataBytes = new byte[4096];
+    DataOutput metaOut = new ByteArrayDataOutput(metaBytes);
+    DataOutput dataOutput = new ByteArrayDataOutput(dataBytes);
+
+    termsIndex.serialize(metaOut, dataOutput);
+
+    TermsIndexPrimitive termsIndexPrimitive =
+        TermsIndexPrimitive.deserialize(
+            new ByteArrayDataInput(metaBytes), new ByteArrayDataInput(dataBytes), false);
+
     for (String term : test_terms) {
       BytesRef termBytes = new BytesRef(term);
-      TermsIndex.TypeAndOrd typeAndOrd = termsIndex.getTerm(termBytes);
+      TermsIndex.TypeAndOrd typeAndOrd = termsIndexPrimitive.getTerm(termBytes);
 
       assertEquals(termsToType.get(term).intValue(), typeAndOrd.termType().getId());
       assertEquals((long) termsToOrd.get(term), typeAndOrd.ord());
