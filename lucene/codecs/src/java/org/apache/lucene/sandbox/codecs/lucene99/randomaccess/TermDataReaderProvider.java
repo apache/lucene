@@ -74,43 +74,54 @@ final class TermDataReaderProvider {
   record TermDataProviderAndCodec(TermDataProvider termDataProvider, TermStateCodec codec) {}
 
   public class TermDataReader {
-    private final TermData[] termDataPerType;
+    private TermData[] termDataPerType;
 
-    private final byte[] metaDataBuffer;
+    private byte[] metaDataBuffer;
 
-    private final byte[] dataBuffer;
+    private byte[] dataBuffer;
 
-    TermDataReader() throws IOException {
-      termDataPerType = new TermData[termDataProviderAndCodecs.length];
-      int maxMetadataLengthSeen = 0;
-      int maxDataLengthSeen = 0;
-
-      for (int i = 0; i < termDataProviderAndCodecs.length; i++) {
-        if (termDataProviderAndCodecs[i] == null) {
-          continue;
+    void maybeInitBuffer() {
+      if (metaDataBuffer == null || dataBuffer == null) {
+        int maxMetadataLengthSeen = 0;
+        int maxDataLengthSeen = 0;
+        for (int i = 0; i < termDataProviderAndCodecs.length; i++) {
+          if (termDataProviderAndCodecs[i] == null) {
+            continue;
+          }
+          var codec = termDataProviderAndCodecs[i].codec;
+          maxMetadataLengthSeen = Math.max(maxDataLengthSeen, codec.getMetadataBytesLength());
+          maxDataLengthSeen = Math.max(maxMetadataLengthSeen, codec.getMaximumRecordSizeInBytes());
         }
-        var codec = termDataProviderAndCodecs[i].codec;
-        TermDataProvider termDataProvider = termDataProviderAndCodecs[i].termDataProvider;
-        termDataPerType[i] =
+        metaDataBuffer = new byte[maxMetadataLengthSeen];
+        dataBuffer = new byte[maxDataLengthSeen];
+      }
+    }
+
+    TermData getTermData(int typeId) throws IOException {
+      if (termDataPerType == null) {
+        termDataPerType = new TermData[termDataProviderAndCodecs.length];
+      }
+      if (termDataPerType[typeId] == null) {
+        TermDataProvider termDataProvider = termDataProviderAndCodecs[typeId].termDataProvider;
+        termDataPerType[typeId] =
             new TermData(
                 termDataProvider.metadataProvider().newByteSlice(),
                 termDataProvider.dataProvider().newByteSlice());
-        maxMetadataLengthSeen = Math.max(maxDataLengthSeen, codec.getMetadataBytesLength());
-        maxDataLengthSeen = Math.max(maxMetadataLengthSeen, codec.getMaximumRecordSizeInBytes());
       }
-      metaDataBuffer = new byte[maxMetadataLengthSeen];
-      dataBuffer = new byte[maxDataLengthSeen];
+      return termDataPerType[typeId];
     }
 
     IntBlockTermState getTermState(TermType termType, long ord, IndexOptions indexOptions)
         throws IOException {
       assert termDataProviderAndCodecs[termType.getId()] != null;
-      assert termDataPerType[termType.getId()] != null;
+
+      maybeInitBuffer();
 
       int typeId = termType.getId();
-      var codec = termDataProviderAndCodecs[termType.getId()].codec;
+      var codec = termDataProviderAndCodecs[typeId].codec;
+      var termData = getTermData(typeId);
       IntBlockTermState termState =
-          termDataPerType[typeId].getTermStateWithBuffer(codec, ord, metaDataBuffer, dataBuffer);
+          termData.getTermStateWithBuffer(codec, ord, metaDataBuffer, dataBuffer);
 
       // need to filling some default values for the term state
       // in order to meet the expectations of the postings reader
