@@ -24,10 +24,25 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 
 /** Factory class for {@link TermDataReader} which supports term lookup */
-record TermDataReaderProvider(TermDataProviderAndCodec[] termDataProviderAndCodecs) {
+final class TermDataReaderProvider {
+  private final TermDataProviderAndCodec[] termDataProviderAndCodecs;
+
+  /** TermDataReader can be reused by the same thread */
+  private final ThreadLocal<TermDataReader> termDataReaderReuse;
+
+  TermDataReaderProvider(TermDataProviderAndCodec[] termDataProviderAndCodecs) {
+    this.termDataProviderAndCodecs = termDataProviderAndCodecs;
+    termDataReaderReuse = new ThreadLocal<>();
+  }
 
   TermDataReader newReader() throws IOException {
-    return new TermDataReader();
+    var existingReader = termDataReaderReuse.get();
+    if (existingReader != null) {
+      return existingReader;
+    }
+    var newReader = new TermDataReader();
+    termDataReaderReuse.set(newReader);
+    return newReader;
   }
 
   static class Builder {
