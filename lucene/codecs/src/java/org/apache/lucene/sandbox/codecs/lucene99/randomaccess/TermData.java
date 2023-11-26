@@ -53,8 +53,9 @@ record TermData(ByteSlice metadata, ByteSlice data) {
     long metadataStartPos = blockId * (codec.getMetadataBytesLength() + 8);
     long dataStartPos = metadata.getLong(metadataStartPos);
 
-    metadata.readBytesTo(metaDataBuffer, metadataStartPos + 8, codec.getMetadataBytesLength());
-    BytesRef metadataBytesRef = new BytesRef(metaDataBuffer);
+    int metadataLength = codec.getMetadataBytesLength();
+    metadata.readBytesTo(metaDataBuffer, metadataStartPos + 8, metadataLength);
+    BytesRef metadataBytesRef = new BytesRef(metaDataBuffer, 0, metadataLength);
 
     int numBitsPerRecord = codec.getNumBitsPerRecord(metadataBytesRef);
     int dataBitIndex = numBitsPerRecord * ((int) (ord % TermDataWriter.NUM_TERMS_PER_BLOCK));

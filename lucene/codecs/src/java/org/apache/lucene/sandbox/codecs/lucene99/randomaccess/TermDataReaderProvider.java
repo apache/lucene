@@ -76,14 +76,14 @@ final class TermDataReaderProvider {
   public class TermDataReader {
     private final TermData[] termDataPerType;
 
-    private final byte[][] metaDataBufferPerType;
+    private final byte[] metaDataBuffer;
 
-    private final byte[][] dataBufferPerType;
+    private final byte[] dataBuffer;
 
     TermDataReader() throws IOException {
       termDataPerType = new TermData[termDataProviderAndCodecs.length];
-      metaDataBufferPerType = new byte[termDataProviderAndCodecs.length][];
-      dataBufferPerType = new byte[termDataProviderAndCodecs.length][];
+      int maxMetadataLengthSeen = 0;
+      int maxDataLengthSeen = 0;
 
       for (int i = 0; i < termDataProviderAndCodecs.length; i++) {
         if (termDataProviderAndCodecs[i] == null) {
@@ -95,9 +95,11 @@ final class TermDataReaderProvider {
             new TermData(
                 termDataProvider.metadataProvider().newByteSlice(),
                 termDataProvider.dataProvider().newByteSlice());
-        metaDataBufferPerType[i] = new byte[codec.getMetadataBytesLength()];
-        dataBufferPerType[i] = new byte[codec.getMaximumRecordSizeInBytes()];
+        maxMetadataLengthSeen = Math.max(maxDataLengthSeen, codec.getMetadataBytesLength());
+        maxDataLengthSeen = Math.max(maxMetadataLengthSeen, codec.getMaximumRecordSizeInBytes());
       }
+      metaDataBuffer = new byte[maxMetadataLengthSeen];
+      dataBuffer = new byte[maxDataLengthSeen];
     }
 
     IntBlockTermState getTermState(TermType termType, long ord, IndexOptions indexOptions)
@@ -108,8 +110,7 @@ final class TermDataReaderProvider {
       int typeId = termType.getId();
       var codec = termDataProviderAndCodecs[termType.getId()].codec;
       IntBlockTermState termState =
-          termDataPerType[typeId].getTermStateWithBuffer(
-              codec, ord, metaDataBufferPerType[typeId], dataBufferPerType[typeId]);
+          termDataPerType[typeId].getTermStateWithBuffer(codec, ord, metaDataBuffer, dataBuffer);
 
       // need to filling some default values for the term state
       // in order to meet the expectations of the postings reader
