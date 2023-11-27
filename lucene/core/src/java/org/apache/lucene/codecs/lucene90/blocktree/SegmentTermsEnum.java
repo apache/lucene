@@ -1207,6 +1207,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       current = outputs[0];
     }
 
+    /**
+     * Set the last arc as the source of the floorData. This won't change the reading position of
+     * this {@link OutputAccumulator}
+     */
     void setFloorData(ByteArrayDataInput floorData) {
       assert outputIndex == num - 1
           : "floor data should be stored in last arc, get outputIndex: "
