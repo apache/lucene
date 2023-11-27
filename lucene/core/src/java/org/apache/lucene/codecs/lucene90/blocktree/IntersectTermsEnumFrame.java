@@ -144,7 +144,7 @@ final class IntersectTermsEnumFrame {
 
   void load(SegmentTermsEnum.OutputAccumulator outputAccumulator) throws IOException {
     outputAccumulator.prepareRead();
-    final long code = ite.fr.readVLongOutput(outputAccumulator);
+    long code = ite.fr.readVLongOutput(outputAccumulator);
     outputAccumulator.setFloorData(floorDataReader);
     load(code);
   }
