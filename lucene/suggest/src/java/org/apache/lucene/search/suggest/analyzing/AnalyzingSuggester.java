@@ -612,12 +612,9 @@ public class AnalyzingSuggester extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst =
-        new FST<>(
-            input,
-            input,
-            new PairOutputs<>(
-                PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()));
+    PairOutputs<Long, BytesRef> outputs =
+        new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
+    this.fst = new FST<>(FST.readMetadata(input, outputs), input);
     maxAnalyzedPathsForOneInput = input.readVInt();
     hasPayloads = input.readByte() == 1;
     return true;

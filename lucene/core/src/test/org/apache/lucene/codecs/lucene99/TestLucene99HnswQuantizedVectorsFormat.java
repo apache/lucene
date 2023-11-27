@@ -37,6 +37,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 
@@ -64,11 +65,12 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     for (int i = 0; i < numVectors; i++) {
       vectors.add(randomVector(dim));
     }
-    float quantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(dim);
+    float confidenceInterval =
+        Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectors(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-            quantile);
+            confidenceInterval);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
@@ -148,7 +150,38 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           }
         };
     String expectedString =
-        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9, rawVectorFormat=Lucene99FlatVectorsFormat()))";
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, rawVectorFormat=Lucene99FlatVectorsFormat()))";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
+  }
+
+  public void testLimits() {
+    expectThrows(
+        IllegalArgumentException.class, () -> new Lucene99HnswScalarQuantizedVectorsFormat(-1, 20));
+    expectThrows(
+        IllegalArgumentException.class, () -> new Lucene99HnswScalarQuantizedVectorsFormat(0, 20));
+    expectThrows(
+        IllegalArgumentException.class, () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, 0));
+    expectThrows(
+        IllegalArgumentException.class, () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, -1));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarQuantizedVectorsFormat(512 + 1, 20));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, 3201));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, 100, 0, 1.1f, null));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, 100, 0, 0.8f, null));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarQuantizedVectorsFormat(20, 100, 100, null, null));
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new Lucene99HnswScalarQuantizedVectorsFormat(
+                20, 100, 1, null, new SameThreadExecutorService()));
   }
 }
