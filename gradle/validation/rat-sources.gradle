@@ -82,6 +82,9 @@ allprojects {
                     // projects. Include their sources in the scan.
                     include "buildSrc/src/**"
                     include "dev-tools/missing-doclet/src/**"
+
+                    // do not let RAT attempt to scan a python venv, it gets lost and confused...
+                    exclude "dev-tools/aws-jmh/build/**"
                     break
 
                 case ":lucene:analysis:morfologik":

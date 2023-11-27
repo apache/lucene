@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
 public interface RandomVectorScorer {
@@ -29,6 +30,31 @@ public interface RandomVectorScorer {
    * @return the computed score
    */
   float score(int node) throws IOException;
+
+  /**
+   * @return the maximum possible ordinal for this scorer
+   */
+  int maxOrd();
+
+  /**
+   * Translates vector ordinal to the correct document ID. By default, this is an identity function.
+   *
+   * @param ord the vector ordinal
+   * @return the document Id for that vector ordinal
+   */
+  default int ordToDoc(int ord) {
+    return ord;
+  }
+
+  /**
+   * Returns the {@link Bits} representing live documents. By default, this is an identity function.
+   *
+   * @param acceptDocs the accept docs
+   * @return the accept docs
+   */
+  default Bits getAcceptOrds(Bits acceptDocs) {
+    return acceptDocs;
+  }
 
   /**
    * Creates a default scorer for float vectors.
@@ -53,7 +79,12 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    return new AbstractRandomVectorScorer<>(vectors) {
+      @Override
+      public float score(int node) throws IOException {
+        return similarityFunction.compare(query, vectors.vectorValue(node));
+      }
+    };
   }
 
   /**
@@ -79,6 +110,44 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    return new AbstractRandomVectorScorer<>(vectors) {
+      @Override
+      public float score(int node) throws IOException {
+        return similarityFunction.compare(query, vectors.vectorValue(node));
+      }
+    };
+  }
+
+  /**
+   * Creates a default scorer for random access vectors.
+   *
+   * @param <T> the type of the vector values
+   */
+  abstract class AbstractRandomVectorScorer<T> implements RandomVectorScorer {
+    private final RandomAccessVectorValues<T> values;
+
+    /**
+     * Creates a new scorer for the given vector values.
+     *
+     * @param values the vector values
+     */
+    public AbstractRandomVectorScorer(RandomAccessVectorValues<T> values) {
+      this.values = values;
+    }
+
+    @Override
+    public int maxOrd() {
+      return values.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return values.getAcceptOrds(acceptDocs);
+    }
   }
 }

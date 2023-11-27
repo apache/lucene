@@ -78,7 +78,9 @@ abstract class StableStringSorter extends StringSorter {
 
       @Override
       protected int compare(int i, int j) {
-        return StableStringSorter.this.compare(i, j);
+        get(scratch1, scratchBytes1, i);
+        get(scratch2, scratchBytes2, j);
+        return cmp.compare(scratchBytes1, scratchBytes2);
       }
 
       @Override

@@ -32,10 +32,11 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     int numVecs = 100;
 
     float[][] floats = randomFloats(numVecs, dims);
-    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
-      float error = Math.max((100 - quantile) * 0.01f, 0.01f);
+    for (float confidenceInterval : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
+      float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
-      ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
+      ScalarQuantizer scalarQuantizer =
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.EUCLIDEAN);
@@ -61,10 +62,11 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
 
-    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
-      float error = Math.max((100 - quantile) * 0.01f, 0.01f);
+    for (float confidenceInterval : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
+      float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloatsNormalized(floats);
-      ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
+      ScalarQuantizer scalarQuantizer =
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectorsNormalized(
@@ -94,10 +96,11 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     for (float[] fs : floats) {
       VectorUtil.l2normalize(fs);
     }
-    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
-      float error = Math.max((100 - quantile) * 0.01f, 0.01f);
+    for (float confidenceInterval : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
+      float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
-      ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
+      ScalarQuantizer scalarQuantizer =
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.DOT_PRODUCT);
@@ -123,10 +126,11 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     int numVecs = 100;
 
     float[][] floats = randomFloats(numVecs, dims);
-    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
-      float error = Math.max((100 - quantile) * 0.5f, 0.5f);
+    for (float confidenceInterval : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
+      float error = Math.max((100 - confidenceInterval) * 0.5f, 0.5f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
-      ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
+      ScalarQuantizer scalarQuantizer =
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(

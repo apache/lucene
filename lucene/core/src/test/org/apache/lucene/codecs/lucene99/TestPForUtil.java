@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene99;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -55,42 +55,6 @@ public class TestPForUtil extends LuceneTestCase {
           Arrays.toString(ints),
           ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
           ints);
-    }
-    assertEquals(endPointer, in.getFilePointer());
-    in.close();
-
-    d.close();
-  }
-
-  public void testDeltaEncodeDecode() throws IOException {
-    final int iterations = RandomNumbers.randomIntBetween(random(), 50, 1000);
-    // cap at 31 - 7 bpv to ensure we don't overflow when working with deltas (i.e., 128 24 bit
-    // values treated as deltas will result in a final value that can fit in 31 bits)
-    final int[] values = createTestData(iterations, 31 - 7);
-
-    final Directory d = new ByteBuffersDirectory();
-    final long endPointer = encodeTestData(iterations, values, d);
-
-    IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-    final PForUtil pForUtil = new PForUtil(new ForUtil());
-    for (int i = 0; i < iterations; ++i) {
-      if (random().nextInt(5) == 0) {
-        pForUtil.skip(in);
-        continue;
-      }
-      long base = 0;
-      final long[] restored = new long[ForUtil.BLOCK_SIZE];
-      pForUtil.decodeAndPrefixSum(in, base, restored);
-      final long[] expected = new long[ForUtil.BLOCK_SIZE];
-      for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
-        expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
-        if (j > 0) {
-          expected[j] += expected[j - 1];
-        } else {
-          expected[j] += base;
-        }
-      }
-      assertArrayEquals(Arrays.toString(restored), expected, restored);
     }
     assertEquals(endPointer, in.getFilePointer());
     in.close();
