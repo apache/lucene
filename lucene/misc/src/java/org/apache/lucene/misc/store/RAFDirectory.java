@@ -140,7 +140,8 @@ public class RAFDirectory extends FSDirectory {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + this);
       }
-      return new RAFIndexInput(sliceDescription, file, off + offset, length, getBufferSize());
+      String description = sliceDescription == null ? toString() : sliceDescription;
+      return new RAFIndexInput(description, file, off + offset, length, getBufferSize());
     }
 
     @Override
