@@ -29,7 +29,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.fst.BytesRefFSTEnum;
+import org.apache.lucene.util.fst.BytesRefPrimitiveLongFSTEnum;
 
 final class TermsImpl extends Terms {
   private final FieldInfo fieldInfo;
@@ -120,9 +120,9 @@ final class TermsImpl extends Terms {
 
     private IntBlockTermState termState;
 
-    private final BytesRefFSTEnum<Long> fstEnum;
+    private final BytesRefPrimitiveLongFSTEnum fstEnum;
 
-    private BytesRefFSTEnum.InputOutput<Long> fstSeekState;
+    private BytesRefPrimitiveLongFSTEnum.InputOutput fstSeekState;
 
     // Only set when seekExact(term, state) is called, because that will update
     // the termState but leave the fstSeekState out of sync.
@@ -133,7 +133,7 @@ final class TermsImpl extends Terms {
 
     RandomAccessTermsEnum() throws IOException {
       termState = (IntBlockTermState) lucene99PostingsReader.newTermState();
-      fstEnum = new BytesRefFSTEnum<>(termsDict.termsIndex().fst());
+      fstEnum = new BytesRefPrimitiveLongFSTEnum(termsDict.termsIndex().primitiveLongFST());
       termDataReader = termsDict.termDataReaderProvider().newReader();
     }
 

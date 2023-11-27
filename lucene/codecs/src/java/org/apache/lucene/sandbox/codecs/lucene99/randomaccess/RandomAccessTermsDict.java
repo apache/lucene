@@ -27,7 +27,7 @@ import org.apache.lucene.util.BytesRef;
 /** A term dictionary that offer random-access to read a specific term */
 record RandomAccessTermsDict(
     TermsStats termsStats,
-    TermsIndex termsIndex,
+    TermsIndexPrimitive termsIndex,
     TermDataReaderProvider termDataReaderProvider,
     IndexOptions indexOptions) {
 
@@ -52,9 +52,10 @@ record RandomAccessTermsDict(
     boolean hasPayloads = indexOptionsProvider.hasPayloads(termsStats.fieldNumber());
 
     // (2) deserialize terms index
-    TermsIndex termsIndex = null;
+    TermsIndexPrimitive termsIndex = null;
     if (termsStats.size() > 0) {
-      termsIndex = TermsIndex.deserialize(metaInput, termIndexInput, /* load off heap */ true);
+      termsIndex =
+          TermsIndexPrimitive.deserialize(metaInput, termIndexInput, /* load off heap */ true);
     }
 
     // (3) deserialize all the term data by each TermType

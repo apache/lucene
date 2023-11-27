@@ -115,11 +115,11 @@ public final class BytesRefPrimitiveLongFSTEnum extends PrimitiveLongFSTEnum {
 
   private InputOutput setResult() {
     if (upto == 0) {
-      result.output = -1;
+      return null;
     } else {
       current.length = upto - 1;
       result.output = output[upto];
+      return result;
     }
-    return result;
   }
 }
