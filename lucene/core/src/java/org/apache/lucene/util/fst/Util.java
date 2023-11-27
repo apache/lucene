@@ -934,4 +934,33 @@ public final class Util {
     }
     return -1 - low;
   }
+
+  /** Same as {@link Util#binarySearch(FST, Arc, int)} but for {@link PrimitiveLongFST} */
+  static int binarySearch(
+      PrimitiveLongFST fst, PrimitiveLongFST.PrimitiveLongArc arc, int targetLabel)
+      throws IOException {
+    assert arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH
+        : "Arc is not encoded as packed array for binary search (nodeFlags="
+            + arc.nodeFlags()
+            + ")";
+    BytesReader in = fst.getBytesReader();
+    int low = arc.arcIdx();
+    int mid;
+    int high = arc.numArcs() - 1;
+    while (low <= high) {
+      mid = (low + high) >>> 1;
+      in.setPosition(arc.posArcsStart());
+      in.skipBytes((long) arc.bytesPerArc() * mid + 1);
+      final int midLabel = fst.readLabel(in);
+      final int cmp = midLabel - targetLabel;
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        return mid;
+      }
+    }
+    return -1 - low;
+  }
 }
