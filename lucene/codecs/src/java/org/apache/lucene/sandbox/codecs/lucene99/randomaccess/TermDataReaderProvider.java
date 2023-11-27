@@ -80,6 +80,8 @@ final class TermDataReaderProvider {
 
     private byte[] dataBuffer;
 
+    private IntBlockTermState reuse = new IntBlockTermState();
+
     void maybeInitBuffer() {
       if (metaDataBuffer == null || dataBuffer == null) {
         int maxMetadataLengthSeen = 0;
@@ -121,7 +123,7 @@ final class TermDataReaderProvider {
       var codec = termDataProviderAndCodecs[typeId].codec;
       var termData = getTermData(typeId);
       IntBlockTermState termState =
-          termData.getTermStateWithBuffer(codec, ord, metaDataBuffer, dataBuffer);
+          termData.getTermStateWithBufferAndReuse(codec, ord, metaDataBuffer, dataBuffer, reuse);
 
       // need to filling some default values for the term state
       // in order to meet the expectations of the postings reader

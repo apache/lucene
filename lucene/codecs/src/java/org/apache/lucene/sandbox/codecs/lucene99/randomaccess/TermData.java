@@ -47,8 +47,13 @@ record TermData(ByteSlice metadata, ByteSlice data) {
     return codec.decodeAt(metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex);
   }
 
-  IntBlockTermState getTermStateWithBuffer(
-      TermStateCodec codec, long ord, byte[] metaDataBuffer, byte[] dataBuffer) throws IOException {
+  IntBlockTermState getTermStateWithBufferAndReuse(
+      TermStateCodec codec,
+      long ord,
+      byte[] metaDataBuffer,
+      byte[] dataBuffer,
+      IntBlockTermState reuse)
+      throws IOException {
     long blockId = ord / TermDataWriter.NUM_TERMS_PER_BLOCK;
     long metadataStartPos = blockId * (codec.getMetadataBytesLength() + 8);
     long dataStartPos = metadata.getLong(metadataStartPos);
@@ -67,6 +72,8 @@ record TermData(ByteSlice metadata, ByteSlice data) {
     data.readBytesTo(dataBuffer, dataStartPos + dataBitIndex / 8, numBytesToRead);
     BytesRef dataBytesRef = new BytesRef(dataBuffer, 0, numBytesToRead);
 
-    return codec.decodeAt(metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex);
+    codec.decodeAtWithReuse(
+        metadataBytesRef, dataBytesRef, BitUnpackerImpl.INSTANCE, startBitIndex, reuse);
+    return reuse;
   }
 }

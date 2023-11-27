@@ -212,11 +212,27 @@ final class TermStateCodecImpl implements TermStateCodec {
   @Override
   public IntBlockTermState decodeAt(
       BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int startBitIndex) {
+
+    IntBlockTermState decoded = new IntBlockTermState();
+    decodeAtWithReuse(metadataBytes, dataBytes, bitUnpacker, startBitIndex, decoded);
+
+    return decoded;
+  }
+
+  @Override
+  public void decodeAtWithReuse(
+      BytesRef metadataBytes,
+      BytesRef dataBytes,
+      BitUnpacker bitUnpacker,
+      int startBitIndex,
+      IntBlockTermState reuse) {
     assert metadataBytes.length == this.metadataBytesLength;
 
-    int upto = metadataBytes.offset;
-    IntBlockTermState decoded = new IntBlockTermState();
+    reuse.lastPosBlockOffset = -1;
+    reuse.skipOffset = -1;
+    reuse.singletonDocID = -1;
 
+    int upto = metadataBytes.offset;
     for (int i = 0; i < components.length; i++) {
       var component = components[i];
       int bitWidth = metadataBytes.bytes[upto++];
@@ -225,11 +241,9 @@ final class TermStateCodecImpl implements TermStateCodec {
         val += (long) BitUtil.VH_LE_LONG.get(metadataBytes.bytes, upto);
         upto += 8;
       }
-      component.setTargetValue(decoded, val);
+      component.setTargetValue(reuse, val);
       startBitIndex += bitWidth;
     }
-
-    return decoded;
   }
 
   private record Metadata(byte bitWidth, long referenceValue) {}

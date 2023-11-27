@@ -85,4 +85,15 @@ interface TermStateCodec {
    */
   IntBlockTermState decodeAt(
       BytesRef metadataBytes, BytesRef dataBytes, BitUnpacker bitUnpacker, int startBitIndex);
+
+  /**
+   * Like {@link TermStateCodec#decodeAt(BytesRef, BytesRef, BitUnpacker, int)} but with a caller
+   * provided `IntBlockTermState` instead of returning a allocated one.
+   */
+  void decodeAtWithReuse(
+      BytesRef metadataBytes,
+      BytesRef dataBytes,
+      BitUnpacker bitUnpacker,
+      int startBitIndex,
+      IntBlockTermState reuse);
 }
