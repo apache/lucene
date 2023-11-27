@@ -503,11 +503,10 @@ public final class PrimitiveLongFST implements Accountable {
    */
   public void saveMetadata(DataOutput metaOut) throws IOException {
     CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
-
-    // Accepts empty string
-    metaOut.writeByte((byte) 1);
-
     if (metadata.emptyOutput != null) {
+      // Accepts empty string
+      metaOut.writeByte((byte) 1);
+
       // Serialize empty-string output:
       ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
       outputs.writeFinalOutput(metadata.emptyOutput.longValue(), ros);
@@ -607,14 +606,16 @@ public final class PrimitiveLongFST implements Accountable {
   public PrimitiveLongArc getFirstArc(PrimitiveLongArc arc) {
     long NO_OUTPUT = outputs.getNoOutput();
 
-    arc.flags = BIT_FINAL_ARC | BIT_LAST_ARC;
     if (metadata.emptyOutput != null) {
+      arc.flags = BIT_FINAL_ARC | BIT_LAST_ARC;
       arc.nextFinalOutput = metadata.emptyOutput.longValue();
+      if (metadata.emptyOutput.longValue() != NO_OUTPUT) {
+        arc.flags = (byte) (arc.flags() | BIT_ARC_HAS_FINAL_OUTPUT);
+      }
+    } else {
+      arc.flags = BIT_LAST_ARC;
+      arc.nextFinalOutput = NO_OUTPUT;
     }
-    if (metadata.emptyOutput != null && metadata.emptyOutput.longValue() != NO_OUTPUT) {
-      arc.flags = (byte) (arc.flags() | BIT_ARC_HAS_FINAL_OUTPUT);
-    }
-
     arc.output = NO_OUTPUT;
 
     // If there are no nodes, ie, the FST only accepts the
