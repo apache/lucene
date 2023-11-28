@@ -101,9 +101,7 @@ public final class CompetitiveImpactAccumulator {
 
     System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
 
-    for (Impact entry : acc.otherFreqNormPairs) {
-      add(entry, otherFreqNormPairs);
-    }
+    otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
 
     assert assertConsistent();
   }
@@ -154,6 +152,7 @@ public final class CompetitiveImpactAccumulator {
         it.remove();
       } else {
         // lesser freq but better norm, further entries are not comparable
+        // TODO: further entries may have more lesser freq and greater norms, should we move them?
         break;
       }
     }
