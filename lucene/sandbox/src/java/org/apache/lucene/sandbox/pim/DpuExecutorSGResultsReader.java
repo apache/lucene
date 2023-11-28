@@ -26,13 +26,13 @@ import java.io.IOException;
  */
 public class DpuExecutorSGResultsReader extends DpuResultsReader {
 
-    final private SGReturn results;
+    final private SGReturnPool.SGReturn results;
     private int index;
     private final int lastIndex;
     private final int queryResultByteSize;
 
     DpuExecutorSGResultsReader(PimQuery query,
-                               SGReturn sgResults,
+                               SGReturnPool.SGReturn sgResults,
                                int queryIndex,
                                int queryResultByteSize) {
         super(query);
@@ -48,8 +48,10 @@ public class DpuExecutorSGResultsReader extends DpuResultsReader {
     public boolean next() throws IOException {
 
         // check if no more results for this query
-        if(this.index == this.lastIndex)
+        if(this.index == this.lastIndex) {
+            results.endReading();
             return false;
+        }
 
         // check if the doc id is less than the max doc ID
         int docId = results.byteBuffer.getInt(this.index * this.queryResultByteSize);

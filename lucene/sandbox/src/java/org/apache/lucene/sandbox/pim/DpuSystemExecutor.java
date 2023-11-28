@@ -37,6 +37,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   static final int INDEX_CACHE_SIZE = 1 << 16;
   static final int MAX_DPU_INDEX_SIZE = 48 << 20;
   static final boolean PARALLEL_INDEX_LOAD = true;
+  static final int INIT_SG_RETURN_CAPACITY = 2;
   private final byte[] queryBatchBuffer;
   private final DpuSystem dpuSystem;
   private final DpuProgramInfo dpuProgramInfo;
@@ -44,6 +45,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   private final byte[] dpuQueryOffsetInBatch;
   private final int[] dpuIdOffset;
   private int nbLuceneSegments;
+  private SGReturnPool sgReturnPool;
 
   /*
    * Static load of the DPU jni library specific to PIM lucene
@@ -60,7 +62,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
    * @param nr_segments the number of lucene segments
    * @return an SGReturn object, containing the queries results ordered by query id and lucene segment id
    */
-  native SGReturn sgXferResults(int nr_queries, int nr_segments);
+  native void sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
@@ -81,6 +83,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       cnt += dpuSystem.ranks().get(i).dpus().size();
     }
     nbLuceneSegments = 0;
+    sgReturnPool = new SGReturnPool(INIT_SG_RETURN_CAPACITY);
   }
 
   @Override
@@ -247,7 +250,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
 
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer
-    SGReturn results = sgXferResults(queryBuffers.size(), nbLuceneSegments);
+    SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments);
+    sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
     results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
     results.byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
     results.segmentsIndices.order(ByteOrder.LITTLE_ENDIAN);

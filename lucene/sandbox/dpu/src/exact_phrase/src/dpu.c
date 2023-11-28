@@ -337,8 +337,6 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     // 1) doc id is the same as last result => increase the frequency of last result
     // 2) the results cache is full => flush the buffer
     // 3) the buffer has space available => insert the result in the current buffer
-
-    //TODO query_id is not necessary as a parameter
     assert(query_id == results_cache[me()][0].info.query_id);
 
     uint16_t buffer_size = results_cache[me()][0].info.buffer_size;

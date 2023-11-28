@@ -271,7 +271,7 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
     return true;
 }
 
-JNIEXPORT jobject JNICALL
+JNIEXPORT void JNICALL
 /**
  * Transfers the results of a set of queries executed on a set of segments from the DPU to the host.
  *
@@ -279,10 +279,11 @@ JNIEXPORT jobject JNICALL
  * @param this The Java object calling this native method.
  * @param nr_queries The number of queries executed.
  * @param nr_segments The number of segments queried.
- *
+ * @param sgReturn the structure to store the results.
  * @return The results of the queries.
  */
-Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, jobject this, jint nr_queries, jint nr_segments)
+Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, jobject this, jint nr_queries,
+                    jint nr_segments, jobject sgReturn)
 {
     jobject dpuSystem = (*env)->GetObjectField(env, this, dpuSystemField);
     jobject nativeDpuSet = (*env)->GetObjectField(env, dpuSystem, nativeDpuSetField);
@@ -295,13 +296,10 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     size_t total_nr_results = metadata.total_nr_results;
     size_t max_nr_results = metadata.max_nr_results;
 
-    // Allocate Java direct buffers
-    jobject byteBuffer
-        = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(result_t[total_nr_results]));
-    jobject byteBufferQueriesIndices
-        = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(jint[nr_queries]));
-    jobject byteBufferSegmentsIndices
-        = (*env)->CallStaticObjectMethod(env, byteBufferClass, allocateDirectMethod, sizeof(jint[nr_queries][nr_segments]));
+    // Retrieve direct buffers where to store the results
+    jobject byteBuffer = (*env)->GetObjectField(env, sgReturn, SGReturnByteBufferField);
+    jobject byteBufferQueriesIndices = (*env)->GetObjectField(env, sgReturn, SGReturnQueriesIndicesField);
+    jobject byteBufferSegmentsIndices = (*env)->GetObjectField(env, sgReturn, SGReturnSegmentsIndicesField);
 
     // Get the address of the direct buffer
     jbyte *dpu_results = (*env)->GetDirectBufferAddress(env, byteBuffer);
@@ -329,20 +327,9 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
         &get_block_info,
         DPU_SG_XFER_DISABLE_LENGTH_CHECK));
 
-    // Build output object
-    jclass SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
-    jmethodID SGReturnConstructor = (*env)->GetMethodID(env, SGReturnClass, "<init>", "()V");
-    jobject result = (*env)->NewObject(env, SGReturnClass, SGReturnConstructor);
-
-    (*env)->SetObjectField(env, result, SGReturnByteBufferField, byteBuffer);
-    (*env)->SetObjectField(env, result, SGReturnQueriesIndicesField, byteBufferQueriesIndices);
-    (*env)->SetObjectField(env, result, SGReturnSegmentsIndicesField, byteBufferSegmentsIndices);
-
     free(metadata.results_index);
     free(metadata.results_size_lucene_segments);
     free(block_addresses);
-
-    return result;
 }
 
 /**
@@ -362,7 +349,7 @@ cache_callback(JNIEnv *env)
     byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
     allocateDirectMethod = (*env)->GetStaticMethodID(env, byteBufferClass, "allocateDirect", "(I)Ljava/nio/ByteBuffer;");
 
-    jclass SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturn");
+    jclass SGReturnClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/SGReturnPool$SGReturn");
     SGReturnByteBufferField = (*env)->GetFieldID(env, SGReturnClass, "byteBuffer", "Ljava/nio/ByteBuffer;");
     SGReturnQueriesIndicesField = (*env)->GetFieldID(env, SGReturnClass, "queriesIndices", "Ljava/nio/ByteBuffer;");
     SGReturnSegmentsIndicesField = (*env)->GetFieldID(env, SGReturnClass, "segmentsIndices", "Ljava/nio/ByteBuffer;");
