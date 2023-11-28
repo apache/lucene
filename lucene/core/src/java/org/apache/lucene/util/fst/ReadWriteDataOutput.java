@@ -30,8 +30,10 @@ import org.apache.lucene.store.DataOutput;
 final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezable {
 
   private final ByteBuffersDataOutput dataOutput;
+  // the DataInput to read from in case the DataOutput has multiple blocks
   private ByteBuffersDataInput dataInput;
-  private List<ByteBuffer> byteBuffers;
+  // the ByteBuffers to read from in case the DataOutput has a single block
+  private ByteBuffer byteBuffer;
 
   public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
@@ -55,17 +57,21 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezab
   @Override
   public void freeze() {
     // these operations are costly, so we want to compute it once and cache
-    byteBuffers = dataOutput.toWriteableBufferList();
-    dataInput = new ByteBuffersDataInput(byteBuffers);
+    List<ByteBuffer> byteBuffers = dataOutput.toWriteableBufferList();
+    if (byteBuffers.size() == 1) {
+      byteBuffer = byteBuffers.get(0);
+    } else {
+      dataInput = new ByteBuffersDataInput(byteBuffers);
+    }
   }
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    assert dataInput != null; // freeze() must be called first
-    if (byteBuffers.size() == 1) {
+    if (byteBuffer != null) {
       // use a faster implementation for single-block case
-      return new ReverseBytesReader(byteBuffers.get(0).array());
+      return new ReverseBytesReader(byteBuffer.array());
     }
+    assert dataInput != null; // freeze() must be called first
     return new ReverseRandomAccessReader(dataInput);
   }
 
