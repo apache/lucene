@@ -58,6 +58,7 @@ public final class OnHeapFSTStore implements FSTStore {
       // FST is big: we need multiple pages
       dataOutput = (ReadWriteDataOutput) getOnHeapReaderWriter(maxBlockBits);
       dataOutput.copyBytes(in, numBytes);
+      dataOutput.freeze();
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead
       bytesArray = new byte[(int) numBytes];

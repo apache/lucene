@@ -442,12 +442,14 @@ public final class FST<T> implements Accountable {
     if (metaIn.readByte() == 1) {
       // accepts empty string
       // 1 KB blocks:
-      DataOutput emptyBytes = getOnHeapReaderWriter(10);
+      ReadWriteDataOutput emptyBytes = (ReadWriteDataOutput) getOnHeapReaderWriter(10);
       int numBytes = metaIn.readVInt();
       emptyBytes.copyBytes(metaIn, numBytes);
 
+      emptyBytes.freeze();
+
       // De-serialize empty-string output:
-      BytesReader reader = ((FSTReader) emptyBytes).getReverseBytesReader();
+      BytesReader reader = emptyBytes.getReverseBytesReader();
       // NoOutputs uses 0 bytes when writing its output,
       // so we have to check here else BytesStore gets
       // angry:
