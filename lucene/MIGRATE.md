@@ -101,6 +101,13 @@ The deprecated getter for the `Executor` that was optionally provided to the `In
 has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
 that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
 
+### CheckIndex params -slow and -fast are deprecated, replaced by -level X (GITHUB#11023)
+
+The `CheckIndex` former `-fast` behaviour of performing checksum checks only, is now the default.
+Added a new parameter: `-level X`, to set the detail level of the index check. The higher the value, the more checks are performed.
+Sample `-level` usage: `1` (Default) - Checksum checks only, `2` - all level 1 checks as well as logical integrity checks, `3` - all
+level 2 checks as well as slow checks.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
