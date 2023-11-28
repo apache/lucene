@@ -66,6 +66,7 @@ public class Test2BFST extends LuceneTestCase {
         Random r = new Random(seed);
         int[] ints2 = new int[200];
         IntsRef input2 = new IntsRef(ints2, 0, ints2.length);
+        long startTime = System.nanoTime();
         while (true) {
           // System.out.println("add: " + input + " -> " + output);
           for (int i = 10; i < ints2.length; i++) {
@@ -78,9 +79,13 @@ public class Test2BFST extends LuceneTestCase {
                 count
                     + ": "
                     + fstCompiler.fstRamBytesUsed()
-                    + " bytes; "
+                    + " RAM bytes used; "
+                    + fstCompiler.fstSize()
+                    + " FST bytes; "
                     + fstCompiler.getNodeCount()
-                    + " nodes");
+                    + " nodes; took "
+                    + (long) ((System.nanoTime() - startTime) / 1e9)
+                    + " seconds");
           }
           if (fstCompiler.getNodeCount() > Integer.MAX_VALUE + 100L * 1024 * 1024) {
             break;

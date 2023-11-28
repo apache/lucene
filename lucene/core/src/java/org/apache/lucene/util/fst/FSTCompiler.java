@@ -867,6 +867,10 @@ public class FSTCompiler<T> {
     return fst.ramBytesUsed();
   }
 
+  public long fstSize() {
+    return bytes.getPosition();
+  }
+
   static final class CompiledNode implements Node {
     long node;
 
