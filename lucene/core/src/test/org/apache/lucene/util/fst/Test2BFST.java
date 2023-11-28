@@ -108,9 +108,11 @@ public class Test2BFST extends LuceneTestCase {
           Arrays.fill(ints2, 0);
           r = new Random(seed);
 
+          startTime = System.nanoTime();
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
             for (int j = 10; j < ints2.length; j++) {
               ints2[j] = r.nextInt(256);
@@ -199,9 +201,12 @@ public class Test2BFST extends LuceneTestCase {
           r = new Random(seed);
           Arrays.fill(ints, 0);
 
+          long startTime = System.nanoTime();
+
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
             r.nextBytes(outputBytes);
             assertEquals(output, Util.get(fst, input));
@@ -288,9 +293,11 @@ public class Test2BFST extends LuceneTestCase {
 
           output = 1;
           r = new Random(seed);
+          long startTime = System.nanoTime();
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
 
             assertEquals(output, Util.get(fst, input).longValue());
