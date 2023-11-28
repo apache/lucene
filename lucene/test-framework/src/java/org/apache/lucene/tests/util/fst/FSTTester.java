@@ -281,7 +281,7 @@ public class FSTTester<T> {
         fst.save(out, out);
       }
       try (IndexInput in = dir.openInput("fst.bin", context)) {
-        fst = new FST<>(in, in, outputs);
+        fst = new FST<>(FST.readMetadata(in, outputs), in);
       } finally {
         dir.deleteFile("fst.bin");
       }

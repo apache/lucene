@@ -20,6 +20,8 @@ package org.apache.lucene.search.suggest.analyzing;
 //   - test w/ syns
 //   - add pruning of low-freq ngrams?
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -384,7 +386,7 @@ public class FreeTextSuggester extends Lookup {
     }
     totTokens = input.readVLong();
 
-    fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
 
     return true;
   }

@@ -489,7 +489,8 @@ public class TestJoinUtil extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
+            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false))
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     Map<String, Float> lowestScoresPerParent = new HashMap<>();
     Map<String, Float> highestScoresPerParent = new HashMap<>();
@@ -632,7 +633,8 @@ public class TestJoinUtil extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false)));
+            newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.KEYWORD, false))
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     int minChildDocsPerParent = 2;
     int maxChildDocsPerParent = 16;
@@ -700,7 +702,9 @@ public class TestJoinUtil extends LuceneTestCase {
 
   public void testRewrite() throws IOException {
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     Document doc = new Document();
     doc.add(new SortedDocValuesField("join_field", new BytesRef("abc")));
     w.addDocument(doc);
@@ -1637,7 +1641,8 @@ public class TestJoinUtil extends LuceneTestCase {
         new RandomIndexWriter(
             random,
             dir,
-            newIndexWriterConfig(new MockAnalyzer(random, MockTokenizer.KEYWORD, false)));
+            newIndexWriterConfig(new MockAnalyzer(random, MockTokenizer.KEYWORD, false))
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     IndexIterationContext context = new IndexIterationContext();
     int numRandomValues = nDocs / RandomNumbers.randomIntBetween(random, 1, 4);

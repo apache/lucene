@@ -64,7 +64,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.suggest.InputIterator;
 import org.apache.lucene.search.suggest.Lookup;
@@ -728,7 +728,6 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     // System.out.println("finalQuery=" + finalQuery);
 
     // Sort by weight, descending:
-    TopFieldCollector c = TopFieldCollector.create(SORT, num, 1);
     List<LookupResult> results = null;
     SearcherManager mgr;
     IndexSearcher searcher;
@@ -740,10 +739,10 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
+      TopFieldCollectorManager c =
+          new TopFieldCollectorManager(SORT, num, null, 1, searcher.getSlices().length > 1);
       // System.out.println("got searcher=" + searcher);
-      searcher.search(finalQuery, c);
-
-      TopFieldDocs hits = c.topDocs();
+      TopFieldDocs hits = searcher.search(finalQuery, c);
 
       // Slower way if postings are not pre-sorted by weight:
       // hits = searcher.search(query, null, num, SORT);

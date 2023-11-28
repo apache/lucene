@@ -190,7 +190,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final NRTSuggesterBuilder builder;
 
-    public CompletionTermWriter() {
+    public CompletionTermWriter() throws IOException {
       builder = new NRTSuggesterBuilder();
       first = true;
     }
