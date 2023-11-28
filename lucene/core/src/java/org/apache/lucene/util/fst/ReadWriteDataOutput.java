@@ -17,6 +17,10 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
@@ -49,7 +53,12 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    return new ReverseRandomAccessReader(dataOutput.toDataInput());
+    // we are using the writable buffers because we need to access the internal byte array
+    List<ByteBuffer> buffers = dataOutput.toWriteableBufferList();
+    if (buffers.size() == 1) {
+      return new ReverseBytesReader(buffers.get(0).array());
+    }
+    return new ReverseRandomAccessReader(new ByteBuffersDataInput(buffers));
   }
 
   @Override

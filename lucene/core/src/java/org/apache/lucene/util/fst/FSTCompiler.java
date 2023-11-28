@@ -36,6 +36,7 @@ import java.io.IOException;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -956,7 +957,15 @@ public class FSTCompiler<T> {
   }
 
   public long fstRamBytesUsed() {
-    return scratchBytes.ramBytesUsed();
+    long ramBytesUsed = scratchBytes.ramBytesUsed();
+    if (dataOutput instanceof Accountable) {
+      ramBytesUsed += ((Accountable) dataOutput).ramBytesUsed();
+    }
+    return ramBytesUsed;
+  }
+
+  public long fstSize() {
+    return numBytesWritten;
   }
 
   static final class CompiledNode implements Node {
