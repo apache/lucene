@@ -138,6 +138,8 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+* GITHUB#9049: Removing unused private method in UnescapedCharSequence. (Jakub Slowinski)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
