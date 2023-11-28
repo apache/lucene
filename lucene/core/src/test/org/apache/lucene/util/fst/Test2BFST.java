@@ -98,7 +98,7 @@ public class Test2BFST extends LuceneTestCase {
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
@@ -173,7 +173,7 @@ public class Test2BFST extends LuceneTestCase {
           fstCompiler.add(input, BytesRef.deepCopyOf(output));
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstRamBytesUsed();
+            long size = fstCompiler.fstSize();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
@@ -189,7 +189,7 @@ public class Test2BFST extends LuceneTestCase {
 
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
@@ -260,7 +260,7 @@ public class Test2BFST extends LuceneTestCase {
           output += 1 + r.nextInt(10);
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstRamBytesUsed();
+            long size = fstCompiler.fstSize();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
@@ -277,7 +277,7 @@ public class Test2BFST extends LuceneTestCase {
 
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
