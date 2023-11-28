@@ -242,10 +242,10 @@ public class TestTermScorer extends LuceneTestCase {
     for (int iter = 0; iter < 15; ++iter) {
       Query query = new TermQuery(new Term("foo", Integer.toString(iter)));
 
-      CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
-          TopScoreDocCollector.createSharedManager(10, null, 1);
+      TopScoreDocCollectorManager completeManager =
+          new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      TopScoreDocCollectorManager topScoresManager =
+          new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
       TopDocs complete = searcher.search(query, completeManager);
       TopDocs topScores = searcher.search(query, topScoresManager);
@@ -258,8 +258,8 @@ public class TestTermScorer extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 1);
+      completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      topScoresManager = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
       complete = searcher.search(filteredQuery, completeManager);
       topScores = searcher.search(filteredQuery, topScoresManager);
       CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);

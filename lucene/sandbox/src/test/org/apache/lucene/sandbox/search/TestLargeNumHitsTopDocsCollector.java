@@ -24,14 +24,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
@@ -84,13 +83,13 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   public void testIllegalArguments() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
-    CollectorManager<TopScoreDocCollector, TopDocs> regularManager =
-        TopScoreDocCollector.createSharedManager(15, null, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(15, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs regular = searcher.search(testQuery, regularManager);
+    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, regular.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
     IllegalArgumentException expected =
         expectThrows(
@@ -105,13 +104,13 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   public void testNoPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
-    CollectorManager<TopScoreDocCollector, TopDocs> regularManager =
-        TopScoreDocCollector.createSharedManager(250_000, null, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(250_000, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs regular = searcher.search(testQuery, regularManager);
+    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, regular.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
     assertNull(largeCollector.pq);
     assertNull(largeCollector.pqTop);
@@ -120,13 +119,13 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   public void testPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(50);
-    CollectorManager<TopScoreDocCollector, TopDocs> regularManager =
-        TopScoreDocCollector.createSharedManager(50, null, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(50, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs regular = searcher.search(testQuery, regularManager);
+    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, regular.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
     assertNotNull(largeCollector.pq);
     assertNotNull(largeCollector.pqTop);
@@ -135,18 +134,18 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   public void testNoPQHitsOrder() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
-    CollectorManager<TopScoreDocCollector, TopDocs> regularManager =
-        TopScoreDocCollector.createSharedManager(250_000, null, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(250_000, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs regular = searcher.search(testQuery, regularManager);
+    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, regular.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
 
     assertNull(largeCollector.pq);
     assertNull(largeCollector.pqTop);
 
-    TopDocs topDocs = largeCollector.topDocs();
+    topDocs = largeCollector.topDocs();
 
     if (topDocs.scoreDocs.length > 0) {
       float preScore = topDocs.scoreDocs[0].score;
@@ -160,18 +159,16 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private void runNumHits(int numHits) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(numHits);
-    CollectorManager<TopScoreDocCollector, TopDocs> regularManager =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
-    TopDocs secondTopDocs = searcher.search(testQuery, regularManager);
-
-    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value);
 
     TopDocs firstTopDocs = largeCollector.topDocs();
+    TopDocs secondTopDocs = searcher.search(testQuery, regularCollectorManager);
 
+    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value);
     assertEquals(firstTopDocs.scoreDocs.length, secondTopDocs.scoreDocs.length);
-
     CheckHits.checkEqual(testQuery, firstTopDocs.scoreDocs, secondTopDocs.scoreDocs);
   }
 }

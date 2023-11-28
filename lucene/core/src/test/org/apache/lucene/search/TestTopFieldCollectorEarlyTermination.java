@@ -134,10 +134,10 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           after = null;
         }
-        CollectorManager<TopFieldCollector, TopFieldDocs> manager1 =
-            TopFieldCollector.createSharedManager(sort, numHits, after, Integer.MAX_VALUE);
-        CollectorManager<TopFieldCollector, TopFieldDocs> manager2 =
-            TopFieldCollector.createSharedManager(sort, numHits, after, 1);
+        final TopFieldCollectorManager manager1 =
+            new TopFieldCollectorManager(sort, numHits, after, Integer.MAX_VALUE);
+        final TopFieldCollectorManager manager2 =
+            new TopFieldCollectorManager(sort, numHits, after, 1);
 
         final Query query;
         if (random().nextBoolean()) {

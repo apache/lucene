@@ -111,6 +111,9 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 
 apply from: file('gradle/generation/local-settings.gradle')
 
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
+
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
 apply from: file('gradle/ide/eclipse.gradle')
