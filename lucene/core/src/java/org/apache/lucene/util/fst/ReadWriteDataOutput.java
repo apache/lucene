@@ -19,7 +19,6 @@ package org.apache.lucene.util.fst;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
