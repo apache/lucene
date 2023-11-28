@@ -27,9 +27,11 @@ import org.apache.lucene.store.DataOutput;
  * An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader}. It allows the FST
  * to be readable immediately after writing
  */
-final class ReadWriteDataOutput extends DataOutput implements FSTReader {
+final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezable {
 
   private final ByteBuffersDataOutput dataOutput;
+  private ByteBuffersDataInput dataInput;
+  private List<ByteBuffer> byteBuffers;
 
   public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
@@ -51,13 +53,20 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
   }
 
   @Override
+  public void freeze() {
+    // these operations are costly, so we want to compute it once and cache
+    byteBuffers = dataOutput.toWriteableBufferList();
+    dataInput = new ByteBuffersDataInput(byteBuffers);
+  }
+
+  @Override
   public FST.BytesReader getReverseBytesReader() {
-    // we are using the writable buffers because we need to access the internal byte array
-    List<ByteBuffer> buffers = dataOutput.toWriteableBufferList();
-    if (buffers.size() == 1) {
-      return new ReverseBytesReader(buffers.get(0).array());
+    assert dataInput != null; // freeze() must be called first
+    if (byteBuffers.size() == 1) {
+      // use a faster implementation for single-block case
+      return new ReverseBytesReader(byteBuffers.get(0).array());
     }
-    return new ReverseRandomAccessReader(new ByteBuffersDataInput(buffers));
+    return new ReverseRandomAccessReader(dataInput);
   }
 
   @Override

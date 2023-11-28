@@ -911,6 +911,10 @@ public class FSTCompiler<T> {
     }
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
+    // freeze the dataOutput if applicable
+    if (dataOutput instanceof Freezable) {
+      ((Freezable) dataOutput).freeze();
+    }
   }
 
   private boolean validOutput(T output) {
