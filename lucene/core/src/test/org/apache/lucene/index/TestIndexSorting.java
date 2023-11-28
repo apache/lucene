@@ -75,7 +75,7 @@ import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -2651,11 +2651,9 @@ public class TestIndexSorting extends LuceneTestCase {
       TopDocs hits1 =
           s1.search(
               new MatchAllDocsQuery(),
-              TopFieldCollector.createSharedManager(sort, numHits, null, Integer.MAX_VALUE));
+              new TopFieldCollectorManager(sort, numHits, Integer.MAX_VALUE));
       TopDocs hits2 =
-          s2.search(
-              new MatchAllDocsQuery(),
-              TopFieldCollector.createSharedManager(sort, numHits, null, 1));
+          s2.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, 1));
 
       if (VERBOSE) {
         System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value);

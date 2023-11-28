@@ -29,6 +29,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -60,6 +61,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -585,7 +587,6 @@ public final class CheckIndex implements Closeable {
     ensureOpen();
     long startNS = System.nanoTime();
 
-    SegmentInfos sis = null;
     Status result = new Status();
     result.dir = dir;
     String[] files = dir.listAll();
@@ -594,26 +595,99 @@ public final class CheckIndex implements Closeable {
       throw new IndexNotFoundException(
           "no segments* file found in " + dir + ": files: " + Arrays.toString(files));
     }
-    try {
-      // Do not use SegmentInfos.read(Directory) since the spooky
-      // retrying it does is not necessary here (we hold the write lock):
-      sis =
-          SegmentInfos.readCommit(
-              dir, lastSegmentsFile, 0 /* always open old indices if codecs are around */);
-    } catch (Throwable t) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(t);
+
+    // https://github.com/apache/lucene/issues/7820: also attempt to open any older commit
+    // points (segments_N), which will catch certain corruption like missing _N.si files
+    // for segments not also referenced by the newest commit point (which was already
+    // loaded, successfully, above).  Note that we do not do a deeper check of segments
+    // referenced ONLY by these older commit points, because such corruption would not
+    // prevent a new IndexWriter from opening on the newest commit point.  but it is still
+    // corruption, e.g. a reader opened on those old commit points can hit corruption
+    // exceptions which we (still) will not detect here.  progress not perfection!
+
+    SegmentInfos lastCommit = null;
+
+    List<String> allSegmentsFiles = new ArrayList<>();
+    for (String fileName : files) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)
+          && fileName.equals(SegmentInfos.OLD_SEGMENTS_GEN) == false) {
+        allSegmentsFiles.add(fileName);
       }
+    }
+
+    // Sort descending by generation so that we always attempt to read the last commit first.  This
+    // way if an index has a broken last commit AND a broken old commit, we report the last commit
+    // error first:
+    allSegmentsFiles.sort(
+        new Comparator<String>() {
+          @Override
+          public int compare(String a, String b) {
+            long genA = SegmentInfos.generationFromSegmentsFileName(a);
+            long genB = SegmentInfos.generationFromSegmentsFileName(b);
+
+            // reversed natural sort (largest generation first):
+            return -Long.compare(genA, genB);
+          }
+        });
+
+    for (String fileName : allSegmentsFiles) {
+
+      boolean isLastCommit = fileName.equals(lastSegmentsFile);
+
+      SegmentInfos infos;
+
+      try {
+        // Do not use SegmentInfos.read(Directory) since the spooky
+        // retrying it does is not necessary here (we hold the write lock):
+        // always open old indices if codecs are around
+        infos = SegmentInfos.readCommit(dir, fileName, 0);
+      } catch (Throwable t) {
+        if (failFast) {
+          throw IOUtils.rethrowAlways(t);
+        }
+
+        String message;
+
+        if (isLastCommit) {
+          message =
+              "ERROR: could not read latest commit point from segments file \""
+                  + fileName
+                  + "\" in directory";
+        } else {
+          message =
+              "ERROR: could not read old (not latest) commit point segments file \""
+                  + fileName
+                  + "\" in directory";
+        }
+        msg(infoStream, message);
+        result.missingSegments = true;
+        if (infoStream != null) {
+          t.printStackTrace(infoStream);
+        }
+        return result;
+      }
+
+      if (isLastCommit) {
+        // record the latest commit point: we will deeply check all segments referenced by it
+        lastCommit = infos;
+      }
+    }
+
+    // we know there is a lastSegmentsFileName, so we must've attempted to load it in the above for
+    // loop.  if it failed to load, we threw the exception (fastFail == true) or we returned the
+    // failure (fastFail == false).  so if we get here, we should // always have a valid lastCommit:
+    assert lastCommit != null;
+
+    if (lastCommit == null) {
       msg(infoStream, "ERROR: could not read any segments file in directory");
       result.missingSegments = true;
-      if (infoStream != null) t.printStackTrace(infoStream);
       return result;
     }
 
     if (infoStream != null) {
       int maxDoc = 0;
       int delCount = 0;
-      for (SegmentCommitInfo info : sis) {
+      for (SegmentCommitInfo info : lastCommit) {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();
       }
@@ -630,7 +704,7 @@ public final class CheckIndex implements Closeable {
     Version oldest = null;
     Version newest = null;
     String oldSegs = null;
-    for (SegmentCommitInfo si : sis) {
+    for (SegmentCommitInfo si : lastCommit) {
       Version version = si.info.getVersion();
       if (version == null) {
         // pre-3.1 segment
@@ -645,14 +719,14 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    final int numSegments = sis.size();
-    final String segmentsFileName = sis.getSegmentsFileName();
+    final int numSegments = lastCommit.size();
+    final String segmentsFileName = lastCommit.getSegmentsFileName();
     result.segmentsFileName = segmentsFileName;
     result.numSegments = numSegments;
-    result.userData = sis.getUserData();
+    result.userData = lastCommit.getUserData();
     String userDataString;
-    if (sis.getUserData().size() > 0) {
-      userDataString = " userData=" + sis.getUserData();
+    if (lastCommit.getUserData().size() > 0) {
+      userDataString = " userData=" + lastCommit.getUserData();
     } else {
       userDataString = "";
     }
@@ -680,7 +754,7 @@ public final class CheckIndex implements Closeable {
             + " "
             + versionString
             + " id="
-            + StringHelper.idToString(sis.getId())
+            + StringHelper.idToString(lastCommit.getId())
             + userDataString);
 
     if (onlySegments != null) {
@@ -695,14 +769,14 @@ public final class CheckIndex implements Closeable {
       msg(infoStream, ":");
     }
 
-    result.newSegments = sis.clone();
+    result.newSegments = lastCommit.clone();
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
     // checks segments sequentially
     if (executorService == null) {
       for (int i = 0; i < numSegments; i++) {
-        final SegmentCommitInfo info = sis.info(i);
+        final SegmentCommitInfo info = lastCommit.info(i);
         updateMaxSegmentName(result, info);
         if (onlySegments != null && !onlySegments.contains(info.info.name)) {
           continue;
@@ -717,7 +791,7 @@ public final class CheckIndex implements Closeable {
                 + info.info.name
                 + " maxDoc="
                 + info.info.maxDoc());
-        Status.SegmentInfoStatus segmentInfoStatus = testSegment(sis, info, infoStream);
+        Status.SegmentInfoStatus segmentInfoStatus = testSegment(lastCommit, info, infoStream);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
@@ -728,7 +802,7 @@ public final class CheckIndex implements Closeable {
 
       // checks segments concurrently
       List<SegmentCommitInfo> segmentCommitInfos = new ArrayList<>();
-      for (SegmentCommitInfo sci : sis) {
+      for (SegmentCommitInfo sci : lastCommit) {
         segmentCommitInfos.add(sci);
       }
 
@@ -756,7 +830,7 @@ public final class CheckIndex implements Closeable {
           continue;
         }
 
-        SegmentInfos finalSis = sis;
+        SegmentInfos finalSis = lastCommit;
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         PrintStream stream = new PrintStream(output, true, IOUtils.UTF_8);
@@ -812,7 +886,7 @@ public final class CheckIndex implements Closeable {
 
     if (0 == result.numBadSegments) {
       result.clean = true;
-    } else
+    } else {
       msg(
           infoStream,
           "WARNING: "
@@ -820,14 +894,16 @@ public final class CheckIndex implements Closeable {
               + " broken segments (containing "
               + result.totLoseDocCount
               + " documents) detected");
+    }
 
-    if (!(result.validCounter = (result.maxSegmentName < sis.counter))) {
+    result.validCounter = result.maxSegmentName < lastCommit.counter;
+    if (result.validCounter == false) {
       result.clean = false;
       result.newSegments.counter = result.maxSegmentName + 1;
       msg(
           infoStream,
           "ERROR: Next segment name counter "
-              + sis.counter
+              + lastCommit.counter
               + " is not greater than max segment name "
               + result.maxSegmentName);
     }
@@ -920,7 +996,7 @@ public final class CheckIndex implements Closeable {
         msg(infoStream, "    diagnostics = " + diagnostics);
       }
 
-      if (!info.hasDeletions()) {
+      if (info.hasDeletions() == false) {
         msg(infoStream, "    no deletions");
         segInfoStat.hasDeletions = false;
       } else {
@@ -1119,7 +1195,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, Pruning.NONE).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();
@@ -1212,7 +1288,7 @@ public final class CheckIndex implements Closeable {
         if (liveDocs != null) {
           // it's ok for it to be non-null here, as long as none are set right?
           for (int j = 0; j < liveDocs.length(); j++) {
-            if (!liveDocs.get(j)) {
+            if (liveDocs.get(j) == false) {
               throw new CheckIndexException(
                   "liveDocs mismatch: info says no deletions but doc " + j + " is deleted.");
             }
@@ -1449,7 +1525,7 @@ public final class CheckIndex implements Closeable {
                 + hasFreqs);
       }
 
-      if (!isVectors) {
+      if (isVectors == false) {
         final boolean expectedHasPositions =
             fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
         if (hasPositions != expectedHasPositions) {
@@ -1809,7 +1885,7 @@ public final class CheckIndex implements Closeable {
                   // free-for-all before?
                   // but for offsets in the postings lists these checks are fine: they were always
                   // enforced by IndexWriter
-                  if (!isVectors) {
+                  if (isVectors == false) {
                     if (startOffset < 0) {
                       throw new CheckIndexException(
                           "term "
@@ -3659,7 +3735,7 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (!fieldInfo.hasVectors()) {
+              if (fieldInfo.hasVectors() == false) {
                 throw new CheckIndexException(
                     "docID="
                         + j
@@ -3695,7 +3771,7 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (!postingsTermsEnum.seekExact(term)) {
+                  if (postingsTermsEnum.seekExact(term) == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term
@@ -3851,7 +3927,7 @@ public final class CheckIndex implements Closeable {
                                       + " but postings does not.");
                             }
                             BytesRef postingsPayload = postingsDocs.getPayload();
-                            if (!payload.equals(postingsPayload)) {
+                            if (payload.equals(postingsPayload) == false) {
                               throw new CheckIndexException(
                                   "vector term="
                                       + term
@@ -4010,9 +4086,10 @@ public final class CheckIndex implements Closeable {
       return 1;
     }
 
-    if (!assertsOn())
+    if (assertsOn() == false) {
       System.out.println(
           "\nNOTE: testing will be more thorough if you run java with '-ea:org.apache.lucene...', so assertions are enabled");
+    }
 
     System.out.println("\nOpening index @ " + opts.indexPath + "\n");
     Directory directory = null;
@@ -4165,8 +4242,8 @@ public final class CheckIndex implements Closeable {
       return 1;
     }
 
-    if (!result.clean) {
-      if (!opts.doExorcise) {
+    if (result.clean == false) {
+      if (opts.doExorcise == false) {
         opts.out.println(
             "WARNING: would write new segments file, and "
                 + result.totLoseDocCount

@@ -66,7 +66,7 @@ public class HnswGraphSearcher {
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(graph.size()));
+            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
@@ -88,7 +88,7 @@ public class HnswGraphSearcher {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), new SparseFixedBitSet(graph.size()));
+            new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     return knnCollector;
   }
@@ -150,9 +150,9 @@ public class HnswGraphSearcher {
    */
   private int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, long visitLimit)
       throws IOException {
-    int size = graph.size();
+    int size = getGraphSize(graph);
     int visitedCount = 1;
-    prepareScratchState(graph.size());
+    prepareScratchState(size);
     int currentEp = graph.entryNode();
     float currentScore = scorer.score(currentEp);
     boolean foundBetter;
@@ -174,8 +174,7 @@ public class HnswGraphSearcher {
           }
           float friendSimilarity = scorer.score(friendOrd);
           visitedCount++;
-          if (friendSimilarity > currentScore
-              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
+          if (friendSimilarity > currentScore) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
             foundBetter = true;
@@ -201,8 +200,9 @@ public class HnswGraphSearcher {
       Bits acceptOrds)
       throws IOException {
 
-    int size = graph.size();
-    prepareScratchState(graph.size());
+    int size = getGraphSize(graph);
+
+    prepareScratchState(size);
 
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
@@ -242,7 +242,7 @@ public class HnswGraphSearcher {
         }
         float friendSimilarity = scorer.score(friendOrd);
         results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
+        if (friendSimilarity > minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.collect(friendOrd, friendSimilarity)) {
@@ -282,6 +282,10 @@ public class HnswGraphSearcher {
    */
   int graphNextNeighbor(HnswGraph graph) throws IOException {
     return graph.nextNeighbor();
+  }
+
+  private static int getGraphSize(HnswGraph graph) {
+    return graph.maxNodeId() + 1;
   }
 
   /**

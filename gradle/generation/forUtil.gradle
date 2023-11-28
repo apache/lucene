@@ -23,7 +23,7 @@ configure(project(":lucene:core")) {
     description "Regenerate gen_ForUtil.py"
     group "generation"
 
-    def genDir = file("src/java/org/apache/lucene/codecs/lucene90")
+    def genDir = file("src/java/org/apache/lucene/codecs/lucene99")
     def genScript = file("${genDir}/gen_ForUtil.py")
     def genOutput = file("${genDir}/ForUtil.java")
 
@@ -44,7 +44,7 @@ configure(project(":lucene:core")) {
 
 configure(project(":lucene:backward-codecs")) {
 
-  task generateForUtilInternal() {
+  task generateForUtil84Internal() {
     description "Regenerate gen_ForUtil.py"
     group "generation"
 
@@ -64,6 +64,28 @@ configure(project(":lucene:backward-codecs")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil84Internal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
+  task generateForUtil90Internal() {
+    description "Regenerate gen_ForUtil.py"
+    group "generation"
+
+    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene90")
+    def genScript = file("${genDir}/gen_ForUtil.py")
+    def genOutput = file("${genDir}/ForUtil.java")
+
+    inputs.file genScript
+    outputs.file genOutput
+
+    doLast {
+      quietExec {
+        workingDir genDir
+        executable project.externalTool("python3")
+        args = [ '-B', genScript ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil90Internal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
 

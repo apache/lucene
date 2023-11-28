@@ -131,6 +131,8 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT));
     document3.add(new KnnByteVectorField("knnByteField5", new byte[] {-120, -2, 3}));
     iw.addDocument(document3);
+    iw.commit();
+    iw.forceMerge(1);
 
     reader = iw.getReader();
     searcher = newSearcher(reader);
@@ -313,11 +315,12 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     DoubleValues dv =
         DoubleValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField4");
-    assertTrue(
-        dv.advanceExact(0)
-            && dv.doubleValue()
-                == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
-                    new float[] {-1.3f, 1.0f, 1.0f}, floatQueryVector));
+    assertTrue(dv.advanceExact(0));
+    assertEquals(
+        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+            new float[] {-1.3f, 1.0f, 1.0f}, floatQueryVector),
+        dv.doubleValue(),
+        0.0001);
     assertFalse(dv.advanceExact(1));
     assertFalse(dv.advanceExact(2));
 
@@ -326,21 +329,24 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     dv =
         DoubleValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField4");
-    assertTrue(
-        dv.advanceExact(0)
-            && dv.doubleValue()
-                == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
-                    new byte[] {-127, 127, 127}, byteQueryVector));
-    assertTrue(
-        dv.advanceExact(1)
-            && dv.doubleValue()
-                == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
-                    new byte[] {14, 29, 31}, byteQueryVector));
-    assertTrue(
-        dv.advanceExact(2)
-            && dv.doubleValue()
-                == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
-                    new byte[] {-4, -2, -128}, byteQueryVector));
+    assertTrue(dv.advanceExact(0));
+    assertEquals(
+        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+            new byte[] {-127, 127, 127}, byteQueryVector),
+        dv.doubleValue(),
+        0.0001);
+    assertTrue(dv.advanceExact(1));
+    assertEquals(
+        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+            new byte[] {14, 29, 31}, byteQueryVector),
+        dv.doubleValue(),
+        0.0001);
+    assertTrue(dv.advanceExact(2));
+    assertEquals(
+        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+            new byte[] {-4, -2, -128}, byteQueryVector),
+        dv.doubleValue(),
+        0.0001);
   }
 
   public void testFailuresWithSimilarityValuesSource() throws Exception {

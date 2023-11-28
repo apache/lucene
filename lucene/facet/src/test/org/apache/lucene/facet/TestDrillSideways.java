@@ -55,6 +55,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -255,6 +256,81 @@ public class TestDrillSideways extends FacetTestCase {
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testCollectionTerminated() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document d = new Document();
+      d.add(new TextField("foo", "bar", Field.Store.NO));
+      w.addDocument(d);
+
+      d = new Document();
+      d.add(new TextField("foo", "bar", Field.Store.NO));
+      w.addDocument(d);
+
+      d = new Document();
+      d.add(new TextField("foo", "baz", Field.Store.NO));
+      w.addDocument(d);
+
+      try (IndexReader r = w.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(r);
+        LeafReaderContext ctx = r.leaves().get(0);
+
+        Query baseQuery = new MatchAllDocsQuery();
+        Weight baseWeight = searcher.createWeight(baseQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        Scorer baseScorer = baseWeight.scorer(ctx);
+
+        Query dimQ = new TermQuery(new Term("foo", "bar"));
+        dimQ = searcher.rewrite(dimQ);
+        Weight dimWeight = searcher.createWeight(dimQ, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        Scorer dimScorer = dimWeight.scorer(ctx);
+
+        FacetsCollector baseFC = new FacetsCollector();
+        FacetsCollector dimFC = new FacetsCollector();
+        DrillSidewaysScorer.DocsAndCost docsAndCost =
+            new DrillSidewaysScorer.DocsAndCost(dimScorer, dimFC);
+
+        LeafCollector baseCollector =
+            new LeafCollector() {
+              int counter = 0;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                // doesn't matter
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                if (++counter > 1) {
+                  throw new CollectionTerminatedException();
+                }
+              }
+            };
+
+        boolean scoreSubDocsAtOnce = random().nextBoolean();
+        DrillSidewaysScorer scorer =
+            new DrillSidewaysScorer(
+                ctx,
+                baseScorer,
+                baseFC,
+                new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
+                scoreSubDocsAtOnce);
+        expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
+
+        // We've set things up so that our base collector with throw CollectionTerminatedException
+        // after collecting the first doc. This means we'll only collect the first indexed doc for
+        // both our base and sideways dim facets collectors. What we really want to test here is
+        // that the matching docs are still correctly present and populated after an early
+        // termination occurs (i.e., #finish is properly called in that scenario):
+        assertEquals(1, baseFC.getMatchingDocs().size());
+        assertEquals(1, dimFC.getMatchingDocs().size());
+        FacetsCollector.MatchingDocs baseMD = baseFC.getMatchingDocs().get(0);
+        FacetsCollector.MatchingDocs dimMD = dimFC.getMatchingDocs().get(0);
+        assertEquals(1, baseMD.totalHits);
+        assertEquals(1, dimMD.totalHits);
+      }
+    }
   }
 
   public void testBasic() throws Exception {

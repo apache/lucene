@@ -21,13 +21,15 @@ import java.lang.Runtime.Version;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
-import org.apache.lucene.util.SuppressForbidden;
+import java.util.stream.Stream;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -38,6 +40,35 @@ import org.apache.lucene.util.VectorUtil;
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
+
+  static final OptionalInt TESTS_VECTOR_SIZE;
+  static final boolean TESTS_FORCE_INTEGER_VECTORS;
+
+  static {
+    var vs = OptionalInt.empty();
+    try {
+      vs =
+          Stream.ofNullable(System.getProperty("tests.vectorsize"))
+              .filter(Predicate.not(String::isEmpty))
+              .mapToInt(Integer::parseInt)
+              .findAny();
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // ignored
+    }
+    TESTS_VECTOR_SIZE = vs;
+
+    boolean enforce = false;
+    try {
+      enforce = Boolean.getBoolean("tests.forceintegervectors");
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // ignored
+    }
+    TESTS_FORCE_INTEGER_VECTORS = enforce;
+  }
 
   /**
    * Returns the default instance of the provider matching vectorization possibilities of actual
@@ -80,16 +111,38 @@ public abstract class VectorizationProvider {
                 + Locale.getDefault());
         return new DefaultVectorizationProvider();
       }
+      // only use vector module with Hotspot VM
+      if (!Constants.IS_HOTSPOT_VM) {
+        LOG.warning(
+            "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
+        return new DefaultVectorizationProvider();
+      }
+      // don't use vector module with JVMCI (it does not work)
+      if (Constants.IS_JVMCI_VM) {
+        LOG.warning(
+            "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
+        return new DefaultVectorizationProvider();
+      }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
-      if (!vectorModulePresentAndReadable()) {
+      final var vectorMod = lookupVectorModule();
+      if (vectorMod.isEmpty()) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new DefaultVectorizationProvider();
       }
-      if (!testMode && isClientVM()) {
-        LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
-        return new DefaultVectorizationProvider();
+      vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
+      // check for testMode and otherwise fallback to default if slowness could happen
+      if (!testMode) {
+        if (TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS) {
+          LOG.warning(
+              "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
+          return new DefaultVectorizationProvider();
+        }
+        if (Constants.IS_CLIENT_VM) {
+          LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
+          return new DefaultVectorizationProvider();
+        }
       }
       try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we
@@ -98,10 +151,9 @@ public abstract class VectorizationProvider {
         final var cls =
             lookup.findClass(
                 "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
-        final var constr =
-            lookup.findConstructor(cls, MethodType.methodType(void.class, boolean.class));
+        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
-          return (VectorizationProvider) constr.invoke(testMode);
+          return (VectorizationProvider) constr.invoke();
         } catch (UnsupportedOperationException uoe) {
           // not supported because preferred vector size too small or similar
           LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
@@ -120,20 +172,21 @@ public abstract class VectorizationProvider {
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
+    } else if (lookupVectorModule().isPresent()) {
+      LOG.warning(
+          "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
+              + runtimeVersion);
     }
     return new DefaultVectorizationProvider();
   }
 
-  private static boolean vectorModulePresentAndReadable() {
-    var opt =
-        ModuleLayer.boot().modules().stream()
-            .filter(m -> m.getName().equals("jdk.incubator.vector"))
-            .findFirst();
-    if (opt.isPresent()) {
-      VectorizationProvider.class.getModule().addReads(opt.get());
-      return true;
-    }
-    return false;
+  /**
+   * Looks up the vector module from Lucene's {@link ModuleLayer} or the root layer (if unnamed).
+   */
+  private static Optional<Module> lookupVectorModule() {
+    return Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
+        .orElse(ModuleLayer.boot())
+        .findModule("jdk.incubator.vector");
   }
 
   /**
@@ -143,23 +196,6 @@ public abstract class VectorizationProvider {
   private static boolean isAffectedByJDK8301190() {
     return VERSION_JDK8301190_FIXED.compareToIgnoreOptional(Runtime.version()) > 0
         && !Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
-  }
-
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static boolean isClientVM() {
-    try {
-      final PrivilegedAction<Boolean> action =
-          () -> System.getProperty("java.vm.info", "").contains("emulated-client");
-      return AccessController.doPrivileged(action);
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException e) {
-      LOG.warning(
-          "SecurityManager denies permission to 'java.vm.info' system property, so state of C2 compiler can't be detected. "
-              + "In case of performance issues allow access to this property.");
-      return false;
-    }
   }
 
   // add all possible callers here as FQCN:

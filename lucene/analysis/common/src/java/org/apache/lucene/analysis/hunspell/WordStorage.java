@@ -350,16 +350,19 @@ abstract class WordStorage {
 
       currentOrds.clear();
       boolean hasNonHidden = false;
+      boolean isSuggestible = false;
       for (char[] flags : group) {
         if (!hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           hasNonHidden = true;
-          break;
+        }
+        if (!hasNoSuggestFlag(flags)) {
+          isSuggestible = true;
         }
       }
 
       for (int i = 0; i < group.size(); i++) {
         char[] flags = group.get(i);
-        if (hasNonHidden && hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
+        if (hasNonHidden && group.size() > 1 && hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           continue;
         }
 
@@ -388,7 +391,7 @@ abstract class WordStorage {
 
       int mask =
           (prevCode == 0 ? 0 : COLLISION_MASK)
-              | (group.stream().anyMatch(flags -> !hasNoSuggestFlag(flags)) ? SUGGESTIBLE_MASK : 0)
+              | (isSuggestible ? SUGGESTIBLE_MASK : 0)
               | Math.min(currentEntry.length(), MAX_STORED_LENGTH);
       hashTable[hash] = (mask << OFFSET_BITS) | pos;
 

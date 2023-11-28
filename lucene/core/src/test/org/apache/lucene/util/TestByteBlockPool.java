@@ -16,16 +16,46 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
+import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteBlockPool extends LuceneTestCase {
 
-  public void testReadAndWrite() throws IOException {
+  public void testAppendFromOtherPool() {
+    Random random = random();
+
+    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+    final int numBytes = atLeast(2 << 16);
+    byte[] bytes = RandomBytes.randomBytesOfLength(random, numBytes);
+    pool.append(bytes);
+
+    ByteBlockPool anotherPool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+    byte[] existingBytes = new byte[atLeast(500)];
+    anotherPool.append(existingBytes);
+
+    // now slice and append to another pool
+    int offset = TestUtil.nextInt(random, 1, 2 << 15);
+    int length = bytes.length - offset;
+    if (random.nextBoolean()) {
+      length = TestUtil.nextInt(random, 1, length);
+    }
+    anotherPool.append(pool, offset, length);
+
+    assertEquals(existingBytes.length + length, anotherPool.getPosition());
+
+    byte[] results = new byte[length];
+    anotherPool.readBytes(existingBytes.length, results, 0, results.length);
+    for (int i = 0; i < length; i++) {
+      assertEquals("byte @ index=" + i, bytes[offset + i], results[i]);
+    }
+  }
+
+  public void testReadAndWrite() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
@@ -44,6 +74,7 @@ public class TestByteBlockPool extends LuceneTestCase {
       }
       // verify
       long position = 0;
+      BytesRefBuilder builder = new BytesRefBuilder();
       for (BytesRef expected : list) {
         ref.grow(expected.length);
         ref.setLength(expected.length);
@@ -54,8 +85,7 @@ public class TestByteBlockPool extends LuceneTestCase {
             break;
           case 1:
             BytesRef scratch = new BytesRef();
-            scratch.length = ref.length();
-            pool.setRawBytesRef(scratch, position);
+            pool.setBytesRef(builder, scratch, position, ref.length());
             System.arraycopy(scratch.bytes, scratch.offset, ref.bytes(), 0, ref.length());
             break;
           default:
@@ -74,11 +104,12 @@ public class TestByteBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testLargeRandomBlocks() throws IOException {
+  public void testLargeRandomBlocks() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
 
+    long totalBytes = 0;
     List<byte[]> items = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       int size;
@@ -91,6 +122,10 @@ public class TestByteBlockPool extends LuceneTestCase {
       random().nextBytes(bytes);
       items.add(bytes);
       pool.append(new BytesRef(bytes));
+      totalBytes += size;
+
+      // make sure we report the correct position
+      assertEquals(totalBytes, pool.getPosition());
     }
 
     long position = 0;
@@ -99,40 +134,6 @@ public class TestByteBlockPool extends LuceneTestCase {
       pool.readBytes(position, actual, 0, actual.length);
       assertTrue(Arrays.equals(expected, actual));
       position += expected.length;
-    }
-  }
-
-  public void testAllocKnowSizeSlice() throws IOException {
-    Counter bytesUsed = Counter.newCounter();
-    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
-    pool.nextBuffer();
-    for (int i = 0; i < 100; i++) {
-      int size;
-      if (random().nextBoolean()) {
-        size = TestUtil.nextInt(random(), 100, 1000);
-      } else {
-        size = TestUtil.nextInt(random(), 50000, 100000);
-      }
-      byte[] randomData = new byte[size];
-      random().nextBytes(randomData);
-
-      int upto = pool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
-
-      for (int offset = 0; offset < size; ) {
-        if ((pool.buffer[upto] & 16) == 0) {
-          pool.buffer[upto++] = randomData[offset++];
-        } else {
-          int offsetAndLength = pool.allocKnownSizeSlice(pool.buffer, upto);
-          int sliceLength = offsetAndLength & 0xff;
-          upto = offsetAndLength >> 8;
-          assertNotEquals(0, pool.buffer[upto + sliceLength - 1]);
-          assertEquals(0, pool.buffer[upto]);
-          int writeLength = Math.min(sliceLength - 1, size - offset);
-          System.arraycopy(randomData, offset, pool.buffer, upto, writeLength);
-          offset += writeLength;
-          upto += writeLength;
-        }
-      }
     }
   }
 
