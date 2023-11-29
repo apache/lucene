@@ -17,7 +17,6 @@
 package org.apache.lucene.queries.function;
 
 import java.util.Collections;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
