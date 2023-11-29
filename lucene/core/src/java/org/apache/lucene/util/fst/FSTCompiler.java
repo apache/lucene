@@ -867,7 +867,7 @@ public class FSTCompiler<T> {
     return fst.ramBytesUsed();
   }
 
-  public long fstSize() {
+  public long fstSizeInBytes() {
     return bytes.getPosition();
   }
 

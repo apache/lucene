@@ -80,7 +80,7 @@ public class Test2BFST extends LuceneTestCase {
                     + ": "
                     + fstCompiler.fstRamBytesUsed()
                     + " RAM bytes used; "
-                    + fstCompiler.fstSize()
+                    + fstCompiler.fstSizeInBytes()
                     + " FST bytes; "
                     + fstCompiler.getNodeCount()
                     + " nodes; took "
@@ -175,7 +175,7 @@ public class Test2BFST extends LuceneTestCase {
           fstCompiler.add(input, BytesRef.deepCopyOf(output));
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstSize();
+            long size = fstCompiler.fstSizeInBytes();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
@@ -265,7 +265,7 @@ public class Test2BFST extends LuceneTestCase {
           output += 1 + r.nextInt(10);
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstSize();
+            long size = fstCompiler.fstSizeInBytes();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
