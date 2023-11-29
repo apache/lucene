@@ -118,6 +118,9 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* GITHUB#12558: Ensure #finish is called on all drill-sideways FacetsCollectors even when no hits are scored.
+  (Greg Miller)
+
 Other
 ---------------------
 
