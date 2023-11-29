@@ -334,7 +334,6 @@ final class TermsImpl extends Terms {
     public BytesRef next() throws IOException {
       if (pending) {
         pending = false;
-        updateTermStateIfNeeded();
         return term();
       }
       isTermStateCurrent = false;
@@ -360,9 +359,6 @@ final class TermsImpl extends Terms {
           frame = popFrame();
         }
         return null;
-      }
-      if (term != null) {
-        updateTermStateIfNeeded();
       }
       return term();
     }
