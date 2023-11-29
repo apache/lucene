@@ -75,6 +75,8 @@ API Changes
   (allows handling long fields with lots of hits more gracefully). MatchRegionRetriever utilizes IndexSearcher's
   executor to extract hit offsets concurrently. (Dawid Weiss)
 
+* GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
+
 New Features
 ---------------------
 
