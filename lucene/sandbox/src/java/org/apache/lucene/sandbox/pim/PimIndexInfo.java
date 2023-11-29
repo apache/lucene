@@ -36,6 +36,7 @@ public class PimIndexInfo {
   int numDpus;
   int numSegments;
   int numDpuSegments;
+  int numDocs;
   String segmentCommitName;
   int startDoc[];
   byte segmentId[][];
@@ -59,11 +60,13 @@ public class PimIndexInfo {
     segmentId = new byte[numSegments][];
     segmentCommitId = new byte[numSegments][];
 
+    numDocs = 0;
     for (int i = 0; i < numSegments; ++i) {
       SegmentCommitInfo segmentCommitInfo = segmentInfos.info(i);
       segmentId[i] = segmentCommitInfo.info.getId();
       segmentCommitId[i] = segmentCommitInfo.getId();
       if (i + 1 < numSegments) startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
+      numDocs += segmentCommitInfo.info.maxDoc();
     }
   }
 
@@ -107,6 +110,11 @@ public class PimIndexInfo {
   public int getNumDpuSegments() {
     return numDpuSegments;
   }
+
+  /**
+   * @return number of documents in the index
+   */
+  public int getNumDocs() { return numDocs; }
 
   /**
    * Set the PIM index directory
@@ -260,6 +268,7 @@ public class PimIndexInfo {
     out.writeInt(numDpus);
     out.writeInt(numSegments);
     out.writeInt(numDpuSegments);
+    out.writeInt(numDocs);
     out.writeString(segmentCommitName);
 
     for (int i = 0; i < startDoc.length; ++i) {
@@ -281,6 +290,7 @@ public class PimIndexInfo {
     info.numDpus = in.readInt();
     info.numSegments = in.readInt();
     info.numDpuSegments = in.readInt();
+    info.numDocs = in.readInt();
     info.startDoc = new int[info.numSegments];
     info.segmentId = new byte[info.numSegments][];
     info.segmentCommitId = new byte[info.numSegments][];

@@ -62,7 +62,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
    * @param nr_segments the number of lucene segments
    * @return an SGReturn object, containing the queries results ordered by query id and lucene segment id
    */
-  native void sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
+  native int sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
@@ -83,7 +83,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       cnt += dpuSystem.ranks().get(i).dpus().size();
     }
     nbLuceneSegments = 0;
-    sgReturnPool = new SGReturnPool(INIT_SG_RETURN_CAPACITY);
   }
 
   @Override
@@ -189,6 +188,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     dpuSystem.copy(DpuConstants.dpuIndexLoadedVarName, indexLoaded);
 
     nbLuceneSegments = pimIndexInfo.getNumSegments();
+    sgReturnPool = new SGReturnPool(INIT_SG_RETURN_CAPACITY, getInitSgResultsByteSize(pimIndexInfo.getNumDocs()));
+  }
+
+  private int getInitSgResultsByteSize(int numDocs) {
+
+    int docPerQuery = Math.toIntExact((long)(numDocs * 0.01));
+    if(docPerQuery < 1000) docPerQuery = 1000;
+    return DpuConstants.dpuQueryMaxBatchSize * docPerQuery * 8;
   }
 
   private int readIndexBufferForDpu(IndexInput in, long dpuIndexPos, long indexSize, byte[] buffer)
@@ -251,7 +258,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer
     SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments);
-    sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
+    int resSize = sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
+    if(resSize > 0) {
+      // buffer passed to the JNI layer was to small, request a larger one from the pool and
+      // call again
+      results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);
+      if(sgXferResults(queryBuffers.size(), nbLuceneSegments, results) > 0)
+        throw new DpuException("Error in sg transfer results buffer allocation");
+    }
     results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
     results.byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
     results.segmentsIndices.order(ByteOrder.LITTLE_ENDIAN);

@@ -30,7 +30,7 @@ class DpuConstants {
   static final String dpuResultsIndexVarName = "results_index";
   static final String dpuIndexVarName = "__sys_used_mram_end";
   static final String dpuIndexLoadedVarName = "index_loaded";
-  static final int dpuQueryMaxBatchSize = 256;
+  static final int dpuQueryMaxBatchSize = 64;
   static final int dpuQueryBatchByteSize = 1 << 18;
   static final int dpuResultsMaxByteSize = 1 << 20;
   static final int dpuMaxNbLuceneSegments = 128;

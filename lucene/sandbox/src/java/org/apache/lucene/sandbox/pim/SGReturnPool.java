@@ -2,22 +2,38 @@ package org.apache.lucene.sandbox.pim;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SGReturnPool {
 
-    private ArrayList<ByteBuffer> bufferPool;
+    private TreeMap<Integer, ArrayList<ByteBuffer>> bufferPool;
     private ReentrantLock poolLock = new ReentrantLock();
+    private final int initByteSize;
 
-    public SGReturnPool(int initCapacity) {
+    public SGReturnPool(int initCapacity, int initByteSize) {
 
-        bufferPool = new ArrayList<>();
+        bufferPool = new TreeMap<>();
+        ArrayList<ByteBuffer> list = new ArrayList<>();
         for(int i = 0; i < initCapacity; ++i) {
-            bufferPool.add(ByteBuffer.allocateDirect(DpuConstants.dpuResultsMaxByteSize));
+             list.add(ByteBuffer.allocateDirect(initByteSize));
         }
+        bufferPool.put(initByteSize, list);
+        this.initByteSize = initByteSize;
     }
 
     public SGReturn get(int nr_queries, int nr_segments) {
+        return get(nr_queries, nr_segments, 0);
+    }
+
+    /**
+     * Default get, returns buffer of smallest size larger than min size requested
+     * @param nr_queries
+     * @param nr_segments
+     * @param minResultsByteSize
+     * @return
+     */
+    public SGReturn get(int nr_queries, int nr_segments, int minResultsByteSize) {
 
         ByteBuffer buffer = null;
         boolean allocate = false;
@@ -26,13 +42,24 @@ public class SGReturnPool {
             if (bufferPool.isEmpty()) {
                 allocate = true;
             } else {
-                buffer = bufferPool.remove(0);
+                var target = bufferPool.ceilingEntry(minResultsByteSize);
+                if(target == null)
+                    allocate = true;
+                else {
+                    buffer = target.getValue().remove(0);
+                    if (target.getValue().isEmpty())
+                        bufferPool.remove(target.getKey());
+                }
             }
         } finally {
             poolLock.unlock();
         }
-        if(allocate)
-            buffer = ByteBuffer.allocateDirect(DpuConstants.dpuResultsMaxByteSize);
+        if(allocate) {
+            if(minResultsByteSize == 0)
+                buffer = ByteBuffer.allocateDirect(nextPowerOf2(initByteSize));
+            else
+                buffer = ByteBuffer.allocateDirect(nextPowerOf2(minResultsByteSize));
+        }
 
         return new SGReturn(
                 buffer,
@@ -46,7 +73,13 @@ public class SGReturnPool {
 
         try {
             poolLock.lock();
-            bufferPool.add(sgReturn.byteBuffer);
+            int size = sgReturn.byteBuffer.capacity();
+            ArrayList<ByteBuffer> list = bufferPool.get(size);
+            if(list == null) {
+                list = new ArrayList<>();
+            }
+            list.add(sgReturn.byteBuffer);
+            bufferPool.put(size, list);
         } finally {
             poolLock.unlock();
         }
@@ -87,4 +120,16 @@ public class SGReturnPool {
             }
         }
     };
+
+    static private int nextPowerOf2(int n)
+    {
+        int p = 1;
+        if (n > 0 && (n & (n - 1)) == 0)
+            return n;
+
+        while (p < n)
+            p <<= 1;
+
+        return p;
+    }
 }

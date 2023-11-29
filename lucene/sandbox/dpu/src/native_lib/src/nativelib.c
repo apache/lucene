@@ -140,7 +140,8 @@ struct metadata_t {
     index_t *results_size_lucene_segments;
     size_t max_nr_results;
     size_t total_nr_results;
-} static get_metadata(JNIEnv *env, struct dpu_set_t set, const uint32_t nr_dpus, const jint nr_queries, const jint nr_segments)
+} static get_metadata(JNIEnv *env, struct dpu_set_t set, const uint32_t nr_dpus,
+                            const jint nr_queries, const jint nr_segments)
 {
     /* Transfer and postprocess the results_index from the DPU
      * Need to align the transfer to 8 bytes, so align the number of queries to an even number
@@ -154,6 +155,8 @@ struct metadata_t {
         THROW_ON_ERROR(dpu_prepare_xfer(dpu, &((*results_index)[each_dpu][0])));
     }
 
+    //TODO the fact that we compute the total number of results immediately after this call prevents to
+    // do it asynchronously
     dpu_push_xfer(set, DPU_XFER_FROM_DPU, "results_index", 0,
                     sizeof(index_t[nr_queries_ub]),
                     DPU_XFER_DEFAULT);
@@ -190,51 +193,101 @@ typedef struct sg_xfer_context {
     index_t *results_index;
     index_t *results_size_lucene_segments;
     result_t **block_addresses;
+    jbyte *queries_indices;
     jint nr_queries;
     jint nr_segments;
 } sg_xfer_context;
 
+struct compute_block_addresses_context {
+    struct sg_xfer_context* sc_args;
+    const jbyte *dpu_results;
+    const uint32_t nr_dpus;
+    uint32_t nr_ranks;
+    jbyte *segments_indices;
+};
+
+
+
 /**
  * Computes the block addresses where the results will be transferred.
- *
- * @param[in,out] sc_args The scatter-gather transfer context.
- * @param dpu_results The base address of the DPU results.
- * @param nr_dpus The number of DPUs.
- * @param[out] queries_indices The queries indices.
- * @param[out] segments_indices The segments indices.
+ * The block addresses are computed in parallel for different queries.
+ * We use the callback mechanism of UPMEM's SDK, which uses one thread for each rank in the
+ * DPU system (40 ranks on a full system), and share the different queries id equally among threads.
  */
-static void
-compute_block_addresses(struct sg_xfer_context *sc_args,
-    const jbyte *dpu_results,
-    const uint32_t nr_dpus,
-    jbyte *queries_indices,
-    jbyte *segments_indices)
-{
+static dpu_error_t
+compute_block_addresses(__attribute__((unused)) struct dpu_set_t set, uint32_t rank_id, void *args) {
+
+    struct compute_block_addresses_context *ctx = (struct compute_block_addresses_context*)args;
+    struct sg_xfer_context *sc_args = ctx->sc_args;
+
     /* Unpack the arguments */
     const jint nr_queries = sc_args->nr_queries;
     const uint32_t nr_queries_ub = ((nr_queries + 1) >> 1) << 1;
     const jint nr_segments = sc_args->nr_segments;
+    const uint32_t nr_dpus = ctx->nr_dpus;
     result_t *(*block_addresses)[nr_dpus][nr_queries][nr_segments]
         = (result_t * (*)[nr_dpus][nr_queries][nr_segments]) sc_args->block_addresses;
     index_t(*results_size_lucene_segments)[nr_dpus][nr_queries_ub][nr_segments]
         = (index_t(*)[nr_dpus][nr_queries_ub][nr_segments])sc_args->results_size_lucene_segments;
 
-    jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])queries_indices;
-    jint(*segments_indices_table)[nr_queries][nr_segments] = (jint(*)[nr_queries][nr_segments])segments_indices;
+    jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])(sc_args->queries_indices);
+    jint(*segments_indices_table)[nr_queries][nr_segments] = (jint(*)[nr_queries][nr_segments])(ctx->segments_indices);
+
+    const jbyte *dpu_results = ctx->dpu_results;
+
+    uint32_t nr_ranks = ctx->nr_ranks;
+    uint32_t nr_queries_for_call = nr_queries / nr_ranks;
+    uint32_t remaining = nr_queries - nr_queries_for_call * nr_ranks;
+    uint32_t query_id_start, query_id_end;
+    if(rank_id < remaining) {
+        nr_queries_for_call++;
+        query_id_start = rank_id * nr_queries_for_call;
+    }
+    else {
+        query_id_start = remaining * (nr_queries_for_call + 1);
+        query_id_start += (rank_id - remaining) * nr_queries_for_call;
+    }
+    query_id_end = query_id_start + nr_queries_for_call;
 
     /* Compute the block addresses, queries indices and segments indices */
-    result_t *curr_blk_addr = (result_t *)dpu_results;
-    for (jint i_qu = 0; i_qu < nr_queries; ++i_qu) {
+    for (jint i_qu = query_id_start; i_qu < query_id_end; ++i_qu) {
+        result_t *curr_blk_addr = (result_t *)dpu_results;
         for (jint i_seg = 0; i_seg < nr_segments; ++i_seg) {
             for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
                 (*block_addresses)[i_dpu][i_qu][i_seg] = curr_blk_addr;
                 curr_blk_addr += (*results_size_lucene_segments)[i_dpu][i_qu][i_seg];
-                (*segments_indices_table)[i_qu][i_seg] = (jint)(curr_blk_addr - (result_t *)dpu_results);
             }
-            (*queries_indices_table)[i_qu] = (jint)(curr_blk_addr - (result_t *)dpu_results);
+            (*segments_indices_table)[i_qu][i_seg] = (jint)(curr_blk_addr - (result_t *)dpu_results);
+        }
+        (*queries_indices_table)[i_qu] = (jint)(curr_blk_addr - (result_t *)dpu_results);
+    }
+
+    return DPU_OK;
+}
+
+/**
+ * Prefix sum of the queries/segments indices computed in parallel separately for each query
+ */
+static void prefix_sum_indices(struct sg_xfer_context *sc_args,
+                                   const jbyte *dpu_results,
+                                   const uint32_t nr_dpus,
+                                   jbyte *queries_indices,
+                                   jbyte *segments_indices) {
+
+    /* Unpack the arguments */
+    const jint nr_queries = sc_args->nr_queries;
+    const jint nr_segments = sc_args->nr_segments;
+    jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])queries_indices;
+    jint(*segments_indices_table)[nr_queries][nr_segments] = (jint(*)[nr_queries][nr_segments])segments_indices;
+
+    for (jint i_qu = 1; i_qu < nr_queries; ++i_qu) {
+        (*queries_indices_table)[i_qu] += (*queries_indices_table)[i_qu - 1];
+        for (jint i_seg = 0; i_seg < nr_segments; ++i_seg) {
+            (*segments_indices_table)[i_qu][i_seg] += (*queries_indices_table)[i_qu - 1];
         }
     }
 }
+
 
 /**
  * Callback function to retrieve a block from a DPU.
@@ -263,15 +316,19 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
         = (index_t(*)[nr_queries_ub * nr_segments]) sc_args->results_size_lucene_segments;
     result_t *(*block_addresses)[nr_queries * nr_segments]
         = (result_t * (*)[nr_queries * nr_segments]) sc_args->block_addresses;
+    jint(*queries_indices_table)[nr_queries] = (jint(*)[nr_queries])(sc_args->queries_indices);
 
     /* Set the output block */
     out->length = results_size_lucene_segments[i_dpu][i_block] * sizeof(result_t);
-    out->addr = (uint8_t *)block_addresses[i_dpu][i_block];
+    uint32_t query_id = i_block / nr_segments;
+    uint32_t offset = 0;
+    if(query_id) offset = (*queries_indices_table)[query_id - 1] * sizeof(result_t);
+    out->addr = (uint8_t *)block_addresses[i_dpu][i_block] + offset;
 
     return true;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jint JNICALL
 /**
  * Transfers the results of a set of queries executed on a set of segments from the DPU to the host.
  *
@@ -285,12 +342,14 @@ JNIEXPORT void JNICALL
 Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, jobject this, jint nr_queries,
                     jint nr_segments, jobject sgReturn)
 {
+    jint res = 0;
     jobject dpuSystem = (*env)->GetObjectField(env, this, dpuSystemField);
     jobject nativeDpuSet = (*env)->GetObjectField(env, dpuSystem, nativeDpuSetField);
     struct dpu_set_t set = build_native_set(env, nativeDpuSet);
 
-    uint32_t nr_dpus = 0;
+    uint32_t nr_dpus = 0, nr_ranks = 0;
     dpu_get_nr_dpus(set, &nr_dpus);
+    dpu_get_nr_ranks(set, &nr_ranks);
 
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);
     size_t total_nr_results = metadata.total_nr_results;
@@ -306,6 +365,14 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     jbyte *queries_indices = (*env)->GetDirectBufferAddress(env, byteBufferQueriesIndices);
     jbyte *segments_indices = (*env)->GetDirectBufferAddress(env, byteBufferSegmentsIndices);
 
+    // check that the byteBuffer received is large enough to hold all results
+    // if not return the size needed
+    jlong cap = (*env)->GetDirectBufferCapacity(env, byteBuffer);
+    if(cap < total_nr_results * sizeof(result_t)) {
+        res = total_nr_results * sizeof(result_t);
+        goto end;
+    }
+
     result_t **block_addresses = malloc(sizeof(result_t *[nr_dpus][nr_queries][nr_segments]));
 
     sg_xfer_context sc_args = {
@@ -313,10 +380,20 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
                 .nr_segments = nr_segments,
                 .results_index = metadata.results_index,
                 .results_size_lucene_segments = metadata.results_size_lucene_segments,
-                .block_addresses = block_addresses };
+                .block_addresses = block_addresses,
+                .queries_indices = queries_indices};
     get_block_t get_block_info = { .f = &get_block, .args = &sc_args, .args_size = sizeof(sc_args) };
 
-    compute_block_addresses(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
+    struct compute_block_addresses_context addr_ctx = {
+        .sc_args = &sc_args,
+        .dpu_results = dpu_results,
+        .nr_dpus = nr_dpus,
+        .nr_ranks = nr_ranks,
+        .segments_indices = segments_indices
+    };
+
+    THROW_ON_ERROR(dpu_callback(set, compute_block_addresses, &addr_ctx, DPU_CALLBACK_DEFAULT));
+    prefix_sum_indices(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
 
     // TODO(sbrocard): use callback to make transfer per rank to not share the max transfer size
     THROW_ON_ERROR(dpu_push_sg_xfer(set,
@@ -327,9 +404,11 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
         &get_block_info,
         DPU_SG_XFER_DISABLE_LENGTH_CHECK));
 
+end:
     free(metadata.results_index);
     free(metadata.results_size_lucene_segments);
     free(block_addresses);
+    return res;
 }
 
 /**
