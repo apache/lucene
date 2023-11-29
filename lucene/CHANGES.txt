@@ -89,8 +89,6 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
-* GITHUB#12847: Test2BFST now reports the time it took to build the FST and the real FST size (Anh Dung Bui)
-
 Optimizations
 ---------------------
 
@@ -252,6 +250,8 @@ Improvements
   https://blog.burntsushi.net/transducers (Mike McCandless)
 
 * GITHUB#12738: NodeHash now stores the FST nodes data instead of just node addresses (Anh Dung Bui)
+
+* GITHUB#12847: Test2BFST now reports the time it took to build the FST and the real FST size (Anh Dung Bui)
 
 Optimizations
 ---------------------
