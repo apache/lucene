@@ -968,7 +968,7 @@ public class FSTCompiler<T> {
     return ramBytesUsed;
   }
 
-  public long fstSize() {
+  public long fstSizeInBytes() {
     return numBytesWritten;
   }
 

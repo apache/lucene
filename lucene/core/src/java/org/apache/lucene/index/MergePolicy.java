@@ -255,6 +255,15 @@ public abstract class MergePolicy {
       usesPooledReaders = false;
     }
 
+    /** Constructor for wrapping. */
+    protected OneMerge(OneMerge oneMerge) {
+      this.segments = oneMerge.segments;
+      this.mergeReaders = oneMerge.mergeReaders;
+      this.totalMaxDoc = oneMerge.totalMaxDoc;
+      this.mergeProgress = new OneMergeProgress();
+      this.usesPooledReaders = oneMerge.usesPooledReaders;
+    }
+
     /**
      * Called by {@link IndexWriter} after the merge started and from the thread that will be
      * executing the merge.
@@ -288,9 +297,30 @@ public abstract class MergePolicy {
       }
     }
 
-    /** Wrap the reader in order to add/remove information to the merged segment. */
+    /**
+     * Wrap a reader prior to merging in order to add/remove fields or documents.
+     *
+     * <p><b>NOTE:</b> It is illegal to reorder doc IDs here, use {@link
+     * #reorder(CodecReader,Directory)} instead.
+     */
     public CodecReader wrapForMerge(CodecReader reader) throws IOException {
       return reader;
+    }
+
+    /**
+     * Extend this method if you wish to renumber doc IDs. This method will be called when index
+     * sorting is disabled on a merged view of the {@link OneMerge}. A {@code null} return value
+     * indicates that doc IDs should not be reordered.
+     *
+     * <p><b>NOTE:</b> Returning a non-null value here disables several optimizations and increases
+     * the merging overhead.
+     *
+     * @param reader The reader to reorder.
+     * @param dir The {@link Directory} of the index, which may be used to create temporary files.
+     * @lucene.experimental
+     */
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+      return null;
     }
 
     /**
@@ -355,11 +385,7 @@ public abstract class MergePolicy {
      * not indicate the number of documents after the merge.
      */
     public int totalNumDocs() {
-      int total = 0;
-      for (SegmentCommitInfo info : segments) {
-        total += info.info.maxDoc();
-      }
-      return total;
+      return totalMaxDoc;
     }
 
     /** Return {@link MergeInfo} describing this merge. */

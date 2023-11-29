@@ -18,7 +18,8 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.lucene99.GroupVIntReader;
 import org.apache.lucene.codecs.lucene99.GroupVIntWriter;
@@ -53,6 +54,34 @@ import org.openjdk.jmh.infra.Blackhole;
     jvmArgsPrepend = {"--add-modules=jdk.unsupported"})
 public class GroupVIntBenchmark {
 
+  // Cumulative frequency for each number of bits per value used by doc deltas of tail postings on
+  // wikibigall.
+  private static final float[] CUMULATIVE_FREQUENCY_BY_BITS_REQUIRED =
+      new float[] {
+        0.0f,
+        0.01026574f,
+        0.021453038f,
+        0.03342156f,
+        0.046476692f,
+        0.060890317f,
+        0.07644147f,
+        0.093718216f,
+        0.11424741f,
+        0.13989712f,
+        0.17366524f,
+        0.22071244f,
+        0.2815692f,
+        0.3537585f,
+        0.43655503f,
+        0.52308f,
+        0.6104675f,
+        0.7047371f,
+        0.78155357f,
+        0.8671179f,
+        0.9740598f,
+        1.0f
+      };
+
   final int maxSize = 256;
   final long[] values = new long[maxSize];
 
@@ -65,11 +94,6 @@ public class GroupVIntBenchmark {
   // @Param({"16", "32", "64", "128", "248"})
   @Param({"64"})
   public int size;
-
-  @Param({"1", "2", "3", "4"})
-  public int numBytesPerInt;
-
-  private final int[] maxValues = new int[] {0, 1 << 4, 1 << 12, 1 << 18, 1 << 25};
 
   void initArrayInput(long[] docs) throws Exception {
     byte[] gVIntBytes = new byte[Integer.BYTES * maxSize * 2];
@@ -103,11 +127,16 @@ public class GroupVIntBenchmark {
   @Setup(Level.Trial)
   public void init() throws Exception {
     long[] docs = new long[maxSize];
-    int max = maxValues[numBytesPerInt];
-    int min = max >> 1;
-    for (int i = 0; i < maxSize; i++) {
-      long v = ThreadLocalRandom.current().nextInt(min, max);
-      docs[i] = v;
+    Random r = new Random(0);
+    for (int i = 0; i < maxSize; ++i) {
+      float randomFloat = r.nextFloat();
+      // Reproduce the distribution of the number of bits per values that we're observing for tail
+      // postings on wikibigall.
+      int numBits = 1 + Arrays.binarySearch(CUMULATIVE_FREQUENCY_BY_BITS_REQUIRED, randomFloat);
+      if (numBits < 0) {
+        numBits = -numBits;
+      }
+      docs[i] = r.nextInt(1 << (numBits - 1), 1 << numBits);
     }
     initByteBufferInput(docs);
     initArrayInput(docs);
