@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
@@ -70,7 +71,7 @@ public class TestManyPointsInOldIndex extends LuceneTestCase {
     dir.setCheckIndexOnClose(false);
 
     // ... because we check ourselves here:
-    TestUtil.checkIndex(dir, false, true, true, null);
+    TestUtil.checkIndex(dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, null);
     dir.close();
   }
 }

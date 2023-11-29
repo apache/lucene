@@ -65,6 +65,8 @@ API Changes
   IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
   and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
 
+* GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
+
 New Features
 ---------------------
 
@@ -406,6 +408,8 @@ New Features
 
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
+
+* GITHUB#12525: `WordDelimiterGraphFilterFactory` now supports the `ignoreKeywords` flag (Thomas De Craemer)
 
 * GITHUB#12489: Add support for recursive graph bisection, also called
   bipartite graph partitioning, and often abbreviated BP, an algorithm for
