@@ -133,6 +133,7 @@ public class DrillSideways {
    * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
    * if no drill down facet collection is needed.
    */
+  // TODO: remove this as it's no longer used
   protected FacetsCollector createDrillDownFacetsCollector() {
     return new FacetsCollector();
   }
@@ -142,6 +143,14 @@ public class DrillSideways {
    * if no drill down facet collection is needed.
    */
   protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+    return new FacetsCollectorManager();
+  }
+
+  /**
+   * Subclass can override to customize drill sideways facets collector. This should not return
+   * {@code null} as we assume drill sideways is being used to collect "sideways" hits:
+   */
+  protected FacetsCollectorManager createDrillSidewaysFacetsCollectorManager() {
     return new FacetsCollectorManager();
   }
 
@@ -405,7 +414,7 @@ public class DrillSideways {
     FacetsCollectorManager[] drillSidewaysFacetsCollectorManagers =
         new FacetsCollectorManager[numDims];
     for (int i = 0; i < numDims; i++) {
-      drillSidewaysFacetsCollectorManagers[i] = new FacetsCollectorManager();
+      drillSidewaysFacetsCollectorManagers[i] = createDrillSidewaysFacetsCollectorManager();
     }
 
     DrillSidewaysQuery dsq =
@@ -475,7 +484,10 @@ public class DrillSideways {
     for (String dim : drillDownDims.keySet())
       callableCollectors.add(
           new CallableCollector(
-              i++, searcher, getDrillDownQuery(query, filters, dim), new FacetsCollectorManager()));
+              i++,
+              searcher,
+              getDrillDownQuery(query, filters, dim),
+              createDrillSidewaysFacetsCollectorManager()));
 
     final FacetsCollector mainFacetsCollector;
     final FacetsCollector[] facetsCollectors = new FacetsCollector[drillDownDims.size()];
