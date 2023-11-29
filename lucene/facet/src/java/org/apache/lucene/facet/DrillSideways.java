@@ -133,14 +133,6 @@ public class DrillSideways {
    * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
    * if no drill down facet collection is needed.
    */
-  protected FacetsCollector createDrillDownFacetsCollector() {
-    return new FacetsCollector();
-  }
-
-  /**
-   * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
-   * if no drill down facet collection is needed.
-   */
   protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
     return new FacetsCollectorManager();
   }
