@@ -133,7 +133,12 @@ public class DrillSideways {
   /**
    * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
    * if no drill down facet collection is needed.
+   *
+   * @deprecated This is only used by the deprecated {@link #search(DrillDownQuery, Collector)}
+   *     entry-point. Please use {@link #search(DrillDownQuery, CollectorManager)} instead, and
+   *     leverage {@link #createDrillDownFacetsCollectorManager()} as necessary
    */
+  @Deprecated
   protected FacetsCollector createDrillDownFacetsCollector() {
     return new FacetsCollector();
   }
