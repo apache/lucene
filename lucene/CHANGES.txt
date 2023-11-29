@@ -89,6 +89,8 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
+* GITHUB#12847: Test2BFST now reports the time it took to build the FST and the real FST size (Anh Dung Bui)
+
 Optimizations
 ---------------------
 
@@ -178,7 +180,8 @@ API Changes
 * GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
   HNSW graph build. (Shubham Chaudhary)
 
-*
+* GITHUB#12758, GITHUB#12803: Remove FST constructor with DataInput for metadata. Please
+  use the constructor with FSTMetadata instead. (Anh Dung Bui)
 
 New Features
 ---------------------
@@ -247,6 +250,8 @@ Improvements
   Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
   minimal FST.  Inspired by this Rust FST implemention:
   https://blog.burntsushi.net/transducers (Mike McCandless)
+
+* GITHUB#12738: NodeHash now stores the FST nodes data instead of just node addresses (Anh Dung Bui)
 
 Optimizations
 ---------------------
