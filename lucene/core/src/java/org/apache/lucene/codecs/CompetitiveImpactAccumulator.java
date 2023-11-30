@@ -38,6 +38,13 @@ public final class CompetitiveImpactAccumulator {
   // encodes norms as bytes.
   private final TreeSet<Impact> otherFreqNormPairs;
 
+  /**
+   * If this is an empty acc, we can copy provided acc into this rather than merge them. There is no
+   * need to modify it in {@link CompetitiveImpactAccumulator#add(int, long)}, because this is a
+   * temp acc only for collecting. Maybe we should rename this field.
+   */
+  private boolean empty = true;
+
   /** Sole constructor. */
   public CompetitiveImpactAccumulator() {
     maxFreqs = new int[256];
@@ -61,6 +68,7 @@ public final class CompetitiveImpactAccumulator {
   public void clear() {
     Arrays.fill(maxFreqs, 0);
     otherFreqNormPairs.clear();
+    empty = true;
     assert assertConsistent();
   }
 
@@ -79,6 +87,16 @@ public final class CompetitiveImpactAccumulator {
   }
 
   /** Merge {@code acc} into this. */
+  public void merge(CompetitiveImpactAccumulator acc) {
+    if (empty) {
+      copy(acc);
+      empty = false;
+    } else {
+      addAll(acc);
+    }
+  }
+
+  /** Add {@code acc} into this. */
   public void addAll(CompetitiveImpactAccumulator acc) {
     int[] maxFreqs = this.maxFreqs;
     int[] otherMaxFreqs = acc.maxFreqs;
