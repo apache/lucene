@@ -118,13 +118,38 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    int cost = acceptDocs.cardinality();
+    DocIdSetIterator iterator = scorer.iterator();
+    BitSet bitSet =
+        iterator instanceof BitSetIterator
+            ? ((BitSetIterator) iterator).getBitSet()
+            : BitSet.of(iterator, maxDoc);
+    Bits acceptDocs =
+        new Bits() {
+          @Override
+          public boolean get(int index) {
+            return liveDocs != null ? liveDocs.get(index) & bitSet.get(index) : bitSet.get(index);
+          }
+
+          @Override
+          public int length() {
+            return bitSet.cardinality();
+          }
+        };
+
+    FilteredDocIdSetIterator filteredDocIdSetIterator =
+        new FilteredDocIdSetIterator(new BitSetIterator(bitSet, maxDoc)) {
+          @Override
+          protected boolean match(int doc) {
+            return liveDocs == null || liveDocs.get(doc);
+          }
+        };
+
+    int cost = acceptDocs.length();
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, filteredDocIdSetIterator);
     }
 
     // Perform the approximate kNN search
@@ -133,25 +158,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
-    }
-  }
-
-  private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
-      throws IOException {
-    if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
-      // If we already have a BitSet and no deletions, reuse the BitSet
-      return bitSetIterator.getBitSet();
-    } else {
-      // Create a new BitSet from matching and live docs
-      FilteredDocIdSetIterator filterIterator =
-          new FilteredDocIdSetIterator(iterator) {
-            @Override
-            protected boolean match(int doc) {
-              return liveDocs == null || liveDocs.get(doc);
-            }
-          };
-      return BitSet.of(filterIterator, maxDoc);
+      return exactSearch(ctx, filteredDocIdSetIterator);
     }
   }
 
