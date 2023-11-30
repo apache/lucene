@@ -67,7 +67,7 @@ API Changes
 
 * GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
 
-* GITHUB#12243: Remove TermInSetQuery ctors taking Array param. KeywordField#newSetQuery now takes a collection. (Jakub Slowinski)
+* GITHUB#12243: Remove TermInSetQuery ctors taking varargs param. KeywordField#newSetQuery now takes a collection. (Jakub Slowinski)
 
 New Features
 ---------------------
