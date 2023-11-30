@@ -18,6 +18,7 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -289,8 +290,39 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, iw, tw, indexDir, taxoDir);
   }
 
+  private record ExpectedCount(FacetLabel facetLabel, int count) {}
+  ;
+
+  private static final List<ExpectedCount> EXPECTED_COUNTS =
+      List.of(
+          new ExpectedCount(new FacetLabel("Author", "Mark Twain"), 1),
+          new ExpectedCount(new FacetLabel("Author", "Stephen King"), 1),
+          new ExpectedCount(new FacetLabel("Author", "Kurt Vonnegut"), 1),
+          // new ExpectedCount(new FacetLabel("Author"), 3), // Throws IllegalArgumentException
+          new ExpectedCount(new FacetLabel("Band", "Rock & Pop", "The Beatles"), 1),
+          new ExpectedCount(new FacetLabel("Band", "Punk", "The Ramones"), 1),
+          new ExpectedCount(new FacetLabel("Band", "Rock & Pop", "U2"), 1),
+          new ExpectedCount(new FacetLabel("Band", "Rock & Pop", "REM"), 1),
+          new ExpectedCount(new FacetLabel("Band", "Rock & Pop", "Dave Matthews Band"), 1),
+          new ExpectedCount(new FacetLabel("Band", "Rock & Pop"), 4),
+          new ExpectedCount(new FacetLabel("Band", "Punk"), 1),
+          new ExpectedCount(new FacetLabel("Band"), 5),
+          new ExpectedCount(new FacetLabel("Composer", "Bach"), 1),
+          new ExpectedCount(new FacetLabel("Fake", "Label"), -1));
+
   private void assertCorrectResults(Facets facets) throws IOException {
     assertEquals(5, facets.getSpecificValue("Band"));
+    // random test for getBulkSpecificValues
+    int numOfLabels = random().nextInt(EXPECTED_COUNTS.size() + 1);
+    Number[] expectedResults = new Number[numOfLabels];
+    FacetLabel[] labels = new FacetLabel[numOfLabels];
+    for (int i = 0; i < numOfLabels; i++) {
+      ExpectedCount res = EXPECTED_COUNTS.get(random().nextInt(EXPECTED_COUNTS.size()));
+      expectedResults[i] = res.count();
+      labels[i] = res.facetLabel();
+    }
+    assertArrayEquals(expectedResults, facets.getBulkSpecificValues(labels));
+
     assertEquals(
         "dim=Band path=[] value=5 childCount=2\n  Rock & Pop (4)\n  Punk (1)\n",
         facets.getTopChildren(10, "Band").toString());

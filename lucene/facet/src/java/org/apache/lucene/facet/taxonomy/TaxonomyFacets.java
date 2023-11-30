@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
@@ -140,6 +141,25 @@ abstract class TaxonomyFacets extends Facets {
               dimConfig.indexFieldName));
     }
     return dimConfig;
+  }
+
+  /** Check that getting specific value for facetLabel is allowed. */
+  void checkSpecificValueAvailable(FacetLabel facetLabel) {
+    switch (facetLabel.components.length) {
+      case 0:
+        throw new IllegalArgumentException("Empty FacetLabel is not supported");
+      case 1:
+        DimConfig dimConfig = verifyDim(facetLabel.components[0]);
+        if (dimConfig.hierarchical && dimConfig.multiValued == false) {
+          // ok: rolled up at search time
+        } else if (dimConfig.requireDimCount && dimConfig.multiValued) {
+          // ok: we indexed all ords at index time
+        } else {
+          throw new IllegalArgumentException(
+              "cannot return dimension-level value alone; use getTopChildren instead for "
+                  + facetLabel);
+        }
+    }
   }
 
   @Override

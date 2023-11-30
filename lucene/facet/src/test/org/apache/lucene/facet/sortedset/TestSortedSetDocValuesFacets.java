@@ -34,6 +34,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.DrillDownQuery;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
@@ -45,6 +46,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -157,6 +159,26 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(2, facets.getSpecificValue("a", "foo"));
           expectThrows(
               IllegalArgumentException.class, () -> facets.getSpecificValue("a", "foo", "bar"));
+
+          // test getBulkSpecificValues
+          FacetLabel[] bulkSpecificValueParam =
+              new FacetLabel[] {
+                new FacetLabel("b", "buzz"),
+                new FacetLabel("a", "zoo"),
+                new FacetLabel("a", "foo"),
+                new FacetLabel("a", "buzz")
+              };
+          assertArrayEquals(
+              new Number[] {2, 1, 2, -1}, facets.getBulkSpecificValues(bulkSpecificValueParam));
+          assertArrayEquals(new Number[0], facets.getBulkSpecificValues(new FacetLabel[0]));
+          FacetLabel[] illegalBulkSpecificValueParam =
+              new FacetLabel[] {
+                new FacetLabel("a", "foo"),
+                new FacetLabel("a", "zoo", "bar"), // illegal path length
+              };
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> facets.getBulkSpecificValues(illegalBulkSpecificValueParam));
 
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
@@ -405,6 +427,25 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           // ... but not on non-hierarchical dims:
           expectThrows(
               IllegalArgumentException.class, () -> facets.getSpecificValue("a", "foo", "bar)"));
+          // test getBulkSpecificValues
+          FacetLabel[] bulkSpecificValueParam =
+              new FacetLabel[] {
+                new FacetLabel("c", "buzz", "bee"), // request deeper paths on hierarchical dim
+                new FacetLabel("c", "buzz"),
+                new FacetLabel("a", "buzz"),
+                new FacetLabel("a", "foo")
+              };
+          assertArrayEquals(
+              new Number[] {1, 2, -1, 2}, facets.getBulkSpecificValues(bulkSpecificValueParam));
+          FacetLabel[] illegalBulkSpecificValueParam =
+              new FacetLabel[] {
+                new FacetLabel("a", "foo"),
+                new FacetLabel("a", "zoo", "bar"), // illegal path length of non-hierarchical dim
+              };
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> facets.getBulkSpecificValues(illegalBulkSpecificValueParam));
+
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
@@ -1830,6 +1871,66 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertNull(result);
           result = facets.getAllChildren("fizz", "fake", "path");
           assertNull(result);
+
+          assertArrayEquals(
+              new Number[] {-1},
+              facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("fizz", "fake")}));
+        } finally {
+          if (exec != null) exec.shutdownNow();
+        }
+      }
+    }
+  }
+
+  public void testEmptyResultsAndNonExistentPath() throws Exception {
+    // for empty search results, test difference between getting results for non-existent path and
+    // existent path
+    try (Directory dir = newDirectory();
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+      FacetsConfig config = new FacetsConfig();
+      config.setHierarchical("fizz", true);
+
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesFacetField("fizz", "buzz", "baz"));
+      writer.addDocument(config.build(doc));
+      writer.commit();
+
+      try (IndexReader r = writer.getReader()) {
+        IndexSearcher searcher = newSearcher(r);
+
+        SortedSetDocValuesReaderState state =
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+
+        ExecutorService exec = randomExecutorServiceOrNull();
+        try {
+          Facets facets = getNoFacets(searcher, state, exec);
+          // getTopChildren returns null (and no exception is thrown) in both cases
+          FacetResult result = facets.getTopChildren(5, "fizz", "fake", "path");
+          assertNull(result);
+          result = facets.getTopChildren(5, "fizz", "buzz", "baz");
+          assertNull(result);
+          // getAllChildren returns null for non-existent path, and 0 for existent path for empty
+          // search results
+          result = facets.getAllChildren("fizz", "fake", "path");
+          assertNull(result);
+          result = facets.getAllChildren("fizz", "buzz", "baz");
+          // TODO: ConcurrentSortedSetDocValuesFacetCounts returns empty results
+          //  but SortedSetDocValuesFacetCounts returns null. Should we make sure they return the
+          // same?
+          // assertFacetResult(result, "fizz", new String[]{"buzz", "baz"}, 0, 0);
+          // assertNull(result);
+
+          // getSpecificValue returns 0  for existing path and -1 for non-existent pat
+          assertEquals(0, facets.getSpecificValue("fizz", "buzz"));
+          assertEquals(-1, facets.getSpecificValue("fizz", "fake"));
+
+          // getBulkSpecificValues returns 0  for existing path and -1 for non-existent pat
+          assertArrayEquals(
+              new Number[] {0},
+              facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("fizz", "buzz")}));
+          assertArrayEquals(
+              new Number[] {-1},
+              facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("fizz", "fake")}));
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1851,6 +1952,17 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       return new ConcurrentSortedSetDocValuesFacetCounts(state, exec);
     } else {
       return new SortedSetDocValuesFacetCounts(state);
+    }
+  }
+
+  private static Facets getNoFacets(
+      IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
+      throws IOException, InterruptedException {
+    FacetsCollector c = searcher.search(new MatchNoDocsQuery(), new FacetsCollectorManager());
+    if (exec != null) {
+      return new ConcurrentSortedSetDocValuesFacetCounts(state, c, exec);
+    } else {
+      return new SortedSetDocValuesFacetCounts(state, c);
     }
   }
 

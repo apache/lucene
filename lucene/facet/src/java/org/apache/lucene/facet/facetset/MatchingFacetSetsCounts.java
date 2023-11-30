@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.facet.FacetCountsWithFilterQuery;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
@@ -200,6 +201,11 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
     throw new UnsupportedOperationException();
   }
 

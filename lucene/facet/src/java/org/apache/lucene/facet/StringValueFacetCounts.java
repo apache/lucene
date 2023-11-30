@@ -31,12 +31,16 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.StringSorter;
 
 /**
  * Compute facet counts from a previously indexed {@link SortedSetDocValues} or {@link
@@ -243,21 +247,79 @@ public class StringValueFacetCounts extends Facets {
     return new FacetResult(field, new String[0], totalDocCount, labelValues, childCount);
   }
 
-  @Override
-  public Number getSpecificValue(String dim, String... path) throws IOException {
+  private void checkSpecificValueAvailable(String dim, int pathLength) {
     if (dim.equals(field) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
     }
-    if (path.length != 1) {
+    if (pathLength != 1) {
       throw new IllegalArgumentException("path must be length=1");
     }
+  }
+
+  @Override
+  public Number getSpecificValue(String dim, String... path) throws IOException {
+    checkSpecificValueAvailable(dim, path.length);
     int ord = (int) docValues.lookupTerm(new BytesRef(path[0]));
     if (ord < 0) {
-      return -1;
+      return MISSING_SPECIFIC_VALUE;
     }
 
     return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
+    if (facetLabels.length == 0) {
+      return new Number[0];
+    }
+
+    int numberOfValues = facetLabels.length;
+    BytesRef[] termsToGet = new BytesRef[numberOfValues];
+    int[] sortedIndexes = new int[numberOfValues];
+    for (int i = 0; i < numberOfValues; i++) {
+      String[] components = facetLabels[i].components;
+      assert components.length > 0;
+      checkSpecificValueAvailable(components[0], components.length - 1);
+      termsToGet[i] = new BytesRef(components[1]);
+      sortedIndexes[i] = i;
+    }
+
+    new StringSorter(BytesRefComparator.NATURAL) {
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = sortedIndexes[i];
+        sortedIndexes[i] = sortedIndexes[j];
+        sortedIndexes[j] = tmp;
+        BytesRef tmpBytes = termsToGet[i];
+        termsToGet[i] = termsToGet[j];
+        termsToGet[j] = tmpBytes;
+      }
+
+      @Override
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = termsToGet[i];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
+      }
+    }.sort(0, numberOfValues);
+
+    TermsEnum te = docValues.termsEnum();
+    Number[] result = new Number[facetLabels.length];
+    int index;
+    int ord;
+    for (int i = 0; i < numberOfValues; i++) {
+      index = sortedIndexes[i];
+      if (te.seekExact(termsToGet[i])) {
+        ord = (int) te.ord();
+        result[index] = sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+      } else {
+        result[index] = MISSING_SPECIFIC_VALUE;
+      }
+    }
+    return result;
   }
 
   @Override

@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.facet;
 
+import com.carrotsearch.hppc.IntArrayList;
+import com.carrotsearch.hppc.cursors.IntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -75,6 +78,40 @@ public class MultiFacets extends Facets {
       facets = defaultFacets;
     }
     return facets.getSpecificValue(dim, path);
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
+    if (facetLabels.length == 0) {
+      return new Number[0];
+    }
+    // Split facetLabels into chunks by the Facets they belong to.
+    Map<Facets, IntArrayList> labelsPerFacet = new IdentityHashMap<>();
+    for (int i = 0; i < facetLabels.length; i++) {
+      String dim = facetLabels[i].components[0];
+      Facets facets = dimToFacets.get(dim);
+
+      if (facets == null) {
+        if (defaultFacets == null) {
+          throw new IllegalArgumentException("invalid dim \"" + dim + "\"");
+        }
+        facets = defaultFacets;
+      }
+      labelsPerFacet.computeIfAbsent(facets, f -> new IntArrayList()).add(i);
+    }
+    // Call getBulkSpecificValues for each chunk and reconcile results
+    Number[] result = new Number[facetLabels.length];
+    for (Map.Entry<Facets, IntArrayList> fl : labelsPerFacet.entrySet()) {
+      FacetLabel[] labelsForFacet = new FacetLabel[fl.getValue().size()];
+      for (IntCursor ordI : fl.getValue()) {
+        labelsForFacet[ordI.index] = facetLabels[ordI.value];
+      }
+      Number[] values = fl.getKey().getBulkSpecificValues(labelsForFacet);
+      for (IntCursor ordI : fl.getValue()) {
+        result[ordI.value] = values[ordI.index];
+      }
+    }
+    return result;
   }
 
   @Override

@@ -569,6 +569,12 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) {
+    // TODO: should we impl this?
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public List<FacetResult> getAllDims(int topN) {
     validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));

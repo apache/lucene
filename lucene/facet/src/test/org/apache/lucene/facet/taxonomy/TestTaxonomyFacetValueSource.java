@@ -27,6 +27,7 @@ import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
@@ -301,6 +302,12 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getSpecificValue("a");
+        });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("a")});
         });
 
     expectThrows(
