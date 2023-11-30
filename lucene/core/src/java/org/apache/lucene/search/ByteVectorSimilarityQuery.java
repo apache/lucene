@@ -22,9 +22,9 @@ import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.util.Bits;
 
 /**
  * Search for all (approximate) byte vectors above a similarity threshold.
@@ -35,27 +35,65 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final byte[] target;
 
   /**
-   * Search for all (approximate) byte vectors above a similarity threshold. First performs a
-   * similarity-based graph search using {@link VectorSimilarityCollector} between {@link
-   * #traversalSimilarity} and {@link #resultSimilarity}. If this does not complete within a
-   * specified {@link #visitLimit}, returns a lazy-loading iterator over all byte vectors above the
-   * {@link #resultSimilarity}.
+   * Search for all (approximate) byte vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+   * the filter, and then falls back to exact search if results are incomplete.
    *
    * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search.
    * @param traversalSimilarity (lower) similarity score for graph traversal.
    * @param resultSimilarity (higher) similarity score for result collection.
-   * @param visitLimit limit on number of nodes to visit before falling back to a lazy-loading
-   *     iterator.
+   * @param filter a filter applied before the vector search.
    */
   public ByteVectorSimilarityQuery(
       String field,
       byte[] target,
       float traversalSimilarity,
       float resultSimilarity,
-      long visitLimit) {
-    super(field, traversalSimilarity, resultSimilarity, visitLimit);
+      Query filter) {
+    super(field, traversalSimilarity, resultSimilarity, filter);
     this.target = Objects.requireNonNull(target, "target");
+  }
+
+  /**
+   * Search for all (approximate) byte vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}.
+   *
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+   * @param target the target of the search.
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
+   */
+  public ByteVectorSimilarityQuery(
+      String field, byte[] target, float traversalSimilarity, float resultSimilarity) {
+    this(field, target, traversalSimilarity, resultSimilarity, null);
+  }
+
+  /**
+   * Search for all (approximate) byte vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+   * the filter, and then falls back to exact search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+   * @param target the target of the search.
+   * @param resultSimilarity similarity score for result collection.
+   * @param filter a filter applied before the vector search.
+   */
+  public ByteVectorSimilarityQuery(
+      String field, byte[] target, float resultSimilarity, Query filter) {
+    this(field, target, resultSimilarity, resultSimilarity, filter);
+  }
+
+  /**
+   * Search for all (approximate) byte vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}.
+   *
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+   * @param target the target of the search.
+   * @param resultSimilarity similarity score for result collection.
+   */
+  public ByteVectorSimilarityQuery(String field, byte[] target, float resultSimilarity) {
+    this(field, target, resultSimilarity, resultSimilarity, null);
   }
 
   @Override
@@ -69,24 +107,26 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   }
 
   @Override
-  protected void approximateSearch(LeafReaderContext context, KnnCollector collector)
+  @SuppressWarnings("resource")
+  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitLimit)
       throws IOException {
-    @SuppressWarnings("resource")
-    LeafReader reader = context.reader();
-    reader.searchNearestVectors(field, target, collector, reader.getLiveDocs());
+    KnnCollector collector =
+        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
+    context.reader().searchNearestVectors(field, target, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   @Override
   public String toString(String field) {
     return String.format(
         Locale.ROOT,
-        "%s[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f visitLimit=%d]",
+        "%s[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
         getClass().getSimpleName(),
         field,
         target[0],
         traversalSimilarity,
         resultSimilarity,
-        visitLimit);
+        filter);
   }
 
   @Override
