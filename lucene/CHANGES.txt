@@ -58,7 +58,7 @@ API Changes
 * GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
   between FST and FSTCompiler (Anh Dung Bui)
 
-* GITHUB#12709 Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
+* GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
   of the two (Anh Dung Bui)
 
 * GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
