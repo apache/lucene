@@ -284,7 +284,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     // for skip list data
     private SimpleTextSkipReader skipReader;
-    private int nextSkipDoc = -1;
+    private int nextSkipDoc = 0;
     private long seekTo = -1;
 
     public SimpleTextDocsEnum() {
@@ -305,7 +305,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       tf = 1;
       cost = docFreq;
       skipReader.reset(skipPointer, docFreq);
-      nextSkipDoc = -1;
+      nextSkipDoc = 0;
       seekTo = -1;
       return this;
     }
@@ -458,7 +458,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     // for skip list data
     private SimpleTextSkipReader skipReader;
-    private int nextSkipDoc = -1;
+    private int nextSkipDoc = 0;
     private long seekTo = -1;
 
     public SimpleTextPostingsEnum() {
@@ -484,7 +484,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
       cost = docFreq;
       skipReader.reset(skipPointer, docFreq);
-      nextSkipDoc = -1;
+      nextSkipDoc = 0;
       seekTo = -1;
       return this;
     }

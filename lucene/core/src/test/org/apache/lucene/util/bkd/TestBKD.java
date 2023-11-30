@@ -734,13 +734,7 @@ public class TestBKD extends LuceneTestCase {
             docMaps = new ArrayList<>();
           }
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID1 -> curDocIDBase + docID1);
           Runnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
@@ -770,13 +764,7 @@ public class TestBKD extends LuceneTestCase {
           toMerge.add(out.getFilePointer());
           finalizer.run();
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID -> curDocIDBase + docID);
         }
         out.close();
         in = dir.openInput("bkd", IOContext.DEFAULT);

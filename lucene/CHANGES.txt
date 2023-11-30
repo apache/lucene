@@ -61,7 +61,13 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
-* GITHUB#12243: Remove TermInSetQuery ctors taking Array param. KeywordField#newSetQuery now takes a collection.
+* GITHUB#11041: Deprecate IndexSearch#search(Query, Collector) in favor of
+  IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
+  and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
+
+* GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
+
+* GITHUB#12243: Remove TermInSetQuery ctors taking Array param. KeywordField#newSetQuery now takes a collection. (Jakub Slowinski)
 
 New Features
 ---------------------
@@ -90,7 +96,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
-* GITHUB#12825: Hunspell: improved dictionary loading performance (Peter Gromov)
+* GITHUB#12825, GITHUB#12834: Hunspell: improved dictionary loading performance, allowed in-memory entry sorting.
+  (Peter Gromov)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
@@ -173,6 +180,9 @@ API Changes
 * GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
   HNSW graph build. (Shubham Chaudhary)
 
+* GITHUB#12758, GITHUB#12803: Remove FST constructor with DataInput for metadata. Please
+  use the constructor with FSTMetadata instead. (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -240,6 +250,10 @@ Improvements
   Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
   minimal FST.  Inspired by this Rust FST implemention:
   https://blog.burntsushi.net/transducers (Mike McCandless)
+
+* GITHUB#12738: NodeHash now stores the FST nodes data instead of just node addresses (Anh Dung Bui)
+
+* GITHUB#12847: Test2BFST now reports the time it took to build the FST and the real FST size (Anh Dung Bui)
 
 Optimizations
 ---------------------
@@ -349,6 +363,9 @@ Build
 
 * GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
+* GITHUB#12845: Only enable support for tests.profile if jdk.jfr module is available
+  in Gradle runtime. (Uwe Schindler)
+
 Other
 ---------------------
 
@@ -363,6 +380,8 @@ Other
   own class, ByteSlicePool. ByteBlockPool's array of buffers is made private. There are new exceptions for buffer index
   overflows and slices that are too large. Some bits of code are simplified. Documentation is updated and expanded.
   (Stefan Vodita)
+
+* GITHUB#12762: Refactor BKD HeapPointWriter to hide the internal data structure. (Ignacio Vera)
 
 ======================== Lucene 9.8.0 =======================
 
@@ -391,6 +410,8 @@ New Features
 
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
+
+* GITHUB#12525: `WordDelimiterGraphFilterFactory` now supports the `ignoreKeywords` flag (Thomas De Craemer)
 
 * GITHUB#12489: Add support for recursive graph bisection, also called
   bipartite graph partitioning, and often abbreviated BP, an algorithm for

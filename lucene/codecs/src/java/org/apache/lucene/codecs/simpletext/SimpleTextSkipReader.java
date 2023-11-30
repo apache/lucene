@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.codecs.Lucene99MultiLevelSkipListReader;
+import org.apache.lucene.codecs.MultiLevelSkipListReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -51,7 +51,7 @@ import org.apache.lucene.util.StringHelper;
  *
  * @lucene.experimental
  */
-class SimpleTextSkipReader extends Lucene99MultiLevelSkipListReader {
+class SimpleTextSkipReader extends MultiLevelSkipListReader {
 
   private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
   private final BytesRefBuilder scratch = new BytesRefBuilder();

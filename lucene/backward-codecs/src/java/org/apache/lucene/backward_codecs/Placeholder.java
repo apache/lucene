@@ -14,37 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.bkd;
+package org.apache.lucene.backward_codecs;
 
-import java.util.function.IntFunction;
-
-/**
- * Utility class to read buffered points from in-heap arrays.
- *
- * @lucene.internal
- */
-public final class HeapPointReader implements PointReader {
-  private int curRead;
-  private final int end;
-  private final IntFunction<PointValue> points;
-
-  HeapPointReader(IntFunction<PointValue> points, int start, int end) {
-    curRead = start - 1;
-    this.end = end;
-    this.points = points;
-  }
-
-  @Override
-  public boolean next() {
-    curRead++;
-    return curRead < end;
-  }
-
-  @Override
-  public PointValue pointValue() {
-    return points.apply(curRead);
-  }
-
-  @Override
-  public void close() {}
+/** Remove this file when adding back compat codecs */
+public class Placeholder {
+  // no instance
+  private Placeholder() {}
 }

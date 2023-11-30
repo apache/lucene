@@ -23,6 +23,7 @@ import org.gradle.util.GradleVersion
 configure(rootProject) {
   ext {
     expectedGradleVersion = '8.4'
+    hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
   }
 
   wrapper {
