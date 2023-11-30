@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -141,7 +143,7 @@ public class WFSTCompletionLookup extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    this.fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
     return true;
   }
 

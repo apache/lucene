@@ -523,6 +523,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             return null;
           }
         });
+
     assertTrue(matched.get());
   }
 

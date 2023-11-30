@@ -118,7 +118,6 @@ import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.junit.Ignore;
-import org.junit.Test;
 
 public class TestIndexWriter extends LuceneTestCase {
 
@@ -2042,7 +2041,6 @@ public class TestIndexWriter extends LuceneTestCase {
     return data;
   }
 
-  @Test
   public void testGetCommitData() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(null));
@@ -2057,6 +2055,47 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // validate that it's also visible when opening a new IndexWriter
     writer = new IndexWriter(dir, newIndexWriterConfig(null).setOpenMode(OpenMode.APPEND));
+    assertEquals("value", getLiveCommitData(writer).get("key"));
+    writer.close();
+
+    dir.close();
+  }
+
+  public void testGetCommitDataFromOldSnapshot() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    writer.setLiveCommitData(
+        new HashMap<String, String>() {
+          {
+            put("key", "value");
+          }
+        }.entrySet());
+    assertEquals("value", getLiveCommitData(writer).get("key"));
+    writer.commit();
+    // Snapshot this commit to open later
+    IndexCommit indexCommit =
+        ((SnapshotDeletionPolicy) writer.getConfig().getIndexDeletionPolicy()).snapshot();
+    writer.close();
+
+    // Modify the commit data and commit on close so the most recent commit data is different
+    writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    writer.setLiveCommitData(
+        new HashMap<String, String>() {
+          {
+            put("key", "value2");
+          }
+        }.entrySet());
+    assertEquals("value2", getLiveCommitData(writer).get("key"));
+    writer.close();
+
+    // validate that when opening writer from older snapshotted index commit, the old commit data is
+    // visible
+    writer =
+        new IndexWriter(
+            dir,
+            newSnapshotIndexWriterConfig(null)
+                .setOpenMode(OpenMode.APPEND)
+                .setIndexCommit(indexCommit));
     assertEquals("value", getLiveCommitData(writer).get("key"));
     writer.close();
 
@@ -2376,9 +2415,9 @@ public class TestIndexWriter extends LuceneTestCase {
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                // Use a serial merge scheduler to avoid race conditions when checking for
-                // hasPendingMerges()
-                .setMergeScheduler(new SerialMergeScheduler()));
+                // Disable merging to simplify this test, otherwise a commit might trigger
+                // uncommitted merges.
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     assertTrue(
         writer.hasUncommittedChanges()); // this will be true because a commit will create an empty
     // index
@@ -2401,22 +2440,12 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.addDocument(doc);
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit and wait for merges as long as the commit triggers merges to be certain that
-    // hasUncommittedChanges returns false
-    do {
-      writer.waitForMerges();
-      writer.commit();
-    } while (writer.hasPendingMerges());
+    writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.deleteDocuments(new Term("id", "xyz"));
     assertTrue(writer.hasUncommittedChanges());
 
-    // Must commit and wait for merges as long as the commit triggers merges to be certain that
-    // hasUncommittedChanges returns false
-    do {
-      writer.waitForMerges();
-      writer.commit();
-    } while (writer.hasPendingMerges());
+    writer.commit();
     assertFalse(writer.hasUncommittedChanges());
     writer.close();
 
@@ -2685,7 +2714,7 @@ public class TestIndexWriter extends LuceneTestCase {
     // Make sure CheckIndex includes id output:
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(d);
-    checker.setDoSlowChecks(false);
+    checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
     checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
     CheckIndex.Status indexStatus = checker.checkIndex(null);
     String s = bos.toString(IOUtils.UTF_8);

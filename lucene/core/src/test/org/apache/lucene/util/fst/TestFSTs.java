@@ -521,7 +521,8 @@ public class TestFSTs extends LuceneTestCase {
     private final FSTCompiler<T> fstCompiler;
 
     public VisitTerms(
-        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays) {
+        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays)
+        throws IOException {
       this.dirOut = dirOut;
       this.wordsFileIn = wordsFileIn;
       this.inputMode = inputMode;
@@ -1225,7 +1226,7 @@ public class TestFSTs extends LuceneTestCase {
 
     // load the FST, which will force it to use FSTStore instead of BytesStore
     ByteArrayDataInput in = new ByteArrayDataInput(outOS.toByteArray());
-    FST<Long> loadedFST = new FST<>(in, in, outputs);
+    FST<Long> loadedFST = new FST<>(FST.readMetadata(in, outputs), in);
 
     // now save the FST again, this time to different DataOutput for meta
     ByteArrayOutputStream metdataOS = new ByteArrayOutputStream();
@@ -1237,7 +1238,7 @@ public class TestFSTs extends LuceneTestCase {
     // finally load it again
     ByteArrayDataInput metaIn = new ByteArrayDataInput(metdataOS.toByteArray());
     ByteArrayDataInput dataIn = new ByteArrayDataInput(dataOS.toByteArray());
-    loadedFST = new FST<>(metaIn, dataIn, outputs);
+    loadedFST = new FST<>(FST.readMetadata(metaIn, outputs), dataIn);
 
     assertEquals(22L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aab"), scratch)).longValue());
     assertEquals(7L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aac"), scratch)).longValue());
@@ -1298,7 +1299,7 @@ public class TestFSTs extends LuceneTestCase {
     out.close();
 
     IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-    final FST<Long> fst2 = new FST<>(in, in, outputs);
+    final FST<Long> fst2 = new FST<>(FST.readMetadata(in, outputs), in);
     checkStopNodes(fst2, outputs);
     in.close();
     dir.close();
