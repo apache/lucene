@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -77,7 +78,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     private final Sorter.DocMap docMap;
 
     SortingPointValues(final PointValues in, Sorter.DocMap docMap) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.docMap = docMap;
     }
 
@@ -472,6 +473,10 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public PointValues getValues(String field) throws IOException {
+        var values = delegate.getValues(field);
+        if (values == null) {
+          return null;
+        }
         return new SortingPointValues(delegate.getValues(field), docMap);
       }
 
