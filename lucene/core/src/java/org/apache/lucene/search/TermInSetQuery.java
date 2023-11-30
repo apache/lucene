@@ -84,6 +84,10 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     this(field, packTerms(field, terms));
   }
 
+  /**
+   * @deprecated Use the constructor with a collection of terms instead.
+   */
+  @Deprecated(since = "9.10")
   public TermInSetQuery(String field, BytesRef... terms) {
     this(field, packTerms(field, Arrays.asList(terms)));
   }
@@ -96,7 +100,12 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     termDataHashCode = termData.hashCode();
   }
 
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
+  /**
+   * Creates a new {@link TermInSetQuery} from the given array of terms.
+   *
+   * @deprecated Use the constructor with a collection of terms instead.
+   */
+  @Deprecated(since = "9.10")
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
     this(rewriteMethod, field, Arrays.asList(terms));
   }
