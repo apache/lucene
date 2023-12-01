@@ -170,7 +170,6 @@ public final class CompetitiveImpactAccumulator {
         it.remove();
       } else {
         // lesser freq but better norm, further entries are not comparable
-        // TODO: further entries may have more lesser freq and greater norms, should we move them?
         break;
       }
     }
