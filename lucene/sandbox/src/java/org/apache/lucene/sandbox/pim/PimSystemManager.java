@@ -17,8 +17,6 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import static org.apache.lucene.sandbox.pim.DpuSystemExecutor.QUERY_BATCH_BUFFER_CAPACITY;
-
 import com.upmem.dpu.DpuException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -409,11 +407,11 @@ public class PimSystemManager {
         if (stop) {
           break;
         }
-        assert queryBuffer.length < QUERY_BATCH_BUFFER_CAPACITY;
+        assert queryBuffer.length < DpuConstants.dpuQueryBatchByteSize;
         batchQueryBuffers.add(queryBuffer);
         long bufferSize = queryBuffer.length;
         long startTimeNs = System.nanoTime();
-        while (bufferSize < QUERY_BATCH_BUFFER_CAPACITY) {
+        while (bufferSize < DpuConstants.dpuQueryBatchByteSize) {
           // Wait some time to give a chance to accumulate more queries and send
           // a larger batch to DPUs. This is a throughput oriented strategy.
           long timeout = Math.max(WAIT_FOR_BATCH_NS - (System.nanoTime() - startTimeNs), 0L);
@@ -421,14 +419,14 @@ public class PimSystemManager {
           if (queryBuffer == null) {
             break;
           }
-          if (bufferSize + queryBuffer.length > QUERY_BATCH_BUFFER_CAPACITY) {
+          if (bufferSize + queryBuffer.length > DpuConstants.dpuQueryBatchByteSize) {
             pendingQueryBuffer = queryBuffer;
             break;
           }
           batchQueryBuffers.add(queryBuffer);
           bufferSize += queryBuffer.length;
         }
-        assert bufferSize <= QUERY_BATCH_BUFFER_CAPACITY;
+        assert bufferSize <= DpuConstants.dpuQueryBatchByteSize;
 
         // Send the query batch to the DPUs, launch, get results.
         queriesExecutor.executeQueries(batchQueryBuffers);

@@ -33,7 +33,6 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
-  static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
   static final int INDEX_CACHE_SIZE = 1 << 16;
   static final int MAX_DPU_INDEX_SIZE = 48 << 20;
   static final boolean PARALLEL_INDEX_LOAD = true;
@@ -65,7 +64,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   native int sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
-    queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
+    queryBatchBuffer = new byte[DpuConstants.dpuQueryBatchByteSize];
     // allocate DPUs, load the program, allocate space for DPU results
     dpuStream = new ByteArrayOutputStream();
     try {
@@ -296,20 +295,21 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     int batchLength = 0;
     ByteArrayDataOutput out = new ByteArrayDataOutput(dpuQueryOffsetInBatch);
     for (PimSystemManager.QueryBuffer queryBuffer : queryBuffers) {
+      if (batchLength + queryBuffer.length > DpuConstants.dpuQueryBatchByteSize) {
+        // size is too large, the DPU cannot support this
+        // TODO should not just throw but handle this by reducing the size of the batch
+        // for instance doing two execution of DPU
+        throw new DpuException(
+                "Error: batch size too large for DPU size="
+                        + batchLength
+                        + " max="
+                        + DpuConstants.dpuQueryBatchByteSize);
+      }
       System.arraycopy(queryBuffer.bytes, 0, queryBatchBuffer, batchLength, queryBuffer.length);
       out.writeInt(batchLength);
       batchLength += queryBuffer.length;
     }
-    if (batchLength > DpuConstants.dpuQueryBatchByteSize) {
-      // size is too large, the DPU cannot support this
-      // TODO should not just throw but handle this by reducing the size of the batch
-      // for instance doing two execution of DPU
-      throw new DpuException(
-          "Error: batch size too large for DPU size="
-              + batchLength
-              + " max="
-              + DpuConstants.dpuQueryBatchByteSize);
-    }
+
     dpuSystem
         .async()
         .copy(DpuConstants.dpuQueryBatchVarName, queryBatchBuffer, 0, AlignTo8(batchLength), 0);
