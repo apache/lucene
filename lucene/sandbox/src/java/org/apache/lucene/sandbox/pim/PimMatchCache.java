@@ -19,17 +19,21 @@ package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 import org.apache.lucene.search.Query;
 
 /**
  * This class is used to hold the results of a query until the results of each segment has been
  * read. Queries sent to PIM return results for all segments of the index, then results are cached
  * and provided to Lucene's search APIs on a per-segment basis.
+ * The key to the cache is the query combined with the thread id. This means we prevent a search thread to
+ * read the results of the same query issued by another search thread.
  */
 public class PimMatchCache {
 
   private static final int defaultCacheSize = 1024;
   private final int cacheSize;
+  private ConcurrentHashMap<CacheElem, DpuResultsReader> cache;
 
   public PimMatchCache() {
     this(defaultCacheSize);
@@ -42,18 +46,49 @@ public class PimMatchCache {
 
   DpuResultsReader get(Query query, boolean remove) throws IOException {
 
-    if (remove) return cache.remove(query);
-    else return cache.get(query);
+    CacheElem e = new CacheElem(query, Thread.currentThread().getId());
+    if (remove) return cache.remove(e);
+    else return cache.get(e);
   }
 
   boolean put(Query query, DpuResultsReader results) {
     assert results != null;
     if (cache.size() < cacheSize) {
-      cache.put(query, results);
+      cache.put(new CacheElem(query, Thread.currentThread().getId()), results);
       return true;
     }
     return false;
   }
 
-  private ConcurrentHashMap<Query, DpuResultsReader> cache;
+  /**
+   * Class used as the key in the query results cache.
+   * This combines the query object and the thread id.
+   */
+  private class CacheElem {
+
+    public Query query;
+    public long tid;
+
+    CacheElem(Query query, long tid) {
+      this.query = query;
+      this.tid = tid;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == this)
+        return true;
+      if (!(o instanceof CacheElem))
+        return false;
+      CacheElem other = (CacheElem) o;
+      boolean queryEquals = (this.query == null && other.query == null)
+              || (this.query != null && this.query.equals(other.query));
+      return this.tid == other.tid && queryEquals;
+    }
+
+    @Override
+    public final int hashCode() {
+      return Objects.hash(query, tid);
+    }
+  }
 }
