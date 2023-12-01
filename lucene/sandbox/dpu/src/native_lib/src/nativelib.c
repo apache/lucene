@@ -404,10 +404,10 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
         &get_block_info,
         DPU_SG_XFER_DISABLE_LENGTH_CHECK));
 
+    free(block_addresses);
 end:
     free(metadata.results_index);
     free(metadata.results_size_lucene_segments);
-    free(block_addresses);
     return res;
 }
 
