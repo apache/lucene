@@ -65,7 +65,7 @@ public class SGReturnPool {
                 buffer,
                 ByteBuffer.allocateDirect(nr_queries * Integer.BYTES),
                 ByteBuffer.allocateDirect(nr_segments * nr_queries * Integer.BYTES),
-                nr_queries,
+                nr_queries * nr_segments,
                 this);
     }
 
@@ -103,12 +103,12 @@ public class SGReturnPool {
             this.myPool = myPool;
         }
 
-        public void endReading() {
+        public void endReading(int cnt) {
 
             boolean dealloc = false;
             try {
                 lock.lock();
-                nbReaders--;
+                nbReaders-=cnt;
                 if(nbReaders == 0) {
                     dealloc = true;
                 }
@@ -118,6 +118,10 @@ public class SGReturnPool {
             if(dealloc) {
                 myPool.release(this);
             }
+        }
+
+        public void endReading() {
+            endReading(1);
         }
     };
 

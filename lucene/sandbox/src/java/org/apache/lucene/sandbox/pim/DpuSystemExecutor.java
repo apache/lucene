@@ -262,6 +262,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     if(resSize > 0) {
       // buffer passed to the JNI layer was to small, request a larger one from the pool and
       // call again
+      results.endReading(queryBuffers.size() * nbLuceneSegments);
       results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);
       if(sgXferResults(queryBuffers.size(), nbLuceneSegments, results) > 0)
         throw new DpuException("Error in sg transfer results buffer allocation");
