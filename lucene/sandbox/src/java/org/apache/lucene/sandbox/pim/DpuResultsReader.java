@@ -31,30 +31,17 @@ public abstract class DpuResultsReader {
   protected final PimQuery query;
   protected PimMatch match;
   protected int baseDoc;
-  protected int maxDoc;
   protected LeafSimScorer simScorer;
 
   DpuResultsReader(PimQuery query) {
     this.query = query;
     this.match = new PimMatch(-1, 0.0F);
     this.baseDoc = 0;
-    this.maxDoc = Integer.MAX_VALUE;
     this.simScorer = null;
   }
 
   public void setSimScorer(LeafSimScorer scorer) {
     this.simScorer = scorer;
-  }
-
-  /**
-   * Set the maximum docId to stop at (exclusive) This can be changed to allow reading more results,
-   * for instance in order to read the results for one lucene segment first, then increase the
-   * maxDoc to read the next segment etc.
-   *
-   * @param maxDoc the maximum docId to stop at
-   */
-  public void setMaxDoc(int maxDoc) {
-    this.maxDoc = maxDoc;
   }
 
   /**
@@ -73,6 +60,13 @@ public abstract class DpuResultsReader {
    * @return true if there is a next result to be read
    */
   public abstract boolean next() throws IOException;
+
+  /**
+   * Set the lucene segment which results need to be read
+   * @param segmentId the lucene segment id
+   * @param maxDocSegment the max doc id of the lucene segment
+   */
+  public abstract void setSegmentId(int segmentId, int maxDocSegment) throws IOException;
 
   /**
    * Read the current result

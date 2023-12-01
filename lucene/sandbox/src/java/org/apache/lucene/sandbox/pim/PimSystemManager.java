@@ -257,7 +257,7 @@ public class PimSystemManager {
     int maxDoc = Integer.MAX_VALUE;
     if (context.ord + 1 < pimIndexInfo.getNumSegments())
       maxDoc = pimIndexInfo.getStartDoc(context.ord + 1);
-    cacheRes.setMaxDoc(maxDoc);
+    cacheRes.setSegmentId(context.ord, maxDoc);
     cacheRes.setSimScorer(simScorer);
     cacheRes.setBaseDoc(pimIndexInfo.getStartDoc(context.ord));
 

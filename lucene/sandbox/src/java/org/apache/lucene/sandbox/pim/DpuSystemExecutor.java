@@ -281,7 +281,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       buffer.addResults(
           new DpuExecutorSGResultsReader(
               buffer.query,
-              results, q, buffer.query.getResultByteSize()));
+              results, q, buffer.query.getResultByteSize(), nbLuceneSegments));
     }
   }
 

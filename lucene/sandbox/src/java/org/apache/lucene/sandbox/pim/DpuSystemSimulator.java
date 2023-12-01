@@ -29,12 +29,14 @@ import org.apache.lucene.util.BytesRef;
 class DpuSystemSimulator implements PimQueriesExecutor {
 
   private PimIndexSearcher pimSearcher;
+  private PimIndexInfo pimIndexInfo;
 
   @Override
   public void setPimIndex(PimIndexInfo pimIndexInfo) {
     // create a new PimIndexSearcher for this index
     // TODO copy the PIM index files here to mimic transfer
     // to DPU and be safe searching it while the index is overwritten
+    this.pimIndexInfo = pimIndexInfo;
     pimSearcher = new PimIndexSearcher(pimIndexInfo);
   }
 

@@ -23,10 +23,12 @@ import java.io.IOException;
 public class DpuExecutorResultsReader extends DpuResultsReader {
 
   private final DpuDataInput input;
+  private int maxDoc;
 
   DpuExecutorResultsReader(PimQuery query, DpuDataInput input) {
     super(query);
     this.input = input;
+    this.maxDoc = Integer.MAX_VALUE;
     input.beginDpu();
   }
 
@@ -71,5 +73,13 @@ public class DpuExecutorResultsReader extends DpuResultsReader {
     // use method specific to the query
     match.score = query.scorePimResult(input.readInt(), match.docId, simScorer);
     return true;
+  }
+
+  @Override
+  public void setSegmentId(int segmentId, int maxDocSegment) throws IOException {
+
+    if(maxDocSegment < maxDoc)
+      throw new IOException("DpuExecutorResultsReader can only read segments in increasing order");
+    maxDoc = maxDocSegment;
   }
 }
