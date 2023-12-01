@@ -26,12 +26,14 @@ public class DpuSimulatorResultsReader extends DpuResultsReader {
   private final List<PimMatch> matches;
   private int currId;
   private int maxDoc;
+  private boolean firstSetSegment;
 
   DpuSimulatorResultsReader(PimQuery query, List<PimMatch> matches) {
     super(query);
     this.matches = matches;
     this.currId = 0;
     this.maxDoc = Integer.MAX_VALUE;
+    this.firstSetSegment = true;
   }
 
   @Override
@@ -48,8 +50,10 @@ public class DpuSimulatorResultsReader extends DpuResultsReader {
   @Override
   public void setSegmentId(int segmentId, int maxDocSegment) throws IOException {
 
-    if(maxDocSegment < maxDoc)
+    System.out.println("Reading segment=" + segmentId + " maxDoc=" + maxDocSegment);
+    if(!firstSetSegment && maxDocSegment < maxDoc)
       throw new IOException("DpuSimulatorResultsReader can only read segments in increasing order");
     maxDoc = maxDocSegment;
+    firstSetSegment = false;
   }
 }
