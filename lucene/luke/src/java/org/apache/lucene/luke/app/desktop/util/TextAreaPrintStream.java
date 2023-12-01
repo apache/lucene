@@ -25,23 +25,16 @@ import javax.swing.JTextArea;
 /** PrintStream for text areas */
 public final class TextAreaPrintStream extends PrintStream {
 
-  private final ByteArrayOutputStream baos;
-
   private final JTextArea textArea;
 
   public TextAreaPrintStream(JTextArea textArea) {
-    super(new ByteArrayOutputStream(), false, StandardCharsets.UTF_8);
-    this.baos = (ByteArrayOutputStream) out;
+    super(System.out, false, StandardCharsets.UTF_8);
     this.textArea = textArea;
-    baos.reset();
   }
 
   @Override
   public void flush() {
-    try {
-      textArea.append(baos.toString(StandardCharsets.UTF_8));
-    } finally {
-      baos.reset();
-    }
+    textArea.append(toString());
+    reset();
   }
 }
