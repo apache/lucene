@@ -155,9 +155,6 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
-  between FST and FSTCompiler (Anh Dung Bui)
-
 * GITHUB#12718: Make IndexSearcher#getSlices final as it is not expected to be overridden (Luca Cavanna)
 
 * GITHUB#12427: Automata#makeStringUnion #makeBinaryStringUnion now accept Iterable<BytesRef> instead of
@@ -169,13 +166,16 @@ API Changes
 
 * GITHUB#12816: Add HumanReadableQuery which takes a description parameter for debugging purposes. (Jakub Slowinski)
 
+* GITHUB#12646, GITHUB#12690: Move FST#addNode to FSTCompiler to avoid a circular dependency
+  between FST and FSTCompiler (Anh Dung Bui)
+
 * GITHUB#12709: Consolidate FSTStore and BytesStore in FST. Created FSTReader which contains the common methods
   of the two (Anh Dung Bui)
 
+* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
+
 * GITHUB-12695: Remove public constructor of FSTCompiler. Please use FSTCompiler.Builder
   instead. (Juan M. Caicedo)
-
-* GITHUB#12735: Remove FSTCompiler#getTermCount() and FSTCompiler.UnCompiledNode#inputCount (Anh Dung Bui)
 
 * GITHUB#12799: Make TaskExecutor constructor public and use TaskExecutor for concurrent
   HNSW graph build. (Shubham Chaudhary)
@@ -306,13 +306,13 @@ Optimizations
 
 * GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
 
-* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
-
 * GITHUB#12784: Cache buckets to speed up BytesRefHash#sort. (Guo Feng)
 
 * GITHUB#12806: Utilize exact kNN search when gathering k >= numVectors in a segment (Ben Trent)
 
 * GITHUB#12782: Use group-varint encoding for the tail of postings. (Adrien Grand, Zhang Chao)
+
+* GITHUB#12748: Specialize arc store for continuous label in FST. (Guo Feng, Zhang Chao)
 
 Changes in runtime behavior
 ---------------------
