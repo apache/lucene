@@ -5,6 +5,13 @@ import java.util.ArrayList;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Interface used to obtain SGReturn objects which are used to store results
+ * coming from DPU through scatter/gather transfers.
+ * SGReturn object has a large direct ByteBuffer as attribute to store results.
+ * In order to avoid allocating large buffer each time, this pool pre-allocate and
+ * store the buffers which are reused once the results have been all read.
+ */
 public class SGReturnPool {
 
     private TreeMap<Integer, ArrayList<ByteBuffer>> bufferPool;
@@ -56,7 +63,7 @@ public class SGReturnPool {
         }
         if(allocate) {
             if(minResultsByteSize == 0)
-                buffer = ByteBuffer.allocateDirect(nextPowerOf2(initByteSize));
+                buffer = ByteBuffer.allocateDirect(initByteSize);
             else
                 buffer = ByteBuffer.allocateDirect(nextPowerOf2(minResultsByteSize));
         }
@@ -85,6 +92,9 @@ public class SGReturnPool {
         }
     }
 
+    /**
+     * Object storing results coming from DPUs and the metadata associated:
+     */
     public class SGReturn {
         public final ByteBuffer byteBuffer;
         public final ByteBuffer queriesIndices;
