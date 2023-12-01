@@ -558,7 +558,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final int docBase;
 
     PointValuesSub(PointValues sub, int docBase) {
-      this.sub = sub;
+      this.sub = Objects.requireNonNull(sub);
       this.docBase = docBase;
     }
   }
@@ -599,7 +599,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);
         if (fi != null && fi.getPointDimensionCount() > 0) {
           PointValues v = readers[i].getValues(field);
-          values.add(new PointValuesSub(v, docStarts[i]));
+          if (v != null) {
+            // Apparently FieldInfo can claim a field has points, yet the returned
+            // PointValues is null
+            values.add(new PointValuesSub(v, docStarts[i]));
+          }
         }
       }
       if (values.isEmpty()) {
