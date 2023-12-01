@@ -119,6 +119,8 @@ int main() {
         get_segments_info(dpu_index);
         assert(nr_segments_log2 >=0 && nr_segments_log2 < 8);
         assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
+        memset(results_index_lucene_segments, 0,
+            nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1)) * sizeof(uint32_t));
     }
     barrier_wait(&barrier);
 
@@ -127,7 +129,6 @@ int main() {
     for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
             lookup_postings_info_for_query(dpu_index, i);
             results_index[i] = 0;
-            memset(&results_index_lucene_segments[i * nr_lucene_segments], 0, nr_lucene_segments * sizeof(uint32_t));
     }
     //TODO avoid a barrier here ? Load balancing of lookup postings operation is not very good
     barrier_wait(&barrier);
