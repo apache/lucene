@@ -40,17 +40,6 @@ public class GroupVIntWriter {
     return byteOffset - lastOff;
   }
 
-  public void writeGroup(DataOutput out, int v1, int v2, int v3, int v4) throws IOException {
-    byte flag = 0;
-    byteOffset = 1;
-    flag |= (encodeValue(v1) - 1) << 6;
-    flag |= (encodeValue(v2) - 1) << 4;
-    flag |= (encodeValue(v3) - 1) << 2;
-    flag |= (encodeValue(v4) - 1);
-    bytes[0] = flag;
-    out.writeBytes(bytes, byteOffset);
-  }
-
   public void writeValues(DataOutput out, long[] values, int limit) throws IOException {
     int off = 0;
 
