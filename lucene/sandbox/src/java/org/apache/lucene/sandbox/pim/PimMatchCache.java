@@ -18,16 +18,16 @@
 package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.search.Query;
 
 /**
  * This class is used to hold the results of a query until the results of each segment has been
  * read. Queries sent to PIM return results for all segments of the index, then results are cached
- * and provided to Lucene's search APIs on a per-segment basis.
- * The key to the cache is the query combined with the thread id. This means we prevent a search thread to
- * read the results of the same query issued by another search thread.
+ * and provided to Lucene's search APIs on a per-segment basis. The key to the cache is the query
+ * combined with the thread id. This means we prevent a search thread to read the results of the
+ * same query issued by another search thread.
  */
 public class PimMatchCache {
 
@@ -61,8 +61,8 @@ public class PimMatchCache {
   }
 
   /**
-   * Class used as the key in the query results cache.
-   * This combines the query object and the thread id.
+   * Class used as the key in the query results cache. This combines the query object and the thread
+   * id.
    */
   private class CacheElem {
 
@@ -76,12 +76,11 @@ public class PimMatchCache {
 
     @Override
     public boolean equals(Object o) {
-      if (o == this)
-        return true;
-      if (!(o instanceof CacheElem))
-        return false;
+      if (o == this) return true;
+      if (!(o instanceof CacheElem)) return false;
       CacheElem other = (CacheElem) o;
-      boolean queryEquals = (this.query == null && other.query == null)
+      boolean queryEquals =
+          (this.query == null && other.query == null)
               || (this.query != null && this.query.equals(other.query));
       return this.tid == other.tid && queryEquals;
     }

@@ -80,7 +80,7 @@ public class DpuExecutorResultsReader extends DpuResultsReader {
   @Override
   public void setSegmentId(int segmentId, int maxDocSegment) throws IOException {
 
-    if(!firstSetSegment && maxDocSegment < maxDoc)
+    if (!firstSetSegment && maxDocSegment < maxDoc)
       throw new IOException("DpuExecutorResultsReader can only read segments in increasing order");
     maxDoc = maxDocSegment;
     firstSetSegment = false;

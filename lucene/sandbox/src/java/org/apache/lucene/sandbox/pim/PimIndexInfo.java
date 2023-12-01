@@ -114,7 +114,9 @@ public class PimIndexInfo {
   /**
    * @return number of documents in the index
    */
-  public int getNumDocs() { return numDocs; }
+  public int getNumDocs() {
+    return numDocs;
+  }
 
   /**
    * Set the PIM index directory

@@ -63,6 +63,7 @@ public abstract class DpuResultsReader {
 
   /**
    * Set the lucene segment which results need to be read
+   *
    * @param segmentId the lucene segment id
    * @param maxDocSegment the max doc id of the lucene segment
    */

@@ -168,8 +168,7 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
   }
 
   @Override
-  public float scorePimResult(int docId, int freq, LeafSimScorer scorer)
-      throws IOException {
+  public float scorePimResult(int docId, int freq, LeafSimScorer scorer) throws IOException {
 
     // a result for a phrase query is just a document id and a frequency as of now
     return scorer.score(docId, freq);

@@ -51,7 +51,7 @@ public class DpuSimulatorResultsReader extends DpuResultsReader {
   public void setSegmentId(int segmentId, int maxDocSegment) throws IOException {
 
     System.out.println("Reading segment=" + segmentId + " maxDoc=" + maxDocSegment);
-    if(!firstSetSegment && maxDocSegment < maxDoc)
+    if (!firstSetSegment && maxDocSegment < maxDoc)
       throw new IOException("DpuSimulatorResultsReader can only read segments in increasing order");
     maxDoc = maxDocSegment;
     firstSetSegment = false;

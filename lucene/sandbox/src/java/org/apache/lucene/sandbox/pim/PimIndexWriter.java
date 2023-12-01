@@ -445,7 +445,7 @@ public class PimIndexWriter extends IndexWriter {
 
       // count number of bytes needed to write lucene segments info for DPU
       ByteCountDataOutput cntOutput = new ByteCountDataOutput();
-      for(int j = 1; j < pimIndexInfo.getNumSegments(); ++j)
+      for (int j = 1; j < pimIndexInfo.getNumSegments(); ++j)
         cntOutput.writeVInt(pimIndexInfo.getStartDoc(j));
       cntOutput.writeVInt(Integer.MAX_VALUE);
       int numBytesLuceneSegmentInfo = Math.toIntExact(cntOutput.getByteCount());
@@ -473,7 +473,7 @@ public class PimIndexWriter extends IndexWriter {
                   + new ByteCountDataOutput(dpuIndexPostingsAddr[i]).getByteCount()
                   + new ByteCountDataOutput(numBytesLuceneSegmentInfo).getByteCount()
                   + numBytesLuceneSegmentInfo
-                  + 1  // byte specifying number of lucene segments
+                  + 1 // byte specifying number of lucene segments
                   + 1; // byte specifiying the number of DPU segments
       }
 
@@ -496,11 +496,11 @@ public class PimIndexWriter extends IndexWriter {
                     - Integer.numberOfLeadingZeros(pimConfig.getNumDpuSegments() - 1)));
 
         // write number of lucene segments and associated startDoc
-        if(pimIndexInfo.getNumSegments() >= Byte.MAX_VALUE)
+        if (pimIndexInfo.getNumSegments() >= Byte.MAX_VALUE)
           throw new IOException("supporting only 127 lucene segments");
-        compoundOutput.writeByte((byte)pimIndexInfo.getNumSegments());
+        compoundOutput.writeByte((byte) pimIndexInfo.getNumSegments());
         compoundOutput.writeVInt(numBytesLuceneSegmentInfo);
-        for(int j = 1; j < pimIndexInfo.getNumSegments(); ++j)
+        for (int j = 1; j < pimIndexInfo.getNumSegments(); ++j)
           compoundOutput.writeVInt(pimIndexInfo.getStartDoc(j));
         compoundOutput.writeVInt(Integer.MAX_VALUE);
 

@@ -20,70 +20,71 @@ package org.apache.lucene.sandbox.pim;
 import java.io.IOException;
 
 /**
- * Class to read DPU results coming from the executor (see DpuSystemExecutor)
- * Specific implementation for the scatter/gather transfer, where results are
- * already sorted per query and segment ids
+ * Class to read DPU results coming from the executor (see DpuSystemExecutor) Specific
+ * implementation for the scatter/gather transfer, where results are already sorted per query and
+ * segment ids
  */
 public class DpuExecutorSGResultsReader extends DpuResultsReader {
 
-    final private SGReturnPool.SGReturn results;
-    private int index;
-    private int lastIndex;
-    private final int queryResultByteSize;
-    private final int queryIndex;
-    private final int nrSegments;
-    private int segmentIndex;
+  private final SGReturnPool.SGReturn results;
+  private int index;
+  private int lastIndex;
+  private final int queryResultByteSize;
+  private final int queryIndex;
+  private final int nrSegments;
+  private int segmentIndex;
 
+  DpuExecutorSGResultsReader(
+      PimQuery query,
+      SGReturnPool.SGReturn sgResults,
+      int queryIndex,
+      int queryResultByteSize,
+      int nrSegments) {
+    super(query);
+    this.results = sgResults;
+    this.index = 0;
+    if (queryIndex > 0)
+      this.index = results.queriesIndices.getInt((queryIndex - 1) * Integer.BYTES);
+    this.lastIndex = results.queriesIndices.getInt(queryIndex * Integer.BYTES);
+    this.queryResultByteSize = queryResultByteSize;
+    this.queryIndex = queryIndex;
+    this.segmentIndex = -1;
+    this.nrSegments = nrSegments;
+  }
 
-    DpuExecutorSGResultsReader(PimQuery query,
-                               SGReturnPool.SGReturn sgResults,
-                               int queryIndex,
-                               int queryResultByteSize,
-                               int nrSegments) {
-        super(query);
-        this.results = sgResults;
-        this.index = 0;
-        if(queryIndex > 0)
-            this.index = results.queriesIndices.getInt((queryIndex - 1) * Integer.BYTES);
-        this.lastIndex = results.queriesIndices.getInt(queryIndex * Integer.BYTES);
-        this.queryResultByteSize = queryResultByteSize;
-        this.queryIndex = queryIndex;
-        this.segmentIndex = -1;
-        this.nrSegments = nrSegments;
+  @Override
+  public boolean next() throws IOException {
 
+    // check if no more results for this query
+    if (this.index == this.lastIndex) {
+      results.endReading();
+      return false;
     }
 
-    @Override
-    public boolean next() throws IOException {
+    // check if the doc id is less than the max doc ID
+    int docId = results.byteBuffer.getInt(this.index * this.queryResultByteSize);
 
-        // check if no more results for this query
-        if(this.index == this.lastIndex) {
-            results.endReading();
-            return false;
-        }
+    // this is a valid result to return
+    // score it
+    match.docId = docId - baseDoc;
+    int freq = results.byteBuffer.getInt(this.index * this.queryResultByteSize + Integer.BYTES);
+    match.score = query.scorePimResult(match.docId, freq, simScorer);
 
-        // check if the doc id is less than the max doc ID
-        int docId = results.byteBuffer.getInt(this.index * this.queryResultByteSize);
+    this.index++;
+    return true;
+  }
 
-        // this is a valid result to return
-        // score it
-        match.docId = docId - baseDoc;
-        int freq = results.byteBuffer.getInt(this.index * this.queryResultByteSize + Integer.BYTES);
-        match.score = query.scorePimResult(match.docId, freq, simScorer);
+  @Override
+  public void setSegmentId(int segmentId, int maxDocSegment) {
 
-        this.index++;
-        return true;
+    this.lastIndex =
+        results.segmentsIndices.getInt(
+            (this.queryIndex * this.nrSegments + segmentId) * Integer.BYTES);
+    if (segmentId > 0) {
+      this.index =
+          results.segmentsIndices.getInt(
+              (this.queryIndex * this.nrSegments + segmentId - 1) * Integer.BYTES);
     }
-
-    @Override
-    public void setSegmentId(int segmentId, int maxDocSegment) {
-
-        this.lastIndex = results.segmentsIndices.getInt(
-                (this.queryIndex * this.nrSegments + segmentId) * Integer.BYTES);
-        if(segmentId > 0) {
-            this.index = results.segmentsIndices.getInt(
-                    (this.queryIndex * this.nrSegments + segmentId - 1) * Integer.BYTES);
-        }
-        this.segmentIndex = segmentId;
-    }
+    this.segmentIndex = segmentId;
+  }
 }

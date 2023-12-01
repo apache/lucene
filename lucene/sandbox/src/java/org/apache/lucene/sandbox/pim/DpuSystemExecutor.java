@@ -57,9 +57,11 @@ class DpuSystemExecutor implements PimQueriesExecutor {
 
   /**
    * Transfer queries results from the DPU
+   *
    * @param nr_queries the number of queries in the batch sent to the DPU
    * @param nr_segments the number of lucene segments
-   * @return an SGReturn object, containing the queries results ordered by query id and lucene segment id
+   * @return an SGReturn object, containing the queries results ordered by query id and lucene
+   *     segment id
    */
   native int sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
 
@@ -68,8 +70,9 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // allocate DPUs, load the program, allocate space for DPU results
     dpuStream = new ByteArrayOutputStream();
     try {
-      dpuSystem = DpuSystem.allocate(numDpusToAlloc, "sgXferEnable=true",
-              new PrintStream(dpuStream, true, "UTF-8"));
+      dpuSystem =
+          DpuSystem.allocate(
+              numDpusToAlloc, "sgXferEnable=true", new PrintStream(dpuStream, true, "UTF-8"));
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
@@ -97,10 +100,10 @@ class DpuSystemExecutor implements PimQueriesExecutor {
 
     if (pimIndexInfo.getNumSegments() > DpuConstants.dpuMaxNbLuceneSegments) {
       throw new DpuException(
-              "ERROR: index contains too many Lucene segments "
-                      + pimIndexInfo.getNumSegments()
-                      + " > "
-                      + DpuConstants.dpuMaxNbLuceneSegments);
+          "ERROR: index contains too many Lucene segments "
+              + pimIndexInfo.getNumSegments()
+              + " > "
+              + DpuConstants.dpuMaxNbLuceneSegments);
     }
 
     // TODO Debug further parallel load. It crashes in the jni layer of the DPU load API
@@ -187,13 +190,15 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     dpuSystem.copy(DpuConstants.dpuIndexLoadedVarName, indexLoaded);
 
     nbLuceneSegments = pimIndexInfo.getNumSegments();
-    sgReturnPool = new SGReturnPool(INIT_SG_RETURN_CAPACITY, getInitSgResultsByteSize(pimIndexInfo.getNumDocs()));
+    sgReturnPool =
+        new SGReturnPool(
+            INIT_SG_RETURN_CAPACITY, getInitSgResultsByteSize(pimIndexInfo.getNumDocs()));
   }
 
   private int getInitSgResultsByteSize(int numDocs) {
 
-    int docPerQuery = Math.toIntExact((long)(numDocs * 0.01));
-    if(docPerQuery < 1000) docPerQuery = 1000;
+    int docPerQuery = Math.toIntExact((long) (numDocs * 0.01));
+    if (docPerQuery < 1000) docPerQuery = 1000;
     return DpuConstants.dpuQueryMaxBatchSize * docPerQuery * 8;
   }
 
@@ -258,12 +263,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     //    Call native API which performs scatter/gather transfer
     SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments);
     int resSize = sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
-    if(resSize > 0) {
+    if (resSize > 0) {
       // buffer passed to the JNI layer was to small, request a larger one from the pool and
       // call again
       results.endReading(queryBuffers.size() * nbLuceneSegments);
       results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);
-      if(sgXferResults(queryBuffers.size(), nbLuceneSegments, results) > 0)
+      if (sgXferResults(queryBuffers.size(), nbLuceneSegments, results) > 0)
         throw new DpuException("Error in sg transfer results buffer allocation");
     }
     results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
@@ -279,8 +284,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       PimSystemManager.QueryBuffer buffer = queryBuffers.get(q);
       buffer.addResults(
           new DpuExecutorSGResultsReader(
-              buffer.query,
-              results, q, buffer.query.getResultByteSize(), nbLuceneSegments));
+              buffer.query, results, q, buffer.query.getResultByteSize(), nbLuceneSegments));
     }
   }
 
@@ -300,10 +304,10 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // TODO should not just throw but handle this by reducing the size of the batch
         // for instance doing two execution of DPU
         throw new DpuException(
-                "Error: batch size too large for DPU size="
-                        + batchLength
-                        + " max="
-                        + DpuConstants.dpuQueryBatchByteSize);
+            "Error: batch size too large for DPU size="
+                + batchLength
+                + " max="
+                + DpuConstants.dpuQueryBatchByteSize);
       }
       System.arraycopy(queryBuffer.bytes, 0, queryBatchBuffer, batchLength, queryBuffer.length);
       out.writeInt(batchLength);
