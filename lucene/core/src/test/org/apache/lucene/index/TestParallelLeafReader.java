@@ -301,7 +301,11 @@ public class TestParallelLeafReader extends LuceneTestCase {
 
   private Directory getDir1(Random random) throws IOException {
     Directory dir1 = newDirectory();
-    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig(new MockAnalyzer(random)));
+    IndexWriterConfig conf =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxBufferedDocs(2) // generate few segments
+            .setMergePolicy(NoMergePolicy.INSTANCE); // prevent merges for this test
+    IndexWriter w1 = new IndexWriter(dir1, conf);
     Document d1 = new Document();
     d1.add(newTextField("f1", "v1", Field.Store.YES));
     d1.add(newTextField("f2", "v1", Field.Store.YES));
@@ -310,14 +314,17 @@ public class TestParallelLeafReader extends LuceneTestCase {
     d2.add(newTextField("f1", "v2", Field.Store.YES));
     d2.add(newTextField("f2", "v2", Field.Store.YES));
     w1.addDocument(d2);
-    w1.forceMerge(1);
     w1.close();
     return dir1;
   }
 
   private Directory getDir2(Random random) throws IOException {
     Directory dir2 = newDirectory();
-    IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig(new MockAnalyzer(random)));
+    IndexWriterConfig conf =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxBufferedDocs(2) // generate few segments
+            .setMergePolicy(NoMergePolicy.INSTANCE); // prevent merges for this test
+    IndexWriter w2 = new IndexWriter(dir2, conf);
     Document d3 = new Document();
     d3.add(newTextField("f3", "v1", Field.Store.YES));
     d3.add(newTextField("f4", "v1", Field.Store.YES));
@@ -326,7 +333,6 @@ public class TestParallelLeafReader extends LuceneTestCase {
     d4.add(newTextField("f3", "v2", Field.Store.YES));
     d4.add(newTextField("f4", "v2", Field.Store.YES));
     w2.addDocument(d4);
-    w2.forceMerge(1);
     w2.close();
     return dir2;
   }
