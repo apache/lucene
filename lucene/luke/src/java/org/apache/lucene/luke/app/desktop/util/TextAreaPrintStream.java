@@ -35,6 +35,10 @@ public final class TextAreaPrintStream extends PrintStream {
   @Override
   public void flush() {
     textArea.append(toString());
-    reset();
+    clear();
+  }
+  
+  public void clear() {
+	    textArea.setText("");
   }
 }
