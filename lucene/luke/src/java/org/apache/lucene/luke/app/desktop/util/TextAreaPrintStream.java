@@ -39,6 +39,6 @@ public final class TextAreaPrintStream extends PrintStream {
   }
   
   public void clear() {
-	textArea.setText("");
+    textArea.setText("");
   }
 }
