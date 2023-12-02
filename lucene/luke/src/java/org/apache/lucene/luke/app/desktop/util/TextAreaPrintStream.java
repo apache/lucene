@@ -17,6 +17,8 @@
 
 package org.apache.lucene.luke.app.desktop.util;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import javax.swing.JTextArea;
@@ -24,20 +26,32 @@ import javax.swing.JTextArea;
 /** PrintStream for text areas */
 public final class TextAreaPrintStream extends PrintStream {
 
-  private final JTextArea textArea;
+    private final JTextArea textArea;
 
-  public TextAreaPrintStream(JTextArea textArea) {
-    super(System.out, false, StandardCharsets.UTF_8);
-    this.textArea = textArea;
-  }
+    public TextAreaPrintStream(JTextArea textArea) {
+        super(new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                textArea.append(String.valueOf((char) b));
+            }
 
-  @Override
-  public void flush() {
-    textArea.append(toString());
-    clear();
-  }
-  
-  public void clear() {
-    textArea.setText("");
-  }
+            @Override
+            public void write(byte[] b, int off, int len) throws IOException {
+                String s = new String(b, off, len, StandardCharsets.UTF_8);
+                textArea.append(s);
+            }
+        }, false, StandardCharsets.UTF_8);
+
+        this.textArea = textArea;
+    }
+
+    @Override
+    public void flush() {
+        textArea.repaint(); // Optional: Repaint the text area after appending text
+        clear();
+    }
+
+    public void clear() {
+        textArea.setText("");
+    }
 }
