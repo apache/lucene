@@ -17,7 +17,6 @@
 
 package org.apache.lucene.luke.app.desktop.util;
 
-import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import javax.swing.JTextArea;
