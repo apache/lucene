@@ -279,7 +279,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
               setProgress(0);
               statusLbl.setText("Running...");
               indicatorLbl.setVisible(true);
-              try (TextAreaPrintStream ps = new TextAreaPrintStream(logArea)){
+              try (TextAreaPrintStream ps = new TextAreaPrintStream(logArea)) {
                 CheckIndex.Status status = toolsModel.checkIndex(ps);
                 return status;
               } catch (Exception e) {
