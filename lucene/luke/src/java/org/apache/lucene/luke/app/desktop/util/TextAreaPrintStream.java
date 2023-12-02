@@ -26,32 +26,35 @@ import javax.swing.JTextArea;
 /** PrintStream for text areas */
 public final class TextAreaPrintStream extends PrintStream {
 
-    private final JTextArea textArea;
+  private final JTextArea textArea;
 
-    public TextAreaPrintStream(JTextArea textArea) {
-        super(new OutputStream() {
-            @Override
-            public void write(int b) throws IOException {
-                textArea.append(String.valueOf((char) b));
-            }
+  public TextAreaPrintStream(JTextArea textArea) {
+    super(
+        new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            textArea.append(String.valueOf((char) b));
+          }
 
-            @Override
-            public void write(byte[] b, int off, int len) throws IOException {
-                String s = new String(b, off, len, StandardCharsets.UTF_8);
-                textArea.append(s);
-            }
-        }, false, StandardCharsets.UTF_8);
+          @Override
+          public void write(byte[] b, int off, int len) throws IOException {
+            String s = new String(b, off, len, StandardCharsets.UTF_8);
+            textArea.append(s);
+          }
+        },
+        false,
+        StandardCharsets.UTF_8);
 
-        this.textArea = textArea;
-    }
+    this.textArea = textArea;
+  }
 
-    @Override
-    public void flush() {
-        textArea.repaint(); // Optional: Repaint the text area after appending text
-        clear();
-    }
+  @Override
+  public void flush() {
+    textArea.repaint(); // Optional: Repaint the text area after appending text
+    clear();
+  }
 
-    public void clear() {
-        textArea.setText("");
-    }
+  public void clear() {
+    textArea.setText("");
+  }
 }
