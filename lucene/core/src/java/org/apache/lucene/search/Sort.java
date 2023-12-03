@@ -111,7 +111,7 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-    if (parentField == null) {
+    if (parentField != null) {
       throw new IllegalStateException("parentFields must not be used with search time sorting");
     }
     SortField[] rewrittenSortFields = new SortField[fields.length];
