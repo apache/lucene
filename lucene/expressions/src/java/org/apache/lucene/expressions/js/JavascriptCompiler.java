@@ -47,6 +47,8 @@ import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.util.IOUtils;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.ConstantDynamic;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -99,19 +101,20 @@ public final class JavascriptCompiler {
   private static final String COMPILED_EXPRESSION_INTERNAL =
       COMPILED_EXPRESSION_CLASS.replace('.', '/');
 
-  static final Type EXPRESSION_TYPE = Type.getType(Expression.class),
+  private static final Type EXPRESSION_TYPE = Type.getType(Expression.class),
       FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class),
-      MAP_TYPE = Type.getType(Map.class),
-      METHOD_HANDLES_TYPE = Type.getType(MethodHandles.class),
       METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class);
-  static final Method
+  private static final Method
       EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
-      CLINIT_METHOD = getAsmMethod(void.class, "<clinit>"),
       EVALUATE_METHOD = getAsmMethod(double.class, "compiledEvaluate", DoubleValues[].class),
-      MAP_GET_METHOD = getAsmMethod(Object.class, "get", Object.class),
-      METHOD_HANDLES_LOOKUP_METHOD = getAsmMethod(Lookup.class, "lookup"),
-      METHOD_HANDLES_CLASSDATA_METHOD =
-          getAsmMethod(Object.class, "classData", Lookup.class, String.class, Class.class),
+      DYNAMIC_CONSTANT_BOOTSTRAP =
+          getAsmMethod(
+              MethodHandle.class,
+              "dynamicConstantBootstrap",
+              Lookup.class,
+              String.class,
+              Class.class,
+              String.class),
       DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue");
 
   /** create an ASM Method object from return type, method name, and parameters. */
@@ -331,10 +334,6 @@ public final class JavascriptCompiler {
     parser.getInterpreter().setPredictionMode(PredictionMode.LL_EXACT_AMBIG_DETECTION);
   }
 
-  private static String getMethodHandleConstantName(String functionName) {
-    return "MH_" + functionName.replace('.', '$');
-  }
-
   /** Sends the bytecode of class file to {@link ClassWriter}. */
   private void generateClass(
       final ParseTree parseTree,
@@ -349,44 +348,6 @@ public final class JavascriptCompiler {
         EXPRESSION_TYPE.getInternalName(),
         null);
 
-    // generate a static final field declaration for functions that aren't direct MethodHandles:
-    for (String name : functions.keySet()) {
-      if (directFunctions.containsKey(name)) continue;
-      classWriter.visitField(
-          Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
-          getMethodHandleConstantName(name),
-          Type.getDescriptor(MethodHandle.class),
-          null,
-          null);
-    }
-
-    // generate class initializer that loads the function's MethodHandles from JVM classData:
-    if (directFunctions.size() != functions.size()) {
-      final GeneratorAdapter clinit =
-          new GeneratorAdapter(
-              Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, CLINIT_METHOD, null, null, classWriter);
-      final int clDataLocal = clinit.newLocal(MAP_TYPE);
-      clinit.invokeStatic(METHOD_HANDLES_TYPE, METHOD_HANDLES_LOOKUP_METHOD);
-      clinit.push(ConstantDescs.DEFAULT_NAME);
-      clinit.push(MAP_TYPE);
-      clinit.invokeStatic(METHOD_HANDLES_TYPE, METHOD_HANDLES_CLASSDATA_METHOD);
-      clinit.storeLocal(clDataLocal);
-      for (String name : functions.keySet()) {
-        if (directFunctions.containsKey(name)) continue;
-        clinit.loadLocal(clDataLocal);
-        clinit.push(name);
-        clinit.invokeInterface(MAP_TYPE, MAP_GET_METHOD);
-        clinit.checkCast(METHOD_HANDLE_TYPE);
-        clinit.putStatic(
-            Type.getObjectType(COMPILED_EXPRESSION_INTERNAL),
-            getMethodHandleConstantName(name),
-            METHOD_HANDLE_TYPE);
-      }
-      clinit.returnValue();
-      clinit.endMethod();
-    }
-
-    // generate constructor:
     final GeneratorAdapter constructor =
         new GeneratorAdapter(Opcodes.ACC_PUBLIC, EXPRESSION_CTOR, null, null, classWriter);
     constructor.loadThis();
@@ -395,9 +356,8 @@ public final class JavascriptCompiler {
     constructor.returnValue();
     constructor.endMethod();
 
-    // generate evaluation method:
     final GeneratorAdapter gen =
-        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, null, classWriter);
+        new GeneratorAdapter(Opcodes.ACC_PROTECTED, EVALUATE_METHOD, null, null, classWriter);
 
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
@@ -462,11 +422,18 @@ public final class JavascriptCompiler {
             }
 
             if (directCallInfo == null) {
-              // place MethodHandle on top of stack
-              gen.getStatic(
-                  Type.getObjectType(COMPILED_EXPRESSION_INTERNAL),
-                  getMethodHandleConstantName(text),
-                  METHOD_HANDLE_TYPE);
+              // place dynamic constant with MethodHandle on top of stack
+              gen.visitLdcInsn(
+                  new ConstantDynamic(
+                      getMethodHandleConstantName(text),
+                      METHOD_HANDLE_TYPE.getDescriptor(),
+                      new Handle(
+                          Opcodes.H_INVOKESTATIC,
+                          Type.getInternalName(JavascriptCompiler.class),
+                          DYNAMIC_CONSTANT_BOOTSTRAP.getName(),
+                          DYNAMIC_CONSTANT_BOOTSTRAP.getDescriptor(),
+                          false),
+                      text));
             }
 
             typeStack.push(Type.DOUBLE_TYPE);
@@ -936,5 +903,36 @@ public final class JavascriptCompiler {
     if (type.returnType() != double.class) {
       throw new IllegalArgumentException(method + " does not return a double.");
     }
+  }
+
+  /**
+   * Generates a valid Java constant name from the function name. All invalid Java Identifier
+   * characters are replaced by {@code "$"} and the hashCode is added for uniqueness.
+   */
+  private static String getMethodHandleConstantName(String functionName) {
+    return "MH_"
+        + functionName.replaceAll("\\P{javaJavaIdentifierPart}", "\\$")
+        + "_"
+        + Integer.toUnsignedString(functionName.hashCode());
+  }
+
+  /**
+   * Bootstrap method for dynamic constants. This returns a {@link MethodHandle} for the {@code
+   * functionName} from the class data passed via {@link Lookup#defineHiddenClassWithClassData}. The
+   * {@code constantName} is ignored.
+   */
+  static MethodHandle dynamicConstantBootstrap(
+      Lookup lookup, String constantName, Class<?> type, String functionName)
+      throws IllegalAccessException {
+    if (type != MethodHandle.class) {
+      throw new IllegalArgumentException("Invalid type of constant: " + type.getName());
+    }
+    final var classData =
+        Objects.requireNonNull(
+            MethodHandles.classData(lookup, ConstantDescs.DEFAULT_NAME, Map.class),
+            "Missing class data for " + lookup);
+    return (MethodHandle)
+        Objects.requireNonNull(
+            classData.get(functionName), "Function does not exist: " + functionName);
   }
 }

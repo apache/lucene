@@ -95,21 +95,24 @@ public abstract class Expression {
     try {
       return compiledEvaluate(functionValues);
     } catch (Throwable t) {
-      // fixup stack trace to contain the expression source code as filename and remove line number:
       t.setStackTrace(
           Arrays.stream(t.getStackTrace())
-              .map(
-                  e -> {
-                    if (Objects.equals("evaluate", e.getMethodName())
-                        && Objects.equals(Expression.class.getName(), e.getClassName())) {
-                      return new StackTraceElement(
-                          getClass().getName(), e.getMethodName(), sourceText, -1);
-                    }
-                    return e;
-                  })
+              .map(this::rewriteStackTraceElement)
               .toArray(StackTraceElement[]::new));
       throw t;
     }
+  }
+
+  /**
+   * Fixup stack trace element to contain the expression source code as filename and remove line
+   * number.
+   */
+  private StackTraceElement rewriteStackTraceElement(StackTraceElement e) {
+    if (Objects.equals("evaluate", e.getMethodName())
+        && Objects.equals(Expression.class.getName(), e.getClassName())) {
+      return new StackTraceElement(getClass().getName(), e.getMethodName(), sourceText, -1);
+    }
+    return e;
   }
 
   /**

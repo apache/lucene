@@ -41,7 +41,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** empty list of methods */
   public void testEmpty() throws Exception {
-    Map<String, MethodHandle> functions = Collections.emptyMap();
+    Map<String, MethodHandle> functions = Map.of();
     ParseException expected =
         expectThrows(
             ParseException.class,
@@ -77,8 +77,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** tests a method with no arguments */
   public void testNoArgMethod() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("zeroArgMethod", 0));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("zeroArgMethod", 0));
     Expression expr = compile("foo()", functions);
     assertEquals(5, expr.evaluate(null), DELTA);
   }
@@ -89,8 +88,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** tests a method with one arguments */
   public void testOneArgMethod() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("oneArgMethod", 1));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("oneArgMethod", 1));
     Expression expr = compile("foo(3)", functions);
     assertEquals(6, expr.evaluate(null), DELTA);
   }
@@ -101,17 +99,15 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** tests a method with three arguments */
   public void testThreeArgMethod() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("threeArgMethod", 3));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("threeArgMethod", 3));
     Expression expr = compile("foo(3, 4, 5)", functions);
     assertEquals(12, expr.evaluate(null), DELTA);
   }
 
   /** tests a map with 2 functions */
   public void testTwoMethods() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("zeroArgMethod", 0));
-    functions.put("bar", localMethod("oneArgMethod", 1));
+    Map<String, MethodHandle> functions =
+        Map.of("foo", localMethod("zeroArgMethod", 0), "bar", localMethod("oneArgMethod", 1));
     Expression expr = compile("foo() + bar(3)", functions);
     assertEquals(11, expr.evaluate(null), DELTA);
   }
@@ -158,8 +154,8 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong return type: must be double */
   public void testWrongReturnType() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("bogusReturnType", MethodType.methodType(String.class)));
+    Map<String, MethodHandle> functions =
+        Map.of("foo", localMethod("bogusReturnType", MethodType.methodType(String.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -175,10 +171,10 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong param type: must be doubles */
   public void testWrongParameterType() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put(
-        "foo",
-        localMethod("bogusParameterType", MethodType.methodType(double.class, String.class)));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            localMethod("bogusParameterType", MethodType.methodType(double.class, String.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -194,11 +190,11 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong modifiers: must be static */
   public void testWrongNotStatic() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put(
-        "foo",
-        LOOKUP.findVirtual(
-            LOOKUP.lookupClass(), "nonStaticMethod", MethodType.methodType(double.class)));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            LOOKUP.findVirtual(
+                LOOKUP.lookupClass(), "nonStaticMethod", MethodType.methodType(double.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -214,8 +210,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** non public methods work as the lookup allows access */
   public void testNotPublic() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("nonPublicMethod", 0));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("nonPublicMethod", 0));
     Expression expr = compile("foo()", functions);
     assertEquals(7, expr.evaluate(null), DELTA);
   }
@@ -228,19 +223,23 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** class containing method is not public */
   public void testNestedNotPublic() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put(
-        "foo",
-        LOOKUP.findStatic(NestedNotPublic.class, "method", MethodType.methodType(double.class)));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            LOOKUP.findStatic(
+                NestedNotPublic.class, "method", MethodType.methodType(double.class)));
     Expression expr = compile("foo()", functions);
     assertEquals(41, expr.evaluate(null), DELTA);
   }
 
   /** class containing method is not public */
   public void testNonDirectMethodHandle() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", MethodHandles.constant(double.class, 9));
-    functions.put("bar", MethodHandles.identity(double.class));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            MethodHandles.constant(double.class, 9),
+            "bar",
+            MethodHandles.identity(double.class));
     Expression expr = compile("foo() + bar(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
   }
@@ -332,8 +331,7 @@ public class TestCustomFunctions extends CompilerTestCase {
    * code of the expression as file name.
    */
   public void testThrowingException() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo", localMethod("staticThrowingException", 0));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("staticThrowingException", 0));
     String source = "3 * foo() / 5";
     Expression expr = compile(source, functions);
     ArithmeticException expected =
@@ -357,8 +355,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** test that namespaces work with custom expressions as direct method handle. */
   public void testNamespacesWithDirectMH() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo.bar", localMethod("zeroArgMethod", 0));
+    Map<String, MethodHandle> functions = Map.of("foo.bar", localMethod("zeroArgMethod", 0));
     String source = "foo.bar()";
     Expression expr = compile(source, functions);
     assertEquals(5, expr.evaluate(null), DELTA);
@@ -368,9 +365,12 @@ public class TestCustomFunctions extends CompilerTestCase {
    * test that namespaces work with general method handles (ensure field name of handle is correct).
    */
   public void testNamespacesWithoutDirectMH() throws Exception {
-    Map<String, MethodHandle> functions = new HashMap<>();
-    functions.put("foo.bar", MethodHandles.constant(double.class, 9));
-    functions.put("bar.foo", MethodHandles.identity(double.class));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo.bar",
+            MethodHandles.constant(double.class, 9),
+            "bar.foo",
+            MethodHandles.identity(double.class));
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
   }
