@@ -22,9 +22,7 @@ package org.apache.lucene.index;
  * @lucene.experimental
  */
 public enum IndexOptions {
-  // NOTE: order is important here; FieldInfo uses this
-  // order to merge two conflicting IndexOptions (always
-  // "downgrades" by picking the lowest).
+  // NOTE: order is important here; enum ordinals can be used to compare options.
   /** Not indexed */
   NONE,
   /**

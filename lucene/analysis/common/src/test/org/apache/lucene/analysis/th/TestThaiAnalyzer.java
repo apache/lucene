@@ -32,6 +32,7 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
     assumeTrue(
         "JRE does not support Thai dictionary-based BreakIterator", ThaiTokenizer.DBBI_AVAILABLE);
   }
+
   /*
    * testcase for offsets
    */

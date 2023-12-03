@@ -105,7 +105,7 @@ public class Lucene90PointsWriter extends PointsWriter {
   }
 
   /**
-   * Uses the defaults values for {@code maxPointsInLeafNode} (1024) and {@code maxMBSortInHeap}
+   * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
    */
   public Lucene90PointsWriter(SegmentWriteState writeState) throws IOException {

@@ -162,7 +162,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
   @Override
   public FieldComparator<Integer> newComparator(
-      final String fieldname, final int numHits, boolean enableSkipping, boolean reversed) {
+      final String fieldname, final int numHits, Pruning pruning, boolean reversed) {
     return new FieldComparator<Integer>() {
 
       private final int[] values = new int[numHits];

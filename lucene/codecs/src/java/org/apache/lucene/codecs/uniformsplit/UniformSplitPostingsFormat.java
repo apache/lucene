@@ -23,8 +23,8 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
@@ -39,6 +39,7 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
 
   /** Extension of the file containing the terms dictionary (the FST "trie"). */
   public static final String TERMS_DICTIONARY_EXTENSION = "ustd";
+
   /** Extension of the file containing the terms blocks for each field and the fields metadata. */
   public static final String TERMS_BLOCKS_EXTENSION = "ustb";
 
@@ -112,7 +113,7 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
     boolean success = false;
     try {
       FieldsConsumer termsWriter =
@@ -129,7 +130,7 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene90PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
     boolean success = false;
     try {
       FieldsProducer termsReader =

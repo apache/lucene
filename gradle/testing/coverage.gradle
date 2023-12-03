@@ -33,7 +33,7 @@ if (withCoverage) {
 
     configure(jacocoAggregatedReport) {
       doLast {
-        logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+        logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}\n")
       }
     }
   }
@@ -62,7 +62,7 @@ if (withCoverage) {
 
       configure(jacocoTestReport) {
         doLast {
-          logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+          logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}.\n")
         }
       }
     }

@@ -93,10 +93,13 @@ public class RAFDirectory extends FSDirectory {
 
     /** the file channel we will read from */
     protected final RandomAccessFile file;
+
     /** is this instance a clone and hence does not own the file to close it */
     boolean isClone = false;
+
     /** start offset: non-zero in the slice case */
     protected final long off;
+
     /** end offset (start+length) */
     protected final long end;
 

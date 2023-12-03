@@ -33,7 +33,7 @@ class GermanStemmer {
   /** Amount of characters that are removed with <code>substitute()</code> while stemming. */
   private int substCount = 0;
 
-  private static final Locale locale = new Locale("de", "DE");
+  private static final Locale locale = new Locale.Builder().setLanguageTag("de-DE").build();
 
   /**
    * Stemms the given term to an unique <code>discriminator</code>.

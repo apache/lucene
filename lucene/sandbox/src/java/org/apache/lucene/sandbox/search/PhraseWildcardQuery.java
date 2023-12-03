@@ -375,7 +375,7 @@ public class PhraseWildcardQuery extends Query {
     TermData termData = termsData.getOrCreateTermData(singleTerm.termPosition);
     Term term = singleTerm.term;
     termData.terms.add(term);
-    TermStates termStates = TermStates.build(searcher.getIndexReader().getContext(), term, true);
+    TermStates termStates = TermStates.build(searcher, term, true);
 
     // Collect TermState per segment.
     int numMatches = 0;

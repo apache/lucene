@@ -216,7 +216,6 @@ public final class SynonymFilter extends TokenFilter {
       count++;
     }
   }
-  ;
 
   private final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 

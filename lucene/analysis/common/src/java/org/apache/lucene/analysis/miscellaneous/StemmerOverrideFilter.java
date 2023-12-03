@@ -151,6 +151,7 @@ public final class StemmerOverrideFilter extends TokenFilter {
       return matchOutput;
     }
   }
+
   /** This builder builds an {@link FST} for the {@link StemmerOverrideFilter} */
   public static class Builder {
     private final BytesRefHash hash = new BytesRefHash();
@@ -209,7 +210,8 @@ public final class StemmerOverrideFilter extends TokenFilter {
      */
     public StemmerOverrideMap build() throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-      FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+      FSTCompiler<BytesRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
       final int[] sort = hash.sort();
       IntsRefBuilder intsSpare = new IntsRefBuilder();
       final int size = hash.size();

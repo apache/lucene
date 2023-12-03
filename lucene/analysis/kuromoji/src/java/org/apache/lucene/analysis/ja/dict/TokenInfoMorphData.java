@@ -205,10 +205,12 @@ class TokenInfoMorphData implements JaMorphData {
 
   /** flag that the entry has baseform data. otherwise it's not inflected (same as surface form) */
   public static final int HAS_BASEFORM = 1;
+
   /**
    * flag that the entry has reading data. otherwise reading is surface form converted to katakana
    */
   public static final int HAS_READING = 2;
+
   /** flag that the entry has pronunciation data. otherwise pronunciation is the reading */
   public static final int HAS_PRONUNCIATION = 4;
 }

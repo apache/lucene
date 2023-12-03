@@ -185,10 +185,10 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("f", "b"), boost == 0 ? 1f : boost)
             .build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
-    TopDocs topDocs = searcher.search(query, manager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(
+            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
+    TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     } else {
@@ -244,10 +244,10 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("f", "c"))
             .build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
-    TopDocs topDocs = searcher.search(query, manager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(
+            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
+    TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
       assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
       assertEquals(22, topDocs.totalHits.value);
@@ -461,10 +461,10 @@ public class TestSynonymQuery extends LuceneTestCase {
               .addTerm(new Term("foo", Integer.toString(term2)), boost2)
               .build();
 
-      CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
-          TopScoreDocCollector.createSharedManager(10, null, 1);
+      TopScoreDocCollectorManager completeManager =
+          new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      TopScoreDocCollectorManager topScoresManager =
+          new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
       TopDocs complete = searcher.search(query, completeManager);
       TopDocs topScores = searcher.search(query, topScoresManager);
@@ -477,8 +477,9 @@ public class TestSynonymQuery extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 1);
+      completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      topScoresManager = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
+
       complete = searcher.search(filteredQuery, completeManager);
       topScores = searcher.search(filteredQuery, topScoresManager);
       CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);

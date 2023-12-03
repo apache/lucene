@@ -239,11 +239,13 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
 
     /** Get the prefix tree level, the higher the more precise. 0 means the world (universe). */
     int getLevel();
+
     /**
      * Gets the value at the specified level of this unit. level must be &gt;= 0 and &lt;=
      * getLevel().
      */
     int getValAtLevel(int level);
+
     /** Gets an ancestor at the specified level. It shares state, so you may want to clone() it. */
     UnitNRShape getShapeAtLevel(int level);
 

@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 
 /**
  * Comparator based on {@link Integer#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class IntComparator extends NumericComparator<Integer> {
   protected int bottom;
 
   public IntComparator(
-      int numHits, String field, Integer missingValue, boolean reverse, boolean enableSkipping) {
-    super(field, missingValue != null ? missingValue : 0, reverse, enableSkipping, Integer.BYTES);
+      int numHits, String field, Integer missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0, reverse, pruning, Integer.BYTES);
     values = new int[numHits];
   }
 
@@ -96,11 +97,13 @@ public class IntComparator extends NumericComparator<Integer> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Integer.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Integer.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Integer.compare(missingValue, topValue);
     }
 
     @Override

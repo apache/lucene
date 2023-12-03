@@ -17,8 +17,9 @@
 package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.PrintStream;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Enumeration;
-import java.util.Stack;
 
 /**
  *
@@ -457,20 +458,20 @@ public class TernaryTree implements Cloneable {
     }
 
     /** Node stack */
-    Stack<Item> ns;
+    Deque<Item> ns;
 
     /** key stack implemented with a StringBuilder */
     StringBuilder ks;
 
     public Iterator() {
       cur = -1;
-      ns = new Stack<>();
+      ns = new ArrayDeque<>();
       ks = new StringBuilder();
       rewind();
     }
 
     public void rewind() {
-      ns.removeAllElements();
+      ns.clear();
       ks.setLength(0);
       cur = root;
       run();
@@ -501,7 +502,7 @@ public class TernaryTree implements Cloneable {
       Item i = new Item();
       int res = 0;
 
-      if (ns.empty()) {
+      if (ns.isEmpty()) {
         return -1;
       }
 
@@ -538,7 +539,7 @@ public class TernaryTree implements Cloneable {
             break;
 
           default:
-            if (ns.empty()) {
+            if (ns.isEmpty()) {
               return -1;
             }
             climb = true;

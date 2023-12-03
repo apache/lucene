@@ -110,14 +110,21 @@ subprojects {
       }
 
       def visited = new HashSet<>()
+      def seenDeps = new HashSet<>()
       def infos = []
 
       while (!queue.isEmpty()) {
         def dep = queue.removeFirst()
+        seenDeps.add(dep)
 
         // Skip any artifacts from Lucene modules.
         if (!dep.moduleGroup.startsWith("org.apache.lucene")) {
-          queue.addAll(dep.children)
+          // Make sure we don't keep visiting the same children over and over again
+          dep.children.each { child ->
+            if (!seenDeps.contains(child)) {
+              queue.add(child)
+            }
+          }
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
             if (visited.add(file)) {

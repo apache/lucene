@@ -403,15 +403,19 @@ public class PackedInts {
   public static interface ReaderIterator {
     /** Returns next value */
     long next() throws IOException;
+
     /**
      * Returns at least 1 and at most <code>count</code> next values, the returned ref MUST NOT be
      * modified
      */
     LongsRef next(int count) throws IOException;
+
     /** Returns number of bits per value */
     int getBitsPerValue();
+
     /** Returns number of values */
     int size();
+
     /** Returns the current position */
     int ord();
   }

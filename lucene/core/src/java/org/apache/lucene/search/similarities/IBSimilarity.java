@@ -68,8 +68,10 @@ import org.apache.lucene.search.similarities.Normalization.NoNormalization;
 public class IBSimilarity extends SimilarityBase {
   /** The probabilistic distribution used to model term occurrence. */
   protected final Distribution distribution;
+
   /** The <em>lambda (&lambda;<sub>w</sub>)</em> parameter. */
   protected final Lambda lambda;
+
   /** The term frequency normalization. */
   protected final Normalization normalization;
 

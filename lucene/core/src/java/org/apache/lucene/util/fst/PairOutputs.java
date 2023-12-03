@@ -66,7 +66,6 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
       return "Pair(" + output1 + "," + output2 + ")";
     }
   }
-  ;
 
   public PairOutputs(Outputs<A> outputs1, Outputs<B> outputs2) {
     this.outputs1 = outputs1;

@@ -31,28 +31,37 @@ class GeoS2Shape extends GeoBasePolygon {
 
   /** The first point */
   protected final GeoPoint point1;
+
   /** The second point */
   protected final GeoPoint point2;
+
   /** The third point */
   protected final GeoPoint point3;
+
   /** The fourth point */
   protected final GeoPoint point4;
 
   /** The first plane */
   protected final SidedPlane plane1;
+
   /** The second plane */
   protected final SidedPlane plane2;
+
   /** The third plane */
   protected final SidedPlane plane3;
+
   /** The fourth plane */
   protected final SidedPlane plane4;
 
   /** Notable points for the first plane */
   protected final GeoPoint[] plane1Points;
+
   /** Notable points for second plane */
   protected final GeoPoint[] plane2Points;
+
   /** Notable points for third plane */
   protected final GeoPoint[] plane3Points;
+
   /** Notable points for fourth plane */
   protected final GeoPoint[] plane4Points;
 

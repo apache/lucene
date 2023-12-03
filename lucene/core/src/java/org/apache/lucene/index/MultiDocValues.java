@@ -684,8 +684,10 @@ public class MultiDocValues {
   public static class MultiSortedDocValues extends SortedDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
     public final int[] docStarts;
+
     /** leaf values */
     public final SortedDocValues[] values;
+
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
@@ -821,8 +823,10 @@ public class MultiDocValues {
   public static class MultiSortedSetDocValues extends SortedSetDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
     public final int[] docStarts;
+
     /** leaf values */
     public final SortedSetDocValues[] values;
+
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 

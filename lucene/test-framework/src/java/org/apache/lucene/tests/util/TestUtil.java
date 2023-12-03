@@ -54,9 +54,9 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
@@ -306,12 +306,11 @@ public final class TestUtil {
    * thrown; else, true is returned.
    */
   public static CheckIndex.Status checkIndex(Directory dir) throws IOException {
-    return checkIndex(dir, true);
+    return checkIndex(dir, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
   }
 
-  public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
-      throws IOException {
-    return checkIndex(dir, doSlowChecks, false, true, null);
+  public static CheckIndex.Status checkIndex(Directory dir, int level) throws IOException {
+    return checkIndex(dir, level, false, true, null);
   }
 
   /**
@@ -319,11 +318,7 @@ public final class TestUtil {
    * moving on to other fields/segments to look for any other corruption.
    */
   public static CheckIndex.Status checkIndex(
-      Directory dir,
-      boolean doSlowChecks,
-      boolean failFast,
-      boolean concurrent,
-      ByteArrayOutputStream output)
+      Directory dir, int level, boolean failFast, boolean concurrent, ByteArrayOutputStream output)
       throws IOException {
     if (output == null) {
       output = new ByteArrayOutputStream(1024);
@@ -332,7 +327,7 @@ public final class TestUtil {
     // some tests e.g. exception tests become much more complicated if they have to close the writer
     try (CheckIndex checker =
         new CheckIndex(dir, NoLockFactory.INSTANCE.obtainLock(dir, "bogus"))) {
-      checker.setDoSlowChecks(doSlowChecks);
+      checker.setLevel(level);
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
       if (concurrent) {
@@ -361,11 +356,11 @@ public final class TestUtil {
    */
   public static void checkReader(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      checkReader(context.reader(), true);
+      checkReader(context.reader(), CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
     }
   }
 
-  public static void checkReader(LeafReader reader, boolean doSlowChecks) throws IOException {
+  public static void checkReader(LeafReader reader, int level) throws IOException {
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     PrintStream infoStream = new PrintStream(bos, false, IOUtils.UTF_8);
 
@@ -379,9 +374,9 @@ public final class TestUtil {
     CheckIndex.testLiveDocs(codecReader, infoStream, true);
     CheckIndex.testFieldInfos(codecReader, infoStream, true);
     CheckIndex.testFieldNorms(codecReader, infoStream, true);
-    CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testPostings(codecReader, infoStream, false, level, true);
     CheckIndex.testStoredFields(codecReader, infoStream, true);
-    CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testTermVectors(codecReader, infoStream, false, level, true);
     CheckIndex.testDocValues(codecReader, infoStream, true);
     CheckIndex.testPoints(codecReader, infoStream, true);
 
@@ -1236,7 +1231,7 @@ public final class TestUtil {
    * different than {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene95Codec();
+    return new Lucene99Codec();
   }
 
   /**
@@ -1244,7 +1239,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene90PostingsFormat();
+    return new Lucene99PostingsFormat();
   }
 
   /**
@@ -1255,7 +1250,7 @@ public final class TestUtil {
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene90PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene99PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
@@ -1322,7 +1317,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
-    return new Lucene95HnswVectorsFormat();
+    return new Lucene99HnswVectorsFormat();
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

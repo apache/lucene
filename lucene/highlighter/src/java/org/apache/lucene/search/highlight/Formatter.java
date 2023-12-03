@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.search.highlight;
+
 /**
  * Processes terms found in the original text, typically by applying some form of mark-up to
  * highlight terms in HTML search results pages.

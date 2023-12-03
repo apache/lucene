@@ -74,6 +74,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
      * indexed
      */
     public abstract boolean isIndexTerm(BytesRef term, TermStats stats);
+
     /** Called when a new field is started. */
     public abstract void newField(FieldInfo fieldInfo);
   }
@@ -237,7 +238,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
     public FSTFieldWriter(FieldInfo fieldInfo, long termsFilePointer) throws IOException {
       this.fieldInfo = fieldInfo;
       fstOutputs = PositiveIntOutputs.getSingleton();
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, fstOutputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, fstOutputs).build();
       indexStart = out.getFilePointer();
       //// System.out.println("VGW: field=" + fieldInfo.name);
 

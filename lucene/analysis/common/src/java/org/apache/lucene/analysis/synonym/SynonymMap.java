@@ -48,10 +48,13 @@ import org.apache.lucene.util.fst.Util;
 public class SynonymMap {
   /** for multiword support, you must separate words with this separator */
   public static final char WORD_SEPARATOR = 0;
+
   /** map&lt;input word, list&lt;ord&gt;&gt; */
   public final FST<BytesRef> fst;
+
   /** map&lt;ord, outputword&gt; */
   public final BytesRefHash words;
+
   /** maxHorizontalContext: maximum context we need on the tokenstream */
   public final int maxHorizontalContext;
 
@@ -219,7 +222,8 @@ public class SynonymMap {
     public SynonymMap build() throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       // TODO: are we using the best sharing options?
-      FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+      FSTCompiler<BytesRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
 
       BytesRefBuilder scratch = new BytesRefBuilder();
       ByteArrayDataOutput scratchOutput = new ByteArrayDataOutput();

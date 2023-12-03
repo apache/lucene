@@ -30,6 +30,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Testcase for {@link org.apache.lucene.classification.CachingNaiveBayesClassifier} */
@@ -52,9 +53,7 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
           POLITICS_INPUT,
           POLITICS_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -71,9 +70,7 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
           TECHNOLOGY_INPUT,
           TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -89,9 +86,7 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
           TECHNOLOGY_INPUT,
           TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

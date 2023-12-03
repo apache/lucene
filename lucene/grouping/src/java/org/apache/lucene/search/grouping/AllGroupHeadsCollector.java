@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -260,7 +261,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
       for (int i = 0; i < sortFields.length; i++) {
-        comparators[i] = sortFields[i].getComparator(1, false);
+        comparators[i] = sortFields[i].getComparator(1, Pruning.NONE);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);
@@ -320,7 +321,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
         throws IOException {
       super(groupValue, doc, docBase);
-      assert scorer.docID() == doc;
       this.scorer = scorer;
       this.topScore = scorer.score();
     }
@@ -332,7 +332,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     @Override
     protected int compare(int compIDX, int doc) throws IOException {
-      assert scorer.docID() == doc;
       assert compIDX == 0;
       float score = scorer.score();
       int c = Float.compare(score, topScore);

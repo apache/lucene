@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -100,7 +101,8 @@ class TokenInfoDictionaryBuilder {
     lines.sort(Comparator.comparing(entry -> entry[0]));
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     long ord = -1; // first ord will be 0
     String lastValue = null;

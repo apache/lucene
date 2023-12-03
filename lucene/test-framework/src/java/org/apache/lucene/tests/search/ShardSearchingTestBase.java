@@ -207,7 +207,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     }
     try {
       for (Term term : terms) {
-        final TermStates ts = TermStates.build(s.getIndexReader().getContext(), term, true);
+        final TermStates ts = TermStates.build(s, term, true);
         if (ts.docFreq() > 0) {
           stats.put(term, s.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
         }

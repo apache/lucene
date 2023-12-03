@@ -91,6 +91,7 @@ public class TestSegmentMerger extends LuceneTestCase {
             mergedSegment,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),

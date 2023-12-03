@@ -40,6 +40,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BooleanSimilarity;
@@ -153,10 +154,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addField("g", 1f)
             .addTerm(new BytesRef("a"))
             .build();
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(
-            Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
-    TopDocs topDocs = searcher.search(query, manager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(
+            Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
+    TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
@@ -234,7 +235,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .build();
 
     CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
+
     searcher.search(query, completeManager);
 
     reader.close();
@@ -267,8 +269,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     Similarity searchSimilarity = randomCompatibleSimilarity();
     searcher.setSimilarity(searchSimilarity);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(10, null, 10);
+    TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(10, 10);
 
     CombinedFieldQuery query =
         new CombinedFieldQuery.Builder()
@@ -276,7 +277,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addField("b", 1.0f)
             .addTerm(new BytesRef("value"))
             .build();
-    TopDocs topDocs = searcher.search(query, manager);
+    TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(2, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
 
     CombinedFieldQuery invalidQuery =
@@ -286,7 +287,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("value"))
             .build();
     IllegalArgumentException e =
-        expectThrows(IllegalArgumentException.class, () -> searcher.search(invalidQuery, manager));
+        expectThrows(
+            IllegalArgumentException.class, () -> searcher.search(invalidQuery, collectorManager));
     assertTrue(e.getMessage().contains("requires norms to be consistent across fields"));
 
     reader.close();
@@ -498,14 +500,14 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
   private void checkExpectedHits(
       IndexSearcher searcher, int numHits, Query firstQuery, Query secondQuery) throws IOException {
-    CollectorManager<TopScoreDocCollector, TopDocs> firstManager =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
-    TopDocs firstTopDocs = searcher.search(firstQuery, firstManager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
+
+    TopDocs firstTopDocs = searcher.search(firstQuery, collectorManager);
     assertEquals(numHits, firstTopDocs.totalHits.value);
 
-    CollectorManager<TopScoreDocCollector, TopDocs> secondManager =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
-    TopDocs secondTopDocs = searcher.search(secondQuery, secondManager);
+    collectorManager = new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
+    TopDocs secondTopDocs = searcher.search(secondQuery, collectorManager);
     CheckHits.checkEqual(firstQuery, secondTopDocs.scoreDocs, firstTopDocs.scoreDocs);
   }
 

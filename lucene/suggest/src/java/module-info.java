@@ -30,7 +30,8 @@ module org.apache.lucene.suggest {
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.search.suggest.document.Completion50PostingsFormat,
       org.apache.lucene.search.suggest.document.Completion84PostingsFormat,
-      org.apache.lucene.search.suggest.document.Completion90PostingsFormat;
+      org.apache.lucene.search.suggest.document.Completion90PostingsFormat,
+      org.apache.lucene.search.suggest.document.Completion99PostingsFormat;
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.search.suggest.analyzing.SuggestStopFilterFactory;
 }

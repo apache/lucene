@@ -70,6 +70,7 @@ public class InetAddressPoint extends Field {
 
   /** The minimum value that an ip address can hold. */
   public static final InetAddress MIN_VALUE;
+
   /** The maximum value that an ip address can hold. */
   public static final InetAddress MAX_VALUE;
 

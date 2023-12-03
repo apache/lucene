@@ -29,6 +29,7 @@ class StandardObjects {
 
   /** Registry of standard classes to corresponding code */
   static Map<Class<?>, Integer> classRegsitry = new HashMap<>();
+
   /** Registry of codes to corresponding classes */
   static Map<Integer, Class<?>> codeRegsitry = new HashMap<>();
 

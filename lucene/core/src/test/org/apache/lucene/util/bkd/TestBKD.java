@@ -734,13 +734,7 @@ public class TestBKD extends LuceneTestCase {
             docMaps = new ArrayList<>();
           }
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID1 -> curDocIDBase + docID1);
           Runnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
@@ -770,13 +764,7 @@ public class TestBKD extends LuceneTestCase {
           toMerge.add(out.getFilePointer());
           finalizer.run();
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID -> curDocIDBase + docID);
         }
         out.close();
         in = dir.openInput("bkd", IOContext.DEFAULT);
@@ -1597,12 +1585,12 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
@@ -1689,6 +1677,10 @@ public class TestBKD extends LuceneTestCase {
     }
     MutablePointTree val =
         new MutablePointTree() {
+
+          final byte[][] tmpValues = new byte[numValues][];
+          final int[] tmpDocs = new int[numValues];
+
           @Override
           public void getValue(int i, BytesRef packedValue) {
             packedValue.bytes = pointValue[i];
@@ -1718,12 +1710,14 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            tmpValues[j] = pointValue[i];
+            tmpDocs[j] = docId[i];
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            System.arraycopy(tmpValues, i, pointValue, i, j - i);
+            System.arraycopy(tmpDocs, i, docId, i, j - i);
           }
 
           @Override

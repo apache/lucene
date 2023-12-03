@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 

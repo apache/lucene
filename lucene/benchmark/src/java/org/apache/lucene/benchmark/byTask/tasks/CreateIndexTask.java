@@ -26,8 +26,8 @@ import java.nio.file.Paths;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexDeletionPolicy;
@@ -152,9 +152,9 @@ public class CreateIndexTask extends PerfTask {
       try {
         final PostingsFormat postingsFormatChosen = PostingsFormat.forName(postingsFormat);
         iwConf.setCodec(
-            new Lucene95Codec() {
+            new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
               @Override
-              public PostingsFormat getPostingsFormatForField(String field) {
+              public PostingsFormat postingsFormat() {
                 return postingsFormatChosen;
               }
             });

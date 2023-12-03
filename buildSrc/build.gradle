@@ -38,3 +38,9 @@ dependencies {
   implementation "commons-codec:commons-codec:${scriptDepVersions['commons-codec']}"
 }
 
+if (!rootProject.hasJavaFlightRecorder) {
+  logger.warn('Module jdk.jfr is not available; skipping compilation of Java Flight Recorder support.')
+  tasks.named('compileJava').configure {
+    exclude('**/ProfileResults.java')
+  }
+}

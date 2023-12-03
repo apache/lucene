@@ -28,8 +28,10 @@ import java.io.OutputStream;
 class GeoWideSouthRectangle extends GeoBaseBBox {
   /** Top latitude of rect */
   protected final double topLat;
+
   /** Left longitude of rect */
   protected final double leftLon;
+
   /** Right longitude of rect */
   protected final double rightLon;
 
@@ -38,20 +40,25 @@ class GeoWideSouthRectangle extends GeoBaseBBox {
 
   /** Upper left hand corner */
   protected final GeoPoint ULHC;
+
   /** Upper right hand corner */
   protected final GeoPoint URHC;
 
   /** The top plane */
   protected final SidedPlane topPlane;
+
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
 
   /** Notable points for top plane */
   protected final GeoPoint[] topPlanePoints;
+
   /** Notable points for left plane */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Notable points for right plane */
   protected final GeoPoint[] rightPlanePoints;
 

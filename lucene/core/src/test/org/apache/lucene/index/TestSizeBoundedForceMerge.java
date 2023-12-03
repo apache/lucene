@@ -23,6 +23,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestSizeBoundedForceMerge extends LuceneTestCase {
 
@@ -43,6 +44,9 @@ public class TestSizeBoundedForceMerge extends LuceneTestCase {
 
   private static IndexWriterConfig newWriterConfig() {
     IndexWriterConfig conf = newIndexWriterConfig(null);
+    // Force using the default codec and not e.g. SimpleText which has a non-deterministic byte size
+    // of its segment info due to escape characters.
+    conf.setCodec(TestUtil.getDefaultCodec());
     conf.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     conf.setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB);
     // don't use compound files, because the overhead make size checks unreliable.
@@ -67,6 +71,14 @@ public class TestSizeBoundedForceMerge extends LuceneTestCase {
     writer.close();
 
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+    int numberOfSegmentsOfMinimumSize = 1;
+    for (int i = 1; i < sis.size(); ++i) {
+      if (sis.info(i).sizeInBytes() == sis.info(0).sizeInBytes()) {
+        numberOfSegmentsOfMinimumSize++;
+      }
+    }
+    assertEquals(numSegments - 1, numberOfSegmentsOfMinimumSize);
+
     double min = sis.info(0).sizeInBytes();
 
     conf = newWriterConfig();

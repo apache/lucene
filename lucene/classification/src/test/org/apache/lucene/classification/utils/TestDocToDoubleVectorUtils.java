@@ -30,6 +30,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,8 +75,7 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
   @Override
   @After
   public void tearDown() throws Exception {
-    index.close();
-    dir.close();
+    IOUtils.close(index, dir);
     super.tearDown();
   }
 

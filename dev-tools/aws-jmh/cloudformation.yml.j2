@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+
+  SecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: {{ vpc_info.vpcs[0].id }}
+      GroupDescription: Allow inbound SSH traffic
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: {{ stack_name }}-inbound-ssh
+
+  SecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: {{ vpc_info.vpcs[0].id }}
+      GroupDescription: Allow all outbound traffic
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: {{ stack_name }}-outbound-all
+
+{% for instance in instances %}
+  {{ instance.name }}Instance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - SecurityGroupIngress
+      - SecurityGroupEgress
+    Properties:
+      InstanceType: {{ instance.type }}
+      InstanceInitiatedShutdownBehavior: terminate
+      ImageId: {{ instance.ami }}
+      SecurityGroupIds:
+        - !Ref SecurityGroupIngress
+        - !Ref SecurityGroupEgress
+      UserData: {{ lookup('template', 'cloud-init.yml.j2') | b64encode }}
+      Tags:
+        - Key: Name
+          Value: {{ stack_name }}-{{ instance.name }}
+        - Key: ShortName
+          Value: {{ instance.name }}
+{% endfor %}

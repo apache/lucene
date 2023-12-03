@@ -270,6 +270,7 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
             return null;
           }
         });
+
     QueryUtils.check(random(), pq, searcher);
   }
 

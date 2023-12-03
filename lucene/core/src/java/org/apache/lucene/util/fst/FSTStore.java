@@ -18,16 +18,17 @@ package org.apache.lucene.util.fst;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 
-/** Abstraction for reading/writing bytes necessary for FST. */
-public interface FSTStore extends Accountable {
-  void init(DataInput in, long numBytes) throws IOException;
+/** A type of {@link FSTReader} which needs data to be initialized before use */
+public interface FSTStore extends FSTReader {
 
-  long size();
-
-  FST.BytesReader getReverseBytesReader();
-
-  void writeTo(DataOutput out) throws IOException;
+  /**
+   * Initialize the FSTStore
+   *
+   * @param in the DataInput to read from
+   * @param numBytes the number of bytes to read
+   * @return this FSTStore
+   * @throws IOException if exception occurred during reading the DataInput
+   */
+  FSTStore init(DataInput in, long numBytes) throws IOException;
 }

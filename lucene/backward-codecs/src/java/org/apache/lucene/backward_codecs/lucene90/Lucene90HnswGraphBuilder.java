@@ -37,6 +37,7 @@ public final class Lucene90HnswGraphBuilder {
 
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
+
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 

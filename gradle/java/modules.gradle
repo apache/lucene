@@ -67,6 +67,12 @@ allprojects {
       tasks.named(sourceSet.getCompileJavaTaskName()).configure({ JavaCompile task ->
         task.dependsOn modularPaths.compileModulePathConfiguration
 
+        // GH-12742: add the modular path as inputs so that if anything changes, the task
+        // is not up to date and is re-run. I [dw] believe this should be a @Classpath parameter
+        // on the task itself... but I don't know how to implement this on an existing class.
+        // this is a workaround but should work just fine though.
+        task.inputs.files(modularPaths.compileModulePathConfiguration)
+
         // LUCENE-10327: don't allow gradle to emit an empty sourcepath as it would break
         // compilation of modules.
         task.options.setSourcepath(sourceSet.java.sourceDirectories)

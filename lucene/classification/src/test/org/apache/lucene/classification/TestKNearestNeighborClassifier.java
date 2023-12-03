@@ -30,6 +30,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Testcase for {@link KNearestNeighborClassifier} */
@@ -89,9 +90,7 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
               TECHNOLOGY_RESULT);
       assertTrue(resultDS.getScore() != resultLMS.getScore());
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -117,9 +116,7 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
       assertTrue(classes.get(0).getScore() > classes.get(1).getScore());
       checkCorrectClassification(knnClassifier, STRONG_TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -145,9 +142,7 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
       assertTrue(classes.get(0).getScore() > classes.get(1).getScore());
       checkCorrectClassification(knnClassifier, SUPER_STRONG_TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -164,9 +159,7 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
           TECHNOLOGY_INPUT,
           TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

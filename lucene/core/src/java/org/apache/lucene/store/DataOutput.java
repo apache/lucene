@@ -188,8 +188,6 @@ public abstract class DataOutput {
    *
    * <p>This provides compression while still being efficient to decode.
    *
-   * <p>This provides compression while still being efficient to decode.
-   *
    * @param i Smaller values take fewer bytes. Negative numbers are supported, but should be
    *     avoided.
    * @throws IOException If there is an I/O error writing to the underlying medium.

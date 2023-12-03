@@ -33,6 +33,7 @@ public final class Point extends LatLonGeometry {
 
   /** latitude coordinate */
   private final double lat;
+
   /** longitude coordinate */
   private final double lon;
 

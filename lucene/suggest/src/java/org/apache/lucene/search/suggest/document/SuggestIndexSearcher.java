@@ -22,6 +22,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -67,13 +68,18 @@ public class SuggestIndexSearcher extends IndexSearcher {
     for (LeafReaderContext context : getIndexReader().leaves()) {
       BulkScorer scorer = weight.bulkScorer(context);
       if (scorer != null) {
+        LeafCollector leafCollector = null;
         try {
-          scorer.score(collector.getLeafCollector(context), context.reader().getLiveDocs());
+          leafCollector = collector.getLeafCollector(context);
+          scorer.score(leafCollector, context.reader().getLiveDocs());
         } catch (
             @SuppressWarnings("unused")
             CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
+        }
+        if (leafCollector != null) {
+          leafCollector.finish();
         }
       }
     }

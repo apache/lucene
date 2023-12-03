@@ -51,6 +51,7 @@ public class FSTCompletion {
   public static final class Completion implements Comparable<Completion> {
     /** UTF-8 bytes of the suggestion */
     public final BytesRef utf8;
+
     /** source bucket (weight) of the suggestion */
     public final int bucket;
 

@@ -21,13 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 // TODO: merge with PagedBytes, except PagedBytes doesn't
 // let you read while writing which FST needs
 
-class BytesStore extends DataOutput implements Accountable {
+class BytesStore extends DataOutput implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(BytesStore.class)
@@ -47,13 +46,6 @@ class BytesStore extends DataOutput implements Accountable {
     blockSize = 1 << blockBits;
     blockMask = blockSize - 1;
     nextWrite = blockSize;
-  }
-
-  /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
-  public void writeByte(long dest, byte b) {
-    int blockIndex = (int) (dest >> blockBits);
-    byte[] block = blocks.get(blockIndex);
-    block[(int) (dest & blockMask)] = b;
   }
 
   @Override
@@ -238,7 +230,7 @@ class BytesStore extends DataOutput implements Accountable {
   }
 
   /** Copies bytes from this store to a target byte array. */
-  public void copyBytes(long src, byte[] dest, int offset, int len) {
+  public void writeTo(long src, byte[] dest, int offset, int len) {
     int blockIndex = (int) (src >> blockBits);
     int upto = (int) (src & blockMask);
     byte[] block = blocks.get(blockIndex);
@@ -254,23 +246,6 @@ class BytesStore extends DataOutput implements Accountable {
         upto = 0;
         len -= chunk;
         offset += chunk;
-      }
-    }
-  }
-
-  /** Writes an int at the absolute position without changing the current pointer. */
-  public void writeInt(long pos, int value) {
-    int blockIndex = (int) (pos >> blockBits);
-    int upto = (int) (pos & blockMask);
-    byte[] block = blocks.get(blockIndex);
-    int shift = 24;
-    for (int i = 0; i < 4; i++) {
-      block[upto++] = (byte) (value >> shift);
-      shift -= 8;
-      if (upto == blockSize) {
-        upto = 0;
-        blockIndex++;
-        block = blocks.get(blockIndex);
       }
     }
   }
@@ -314,7 +289,7 @@ class BytesStore extends DataOutput implements Accountable {
     }
   }
 
-  public void skipBytes(int len) {
+  private void skipBytes(int len) {
     while (len > 0) {
       int chunk = blockSize - nextWrite;
       if (len <= chunk) {
@@ -333,13 +308,14 @@ class BytesStore extends DataOutput implements Accountable {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
-  /**
-   * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
-   * this!
-   */
-  public void truncate(long newLen) {
-    assert newLen <= getPosition();
+  /** Set the position of this BytesStore, truncating or expanding if needed */
+  public void setPosition(long newLen) {
     assert newLen >= 0;
+    long oldPosition = getPosition();
+    if (newLen > oldPosition) {
+      skipBytes((int) (newLen - oldPosition));
+      return;
+    }
     int blockIndex = (int) (newLen >> blockBits);
     nextWrite = (int) (newLen & blockMask);
     if (nextWrite == 0) {
@@ -365,6 +341,7 @@ class BytesStore extends DataOutput implements Accountable {
   }
 
   /** Writes all of our bytes to the target {@link DataOutput}. */
+  @Override
   public void writeTo(DataOutput out) throws IOException {
     for (byte[] block : blocks) {
       out.writeBytes(block, 0, block.length);
@@ -429,20 +406,12 @@ class BytesStore extends DataOutput implements Accountable {
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos;
       }
-
-      @Override
-      public boolean reversed() {
-        return false;
-      }
     };
   }
 
-  public FST.BytesReader getReverseReader() {
-    return getReverseReader(true);
-  }
-
-  FST.BytesReader getReverseReader(boolean allowSingle) {
-    if (allowSingle && blocks.size() == 1) {
+  @Override
+  public FST.BytesReader getReverseBytesReader() {
+    if (blocks.size() == 1) {
       return new ReverseBytesReader(blocks.get(0));
     }
     return new FST.BytesReader() {
@@ -489,11 +458,6 @@ class BytesStore extends DataOutput implements Accountable {
         }
         nextRead = (int) (pos & blockMask);
         assert getPosition() == pos : "pos=" + pos + " getPos()=" + getPosition();
-      }
-
-      @Override
-      public boolean reversed() {
-        return true;
       }
     };
   }

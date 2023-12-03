@@ -110,6 +110,7 @@ public class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
@@ -153,6 +154,11 @@ public class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene94HnswVectorsReader(state);
+  }
+
+  @Override
+  public final int getMaxDimensions(String fieldName) {
+    return 1024;
   }
 
   @Override

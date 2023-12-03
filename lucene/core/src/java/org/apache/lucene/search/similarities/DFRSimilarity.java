@@ -75,8 +75,10 @@ import org.apache.lucene.search.similarities.Normalization.NoNormalization;
 public class DFRSimilarity extends SimilarityBase {
   /** The basic model for information content. */
   protected final BasicModel basicModel;
+
   /** The first normalization of the information content. */
   protected final AfterEffect afterEffect;
+
   /** The term frequency normalization. */
   protected final Normalization normalization;
 

@@ -77,6 +77,7 @@ public class TestSpanSimilarity extends LuceneTestCase {
   static BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne()
   };
+
   /** The DFR aftereffects to test. */
   static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
 
@@ -87,10 +88,13 @@ public class TestSpanSimilarity extends LuceneTestCase {
     new NormalizationZ(),
     new Normalization.NoNormalization()
   };
+
   /** The distributions for IB. */
   static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+
   /** Lambdas for IB. */
   static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+
   /** Independence measures for DFI */
   static Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()

@@ -47,17 +47,22 @@ import org.apache.lucene.util.DocIdSetBuilder;
 public abstract class RangeFieldQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation intersects: {@code CELL_CROSSES_QUERY}, contains: {@code CELL_CONTAINS_QUERY},
    * within: {@code CELL_WITHIN_QUERY}
    */
   final QueryType queryType;
+
   /** number of dimensions - max 4 */
   final int numDims;
+
   /** ranges encoded as a sortable byte array */
   final byte[] ranges;
+
   /** number of bytes per dimension */
   final int bytesPerDim;
+
   /** ByteArrayComparator selected by bytesPerDim */
   final ByteArrayComparator comparator;
 

@@ -37,13 +37,16 @@ import org.apache.lucene.util.BytesRef;
 public interface MaxNonCompetitiveBoostAttribute extends Attribute {
   /** This is the maximum boost that would not be competitive. */
   public void setMaxNonCompetitiveBoost(float maxNonCompetitiveBoost);
+
   /**
    * This is the maximum boost that would not be competitive. Default is negative infinity, which
    * means every term is competitive.
    */
   public float getMaxNonCompetitiveBoost();
+
   /** This is the term or <code>null</code> of the term that triggered the boost change. */
   public void setCompetitiveTerm(BytesRef competitiveTerm);
+
   /**
    * This is the term or <code>null</code> of the term that triggered the boost change. Default is
    * <code>null</code>, which means every term is competitoive.

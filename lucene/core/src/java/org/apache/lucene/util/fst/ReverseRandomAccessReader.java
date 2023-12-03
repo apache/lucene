@@ -55,9 +55,4 @@ final class ReverseRandomAccessReader extends FST.BytesReader {
   public void setPosition(long pos) {
     this.pos = pos;
   }
-
-  @Override
-  public boolean reversed() {
-    return true;
-  }
 }

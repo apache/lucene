@@ -341,6 +341,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             "_0",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),

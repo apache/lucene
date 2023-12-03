@@ -81,7 +81,6 @@ public class AxiomaticF3LOG extends Axiomatic {
         "tf, term frequency computed as 1 + log(1 + log(freq)) from:",
         Explanation.match((float) freq, "freq, number of occurrences of term in the document"));
   }
-  ;
 
   @Override
   protected Explanation lnExplain(BasicStats stats, double freq, double docLen) {

@@ -100,11 +100,13 @@ public class UniformSplitTermsWriter extends FieldsConsumer {
 
   /** Default value for the target block size (number of terms per block). */
   public static final int DEFAULT_TARGET_NUM_BLOCK_LINES = 32;
+
   /**
    * Default value for the maximum allowed delta variation of the block size (delta of the number of
    * terms per block). The block size will be [target block size]+-[allowed delta].
    */
   public static final int DEFAULT_DELTA_NUM_LINES = (int) (DEFAULT_TARGET_NUM_BLOCK_LINES * 0.1);
+
   /** Upper limit of the block size (maximum number of terms per block). */
   protected static final int MAX_NUM_BLOCK_LINES = 1_000;
 

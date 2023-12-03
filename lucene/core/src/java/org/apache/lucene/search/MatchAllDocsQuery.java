@@ -54,11 +54,10 @@ public final class MatchAllDocsQuery extends Query {
           public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
               throws IOException {
             max = Math.min(max, maxDoc);
-            ScoreAndDoc scorer = new ScoreAndDoc();
+            Score scorer = new Score();
             scorer.score = score;
             collector.setScorer(scorer);
             for (int doc = min; doc < max; ++doc) {
-              scorer.doc = doc;
               if (acceptDocs == null || acceptDocs.get(doc)) {
                 collector.collect(doc);
               }

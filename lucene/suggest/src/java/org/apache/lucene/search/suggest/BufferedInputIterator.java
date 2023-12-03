@@ -35,12 +35,16 @@ public class BufferedInputIterator implements InputIterator {
   // TODO keep this for now
   /** buffered term entries */
   protected BytesRefArray entries = new BytesRefArray(Counter.newCounter());
+
   /** buffered payload entries */
   protected BytesRefArray payloads = new BytesRefArray(Counter.newCounter());
+
   /** buffered context set entries */
   protected List<Set<BytesRef>> contextSets = new ArrayList<>();
+
   /** current buffer position */
   protected int curPos = -1;
+
   /** buffered weights, parallel with {@link #entries} */
   protected long[] freqs = new long[1];
 

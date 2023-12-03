@@ -35,6 +35,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 
 /** trivial test of ICUCollationDocValuesField */
 public class TestICUCollationDocValuesField extends LuceneTestCase {
@@ -68,8 +69,7 @@ public class TestICUCollationDocValuesField extends LuceneTestCase {
     StoredFields storedFields = ir.storedFields();
     assertEquals("abc", storedFields.document(td.scoreDocs[0].doc).get("field"));
     assertEquals("ABC", storedFields.document(td.scoreDocs[1].doc).get("field"));
-    ir.close();
-    dir.close();
+    IOUtils.close(ir, dir);
   }
 
   public void testRanges() throws Exception {
@@ -107,8 +107,7 @@ public class TestICUCollationDocValuesField extends LuceneTestCase {
       doTestRanges(is, start, end, lowerVal, upperVal, collator);
     }
 
-    ir.close();
-    dir.close();
+    IOUtils.close(ir, dir);
   }
 
   private void doTestRanges(

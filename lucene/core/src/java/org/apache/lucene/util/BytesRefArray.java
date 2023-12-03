@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.IntBinaryOperator;
 
 /**
  * A simple append only random-access {@link BytesRef} array that stores full copies of the appended
@@ -120,54 +119,64 @@ public final class BytesRefArray implements SortableBytesRefArray {
   /**
    * Returns a {@link SortState} representing the order of elements in this array. This is a
    * non-destructive operation.
+   *
+   * @param comp The comparator to compare {@link BytesRef}s. A radix sort optimization is available
+   *     if the comparator implements {@link BytesRefComparator}
+   * @param stable If the sort needs to be stable
+   * @return A {@link SortState} that could be used in {@link BytesRefArray#iterator(SortState)}
    */
-  public SortState sort(final Comparator<BytesRef> comp, final IntBinaryOperator tieComparator) {
+  public SortState sort(final Comparator<BytesRef> comp, boolean stable) {
     final int[] orderedEntries = new int[size()];
     for (int i = 0; i < orderedEntries.length; i++) {
       orderedEntries[i] = i;
     }
-    new IntroSorter() {
-      @Override
-      protected void swap(int i, int j) {
-        final int o = orderedEntries[i];
-        orderedEntries[i] = orderedEntries[j];
-        orderedEntries[j] = o;
-      }
+    StringSorter sorter;
+    if (stable) {
+      sorter =
+          new StableStringSorter(comp) {
 
-      @Override
-      protected int compare(int i, int j) {
-        final int idx1 = orderedEntries[i], idx2 = orderedEntries[j];
-        setBytesRef(scratch1, scratchBytes1, idx1);
-        setBytesRef(scratch2, scratchBytes2, idx2);
-        return compare(idx1, scratchBytes1, idx2, scratchBytes2);
-      }
+            private final int[] tmp = new int[size()];
 
-      @Override
-      protected void setPivot(int i) {
-        pivotIndex = orderedEntries[i];
-        setBytesRef(pivotBuilder, pivot, pivotIndex);
-      }
+            @Override
+            protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+              BytesRefArray.this.setBytesRef(builder, result, orderedEntries[i]);
+            }
 
-      @Override
-      protected int comparePivot(int j) {
-        final int index = orderedEntries[j];
-        setBytesRef(scratch2, scratchBytes2, index);
-        return compare(pivotIndex, pivot, index, scratchBytes2);
-      }
+            @Override
+            protected void save(int i, int j) {
+              tmp[j] = orderedEntries[i];
+            }
 
-      private int compare(int i1, BytesRef b1, int i2, BytesRef b2) {
-        int res = comp.compare(b1, b2);
-        return res == 0 ? tieComparator.applyAsInt(i1, i2) : res;
-      }
+            @Override
+            protected void restore(int i, int j) {
+              System.arraycopy(tmp, i, orderedEntries, i, j - i);
+            }
 
-      private int pivotIndex;
-      private final BytesRef pivot = new BytesRef();
-      private final BytesRef scratchBytes1 = new BytesRef();
-      private final BytesRef scratchBytes2 = new BytesRef();
-      private final BytesRefBuilder pivotBuilder = new BytesRefBuilder();
-      private final BytesRefBuilder scratch1 = new BytesRefBuilder();
-      private final BytesRefBuilder scratch2 = new BytesRefBuilder();
-    }.sort(0, size());
+            @Override
+            protected void swap(int i, int j) {
+              int o = orderedEntries[i];
+              orderedEntries[i] = orderedEntries[j];
+              orderedEntries[j] = o;
+            }
+          };
+    } else {
+      sorter =
+          new StringSorter(comp) {
+            @Override
+            protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+              BytesRefArray.this.setBytesRef(builder, result, orderedEntries[i]);
+            }
+
+            @Override
+            protected void swap(int i, int j) {
+              int o = orderedEntries[i];
+              orderedEntries[i] = orderedEntries[j];
+              orderedEntries[j] = o;
+            }
+          };
+    }
+
+    sorter.sort(0, size());
     return new SortState(orderedEntries);
   }
 
@@ -188,7 +197,7 @@ public final class BytesRefArray implements SortableBytesRefArray {
    */
   @Override
   public BytesRefIterator iterator(final Comparator<BytesRef> comp) {
-    return iterator(sort(comp, (i, j) -> 0));
+    return iterator(sort(comp, false));
   }
 
   /**

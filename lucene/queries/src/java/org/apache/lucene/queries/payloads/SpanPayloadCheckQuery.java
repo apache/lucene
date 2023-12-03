@@ -47,6 +47,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   protected final SpanQuery match;
   protected final MatchOperation operation;
   protected final PayloadType payloadType;
+
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
   public enum PayloadType {
     /** INT is for a 4 byte payload that is a packed integer */

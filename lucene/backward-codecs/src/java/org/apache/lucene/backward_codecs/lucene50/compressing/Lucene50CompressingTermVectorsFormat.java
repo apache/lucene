@@ -38,14 +38,19 @@ public class Lucene50CompressingTermVectorsFormat extends TermVectorsFormat {
 
   /** format name */
   protected final String formatName;
+
   /** segment suffix */
   protected final String segmentSuffix;
+
   /** compression mode */
   protected final CompressionMode compressionMode;
+
   /** chunk size */
   protected final int chunkSize;
+
   /** block size */
   protected final int blockSize;
+
   /** max docs per chunk */
   protected final int maxDocsPerChunk;
 

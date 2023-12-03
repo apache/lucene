@@ -46,10 +46,12 @@ public class QualityStats {
       this.rank = rank;
       this.recall = recall;
     }
+
     /** Returns the rank: where on the list of returned docs this relevant doc appeared. */
     public int getRank() {
       return rank;
     }
+
     /** Returns the recall: how many relevant docs were returned up to this point, inclusive. */
     public double getRecall() {
       return recall;

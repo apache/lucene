@@ -50,6 +50,7 @@ public class TestVerboseFS extends MockFileSystemTestCase {
   static class InfoStreamListener extends InfoStream {
     /** True if we saw the message */
     final AtomicBoolean seenMessage = new AtomicBoolean(false);
+
     /** Expected message */
     final String messageStartsWith;
 

@@ -62,8 +62,10 @@ public class BlockReader extends BaseTermsEnum implements Accountable {
 
   protected BlockHeader.Serializer blockHeaderReader;
   protected BlockLine.Serializer blockLineReader;
+
   /** In-memory read buffer for the current block. */
   protected ByteArrayDataInput blockReadBuffer;
+
   /**
    * In-memory read buffer for the details region of the current block. It shares the same byte
    * array as {@link #blockReadBuffer}, with a different position.
@@ -74,6 +76,7 @@ public class BlockReader extends BaseTermsEnum implements Accountable {
 
   /** {@link IndexDictionary.Browser} supplier for lazy loading. */
   protected final IndexDictionary.BrowserSupplier dictionaryBrowserSupplier;
+
   /** Holds the {@link IndexDictionary.Browser} once loaded. */
   protected IndexDictionary.Browser dictionaryBrowser;
 
@@ -82,19 +85,25 @@ public class BlockReader extends BaseTermsEnum implements Accountable {
    * UniformSplitPostingsFormat#TERMS_BLOCKS_EXTENSION block file}.
    */
   protected long blockStartFP;
+
   /** Current block header. */
   protected BlockHeader blockHeader;
+
   /** Current block line. */
   protected BlockLine blockLine;
+
   /** Current block line details. */
   protected BlockTermState termState;
+
   /**
    * Offset of the start of the first line of the current block (just after the header), relative to
    * the block start.
    */
   protected int blockFirstLineStart;
+
   /** Current line index in the block. */
   protected int lineIndexInBlock;
+
   /**
    * Whether the current {@link TermState} has been forced with a call to {@link
    * #seekExact(BytesRef, TermState)}.
@@ -102,6 +111,7 @@ public class BlockReader extends BaseTermsEnum implements Accountable {
    * @see #forcedTerm
    */
   protected boolean termStateForced;
+
   /**
    * Set when {@link #seekExact(BytesRef, TermState)} is called.
    *

@@ -39,6 +39,7 @@ class GeoDegeneratePath extends GeoBasePath {
 
   /** A list of SegmentEndpoints */
   protected List<SegmentEndpoint> endPoints;
+
   /** A list of PathSegments */
   protected List<PathSegment> segments;
 
@@ -404,8 +405,10 @@ class GeoDegeneratePath extends GeoBasePath {
   private static class SegmentEndpoint extends GeoBaseBounds {
     /** The center point of the endpoint */
     public final GeoPoint point;
+
     /** Pertinent cutoff planes from adjoining segments */
     public final Membership[] cutoffPlanes;
+
     /** Null membership */
     public static final Membership[] NO_MEMBERSHIP = new Membership[0];
 
@@ -601,16 +604,22 @@ class GeoDegeneratePath extends GeoBasePath {
   private static class PathSegment extends GeoBaseBounds {
     /** Starting point of the segment */
     public final GeoPoint start;
+
     /** End point of the segment */
     public final GeoPoint end;
+
     /** Place to keep any complete segment distances we've calculated so far */
     public final Map<DistanceStyle, Double> fullDistanceCache = new ConcurrentHashMap<>(1);
+
     /** Normalized plane connecting the two points and going through world center */
     public final Plane normalizedConnectingPlane;
+
     /** Plane going through the center and start point, marking the start edge of the segment */
     public final SidedPlane startCutoffPlane;
+
     /** Plane going through the center and end point, marking the end edge of the segment */
     public final SidedPlane endCutoffPlane;
+
     /** Notable points for the connecting plane */
     public final GeoPoint[] connectingPlanePoints;
 

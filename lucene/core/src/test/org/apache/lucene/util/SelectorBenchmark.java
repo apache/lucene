@@ -58,6 +58,7 @@ public class SelectorBenchmark {
           };
         }),
     ;
+
     final String name;
     final Builder builder;
 

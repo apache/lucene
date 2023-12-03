@@ -1,0 +1,8 @@
+#cloud-config
+package_upgrade: false
+package_update: false
+system_info:
+  default_user:
+    name: {{ user }}
+    ssh_authorized_keys:
+      - {{ lookup('file', ssh_key + '.pub') }}

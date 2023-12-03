@@ -82,7 +82,7 @@ public class SpanTermQuery extends SpanQuery {
     final TermStates context;
     final IndexReaderContext topContext = searcher.getTopReaderContext();
     if (termStates == null || termStates.wasBuiltFor(topContext) == false) {
-      context = TermStates.build(topContext, term, scoreMode.needsScores());
+      context = TermStates.build(searcher, term, scoreMode.needsScores());
     } else {
       context = termStates;
     }

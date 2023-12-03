@@ -28,9 +28,9 @@ import org.apache.lucene.codecs.blockterms.FixedGapTermsIndexReader;
 import org.apache.lucene.codecs.blockterms.FixedGapTermsIndexWriter;
 import org.apache.lucene.codecs.blockterms.TermsIndexReaderBase;
 import org.apache.lucene.codecs.blockterms.TermsIndexWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat; // javadocs
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat; // javadocs
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -38,7 +38,7 @@ import org.apache.lucene.index.SegmentWriteState;
 // any PostingsFormat and make it ord-able...
 
 /**
- * Customized version of {@link Lucene90PostingsFormat} that uses {@link FixedGapTermsIndexWriter}.
+ * Customized version of {@link Lucene99PostingsFormat} that uses {@link FixedGapTermsIndexWriter}.
  */
 public final class LuceneFixedGap extends PostingsFormat {
   final int termIndexInterval;
@@ -54,7 +54,7 @@ public final class LuceneFixedGap extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase docs = new Lucene90PostingsWriter(state);
+    PostingsWriterBase docs = new Lucene99PostingsWriter(state);
 
     // TODO: should we make the terms index more easily
     // pluggable?  Ie so that this codec would record which
@@ -91,7 +91,7 @@ public final class LuceneFixedGap extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postings = new Lucene90PostingsReader(state);
+    PostingsReaderBase postings = new Lucene99PostingsReader(state);
     TermsIndexReaderBase indexReader;
 
     boolean success = false;

@@ -30,7 +30,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -52,7 +51,7 @@ public class TestForceNoBulkScoringQuery extends LuceneTestCase {
 
   public void testRewrite() throws IOException {
 
-    try (Directory dir = new ByteBuffersDirectory();
+    try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
 
       Document doc = new Document();
@@ -60,18 +59,18 @@ public class TestForceNoBulkScoringQuery extends LuceneTestCase {
       iw.addDocument(doc);
       iw.commit();
 
-      IndexReader reader = DirectoryReader.open(dir);
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        PrefixQuery pq = new PrefixQuery(new Term("field", "term"));
+        ForceNoBulkScoringQuery q = new ForceNoBulkScoringQuery(pq);
 
-      PrefixQuery pq = new PrefixQuery(new Term("field", "term"));
-      ForceNoBulkScoringQuery q = new ForceNoBulkScoringQuery(pq);
+        assertEquals(q.getWrappedQuery(), pq);
 
-      assertEquals(q.getWrappedQuery(), pq);
+        Query rewritten = q.rewrite(newSearcher(reader));
+        assertTrue(rewritten instanceof ForceNoBulkScoringQuery);
 
-      Query rewritten = q.rewrite(newSearcher(reader));
-      assertTrue(rewritten instanceof ForceNoBulkScoringQuery);
-
-      Query inner = ((ForceNoBulkScoringQuery) rewritten).getWrappedQuery();
-      assertNotEquals(inner, pq);
+        Query inner = ((ForceNoBulkScoringQuery) rewritten).getWrappedQuery();
+        assertNotEquals(inner, pq);
+      }
     }
   }
 }

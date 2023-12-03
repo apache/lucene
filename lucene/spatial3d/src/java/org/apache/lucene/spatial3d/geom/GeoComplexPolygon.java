@@ -2305,11 +2305,13 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * to numerical issues.
    */
   private static final double DELTA_DISTANCE = Vector.MINIMUM_RESOLUTION;
+
   /**
    * This is the maximum number of iterations. If we get this high, effectively the planes are
    * parallel, and we treat that as a crossing.
    */
   private static final int MAX_ITERATIONS = 100;
+
   /**
    * This is the amount off of the envelope plane that we count as "enough" for a valid crossing
    * assessment.

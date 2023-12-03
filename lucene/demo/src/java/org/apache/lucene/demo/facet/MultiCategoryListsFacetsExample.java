@@ -38,6 +38,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Demonstrates indexing categories into different indexed fields. */
 public class MultiCategoryListsFacetsExample {
@@ -87,8 +88,7 @@ public class MultiCategoryListsFacetsExample {
     doc.add(new FacetField("Publish Date", "1999", "5", "5"));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
-    indexWriter.close();
-    taxoWriter.close();
+    IOUtils.close(indexWriter, taxoWriter);
   }
 
   /** User runs a query and counts facets. */
@@ -114,8 +114,7 @@ public class MultiCategoryListsFacetsExample {
     Facets pubDate = new FastTaxonomyFacetCounts("pubdate", taxoReader, config, fc);
     results.add(pubDate.getTopChildren(10, "Publish Date"));
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return results;
   }

@@ -30,9 +30,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
 import org.apache.lucene.util.automaton.TransitionAccessor;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.Outputs;
 
 /**
  * This is used to implement efficient {@link Terms#intersect} for block-tree. Note that it cannot
@@ -46,7 +44,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
   final IndexInput in;
-  static final Outputs<BytesRef> fstOutputs = ByteSequenceOutputs.getSingleton();
 
   IntersectTermsEnumFrame[] stack;
 
@@ -67,6 +64,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   final FieldReader fr;
 
   private BytesRef savedStartTerm;
+
+  private final SegmentTermsEnum.OutputAccumulator outputAccumulator =
+      new SegmentTermsEnum.OutputAccumulator();
 
   // TODO: in some cases we can filter by length?  eg
   // regexp foo*bar must be at least length 6 bytes
@@ -114,7 +114,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.prefix = 0;
     f.setState(0);
     f.arc = arc;
-    f.outputPrefix = arc.output();
     f.load(fr.rootCode);
 
     // for assert:
@@ -184,7 +183,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc = currentFrame.arc;
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
-    BytesRef output = currentFrame.outputPrefix;
+
+    outputAccumulator.reset();
+    outputAccumulator.push(arc.output());
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -192,14 +193,14 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      output = fstOutputs.add(output, arc.output());
+      outputAccumulator.push(arc.output());
       idx++;
     }
 
     f.arc = arc;
-    f.outputPrefix = output;
     assert arc.isFinal();
-    f.load(fstOutputs.add(output, arc.nextFinalOutput()));
+    outputAccumulator.push(arc.nextFinalOutput());
+    f.load(outputAccumulator);
     return f;
   }
 

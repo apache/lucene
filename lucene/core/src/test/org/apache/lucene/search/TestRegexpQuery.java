@@ -80,7 +80,10 @@ public class TestRegexpQuery extends LuceneTestCase {
             newTerm(regex),
             RegExp.ALL,
             RegExp.ASCII_CASE_INSENSITIVE,
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+            RegexpQuery.DEFAULT_PROVIDER,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
+            random().nextBoolean());
     return searcher.count(query);
   }
 

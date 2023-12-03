@@ -32,6 +32,7 @@ public final class LegacyDirectMonotonicWriter {
 
   /** min block shift */
   public static final int MIN_BLOCK_SHIFT = 2;
+
   /** max block shift */
   public static final int MAX_BLOCK_SHIFT = 22;
 

@@ -44,6 +44,7 @@ public final class CodecUtil {
 
   /** Constant to identify the start of a codec header. */
   public static final int CODEC_MAGIC = 0x3fd76c17;
+
   /** Constant to identify the start of a codec footer. */
   public static final int FOOTER_MAGIC = ~CODEC_MAGIC;
 

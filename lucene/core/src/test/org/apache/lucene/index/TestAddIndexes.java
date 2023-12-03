@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
@@ -1814,5 +1815,126 @@ public class TestAddIndexes extends LuceneTestCase {
     // soft deletes got filtered out when wrappedReader(s) were added.
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().maxDoc);
     IOUtils.close(reader, writer, dir3, dir2, dir1);
+  }
+
+  public void testAddIndicesWithBlocks() throws IOException {
+    boolean[] addHasBlocksPerm = {true, true, false, false};
+    boolean[] baseHasBlocksPerm = {true, false, true, false};
+    for (int perm = 0; perm < addHasBlocksPerm.length; perm++) {
+      boolean addHasBlocks = addHasBlocksPerm[perm];
+      boolean baseHasBlocks = baseHasBlocksPerm[perm];
+      try (Directory dir = newDirectory()) {
+        try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+          int numBlocks = random().nextInt(1, 10);
+          for (int i = 0; i < numBlocks; i++) {
+            int numDocs = baseHasBlocks ? random().nextInt(2, 10) : 1;
+            List<Document> docs = new ArrayList<>();
+            for (int j = 0; j < numDocs; j++) {
+              Document doc = new Document();
+              int value = random().nextInt(5);
+              doc.add(new StringField("value", "" + value, Field.Store.YES));
+              docs.add(doc);
+            }
+            writer.addDocuments(docs);
+          }
+          writer.commit();
+        }
+
+        try (Directory addDir = newDirectory()) {
+          int numBlocks = random().nextInt(1, 10);
+          try (RandomIndexWriter writer = new RandomIndexWriter(random(), addDir)) {
+            for (int i = 0; i < numBlocks; i++) {
+              int numDocs = addHasBlocks ? random().nextInt(2, 10) : 1;
+              List<Document> docs = new ArrayList<>();
+              for (int j = 0; j < numDocs; j++) {
+                Document doc = new Document();
+                int value = random().nextInt(5);
+                doc.add(new StringField("value", "" + value, Field.Store.YES));
+                docs.add(doc);
+              }
+              writer.addDocuments(docs);
+            }
+            writer.commit();
+          }
+
+          try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+            if (random().nextBoolean()) {
+              writer.addIndexes(addDir);
+            } else {
+              try (DirectoryReader reader = DirectoryReader.open(addDir)) {
+                CodecReader[] readers = new CodecReader[(reader.leaves().size())];
+                for (int i = 0; i < readers.length; i++) {
+                  readers[i] = (CodecReader) reader.leaves().get(i).reader();
+                }
+                writer.addIndexes(readers);
+              }
+            }
+            writer.forceMerge(1, true);
+          }
+
+          try (DirectoryReader reader = DirectoryReader.open(dir)) {
+            SegmentReader codecReader = (SegmentReader) reader.leaves().get(0).reader();
+            assertEquals(1, reader.leaves().size());
+            if (addHasBlocks || baseHasBlocks) {
+              assertTrue(
+                  "addHasBlocks: " + addHasBlocks + " baseHasBlocks: " + baseHasBlocks,
+                  codecReader.getSegmentInfo().info.getHasBlocks());
+            } else {
+              assertFalse(codecReader.getSegmentInfo().info.getHasBlocks());
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public void testSetDiagnostics() throws IOException {
+    MergePolicy myMergePolicy =
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            MergeSpecification spec = super.findMerges(readers);
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
+    Directory sourceDir = newDirectory();
+    try (IndexWriter w = new IndexWriter(sourceDir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      w.addDocument(doc);
+    }
+    DirectoryReader reader = DirectoryReader.open(sourceDir);
+    CodecReader codecReader = SlowCodecReaderWrapper.wrap(reader.leaves().get(0).reader());
+
+    Directory targetDir = newDirectory();
+    try (IndexWriter w =
+        new IndexWriter(targetDir, newIndexWriterConfig().setMergePolicy(myMergePolicy))) {
+      w.addIndexes(codecReader);
+    }
+
+    SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
+    assertNotEquals(0, si.size());
+    for (SegmentCommitInfo sci : si) {
+      assertEquals(
+          IndexWriter.SOURCE_ADDINDEXES_READERS, sci.info.getDiagnostics().get(IndexWriter.SOURCE));
+      assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
+    }
+    reader.close();
+    targetDir.close();
+    sourceDir.close();
   }
 }

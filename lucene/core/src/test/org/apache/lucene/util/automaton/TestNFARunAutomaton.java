@@ -44,7 +44,6 @@ public class TestNFARunAutomaton extends LuceneTestCase {
   public void testWithRandomRegex() {
     for (int i = 0; i < 100; i++) {
       RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
-      ;
       Automaton nfa = regExp.toAutomaton();
       if (nfa.isDeterministic()) {
         i--;
@@ -87,8 +86,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       int termNum = random().nextInt(20) + 30;
       while (perDocVocab.size() < termNum) {
         String randomString;
-        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
-          ;
+        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0) {}
         perDocVocab.add(randomString);
         vocab.add(randomString);
       }
@@ -105,8 +103,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     Set<String> foreignVocab = new HashSet<>();
     while (foreignVocab.size() < vocab.size()) {
       String randomString;
-      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
-        ;
+      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0) {}
       foreignVocab.add(randomString);
     }
 

@@ -33,6 +33,7 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,9 +84,7 @@ public class TestDataSplitter extends LuceneTestCase {
   @Override
   @After
   public void tearDown() throws Exception {
-    originalIndex.close();
-    indexWriter.close();
-    dir.close();
+    IOUtils.close(originalIndex, indexWriter, dir);
     super.tearDown();
   }
 
@@ -133,28 +132,18 @@ public class TestDataSplitter extends LuceneTestCase {
       DirectoryReader cvReader = DirectoryReader.open(crossValidationIndex);
       assertEquals((int) (originalIndex.maxDoc() * crossValidationRatio), cvReader.maxDoc(), 20);
 
-      trainingReader.close();
-      testReader.close();
-      cvReader.close();
+      IOUtils.close(trainingReader, testReader, cvReader);
       closeQuietly(trainingReader);
       closeQuietly(testReader);
       closeQuietly(cvReader);
     } finally {
-      if (trainingIndex != null) {
-        trainingIndex.close();
-      }
-      if (testIndex != null) {
-        testIndex.close();
-      }
-      if (crossValidationIndex != null) {
-        crossValidationIndex.close();
-      }
+      IOUtils.close(trainingIndex, testIndex, crossValidationIndex);
     }
   }
 
   private static void closeQuietly(IndexReader reader) throws IOException {
     try {
-      if (reader != null) reader.close();
+      IOUtils.close(reader);
     } catch (
         @SuppressWarnings("unused")
         Exception e) {

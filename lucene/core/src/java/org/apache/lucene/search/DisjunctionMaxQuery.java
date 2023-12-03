@@ -127,26 +127,69 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       return MatchesUtils.fromSubMatches(mis);
     }
 
-    /** Create the scorer used to score our associated DisjunctionMaxQuery */
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      List<Scorer> scorers = new ArrayList<>();
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      List<ScorerSupplier> scorerSuppliers = new ArrayList<>();
       for (Weight w : weights) {
-        // we will advance() subscorers
-        Scorer subScorer = w.scorer(context);
-        if (subScorer != null) {
-          scorers.add(subScorer);
+        ScorerSupplier ss = w.scorerSupplier(context);
+        if (ss != null) {
+          scorerSuppliers.add(ss);
         }
       }
-      if (scorers.isEmpty()) {
-        // no sub-scorers had any documents
+
+      if (scorerSuppliers.isEmpty()) {
         return null;
-      } else if (scorers.size() == 1) {
-        // only one sub-scorer in this segment
-        return scorers.get(0);
+      } else if (scorerSuppliers.size() == 1) {
+        return scorerSuppliers.get(0);
       } else {
-        return new DisjunctionMaxScorer(this, tieBreakerMultiplier, scorers, scoreMode);
+        final Weight thisWeight = this;
+        return new ScorerSupplier() {
+
+          private long cost = -1;
+
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            List<Scorer> scorers = new ArrayList<>();
+            for (ScorerSupplier ss : scorerSuppliers) {
+              scorers.add(ss.get(leadCost));
+            }
+            return new DisjunctionMaxScorer(thisWeight, tieBreakerMultiplier, scorers, scoreMode);
+          }
+
+          @Override
+          public long cost() {
+            if (cost == -1) {
+              long cost = 0;
+              for (ScorerSupplier ss : scorerSuppliers) {
+                cost += ss.cost();
+              }
+              this.cost = cost;
+            }
+            return cost;
+          }
+
+          @Override
+          public void setTopLevelScoringClause() throws IOException {
+            if (tieBreakerMultiplier == 0) {
+              for (ScorerSupplier ss : scorerSuppliers) {
+                // sub scorers need to be able to skip too as calls to setMinCompetitiveScore get
+                // propagated
+                ss.setTopLevelScoringClause();
+              }
+            }
+          }
+        };
       }
+    }
+
+    @Override
+    public Scorer scorer(LeafReaderContext context) throws IOException {
+      ScorerSupplier supplier = scorerSupplier(context);
+      if (supplier == null) {
+        return null;
+      }
+      supplier.setTopLevelScoringClause();
+      return supplier.get(Long.MAX_VALUE);
     }
 
     @Override

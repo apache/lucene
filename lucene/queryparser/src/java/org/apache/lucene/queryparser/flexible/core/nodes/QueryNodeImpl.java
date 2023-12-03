@@ -17,7 +17,7 @@
 package org.apache.lucene.queryparser.flexible.core.nodes;
 
 import java.util.ArrayList;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -36,7 +36,7 @@ public abstract class QueryNodeImpl implements QueryNode, Cloneable {
 
   private boolean isLeaf = true;
 
-  private Hashtable<String, Object> tags = new Hashtable<>();
+  private HashMap<String, Object> tags = new HashMap<>();
 
   private List<QueryNode> clauses = null;
 
@@ -115,7 +115,7 @@ public abstract class QueryNodeImpl implements QueryNode, Cloneable {
     clone.isLeaf = this.isLeaf;
 
     // Reset all tags
-    clone.tags = new Hashtable<>();
+    clone.tags = new HashMap<>();
 
     // copy children
     if (this.clauses != null) {

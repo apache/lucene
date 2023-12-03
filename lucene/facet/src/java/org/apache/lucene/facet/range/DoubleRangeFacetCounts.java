@@ -157,19 +157,24 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
   private void count(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    LongRange[] longRanges = getLongRanges();
-
-    LongRangeCounter counter = LongRangeCounter.create(longRanges, counts);
-
+    LongRangeCounter counter = null;
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
-      DoubleValues fv = valueSource.getValues(hits.context, null);
-      totCount += hits.totalHits;
+      if (hits.totalHits == 0) {
+        continue;
+      }
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
         continue;
       }
+
+      if (counter == null) {
+        counter = setupCounter();
+      }
+
+      DoubleValues fv = valueSource.getValues(hits.context, null);
+      totCount += hits.totalHits;
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
@@ -183,26 +188,33 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
       }
     }
 
-    missingCount += counter.finish();
-    totCount -= missingCount;
+    if (counter != null) {
+      missingCount += counter.finish();
+      totCount -= missingCount;
+    }
   }
 
   /** Counts from the provided valueSource. */
   private void count(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    LongRange[] longRanges = getLongRanges();
-
-    LongRangeCounter counter = LongRangeCounter.create(longRanges, counts);
-
+    LongRangeCounter counter = null; // LongRangeCounter.create(longRanges, counts);
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
-      MultiDoubleValues multiValues = valueSource.getValues(hits.context);
+      if (hits.totalHits == 0) {
+        continue;
+      }
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
         continue;
       }
+
+      if (counter == null) {
+        counter = setupCounter();
+      }
+
+      MultiDoubleValues multiValues = valueSource.getValues(hits.context);
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
@@ -232,8 +244,10 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
       }
     }
 
-    missingCount += counter.finish();
-    totCount -= missingCount;
+    if (counter != null) {
+      missingCount += counter.finish();
+      totCount -= missingCount;
+    }
   }
 
   /** Create long ranges from the double ranges. */

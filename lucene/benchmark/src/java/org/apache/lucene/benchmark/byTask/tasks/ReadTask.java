@@ -30,8 +30,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 
@@ -110,15 +110,17 @@ public abstract class ReadTask extends PerfTask {
             // the IndexSearcher search methods that take
             // Weight public again, we can go back to
             // pulling the Weight ourselves:
-            TopFieldCollector collector =
-                TopFieldCollector.create(sort, numHits, withTotalHits() ? Integer.MAX_VALUE : 1);
-            searcher.search(q, collector);
-            hits = collector.topDocs();
+            int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
+            TopFieldCollectorManager collectorManager =
+                new TopFieldCollectorManager(
+                    sort, numHits, null, totalHitsThreshold, searcher.getSlices().length > 1);
+            hits = searcher.search(q, collectorManager);
           } else {
             hits = searcher.search(q, numHits);
           }
         } else {
           Collector collector = createCollector();
+
           searcher.search(q, collector);
           // hits = collector.topDocs();
         }
@@ -183,7 +185,8 @@ public abstract class ReadTask extends PerfTask {
   }
 
   protected Collector createCollector() throws Exception {
-    return TopScoreDocCollector.create(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1);
+    return new TopScoreDocCollectorManager(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1)
+        .newCollector();
   }
 
   protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {

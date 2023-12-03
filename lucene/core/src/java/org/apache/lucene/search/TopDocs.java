@@ -159,7 +159,7 @@ public class TopDocs {
       reverseMul = new int[sortFields.length];
       for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
         final SortField sortField = sortFields[compIDX];
-        comparators[compIDX] = sortField.getComparator(1, compIDX == 0);
+        comparators[compIDX] = sortField.getComparator(1, Pruning.NONE);
         reverseMul[compIDX] = sortField.getReverse() ? -1 : 1;
       }
     }
@@ -232,8 +232,7 @@ public class TopDocs {
   /**
    * Returns a new TopFieldDocs, containing topN results across the provided TopFieldDocs, sorting
    * by the specified {@link Sort}. Each of the TopDocs must have been sorted by the same Sort, and
-   * sort field values must have been filled (ie, <code>fillFields=true</code> must be passed to
-   * {@link TopFieldCollector#create}).
+   * sort field values must have been filled.
    *
    * @see #merge(Sort, int, int, TopFieldDocs[])
    * @lucene.experimental

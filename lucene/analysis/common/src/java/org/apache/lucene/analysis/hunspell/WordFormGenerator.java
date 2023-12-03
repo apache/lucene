@@ -300,9 +300,9 @@ public class WordFormGenerator {
         1,
         Integer.MAX_VALUE,
         false,
-        (root, lazyForms) -> {
-          String rootStr = root.toString();
-          IntsRef forms = lazyForms.get();
+        e -> {
+          String rootStr = e.root().toString();
+          IntsRef forms = e.forms();
           for (int i = 0; i < forms.length; i += dictionary.formStep()) {
             char[] encodedFlags = dictionary.flagLookup.getFlags(forms.ints[forms.offset + i]);
             if (shouldConsiderAtAll(encodedFlags)) {

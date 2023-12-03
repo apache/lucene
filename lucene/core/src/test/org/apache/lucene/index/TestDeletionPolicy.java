@@ -459,7 +459,8 @@ public class TestDeletionPolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setIndexDeletionPolicy(policy)
-                .setIndexCommit(lastCommit));
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
 
     // Should undo our rollback:
@@ -476,12 +477,13 @@ public class TestDeletionPolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setIndexDeletionPolicy(policy)
-                .setIndexCommit(lastCommit));
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
     // Commits the rollback:
     writer.close();
 
-    // Now 8 because we made another commit
+    // Now 7 because we made another commit
     assertEquals(7, DirectoryReader.listCommits(dir).size());
 
     r = DirectoryReader.open(dir);
@@ -507,7 +509,10 @@ public class TestDeletionPolicy extends LuceneTestCase {
     // but this time keeping only the last commit:
     writer =
         new IndexWriter(
-            dir, newIndexWriterConfig(new MockAnalyzer(random())).setIndexCommit(lastCommit));
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
 
     // Reader still sees fully merged index, because writer

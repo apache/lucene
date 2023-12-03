@@ -25,9 +25,11 @@ import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
- * generated DFA states that has been explored
+ * generated DFA states that has been explored. Note: the current implementation is NOT thread-safe
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
+ *
+ * @lucene.internal
  */
 public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
 

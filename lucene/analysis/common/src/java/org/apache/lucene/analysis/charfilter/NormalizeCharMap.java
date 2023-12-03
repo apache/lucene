@@ -105,7 +105,8 @@ public class NormalizeCharMap {
       final FST<CharsRef> map;
       try {
         final Outputs<CharsRef> outputs = CharSequenceOutputs.getSingleton();
-        final FSTCompiler<CharsRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, outputs);
+        final FSTCompiler<CharsRef> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, outputs).build();
         final IntsRefBuilder scratch = new IntsRefBuilder();
         for (Map.Entry<String, String> ent : pendingPairs.entrySet()) {
           fstCompiler.add(Util.toUTF16(ent.getKey(), scratch), new CharsRef(ent.getValue()));

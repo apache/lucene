@@ -33,15 +33,19 @@ import java.util.Arrays;
 public class Line extends LatLonGeometry {
   /** array of latitude coordinates */
   private final double[] lats;
+
   /** array of longitude coordinates */
   private final double[] lons;
 
   /** minimum latitude of this line's bounding box */
   public final double minLat;
+
   /** maximum latitude of this line's bounding box */
   public final double maxLat;
+
   /** minimum longitude of this line's bounding box */
   public final double minLon;
+
   /** maximum longitude of this line's bounding box */
   public final double maxLon;
 

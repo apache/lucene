@@ -150,6 +150,11 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
   }
 
   @Override
+  public final int getMaxDimensions(String fieldName) {
+    return 1024;
+  }
+
+  @Override
   public String toString() {
     return "Lucene92HnswVectorsFormat(name = Lucene92HnswVectorsFormat, maxConn = "
         + maxConn

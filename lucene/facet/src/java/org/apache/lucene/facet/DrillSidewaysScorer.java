@@ -144,22 +144,30 @@ class DrillSidewaysScorer extends BulkScorer {
     }
     */
 
-    if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
-      // System.out.println("queryFirst: baseScorer=" + baseScorer + " disis.length=" + disis.length
-      // + " bits.length=" + bits.length);
-      // position base scorer to the first matching doc
-      baseApproximation.nextDoc();
-      doQueryFirstScoring(acceptDocs, collector, dims);
-    } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
-      // System.out.println("drillDownAdvance");
-      // position base scorer to the first matching doc
-      baseIterator.nextDoc();
-      doDrillDownAdvanceScoring(acceptDocs, collector, dims);
-    } else {
-      // System.out.println("union");
-      // position base scorer to the first matching doc
-      baseIterator.nextDoc();
-      doUnionScoring(acceptDocs, collector, dims);
+    try {
+      if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
+        // System.out.println("queryFirst: baseScorer=" + baseScorer + " disis.length=" +
+        // disis.length
+        // + " bits.length=" + bits.length);
+        // position base scorer to the first matching doc
+        baseApproximation.nextDoc();
+        doQueryFirstScoring(acceptDocs, collector, dims);
+      } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
+        // System.out.println("drillDownAdvance");
+        // position base scorer to the first matching doc
+        baseIterator.nextDoc();
+        doDrillDownAdvanceScoring(acceptDocs, collector, dims);
+      } else {
+        // System.out.println("union");
+        // position base scorer to the first matching doc
+        baseIterator.nextDoc();
+        doUnionScoring(acceptDocs, collector, dims);
+      }
+    } finally {
+      // TODO: What's the right behavior when a collector throws CollectionTerminatedException?
+      // Should we stop scoring immediately (what we're doing now), or should we keep scoring until
+      // all collectors throw? Should users be able to specify somehow?
+      finish(dims);
     }
 
     return Integer.MAX_VALUE;
@@ -206,7 +214,8 @@ class DrillSidewaysScorer extends BulkScorer {
    */
   private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
-    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
+    collector = ScoreCachingWrappingScorer.wrap(collector);
+    setScorer(collector, baseScorer);
 
     // Specialize the single-dim use-case as we have a more efficient implementation for that:
     if (dims.length == 1) {
@@ -347,7 +356,7 @@ class DrillSidewaysScorer extends BulkScorer {
   /** Used when drill downs are highly constraining vs baseQuery. */
   private void doDrillDownAdvanceScoring(
       Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -559,7 +568,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doUnionScoring");
     // }
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -757,6 +766,18 @@ class DrillSidewaysScorer extends BulkScorer {
     sidewaysCollector.collect(collectDocID);
   }
 
+  private void finish(DocsAndCost[] dims) throws IOException {
+    // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
+    // "main" collector. This is because IndexSearcher handles calling #finish on the main
+    // collector.
+    if (drillDownLeafCollector != null) {
+      drillDownLeafCollector.finish();
+    }
+    for (DocsAndCost dim : dims) {
+      dim.sidewaysLeafCollector.finish();
+    }
+  }
+
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
     mainCollector.setScorer(scorer);
     if (drillDownLeafCollector != null) {
@@ -767,12 +788,7 @@ class DrillSidewaysScorer extends BulkScorer {
     }
   }
 
-  private final class ScoreAndDoc extends Scorable {
-
-    @Override
-    public int docID() {
-      return collectDocID;
-    }
+  private final class Score extends Scorable {
 
     @Override
     public float score() {

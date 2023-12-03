@@ -83,7 +83,11 @@ public final class SegmentReader extends CodecReader {
     this.si = si.clone();
     this.originalSi = si;
     this.metaData =
-        new LeafMetaData(createdVersionMajor, si.info.getMinVersion(), si.info.getIndexSort());
+        new LeafMetaData(
+            createdVersionMajor,
+            si.info.getMinVersion(),
+            si.info.getIndexSort(),
+            si.info.getHasBlocks());
 
     // We pull liveDocs/DV updates from disk:
     this.isNRT = false;

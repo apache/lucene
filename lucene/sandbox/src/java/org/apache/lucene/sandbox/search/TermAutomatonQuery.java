@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
@@ -209,14 +208,13 @@ public class TermAutomatonQuery extends Query implements Accountable {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    IndexReaderContext context = searcher.getTopReaderContext();
     Map<Integer, TermStates> termStates = new HashMap<>();
 
     for (Map.Entry<BytesRef, Integer> ent : termToID.entrySet()) {
       if (ent.getKey() != null) {
         termStates.put(
             ent.getValue(),
-            TermStates.build(context, new Term(field, ent.getKey()), scoreMode.needsScores()));
+            TermStates.build(searcher, new Term(field, ent.getKey()), scoreMode.needsScores()));
       }
     }
 

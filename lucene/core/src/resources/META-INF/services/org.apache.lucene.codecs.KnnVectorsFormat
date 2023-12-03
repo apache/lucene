@@ -13,4 +13,5 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat
+org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat
+org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat

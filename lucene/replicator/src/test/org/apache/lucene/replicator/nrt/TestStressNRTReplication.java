@@ -608,6 +608,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
+    cmd.add("-Djava.io.tmpdir=" + childTempDir.toFile());
     cmd.addAll(getJvmForkArguments());
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());

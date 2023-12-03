@@ -272,7 +272,7 @@ public final class BlendedTermQuery extends Query {
     for (int i = 0; i < contexts.length; ++i) {
       if (contexts[i] == null
           || contexts[i].wasBuiltFor(indexSearcher.getTopReaderContext()) == false) {
-        contexts[i] = TermStates.build(indexSearcher.getTopReaderContext(), terms[i], true);
+        contexts[i] = TermStates.build(indexSearcher, terms[i], true);
       }
     }
 

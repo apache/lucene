@@ -19,6 +19,8 @@ package org.apache.lucene.analysis.ja.dict;
 import static org.apache.lucene.analysis.ja.dict.UserDictionary.CUSTOM_DICTIONARY_WORD_ID_OFFSET;
 import static org.apache.lucene.analysis.ja.dict.UserDictionary.INTERNAL_SEPARATOR;
 
+import org.apache.lucene.analysis.util.CSVUtil;
+
 /** Morphological information for user dictionary. */
 final class UserMorphData implements JaMorphData {
   public static final int WORD_COST = -100000;

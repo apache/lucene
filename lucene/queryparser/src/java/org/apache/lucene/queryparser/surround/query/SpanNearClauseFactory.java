@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.queryparser.surround.query;
+
 /*
 SpanNearClauseFactory:
 

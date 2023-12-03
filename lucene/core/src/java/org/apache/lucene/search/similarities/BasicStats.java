@@ -25,14 +25,19 @@ import org.apache.lucene.index.Terms;
  */
 public class BasicStats {
   final String field;
+
   /** The number of documents. */
   protected long numberOfDocuments;
+
   /** The total number of tokens in the field. */
   protected long numberOfFieldTokens;
+
   /** The average field length. */
   protected double avgFieldLength;
+
   /** The document frequency. */
   protected long docFreq;
+
   /** The total number of occurrences of this term across all documents. */
   protected long totalTermFreq;
 

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.blockterms;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -154,7 +156,7 @@ public class VariableGapTermsIndexReader extends TermsIndexReaderBase {
     public FieldIndexData(IndexInput in, FieldInfo fieldInfo, long indexStart) throws IOException {
       IndexInput clone = in.clone();
       clone.seek(indexStart);
-      fst = new FST<>(clone, clone, fstOutputs);
+      fst = new FST<>(readMetadata(clone, fstOutputs), clone);
       clone.close();
 
       /*

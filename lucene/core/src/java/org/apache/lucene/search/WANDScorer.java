@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * This implements the WAND (Weak AND) algorithm for dynamic pruning described in "Efficient Query
@@ -121,6 +122,8 @@ final class WANDScorer extends Scorer {
   // scaled min competitive score
   private long minCompetitiveScore = 0;
 
+  private final Scorer[] allScorers;
+
   // list of scorers which 'lead' the iteration and are currently
   // positioned on 'doc'. This is sometimes called the 'pivot' in
   // some descriptions of WAND (Weak AND).
@@ -139,7 +142,6 @@ final class WANDScorer extends Scorer {
   int tailSize;
 
   final long cost;
-  final MaxScoreSumPropagator maxScorePropagator;
 
   int upTo; // upper bound for which max scores are valid
 
@@ -156,6 +158,7 @@ final class WANDScorer extends Scorer {
       throw new IllegalArgumentException("minShouldMatch should be < the number of scorers");
     }
 
+    allScorers = scorers.toArray(Scorer[]::new);
     this.minCompetitiveScore = 0;
 
     assert minShouldMatch >= 0 : "minShouldMatch should not be negative, but got " + minShouldMatch;
@@ -185,12 +188,10 @@ final class WANDScorer extends Scorer {
         float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
         maxScoreSumDouble += maxScore;
       }
-      this.maxScorePropagator = new MaxScoreSumPropagator(scorers);
-      final float maxScoreSum = maxScorePropagator.scoreSumUpperBound(maxScoreSumDouble);
+      final float maxScoreSum = (float) MathUtil.sumUpperBound(maxScoreSumDouble, scorers.size());
       this.scalingFactor = scalingFactor(maxScoreSum);
     } else {
       this.scalingFactor = 0;
-      this.maxScorePropagator = null;
     }
 
     for (Scorer scorer : scorers) {
@@ -245,7 +246,6 @@ final class WANDScorer extends Scorer {
     long scaledMinScore = scaleMinScore(minScore, scalingFactor);
     assert scaledMinScore >= minCompetitiveScore;
     minCompetitiveScore = scaledMinScore;
-    maxScorePropagator.setMinCompetitiveScore(minScore);
   }
 
   @Override
@@ -532,7 +532,11 @@ final class WANDScorer extends Scorer {
   @Override
   public int advanceShallow(int target) throws IOException {
     // Propagate to improve score bounds
-    maxScorePropagator.advanceShallow(target);
+    for (Scorer scorer : allScorers) {
+      if (scorer.docID() < target) {
+        scorer.advanceShallow(target);
+      }
+    }
     if (target <= upTo) {
       return upTo;
     }
@@ -542,7 +546,13 @@ final class WANDScorer extends Scorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return maxScorePropagator.getMaxScore(upTo);
+    double maxScoreSum = 0;
+    for (Scorer scorer : allScorers) {
+      if (scorer.docID() <= upTo) {
+        maxScoreSum += scorer.getMaxScore(upTo);
+      }
+    }
+    return (float) MathUtil.sumUpperBound(maxScoreSum, allScorers.length);
   }
 
   @Override

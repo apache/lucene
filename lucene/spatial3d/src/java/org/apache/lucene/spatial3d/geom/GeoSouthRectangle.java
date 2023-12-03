@@ -30,30 +30,40 @@ import java.io.OutputStream;
 class GeoSouthRectangle extends GeoBaseBBox {
   /** The top latitude of the rect */
   protected final double topLat;
+
   /** The left longitude of the rect */
   protected final double leftLon;
+
   /** The right longitude of the rect */
   protected final double rightLon;
+
   /** The cosine of a middle latitude */
   protected final double cosMiddleLat;
+
   /** The upper left hand corner of the rectangle */
   protected final GeoPoint ULHC;
+
   /** The upper right hand corner of the rectangle */
   protected final GeoPoint URHC;
 
   /** The top plane */
   protected final SidedPlane topPlane;
+
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
+
   /** Backing plane (for narrow angles) */
   protected final SidedPlane backingPlane;
 
   /** Notable points for the top plane */
   protected final GeoPoint[] topPlanePoints;
+
   /** Notable points for the left plane */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Notable points for the right plane */
   protected final GeoPoint[] rightPlanePoints;
 

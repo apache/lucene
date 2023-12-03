@@ -39,8 +39,9 @@ import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
+import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -961,17 +962,23 @@ public class TestSuggestField extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig(random(), analyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
-        new Lucene95Codec() {
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           CompletionPostingsFormat.FSTLoadMode fstLoadMode =
               RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          PostingsFormat postingsFormat = new Completion90PostingsFormat(fstLoadMode);
+          PostingsFormat postingsFormat = new Completion99PostingsFormat(fstLoadMode);
 
           @Override
-          public PostingsFormat getPostingsFormatForField(String field) {
-            if (suggestFields.contains(field)) {
-              return postingsFormat;
-            }
-            return super.getPostingsFormatForField(field);
+          public PostingsFormat postingsFormat() {
+            return new PerFieldPostingsFormat() {
+              @Override
+              public PostingsFormat getPostingsFormatForField(String field) {
+                if (suggestFields.contains(field)) {
+                  return postingsFormat;
+                }
+                return ((PerFieldPostingsFormat) delegate.postingsFormat())
+                    .getPostingsFormatForField(field);
+              }
+            };
           }
         };
     iwc.setCodec(filterCodec);

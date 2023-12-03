@@ -61,6 +61,7 @@ public abstract class DualFloatFunction extends ValueSource {
       public float floatVal(int doc) throws IOException {
         return func(doc, aVals, bVals);
       }
+
       /**
        * True if and only if <em>all</em> of the wrapped {@link FunctionValues} <code>exists</code>
        * for the specified doc

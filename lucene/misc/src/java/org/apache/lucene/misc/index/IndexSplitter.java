@@ -132,6 +132,7 @@ public class IndexSplitter {
               info.name,
               info.maxDoc(),
               info.getUseCompoundFile(),
+              info.getHasBlocks(),
               info.getCodec(),
               info.getDiagnostics(),
               info.getId(),

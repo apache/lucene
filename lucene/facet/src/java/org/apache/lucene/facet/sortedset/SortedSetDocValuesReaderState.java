@@ -42,6 +42,7 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   public static final class OrdRange {
     /** Start of range, inclusive: */
     public final int start;
+
     /** End of range, inclusive: */
     public final int end;
 

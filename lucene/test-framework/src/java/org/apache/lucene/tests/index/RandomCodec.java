@@ -90,7 +90,7 @@ public class RandomCodec extends AssertingCodec {
   private final int perFieldSeed;
 
   // a little messy: randomize the default codec's parameters here.
-  // with the default values, we have e,g, 1024 points in leaf nodes,
+  // with the default values, we have e,g, 512 points in leaf nodes,
   // which is less effective for testing.
   // TODO: improve how we randomize this...
   private final int maxPointsInLeafNode;

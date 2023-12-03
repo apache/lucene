@@ -43,6 +43,7 @@ import org.apache.lucene.util.FixedBitSet;
 public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryReader {
   private final String field;
   private final CacheHelper readerCacheHelper;
+
   /**
    * Creates a new soft deletes wrapper.
    *

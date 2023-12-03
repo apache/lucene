@@ -69,7 +69,7 @@ public final class Util {
 
   /** Looks up the output for this input, or null if the input is not accepted */
   public static <T> T get(FST<T> fst, BytesRef input) throws IOException {
-    assert fst.inputType == FST.INPUT_TYPE.BYTE1;
+    assert fst.metadata.inputType == FST.INPUT_TYPE.BYTE1;
 
     final BytesReader fstReader = fst.getBytesReader();
 
@@ -100,6 +100,7 @@ public final class Util {
   public static class FSTPath<T> {
     /** Holds the last arc appended to this path */
     public FST.Arc<T> arc;
+
     /** Holds cost plus any usage-specific output: */
     public T output;
 
@@ -446,6 +447,7 @@ public final class Util {
      * TopNSearcher} rejected too many results.
      */
     public final boolean isComplete;
+
     /** The top results */
     public final List<Result<T>> topN;
 
@@ -850,6 +852,17 @@ public final class Util {
             fst.readArcByDirectAddressing(arc, in, ceilIndex);
             assert arc.label() > label;
           }
+          return arc;
+        }
+      } else if (arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS) {
+        int targetIndex = label - arc.label();
+        if (targetIndex >= arc.numArcs()) {
+          return null;
+        } else if (targetIndex < 0) {
+          return arc;
+        } else {
+          fst.readArcByContinuous(arc, in, targetIndex);
+          assert arc.label() == label;
           return arc;
         }
       }

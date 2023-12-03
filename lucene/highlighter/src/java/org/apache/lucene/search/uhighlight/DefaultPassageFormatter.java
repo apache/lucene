@@ -25,10 +25,13 @@ package org.apache.lucene.search.uhighlight;
 public class DefaultPassageFormatter extends PassageFormatter {
   /** text that will appear before highlighted terms */
   protected final String preTag;
+
   /** text that will appear after highlighted terms */
   protected final String postTag;
+
   /** text that will appear between two unconnected passages */
   protected final String ellipsis;
+
   /** true if we should escape for html */
   protected final boolean escape;
 

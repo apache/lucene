@@ -475,7 +475,6 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     FacetsCollector sfc =
         newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-
     // Test SUM:
     Facets facets =
         new TaxonomyFacetFloatAssociations(

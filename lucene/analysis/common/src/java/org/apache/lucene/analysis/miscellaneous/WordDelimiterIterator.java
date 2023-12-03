@@ -45,11 +45,13 @@ public final class WordDelimiterIterator {
 
   /** start position of text, excluding leading delimiters */
   int startBounds;
+
   /** end position of text, excluding trailing delimiters */
   int endBounds;
 
   /** Beginning of subword */
   int current;
+
   /** End of subword */
   int end;
 

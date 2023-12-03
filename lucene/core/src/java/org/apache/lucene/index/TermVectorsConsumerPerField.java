@@ -21,8 +21,8 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBlockPool;
 
 final class TermVectorsConsumerPerField extends TermsHashPerField {
 
@@ -40,7 +40,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   private OffsetAttribute offsetAttribute;
   private PayloadAttribute payloadAttribute;
   private TermFrequencyAttribute termFreqAtt;
-  private final ByteBlockPool termBytePool;
+  private final BytesRefBlockPool termBytePool;
 
   private boolean hasPayloads; // if enabled, and we actually saw any for this field
 
@@ -58,7 +58,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
     this.termsWriter = termsHash;
     this.fieldInfo = fieldInfo;
     this.fieldState = invertState;
-    termBytePool = termsHash.termBytePool;
+    termBytePool = new BytesRefBlockPool(termsHash.termBytePool);
   }
 
   /**
@@ -106,7 +106,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
       final int freq = postings.freqs[termID];
 
       // Get BytesRef
-      termBytePool.setBytesRef(flushTerm, postings.textStarts[termID]);
+      termBytePool.fillBytesRef(flushTerm, postings.textStarts[termID]);
       tv.startTerm(flushTerm, freq);
 
       if (doVectorPositions || doVectorOffsets) {

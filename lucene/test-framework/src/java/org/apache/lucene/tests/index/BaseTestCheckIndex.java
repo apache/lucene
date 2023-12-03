@@ -59,6 +59,7 @@ public class BaseTestCheckIndex extends LuceneTestCase {
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
     checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+    checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
     if (VERBOSE) checker.setInfoStream(System.out);
     CheckIndex.Status indexStatus = checker.checkIndex();
     if (indexStatus.clean == false) {

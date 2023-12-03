@@ -23,6 +23,7 @@ class PhraseScorer extends Scorer {
 
   final DocIdSetIterator approximation;
   final ImpactsDISI impactsApproximation;
+  final MaxScoreCache maxScoreCache;
   final PhraseMatcher matcher;
   final ScoreMode scoreMode;
   private final LeafSimScorer simScorer;
@@ -39,6 +40,7 @@ class PhraseScorer extends Scorer {
     this.matchCost = matcher.getMatchCost();
     this.approximation = matcher.approximation();
     this.impactsApproximation = matcher.impactsApproximation();
+    this.maxScoreCache = impactsApproximation.getMaxScoreCache();
   }
 
   @Override
@@ -94,12 +96,12 @@ class PhraseScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsApproximation.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsApproximation.getMaxScore(upTo);
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   @Override

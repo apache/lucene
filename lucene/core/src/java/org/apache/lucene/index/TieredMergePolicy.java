@@ -113,6 +113,7 @@ public class TieredMergePolicy extends MergePolicy {
     FORCE_MERGE,
     FORCE_MERGE_DELETES
   }
+
   /**
    * Returns the current maxMergeAtOnce setting.
    *

@@ -56,6 +56,7 @@ public class MapOfSets<K, V> {
     theSet.add(val);
     return theSet.size();
   }
+
   /**
    * Adds multiple vals to the Set associated with key in the Map. If key is not already in the map,
    * a new Set will first be created.

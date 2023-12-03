@@ -56,7 +56,8 @@ import org.apache.lucene.util.LongValues;
  * @lucene.experimental
  */
 public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFacetCounts {
-  final int[] counts;
+  private final SortedSetDocValuesReaderState state;
+  int[] counts;
 
   /** Returns all facet counts, same result as searching on {@link MatchAllDocsQuery} but faster. */
   public SortedSetDocValuesFacetCounts(SortedSetDocValuesReaderState state) throws IOException {
@@ -67,13 +68,24 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
   public SortedSetDocValuesFacetCounts(SortedSetDocValuesReaderState state, FacetsCollector hits)
       throws IOException {
     super(state);
-    this.counts = new int[state.getSize()];
+    this.state = state;
     if (hits == null) {
       // browse only
       countAll();
     } else {
       count(hits.getMatchingDocs());
     }
+  }
+
+  private void initializeCounts() {
+    if (counts == null) {
+      counts = new int[state.getSize()];
+    }
+  }
+
+  @Override
+  boolean hasCounts() {
+    return counts != null;
   }
 
   @Override
@@ -89,6 +101,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
       // nothing to count
       return;
     }
+
+    // Initialize counts:
+    initializeCounts();
 
     // It's slightly more efficient to work against SortedDocValues if the field is actually
     // single-valued (see: LUCENE-5309)
@@ -159,11 +174,18 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
   private void countOneSegment(
       OrdinalMap ordinalMap, LeafReader reader, int segOrd, MatchingDocs hits, Bits liveDocs)
       throws IOException {
+    if (hits != null && hits.totalHits == 0) {
+      return;
+    }
+
     SortedSetDocValues multiValues = DocValues.getSortedSet(reader, field);
     if (multiValues == null) {
       // nothing to count
       return;
     }
+
+    // Initialize counts:
+    initializeCounts();
 
     // It's slightly more efficient to work against SortedDocValues if the field is actually
     // single-valued (see: LUCENE-5309)

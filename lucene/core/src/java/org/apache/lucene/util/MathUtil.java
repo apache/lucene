@@ -167,4 +167,29 @@ public final class MathUtil {
     double u = Math.scalb(1.0, -52);
     return (numValues - 1) * u;
   }
+
+  /**
+   * Return the maximum possible sum across {@code numValues} non-negative doubles, assuming one sum
+   * yielded {@code sum}.
+   *
+   * @see #sumRelativeErrorBound(int)
+   */
+  public static double sumUpperBound(double sum, int numValues) {
+    if (numValues <= 2) {
+      // When there are only two clauses, the sum is always the same regardless
+      // of the order.
+      return sum;
+    }
+
+    // The error of sums depends on the order in which values are summed up. In
+    // order to avoid this issue, we compute an upper bound of the value that
+    // the sum may take. If the max relative error is b, then it means that two
+    // sums are always within 2*b of each other.
+    // For conjunctions, we could skip this error factor since the order in which
+    // scores are summed up is predictable, but in practice, this wouldn't help
+    // much since the delta that is introduced by this error factor is usually
+    // cancelled by the float cast.
+    double b = MathUtil.sumRelativeErrorBound(numValues);
+    return (1.0 + 2 * b) * sum;
+  }
 }

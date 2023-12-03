@@ -29,23 +29,31 @@ class dXYZSolid extends BaseXYZSolid {
 
   /** X */
   protected final double X;
+
   /** Min-Y */
   protected final double minY;
+
   /** Max-Y */
   protected final double maxY;
+
   /** Min-Z */
   protected final double minZ;
+
   /** Max-Z */
   protected final double maxZ;
 
   /** X plane */
   protected final Plane xPlane;
+
   /** Min-Y plane */
   protected final SidedPlane minYPlane;
+
   /** Max-Y plane */
   protected final SidedPlane maxYPlane;
+
   /** Min-Z plane */
   protected final SidedPlane minZPlane;
+
   /** Max-Z plane */
   protected final SidedPlane maxZPlane;
 

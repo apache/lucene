@@ -24,6 +24,7 @@ public class LongRange {
 
   /** The inclusive minimum value of this range */
   public long min;
+
   /** The exclusive maximum value of this range */
   public long max;
 

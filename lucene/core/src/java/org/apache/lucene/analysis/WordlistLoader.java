@@ -29,7 +29,7 @@ import org.apache.lucene.util.IOUtils;
 /**
  * Loader for text files that represent a list of stopwords.
  *
- * @see IOUtils to obtain {@link Reader} instances
+ * @see IOUtils to obtain Reader instances
  * @lucene.internal
  */
 public class WordlistLoader {

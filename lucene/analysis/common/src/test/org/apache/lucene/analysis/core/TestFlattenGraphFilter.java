@@ -611,6 +611,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new int[] {1, 1, 3, 1, 2, 1, 1, 1},
         7);
   }
+
   // This graph can create a disconnected input node that is farther ahead in the output than its
   // subsequent input node.
   // Exceptions: Free too early or dropped tokens.

@@ -500,11 +500,11 @@ public class SortField {
    *
    * @lucene.experimental
    * @param numHits number of top hits the queue will store
-   * @param enableSkipping true if the comparator can skip documents via {@link
+   * @param pruning controls how can the comparator to skip documents via {@link
    *     LeafFieldComparator#competitiveIterator()}
    * @return {@link FieldComparator} to use when sorting
    */
-  public FieldComparator<?> getComparator(final int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(final int numHits, Pruning pruning) {
     final FieldComparator<?> fieldComparator;
     switch (type) {
       case SCORE:
@@ -512,38 +512,36 @@ public class SortField {
         break;
 
       case DOC:
-        fieldComparator = new DocComparator(numHits, reverse, enableSkipping);
+        fieldComparator = new DocComparator(numHits, reverse, pruning);
         break;
 
       case INT:
         fieldComparator =
-            new IntComparator(numHits, field, (Integer) missingValue, reverse, enableSkipping);
+            new IntComparator(numHits, field, (Integer) missingValue, reverse, pruning);
         break;
 
       case FLOAT:
         fieldComparator =
-            new FloatComparator(numHits, field, (Float) missingValue, reverse, enableSkipping);
+            new FloatComparator(numHits, field, (Float) missingValue, reverse, pruning);
         break;
 
       case LONG:
-        fieldComparator =
-            new LongComparator(numHits, field, (Long) missingValue, reverse, enableSkipping);
+        fieldComparator = new LongComparator(numHits, field, (Long) missingValue, reverse, pruning);
         break;
 
       case DOUBLE:
         fieldComparator =
-            new DoubleComparator(numHits, field, (Double) missingValue, reverse, enableSkipping);
+            new DoubleComparator(numHits, field, (Double) missingValue, reverse, pruning);
         break;
 
       case CUSTOM:
         assert comparatorSource != null;
-        fieldComparator = comparatorSource.newComparator(field, numHits, enableSkipping, reverse);
+        fieldComparator = comparatorSource.newComparator(field, numHits, pruning, reverse);
         break;
 
       case STRING:
         fieldComparator =
-            new TermOrdValComparator(
-                numHits, field, missingValue == STRING_LAST, reverse, enableSkipping);
+            new TermOrdValComparator(numHits, field, missingValue == STRING_LAST, reverse, pruning);
         break;
 
       case STRING_VAL:

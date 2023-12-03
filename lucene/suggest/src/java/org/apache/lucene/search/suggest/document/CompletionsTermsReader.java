@@ -31,8 +31,10 @@ import org.apache.lucene.util.Accountable;
 public final class CompletionsTermsReader implements Accountable {
   /** Minimum entry weight for the suggester */
   public final long minWeight;
+
   /** Maximum entry weight for the suggester */
   public final long maxWeight;
+
   /** type of suggester (context-enabled or not) */
   public final byte type;
 

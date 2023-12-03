@@ -906,7 +906,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // TestUtil#checkIndex checks segment concurrently using another thread, but making
           // call back to synchronized methods such as MockDirectoryWrapper#fileLength.
           // Hence passing concurrent = false to this method to turn off concurrent checks.
-          TestUtil.checkIndex(this, getCrossCheckTermVectorsOnClose(), true, false, null);
+          TestUtil.checkIndex(this, getLevelForCheckOnClose(), true, false, null);
         }
 
         // TODO: factor this out / share w/ TestIW.assertNoUnreferencedFiles
@@ -970,7 +970,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           DirectoryReader ir1 = DirectoryReader.open(this);
           int numDocs1 = ir1.numDocs();
           ir1.close();
-          new IndexWriter(this, new IndexWriterConfig(null)).close();
+          // Don't commit on close, so that no merges will be scheduled.
+          new IndexWriter(this, new IndexWriterConfig(null).setCommitOnClose(false)).close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
           ir2.close();

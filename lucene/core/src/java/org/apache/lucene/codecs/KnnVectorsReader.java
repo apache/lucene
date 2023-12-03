@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -79,14 +80,12 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param k the number of docs to return
+   * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs search(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+  public abstract void search(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -109,14 +108,13 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param k the number of docs to return
+   * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs search(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+  public abstract void search(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.

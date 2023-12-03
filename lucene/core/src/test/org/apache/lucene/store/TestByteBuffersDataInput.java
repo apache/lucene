@@ -204,7 +204,6 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   public void testSlicingWindow() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     assertEquals(0, dst.toDataInput().slice(0, 0).size());
-    ;
 
     dst.writeBytes(randomBytesOfLength(1024 * 8));
     ByteBuffersDataInput in = dst.toDataInput();

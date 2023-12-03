@@ -27,15 +27,19 @@ import java.util.Arrays;
 public class XYLine extends XYGeometry {
   /** array of x coordinates */
   private final float[] x;
+
   /** array of y coordinates */
   private final float[] y;
 
   /** minimum x of this line's bounding box */
   public final float minX;
+
   /** maximum y of this line's bounding box */
   public final float maxX;
+
   /** minimum y of this line's bounding box */
   public final float minY;
+
   /** maximum y of this line's bounding box */
   public final float maxY;
 

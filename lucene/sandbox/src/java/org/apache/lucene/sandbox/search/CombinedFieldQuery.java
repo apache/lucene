@@ -330,7 +330,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       termStates = new TermStates[fieldTerms.length];
       for (int i = 0; i < termStates.length; i++) {
         FieldAndWeight field = fieldAndWeights.get(fieldTerms[i].field());
-        TermStates ts = TermStates.build(searcher.getTopReaderContext(), fieldTerms[i], true);
+        TermStates ts = TermStates.build(searcher, fieldTerms[i], true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
           TermStatistics termStats =

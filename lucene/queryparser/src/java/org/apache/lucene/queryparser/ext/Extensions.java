@@ -39,6 +39,7 @@ import org.apache.lucene.queryparser.classic.QueryParserBase;
 public class Extensions {
   private final Map<String, ParserExtension> extensions = new HashMap<>();
   private final char extensionFieldDelimiter;
+
   /** The default extension field delimiter character. This constant is set to ':' */
   public static final char DEFAULT_EXTENSION_FIELD_DELIMITER = ':';
 

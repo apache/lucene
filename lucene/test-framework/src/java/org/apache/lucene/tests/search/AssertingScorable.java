@@ -18,7 +18,6 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterScorable;
 import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.Scorable;
@@ -33,9 +32,6 @@ public class AssertingScorable extends FilterScorable {
 
   @Override
   public float score() throws IOException {
-    int docId = docID();
-    assert docId != -1 && docId != DocIdSetIterator.NO_MORE_DOCS
-        : "score() called on unpositioned Scorable docid=" + docID();
     final float score = in.score();
     assert !Float.isNaN(score) : "NaN score for in=" + in;
     return score;

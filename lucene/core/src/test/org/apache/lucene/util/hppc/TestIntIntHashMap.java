@@ -612,7 +612,6 @@ public class TestIntIntHashMap extends LuceneTestCase {
   @Test
   public void testEqualsSubClass() {
     class Sub extends IntIntHashMap {}
-    ;
 
     IntIntHashMap l1 = newInstance();
     l1.put(k1, value0);

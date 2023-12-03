@@ -76,6 +76,7 @@ public abstract class QueryParserBase extends QueryBuilder
   // the nested class:
   /** Alternative form of QueryParser.Operator.AND */
   public static final Operator AND_OPERATOR = Operator.AND;
+
   /** Alternative form of QueryParser.Operator.OR */
   public static final Operator OR_OPERATOR = Operator.OR;
 

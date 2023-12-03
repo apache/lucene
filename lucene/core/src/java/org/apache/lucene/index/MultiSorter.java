@@ -122,14 +122,11 @@ final class MultiSorter {
       final PackedLongValues remapped = builders[i].build();
       final Bits liveDocs = readers.get(i).getLiveDocs();
       docMaps[i] =
-          new MergeState.DocMap() {
-            @Override
-            public int get(int docID) {
-              if (liveDocs == null || liveDocs.get(docID)) {
-                return (int) remapped.get(docID);
-              } else {
-                return -1;
-              }
+          docID -> {
+            if (liveDocs == null || liveDocs.get(docID)) {
+              return (int) remapped.get(docID);
+            } else {
+              return -1;
             }
           };
     }

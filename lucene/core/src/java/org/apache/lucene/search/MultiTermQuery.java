@@ -57,6 +57,7 @@ public abstract class MultiTermQuery extends Query {
   public abstract static class RewriteMethod {
     public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
         throws IOException;
+
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *

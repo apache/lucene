@@ -28,6 +28,7 @@ import java.util.Objects;
 public final class FieldInfo {
   /** Field's name */
   public final String name;
+
   /** Internal field number */
   public final int number;
 

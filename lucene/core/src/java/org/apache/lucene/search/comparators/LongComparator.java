@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 
 /**
  * Comparator based on {@link Long#compare} for {@code numHits}. This comparator provides a skipping
@@ -32,8 +33,8 @@ public class LongComparator extends NumericComparator<Long> {
   protected long bottom;
 
   public LongComparator(
-      int numHits, String field, Long missingValue, boolean reverse, boolean enableSkipping) {
-    super(field, missingValue != null ? missingValue : 0L, reverse, enableSkipping, Long.BYTES);
+      int numHits, String field, Long missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0L, reverse, pruning, Long.BYTES);
     values = new long[numHits];
   }
 
@@ -96,11 +97,13 @@ public class LongComparator extends NumericComparator<Long> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Long.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Long.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Long.compare(missingValue, topValue);
     }
 
     @Override

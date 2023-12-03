@@ -19,6 +19,7 @@ package org.apache.lucene.facet.sortedset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -68,6 +69,9 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
+    if (hasCounts() == false) {
+      return null;
+    }
     TopChildrenForPath topChildrenForPath = getTopChildrenForPath(topN, dim, path);
     return createFacetResult(topChildrenForPath, dim, path);
   }
@@ -77,6 +81,10 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
     ChildIterationCursor iterationCursor = prepareChildIteration(dim, dimConfig, path);
     if (iterationCursor == null) {
+      return null;
+    }
+
+    if (hasCounts() == false) {
       return null;
     }
 
@@ -111,12 +119,17 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       return -1;
     }
 
-    return getCount(ord);
+    return hasCounts() == false ? 0 : getCount(ord);
   }
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
     validateTopN(topN);
+
+    if (hasCounts() == false) {
+      return Collections.emptyList();
+    }
+
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
       TopChildrenForPath topChildrenForPath = getTopChildrenForPath(topN, dim);
@@ -135,6 +148,10 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     validateTopN(topNDims);
     validateTopN(topNChildren);
+
+    if (hasCounts() == false) {
+      return Collections.emptyList();
+    }
 
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
@@ -229,6 +246,9 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
     return Arrays.asList(results);
   }
+
+  /** Were any counts actually computed? (They may not be if there are no hits, etc.) */
+  abstract boolean hasCounts();
 
   /** Retrieve the count for a specified ordinal. */
   abstract int getCount(int ord);

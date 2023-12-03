@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Collection;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.MaxScoreAccumulator.DocAndScore;
 
@@ -44,7 +43,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
   }
 
-  private static class SimpleTopScoreDocCollector extends TopScoreDocCollector {
+  static class SimpleTopScoreDocCollector extends TopScoreDocCollector {
 
     SimpleTopScoreDocCollector(
         int numHits, HitsThresholdChecker hitsThresholdChecker, MaxScoreAccumulator minScoreAcc) {
@@ -102,7 +101,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
   }
 
-  private static class PagingTopScoreDocCollector extends TopScoreDocCollector {
+  static class PagingTopScoreDocCollector extends TopScoreDocCollector {
 
     private final ScoreDoc after;
     private int collectedHits;
@@ -204,9 +203,13 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>, and fill the array with sentinel objects.
+   *
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static TopScoreDocCollector create(int numHits, int totalHitsThreshold) {
-    return create(numHits, null, totalHitsThreshold);
+    return new TopScoreDocCollectorManager(numHits, null, totalHitsThreshold, false).newCollector();
   }
 
   /**
@@ -221,64 +224,27 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>, and fill the array with sentinel objects.
+   *
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static TopScoreDocCollector create(int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return create(
-        numHits, after, HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits)), null);
-  }
-
-  static TopScoreDocCollector create(
-      int numHits,
-      ScoreDoc after,
-      HitsThresholdChecker hitsThresholdChecker,
-      MaxScoreAccumulator minScoreAcc) {
-
-    if (numHits <= 0) {
-      throw new IllegalArgumentException(
-          "numHits must be > 0; please use TotalHitCountCollector if you just need the total hit count");
-    }
-
-    if (hitsThresholdChecker == null) {
-      throw new IllegalArgumentException("hitsThresholdChecker must be non null");
-    }
-
-    if (after == null) {
-      return new SimpleTopScoreDocCollector(numHits, hitsThresholdChecker, minScoreAcc);
-    } else {
-      return new PagingTopScoreDocCollector(numHits, after, hitsThresholdChecker, minScoreAcc);
-    }
+    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, false)
+        .newCollector();
   }
 
   /**
    * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
+   *
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
       int numHits, ScoreDoc after, int totalHitsThreshold) {
-
-    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
-    return new CollectorManager<>() {
-
-      private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(totalHitsMax);
-      private final MaxScoreAccumulator minScoreAcc =
-          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
-
-      @Override
-      public TopScoreDocCollector newCollector() throws IOException {
-        return TopScoreDocCollector.create(numHits, after, hitsThresholdChecker, minScoreAcc);
-      }
-
-      @Override
-      public TopDocs reduce(Collection<TopScoreDocCollector> collectors) throws IOException {
-        final TopDocs[] topDocs = new TopDocs[collectors.size()];
-        int i = 0;
-        for (TopScoreDocCollector collector : collectors) {
-          topDocs[i++] = collector.topDocs();
-        }
-        return TopDocs.merge(0, numHits, topDocs);
-      }
-    };
+    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
   }
 
   int docBase;

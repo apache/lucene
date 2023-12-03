@@ -63,6 +63,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Test;
 
@@ -330,22 +331,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       service.shutdown();
 
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
-      directory.close();
-      if (testReader != null) {
-        testReader.close();
-      }
-      if (test != null) {
-        test.close();
-      }
-      if (train != null) {
-        train.close();
-      }
-      if (cv != null) {
-        cv.close();
-      }
+      IOUtils.close(reader, directory, testReader, test, train, cv);
 
       for (Classifier<BytesRef> c : classifiers) {
         if (c instanceof Closeable) {

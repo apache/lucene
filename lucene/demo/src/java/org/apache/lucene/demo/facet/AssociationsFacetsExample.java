@@ -42,6 +42,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows example usage of category associations. */
 public class AssociationsFacetsExample {
@@ -86,8 +87,7 @@ public class AssociationsFacetsExample {
     doc.add(new FloatAssociationFacetField(0.34f, "genre", "software"));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
-    indexWriter.close();
-    taxoWriter.close();
+    IOUtils.close(indexWriter, taxoWriter);
   }
 
   /** User runs a query and aggregates facets by summing their association values. */
@@ -115,8 +115,7 @@ public class AssociationsFacetsExample {
     results.add(tags.getTopChildren(10, "tags"));
     results.add(genre.getTopChildren(10, "genre"));
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return results;
   }
@@ -142,8 +141,7 @@ public class AssociationsFacetsExample {
             "$genre", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     FacetResult result = facets.getTopChildren(10, "genre");
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return result;
   }

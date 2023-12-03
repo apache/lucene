@@ -29,20 +29,25 @@ import java.io.OutputStream;
 class GeoDegenerateHorizontalLine extends GeoBaseBBox {
   /** Latitude of horizontal line */
   protected final double latitude;
+
   /** Left bounding longitude of line */
   protected final double leftLon;
+
   /** Right bounding longitude of line */
   protected final double rightLon;
 
   /** Left hand endpoint of line */
   protected final GeoPoint LHC;
+
   /** Right hand endpoint of line */
   protected final GeoPoint RHC;
 
   /** The plane describing the line */
   protected final Plane plane;
+
   /** The left side end plane */
   protected final SidedPlane leftPlane;
+
   /** The right side end plane */
   protected final SidedPlane rightPlane;
 
@@ -51,6 +56,7 @@ class GeoDegenerateHorizontalLine extends GeoBaseBBox {
 
   /** Center of line */
   protected final GeoPoint centerPoint;
+
   /** A point that's on the line */
   protected final GeoPoint[] edgePoints;
 

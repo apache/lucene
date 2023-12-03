@@ -31,12 +31,16 @@ class GeoDegenerateLongitudeSlice extends GeoBaseBBox {
 
   /** The bounding plane for the slice (through both poles, perpendicular to the slice) */
   protected final SidedPlane boundingPlane;
+
   /** The plane of the slice */
   protected final Plane plane;
+
   /** A point on the slice */
   protected final GeoPoint interiorPoint;
+
   /** An array consisting of the one point chosen on the slice */
   protected final GeoPoint[] edgePoints;
+
   /** Notable points for the slice (north and south poles) */
   protected final GeoPoint[] planePoints;
 

@@ -30,32 +30,46 @@ import java.io.OutputStream;
 class GeoNorthRectangle extends GeoBaseBBox {
   /** The bottom latitude of the rectangle */
   protected final double bottomLat;
+
   /** The left longitude */
   protected final double leftLon;
+
   /** The right longitude */
   protected final double rightLon;
+
   /** Cosine of the middle latitude */
   protected final double cosMiddleLat;
+
   /** Lower right hand corner point */
   protected final GeoPoint LRHC;
+
   /** Lower left hand corner point */
   protected final GeoPoint LLHC;
+
   /** Bottom edge plane */
   protected final SidedPlane bottomPlane;
+
   /** Left-side plane */
   protected final SidedPlane leftPlane;
+
   /** Right-side plane */
   protected final SidedPlane rightPlane;
+
   /** Backing plane (for narrow angles) */
   protected final SidedPlane backingPlane;
+
   /** Bottom plane notable points */
   protected final GeoPoint[] bottomPlanePoints;
+
   /** Left plane notable points */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Right plane notable points */
   protected final GeoPoint[] rightPlanePoints;
+
   /** Center point */
   protected final GeoPoint centerPoint;
+
   /** A point on the edge */
   protected final GeoPoint[] edgePoints;
 

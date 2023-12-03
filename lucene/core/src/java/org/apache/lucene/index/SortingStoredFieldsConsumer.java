@@ -61,7 +61,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void decompress(
                 DataInput in, int originalLength, int offset, int length, BytesRef bytes)
                 throws IOException {
-              bytes.bytes = ArrayUtil.grow(bytes.bytes, length);
+              bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, length);
               in.skipBytes(offset);
               in.readBytes(bytes.bytes, 0, length);
               bytes.offset = 0;
@@ -137,6 +137,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
 
     CopyVisitor(StoredFieldsWriter writer) {
       this.writer = writer;
+    }
+
+    @Override
+    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+      writer.writeField(fieldInfo, value, length);
     }
 
     @Override

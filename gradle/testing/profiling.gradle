@@ -15,20 +15,18 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.ProfileResults;
-
 def recordings = files()
 
 allprojects {
   plugins.withType(JavaPlugin) {
     ext {
       testOptions += [
-          [propName: 'tests.profile', value: false, description: "Enable java flight recorder profiling."]
+          [propName: 'tests.profile', value: false, description: "Enable Java Flight Recorder profiling."]
       ]
     }
 
     if (resolvedTestOption("tests.profile").toBoolean()) {
-      allprojects {
+      if (rootProject.hasJavaFlightRecorder) {
         tasks.withType(Test) {
           jvmArgs("-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings=" + rootProject.file("gradle/testing/profiling.jfc"),
               "-XX:+UnlockDiagnosticVMOptions",
@@ -41,6 +39,8 @@ allprojects {
             recordings = recordings.plus fileTree(dir: workingDir, include: '*.jfr')
           }
         }
+      } else {
+        throw new GradleException('Module jdk.jfr is not available; Java Flight Recorder profiles cannot be enabled.')
       }
     }
   }
@@ -48,10 +48,11 @@ allprojects {
 
 gradle.buildFinished {
   if (!recordings.isEmpty()) {
-    ProfileResults.printReport(recordings.getFiles().collect { it.toString() },
-        propertyOrDefault(ProfileResults.MODE_KEY, ProfileResults.MODE_DEFAULT) as String,
-        Integer.parseInt(propertyOrDefault(ProfileResults.STACKSIZE_KEY, ProfileResults.STACKSIZE_DEFAULT)),
-        Integer.parseInt(propertyOrDefault(ProfileResults.COUNT_KEY, ProfileResults.COUNT_DEFAULT)),
-        Boolean.parseBoolean(propertyOrDefault(ProfileResults.LINENUMBERS_KEY, ProfileResults.LINENUMBERS_DEFAULT)))
+    def pr = org.apache.lucene.gradle.ProfileResults;
+    pr.printReport(recordings.getFiles().collect { it.toString() },
+        propertyOrDefault(pr.MODE_KEY, pr.MODE_DEFAULT) as String,
+        Integer.parseInt(propertyOrDefault(pr.STACKSIZE_KEY, pr.STACKSIZE_DEFAULT)),
+        Integer.parseInt(propertyOrDefault(pr.COUNT_KEY, pr.COUNT_DEFAULT)),
+        Boolean.parseBoolean(propertyOrDefault(pr.LINENUMBERS_KEY, pr.LINENUMBERS_DEFAULT)))
   }
 }

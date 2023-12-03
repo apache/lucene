@@ -157,19 +157,9 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   public void testSpanNearQueryWithoutSlopXML() throws Exception {
-    Exception expectedException = new NumberFormatException("For input string: \"\"");
-    try {
-      Query q = parse("SpanNearQueryWithoutSlop.xml");
-      fail("got query " + q + " instead of expected exception " + expectedException);
-    } catch (Exception e) {
-      assertEquals(expectedException.toString(), e.toString());
-    }
-    try {
-      SpanQuery sq = parseAsSpan("SpanNearQueryWithoutSlop.xml");
-      fail("got span query " + sq + " instead of expected exception " + expectedException);
-    } catch (Exception e) {
-      assertEquals(expectedException.toString(), e.toString());
-    }
+    // expected NumberFormatException from empty "slop" string
+    assertThrows(NumberFormatException.class, () -> parse("SpanNearQueryWithoutSlop.xml"));
+    assertThrows(NumberFormatException.class, () -> parseAsSpan("SpanNearQueryWithoutSlop.xml"));
   }
 
   public void testConstantScoreQueryXML() throws Exception {

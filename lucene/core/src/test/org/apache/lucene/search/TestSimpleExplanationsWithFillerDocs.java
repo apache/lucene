@@ -35,8 +35,10 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
 
   /** num of empty docs injected between every doc in the index */
   private static final int NUM_FILLER_DOCS = TEST_NIGHTLY ? BooleanScorer.SIZE : 4;
+
   /** num of empty docs injected prior to the first doc in the (main) index */
   private static int PRE_FILLER_DOCS;
+
   /**
    * If non-null then the filler docs are not empty, and need to be filtered out from queries using
    * this as both field name &amp; field value

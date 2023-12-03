@@ -28,14 +28,19 @@ import java.io.OutputStream;
 class GeoDegenerateLatitudeZone extends GeoBaseBBox {
   /** The latitude */
   protected final double latitude;
+
   /** Sine of the latitude */
   protected final double sinLatitude;
+
   /** Plane describing the latitude zone */
   protected final Plane plane;
+
   /** A point on the world that's also on the zone */
   protected final GeoPoint interiorPoint;
+
   /** An array consisting of the interiorPoint */
   protected final GeoPoint[] edgePoints;
+
   /** No notable points */
   protected static final GeoPoint[] planePoints = new GeoPoint[0];
 

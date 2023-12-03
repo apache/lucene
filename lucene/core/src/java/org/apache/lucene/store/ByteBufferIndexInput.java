@@ -99,9 +99,16 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
   }
 
-  // the unused parameter is just to silence javac about unused variables
-  AlreadyClosedException alreadyClosed(RuntimeException unused) {
-    return new AlreadyClosedException("Already closed: " + this);
+  AlreadyClosedException alreadyClosed(NullPointerException npe) {
+    // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
+    // we check the "is closed" condition explicitly by checking that our "buffers" are null or
+    // the guard was invalidated.
+    if (this.buffers == null || this.curBuf == null || guard.isInvalidated()) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // otherwise rethrow unmodified NPE (as it possibly a bug with passing a null parameter to the
+    // IndexInput method):
+    throw npe;
   }
 
   @Override
@@ -347,6 +354,29 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    int bi = (int) (pos >> chunkSizePower);
+    int bufferPos = (int) (pos & chunkSizeMask);
+    try {
+      int curAvail = Math.min(buffers[bi].capacity() - bufferPos, len);
+      while (len > curAvail) {
+        guard.getBytes(buffers[bi], bufferPos, bytes, offset, curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        bi++;
+        if (bi >= buffers.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        bufferPos = 0;
+        curAvail = Math.min(len, buffers[bi].capacity());
+      }
+      guard.getBytes(buffers[bi], bufferPos, bytes, offset, curAvail);
+    } catch (NullPointerException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public short readShort(long pos) throws IOException {
     final int bi = (int) (pos >> chunkSizePower);
     try {
@@ -436,7 +466,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   protected ByteBufferIndexInput buildSlice(String sliceDescription, long offset, long length) {
-    if (buffers == null) {
+    if (buffers == null || guard.isInvalidated()) {
       throw alreadyClosed(null);
     }
 
@@ -570,6 +600,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
 
     @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+      try {
+        guard.getBytes(curBuf, (int) pos, bytes, offset, len);
+      } catch (IllegalArgumentException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
+      } catch (NullPointerException e) {
+        throw alreadyClosed(e);
+      }
+    }
+
+    @Override
     public short readShort(long pos) throws IOException {
       try {
         return guard.getShort(curBuf, (int) pos);
@@ -643,6 +684,11 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     @Override
     public byte readByte(long pos) throws IOException {
       return super.readByte(pos + offset);
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+      super.readBytes(pos + this.offset, bytes, offset, len);
     }
 
     @Override

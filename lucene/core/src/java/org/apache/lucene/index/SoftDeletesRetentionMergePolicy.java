@@ -46,6 +46,7 @@ import org.apache.lucene.util.IOSupplier;
 public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMergePolicy {
   private final String field;
   private final Supplier<Query> retentionQuerySupplier;
+
   /**
    * Creates a new {@link SoftDeletesRetentionMergePolicy}
    *

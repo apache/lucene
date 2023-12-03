@@ -46,11 +46,11 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
   public static final String NAME = "truncate";
 
   public static final String PREFIX_LENGTH_KEY = "prefixLength";
-  private final byte prefixLength;
+  private final int prefixLength;
 
   public TruncateTokenFilterFactory(Map<String, String> args) {
     super(args);
-    prefixLength = Byte.parseByte(get(args, PREFIX_LENGTH_KEY, "5"));
+    prefixLength = Integer.parseInt(get(args, PREFIX_LENGTH_KEY, "5"));
     if (prefixLength < 1)
       throw new IllegalArgumentException(
           PREFIX_LENGTH_KEY + " parameter must be a positive number: " + prefixLength);

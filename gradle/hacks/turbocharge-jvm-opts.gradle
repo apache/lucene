@@ -57,8 +57,8 @@ allprojects {
                 // are not part of up-to-date checks but these are internal JVM flags so we
                 // don't care.
                 //
-                // Pass VM options via -J only with a custom javaHome AND when java toolchains are not used.
-                if (task.options.forkOptions.javaHome != null && task.javaCompiler.getOrNull() == null) {
+                // Pass VM options via -J when a custom javaHome is used and we're in fork mode.
+                if (task.options.fork && task.options.forkOptions.javaHome != null) {
                     return vmOpts.collect {"-J" + it}
                 } else {
                     return vmOpts

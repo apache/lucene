@@ -391,6 +391,7 @@ public class ToParentBlockJoinQuery extends Query {
       }
       this.score = (float) score;
     }
+
     /*
      * This instance of Explanation requires three parameters, context, childWeight, and scoreMode.
      * The scoreMode parameter considers Avg, Total, Min, Max, and None.
