@@ -1686,7 +1686,6 @@ public class TestAddIndexes extends LuceneTestCase {
 
     RandomIndexWriter w1 = new RandomIndexWriter(random(), dir1, iwc1);
     Document parent = new Document();
-    parent.add(new NumericDocValuesField("foobar", 0));
     w1.addDocuments(Arrays.asList(new Document(), new Document(), parent));
     w1.commit();
     w1.addDocuments(Arrays.asList(new Document(), new Document(), parent));
