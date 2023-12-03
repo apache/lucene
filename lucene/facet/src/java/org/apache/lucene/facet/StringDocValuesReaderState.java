@@ -18,7 +18,13 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.lucene.index.*;
+
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.OrdinalMap;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**

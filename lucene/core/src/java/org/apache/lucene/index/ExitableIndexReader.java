@@ -29,7 +29,6 @@ import org.apache.lucene.util.Bits;
  * rewrite. After this time is exceeded, the search thread is stopped by throwing a {@link
  * ExitableIndexReader.TimeExceededException}.
  *
- * @see org.apache.lucene.index.ExitableDirectoryReader
  */
 public final class ExitableIndexReader extends IndexReader {
   private final IndexReader indexReader;
@@ -45,7 +44,7 @@ public final class ExitableIndexReader extends IndexReader {
   public ExitableIndexReader(IndexReader indexReader, QueryTimeout queryTimeout) {
     this.indexReader = indexReader;
     this.queryTimeout = queryTimeout;
-    doWrapDirectoryReader(indexReader, queryTimeout);
+    doWrapIndexReader(indexReader, queryTimeout);
   }
 
   /** Thrown when elapsed search time exceeds allowed search time. */
@@ -156,8 +155,9 @@ public final class ExitableIndexReader extends IndexReader {
     return indexReader.getSumTotalTermFreq(field);
   }
 
-  /** Thrown when elapsed search time exceeds allowed search time. */
-  protected static void doWrapDirectoryReader(IndexReader in, QueryTimeout queryTimeout) {
+
+  /** Method to wrap leaf readers of underlying index reader */
+  protected static void doWrapIndexReader(IndexReader in, QueryTimeout queryTimeout) {
     try {
       Map<CacheKey, LeafReader> readerCache = new HashMap<>();
       List<LeafReaderContext> leaves = in.leaves();
@@ -179,7 +179,6 @@ public final class ExitableIndexReader extends IndexReader {
     }
   }
 
-  /** Thrown when elapsed search time exceeds allowed search time. */
   private static class ExitableSubReaderWrapper extends FilterDirectoryReader.SubReaderWrapper {
     private final Map<CacheKey, LeafReader> mapping;
 
@@ -217,23 +216,15 @@ public final class ExitableIndexReader extends IndexReader {
     }
   }
 
-  /**
-   * This reader filters out documents that have a doc values value in the given field and treat
-   * these documents as soft deleted. Hard deleted documents will also be filtered out in the life
-   * docs of this reader.
-   */
+   /**
+    *  TimeoutLeafReader is wrapper class for FilterLeafReader which is imposing timeout on different
+    * operations of FilterLeafReader
+    */
   public static class TimeoutLeafReader extends FilterLeafReader {
-    /**
-     * Construct a FilterLeafReader based on the specified base reader.
-     *
-     * <p>Note that base reader is closed if this FilterLeafReader is closed.
-     *
-     * @param in specified base reader.
-     */
-
-    /** The underlying LeafReader. */
+    /** To be wrapped {@link LeafReader} */
     protected final LeafReader in;
 
+    /** QueryTimeout parameter */
     private final QueryTimeout queryTimeout;
 
     @Override
