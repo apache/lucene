@@ -244,7 +244,6 @@ final class DocumentsWriterPerThread implements Accountable {
           Iterable<? extends IndexableField> doc = iterator.next();
           if (segmentInfo.getIndexSort() != null) {
             if (parentFieldName != null) {
-              validateNoParentField(doc);
               final NumericDocValuesField parentField;
               if (iterator.hasNext() == false) {
                 int numChildren = numDocsInRAM - docsInRamBefore;
@@ -289,10 +288,6 @@ final class DocumentsWriterPerThread implements Accountable {
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
     }
-  }
-
-  private void validateNoParentField(Iterable<? extends IndexableField> doc) {
-    for (IndexableField field : doc) {}
   }
 
   private Iterable<? extends IndexableField> filterParentDocField(
