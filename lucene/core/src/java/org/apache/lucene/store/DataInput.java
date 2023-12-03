@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -38,9 +39,6 @@ import org.apache.lucene.util.BitUtil;
  * positioned independently.
  */
 public abstract class DataInput implements Cloneable {
-  // the maximum length of a single group-varint is 4 integers + 1 byte flag.
-  static final int MAX_LENGTH_PER_GROUP = 17;
-  static final int[] GROUP_VINT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   /**
    * Reads and returns a single byte.
@@ -102,62 +100,30 @@ public abstract class DataInput implements Cloneable {
   }
 
   // just for benchmark only, it will be removed before the PR is merged
-  public void readGroupVIntsBaseline(long[] docs, int limit) throws IOException {
+  public final void readGroupVIntsBaseline(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      fallbackReadGroupVInt(docs, i);
+      GroupVIntUtil.fallbackReadGroupVInt(this, dst, i);
     }
     for (; i < limit; ++i) {
-      docs[i] = readVInt();
+      dst[i] = readVInt();
     }
   }
 
   /**
-   * Read all the group varints, including the tail vints.
+   * Read all the group varints, including the tail vints. we need a long[] because this is what
+   * postings are using, all longs are actually required to be integers.
    *
-   * @param docs the array to read ints into.
+   * @param dst the array to read ints into.
    * @param limit the number of int values to read.
    */
-  public void readGroupVInts(long[] docs, int limit) throws IOException {
+  public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      fallbackReadGroupVInt(docs, i);
+      GroupVIntUtil.fallbackReadGroupVInt(this, dst, i);
     }
     for (; i < limit; ++i) {
-      docs[i] = readVInt();
-    }
-  }
-
-  /**
-   * Read single group varint. we need a long[] because this is what postings are using.
-   *
-   * @param docs the array to read ints into.
-   * @param offset the offset in the array to start storing ints.
-   */
-  protected void fallbackReadGroupVInt(long[] docs, int offset) throws IOException {
-    final int flag = readByte() & 0xFF;
-
-    final int n1Minus1 = flag >> 6;
-    final int n2Minus1 = (flag >> 4) & 0x03;
-    final int n3Minus1 = (flag >> 2) & 0x03;
-    final int n4Minus1 = flag & 0x03;
-
-    docs[offset] = readLongInGroup(n1Minus1);
-    docs[offset + 1] = readLongInGroup(n2Minus1);
-    docs[offset + 2] = readLongInGroup(n3Minus1);
-    docs[offset + 3] = readLongInGroup(n4Minus1);
-  }
-
-  private long readLongInGroup(int numBytesMinus1) throws IOException {
-    switch (numBytesMinus1) {
-      case 0:
-        return readByte() & 0xFFL;
-      case 1:
-        return readShort() & 0xFFFFL;
-      case 2:
-        return (readShort() & 0xFFFFL) | ((readByte() & 0xFFL) << 16);
-      default:
-        return readInt() & 0xFFFFFFFFL;
+      dst[i] = readVInt();
     }
   }
 

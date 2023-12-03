@@ -20,7 +20,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /** Base implementation class for buffered {@link IndexInput}. */
 public abstract class BufferedIndexInput extends IndexInput implements RandomAccessInput {
@@ -151,19 +151,19 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public void readGroupVInts(long[] docs, int limit) throws IOException {
+  public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(docs, i);
+      readGroupVInt(dst, i);
     }
     for (; i < limit; ++i) {
-      docs[i] = readVInt();
+      dst[i] = readVInt();
     }
   }
 
-  private void readGroupVInt(long[] docs, int offset) throws IOException {
-    if (buffer.remaining() < MAX_LENGTH_PER_GROUP) {
-      super.fallbackReadGroupVInt(docs, offset);
+  private void readGroupVInt(long[] dst, int offset) throws IOException {
+    if (buffer.remaining() < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
+      GroupVIntUtil.fallbackReadGroupVInt(this, dst, offset);
       return;
     }
 
@@ -174,15 +174,14 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     final int n3Minus1 = (flag >> 2) & 0x03;
     final int n4Minus1 = flag & 0x03;
 
-    byte[] bytes = buffer.array();
     int curPosition = buffer.position();
-    docs[offset] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n1Minus1];
+    dst[offset] = buffer.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n1Minus1];
     curPosition += 1 + n1Minus1;
-    docs[offset + 1] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n2Minus1];
+    dst[offset + 1] = buffer.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n2Minus1];
     curPosition += 1 + n2Minus1;
-    docs[offset + 2] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n3Minus1];
+    dst[offset + 2] = buffer.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n3Minus1];
     curPosition += 1 + n3Minus1;
-    docs[offset + 3] = (int) BitUtil.VH_LE_INT.get(bytes, curPosition) & GROUP_VINT_MASKS[n4Minus1];
+    dst[offset + 3] = buffer.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n4Minus1];
     curPosition += 1 + n4Minus1;
     buffer.position(curPosition);
   }

@@ -328,8 +328,9 @@ public abstract class DataOutput {
   }
 
   /**
-   * Encode integers using group-varint. It uses VInt to encode tail values that are not enough for
-   * a group
+   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
+   * values that are not enough for a group. we need a long[] because this is what postings are
+   * using, all longs are actually required to be integers.
    *
    * @param values the values to write
    * @param limit the number of values to write.

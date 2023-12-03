@@ -18,6 +18,7 @@ package org.apache.lucene.tests.store;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -58,6 +59,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
 
 /** Base class for {@link Directory} implementations. */
@@ -1436,6 +1438,70 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       String[] expected = actual.clone();
       Arrays.sort(expected);
       assertArrayEquals(expected, actual);
+    }
+  }
+
+  public void testDataTypes() throws IOException {
+    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeByte((byte) 43);
+      out.writeShort((short) 12345);
+      out.writeInt(1234567890);
+      out.writeGroupVInts(values, 4);
+      out.writeLong(1234567890123456789L);
+      out.close();
+
+      long[] restored = new long[4];
+      IndexInput in = dir.openInput("test", IOContext.DEFAULT);
+      assertEquals(43, in.readByte());
+      assertEquals(12345, in.readShort());
+      assertEquals(1234567890, in.readInt());
+      in.readGroupVInts(restored, 4);
+      assertArrayEquals(values, restored);
+      assertEquals(1234567890123456789L, in.readLong());
+      in.close();
+    }
+  }
+
+  public void testGroupVInt() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
+      // test fallbackReadGroupVInt
+      doTestGroupVInt(dir, 5, 1, 6, 8);
+
+      // test large data to covers multiple blocks in ByteBuffersDataInput
+      doTestGroupVInt(dir, 5, 1, 31, 1024);
+
+      // use more iterations to covers all bpv
+      doTestGroupVInt(dir, atLeast(100), 1, 31, 128);
+    }
+  }
+
+  public void doTestGroupVInt(
+      Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
+    long[] values = new long[maxNumValues];
+    long[] restored = new long[maxNumValues];
+
+    for (int i = 0; i < iterations; i++) {
+      final int bpv = TestUtil.nextInt(random(), minBpv, maxBpv);
+      final int numValues = TestUtil.nextInt(random(), 1, maxNumValues);
+
+      // encode
+      for (int j = 0; j < numValues; j++) {
+        values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
+      }
+      IndexOutput out = dir.createOutput("group-varint", IOContext.DEFAULT);
+      out.writeGroupVInts(values, numValues);
+      out.close();
+
+      // decode
+      IndexInput in = dir.openInput("group-varint", IOContext.DEFAULT);
+      in.readGroupVInts(restored, numValues);
+      in.close();
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(values, 0, numValues),
+          ArrayUtil.copyOfSubArray(restored, 0, numValues));
+      dir.deleteFile("group-varint");
     }
   }
 }
