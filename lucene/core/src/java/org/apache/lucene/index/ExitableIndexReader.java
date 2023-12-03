@@ -27,8 +27,7 @@ import org.apache.lucene.util.Bits;
 /**
  * The {@link ExitableIndexReader} is used to timeout I/O operation which is done during query
  * rewrite. After this time is exceeded, the search thread is stopped by throwing a {@link
- * ExitableIndexReader.TimeExceededException}.
- *
+ * ExitableIndexReader.TimeExceededException}
  */
 public final class ExitableIndexReader extends IndexReader {
   private final IndexReader indexReader;
@@ -155,7 +154,6 @@ public final class ExitableIndexReader extends IndexReader {
     return indexReader.getSumTotalTermFreq(field);
   }
 
-
   /** Method to wrap leaf readers of underlying index reader */
   protected static void doWrapIndexReader(IndexReader in, QueryTimeout queryTimeout) {
     try {
@@ -216,10 +214,10 @@ public final class ExitableIndexReader extends IndexReader {
     }
   }
 
-   /**
-    *  TimeoutLeafReader is wrapper class for FilterLeafReader which is imposing timeout on different
-    * operations of FilterLeafReader
-    */
+  /**
+   * TimeoutLeafReader is wrapper class for FilterLeafReader which is imposing timeout on different
+   * operations of FilterLeafReader
+   */
   public static class TimeoutLeafReader extends FilterLeafReader {
     /** To be wrapped {@link LeafReader} */
     protected final LeafReader in;
