@@ -71,11 +71,12 @@ public final class Sort {
    *
    * @param parentField the name of a numeric doc values field that marks the last document of a
    *     document blocks indexed with {@link
-   *     org.apache.lucene.index.IndexWriter#addDocuments(Iterable)} or it's update relatives. This
-   *     is required for indices that use index sorting in combination with document blocks in order
-   *     to maintain the document order of the blocks documents. Index sorting will effectively
-   *     compare the parent (last document) of a block in order to stable sort all it's adjacent
-   *     documents that belong to a block. This field must be a numeric doc values field a
+   *     org.apache.lucene.index.IndexWriter#addDocuments(Iterable)} or it's update relatives at
+   *     index time. This is required for indices that use index sorting in combination with
+   *     document blocks in order to maintain the document order of the blocks documents. Index
+   *     sorting will effectively compare the parent (last document) of a block in order to stable
+   *     sort all it's adjacent documents that belong to a block. This field must be a numeric doc
+   *     values field.
    */
   public Sort(String parentField, SortField... fields) {
     if (fields.length == 0) {
@@ -110,7 +111,9 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-    assert parentField == null;
+    if (parentField == null) {
+      throw new IllegalStateException("parentFields must not be used with search time sorting");
+    }
     SortField[] rewrittenSortFields = new SortField[fields.length];
     for (int i = 0; i < fields.length; i++) {
       rewrittenSortFields[i] = fields[i].rewrite(searcher);

@@ -3172,7 +3172,26 @@ public class TestIndexSorting extends LuceneTestCase {
     dir.close();
   }
 
-  public void testBlockIsMissingParentField() throws IOException {
+  public void testParentFieldNotConfigured() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        IllegalArgumentException ex =
+            expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  writer.addDocuments(Arrays.asList(new Document(), new Document()));
+                });
+        assertEquals(
+            "a parent field must be set in order to use document blocks with index sorting; see Sort#getParentField",
+            ex.getMessage());
+      }
+    }
+  }
+
+  public void testBlockContainsParentField() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       String parentField = "parent";
@@ -3186,10 +3205,12 @@ public class TestIndexSorting extends LuceneTestCase {
                       expectThrows(
                           IllegalArgumentException.class,
                           () -> {
-                            writer.addDocuments(Arrays.asList(new Document(), new Document()));
+                            Document doc = new Document();
+                            doc.add(new NumericDocValuesField("parent", 0));
+                            writer.addDocuments(Arrays.asList(doc, new Document()));
                           });
                   assertEquals(
-                      "the last document in the block must contain a numeric doc values field named: parent",
+                      "documents must not contain the parent doc values field \"parent\"",
                       ex.getMessage());
                 },
                 () -> {
@@ -3199,21 +3220,10 @@ public class TestIndexSorting extends LuceneTestCase {
                           () -> {
                             Document doc = new Document();
                             doc.add(new NumericDocValuesField("parent", 0));
-                            writer.addDocuments(Arrays.asList(doc, new Document()));
+                            writer.addDocuments(Arrays.asList(new Document(), doc));
                           });
                   assertEquals(
-                      "only the last document in the block must contain a numeric doc values field named: parent",
-                      ex.getMessage());
-                },
-                () -> {
-                  IllegalArgumentException ex =
-                      expectThrows(
-                          IllegalArgumentException.class,
-                          () -> {
-                            writer.addDocuments(Arrays.asList(new Document()));
-                          });
-                  assertEquals(
-                      "the last document in the block must contain a numeric doc values field named: parent",
+                      "documents must not contain the parent doc values field \"parent\"",
                       ex.getMessage());
                 });
         Collections.shuffle(runnabels, random());
@@ -3237,7 +3247,6 @@ public class TestIndexSorting extends LuceneTestCase {
         child2.add(new StringField("id", Integer.toString(1), Store.YES));
         Document parent = new Document();
         parent.add(new StringField("id", Integer.toString(1), Store.YES));
-        parent.add(new NumericDocValuesField(parentField, 0));
         writer.addDocuments(Arrays.asList(child1, child2, parent));
         writer.flush();
         if (random().nextBoolean()) {
@@ -3306,7 +3315,6 @@ public class TestIndexSorting extends LuceneTestCase {
           parent.add(new StringField("id", Integer.toString(i), Store.YES));
           parent.add(new NumericDocValuesField("id", i));
           parent.add(new NumericDocValuesField("foo", random().nextInt()));
-          parent.add(new NumericDocValuesField(parentField, 0));
           w.addDocuments(Arrays.asList(child1, child2, parent));
           if (rarely()) {
             w.commit();
@@ -3321,12 +3329,13 @@ public class TestIndexSorting extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           LeafReader leaf = ctx.reader();
-          DocIdSetIterator parentDISI = leaf.getNumericDocValues(parentField);
+          NumericDocValues parentDISI = leaf.getNumericDocValues(parentField);
           NumericDocValues ids = leaf.getNumericDocValues("id");
           NumericDocValues children = leaf.getNumericDocValues("child");
-          int doc = -1;
+          int doc;
           int expectedDocID = 2;
           while ((doc = parentDISI.nextDoc()) != NO_MORE_DOCS) {
+            assertEquals(2, parentDISI.longValue());
             assertEquals(expectedDocID, doc);
             int id = ids.nextDoc();
             long child1ID = ids.longValue();

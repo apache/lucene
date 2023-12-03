@@ -540,11 +540,7 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  void processDocument(
-      int docID,
-      Iterable<? extends IndexableField> document,
-      Consumer<IndexableField> fieldConsumer)
-      throws IOException {
+  void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
     // number of unique fields by names (collapses multiple field instances by the same name)
     int fieldCount = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
@@ -563,7 +559,6 @@ final class IndexingChain implements Accountable {
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
       for (IndexableField field : document) {
-        fieldConsumer.accept(field);
         IndexableFieldType fieldType = field.fieldType();
         PerField pf = getOrAddPerField(field.name());
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
