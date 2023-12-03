@@ -22,6 +22,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.TimSorter;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -209,9 +210,8 @@ public final class Sorter {
     final IndexSorter.DocComparator[] comparators = new IndexSorter.DocComparator[fields.length];
 
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
-    if (reader.getMetaData().hasBlocks()) {
-      assert sort.getParentField() != null
-          : "a parent field must be present when segment has blocks and index sorting";
+    LeafMetaData metaData = reader.getMetaData();
+    if (metaData.hasBlocks() && sort.getParentField() != null) {
       BitSet parents =
           BitSet.of(reader.getNumericDocValues(sort.getParentField()), reader.maxDoc());
       comparatorWrapper =
@@ -219,6 +219,11 @@ public final class Sorter {
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
+    assert metaData.hasBlocks() == false
+            || sort.getParentField() != null
+            || metaData.getCreatedVersionMajor() < Version.LUCENE_10_0_0.major
+        : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+            + metaData.getCreatedVersionMajor();
     for (int i = 0; i < fields.length; i++) {
       IndexSorter sorter = fields[i].getIndexSorter();
       if (sorter == null) {

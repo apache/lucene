@@ -59,6 +59,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.Version;
 
 /** Default general purpose indexing chain, which handles indexing all types of fields. */
 final class IndexingChain implements Accountable {
@@ -222,7 +223,8 @@ final class IndexingChain implements Accountable {
 
     LeafReader docValuesReader = getDocValuesLeafReader();
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
-    if (state.segmentInfo.getHasBlocks()) {
+
+    if (state.segmentInfo.getHasBlocks() && indexSort.getParentField() != null) {
       final DocIdSetIterator readerValues =
           docValuesReader.getNumericDocValues(indexSort.getParentField());
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
@@ -231,6 +233,11 @@ final class IndexingChain implements Accountable {
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
+    assert state.segmentInfo.getHasBlocks() == false
+            || indexSort.getParentField() != null
+            || indexCreatedVersionMajor < Version.LUCENE_10_0_0.major
+        : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+            + indexCreatedVersionMajor;
     List<IndexSorter.DocComparator> comparators = new ArrayList<>();
     for (int i = 0; i < indexSort.getSort().length; i++) {
       SortField sortField = indexSort.getSort()[i];

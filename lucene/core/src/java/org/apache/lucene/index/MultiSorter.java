@@ -25,6 +25,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -53,7 +54,8 @@ final class MultiSorter {
       comparables[i] = sorter.getComparableProviders(readers);
       for (int j = 0; j < readers.size(); j++) {
         CodecReader codecReader = readers.get(j);
-        if (codecReader.getMetaData().hasBlocks()) {
+        LeafMetaData metaData = codecReader.getMetaData();
+        if (metaData.hasBlocks() && sort.getParentField() != null) {
           NumericDocValues parentDocs = codecReader.getNumericDocValues(sort.getParentField());
           assert parentDocs != null
               : "parent field: "
@@ -64,6 +66,11 @@ final class MultiSorter {
           IndexSorter.ComparableProvider provider = providers[j];
           providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
         }
+        assert metaData.hasBlocks() == false
+                || sort.getParentField() != null
+                || metaData.getCreatedVersionMajor() < Version.LUCENE_10_0_0.major
+            : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+                + metaData.getCreatedVersionMajor();
       }
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;
     }
