@@ -1552,6 +1552,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   private void addDoc(IndexWriter writer, int id) throws IOException {
+    addDoc(writer, id, false);
+  }
+
+  private void addDoc(IndexWriter writer, int id, boolean addBlock) throws IOException {
     Document doc = new Document();
     doc.add(new TextField("content", "aaa", Field.Store.NO));
     doc.add(new StringField("id", Integer.toString(id), Field.Store.YES));
@@ -1620,7 +1624,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // TODO:
     //   index different norms types via similarity (we use a random one currently?!)
     //   remove any analyzer randomness, explicitly add payloads for certain fields.
-    writer.addDocument(doc);
+    if (addBlock) {
+      writer.addDocuments(Arrays.asList(doc, doc));
+    } else {
+      writer.addDocument(doc);
+    }
   }
 
   private void addNoProxDoc(IndexWriter writer) throws IOException {
@@ -2165,6 +2173,44 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
       reader.close();
       dir.close();
+    }
+  }
+
+  public void testSortedIndexWithBlocks() throws Exception {
+    for (String name : oldSortedNames) {
+      Path path = createTempDir("sorted");
+      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
+      assertNotNull("Sorted index index " + name + " not found", resource);
+      TestUtil.unzip(resource, path);
+
+      try (Directory dir = newFSDirectory(path)) {
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+
+          assertEquals(1, reader.leaves().size());
+          Sort sort = reader.leaves().get(0).reader().getMetaData().getSort();
+          assertNotNull(sort);
+
+          // open writer
+          try (IndexWriter writer =
+              new IndexWriter(
+                  dir,
+                  newIndexWriterConfig(new MockAnalyzer(random()))
+                      .setOpenMode(OpenMode.APPEND)
+                      .setIndexSort(sort)
+                      .setMergePolicy(newLogMergePolicy()))) {
+            // add 10 docs
+            for (int i = 0; i < 10; i++) {
+              addDoc(writer, DOCS_COUNT + i, true);
+            }
+            writer.forceMerge(1);
+          }
+
+          // This will confirm the docs are really sorted
+          TestUtil.checkIndex(dir);
+
+          searchExampleIndex(reader);
+        }
+      }
     }
   }
 
