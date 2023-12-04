@@ -339,6 +339,7 @@ public final class JavascriptCompiler {
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
       private final Deque<Type> typeStack = new ArrayDeque<>();
+      private final Map<String, Integer> constantsMap = new HashMap<>();
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
@@ -400,7 +401,7 @@ public final class JavascriptCompiler {
             // place dynamic constant with MethodHandle on top of stack
             gen.visitLdcInsn(
                 new ConstantDynamic(
-                    getMethodHandleConstantName(text),
+                    "func" + constantsMap.computeIfAbsent(text, k -> constantsMap.size()),
                     METHOD_HANDLE_TYPE.getDescriptor(),
                     DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE,
                     text));
@@ -425,13 +426,7 @@ public final class JavascriptCompiler {
             int index;
 
             text = normalizeQuotes(ctx.getText());
-
-            if (externalsMap.containsKey(text)) {
-              index = externalsMap.get(text);
-            } else {
-              index = externalsMap.size();
-              externalsMap.put(text, index);
-            }
+            index = externalsMap.computeIfAbsent(text, k -> externalsMap.size());
 
             gen.loadArg(0);
             gen.push(index);
@@ -880,17 +875,6 @@ public final class JavascriptCompiler {
     if (type.returnType() != double.class) {
       throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
-  }
-
-  /**
-   * Generates a valid Java constant name from the function name. All invalid Java Identifier
-   * characters are replaced by {@code "$"} and the hashCode is added for uniqueness.
-   */
-  private static String getMethodHandleConstantName(String functionName) {
-    return "MH_"
-        + functionName.replaceAll("\\P{javaJavaIdentifierPart}", "\\$")
-        + "_"
-        + Integer.toUnsignedString(functionName.hashCode());
   }
 
   /**
