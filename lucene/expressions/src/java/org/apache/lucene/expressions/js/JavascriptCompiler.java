@@ -860,7 +860,7 @@ public final class JavascriptCompiler {
     } catch (ReflectiveOperationException | IOException e) {
       throw new Error("Cannot resolve function", e);
     }
-    return Collections.unmodifiableMap(map);
+    return Map.copyOf(map);
   }
 
   /** Check Method signature for compatibility. */
