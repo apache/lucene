@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.expressions;
 
-import java.util.Arrays;
-import java.util.Objects;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
@@ -91,37 +89,7 @@ public abstract class Expression {
    * @param functionValues {@link DoubleValues} for each element of {@link #variables}.
    * @return The computed value of the expression for the given document.
    */
-  public final double evaluate(DoubleValues[] functionValues) {
-    try {
-      return compiledEvaluate(functionValues);
-    } catch (Throwable t) {
-      t.setStackTrace(
-          Arrays.stream(t.getStackTrace())
-              .map(this::rewriteStackTraceElement)
-              .toArray(StackTraceElement[]::new));
-      throw t;
-    }
-  }
-
-  /**
-   * Fixup stack trace element to contain the expression source code as filename and remove line
-   * number.
-   */
-  private StackTraceElement rewriteStackTraceElement(StackTraceElement e) {
-    if (Objects.equals("evaluate", e.getMethodName())
-        && Objects.equals(Expression.class.getName(), e.getClassName())) {
-      return new StackTraceElement(getClass().getName(), e.getMethodName(), sourceText, -1);
-    }
-    return e;
-  }
-
-  /**
-   * Compiled implementation of the expression provided by compiler.
-   *
-   * @param functionValues {@link DoubleValues} for each element of {@link #variables}.
-   * @return The computed value of the expression for the given document.
-   */
-  protected abstract double compiledEvaluate(DoubleValues[] functionValues);
+  public abstract double evaluate(DoubleValues[] functionValues);
 
   /**
    * Get a DoubleValuesSource which can compute the value of this expression in the context of the
@@ -130,17 +98,17 @@ public abstract class Expression {
    * @param bindings Bindings to use for external values in this expression
    * @return A DoubleValuesSource which will evaluate this expression when used
    */
-  public final DoubleValuesSource getDoubleValuesSource(Bindings bindings) {
+  public DoubleValuesSource getDoubleValuesSource(Bindings bindings) {
     return new ExpressionValueSource(bindings, this);
   }
 
   /** Get a sort field which can be used to rank documents by this expression. */
-  public final SortField getSortField(Bindings bindings, boolean reverse) {
+  public SortField getSortField(Bindings bindings, boolean reverse) {
     return getDoubleValuesSource(bindings).getSortField(reverse);
   }
 
   /** Get a {@link Rescorer}, to rescore first-pass hits using this expression. */
-  public final Rescorer getRescorer(Bindings bindings) {
+  public Rescorer getRescorer(Bindings bindings) {
     return new ExpressionRescorer(this, bindings);
   }
 }

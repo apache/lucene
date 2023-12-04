@@ -27,6 +27,7 @@ import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -34,7 +35,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -104,15 +107,19 @@ public final class JavascriptCompiler {
 
   private static final Type EXPRESSION_TYPE = Type.getType(Expression.class),
       FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class),
-      METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class);
+      METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class),
+      JAVASCRIPT_COMPILER_TYPE = Type.getType(JavascriptCompiler.class),
+      THROWABLE_TYPE = Type.getType(Throwable.class);
   private static final Method
       EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
-      EVALUATE_METHOD = getAsmMethod(double.class, "compiledEvaluate", DoubleValues[].class),
-      DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue");
+      EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class),
+      DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue"),
+      PATCH_STACK_METHOD =
+          getAsmMethod(Throwable.class, "patchStackTrace", Throwable.class, Expression.class);
   private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
       new Handle(
           Opcodes.H_INVOKESTATIC,
-          Type.getInternalName(JavascriptCompiler.class),
+          JAVASCRIPT_COMPILER_TYPE.getInternalName(),
           "dynamicConstantBootstrap",
           MethodType.methodType(
                   MethodHandle.class, Lookup.class, String.class, Class.class, String.class)
@@ -322,7 +329,12 @@ public final class JavascriptCompiler {
     constructor.endMethod();
 
     final GeneratorAdapter gen =
-        new GeneratorAdapter(Opcodes.ACC_PROTECTED, EVALUATE_METHOD, null, null, classWriter);
+        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, null, classWriter);
+
+    // add a try/catch block to rewrite stack trace of any Throwable
+    final Label beginTry = gen.newLabel(), endTry = gen.newLabel(), catchHandler = gen.newLabel();
+    gen.visitTryCatchBlock(beginTry, endTry, catchHandler, THROWABLE_TYPE.getInternalName());
+    gen.mark(beginTry);
 
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
@@ -736,7 +748,13 @@ public final class JavascriptCompiler {
       }
     }.visit(parseTree);
 
+    gen.mark(endTry);
     gen.returnValue();
+
+    gen.mark(catchHandler);
+    gen.loadThis();
+    gen.invokeStatic(JAVASCRIPT_COMPILER_TYPE, PATCH_STACK_METHOD);
+    gen.throwException();
     gen.endMethod();
 
     classWriter.visitEnd();
@@ -893,5 +911,22 @@ public final class JavascriptCompiler {
     return (MethodHandle)
         Objects.requireNonNull(
             classData.get(functionName), "Function does not exist: " + functionName);
+  }
+
+  /**
+   * Method called from try/catch handler in compiled expression. This patches the stack trace and
+   * adds back a hidden frame (including the source code of script as filename).
+   */
+  static Throwable patchStackTrace(Throwable t, Expression impl) {
+    var extra = new StackTraceElement(impl.getClass().getName(), "evaluate", impl.sourceText, -1);
+    var origStack = t.getStackTrace();
+    var myStack = new Throwable().getStackTrace();
+    var top = Arrays.stream(origStack).limit(Math.max(0, origStack.length - myStack.length + 1));
+    var tail = Arrays.stream(myStack).skip(1);
+    t.setStackTrace(
+        Stream.of(top, Stream.of(extra), tail)
+            .flatMap(Function.identity())
+            .toArray(StackTraceElement[]::new));
+    return t;
   }
 }
