@@ -67,6 +67,9 @@ API Changes
 
 * GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
 
+* GITHUB#12873: Expressions module now uses MethodHandles to define custom functions. Support for
+  custom classloaders was removed. (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -88,6 +91,9 @@ Improvements
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
+* GITHUB#12873: Expressions module now uses JEP 371 "Hidden Classes" with JEP 309
+  "Dynamic Class-File Constants" to implement Javascript expressions. (Uwe Schindler)
 
 Optimizations
 ---------------------

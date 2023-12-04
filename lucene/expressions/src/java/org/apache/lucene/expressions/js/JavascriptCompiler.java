@@ -79,19 +79,23 @@ import org.objectweb.asm.commons.Method;
  *   // add all the default functions
  *   functions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
  *   // add cbrt()
- *   functions.put("cbrt", MethodHandles.publicLookup().findStatic("cbrt",
+ *   functions.put("cbrt", MethodHandles.publicLookup().findStatic(Math.class, "cbrt",
  *                 MethodType.methodType(double.class, double.class)));
  *   // call compile with customized function map
  *   Expression foo = JavascriptCompiler.compile("cbrt(score)+ln(popularity)",
  *                                               functions);
  * </pre>
  *
+ * <p>It is possible to pass any {@link MethodHandle} as function that only takes {@code double}
+ * parameters and returns a {@code double}. The method does not need to be public, it just needs to
+ * be resolved correctly using a private {@link Lookup} instance. Ideally the methods should be
+ * {@code static}, but you can use {@link MethodHandle#bindTo(Object)} to bind it to a receiver.
+ *
  * @lucene.experimental
  */
 public final class JavascriptCompiler {
 
   private static final Lookup LOOKUP = MethodHandles.lookup();
-  private static final Lookup EXPRESSION_LOOKUP = LOOKUP.in(Expression.class);
 
   private static final int CLASSFILE_VERSION = Opcodes.V11;
 
@@ -164,6 +168,29 @@ public final class JavascriptCompiler {
   }
 
   /**
+   * Converts a legacy map with reflective {@link java.lang.reflect.Method} functions to {@code
+   * Map<String,MethodHandle} for use with {@link #compile(String, Map)}.
+   *
+   * @param functions a map with only public and accessible reflective methods
+   * @return a new (modifiable) map with the same function declarations, but converted to {@link
+   *     MethodHandle}
+   * @throws IllegalAccessException if any of the methods in {@code functions} are not accessible by
+   *     the public {@link Lookup}.
+   * @deprecated Only use this to convert Lucene 9.x or earlier legacy code. For new code use {@link
+   *     MethodHandle}.
+   */
+  @Deprecated
+  public static Map<String, MethodHandle> convertLegacyFunctions(
+      Map<String, java.lang.reflect.Method> functions) throws IllegalAccessException {
+    final var lookup = MethodHandles.publicLookup();
+    final Map<String, MethodHandle> newMap = new HashMap<>();
+    for (var e : functions.entrySet()) {
+      newMap.put(e.getKey(), lookup.unreflect(e.getValue()));
+    }
+    return newMap;
+  }
+
+  /**
    * Compiles the given expression with the supplied custom functions.
    *
    * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
@@ -189,9 +216,8 @@ public final class JavascriptCompiler {
    * If this method fails to compile, you also have to change the byte code generator to correctly
    * use the FunctionValues class.
    */
-  @SuppressWarnings({"unused", "null"})
-  private static void unusedTestCompile() throws IOException {
-    DoubleValues f = null;
+  @SuppressWarnings({"unused"})
+  private static void unusedTestCompile(DoubleValues f) throws IOException {
     f.doubleValue();
   }
 
@@ -844,7 +870,7 @@ public final class JavascriptCompiler {
     // try to crack the handle and check if it is a static call:
     int refKind;
     try {
-      MethodHandleInfo cracked = EXPRESSION_LOOKUP.revealDirect(method);
+      MethodHandleInfo cracked = LOOKUP.revealDirect(method);
       refKind = cracked.getReferenceKind();
       // we have a much better name for the method so display it instead:
       methodNameSupplier =
