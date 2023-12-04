@@ -17,6 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -86,7 +87,7 @@ public class ExpressionsBenchmark {
           try {
             return functionValues[0].doubleValue();
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UncheckedIOException(e);
           }
         }
       };
