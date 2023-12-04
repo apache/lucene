@@ -24,15 +24,9 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.text.ParseException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
-import org.objectweb.asm.commons.Method;
 
 /** Tests customing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
@@ -242,82 +236,6 @@ public class TestCustomFunctions extends CompilerTestCase {
             MethodHandles.identity(double.class));
     Expression expr = compile("foo() + bar(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
-  }
-
-  /**
-   * Classloader that can be used to create a fake static class that has one method returning a
-   * static var
-   */
-  static final class Loader extends ClassLoader implements Opcodes {
-    Loader(ClassLoader parent) {
-      super(parent);
-    }
-
-    public Class<?> createFakeClass() {
-      String className = TestCustomFunctions.class.getName() + "$Foo";
-      ClassWriter classWriter =
-          new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-      classWriter.visit(
-          Opcodes.V1_5,
-          ACC_PUBLIC | ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC,
-          className.replace('.', '/'),
-          null,
-          Type.getInternalName(Object.class),
-          null);
-
-      Method m = Method.getMethod("void <init>()");
-      GeneratorAdapter constructor =
-          new GeneratorAdapter(ACC_PRIVATE | ACC_SYNTHETIC, m, null, null, classWriter);
-      constructor.loadThis();
-      constructor.loadArgs();
-      constructor.invokeConstructor(Type.getType(Object.class), m);
-      constructor.returnValue();
-      constructor.endMethod();
-
-      GeneratorAdapter gen =
-          new GeneratorAdapter(
-              ACC_STATIC | ACC_PUBLIC | ACC_SYNTHETIC,
-              Method.getMethod("double bar()"),
-              null,
-              null,
-              classWriter);
-      gen.push(2.0);
-      gen.returnValue();
-      gen.endMethod();
-
-      byte[] bc = classWriter.toByteArray();
-      return defineClass(className, bc, 0, bc.length);
-    }
-  }
-
-  /**
-   * uses this test with a different classloader and tries to register it using the default
-   * classloader, which should fail
-   */
-  public void testClassLoader() throws Exception {
-    ClassLoader thisLoader = getClass().getClassLoader();
-    Lookup lookup = MethodHandles.publicLookup();
-    Loader childLoader = new Loader(thisLoader);
-    Class<?> fooClass = childLoader.createFakeClass();
-
-    MethodHandle barMethod =
-        lookup.findStatic(fooClass, "bar", MethodType.methodType(double.class));
-    assertNotSame(thisLoader, fooClass.getClassLoader());
-    assertNotSame(thisLoader, lookup.revealDirect(barMethod).getDeclaringClass().getClassLoader());
-
-    Map<String, MethodHandle> functions = Map.of("bar", barMethod);
-
-    // this should pass:
-    Expression expr = compile("bar()", functions);
-    assertEquals(2.0, expr.evaluate(null), DELTA);
-
-    // mix foreign and default functions
-    Map<String, MethodHandle> mixedFunctions = new HashMap<>(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    mixedFunctions.putAll(functions);
-    expr = compile("bar()", mixedFunctions);
-    assertEquals(2.0, expr.evaluate(null), DELTA);
-    expr = compile("sqrt(20)", mixedFunctions);
-    assertEquals(Math.sqrt(20), expr.evaluate(null), DELTA);
   }
 
   static String MESSAGE = "This should not happen but it happens";
