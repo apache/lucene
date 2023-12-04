@@ -19,7 +19,6 @@ package org.apache.lucene.util.fst;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
@@ -30,13 +29,16 @@ import org.apache.lucene.store.DataOutput;
 final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezable {
 
   private final ByteBuffersDataOutput dataOutput;
-  // the DataInput to read from in case the DataOutput has multiple blocks
-  private ByteBuffersDataInput dataInput;
-  // the ByteBuffers to read from in case the DataOutput has a single block
-  private ByteBuffer byteBuffer;
+  private final int blockBits;
+  private final int blockSize;
+  private final int blockMask;
+  private List<ByteBuffer> byteBuffers;
 
   public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
+    this.blockBits = dataOutput.getBlockBits();
+    this.blockSize = 1 << blockBits;
+    this.blockMask = blockSize - 1;
   }
 
   @Override
@@ -57,22 +59,58 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezab
   @Override
   public void freeze() {
     // these operations are costly, so we want to compute it once and cache
-    List<ByteBuffer> byteBuffers = dataOutput.toWriteableBufferList();
-    if (byteBuffers.size() == 1) {
-      byteBuffer = byteBuffers.get(0);
-    } else {
-      dataInput = new ByteBuffersDataInput(byteBuffers);
-    }
+    this.byteBuffers = dataOutput.toWriteableBufferList();
   }
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    if (byteBuffer != null) {
+    assert byteBuffers != null; // freeze() must be called first
+    if (byteBuffers.size() == 1) {
       // use a faster implementation for single-block case
-      return new ReverseBytesReader(byteBuffer.array());
+      return new ReverseBytesReader(byteBuffers.get(0).array());
     }
-    assert dataInput != null; // freeze() must be called first
-    return new ReverseRandomAccessReader(dataInput);
+    return new FST.BytesReader() {
+      private byte[] current = byteBuffers.get(0).array();
+      private int nextBuffer = -1;
+      private int nextRead = 0;
+
+      @Override
+      public byte readByte() {
+        if (nextRead == -1) {
+          current = byteBuffers.get(nextBuffer--).array();
+          nextRead = blockSize - 1;
+        }
+        return current[nextRead--];
+      }
+
+      @Override
+      public void skipBytes(long count) {
+        setPosition(getPosition() - count);
+      }
+
+      @Override
+      public void readBytes(byte[] b, int offset, int len) {
+        for (int i = 0; i < len; i++) {
+          b[offset + i] = readByte();
+        }
+      }
+
+      @Override
+      public long getPosition() {
+        return ((long) nextBuffer + 1) * blockSize + nextRead;
+      }
+
+      @Override
+      public void setPosition(long pos) {
+        int bufferIndex = (int) (pos >> blockBits);
+        if (nextBuffer != bufferIndex - 1) {
+          nextBuffer = bufferIndex - 1;
+          current = byteBuffers.get(bufferIndex).array();
+        }
+        nextRead = (int) (pos & blockMask);
+        assert getPosition() == pos : "pos=" + pos + " getPos()=" + getPosition();
+      }
+    };
   }
 
   @Override

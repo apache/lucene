@@ -49,6 +49,10 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
         throw new RuntimeException("reset() is not allowed on this buffer.");
       };
 
+    public int getBlockBits() {
+      return blockBits;
+    }
+
   /**
    * An implementation of a {@link ByteBuffer} allocation and recycling policy. The blocks are
    * recycled if exactly the same size is requested, otherwise they're released to be GCed.
