@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.function.Supplier;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -107,42 +108,24 @@ public final class JavascriptCompiler {
   private static final Method
       EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
       EVALUATE_METHOD = getAsmMethod(double.class, "compiledEvaluate", DoubleValues[].class),
-      DYNAMIC_CONSTANT_BOOTSTRAP =
-          getAsmMethod(
-              MethodHandle.class,
-              "dynamicConstantBootstrap",
-              Lookup.class,
-              String.class,
-              Class.class,
-              String.class),
       DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue");
+  private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
+      new Handle(
+          Opcodes.H_INVOKESTATIC,
+          Type.getInternalName(JavascriptCompiler.class),
+          "dynamicConstantBootstrap",
+          MethodType.methodType(
+                  MethodHandle.class, Lookup.class, String.class, Class.class, String.class)
+              .toMethodDescriptorString(),
+          false);
 
   /** create an ASM Method object from return type, method name, and parameters. */
   private static Method getAsmMethod(Class<?> rtype, String name, Class<?>... ptypes) {
     return new Method(name, MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
   }
 
-  /**
-   * Cache reachability for direct linkage by checking they can be loaded from our {@link
-   * ClassLoader} on string lookup. This prevents {@link NoClassDefFoundError}.
-   */
-  private static final ClassValue<Boolean> REACHABLE_FROM_OUR_CLASSLOADER =
-      new ClassValue<>() {
-        @Override
-        protected Boolean computeValue(Class<?> type) {
-          try {
-            return EXPRESSION_LOOKUP.findClass(type.getName()) == type;
-          } catch (
-              @SuppressWarnings("unused")
-              ReflectiveOperationException e) {
-            return false;
-          }
-        }
-      };
-
   final String sourceText;
   final Map<String, MethodHandle> functions;
-  final Map<String, MethodHandleInfo> directFunctions;
   final boolean picky;
 
   /**
@@ -215,24 +198,6 @@ public final class JavascriptCompiler {
     this.sourceText = Objects.requireNonNull(sourceText, "sourceText");
     this.functions = Map.copyOf(functions);
     this.picky = picky;
-
-    // calculate all functions which can be invoked directly by cracking MethodHandle:
-    final HashMap<String, MethodHandleInfo> map = new HashMap<>();
-    for (var e : functions.entrySet()) {
-      final MethodHandleInfo info;
-      try {
-        info = EXPRESSION_LOOKUP.revealDirect(e.getValue());
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException iae) {
-        continue;
-      }
-      if (info.getReferenceKind() == MethodHandleInfo.REF_invokeStatic
-          && REACHABLE_FROM_OUR_CLASSLOADER.get(info.getDeclaringClass())) {
-        map.put(e.getKey(), info);
-      }
-    }
-    this.directFunctions = Collections.unmodifiableMap(map);
   }
 
   /**
@@ -405,7 +370,6 @@ public final class JavascriptCompiler {
         try {
           if (mh != null) {
             final int arity = mh.type().parameterCount();
-            final MethodHandleInfo directCallInfo = directFunctions.get(text);
 
             if (arguments != arity) {
               throw new ParseException(
@@ -421,44 +385,28 @@ public final class JavascriptCompiler {
                   ctx.start.getStartIndex());
             }
 
-            if (directCallInfo == null) {
-              // place dynamic constant with MethodHandle on top of stack
-              gen.visitLdcInsn(
-                  new ConstantDynamic(
-                      getMethodHandleConstantName(text),
-                      METHOD_HANDLE_TYPE.getDescriptor(),
-                      new Handle(
-                          Opcodes.H_INVOKESTATIC,
-                          Type.getInternalName(JavascriptCompiler.class),
-                          DYNAMIC_CONSTANT_BOOTSTRAP.getName(),
-                          DYNAMIC_CONSTANT_BOOTSTRAP.getDescriptor(),
-                          false),
-                      text));
-            }
+            // place dynamic constant with MethodHandle on top of stack
+            gen.visitLdcInsn(
+                new ConstantDynamic(
+                    getMethodHandleConstantName(text),
+                    METHOD_HANDLE_TYPE.getDescriptor(),
+                    DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE,
+                    text));
 
+            // add arguments:
             typeStack.push(Type.DOUBLE_TYPE);
-
             for (int argument = 0; argument < arguments; ++argument) {
               visit(ctx.expression(argument));
             }
-
             typeStack.pop();
 
-            if (directCallInfo != null) {
-              gen.visitMethodInsn(
-                  Opcodes.INVOKESTATIC,
-                  Type.getInternalName(directCallInfo.getDeclaringClass()),
-                  directCallInfo.getName(),
-                  directCallInfo.getMethodType().descriptorString(),
-                  false);
-            } else {
-              gen.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  METHOD_HANDLE_TYPE.getInternalName(),
-                  "invokeExact",
-                  mh.type().descriptorString(),
-                  false);
-            }
+            // invoke MethodHandle of function:
+            gen.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                METHOD_HANDLE_TYPE.getInternalName(),
+                "invokeExact",
+                mh.type().descriptorString(),
+                false);
 
             gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
           } else if (!parens || arguments == 0 && text.contains(".")) {
@@ -878,10 +826,20 @@ public final class JavascriptCompiler {
 
   /** Check Method signature for compatibility. */
   private static void checkFunction(MethodHandle method) {
+    Supplier<String> methodNameSupplier = method::toString;
+
     // try to crack the handle and check if it is a static call:
     int refKind;
     try {
-      refKind = EXPRESSION_LOOKUP.revealDirect(method).getReferenceKind();
+      MethodHandleInfo cracked = EXPRESSION_LOOKUP.revealDirect(method);
+      refKind = cracked.getReferenceKind();
+      // we have a much better name for the method so display it instead:
+      methodNameSupplier =
+          () ->
+              cracked.getDeclaringClass().getName()
+                  + "#"
+                  + cracked.getName()
+                  + cracked.getMethodType();
     } catch (
         @SuppressWarnings("unused")
         IllegalArgumentException iae) {
@@ -890,18 +848,19 @@ public final class JavascriptCompiler {
       refKind = MethodHandleInfo.REF_invokeStatic;
     }
     if (refKind != MethodHandleInfo.REF_invokeStatic && refKind != MethodHandleInfo.REF_getStatic) {
-      throw new IllegalArgumentException(method + " is not static.");
+      throw new IllegalArgumentException(methodNameSupplier.get() + " is not static.");
     }
 
     // do some checks if the signature is "compatible":
     final MethodType type = method.type();
     for (int arg = 0, arity = type.parameterCount(); arg < arity; arg++) {
       if (type.parameterType(arg) != double.class) {
-        throw new IllegalArgumentException(method + " must take only double parameters.");
+        throw new IllegalArgumentException(
+            methodNameSupplier.get() + " must take only double parameters.");
       }
     }
     if (type.returnType() != double.class) {
-      throw new IllegalArgumentException(method + " does not return a double.");
+      throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
   }
 
