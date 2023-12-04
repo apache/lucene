@@ -98,6 +98,8 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -1552,10 +1554,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   private void addDoc(IndexWriter writer, int id) throws IOException {
-    addDoc(writer, id, false);
-  }
-
-  private void addDoc(IndexWriter writer, int id, boolean addBlock) throws IOException {
     Document doc = new Document();
     doc.add(new TextField("content", "aaa", Field.Store.NO));
     doc.add(new StringField("id", Integer.toString(id), Field.Store.YES));
@@ -1624,11 +1622,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // TODO:
     //   index different norms types via similarity (we use a random one currently?!)
     //   remove any analyzer randomness, explicitly add payloads for certain fields.
-    if (addBlock) {
-      writer.addDocuments(Arrays.asList(doc, doc));
-    } else {
-      writer.addDocument(doc);
-    }
+    writer.addDocument(doc);
   }
 
   private void addNoProxDoc(IndexWriter writer) throws IOException {
@@ -2176,7 +2170,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void testSortedIndexWithBlocks() throws Exception {
+  public void testSortedIndexAddDocBlocks() throws Exception {
     for (String name : oldSortedNames) {
       Path path = createTempDir("sorted");
       InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
@@ -2184,32 +2178,71 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       TestUtil.unzip(resource, path);
 
       try (Directory dir = newFSDirectory(path)) {
+        final Sort sort;
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
-
           assertEquals(1, reader.leaves().size());
-          Sort sort = reader.leaves().get(0).reader().getMetaData().getSort();
+          sort = reader.leaves().get(0).reader().getMetaData().getSort();
           assertNotNull(sort);
-
-          // open writer
-          try (IndexWriter writer =
-              new IndexWriter(
-                  dir,
-                  newIndexWriterConfig(new MockAnalyzer(random()))
-                      .setOpenMode(OpenMode.APPEND)
-                      .setIndexSort(sort)
-                      .setMergePolicy(newLogMergePolicy()))) {
-            // add 10 docs
-            for (int i = 0; i < 10; i++) {
-              addDoc(writer, DOCS_COUNT + i, true);
-            }
-            writer.forceMerge(1);
-          }
-
-          // This will confirm the docs are really sorted
-          TestUtil.checkIndex(dir);
-
           searchExampleIndex(reader);
         }
+        // open writer
+        try (IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setOpenMode(OpenMode.APPEND)
+                    .setIndexSort(sort)
+                    .setMergePolicy(newLogMergePolicy()))) {
+          // add 10 docs
+          for (int i = 0; i < 10; i++) {
+            Document child = new Document();
+            child.add(new StringField("relation", "child", Field.Store.NO));
+            child.add(new StringField("bid", "" + i, Field.Store.NO));
+            child.add(new NumericDocValuesField("dateDV", i));
+            Document parent = new Document();
+            parent.add(new StringField("relation", "parent", Field.Store.NO));
+            parent.add(new StringField("bid", "" + i, Field.Store.NO));
+            parent.add(new NumericDocValuesField("dateDV", i));
+            writer.addDocuments(Arrays.asList(child, child, parent));
+            if (random().nextBoolean()) {
+              writer.flush();
+            }
+          }
+          if (random().nextBoolean()) {
+            writer.forceMerge(1);
+          }
+          writer.commit();
+          try (IndexReader reader = DirectoryReader.open(dir)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            for (int i = 0; i < 10; i++) {
+              TopDocs children =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "child")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              TopDocs parents =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "parent")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              assertEquals(2, children.totalHits.value);
+              assertEquals(1, parents.totalHits.value);
+              // make sure it's sorted
+              assertEquals(children.scoreDocs[0].doc + 1, children.scoreDocs[1].doc);
+              assertEquals(children.scoreDocs[1].doc + 1, parents.scoreDocs[0].doc);
+            }
+          }
+        }
+        // This will confirm the docs are really sorted
+        TestUtil.checkIndex(dir);
       }
     }
   }
