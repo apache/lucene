@@ -879,9 +879,7 @@ public final class JavascriptCompiler {
                   + "#"
                   + cracked.getName()
                   + cracked.getMethodType();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException iae) {
+    } catch (@SuppressWarnings("unused") IllegalArgumentException | SecurityException iae) {
       // can't check for static, we assume it is static
       // (it does not matter as we call the MethodHandle directly if it is compatible):
       refKind = MethodHandleInfo.REF_invokeStatic;
