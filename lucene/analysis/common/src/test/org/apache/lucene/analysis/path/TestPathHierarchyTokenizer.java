@@ -273,15 +273,18 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
   }
 
   private final Analyzer analyzer =
-          new Analyzer() {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName) {
-              Tokenizer tokenizer = new PathHierarchyTokenizer();
-              return new TokenStreamComponents(tokenizer);
-            }
-          };
+      new Analyzer() {
+        @Override
+        protected TokenStreamComponents createComponents(String fieldName) {
+          Tokenizer tokenizer = new PathHierarchyTokenizer();
+          return new TokenStreamComponents(tokenizer);
+        }
+      };
 
   public void testTokenizerViaAnalyzerOutput() throws IOException {
+    assertAnalyzesTo(analyzer, "a/b/c", new String[] {"a", "a/b", "a/b/c"});
+    assertAnalyzesTo(analyzer, "a/b/c/", new String[] {"a", "a/b", "a/b/c", "a/b/c/"});
     assertAnalyzesTo(analyzer, "/a/b/c", new String[] {"/a", "/a/b", "/a/b/c"});
+    assertAnalyzesTo(analyzer, "/a/b/c/", new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"});
   }
 }

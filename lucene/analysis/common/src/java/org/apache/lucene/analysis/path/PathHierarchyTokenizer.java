@@ -21,7 +21,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
 
@@ -101,8 +100,8 @@ public class PathHierarchyTokenizer extends Tokenizer {
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-  private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
+  private final PositionIncrementAttribute posIncAtt =
+      addAttribute(PositionIncrementAttribute.class);
   private int startPosition = 0;
   private int skipped = 0;
   private boolean endDelimiter = false;
@@ -115,7 +114,6 @@ public class PathHierarchyTokenizer extends Tokenizer {
     clearAttributes();
     termAtt.append(resultToken);
     posIncAtt.setPositionIncrement(1);
-    posLenAtt.setPositionLength(1);
     int length = 0;
     boolean added = false;
     if (endDelimiter) {
