@@ -30,13 +30,13 @@ public final class GroupVIntUtil {
   public static final int[] GROUP_VINT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   /**
-   * Read single group varint. we need a long[] because this is what postings are using.
+   * Default implementation of read single group, for optimal performance, you should use {@link
+   * DataInput#readGroupVInts(long[], int)} instead.
    *
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
    */
-  public static void fallbackReadGroupVInt(DataInput in, long[] dst, int offset)
-      throws IOException {
+  public static void readGroupVInt(DataInput in, long[] dst, int offset) throws IOException {
     final int flag = in.readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;

@@ -30,7 +30,7 @@ import org.apache.lucene.util.BytesRefBuilder;
  * internal state like file position).
  */
 public abstract class DataOutput {
-  private BytesRefBuilder groupVIntBytes = new BytesRefBuilder();
+  private final BytesRefBuilder groupVIntBytes = new BytesRefBuilder();
 
   /**
    * Writes a single byte.
@@ -334,6 +334,7 @@ public abstract class DataOutput {
    *
    * @param values the values to write
    * @param limit the number of values to write.
+   * @lucene.experimental
    */
   public void writeGroupVInts(long[] values, int limit) throws IOException {
     int off = 0;

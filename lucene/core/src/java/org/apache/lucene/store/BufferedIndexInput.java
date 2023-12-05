@@ -163,11 +163,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   private void readGroupVInt(long[] dst, int offset) throws IOException {
     if (buffer.remaining() < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
-      GroupVIntUtil.fallbackReadGroupVInt(this, dst, offset);
+      GroupVIntUtil.readGroupVInt(this, dst, offset);
       return;
     }
 
-    final int flag = readByte() & 0xFF;
+    final int flag = buffer.get() & 0xFF;
 
     final int n1Minus1 = flag >> 6;
     final int n2Minus1 = (flag >> 4) & 0x03;

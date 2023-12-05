@@ -50,6 +50,13 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   /** Creates a new directory with the specified max chunk size */
   protected abstract Directory getDirectory(Path path, int maxChunkSize) throws IOException;
 
+  public void testGroupVIntMultiBlocks() throws IOException {
+    final int maxChunkSize = 128;
+    try (Directory dir = getDirectory(createTempDir(), maxChunkSize)) {
+      doTestGroupVInt(dir, 10, 1, 31, 1024);
+    }
+  }
+
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));

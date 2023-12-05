@@ -1466,18 +1466,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
-      // test fallbackReadGroupVInt
+      // test fallback to default implementation of readGroupVInt
       doTestGroupVInt(dir, 5, 1, 6, 8);
-
-      // test large data to covers multiple blocks in ByteBuffersDataInput
-      doTestGroupVInt(dir, 5, 1, 31, 1024);
 
       // use more iterations to covers all bpv
       doTestGroupVInt(dir, atLeast(100), 1, 31, 128);
+
+      // we use BaseChunkedDirectoryTestCase#testGroupVIntMultiBlocks cover multiple blocks for
+      // ByteBuffersDataInput and MMapDirectory
     }
   }
 
-  public void doTestGroupVInt(
+  protected void doTestGroupVInt(
       Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
     long[] values = new long[maxNumValues];
     long[] restored = new long[maxNumValues];

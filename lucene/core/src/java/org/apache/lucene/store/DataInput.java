@@ -103,7 +103,7 @@ public abstract class DataInput implements Cloneable {
   public final void readGroupVIntsBaseline(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      GroupVIntUtil.fallbackReadGroupVInt(this, dst, i);
+      GroupVIntUtil.readGroupVInt(this, dst, i);
     }
     for (; i < limit; ++i) {
       dst[i] = readVInt();
@@ -116,11 +116,12 @@ public abstract class DataInput implements Cloneable {
    *
    * @param dst the array to read ints into.
    * @param limit the number of int values to read.
+   * @lucene.experimental
    */
   public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      GroupVIntUtil.fallbackReadGroupVInt(this, dst, i);
+      GroupVIntUtil.readGroupVInt(this, dst, i);
     }
     for (; i < limit; ++i) {
       dst[i] = readVInt();

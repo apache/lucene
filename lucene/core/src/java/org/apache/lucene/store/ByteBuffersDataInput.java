@@ -226,21 +226,19 @@ public final class ByteBuffersDataInput extends DataInput
 
   private void readGroupVInt(long[] dst, int offset) throws IOException {
     ByteBuffer block = blocks[blockIndex(pos)];
-    int blockOffset = blockOffset(pos);
+    final int blockOffset = blockOffset(pos);
+    int curPosition = blockOffset;
     if (block.limit() - blockOffset < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
-      GroupVIntUtil.fallbackReadGroupVInt(this, dst, offset);
+      GroupVIntUtil.readGroupVInt(this, dst, offset);
       return;
     }
 
-    final int flag = readByte() & 0xFF;
+    final int flag = block.get(curPosition++) & 0xFF;
 
     final int n1Minus1 = flag >> 6;
     final int n2Minus1 = (flag >> 4) & 0x03;
     final int n3Minus1 = (flag >> 2) & 0x03;
     final int n4Minus1 = flag & 0x03;
-
-    blockOffset = blockOffset(pos);
-    int curPosition = blockOffset;
 
     dst[offset] = block.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n1Minus1];
     curPosition += 1 + n1Minus1;
