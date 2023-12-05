@@ -171,9 +171,9 @@ public class KeywordField extends Field {
    * @param values the set of values to match
    * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
-   * @deprecated Use the method with a collection of values instead.
+   * @deprecated Use {@link #newSetQuery(String, Collection)} instead.
    */
-  @Deprecated(since = "9.10")
+  @Deprecated(forRemoval = true, since = "9.10")
   public static Query newSetQuery(String field, BytesRef... values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");

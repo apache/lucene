@@ -100,9 +100,9 @@ public class SortedDocValuesField extends Field {
    * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on postings, such as
    * {@link TermInSetQuery}.
    *
-   * @deprecated Use the method with a collection of values instead.
+   * @deprecated Use {@link #newSlowSetQuery(String, Collection)} instead.
    */
-  @Deprecated(since = "9.10")
+  @Deprecated(forRemoval = true, since = "9.10")
   public static Query newSlowSetQuery(String field, BytesRef... values) {
     return new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
   }

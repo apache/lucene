@@ -17,7 +17,9 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -126,15 +128,15 @@ public class TestKeywordField extends LuceneTestCase {
   }
 
   public void testValueClone() {
-    BytesRef[] values = new BytesRef[100];
+    List<BytesRef> values = new ArrayList<>(100);
     for (int i = 0; i < 100; i++) {
       String s = TestUtil.randomSimpleString(random(), 10, 20);
-      values[i] = new BytesRef(s);
+      values.add(new BytesRef(s));
     }
 
     // Make sure we don't modify the input values array.
-    BytesRef[] expected = values.clone();
+    List<BytesRef> expected = new ArrayList<>(values);
     KeywordField.newSetQuery("f", values);
-    assertArrayEquals(expected, values);
+    assertEquals(expected, values);
   }
 }

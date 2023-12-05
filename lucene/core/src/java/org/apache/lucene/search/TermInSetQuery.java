@@ -85,7 +85,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   /**
-   * @deprecated Use the constructor with a collection of terms instead.
+   * @deprecated Use {@link #TermInSetQuery(String, Collection)} instead.
    */
   @Deprecated(since = "9.10")
   public TermInSetQuery(String field, BytesRef... terms) {
@@ -103,7 +103,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   /**
    * Creates a new {@link TermInSetQuery} from the given array of terms.
    *
-   * @deprecated Use the constructor with a collection of terms instead.
+   * @deprecated Use {@link #TermInSetQuery(RewriteMethod, String, Collection)} instead.
    */
   @Deprecated(since = "9.10")
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
