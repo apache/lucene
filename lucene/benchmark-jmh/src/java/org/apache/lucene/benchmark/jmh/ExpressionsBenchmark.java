@@ -17,7 +17,6 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -83,12 +82,8 @@ public class ExpressionsBenchmark {
   private static final Expression NATIVE_IDENTITY_EXPRESSION =
       new Expression(NATIVE_IDENTITY_NAME, new String[] {"x"}) {
         @Override
-        public double evaluate(DoubleValues[] functionValues) {
-          try {
-            return functionValues[0].doubleValue();
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+        public double evaluate(DoubleValues[] functionValues) throws IOException {
+          return functionValues[0].doubleValue();
         }
       };
 
