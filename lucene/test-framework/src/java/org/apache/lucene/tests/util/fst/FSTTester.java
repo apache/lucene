@@ -256,7 +256,7 @@ public class FSTTester<T> {
   public FST<T> doTest() throws IOException {
 
     IndexOutput indexOutput = null;
-    boolean useOffHeap = true; // random.nextBoolean();
+    boolean useOffHeap = random.nextBoolean();
     if (useOffHeap) {
       indexOutput = dir.createOutput("fstOffHeap.bin", IOContext.DEFAULT);
     }
