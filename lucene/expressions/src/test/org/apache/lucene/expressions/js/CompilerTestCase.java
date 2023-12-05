@@ -17,7 +17,7 @@
 
 package org.apache.lucene.expressions.js;
 
-import java.lang.reflect.Method;
+import java.lang.invoke.MethodHandle;
 import java.text.ParseException;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
@@ -28,21 +28,12 @@ public abstract class CompilerTestCase extends LuceneTestCase {
 
   /** compiles expression for sourceText with default functions list */
   protected Expression compile(String sourceText) throws ParseException {
-    return compile(
-        sourceText,
-        JavascriptCompiler.DEFAULT_FUNCTIONS,
-        JavascriptCompiler.class.getClassLoader());
+    return compile(sourceText, JavascriptCompiler.DEFAULT_FUNCTIONS);
   }
 
   /** compiles expression for sourceText with custom functions list */
-  protected Expression compile(String sourceText, Map<String, Method> functions)
+  protected Expression compile(String sourceText, Map<String, MethodHandle> functions)
       throws ParseException {
-    return compile(sourceText, functions, JavascriptCompiler.class.getClassLoader());
-  }
-
-  /** compiles expression for sourceText with custom functions list and parent classloader */
-  protected Expression compile(String sourceText, Map<String, Method> functions, ClassLoader parent)
-      throws ParseException {
-    return JavascriptCompiler.compile(sourceText, functions, parent, true);
+    return JavascriptCompiler.compile(sourceText, functions, true);
   }
 }

@@ -108,6 +108,20 @@ Added a new parameter: `-level X`, to set the detail level of the index check. T
 Sample `-level` usage: `1` (Default) - Checksum checks only, `2` - all level 1 checks as well as logical integrity checks, `3` - all
 level 2 checks as well as slow checks.
 
+### Expressions module now uses `MethodHandle` and hidden classes (GITHUB#12873)
+
+Custom functions in the expressions module must now be passed in a `Map` using `MethodHandle` as values.
+To convert legacy code using maps of reflective `java.lang.reflect.Method`, use the converter method
+`JavascriptCompiler#convertLegacyFunctions`. This should make the mapping mostly compatible.
+The use of `MethodHandle` and [Dynamic Class-File Constants (JEP 309)](https://openjdk.org/jeps/309)
+now also allows to pass private methods or methods from different classloaders. It is also possible
+to adapt guards or filters using the `MethodHandles` class.
+
+The new implementation of the Javascript expressions compiler no longer supports use of custom
+`ClassLoader`, because it uses the new JDK 15 feature [hidden classes (JEP 371)](https://openjdk.org/jeps/371).
+Due to the use of `MethodHandle`, classloader isolation is no longer needed, because JS code can only call
+MHs that were resolved by the application before using the expressions module.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

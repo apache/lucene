@@ -70,6 +70,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -1026,6 +1027,37 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  public void testAllNodesVisitedInSingleLevel() throws IOException {
+    int size = atLeast(100);
+    int dim = atLeast(50);
+
+    // Search for a large number of results
+    int topK = size - 1;
+
+    AbstractMockVectorValues<T> docVectors = vectorValues(size, dim);
+    HnswGraph graph =
+        HnswGraphBuilder.create(buildScorerSupplier(docVectors), 10, 30, random().nextLong())
+            .build(size);
+
+    HnswGraph singleLevelGraph =
+        new DelegateHnswGraph(graph) {
+          @Override
+          public int numLevels() {
+            // Only retain the last level
+            return 1;
+          }
+        };
+
+    AbstractMockVectorValues<T> queryVectors = vectorValues(1, dim);
+    RandomVectorScorer queryScorer = buildScorer(docVectors, queryVectors.vectorValue(0));
+
+    KnnCollector collector = new TopKnnCollector(topK, Integer.MAX_VALUE);
+    HnswGraphSearcher.search(queryScorer, collector, singleLevelGraph, null);
+
+    // Check that we visit all nodes
+    assertEquals(graph.size(), collector.visitedCount());
+  }
+
   private int computeOverlap(int[] a, int[] b) {
     Arrays.sort(a);
     Arrays.sort(b);
@@ -1296,5 +1328,43 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     return sb.toString();
+  }
+
+  private static class DelegateHnswGraph extends HnswGraph {
+    final HnswGraph delegate;
+
+    DelegateHnswGraph(HnswGraph delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void seek(int level, int target) throws IOException {
+      delegate.seek(level, target);
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+
+    @Override
+    public int nextNeighbor() throws IOException {
+      return delegate.nextNeighbor();
+    }
+
+    @Override
+    public int numLevels() throws IOException {
+      return delegate.numLevels();
+    }
+
+    @Override
+    public int entryNode() throws IOException {
+      return delegate.entryNode();
+    }
+
+    @Override
+    public NodesIterator getNodesOnLevel(int level) throws IOException {
+      return delegate.getNodesOnLevel(level);
+    }
   }
 }
