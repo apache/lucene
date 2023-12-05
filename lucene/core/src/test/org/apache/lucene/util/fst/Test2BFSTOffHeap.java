@@ -29,13 +29,14 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
+import org.junit.Ignore;
 
 // Similar to Test2BFST but will build and read the FST off-heap and can be run with small heap
 
 // Run something like this:
 //    ./gradlew test --tests Test2BFSTOffHeap -Dtests.verbose=true --max-workers=1
 
-// @Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
+@Ignore("Will take long time to run (~4.5 hours)")
 @SuppressSysoutChecks(bugUrl = "test prints helpful progress reports with time")
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFSTOffHeap extends LuceneTestCase {
