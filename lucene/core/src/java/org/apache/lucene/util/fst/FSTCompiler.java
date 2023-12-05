@@ -56,6 +56,17 @@ import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
  * <p>FSTs larger than 2.1GB are now possible (as of Lucene 4.2). FSTs containing more than 2.1B
  * nodes are also now possible, however they cannot be packed.
  *
+ * <p>It now supports 3 different workflows:
+ *
+ * <p>- Build FST and use it immediately entirely in RAM and then discard it
+ *
+ * <p>- Build FST and use it immediately entirely in RAM and also save it to other DataOutput, and
+ * load it later and use it
+ *
+ * <p>- Build FST but stream it immediately to disk (except the FSTMetaData, to be saved at the
+ * end). In order to use it, you need to construct the corresponding DataInput and use the FST
+ * constructor to read it.
+ *
  * @lucene.experimental
  */
 public class FSTCompiler<T> {
@@ -205,12 +216,13 @@ public class FSTCompiler<T> {
     @Override
     public FST.BytesReader getReverseBytesReader() {
       throw new UnsupportedOperationException(
-          "NullFSTReader does not support getReverseBytesReader()");
+          "FST was not constructed with getOnHeapReaderWriter()");
     }
 
     @Override
     public void writeTo(DataOutput out) {
-      throw new UnsupportedOperationException("NullFSTReader does not support writeTo(DataOutput)");
+      throw new UnsupportedOperationException(
+          "FST was not constructed with getOnHeapReaderWriter()");
     }
   }
 
@@ -226,7 +238,7 @@ public class FSTCompiler<T> {
     private final Outputs<T> outputs;
     private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
-    private DataOutput dataOutput = getOnHeapReaderWriter(15);
+    private DataOutput dataOutput;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
 
     /**
@@ -315,6 +327,10 @@ public class FSTCompiler<T> {
 
     /** Creates a new {@link FSTCompiler}. */
     public FSTCompiler<T> build() throws IOException {
+      // create a default DataOutput if not specified
+      if (dataOutput == null) {
+        dataOutput = getOnHeapReaderWriter(15);
+      }
       return new FSTCompiler<>(
           inputType,
           suffixRAMLimitMB,
@@ -912,8 +928,8 @@ public class FSTCompiler<T> {
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
     // freeze the dataOutput if applicable
-    if (dataOutput instanceof Freezable) {
-      ((Freezable) dataOutput).freeze();
+    if (dataOutput instanceof ReadWriteDataOutput) {
+      ((ReadWriteDataOutput) dataOutput).freeze();
     }
   }
 

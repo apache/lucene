@@ -503,7 +503,9 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Save the FST to DataOutput.
+   * Save the FST to DataOutput. If you use an {@link org.apache.lucene.store.IndexOutput} to build
+   * the FST, then you should not and do not need to call this method, as the FST is already saved.
+   * Doing so will throw an {@link UnsupportedOperationException}.
    *
    * @param metaOut the DataOutput to write the metadata to
    * @param out the DataOutput to write the FST bytes to

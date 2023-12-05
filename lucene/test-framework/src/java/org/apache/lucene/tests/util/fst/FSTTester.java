@@ -255,7 +255,17 @@ public class FSTTester<T> {
 
   public FST<T> doTest() throws IOException {
 
-    final FSTCompiler<T> fstCompiler = getFSTBuilder().build();
+    IndexOutput indexOutput = null;
+    boolean useOffHeap = true; // random.nextBoolean();
+    if (useOffHeap) {
+      indexOutput = dir.createOutput("fstOffHeap.bin", IOContext.DEFAULT);
+    }
+
+    final FSTCompiler<T> fstCompiler =
+        new FSTCompiler.Builder<>(
+                inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
+            .dataOutput(indexOutput)
+            .build();
 
     for (InputOutput<T> pair : pairs) {
       if (pair.output instanceof List) {
@@ -270,9 +280,17 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = compile(fstCompiler);
+    FST<T> fst = fstCompiler.compile();
+    ;
 
-    if (random.nextBoolean() && fst != null) {
+    if (useOffHeap) {
+      indexOutput.close();
+      try (IndexInput in = dir.openInput("fstOffHeap.bin", IOContext.DEFAULT)) {
+        fst = new FST<>(fst.getMetadata(), in);
+      } finally {
+        dir.deleteFile("fstOffHeap.bin");
+      }
+    } else if (random.nextBoolean() && fst != null) {
       IOContext context = LuceneTestCase.newIOContext(random);
       try (IndexOutput out = dir.createOutput("fst.bin", context)) {
         fst.save(out, out);
@@ -311,15 +329,6 @@ public class FSTTester<T> {
     arcCount = fstCompiler.getArcCount();
 
     return fst;
-  }
-
-  protected FST<T> compile(FSTCompiler<T> fstCompiler) throws IOException {
-    return fstCompiler.compile();
-  }
-
-  protected FSTCompiler.Builder<T> getFSTBuilder() {
-    return new FSTCompiler.Builder<>(
-        inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs);
   }
 
   protected boolean outputsEqual(T a, T b) {

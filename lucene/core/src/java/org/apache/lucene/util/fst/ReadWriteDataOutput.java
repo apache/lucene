@@ -27,13 +27,15 @@ import org.apache.lucene.store.DataOutput;
  * An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader}. It allows the FST
  * to be readable immediately after writing
  */
-final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezable {
+final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   private final ByteBuffersDataOutput dataOutput;
   // the DataInput to read from in case the DataOutput has multiple blocks
   private ByteBuffersDataInput dataInput;
   // the ByteBuffers to read from in case the DataOutput has a single block
   private ByteBuffer byteBuffer;
+  // whether this DataOutput is already frozen
+  private boolean frozen;
 
   public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
@@ -41,11 +43,17 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezab
 
   @Override
   public void writeByte(byte b) {
+    if (frozen) {
+      throw new IllegalStateException("Already frozen");
+    }
     dataOutput.writeByte(b);
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) {
+    if (frozen) {
+      throw new IllegalStateException("Already frozen");
+    }
     dataOutput.writeBytes(b, offset, length);
   }
 
@@ -54,8 +62,8 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader, Freezab
     return dataOutput.ramBytesUsed();
   }
 
-  @Override
   public void freeze() {
+    frozen = true;
     // these operations are costly, so we want to compute it once and cache
     List<ByteBuffer> byteBuffers = dataOutput.toWriteableBufferList();
     if (byteBuffers.size() == 1) {
