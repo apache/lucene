@@ -70,6 +70,9 @@ API Changes
 * GITHUB#12873: Expressions module now uses MethodHandles to define custom functions. Support for
   custom classloaders was removed. (Uwe Schindler)
 
+* GITHUB#12243: Remove TermInSetQuery ctors taking varargs param. SortedSetDocValuesField#newSlowSetQuery,
+  SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery, KeywordField#newSetQuery now take a collection. (Jakub Slowinski)
+
 New Features
 ---------------------
 
@@ -150,7 +153,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#12243: Mark TermInSetQuery ctors with varargs terms as @Deprecated. SortedSetDocValuesField#newSlowSetQuery,
+  SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery now take a collection of terms as a param. (Jakub Slowinski)
 
 New Features
 ---------------------
