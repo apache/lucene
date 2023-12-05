@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
@@ -170,8 +171,26 @@ public class KeywordField extends Field {
    * @param values the set of values to match
    * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
+   * @deprecated Use {@link #newSetQuery(String, Collection)} instead.
    */
+  @Deprecated(forRemoval = true, since = "9.10")
   public static Query newSetQuery(String field, BytesRef... values) {
+    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(values, "values must not be null");
+    Query indexQuery = new TermInSetQuery(field, values);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
+  }
+
+  /**
+   * Create a query for matching any of a set of provided {@link BytesRef} values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values the set of values to match
+   * @throws NullPointerException if {@code field} is null.
+   * @return a query matching documents with this exact value
+   */
+  public static Query newSetQuery(String field, Collection<BytesRef> values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
     Query indexQuery = new TermInSetQuery(field, values);
