@@ -73,6 +73,12 @@ API Changes
 * GITHUB#12243: Remove TermInSetQuery ctors taking varargs param. SortedSetDocValuesField#newSlowSetQuery,
   SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery, KeywordField#newSetQuery now take a collection. (Jakub Slowinski)
 
+* GITHUB#12881: Performance improvements to MatchHighlighter and MatchRegionRetriever. MatchRegionRetriever can be
+  configured to not load matches (or content) of certain fields and to force-load other fields so that stored fields
+  of a document are accessed once. A configurable limit of field matches placed in the priority queue was added
+  (allows handling long fields with lots of hits more gracefully). MatchRegionRetriever utilizes IndexSearcher's
+  executor to extract hit offsets concurrently. (Dawid Weiss)
+
 New Features
 ---------------------
 
