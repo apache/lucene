@@ -3216,7 +3216,7 @@ public final class CheckIndex implements Closeable {
   }
 
   @FunctionalInterface
-  private static interface DocValuesIteratorSupplier {
+  private interface DocValuesIteratorSupplier {
     DocValuesIterator get(FieldInfo fi) throws IOException;
   }
 
