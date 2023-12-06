@@ -39,6 +39,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.search.FilterMatchesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
@@ -106,7 +107,9 @@ public class MatchRegionRetriever {
    * This constructor uses the default offset strategy supplier from {@link
    * #computeOffsetRetrievalStrategies(IndexReader, Analyzer)}.
    *
-   * @param searcher The {@link IndexSearcher} to use for executing the query.
+   * @param searcher The {@link IndexSearcher} used to execute the query. The index searcher's
+   *     {@linkplain IndexSearcher#getTaskExecutor() task executor} is also used for computing
+   *     highlights concurrently.
    * @param query The query for which highlights should be returned.
    * @param analyzer An analyzer that may be used to reprocess (retokenize) document fields in the
    *     absence of position offsets in the index. Note that the analyzer must return tokens
@@ -139,7 +142,9 @@ public class MatchRegionRetriever {
   }
 
   /**
-   * @param searcher The {@link IndexSearcher} to use for executing the query.
+   * @param searcher The {@link IndexSearcher} used to execute the query. The index searcher's
+   *     {@linkplain IndexSearcher#getTaskExecutor() task executor} is also used for computing
+   *     highlights concurrently.
    * @param query The query for which matches should be retrieved. The query should be rewritten
    *     against the provided searcher.
    * @param fieldOffsetStrategySupplier A custom supplier of per-field {@link
@@ -198,6 +203,15 @@ public class MatchRegionRetriever {
         };
   }
 
+  /**
+   * Processes {@link TopDocs} with reasonable defaults. See variants of this method for low-level
+   * tuning parameters.
+   *
+   * @see #highlightDocuments(PrimitiveIterator.OfInt, MatchOffsetsConsumer, ToIntFunction, int,
+   *     int)
+   * @param topDocs Search results.
+   * @param consumer A streaming consumer for document-hits pairs.
+   */
   public void highlightDocuments(TopDocs topDocs, MatchOffsetsConsumer consumer)
       throws IOException {
     highlightDocuments(
@@ -206,30 +220,8 @@ public class MatchRegionRetriever {
         field -> Integer.MAX_VALUE);
   }
 
-  static class DocHighlightData {
-    final int docId;
-    final LeafReader leafReader;
-    final int leafDocId;
-    final FieldValueProvider fieldValueProvider;
-    final Map<String, List<OffsetRange>> hits;
-
-    DocHighlightData(
-        int docId,
-        LeafReader leafReader,
-        int leafDocId,
-        FieldValueProvider fieldValueProvider,
-        Map<String, List<OffsetRange>> hits) {
-      this.docId = docId;
-      this.leafReader = leafReader;
-      this.leafDocId = leafDocId;
-      this.fieldValueProvider = fieldValueProvider;
-      this.hits = hits;
-    }
-  }
-
   /**
-   * Low-level, high-efficiency method for highlighting large numbers of documents at once in a
-   * streaming fashion.
+   * Low-level, high-efficiency method for highlighting large numbers of documents at once.
    *
    * @param docIds A stream of <em>sorted</em> document identifiers for which hit ranges should be
    *     returned.
@@ -238,33 +230,84 @@ public class MatchRegionRetriever {
    *     number of hit regions to consider when scoring passages. The predicate should return {@link
    *     Integer#MAX_VALUE} for all hits to be considered, although typically 3-10 hits are
    *     sufficient and lead to performance savings in long fields with large numbers of hit ranges.
+   * @see #highlightDocuments(PrimitiveIterator.OfInt, MatchOffsetsConsumer, ToIntFunction, int,
+   *     int)
    */
   public void highlightDocuments(
       PrimitiveIterator.OfInt docIds,
       MatchOffsetsConsumer consumer,
       ToIntFunction<String> maxHitsPerField)
       throws IOException {
+    // Typically enough to saturate a single processing thread and be large enough to
+    // compensate for overhead of concurrency.
+    final int DEFAULT_MAX_BLOCK_SIZE = 50;
+    highlightDocuments(
+        docIds,
+        consumer,
+        maxHitsPerField,
+        DEFAULT_MAX_BLOCK_SIZE,
+        ForkJoinPool.getCommonPoolParallelism());
+  }
+
+  /**
+   * Low-level, high-efficiency method for highlighting large numbers of documents at once.
+   *
+   * <p>Document IDs are grouped into sequential "blocks". For each block, highlights are computed
+   * (this can use parallel threads, if {@link IndexSearcher#getTaskExecutor()}) can execute tasks
+   * in parallel. Finally, processed highlights are passed to the {@code consumer}.
+   *
+   * @param docIds A stream of <em>sorted</em> document identifiers for which hit ranges should be
+   *     returned.
+   * @param consumer A streaming consumer for document-query hits pairs. This consumer will be
+   *     called sequentially, with document ordering corresponding to that of the query results.
+   * @param maxHitsPerField A predicate that should, for the provided field, return the maximum
+   *     number of hit regions to consider when scoring passages. The predicate should return {@link
+   *     Integer#MAX_VALUE} for all hits to be considered, although typically 3-10 hits are
+   *     sufficient and lead to performance savings in long fields with large numbers of hit ranges.
+   * @param maxBlockSize The maximum size of a single contiguous "block" of documents. Each block
+   *     can be processed in parallel, using the index searcher's task executor.
+   * @param maxBlocksProcessedInParallel Maximum number of queued document "blocks"; when reached,
+   *     the queue is processed (possibly concurrently) and then passed to the {@code consumer}. Set
+   *     this value to {@code 1} to process blocks sequentially.
+   */
+  public void highlightDocuments(
+      PrimitiveIterator.OfInt docIds,
+      MatchOffsetsConsumer consumer,
+      ToIntFunction<String> maxHitsPerField,
+      int maxBlockSize,
+      int maxBlocksProcessedInParallel)
+      throws IOException {
     if (leaves.isEmpty()) {
       return;
     }
 
-    // We'll try to use index searcher's concurrency to process blocks of documents in parallel.
-    // A single block is at most this many documents:
-    int maxBlockSize = 50;
-    // and we can queue up at most this many blocks for concurrent processing (we don't
-    // know whether index searcher is truly parallel, so take the hint from fj pool):
-    int maxBlocksProcessedInParallel = ForkJoinPool.getCommonPoolParallelism();
-
     ArrayList<Callable<DocHighlightData[]>> blockQueue = new ArrayList<>();
 
     TaskExecutor taskExecutor = searcher.getTaskExecutor();
-    IOConsumer<ArrayList<Callable<DocHighlightData[]>>> drainQueue =
-        (queue) -> {
-          for (var highlightData : taskExecutor.invokeAll(queue)) {
-            processBlock(highlightData, consumer);
-          }
-          queue.clear();
-        };
+    IOConsumer<ArrayList<Callable<DocHighlightData[]>>> drainQueue;
+    if (maxBlocksProcessedInParallel == 1) {
+      // Sequential, own-thread processing.
+      drainQueue =
+          (queue) -> {
+            for (var callable : queue) {
+              try {
+                processBlock(callable.call(), consumer);
+              } catch (Exception e) {
+                throw new IOException(e);
+              }
+            }
+            queue.clear();
+          };
+    } else {
+      // Potentially concurrent processing via IndexSearcher's TaskExecutor.
+      drainQueue =
+          (queue) -> {
+            for (var highlightData : taskExecutor.invokeAll(queue)) {
+              processBlock(highlightData, consumer);
+            }
+            queue.clear();
+          };
+    }
 
     // Collect blocks.
     int previousDocId = -1;
@@ -281,6 +324,7 @@ public class MatchRegionRetriever {
       if (blockPos >= maxBlockSize || !docIds.hasNext()) {
         final int[] idBlock = ArrayUtil.copyOfSubArray(block, 0, blockPos);
         blockQueue.add(() -> prepareBlock(idBlock, maxHitsPerField));
+        blockPos = 0;
 
         if (blockQueue.size() >= maxBlocksProcessedInParallel) {
           drainQueue.accept(blockQueue);
@@ -293,6 +337,13 @@ public class MatchRegionRetriever {
       drainQueue.accept(blockQueue);
     }
   }
+
+  private record DocHighlightData(
+      int docId,
+      LeafReader leafReader,
+      int leafDocId,
+      FieldValueProvider fieldValueProvider,
+      Map<String, List<OffsetRange>> hits) {}
 
   private DocHighlightData[] prepareBlock(int[] idBlock, ToIntFunction<String> maxHitsPerField)
       throws IOException {
@@ -383,15 +434,14 @@ public class MatchRegionRetriever {
     }
   }
 
-  private static class MatchesIteratorWithLimit implements MatchesIterator {
+  private static class MatchesIteratorWithLimit extends FilterMatchesIterator {
     private int limit;
-    private final MatchesIterator delegate;
 
     public MatchesIteratorWithLimit(MatchesIterator matchesIterator, int limit) {
+      super(matchesIterator);
       if (limit < 0) {
         throw new IllegalArgumentException();
       }
-      this.delegate = matchesIterator;
       this.limit = limit;
     }
 
@@ -401,37 +451,7 @@ public class MatchRegionRetriever {
         return false;
       }
       limit--;
-      return delegate.next();
-    }
-
-    @Override
-    public int startPosition() {
-      return delegate.startPosition();
-    }
-
-    @Override
-    public int endPosition() {
-      return delegate.endPosition();
-    }
-
-    @Override
-    public int startOffset() throws IOException {
-      return delegate.startOffset();
-    }
-
-    @Override
-    public int endOffset() throws IOException {
-      return delegate.endOffset();
-    }
-
-    @Override
-    public MatchesIterator getSubMatches() throws IOException {
-      return delegate.getSubMatches();
-    }
-
-    @Override
-    public Query getQuery() {
-      return delegate.getQuery();
+      return super.next();
     }
   }
 

@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -320,7 +321,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -775,7 +776,14 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             offsetsStrategySupplier,
             fieldsToLoadUnconditionally,
             fieldsToLoadIfWithHits);
-    highlighter.highlightDocuments(topDocs, highlightCollector);
+    int maxBlocksProcessedInParallel = RandomizedTest.randomIntBetween(1, 5);
+    int maxBlockSize = RandomizedTest.randomFrom(new int[] {2, 10, 100});
+    highlighter.highlightDocuments(
+        Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
+        highlightCollector,
+        field -> Integer.MAX_VALUE,
+        maxBlockSize,
+        maxBlocksProcessedInParallel);
 
     return highlights;
   }
