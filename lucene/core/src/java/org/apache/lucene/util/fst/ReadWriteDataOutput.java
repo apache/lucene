@@ -17,8 +17,6 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -30,10 +28,8 @@ import org.apache.lucene.store.DataOutput;
 final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   private final ByteBuffersDataOutput dataOutput;
-  // the DataInput to read from in case the DataOutput has multiple blocks
+  // the DataInput to read from once we finish writing
   private ByteBuffersDataInput dataInput;
-  // the ByteBuffers to read from in case the DataOutput has a single block
-  private ByteBuffer byteBuffer;
   // whether this DataOutput is already frozen
   private boolean frozen;
 
@@ -64,21 +60,12 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   public void freeze() {
     frozen = true;
-    // these operations are costly, so we want to compute it once and cache
-    List<ByteBuffer> byteBuffers = dataOutput.toWriteableBufferList();
-    if (byteBuffers.size() == 1) {
-      byteBuffer = byteBuffers.get(0);
-    } else {
-      dataInput = new ByteBuffersDataInput(byteBuffers);
-    }
+    // this operation are costly, so we want to compute it once and cache
+    dataInput = dataOutput.toDataInput();
   }
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    if (byteBuffer != null) {
-      // use a faster implementation for single-block case
-      return new ReverseBytesReader(byteBuffer.array());
-    }
     assert dataInput != null; // freeze() must be called first
     return new ReverseRandomAccessReader(dataInput);
   }
