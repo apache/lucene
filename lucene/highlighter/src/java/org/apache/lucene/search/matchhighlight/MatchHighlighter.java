@@ -17,7 +17,6 @@
 package org.apache.lucene.search.matchhighlight;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,10 +28,6 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DocumentStoredFieldVisitor;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -71,10 +66,10 @@ public class MatchHighlighter {
      */
     boolean isApplicable(String field, boolean hasMatches);
 
-    /** Do format field values appropriately. */
+    /** Format field values into a list of final "highlights". */
     List<String> format(
         String field,
-        String[] values,
+        List<String> values,
         String contiguousValue,
         List<OffsetRange> valueRanges,
         List<QueryOffsetRange> matchOffsets);
@@ -106,7 +101,7 @@ public class MatchHighlighter {
         @Override
         public List<String> format(
             String field,
-            String[] values,
+            List<String> values,
             String contiguousValue,
             List<OffsetRange> valueRanges,
             List<QueryOffsetRange> matchOffsets) {
@@ -169,14 +164,14 @@ public class MatchHighlighter {
 
   private static class DocHit {
     final int docId;
-    private final LeafReader leafReader;
-    private final int leafDocId;
     private final LinkedHashMap<String, List<QueryOffsetRange>> matchRanges = new LinkedHashMap<>();
+    private final LinkedHashMap<String, List<String>> fieldValues = new LinkedHashMap<>();
 
-    DocHit(int docId, LeafReader leafReader, int leafDocId) {
+    DocHit(int docId, MatchRegionRetriever.FieldValueProvider fieldValueProvider) {
       this.docId = docId;
-      this.leafReader = leafReader;
-      this.leafDocId = leafDocId;
+      for (var fieldName : fieldValueProvider) {
+        fieldValues.put(fieldName, fieldValueProvider.getValues(fieldName));
+      }
     }
 
     void addMatches(Query query, Map<String, List<OffsetRange>> hits) {
@@ -186,22 +181,6 @@ public class MatchHighlighter {
                 matchRanges.computeIfAbsent(field, (fld) -> new ArrayList<>());
             offsets.forEach(o -> target.add(new QueryOffsetRange(query, o.from, o.to)));
           });
-    }
-
-    Document document(Predicate<String> needsField) throws IOException {
-      // Only load the fields that have a chance to be highlighted.
-      DocumentStoredFieldVisitor visitor =
-          new DocumentStoredFieldVisitor() {
-            @Override
-            public Status needsField(FieldInfo fieldInfo) {
-              return (matchRanges.containsKey(fieldInfo.name) || needsField.test(fieldInfo.name))
-                  ? Status.YES
-                  : Status.NO;
-            }
-          };
-
-      leafReader.storedFields().document(leafDocId, visitor);
-      return visitor.getDocument();
     }
   }
 
@@ -229,8 +208,17 @@ public class MatchHighlighter {
       docHits.put(scoreDoc.doc, null);
     }
 
-    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
-    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
+    Predicate<String> fieldsToLoadUnconditionally = fieldsAlwaysReturned::contains;
+    Predicate<String> fieldsToLoadIfWithHits =
+        fieldName -> {
+          // We're interested in any fields for which existing highlighters are applicable (with or
+          // without hits).
+          return fieldHighlighters.stream()
+              .anyMatch(
+                  highlighter ->
+                      highlighter.isApplicable(fieldName, true)
+                          || highlighter.isApplicable(fieldName, false));
+        };
 
     // Collect match ranges for each query and associate each range to the origin query.
     for (Query q : queries) {
@@ -251,7 +239,7 @@ public class MatchHighlighter {
               Map<String, List<OffsetRange>> hits) -> {
             DocHit docHit = docHits.get(docId);
             if (docHit == null) {
-              docHit = new DocHit(docId, leafReader, leafDocId);
+              docHit = new DocHit(docId, fieldValueProvider);
               docHits.put(docId, docHit);
             }
             docHit.addMatches(q, hits);
@@ -264,23 +252,11 @@ public class MatchHighlighter {
   }
 
   private DocHighlights computeDocFieldValues(DocHit docHit) {
-    Document doc;
-    try {
-      doc = docHit.document(fieldsAlwaysReturned::contains);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-
     DocHighlights docHighlights = new DocHighlights(docHit.docId);
 
-    HashSet<String> unique = new HashSet<>();
-    for (IndexableField indexableField : doc) {
-      String field = indexableField.name();
-      if (!unique.add(field)) {
-        continue;
-      }
-
-      String[] values = doc.getValues(field);
+    for (var e : docHit.fieldValues.entrySet()) {
+      String field = e.getKey();
+      List<String> values = e.getValue();
       String contiguousValue = contiguousFieldValue(field, values);
       List<OffsetRange> valueRanges = computeValueRanges(field, values);
       List<QueryOffsetRange> offsets = docHit.matchRanges.get(field);
@@ -297,7 +273,7 @@ public class MatchHighlighter {
     return docHighlights;
   }
 
-  private List<OffsetRange> computeValueRanges(String field, String[] values) {
+  private List<OffsetRange> computeValueRanges(String field, List<String> values) {
     ArrayList<OffsetRange> valueRanges = new ArrayList<>();
     int offset = 0;
     for (CharSequence v : values) {
@@ -308,10 +284,10 @@ public class MatchHighlighter {
     return valueRanges;
   }
 
-  private String contiguousFieldValue(String field, String[] values) {
+  private String contiguousFieldValue(String field, List<String> values) {
     String value;
-    if (values.length == 1) {
-      value = values[0];
+    if (values.size() == 1) {
+      value = values.get(0);
     } else {
       // TODO: This can be inefficient if offset gap is large but the logic
       // of applying offsets would get much more complicated so leaving for now
