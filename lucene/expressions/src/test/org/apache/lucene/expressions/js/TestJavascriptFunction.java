@@ -264,4 +264,9 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("tanh(-12.3456789)", -0.99999999996);
     assertEvaluatesTo("tanh(12.3456789)", 0.99999999996);
   }
+
+  /** checks that dynamic constants work and only produce one entry in constant pool */
+  public void testSameFunction() throws Exception {
+    assertEvaluatesTo("sqrt(49) * sqrt(25)", 7 * 5);
+  }
 }
