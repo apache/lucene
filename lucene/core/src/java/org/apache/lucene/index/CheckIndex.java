@@ -2448,6 +2448,16 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.experimental
    */
+  public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
+      throws IOException {
+    return testPostings(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
+  }
+
+  /**
+   * Test the term index.
+   *
+   * @lucene.experimental
+   */
   public static Status.TermIndexStatus testPostings(
       CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
@@ -3611,6 +3621,16 @@ public final class CheckIndex implements Closeable {
       default:
         throw new AssertionError();
     }
+  }
+
+  /**
+   * Test term vectors.
+   *
+   * @lucene.experimental
+   */
+  public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
+      throws IOException {
+    return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, false);
   }
 
   /**
