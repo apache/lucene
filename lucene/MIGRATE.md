@@ -122,6 +122,13 @@ The new implementation of the Javascript expressions compiler no longer supports
 Due to the use of `MethodHandle`, classloader isolation is no longer needed, because JS code can only call
 MHs that were resolved by the application before using the expressions module.
 
+### `Expression#evaluate()` declares to throw IOException (GITHUB#12878)
+
+The expressions module has changed the `Expression#evaluate()` method signature:
+It now declares that it may throw `IOException`. This was an oversight because
+compiled expressions call `DoubleValues#doubleValue` behind the scenes, which
+may throw `IOException` on index problems, bubbling up unexpectedly to the caller.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

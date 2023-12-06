@@ -120,6 +120,7 @@ public final class JavascriptCompiler {
       DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue"),
       PATCH_STACK_METHOD =
           getAsmMethod(Throwable.class, "patchStackTrace", Throwable.class, Expression.class);
+  private static final Type[] EVALUATE_EXCEPTIONS = new Type[] {Type.getType(IOException.class)};
   private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
       new Handle(
           Opcodes.H_INVOKESTATIC,
@@ -209,16 +210,6 @@ public final class JavascriptCompiler {
       checkFunction(m);
     }
     return new JavascriptCompiler(sourceText, functions, picky).compileExpression();
-  }
-
-  /**
-   * This method is unused, it is just here to make sure that the function signatures don't change.
-   * If this method fails to compile, you also have to change the byte code generator to correctly
-   * use the FunctionValues class.
-   */
-  @SuppressWarnings({"unused"})
-  private static void unusedTestCompile(DoubleValues f) throws IOException {
-    f.doubleValue();
   }
 
   /**
@@ -355,7 +346,8 @@ public final class JavascriptCompiler {
     constructor.endMethod();
 
     final GeneratorAdapter gen =
-        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, null, classWriter);
+        new GeneratorAdapter(
+            Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, EVALUATE_EXCEPTIONS, classWriter);
 
     // add a try/catch block to rewrite stack trace of any Throwable
     final Label beginTry = gen.newLabel(), endTry = gen.newLabel(), catchHandler = gen.newLabel();

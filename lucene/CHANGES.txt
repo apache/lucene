@@ -121,6 +121,9 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
+  of DoubleValues#doubleValue(). (Uwe Schindler)
+
 Other
 ---------------------
 
