@@ -23,8 +23,9 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 // Storing a single contiguous byte[] for the current node of the FST we are writing. The byte[]
-// will only grow, never
-// shrink.
+// will only grow, never shrink.
+// Note: This is only safe for usage that is bounded in the number of bytes written. Do not make
+// this public! Public users should instead use ByteBuffersDataOutput
 final class GrowableByteArrayDataOutput extends DataOutput implements Accountable {
 
   private static final long BASE_RAM_BYTES_USED =
