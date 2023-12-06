@@ -40,12 +40,12 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 
 /**
- * An example highlighter that combines several lower-level highlighting utilities in this package
- * into a fully featured, ready-to-use component.
+ * An example highlighter that combines several lower-level utility classes in this package into a
+ * fully featured, ready-to-use component.
  *
- * <p>Note that if you need to customize or tweak the details of highlighting, it is better to
- * assemble your own highlighter using those low-level building blocks, rather than extend or modify
- * this one.
+ * <p>Note: if you need to customize or tweak the details of highlighting, it is better to assemble
+ * your own highlighter using those low-level building blocks, rather than extend or modify this
+ * one.
  */
 public class MatchHighlighter {
   private final IndexSearcher searcher;
@@ -80,7 +80,7 @@ public class MatchHighlighter {
         List<QueryOffsetRange> matchOffsets);
 
     /**
-     * @return Returns a set of fields that must be fetched for each document, regardless of whether
+     * @return Returns a set of fields that must be loaded from each document, regardless of whether
      *     they had matches or not. This is useful to load and return certain fields that should
      *     always be included (identifiers, document titles, etc.).
      */
@@ -223,21 +223,31 @@ public class MatchHighlighter {
 
   public Stream<DocHighlights> highlight(TopDocs topDocs, Query... queries) throws IOException {
     // We want to preserve topDocs document ordering and MatchRegionRetriever is optimized
-    // for streaming, so we'll just prepopulate the map in proper order.
+    // for streaming, so we'll just populate the map in proper order.
     LinkedHashMap<Integer, DocHit> docHits = new LinkedHashMap<>();
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       docHits.put(scoreDoc.doc, null);
     }
 
+    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
+    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
+
     // Collect match ranges for each query and associate each range to the origin query.
     for (Query q : queries) {
       MatchRegionRetriever highlighter =
-          new MatchRegionRetriever(searcher, searcher.rewrite(q), offsetsRetrievalStrategies);
+          new MatchRegionRetriever(
+              searcher,
+              searcher.rewrite(q),
+              offsetsRetrievalStrategies,
+              fieldsToLoadUnconditionally,
+              fieldsToLoadIfWithHits);
+
       highlighter.highlightDocuments(
           topDocs,
           (int docId,
               LeafReader leafReader,
               int leafDocId,
+              MatchRegionRetriever.FieldValueProvider fieldValueProvider,
               Map<String, List<OffsetRange>> hits) -> {
             DocHit docHit = docHits.get(docId);
             if (docHit == null) {

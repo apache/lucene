@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
@@ -746,7 +747,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     AsciiMatchRangeHighlighter formatter = new AsciiMatchRangeHighlighter(analyzer);
 
     MatchRegionRetriever.MatchOffsetsConsumer highlightCollector =
-        (docId, leafReader, leafDocId, fieldHighlights) -> {
+        (docId, leafReader, leafDocId, fieldValueProvider, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
           Document document = leafReader.storedFields().document(leafDocId);
@@ -765,8 +766,15 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           }
         };
 
+    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
+    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
     MatchRegionRetriever highlighter =
-        new MatchRegionRetriever(searcher, rewrittenQuery, offsetsStrategySupplier);
+        new MatchRegionRetriever(
+            searcher,
+            rewrittenQuery,
+            offsetsStrategySupplier,
+            fieldsToLoadUnconditionally,
+            fieldsToLoadIfWithHits);
     highlighter.highlightDocuments(topDocs, highlightCollector);
 
     return highlights;
