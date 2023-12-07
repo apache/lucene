@@ -24,7 +24,7 @@ ext {
       "apache-rat": "0.14",
       "asm": "9.6",
       "commons-codec": "1.13",
-      "ecj": "3.30.0",
+      "ecj": "3.36.0",
       "flexmark": "0.61.24",
       "javacc": "7.0.12",
       "jflex": "1.8.2",
