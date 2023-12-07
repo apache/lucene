@@ -145,7 +145,8 @@ public class FSTCompiler<T> {
   private long numBytesWritten;
 
   /**
-   * Get an on-heap DataOutput that allows the FST to be read immediately after writing.
+   * Get an on-heap DataOutput that allows the FST to be read immediately after writing, and also
+   * optionally saved to an external DataOutput.
    *
    * @param blockBits how many bits wide to make each block of the DataOutput
    * @return the DataOutput
@@ -292,8 +293,7 @@ public class FSTCompiler<T> {
 
     /**
      * Set the {@link DataOutput} which is used for low-level writing of FST. If you want the FST to
-     * be immediately readable, you need to use a DataOutput that also implements {@link FSTReader},
-     * such as {@link FSTCompiler#getOnHeapReaderWriter(int)}.
+     * be immediately readable, you need to use {@link FSTCompiler#getOnHeapReaderWriter(int)}.
      *
      * <p>Otherwise you need to construct the corresponding {@link
      * org.apache.lucene.store.DataInput} and use the FST constructor to read it.
