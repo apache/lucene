@@ -115,6 +115,13 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
+  public void testRomajiReadingsHiragana() throws IOException {
+    assertAnalyzesTo(
+        romajiAnalyzer,
+        "が ぎ ぐ げ ご ぁ ゔ",
+        new String[] {"ga", "gi", "gu", "ge", "go", "a", "v"});
+  }
+
   public void testRandomData() throws IOException {
     Random random = random();
     checkRandomData(random, katakanaAnalyzer, 200 * RANDOM_MULTIPLIER);
