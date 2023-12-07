@@ -19,6 +19,11 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
+
+The API of interfaces for accepting highlights has changed to allow performance improvements. Look at the issue and the PR diff to get
+a sense of what's changed (changes are minor).
+
 ### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
 
 The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
