@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -521,7 +523,12 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).bytesPageBits(pageBits).build();
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
+              // Disable suffixes sharing for block tree index because suffixes are mostly dropped
+              // from the FST index and left in the term blocks.
+              .suffixRAMLimitMB(0d)
+              .dataOutput(getOnHeapReaderWriter(pageBits))
+              .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
       // }
