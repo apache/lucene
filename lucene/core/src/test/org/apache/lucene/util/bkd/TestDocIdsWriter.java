@@ -18,7 +18,11 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
@@ -149,5 +153,19 @@ public class TestDocIdsWriter extends LuceneTestCase {
       assertEquals(len, in.getFilePointer());
     }
     dir.deleteFile("tmp");
+  }
+
+  // This simple test tickles a JVM JIT crash on JDK's less than 21.0.1
+  // Needs to be run with C2, so with the environment variable `CI` set
+  public void testCrash() throws IOException {
+    for (int i = 0; i < 100; i++) {
+      try (Directory dir = newDirectory();
+          IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null))) {
+        for (int d = 0; d < 20_000; d++) {
+          iw.addDocument(
+              List.of(new IntPoint("foo", 0), new SortedNumericDocValuesField("bar", 0)));
+        }
+      }
+    }
   }
 }
