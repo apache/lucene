@@ -152,8 +152,6 @@ Other
 
 * GITHUB#9049: Fixing bug in UnescapedCharSequence#toStringEscaped() (Jakub Slowinski)
 
-* GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
-
 ======================== Lucene 9.10.0 =======================
 
 API Changes
@@ -180,7 +178,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 ======================== Lucene 9.9.0 =======================
 
