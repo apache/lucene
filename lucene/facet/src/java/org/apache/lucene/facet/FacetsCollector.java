@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
@@ -149,13 +150,25 @@ public class FacetsCollector extends SimpleCollector {
     context = null;
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link FacetUtils#search(IndexSearcher,
+          Query, int, CollectorManager)} due to its support for concurrency in IndexSearcher
+   */
+  @Deprecated
   public static TopDocs search(IndexSearcher searcher, Query q, int n, Collector fc)
       throws IOException {
     return doSearch(searcher, null, q, n, null, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link FacetUtils#search(IndexSearcher,
+          Query, int, Sort, CollectorManager)} due to its support for concurrency in IndexSearcher
+   */
+  @Deprecated
   public static TopFieldDocs search(IndexSearcher searcher, Query q, int n, Sort sort, Collector fc)
       throws IOException {
     if (sort == null) {
@@ -164,7 +177,12 @@ public class FacetsCollector extends SimpleCollector {
     return (TopFieldDocs) doSearch(searcher, null, q, n, sort, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link FacetUtils#search(IndexSearcher,
+          Query, int, Sort, boolean, CollectorManager)} due to its support for concurrency in IndexSearcher
+   */
   public static TopFieldDocs search(
       IndexSearcher searcher, Query q, int n, Sort sort, boolean doDocScores, Collector fc)
       throws IOException {
