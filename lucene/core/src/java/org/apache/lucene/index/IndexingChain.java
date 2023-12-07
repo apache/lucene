@@ -570,7 +570,10 @@ final class IndexingChain implements Accountable {
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
         final boolean isReserved = field.getClass() == ReservedField.class;
-        PerField pf = getOrAddPerField(field.name(), isReserved);
+        PerField pf =
+            getOrAddPerField(
+                field.name(), false
+                /* we never add reserved fields during indexing should be done during DWPT setup*/ );
         if (pf.reserved != isReserved) {
           throw new IllegalArgumentException(
               "\""
@@ -1547,6 +1550,11 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  /**
+   * Wraps the given field in a reserved field and registers it as reserved. Only DWPT should do
+   * this to mark fields as private / reserved to prevent this fieldname to be used from the outside
+   * of the IW / DWPT eco-system
+   */
   <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
     getOrAddPerField(field.name(), true);
     return new ReservedField<T>(field);
