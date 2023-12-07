@@ -156,7 +156,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
       addDoc(modifier, ++id, value);
       if (0 == t) {
         modifier.deleteDocuments(new Term("value", String.valueOf(value)));
-        assertEquals(2, modifier.getNumBufferedDeleteTerms());
         assertEquals(1, modifier.getBufferedDeleteTermsSize());
       } else modifier.deleteDocuments(new TermQuery(new Term("value", String.valueOf(value))));
 
@@ -1315,7 +1314,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     w.addDocument(doc);
     w.close();
 
-    iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
     w = new IndexWriter(d, iwc);
     IndexReader r = DirectoryReader.open(w, false, false);

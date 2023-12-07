@@ -150,7 +150,7 @@ public class SimpleSortedSetFacetsExample {
     SimpleSortedSetFacetsExample example = new SimpleSortedSetFacetsExample();
     List<FacetResult> results = example.runSearch();
     System.out.println("Author: " + results.get(0));
-    System.out.println("Publish Year: " + results.get(0));
+    System.out.println("Publish Year: " + results.get(1));
 
     System.out.println("\n");
     System.out.println("Facet drill-down example (Publish Year/2010):");

@@ -19,7 +19,13 @@ package org.apache.lucene.util;
 
 import java.util.Comparator;
 
-abstract class StringSorter extends Sorter {
+/**
+ * A {@link BytesRef} sorter tries to use a efficient radix sorter if {@link StringSorter#cmp} is a
+ * {@link BytesRefComparator}, otherwise fallback to {@link StringSorter#fallbackSorter}
+ *
+ * @lucene.internal
+ */
+public abstract class StringSorter extends Sorter {
 
   private final Comparator<BytesRef> cmp;
   protected final BytesRefBuilder scratch1 = new BytesRefBuilder();
@@ -29,7 +35,7 @@ abstract class StringSorter extends Sorter {
   protected final BytesRef scratchBytes2 = new BytesRef();
   protected final BytesRef pivot = new BytesRef();
 
-  StringSorter(Comparator<BytesRef> cmp) {
+  protected StringSorter(Comparator<BytesRef> cmp) {
     this.cmp = cmp;
   }
 
@@ -51,24 +57,35 @@ abstract class StringSorter extends Sorter {
     }
   }
 
+  /** A radix sorter for {@link BytesRef} */
+  protected class MSBStringRadixSorter extends MSBRadixSorter {
+
+    private final BytesRefComparator cmp;
+
+    protected MSBStringRadixSorter(BytesRefComparator cmp) {
+      super(cmp.comparedBytesCount);
+      this.cmp = cmp;
+    }
+
+    @Override
+    protected void swap(int i, int j) {
+      StringSorter.this.swap(i, j);
+    }
+
+    @Override
+    protected int byteAt(int i, int k) {
+      get(scratch1, scratchBytes1, i);
+      return cmp.byteAt(scratchBytes1, k);
+    }
+
+    @Override
+    protected Sorter getFallbackSorter(int k) {
+      return fallbackSorter((o1, o2) -> cmp.compare(o1, o2, k));
+    }
+  }
+
   protected Sorter radixSorter(BytesRefComparator cmp) {
-    return new MSBRadixSorter(cmp.comparedBytesCount) {
-      @Override
-      protected void swap(int i, int j) {
-        StringSorter.this.swap(i, j);
-      }
-
-      @Override
-      protected int byteAt(int i, int k) {
-        get(scratch1, scratchBytes1, i);
-        return cmp.byteAt(scratchBytes1, k);
-      }
-
-      @Override
-      protected Sorter getFallbackSorter(int k) {
-        return fallbackSorter((o1, o2) -> cmp.compare(o1, o2, k));
-      }
-    };
+    return new MSBStringRadixSorter(cmp);
   }
 
   protected Sorter fallbackSorter(Comparator<BytesRef> cmp) {
@@ -80,7 +97,9 @@ abstract class StringSorter extends Sorter {
 
       @Override
       protected int compare(int i, int j) {
-        return StringSorter.this.compare(i, j);
+        get(scratch1, scratchBytes1, i);
+        get(scratch2, scratchBytes2, j);
+        return cmp.compare(scratchBytes1, scratchBytes2);
       }
 
       @Override
