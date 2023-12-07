@@ -82,6 +82,7 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
   }
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     indexAnalyzer.setPositionIncrementGap(3); // more than default
@@ -89,6 +90,7 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
   }
 
   @After
+  @Override
   public void tearDown() throws Exception {
     IOUtils.close(indexReader, indexWriter);
     super.tearDown();
