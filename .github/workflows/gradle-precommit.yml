@@ -25,7 +25,7 @@ jobs:
         # Operating systems to run on.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '17' ]
+        java: [ '21' ]
 
     env:
       GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
         # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '17' ]
+        java: [ '21' ]
 
     env:
       GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
