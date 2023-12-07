@@ -324,24 +324,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     try {
       final int flag = curSegment.get(LAYOUT_BYTE, curPosition++) & 0xFF;
-
-      final int n1Minus1 = flag >> 6;
-      final int n2Minus1 = (flag >> 4) & 0x03;
-      final int n3Minus1 = (flag >> 2) & 0x03;
-      final int n4Minus1 = flag & 0x03;
-
-      dst[offset] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n1Minus1];
-      curPosition += 1 + n1Minus1;
-      dst[offset + 1] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n2Minus1];
-      curPosition += 1 + n2Minus1;
-      dst[offset + 2] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n3Minus1];
-      curPosition += 1 + n3Minus1;
-      dst[offset + 3] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n4Minus1];
-      curPosition += 1 + n4Minus1;
+      curPosition +=
+          GroupVIntUtil.readGroupVInt(
+              flag, p -> curSegment.get(LAYOUT_LE_INT, p), curPosition, dst, offset);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }

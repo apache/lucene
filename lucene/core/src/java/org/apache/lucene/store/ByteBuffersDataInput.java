@@ -232,23 +232,10 @@ public final class ByteBuffersDataInput extends DataInput
       GroupVIntUtil.readGroupVInt(this, dst, offset);
       return;
     }
-
     final int flag = block.get(curPosition++) & 0xFF;
-
-    final int n1Minus1 = flag >> 6;
-    final int n2Minus1 = (flag >> 4) & 0x03;
-    final int n3Minus1 = (flag >> 2) & 0x03;
-    final int n4Minus1 = flag & 0x03;
-
-    dst[offset] = block.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n1Minus1];
-    curPosition += 1 + n1Minus1;
-    dst[offset + 1] = block.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n2Minus1];
-    curPosition += 1 + n2Minus1;
-    dst[offset + 2] = block.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n3Minus1];
-    curPosition += 1 + n3Minus1;
-    dst[offset + 3] = block.getInt(curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n4Minus1];
-    curPosition += 1 + n4Minus1;
-    pos += curPosition - blockOffset;
+    pos +=
+        GroupVIntUtil.readGroupVInt(flag, p -> block.getInt((int) p), curPosition, dst, offset)
+            + 1; // +1 for flag
   }
 
   @Override
