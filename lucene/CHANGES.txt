@@ -61,10 +61,6 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
-* GITHUB#11041: Deprecate IndexSearch#search(Query, Collector) in favor of
-  IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
-  and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
-
 * GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
 
 * GITHUB#12873: Expressions module now uses MethodHandles to define custom functions. Support for
@@ -164,6 +160,10 @@ API Changes
 ---------------------
 * GITHUB#12243: Mark TermInSetQuery ctors with varargs terms as @Deprecated. SortedSetDocValuesField#newSlowSetQuery,
   SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery now take a collection of terms as a param. (Jakub Slowinski)
+
+* GITHUB#11041: Deprecate IndexSearch#search(Query, Collector) in favor of
+  IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
+  and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
 
 New Features
 ---------------------
