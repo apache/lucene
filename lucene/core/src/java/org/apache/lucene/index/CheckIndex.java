@@ -1186,7 +1186,7 @@ public final class CheckIndex implements Closeable {
             && sort.getParentField() == null
             && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
           throw new IllegalStateException(
-              "parent field is not set but the index has block and was created with version: "
+              "parent field is not set but the index has document blocks and was created with version: "
                   + metaData.getCreatedVersionMajor());
         }
         final DocIdSetIterator iter =

@@ -219,11 +219,15 @@ public final class Sorter {
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
-    assert metaData.hasBlocks() == false
-            || sort.getParentField() != null
-            || metaData.getCreatedVersionMajor() < Version.LUCENE_10_0_0.major
-        : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
-            + metaData.getCreatedVersionMajor();
+    if (metaData.hasBlocks()
+        && sort.getParentField() == null
+        && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+      throw new CorruptIndexException(
+          "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+              + metaData.getCreatedVersionMajor(),
+          "Sorter");
+    }
+
     for (int i = 0; i < fields.length; i++) {
       IndexSorter sorter = fields[i].getIndexSorter();
       if (sorter == null) {

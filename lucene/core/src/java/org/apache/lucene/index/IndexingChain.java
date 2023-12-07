@@ -229,17 +229,25 @@ final class IndexingChain implements Accountable {
     if (state.segmentInfo.getHasBlocks() && indexSort.getParentField() != null) {
       final DocIdSetIterator readerValues =
           docValuesReader.getNumericDocValues(indexSort.getParentField());
+      if (readerValues == null) {
+        throw new CorruptIndexException(
+            "missing doc values for parent field \"" + indexSort.getParentField() + "\"",
+            "IndexingChain");
+      }
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
       comparatorWrapper =
           in ->
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
-    assert state.segmentInfo.getHasBlocks() == false
-            || indexSort.getParentField() != null
-            || indexCreatedVersionMajor < Version.LUCENE_10_0_0.major
-        : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
-            + indexCreatedVersionMajor;
+    if (state.segmentInfo.getHasBlocks()
+        && indexSort.getParentField() == null
+        && indexCreatedVersionMajor >= Version.LUCENE_10_0_0.major) {
+      throw new CorruptIndexException(
+          "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+              + indexCreatedVersionMajor,
+          "IndexingChain");
+    }
     List<IndexSorter.DocComparator> comparators = new ArrayList<>();
     for (int i = 0; i < indexSort.getSort().length; i++) {
       SortField sortField = indexSort.getSort()[i];

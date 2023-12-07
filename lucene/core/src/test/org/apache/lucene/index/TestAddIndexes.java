@@ -1721,7 +1721,16 @@ public class TestAddIndexes extends LuceneTestCase {
     assertEquals(
         "cannot change index sort from parent field: foobar <int: \"foo\"> to <int: \"foo\">",
         message);
-    IOUtils.close(r1, dir1, w2, dir2);
+
+    Directory dir3 = newDirectory();
+    IndexWriterConfig iwc3 = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc3.setIndexSort(new Sort("foobar", new SortField("foo", SortField.Type.INT)));
+    RandomIndexWriter w3 = new RandomIndexWriter(random(), dir3, iwc3);
+
+    w3.addIndexes((SegmentReader) getOnlyLeafReader(r1));
+    w3.addIndexes(dir1);
+
+    IOUtils.close(r1, dir1, w2, dir2, w3, dir3);
   }
 
   public void testAddIndexesDVUpdateSameSegmentName() throws Exception {
