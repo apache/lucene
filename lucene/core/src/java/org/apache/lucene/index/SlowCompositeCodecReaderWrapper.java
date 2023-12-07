@@ -565,12 +565,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
   private static class SlowCompositePointsReaderWrapper extends PointsReader {
 
-    private final CodecReader[] codecReaders;
     private final PointsReader[] readers;
     private final int[] docStarts;
 
     SlowCompositePointsReaderWrapper(CodecReader[] codecReaders, int[] docStarts) {
-      this.codecReaders = codecReaders;
       this.readers =
           Arrays.stream(codecReaders)
               .map(CodecReader::getPointsReader)
@@ -596,12 +594,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public PointValues getValues(String field) throws IOException {
       List<PointValuesSub> values = new ArrayList<>();
       for (int i = 0; i < readers.length; ++i) {
-        FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);
-        if (fi != null && fi.getPointDimensionCount() > 0) {
+        if (readers[i] != null) {
           PointValues v = readers[i].getValues(field);
           if (v != null) {
-            // Apparently FieldInfo can claim a field has points, yet the returned
-            // PointValues is null
             values.add(new PointValuesSub(v, docStarts[i]));
           }
         }
