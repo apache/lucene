@@ -182,7 +182,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, resultSimilarity, filter);
+    return Objects.hash(field, traversalSimilarity, resultSimilarity, filter);
   }
 
   private static class VectorSimilarityScorer extends Scorer {
@@ -228,7 +228,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                   Arrays.binarySearch(
                       scoreDocs,
                       new ScoreDoc(target, 0),
-                      Comparator.comparing(scoreDoc -> scoreDoc.doc));
+                      Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
               if (index < 0) {
                 index = -1 - index;
               }
