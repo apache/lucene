@@ -28,7 +28,6 @@ import java.nio.file.Paths;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -97,11 +96,11 @@ import org.apache.lucene.util.Version;
  */
 public final class CheckIndex implements Closeable {
 
+  private final Directory dir;
+  private final Lock writeLock;
+  private final NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
   private PrintStream infoStream;
-  private Directory dir;
-  private Lock writeLock;
   private volatile boolean closed;
-  private NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
 
   /**
    * Returned from {@link #checkIndex()} detailing the health and status of the index.
@@ -691,13 +690,12 @@ public final class CheckIndex implements Closeable {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();
       }
-      infoStream.println(
-          String.format(
-              Locale.ROOT,
-              "%.2f%% total deletions; %d documents; %d deletions",
-              100. * delCount / maxDoc,
-              maxDoc,
-              delCount));
+      infoStream.printf(
+          Locale.ROOT,
+          "%.2f%% total deletions; %d documents; %d deletions%n",
+          100. * delCount / maxDoc,
+          maxDoc,
+          delCount);
     }
 
     // find the oldest and newest segment versions
@@ -808,8 +806,7 @@ public final class CheckIndex implements Closeable {
 
       // sort segmentCommitInfos by segment size, as smaller segment tends to finish faster, and
       // hence its output can be printed out faster
-      Collections.sort(
-          segmentCommitInfos,
+      segmentCommitInfos.sort(
           (info1, info2) -> {
             try {
               return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
@@ -1035,26 +1032,26 @@ public final class CheckIndex implements Closeable {
       toLoseDocCount = numDocs;
 
       if (reader.hasDeletions()) {
-        if (reader.numDocs() != info.info.maxDoc() - info.getDelCount()) {
+        if (numDocs != info.info.maxDoc() - info.getDelCount()) {
           throw new CheckIndexException(
               "delete count mismatch: info="
                   + (info.info.maxDoc() - info.getDelCount())
                   + " vs reader="
-                  + reader.numDocs());
+                  + numDocs);
         }
-        if ((info.info.maxDoc() - reader.numDocs()) > reader.maxDoc()) {
+        if ((info.info.maxDoc() - numDocs) > reader.maxDoc()) {
           throw new CheckIndexException(
               "too many deleted docs: maxDoc()="
                   + reader.maxDoc()
                   + " vs del count="
-                  + (info.info.maxDoc() - reader.numDocs()));
+                  + (info.info.maxDoc() - numDocs));
         }
-        if (info.info.maxDoc() - reader.numDocs() != info.getDelCount()) {
+        if (info.info.maxDoc() - numDocs != info.getDelCount()) {
           throw new CheckIndexException(
               "delete count mismatch: info="
                   + info.getDelCount()
                   + " vs reader="
-                  + (info.info.maxDoc() - reader.numDocs()));
+                  + (info.info.maxDoc() - numDocs));
         }
       } else {
         if (info.getDelCount() != 0) {
@@ -1062,7 +1059,7 @@ public final class CheckIndex implements Closeable {
               "delete count mismatch: info="
                   + info.getDelCount()
                   + " vs reader="
-                  + (info.info.maxDoc() - reader.numDocs()));
+                  + (info.info.maxDoc() - numDocs));
         }
       }
 
@@ -2005,7 +2002,7 @@ public final class CheckIndex implements Closeable {
             || docFreq > 1024
             || (status.termCount + status.delTermCount) % 1024 == 0) {
           // First check max scores and block uptos
-          // But only if slok checks are enabled since we visit all docs
+          // But only if slow checks are enabled since we visit all docs
           if (doSlowChecks) {
             int max = -1;
             int maxFreq = 0;
@@ -2226,7 +2223,7 @@ public final class CheckIndex implements Closeable {
                         + " doesn't have terms according to postings but has a norm value that is not zero: "
                         + Long.toUnsignedString(norm));
               }
-            } else if (norm == 0 && visitedDocs.get(doc)) {
+            } else if (visitedDocs.get(doc)) {
               throw new CheckIndexException(
                   "Document "
                       + doc
@@ -3207,7 +3204,7 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo fieldInfo : reader.getFieldInfos()) {
         if (fieldInfo.getDocValuesType() != DocValuesType.NONE) {
           status.totalValueFields++;
-          checkDocValues(fieldInfo, dvReader, reader.maxDoc(), infoStream, status);
+          checkDocValues(fieldInfo, dvReader, status);
         }
       }
 
@@ -3237,11 +3234,11 @@ public final class CheckIndex implements Closeable {
   }
 
   @FunctionalInterface
-  private static interface DocValuesIteratorSupplier {
+  private interface DocValuesIteratorSupplier {
     DocValuesIterator get(FieldInfo fi) throws IOException;
   }
 
-  private static void checkDVIterator(FieldInfo fi, int maxDoc, DocValuesIteratorSupplier producer)
+  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
       throws IOException {
     String field = fi.name;
 
@@ -3359,7 +3356,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkBinaryDocValues(
-      String fieldName, int maxDoc, BinaryDocValues bdv, BinaryDocValues bdv2) throws IOException {
+      String fieldName, BinaryDocValues bdv, BinaryDocValues bdv2) throws IOException {
     if (bdv.docID() != -1) {
       throw new CheckIndexException(
           "binary dv iterator for field: "
@@ -3384,7 +3381,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkSortedDocValues(
-      String fieldName, int maxDoc, SortedDocValues dv, SortedDocValues dv2) throws IOException {
+      String fieldName, SortedDocValues dv, SortedDocValues dv2) throws IOException {
     if (dv.docID() != -1) {
       throw new CheckIndexException(
           "sorted dv iterator for field: "
@@ -3448,8 +3445,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkSortedSetDocValues(
-      String fieldName, int maxDoc, SortedSetDocValues dv, SortedSetDocValues dv2)
-      throws IOException {
+      String fieldName, SortedSetDocValues dv, SortedSetDocValues dv2) throws IOException {
     final long maxOrd = dv.getValueCount() - 1;
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
@@ -3545,7 +3541,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkSortedNumericDocValues(
-      String fieldName, int maxDoc, SortedNumericDocValues ndv, SortedNumericDocValues ndv2)
+      String fieldName, SortedNumericDocValues ndv, SortedNumericDocValues ndv2)
       throws IOException {
     if (ndv.docID() != -1) {
       throw new CheckIndexException(
@@ -3614,38 +3610,32 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkDocValues(
-      FieldInfo fi,
-      DocValuesProducer dvReader,
-      int maxDoc,
-      PrintStream infoStream,
-      DocValuesStatus status)
-      throws Exception {
+      FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
     switch (fi.getDocValuesType()) {
       case SORTED:
         status.totalSortedFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSorted);
-        checkSortedDocValues(fi.name, maxDoc, dvReader.getSorted(fi), dvReader.getSorted(fi));
+        checkDVIterator(fi, dvReader::getSorted);
+        checkSortedDocValues(fi.name, dvReader.getSorted(fi), dvReader.getSorted(fi));
         break;
       case SORTED_NUMERIC:
         status.totalSortedNumericFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSortedNumeric);
+        checkDVIterator(fi, dvReader::getSortedNumeric);
         checkSortedNumericDocValues(
-            fi.name, maxDoc, dvReader.getSortedNumeric(fi), dvReader.getSortedNumeric(fi));
+            fi.name, dvReader.getSortedNumeric(fi), dvReader.getSortedNumeric(fi));
         break;
       case SORTED_SET:
         status.totalSortedSetFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSortedSet);
-        checkSortedSetDocValues(
-            fi.name, maxDoc, dvReader.getSortedSet(fi), dvReader.getSortedSet(fi));
+        checkDVIterator(fi, dvReader::getSortedSet);
+        checkSortedSetDocValues(fi.name, dvReader.getSortedSet(fi), dvReader.getSortedSet(fi));
         break;
       case BINARY:
         status.totalBinaryFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getBinary);
-        checkBinaryDocValues(fi.name, maxDoc, dvReader.getBinary(fi), dvReader.getBinary(fi));
+        checkDVIterator(fi, dvReader::getBinary);
+        checkBinaryDocValues(fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi));
         break;
       case NUMERIC:
         status.totalNumericFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getNumeric);
+        checkDVIterator(fi, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
         break;
       case NONE:

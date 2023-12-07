@@ -28,7 +28,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 ======================== Lucene 9.9.0 =======================
 
