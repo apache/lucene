@@ -168,9 +168,10 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#12679: Add support for similarity-based vector searches. Finds all vectors scoring above a `resultSimilarity`
-  while traversing the HNSW graph till better-scoring nodes are available, or the best candidate is below a score of
-  `traversalSimilarity` in the lowest level. (Aditya Prakash, Kaival Parikh)
+* GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
+  VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
+  better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
+  level. (Aditya Prakash, Kaival Parikh)
 
 Improvements
 ---------------------
