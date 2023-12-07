@@ -3210,7 +3210,7 @@ public class TestIndexSorting extends LuceneTestCase {
                             writer.addDocuments(Arrays.asList(doc, new Document()));
                           });
                   assertEquals(
-                      "documents must not contain the parent doc values field \"parent\"",
+                      "\"parent\" is a reserved field and should not be added to any document",
                       ex.getMessage());
                 },
                 () -> {
@@ -3223,7 +3223,7 @@ public class TestIndexSorting extends LuceneTestCase {
                             writer.addDocuments(Arrays.asList(new Document(), doc));
                           });
                   assertEquals(
-                      "documents must not contain the parent doc values field \"parent\"",
+                      "\"parent\" is a reserved field and should not be added to any document",
                       ex.getMessage());
                 });
         Collections.shuffle(runnabels, random());

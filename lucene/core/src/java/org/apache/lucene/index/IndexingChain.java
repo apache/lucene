@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,6 +40,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
@@ -567,7 +569,14 @@ final class IndexingChain implements Accountable {
       // build schema for each unique doc field
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
-        PerField pf = getOrAddPerField(field.name());
+        final boolean isReserved = field.getClass() == ReservedField.class;
+        PerField pf = getOrAddPerField(field.name(), isReserved);
+        if (pf.reserved != isReserved) {
+          throw new IllegalArgumentException(
+              "\""
+                  + field.name()
+                  + "\" is a reserved field and should not be added to any document");
+        }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
@@ -762,7 +771,7 @@ final class IndexingChain implements Accountable {
    * Returns a previously created {@link PerField}, absorbing the type information from {@link
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
-  private PerField getOrAddPerField(String fieldName) {
+  private PerField getOrAddPerField(String fieldName, boolean reserved) {
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
@@ -778,7 +787,8 @@ final class IndexingChain implements Accountable {
               schema,
               indexWriterConfig.getSimilarity(),
               indexWriterConfig.getInfoStream(),
-              indexWriterConfig.getAnalyzer());
+              indexWriterConfig.getAnalyzer(),
+              reserved);
       pf.next = fieldHash[hashPos];
       fieldHash[hashPos] = pf;
       totalFieldCount++;
@@ -1043,6 +1053,7 @@ final class IndexingChain implements Accountable {
     final String fieldName;
     final int indexCreatedVersionMajor;
     final FieldSchema schema;
+    final boolean reserved;
     FieldInfo fieldInfo;
     final Similarity similarity;
 
@@ -1080,13 +1091,15 @@ final class IndexingChain implements Accountable {
         FieldSchema schema,
         Similarity similarity,
         InfoStream infoStream,
-        Analyzer analyzer) {
+        Analyzer analyzer,
+        boolean reserved) {
       this.fieldName = fieldName;
       this.indexCreatedVersionMajor = indexCreatedVersionMajor;
       this.schema = schema;
       this.similarity = similarity;
       this.infoStream = infoStream;
       this.analyzer = analyzer;
+      this.reserved = reserved;
     }
 
     void reset(int docId) {
@@ -1531,6 +1544,74 @@ final class IndexingChain implements Accountable {
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
       assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
+    }
+  }
+
+  <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
+    getOrAddPerField(field.name(), true);
+    return new ReservedField<T>(field);
+  }
+
+  static final class ReservedField<T extends IndexableField> implements IndexableField {
+
+    private final T delegate;
+
+    private ReservedField(T delegate) {
+      this.delegate = delegate;
+    }
+
+    T getDelegate() {
+      return delegate;
+    }
+
+    @Override
+    public String name() {
+      return delegate.name();
+    }
+
+    @Override
+    public IndexableFieldType fieldType() {
+      return delegate.fieldType();
+    }
+
+    @Override
+    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+      return delegate.tokenStream(analyzer, reuse);
+    }
+
+    @Override
+    public BytesRef binaryValue() {
+      return delegate.binaryValue();
+    }
+
+    @Override
+    public String stringValue() {
+      return delegate.stringValue();
+    }
+
+    @Override
+    public CharSequence getCharSequenceValue() {
+      return delegate.getCharSequenceValue();
+    }
+
+    @Override
+    public Reader readerValue() {
+      return delegate.readerValue();
+    }
+
+    @Override
+    public Number numericValue() {
+      return delegate.numericValue();
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return delegate.storedValue();
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return delegate.invertableType();
     }
   }
 }

@@ -138,6 +138,7 @@ final class DocumentsWriterPerThread implements Accountable {
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
   private final int indexVersionCreated;
+  private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
 
   DocumentsWriterPerThread(
       int indexVersionCreated,
@@ -194,6 +195,14 @@ final class DocumentsWriterPerThread implements Accountable {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
+    if (indexWriterConfig.getIndexSort() != null
+        && indexWriterConfig.getIndexSort().getParentField() != null) {
+      this.parentField =
+          indexingChain.markAsReserved(
+              new NumericDocValuesField(indexWriterConfig.getIndexSort().getParentField(), -1));
+    } else {
+      this.parentField = null;
+    }
   }
 
   final void testPoint(String message) {
@@ -240,16 +249,12 @@ final class DocumentsWriterPerThread implements Accountable {
         while (iterator.hasNext()) {
           Iterable<? extends IndexableField> doc = iterator.next();
           if (segmentInfo.getIndexSort() != null) {
-            String parentFieldName = segmentInfo.getIndexSort().getParentField();
-            if (parentFieldName != null) {
-              final NumericDocValuesField parentField;
+            if (parentField != null) {
               if (iterator.hasNext() == false) {
                 int numChildren = numDocsInRAM - docsInRamBefore;
-                parentField = new NumericDocValuesField(parentFieldName, numChildren);
-              } else {
-                parentField = null;
+                parentField.getDelegate().setLongValue(numChildren);
+                doc = addParentField(doc, parentField);
               }
-              doc = filterParentDocField(doc, parentFieldName, parentField);
             } else if (iterator.hasNext() && indexVersionCreated >= Version.LUCENE_10_0_0.major) {
               // sort is configured but parent field is missing, yet we have a doc-block
               // yet we must not fail if this index was created in an earlier version where this
@@ -258,7 +263,6 @@ final class DocumentsWriterPerThread implements Accountable {
                   "a parent field must be set in order to use document blocks with index sorting; see Sort#getParentField");
             }
           }
-
           // Even on exception, the document is still added (but marked
           // deleted), so we don't need to un-reserve at that point.
           // Aborting exceptions will actually "lose" more than one
@@ -290,14 +294,12 @@ final class DocumentsWriterPerThread implements Accountable {
     }
   }
 
-  private Iterable<? extends IndexableField> filterParentDocField(
-      Iterable<? extends IndexableField> doc,
-      String parentFieldName,
-      NumericDocValuesField parentDocMarker) {
+  private Iterable<? extends IndexableField> addParentField(
+      Iterable<? extends IndexableField> doc, IndexableField parentField) {
     return () -> {
       final Iterator<? extends IndexableField> first = doc.iterator();
       return new Iterator<>() {
-        NumericDocValuesField additionalField = parentDocMarker;
+        IndexableField additionalField = parentField;
 
         @Override
         public boolean hasNext() {
@@ -308,13 +310,6 @@ final class DocumentsWriterPerThread implements Accountable {
         public IndexableField next() {
           if (first.hasNext()) {
             IndexableField field = first.next();
-            if (parentFieldName.equals(field.name())
-                && DocValuesType.NUMERIC == field.fieldType().docValuesType()) {
-              throw new IllegalArgumentException(
-                  "documents must not contain the parent doc values field \""
-                      + parentFieldName
-                      + "\"");
-            }
             return field;
           }
           if (additionalField != null) {
