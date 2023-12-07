@@ -67,7 +67,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       entries.add(new BytesRef(b));
     }
-    long size = buildFST(entries).ramBytesUsed();
+    long size = buildFST(entries).numBytes();
     // Size is 1648 when we use only list-encoding. We were previously failing to ever de-dup
     // direct addressing, which led this case to blow up.
     // This test will fail if there is more than 1% size increase with direct addressing.
