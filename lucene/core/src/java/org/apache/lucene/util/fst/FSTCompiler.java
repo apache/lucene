@@ -33,6 +33,7 @@ import static org.apache.lucene.util.fst.FST.VERSION_CURRENT;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -194,8 +195,7 @@ public class FSTCompiler<T> {
 
   // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
   // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
-  // NullFSTReader
-  // will throw UnsupportedOperationException
+  // NullFSTReader will throw UnsupportedOperationException
   private FSTReader toFSTReader(DataOutput dataOutput) {
     if (dataOutput instanceof FSTReader) {
       return (FSTReader) dataOutput;
@@ -303,7 +303,7 @@ public class FSTCompiler<T> {
      * @see FSTCompiler#getOnHeapReaderWriter(int)
      */
     public Builder<T> dataOutput(DataOutput dataOutput) {
-      this.dataOutput = dataOutput;
+      this.dataOutput = Objects.requireNonNull(dataOutput, "DataOutput cannot be null");
       return this;
     }
 

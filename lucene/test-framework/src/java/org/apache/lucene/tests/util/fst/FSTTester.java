@@ -255,17 +255,19 @@ public class FSTTester<T> {
 
   public FST<T> doTest() throws IOException {
 
+    final FSTCompiler.Builder<T> fstCompilerBuilder =
+        new FSTCompiler.Builder<>(
+            inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs);
+
     IndexOutput indexOutput = null;
     boolean useOffHeap = random.nextBoolean();
+
     if (useOffHeap) {
       indexOutput = dir.createOutput("fstOffHeap.bin", IOContext.DEFAULT);
+      fstCompilerBuilder.dataOutput(indexOutput);
     }
 
-    final FSTCompiler<T> fstCompiler =
-        new FSTCompiler.Builder<>(
-                inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-            .dataOutput(indexOutput)
-            .build();
+    final FSTCompiler<T> fstCompiler = fstCompilerBuilder.build();
 
     for (InputOutput<T> pair : pairs) {
       if (pair.output instanceof List) {

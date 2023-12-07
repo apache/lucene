@@ -39,17 +39,13 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   @Override
   public void writeByte(byte b) {
-    if (frozen) {
-      throw new IllegalStateException("Already frozen");
-    }
+    assert frozen == false;
     dataOutput.writeByte(b);
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) {
-    if (frozen) {
-      throw new IllegalStateException("Already frozen");
-    }
+    assert frozen == false;
     dataOutput.writeBytes(b, offset, length);
   }
 
