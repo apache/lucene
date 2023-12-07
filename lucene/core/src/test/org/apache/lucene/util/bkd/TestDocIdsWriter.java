@@ -163,7 +163,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
           IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null))) {
         for (int d = 0; d < 20_000; d++) {
           iw.addDocument(
-              List.of(new IntPoint("foo", 0), new SortedNumericDocValuesField("bar", 0)));
+              List.of(new IntPoint("bar", 0), new SortedNumericDocValuesField("foo", 0)));
         }
       }
     }
