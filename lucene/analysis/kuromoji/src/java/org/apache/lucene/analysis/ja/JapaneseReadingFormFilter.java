@@ -43,11 +43,31 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
     this(input, false);
   }
 
+  private boolean isAllHiragana(CharSequence s) {
+    int len = s.length();
+    for (int i = 0; i < len; i++) {
+      char ch = s.charAt(i);
+      if (ch < 0x3040 || ch > 0x3097) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       String reading = readingAttr.getReading();
-
+      if (reading == null & isAllHiragana(termAttr)) {
+        // When a term is OOV and in hiragana, convert the term to katakana and treat it as reading.
+        int len = termAttr.length();
+        char[] readingBuffer = new char[len];
+        for (int i = 0; i < len; i++) {
+          readingBuffer[i] = (char)(termAttr.charAt(i) + 0x60);
+        }
+        reading = new String(readingBuffer);
+      }
+      
       if (useRomaji) {
         if (reading == null) {
           // if it's an OOV term, just try the term text

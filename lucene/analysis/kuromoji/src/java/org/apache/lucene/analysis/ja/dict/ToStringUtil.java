@@ -229,10 +229,6 @@ public class ToStringUtil {
     return inflFormTranslations.get(s);
   }
 
-  private static boolean isHiragana(char ch) {
-    return ch <= 0x3094 && ch >= 0x3041;
-  }
-
   /** Romanize katakana with modified hepburn */
   public static String getRomanization(String s) {
     StringBuilder out = new StringBuilder();
@@ -254,17 +250,6 @@ public class ToStringUtil {
       char ch = s.charAt(i);
       char ch2 = (i < len - 1) ? s.charAt(i + 1) : 0;
       char ch3 = (i < len - 2) ? s.charAt(i + 2) : 0;
-
-      // If the characters are hiragana, convert them to katakana.
-      if (isHiragana(ch)) {
-        ch += 0x60;
-      }
-      if (isHiragana(ch2)) {
-        ch2 += 0x60;
-      }
-      if (isHiragana(ch3)) {
-        ch3 += 0x60;
-      }
 
       main:
       switch (ch) {
