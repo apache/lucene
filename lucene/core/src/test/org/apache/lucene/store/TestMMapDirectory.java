@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -112,6 +113,33 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
       }
+    }
+  }
+
+  private void doTestReadingClosedInput(Directory dir, long[] values, int numValues)
+      throws IOException {
+    final IndexOutput out = dir.createOutput("group-varint", IOContext.DEFAULT);
+    out.writeInt(0);
+    out.writeGroupVInts(values, numValues);
+    out.close();
+
+    final IndexInput in = dir.openInput("group-varint", IOContext.DEFAULT);
+    in.readInt();
+    in.close();
+    assertThrows(AlreadyClosedException.class, () -> in.readGroupVInts(values, 6));
+    dir.deleteFile("group-varint");
+  }
+
+  public void testReadingClosedInput() throws Exception {
+    long[] values = new long[128];
+    try (Directory mmapDir = getDirectory(createTempDir("testNullParamsIndexInput"))) {
+      // less than 17 bytes will call fallback decode
+      doTestReadingClosedInput(mmapDir, new long[] {0, 7, 11, 9, 1, 3}, 6);
+
+      // more than 17 byte left, do faster decode first
+      int v = random().nextInt();
+      Arrays.fill(values, v);
+      doTestReadingClosedInput(mmapDir, values, values.length);
     }
   }
 }

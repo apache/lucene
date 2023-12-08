@@ -235,7 +235,7 @@ public final class ByteBuffersDataInput extends DataInput
     final int flag = block.get(curPosition++) & 0xFF;
     pos +=
         GroupVIntUtil.readGroupVInt(flag, p -> block.getInt((int) p), curPosition, dst, offset)
-            + 1; // +1 for flag
+            + 1; // +1 for flag, because read the flag does not update to `pos`
   }
 
   @Override

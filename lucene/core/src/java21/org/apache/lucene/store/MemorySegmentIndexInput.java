@@ -316,13 +316,13 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   private void readGroupVInt(long[] dst, int offset) throws IOException {
-    final MemorySegment curSegment = this.curSegment;
-    if (curSegment.byteSize() - curPosition < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
-      GroupVIntUtil.readGroupVInt(this, dst, offset);
-      return;
-    }
-
     try {
+      final MemorySegment curSegment = this.curSegment;
+      if (curSegment.byteSize() - curPosition < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
+        GroupVIntUtil.readGroupVInt(this, dst, offset);
+        return;
+      }
+
       final int flag = curSegment.get(LAYOUT_BYTE, curPosition++) & 0xFF;
       curPosition +=
           GroupVIntUtil.readGroupVInt(

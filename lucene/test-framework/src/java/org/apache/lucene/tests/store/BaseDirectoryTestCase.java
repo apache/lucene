@@ -1480,28 +1480,36 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   protected void doTestGroupVInt(
       Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
     long[] values = new long[maxNumValues];
-    long[] restored = new long[maxNumValues];
+    int[] numValuesArray = new int[iterations];
+    IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
+    IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
 
-    for (int i = 0; i < iterations; i++) {
+    // encode
+    for (int iter = 0; iter < iterations; iter++) {
       final int bpv = TestUtil.nextInt(random(), minBpv, maxBpv);
-      final int numValues = TestUtil.nextInt(random(), 1, maxNumValues);
-
-      // encode
-      for (int j = 0; j < numValues; j++) {
+      numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
         values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
+        vIntOut.writeVInt((int) values[j]);
       }
-      IndexOutput out = dir.createOutput("group-varint", IOContext.DEFAULT);
-      out.writeGroupVInts(values, numValues);
-      out.close();
-
-      // decode
-      IndexInput in = dir.openInput("group-varint", IOContext.DEFAULT);
-      in.readGroupVInts(restored, numValues);
-      in.close();
-      assertArrayEquals(
-          ArrayUtil.copyOfSubArray(values, 0, numValues),
-          ArrayUtil.copyOfSubArray(restored, 0, numValues));
-      dir.deleteFile("group-varint");
+      groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
     }
+    groupVIntOut.close();
+    vIntOut.close();
+
+    // decode
+    IndexInput groupVIntIn = dir.openInput("group-varint", IOContext.DEFAULT);
+    IndexInput vIntIn = dir.openInput("vint", IOContext.DEFAULT);
+    for (int iter = 0; iter < iterations; iter++) {
+      groupVIntIn.readGroupVInts(values, numValuesArray[iter]);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
+        assertEquals(vIntIn.readVInt(), values[j]);
+      }
+    }
+
+    groupVIntIn.close();
+    vIntIn.close();
+    dir.deleteFile("group-varint");
+    dir.deleteFile("vint");
   }
 }
