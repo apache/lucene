@@ -1984,11 +1984,6 @@ public class TestDrillSideways extends FacetTestCase {
     DrillSideways ds =
         new DrillSideways(searcher, config, taxoReader, null, executorService) {
           @Override
-          protected FacetsCollector createDrillDownFacetsCollector() {
-            return null;
-          }
-
-          @Override
           protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
             return null;
           }
