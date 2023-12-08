@@ -21,6 +21,8 @@ Improvements
 
 * GITHUB#12870: Tighten synchronized loop in DirectoryTaxonomyReader#getOrdinal. (Stefan Vodita)
 
+* GITHUB#12812: Avoid overflows and false negatives in int slice buffer filled-with-zeros assertion. (Stefan Vodita)
+
 Optimizations
 ---------------------
 (No changes)
