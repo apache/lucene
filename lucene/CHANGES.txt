@@ -10,6 +10,8 @@ API Changes
 * GITHUB#12243: Mark TermInSetQuery ctors with varargs terms as @Deprecated. SortedSetDocValuesField#newSlowSetQuery,
   SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery now take a collection of terms as a param. (Jakub Slowinski)
 
+* GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @Deprecated. (Greg Miller)
+
 New Features
 ---------------------
 (No changes)
@@ -29,7 +31,6 @@ Bug Fixes
 
 Other
 ---------------------
-
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 ======================== Lucene 9.9.0 =======================
