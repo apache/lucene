@@ -64,8 +64,8 @@ public final class GroupVIntUtil {
   }
 
   /**
-   * Provides an abstraction for read int values, so that decoding logic can be reused in different DataInput.
-   *
+   * Provides an abstraction for read int values, so that decoding logic can be reused in different
+   * DataInput.
    */
   public static interface IntReader {
     int read(long v);
@@ -79,7 +79,8 @@ public final class GroupVIntUtil {
    * @param reader the supplier of read int.
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
-   * @return the number of bytes read, it is a positive number and less than {@link #MAX_LENGTH_PER_GROUP}
+   * @return the number of bytes read, it is a positive number and less than {@link
+   *     #MAX_LENGTH_PER_GROUP}
    */
   public static int readGroupVInt(int flag, IntReader reader, long pos, long[] dst, int offset)
       throws IOException {
