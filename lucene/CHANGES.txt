@@ -16,7 +16,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12870: Tighten synchronized loop in DirectoryTaxonomyReader#getOrdinal. (Stefan Vodita)
 
 Optimizations
 ---------------------
