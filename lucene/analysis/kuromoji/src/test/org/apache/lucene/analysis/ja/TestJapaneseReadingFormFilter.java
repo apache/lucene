@@ -90,9 +90,7 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
 
   public void testKatakanaReadingsHiragana() throws IOException {
     assertAnalyzesTo(
-        katakanaAnalyzer,
-        "が ぎ ぐ げ ご ぁ ゔ",
-        new String[] {"ガ", "ギ", "グ", "ゲ", "ゴ", "ァ", "ヴ"});
+        katakanaAnalyzer, "が ぎ ぐ げ ご ぁ ゔ", new String[] {"ガ", "ギ", "グ", "ゲ", "ゴ", "ァ", "ヴ"});
   }
 
   public void testRomajiReadings() throws IOException {

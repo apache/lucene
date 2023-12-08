@@ -63,11 +63,11 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
         int len = termAttr.length();
         char[] readingBuffer = new char[len];
         for (int i = 0; i < len; i++) {
-          readingBuffer[i] = (char)(termAttr.charAt(i) + 0x60);
+          readingBuffer[i] = (char) (termAttr.charAt(i) + 0x60);
         }
         reading = new String(readingBuffer);
       }
-      
+
       if (useRomaji) {
         if (reading == null) {
           // if it's an OOV term, just try the term text
