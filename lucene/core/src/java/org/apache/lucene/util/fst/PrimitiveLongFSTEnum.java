@@ -689,7 +689,6 @@ abstract class PrimitiveLongFSTEnum {
     upto++;
     grow();
     if (arcs.length <= upto) {
-      @SuppressWarnings({"rawtypes", "unchecked"})
       final PrimitiveLongArc[] newArcs =
           new PrimitiveLongArc
               [ArrayUtil.oversize(1 + upto, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
@@ -697,7 +696,6 @@ abstract class PrimitiveLongFSTEnum {
       arcs = newArcs;
     }
     if (output.length <= upto) {
-      @SuppressWarnings({"rawtypes", "unchecked"})
       final long[] newOutput =
           new long[ArrayUtil.oversize(1 + upto, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(output, 0, newOutput, 0, output.length);

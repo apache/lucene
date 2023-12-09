@@ -228,6 +228,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
     } else {
       t.max = points[t.transitionUpto + 1] - 1;
     }
+    t.dest = dStates[t.source].transitions[t.transitionUpto];
   }
 
   private class DState {

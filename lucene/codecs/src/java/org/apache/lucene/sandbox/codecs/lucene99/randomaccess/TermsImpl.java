@@ -27,19 +27,13 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.BytesRefPrimitiveLongFSTEnum;
-import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PrimitiveLongFST;
-import org.apache.lucene.util.fst.PrimitiveLongFST.PrimitiveLongArc;
-import org.apache.lucene.util.fst.PrimitiveLongFST.PrimitiveLongFSTOutputs;
-import org.apache.lucene.util.fst.Util;
+import org.apache.lucene.util.fst.PrimitiveLongFSTIntersectEnum;
 
 final class TermsImpl extends Terms {
   private final FieldInfo fieldInfo;
@@ -260,211 +254,42 @@ final class TermsImpl extends Terms {
   final class RandomAccessIntersectTermsEnum extends TermsEnum {
     private AttributeSource attrs;
 
-    private BytesRefBuilder term;
-
     private boolean isTermStateCurrent;
 
     private IntBlockTermState termState;
 
+    private BytesRef term;
+
     private final PrimitiveLongFST fst;
-
-    private final FST.BytesReader fstReader;
-
-    private final ByteRunnable fsa;
-
-    private PrimitiveLongFSTOutputs fstOutputs = PrimitiveLongFSTOutputs.getSingleton();
 
     private final TermDataReaderProvider.TermDataReader termDataReader;
 
-    private Frame[] stack;
+    private final PrimitiveLongFSTIntersectEnum fstFsaIntersectEnum;
 
-    private int level;
-
-    private boolean pending;
-
-    private final class Frame {
-      /* fst stats */
-      PrimitiveLongArc fstArc;
-      long output;
-      /* automaton stats */
-      int fsaState;
-
-      Frame() {
-        this.fstArc = new PrimitiveLongArc();
-        this.fsaState = -1;
-      }
-
-      @Override
-      public String toString() {
-        return "arc=" + fstArc + " state=" + fsaState;
-      }
-    }
-
-    /**
-     * Inspired by {@link org.apache.lucene.codecs.memory.FSTTermsReader}'s IntersectTermsEnum
-     */
     RandomAccessIntersectTermsEnum(CompiledAutomaton compiled, BytesRef startTerm)
         throws IOException {
+      TransitionAccessor transitionAccessor = compiled.getTransitionAccessor();
+      // assert transitionAccessor.getNumTransitions(0) == 1;
       termState = (IntBlockTermState) lucene99PostingsReader.newTermState();
       fst = termsDict.termsIndex().primitiveLongFST();
-      fstReader = fst.getBytesReader();
-      fsa = compiled.getByteRunnable();
       termDataReader = termsDict.termDataReaderProvider().newReader();
-
-      stack = new Frame[16];
-      for (int i = 0; i < stack.length; i++) {
-        this.stack[i] = new Frame();
-      }
-      loadVirtualFrame(newFrame());
-      level = 0;
-
-      pushFrame(loadFirstFrame(newFrame()));
-      if (startTerm == null) {
-        pending = isAccept(topFrame());
-      } else {
-        doSeekCeil(startTerm);
-        pending =
-            (term == null || !startTerm.equals(term.get()))
-                && isValid(topFrame())
-                && isAccept(topFrame());
-      }
+      fstFsaIntersectEnum = new PrimitiveLongFSTIntersectEnum(fst, compiled, startTerm);
     }
 
     @Override
     public BytesRef next() throws IOException {
-      if (pending) {
-        pending = false;
-        return term();
+      if (fstFsaIntersectEnum.next()) {
+        term = fstFsaIntersectEnum.getTerm();
+        isTermStateCurrent = false;
+      } else {
+        term = null;
       }
-      isTermStateCurrent = false;
-      DFS:
-      while (level > 0) {
-        Frame frame = newFrame();
-        if (loadExpandFrame(topFrame(), frame) != null) { // has valid target
-          pushFrame(frame);
-          if (isAccept(frame)) { // gotcha
-            break;
-          }
-          continue; // check next target
-        }
-        frame = popFrame();
-        while (level > 0) {
-          if (loadNextFrame(topFrame(), frame) != null) { // has valid sibling
-            pushFrame(frame);
-            if (isAccept(frame)) { // gotcha
-              break DFS;
-            }
-            continue DFS; // check next target
-          }
-          frame = popFrame();
-        }
-        return null;
-      }
-      return term();
-    }
-
-    private long accumulateOutput() {
-      long output = 0;
-      int upto = 0;
-      Frame last, next;
-      last = stack[1];
-      while (upto != level) {
-        upto++;
-        next = stack[upto];
-        output = fstOutputs.add(next.output, output);
-        last = next;
-      }
-      if (last.fstArc.isFinal()) {
-        output = fstOutputs.add(output, last.fstArc.nextFinalOutput());
-      }
-      return output;
-    }
-
-    private BytesRef doSeekCeil(BytesRef target) throws IOException {
-      Frame frame = null;
-      int label, upto = 0, limit = target.length;
-      while (upto < limit) { // to target prefix, or ceil label (rewind prefix)
-        frame = newFrame();
-        label = target.bytes[target.offset + upto] & 0xff;
-        frame = loadCeilFrame(label, topFrame(), frame);
-        if (frame == null || frame.fstArc.label() != label) {
-          break;
-        }
-        assert isValid(frame); // target must be fetched from automaton
-        pushFrame(frame);
-        upto++;
-      }
-      if (upto == limit) { // got target
-        return term();
-      }
-      if (frame != null) { // got larger term('s prefix)
-        pushFrame(frame);
-        return isAccept(frame) ? term() : next();
-      }
-      while (level > 0) { // got target's prefix, advance to larger term
-        frame = popFrame();
-        while (level > 0 && !canRewind(frame)) {
-          frame = popFrame();
-        }
-        if (loadNextFrame(topFrame(), frame) != null) {
-          pushFrame(frame);
-          return isAccept(frame) ? term() : next();
-        }
-      }
-      return null;
-    }
-
-    /** Load frame for target arc(node) on fst */
-    Frame loadExpandFrame(Frame top, Frame frame) throws IOException {
-      if (!canGrow(top)) {
-        return null;
-      }
-      frame.fstArc = fst.readFirstRealTargetArc(top.fstArc.target(), frame.fstArc, fstReader);
-      frame.fsaState = fsa.step(top.fsaState, frame.fstArc.label());
-      // if (TEST) System.out.println(" loadExpand frame="+frame);
-      if (frame.fsaState == -1) {
-        return loadNextFrame(top, frame);
-      }
-      frame.output = frame.fstArc.output();
-      return frame;
-    }
-
-    Frame loadCeilFrame(int label, Frame top, Frame frame) throws IOException {
-      PrimitiveLongArc arc = frame.fstArc;
-      arc = Util.readCeilArc(label, fst, top.fstArc, arc, fstReader);
-      if (arc == null) {
-        return null;
-      }
-      frame.fsaState = fsa.step(top.fsaState, arc.label());
-      if (frame.fsaState == -1) {
-        return loadNextFrame(top, frame);
-      }
-      frame.output = frame.fstArc.output();
-      return frame;
-    }
-
-    /** Load frame for sibling arc(node) on fst */
-    Frame loadNextFrame(Frame top, Frame frame) throws IOException {
-      if (!canRewind(frame)) {
-        return null;
-      }
-      while (!frame.fstArc.isLast()) {
-        frame.fstArc = fst.readNextRealArc(frame.fstArc, fstReader);
-        frame.fsaState = fsa.step(top.fsaState, frame.fstArc.label());
-        if (frame.fsaState != -1) {
-          break;
-        }
-      }
-      if (frame.fsaState == -1) {
-        return null;
-      }
-      frame.output = frame.fstArc.output();
-      return frame;
+      return term;
     }
 
     void updateTermStateIfNeeded() throws IOException {
       if (!isTermStateCurrent) {
-        long fstOutput = accumulateOutput();
+        long fstOutput = fstFsaIntersectEnum.getFSTOutput();
         TermsIndex.TypeAndOrd typeAndOrd = TermsIndex.decodeLong(fstOutput);
         termState =
             termDataReader.getTermState(
@@ -488,7 +313,7 @@ final class TermsImpl extends Terms {
 
     @Override
     public BytesRef term() throws IOException {
-      return term == null ? null : term.get();
+      return term;
     }
 
     @Override
@@ -519,82 +344,6 @@ final class TermsImpl extends Terms {
     public TermState termState() throws IOException {
       updateTermStateIfNeeded();
       return termState.clone();
-    }
-
-    /** Virtual frame, never pop */
-    Frame loadVirtualFrame(Frame frame) {
-      frame.output = fstOutputs.getNoOutput();
-      frame.fsaState = -1;
-      return frame;
-    }
-
-    Frame newFrame() {
-      if (level + 1 == stack.length) {
-        final Frame[] temp =
-            new Frame[ArrayUtil.oversize(level + 2, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
-        System.arraycopy(stack, 0, temp, 0, stack.length);
-        for (int i = stack.length; i < temp.length; i++) {
-          temp[i] = new Frame();
-        }
-        stack = temp;
-      }
-      return stack[level + 1];
-    }
-
-    Frame topFrame() {
-      return stack[level];
-    }
-
-    boolean isAccept(Frame frame) { // reach a term both fst&fsa accepts
-      return fsa.isAccept(frame.fsaState) && frame.fstArc.isFinal();
-    }
-
-    boolean isValid(Frame frame) { // reach a prefix both fst&fsa won't reject
-      return /*frame != null &&*/ frame.fsaState != -1;
-    }
-
-    boolean canGrow(Frame frame) { // can walk forward on both fst&fsa
-      return frame.fsaState != -1 && PrimitiveLongFST.targetHasArcs(frame.fstArc);
-    }
-
-    boolean canRewind(Frame frame) { // can jump to sibling
-      return !frame.fstArc.isLast();
-    }
-
-    void pushFrame(Frame frame) {
-      term = grow(frame.fstArc.label());
-      level++;
-    }
-
-    Frame popFrame() {
-      term = shrink();
-      level--;
-      return stack[level + 1];
-    }
-
-    Frame loadFirstFrame(Frame frame) {
-      frame.fstArc = fst.getFirstArc(frame.fstArc);
-      frame.output = frame.fstArc.output();
-      frame.fsaState = 0;
-      return frame;
-    }
-
-    BytesRefBuilder grow(int label) {
-      if (term == null) {
-        term = new BytesRefBuilder();
-      } else {
-        term.append((byte) label);
-      }
-      return term;
-    }
-
-    BytesRefBuilder shrink() {
-      if (term.length() == 0) {
-        term = null;
-      } else {
-        term.setLength(term.length() - 1);
-      }
-      return term;
     }
 
     @Override
