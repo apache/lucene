@@ -180,6 +180,19 @@ public class MemoryIndex {
     }
 
     /**
+     * For slices, buffers must be filled with zeros, so that we can find a slice's end based on a
+     * non-zero final value.
+     */
+    private static boolean assertSliceBuffer(int[] buffer) {
+      for (int value : buffer) {
+        if (value != 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
      * Creates a new int slice with the given starting size and returns the slices offset in the
      * pool.
      *
@@ -195,14 +208,6 @@ public class MemoryIndex {
       intUpto += size;
       buffer[intUpto - 1] = 16;
       return upto;
-    }
-
-    private static boolean assertSliceBuffer(int[] buffer) {
-      int count = 0;
-      for (int i = 0; i < buffer.length; i++) {
-        count += buffer[i]; // for slices the buffer must only have 0 values
-      }
-      return count == 0;
     }
 
     /** Allocates a new slice from the given offset */
@@ -243,6 +248,7 @@ public class MemoryIndex {
       public SliceWriter(SlicedIntBlockPool slicedIntBlockPool) {
         this.slicedIntBlockPool = slicedIntBlockPool;
       }
+
       /** */
       public void reset(int sliceOffset) {
         this.offset = sliceOffset;
@@ -445,9 +451,7 @@ public class MemoryIndex {
             + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
-        new ByteBlockPool(
-            new RecyclingByteBlockAllocator(
-                ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
+        new ByteBlockPool(new RecyclingByteBlockAllocator(maxBufferedByteBlocks, bytesUsed));
     slicedIntBlockPool =
         new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
@@ -2123,7 +2127,7 @@ public class MemoryIndex {
 
     @Override
     public LeafMetaData getMetaData() {
-      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
     }
 
     @Override

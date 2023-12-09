@@ -100,9 +100,22 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  // the unused parameter is just to silence javac about unused variables
-  AlreadyClosedException alreadyClosed(RuntimeException unused) {
-    return new AlreadyClosedException("Already closed: " + this);
+  AlreadyClosedException alreadyClosed(RuntimeException e) {
+    // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
+    // we check the "is closed" condition explicitly by checking that our "curSegment" is null.
+    // Care must be taken to not leak the NPE to code outside MemorySegmentIndexInput!
+    if (this.curSegment == null) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // ISE can be thrown by MemorySegment and contains "closed" in message:
+    if (e instanceof IllegalStateException
+        && e.getMessage() != null
+        && e.getMessage().contains("closed")) {
+      return new AlreadyClosedException("Already closed: " + this, e);
+    }
+    // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
+    // the IndexInput method):
+    throw e;
   }
 
   @Override
@@ -290,6 +303,31 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  @Override
+  public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
+    try {
+      int si = (int) (pos >> chunkSizePower);
+      pos = pos & chunkSizeMask;
+      long curAvail = segments[si].byteSize() - pos;
+      while (len > curAvail) {
+        MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, (int) curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        si++;
+        if (si >= segments.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        pos = 0L;
+        curAvail = segments[si].byteSize();
+      }
+      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, len);
+    } catch (IndexOutOfBoundsException ioobe) {
+      throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
   // used only by random access methods to handle reads across boundaries
   private void setPos(long pos, int si) throws IOException {
     try {
@@ -435,17 +473,26 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return;
     }
 
-    // make sure all accesses to this IndexInput instance throw NPE:
-    curSegment = null;
-    Arrays.fill(segments, null);
-
     // the master IndexInput has an Arena and is able
     // to release all resources (unmap segments) - a
     // side effect is that other threads still using clones
     // will throw IllegalStateException
     if (arena != null) {
-      arena.close();
+      while (arena.scope().isAlive()) {
+        try {
+          arena.close();
+          break;
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalStateException e) {
+          Thread.onSpinWait();
+        }
+      }
     }
+
+    // make sure all accesses to this IndexInput instance throw NPE:
+    curSegment = null;
+    Arrays.fill(segments, null);
   }
 
   /** Optimization of MemorySegmentIndexInput for when there is only one segment. */
@@ -481,6 +528,17 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public byte readByte(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_BYTE, pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
+      } catch (NullPointerException | IllegalStateException e) {
+        throw alreadyClosed(e);
+      }
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+      try {
+        MemorySegment.copy(curSegment, LAYOUT_BYTE, pos, bytes, offset, length);
       } catch (IndexOutOfBoundsException e) {
         throw handlePositionalIOOBE(e, "read", pos);
       } catch (NullPointerException | IllegalStateException e) {
@@ -563,6 +621,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     @Override
     public byte readByte(long pos) throws IOException {
       return super.readByte(pos + offset);
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+      super.readBytes(pos + this.offset, bytes, offset, length);
     }
 
     @Override

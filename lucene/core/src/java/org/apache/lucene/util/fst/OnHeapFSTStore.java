@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
+
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -32,10 +34,10 @@ public final class OnHeapFSTStore implements FSTStore {
       RamUsageEstimator.shallowSizeOfInstance(OnHeapFSTStore.class);
 
   /**
-   * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
-   * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
+   * A {@link ReadWriteDataOutput}, used during reading when the FST is very large (more than 1 GB).
+   * If the FST is less than 1 GB then bytesArray is set instead.
    */
-  private BytesStore bytes;
+  private ReadWriteDataOutput dataOutput;
 
   /** Used at read time when the FST fits into a single byte[]. */
   private byte[] bytesArray;
@@ -51,30 +53,29 @@ public final class OnHeapFSTStore implements FSTStore {
   }
 
   @Override
-  public void init(DataInput in, long numBytes) throws IOException {
+  public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (numBytes > 1 << this.maxBlockBits) {
       // FST is big: we need multiple pages
-      bytes = new BytesStore(this.maxBlockBits);
-      bytes.copyBytes(in, numBytes);
+      dataOutput = (ReadWriteDataOutput) getOnHeapReaderWriter(maxBlockBits);
+      dataOutput.copyBytes(in, numBytes);
+      dataOutput.freeze();
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead
       bytesArray = new byte[(int) numBytes];
       in.readBytes(bytesArray, 0, bytesArray.length);
     }
-  }
-
-  @Override
-  public long size() {
-    if (bytesArray != null) {
-      return bytesArray.length;
-    } else {
-      return bytes.ramBytesUsed();
-    }
+    return this;
   }
 
   @Override
   public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + size();
+    long size = BASE_RAM_BYTES_USED;
+    if (bytesArray != null) {
+      size += bytesArray.length;
+    } else {
+      size += dataOutput.ramBytesUsed();
+    }
+    return size;
   }
 
   @Override
@@ -82,19 +83,16 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytesArray != null) {
       return new ReverseBytesReader(bytesArray);
     } else {
-      return bytes.getReverseReader();
+      return dataOutput.getReverseBytesReader();
     }
   }
 
   @Override
   public void writeTo(DataOutput out) throws IOException {
-    if (bytes != null) {
-      long numBytes = bytes.getPosition();
-      out.writeVLong(numBytes);
-      bytes.writeTo(out);
+    if (dataOutput != null) {
+      dataOutput.writeTo(out);
     } else {
       assert bytesArray != null;
-      out.writeVLong(bytesArray.length);
       out.writeBytes(bytesArray, 0, bytesArray.length);
     }
   }

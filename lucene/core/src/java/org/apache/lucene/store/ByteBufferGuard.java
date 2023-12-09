@@ -78,11 +78,20 @@ final class ByteBufferGuard {
     }
   }
 
+  public boolean isInvalidated() {
+    return invalidated;
+  }
+
   private void ensureValid() {
     if (invalidated) {
       // this triggers an AlreadyClosedException in ByteBufferIndexInput:
       throw new NullPointerException();
     }
+  }
+
+  public void getBytes(ByteBuffer receiver, int pos, byte[] dst, int offset, int length) {
+    ensureValid();
+    receiver.get(pos, dst, offset, length);
   }
 
   public void getBytes(ByteBuffer receiver, byte[] dst, int offset, int length) {

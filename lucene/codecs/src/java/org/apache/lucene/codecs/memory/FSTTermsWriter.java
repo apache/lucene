@@ -251,12 +251,12 @@ public class FSTTermsWriter extends FieldsConsumer {
     private final IntsRefBuilder scratchTerm = new IntsRefBuilder();
     private final ByteBuffersDataOutput metaWriter = ByteBuffersDataOutput.newResettableInstance();
 
-    TermsWriter(FieldInfo fieldInfo) {
+    TermsWriter(FieldInfo fieldInfo) throws IOException {
       this.numTerms = 0;
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);
       this.outputs = new FSTTermOutputs(fieldInfo);
-      this.fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     }
 
     public void finishTerm(BytesRef text, BlockTermState state) throws IOException {

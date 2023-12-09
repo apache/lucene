@@ -149,6 +149,7 @@ public class TestMergePolicy extends LuceneTestCase {
               TestUtil.randomSimpleString(random()), // name
               random().nextInt(1000), // maxDoc
               random().nextBoolean(), // isCompoundFile
+              false,
               null, // codec
               Collections.emptyMap(), // diagnostics
               TestUtil.randomSimpleString( // id

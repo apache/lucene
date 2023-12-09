@@ -36,6 +36,7 @@ public class LevenshteinAutomata {
    * @lucene.internal
    */
   public static final int MAXIMUM_SUPPORTED_DISTANCE = 2;
+
   /* input word */
   final int[] word;
   /* the automata alphabet. */
@@ -262,7 +263,6 @@ public class LevenshteinAutomata {
     int size() {
       return minErrors.length * (w + 1);
     }
-    ;
 
     /**
      * Returns true if the <code>state</code> in any Levenshtein DFA is an accept state (final

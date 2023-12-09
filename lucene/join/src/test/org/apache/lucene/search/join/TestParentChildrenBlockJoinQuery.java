@@ -46,7 +46,9 @@ public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
     int maxChildDocsPerParent = 8 + random().nextInt(8);
 
     Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int i = 0; i < numParentDocs; i++) {
       int numChildDocs = random().nextInt(maxChildDocsPerParent);
       List<Document> docs = new ArrayList<>(numChildDocs + 1);

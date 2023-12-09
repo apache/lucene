@@ -19,14 +19,12 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
@@ -63,9 +61,9 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  * match lots of documents, counting the number of hits may take much longer than computing the top
  * hits so this trade-off allows to get some minimal information about the hit count without slowing
  * down search too much. The {@link TopDocs#scoreDocs} array is always accurate however. If this
- * behavior doesn't suit your needs, you should create collectors manually with either {@link
- * TopScoreDocCollector#create} or {@link TopFieldCollector#create} and call {@link #search(Query,
- * Collector)}.
+ * behavior doesn't suit your needs, you should create collectorManagers manually with either {@link
+ * TopScoreDocCollectorManager} or {@link TopFieldCollectorManager} and call {@link #search(Query,
+ * CollectorManager)}.
  *
  * <p><a id="thread-safety"></a>
  *
@@ -93,6 +91,7 @@ public class IndexSearcher {
     final long maxRamBytesUsed = Math.min(1L << 25, Runtime.getRuntime().maxMemory() / 20);
     DEFAULT_QUERY_CACHE = new LRUQueryCache(maxCachedQueries, maxRamBytesUsed);
   }
+
   /**
    * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
@@ -115,15 +114,12 @@ public class IndexSearcher {
   protected final List<LeafReaderContext> leafContexts;
 
   /**
-   * used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
+   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
    * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. This is {@code null} if no executor is
-   * provided
+   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
+   * executor is provided or not.
    */
-  private final CachingLeafSlicesSupplier leafSlicesSupplier;
-
-  // These are only used for multi-threaded search
-  private final Executor executor;
+  private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -228,12 +224,18 @@ public class IndexSearcher {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
     reader = context.reader();
-    this.executor = executor;
-    this.taskExecutor = executor == null ? null : new TaskExecutor(executor);
+    this.taskExecutor =
+        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    leafSlicesSupplier =
-        (executor == null) ? null : new CachingLeafSlicesSupplier(this::slices, leafContexts);
+    Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
+        executor == null
+            ? leaves ->
+                leaves.size() == 0
+                    ? new LeafSlice[0]
+                    : new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))}
+            : this::slices;
+    leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
   }
 
   /**
@@ -422,13 +424,13 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns the leaf slices used for concurrent searching, or null if no {@code Executor} was
-   * passed to the constructor.
+   * Returns the leaf slices used for concurrent searching. Override {@link #slices(List)} to
+   * customize how slices are created.
    *
    * @lucene.experimental
    */
-  public LeafSlice[] getSlices() {
-    return (executor == null) ? null : leafSlicesSupplier.get();
+  public final LeafSlice[] getSlices() {
+    return leafSlicesSupplier.get();
   }
 
   /**
@@ -452,35 +454,10 @@ public class IndexSearcher {
     }
 
     final int cappedNumHits = Math.min(numHits, limit);
-
-    final LeafSlice[] leafSlices = getSlices();
-    final CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        new CollectorManager<TopScoreDocCollector, TopDocs>() {
-
-          private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
-                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
-
-          private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
-
-          @Override
-          public TopScoreDocCollector newCollector() throws IOException {
-            return TopScoreDocCollector.create(
-                cappedNumHits, after, hitsThresholdChecker, minScoreAcc);
-          }
-
-          @Override
-          public TopDocs reduce(Collection<TopScoreDocCollector> collectors) throws IOException {
-            final TopDocs[] topDocs = new TopDocs[collectors.size()];
-            int i = 0;
-            for (TopScoreDocCollector collector : collectors) {
-              topDocs[i++] = collector.topDocs();
-            }
-            return TopDocs.merge(0, cappedNumHits, topDocs);
-          }
-        };
+    final boolean supportsConcurrency = getSlices().length > 1;
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        new TopScoreDocCollectorManager(
+            cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
 
     return search(query, manager);
   }
@@ -507,7 +484,10 @@ public class IndexSearcher {
    *
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public void search(Query query, Collector results) throws IOException {
     query = rewrite(query, results.scoreMode().needsScores());
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
@@ -599,34 +579,10 @@ public class IndexSearcher {
     final Sort rewrittenSort = sort.rewrite(this);
     final LeafSlice[] leafSlices = getSlices();
 
+    final boolean supportsConcurrency = leafSlices.length > 1;
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        new CollectorManager<>() {
-
-          private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
-                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
-
-          private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
-
-          @Override
-          public TopFieldCollector newCollector() throws IOException {
-            // TODO: don't pay the price for accurate hit counts by default
-            return TopFieldCollector.create(
-                rewrittenSort, cappedNumHits, after, hitsThresholdChecker, minScoreAcc);
-          }
-
-          @Override
-          public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
-            final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
-            int i = 0;
-            for (TopFieldCollector collector : collectors) {
-              topDocs[i++] = collector.topDocs();
-            }
-            return TopDocs.merge(rewrittenSort, 0, cappedNumHits, topDocs);
-          }
-        };
+        new TopFieldCollectorManager(
+            rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
 
     TopFieldDocs topDocs = search(query, manager);
     if (doDocScores) {
@@ -654,8 +610,10 @@ public class IndexSearcher {
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
-    if (leafSlices == null || leafSlices.length <= 1) {
-      search(leafContexts, weight, firstCollector);
+    if (leafSlices.length == 0) {
+      // there are no segments, nothing to offload to the executor, but we do need to call reduce to
+      // create some kind of empty result
+      assert leafContexts.size() == 0;
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
@@ -669,18 +627,15 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<RunnableFuture<C>> listTasks = new ArrayList<>();
+      final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
-        FutureTask<C> task =
-            new FutureTask<>(
-                () -> {
-                  search(Arrays.asList(leaves), weight, collector);
-                  return collector;
-                });
-
-        listTasks.add(task);
+        listTasks.add(
+            () -> {
+              search(Arrays.asList(leaves), weight, collector);
+              return collector;
+            });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);
@@ -897,13 +852,7 @@ public class IndexSearcher {
 
   @Override
   public String toString() {
-    return "IndexSearcher("
-        + reader
-        + "; executor="
-        + executor
-        + "; sliceExecutionControlPlane "
-        + taskExecutor
-        + ")";
+    return "IndexSearcher(" + reader + "; taskExecutor=" + taskExecutor + ")";
   }
 
   /**
@@ -949,12 +898,12 @@ public class IndexSearcher {
     return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
-  /** Returns this searchers executor or <code>null</code> if no executor was provided */
-  public Executor getExecutor() {
-    return executor;
-  }
-
-  TaskExecutor getTaskExecutor() {
+  /**
+   * Returns the {@link TaskExecutor} that this searcher relies on to execute concurrent operations
+   *
+   * @return the task executor
+   */
+  public TaskExecutor getTaskExecutor() {
     return taskExecutor;
   }
 
@@ -974,6 +923,7 @@ public class IndexSearcher {
     public TooManyClauses() {
       this("maxClauseCount is set to " + IndexSearcher.getMaxClauseCount());
     }
+
     /** The value of {@link IndexSearcher#getMaxClauseCount()} when this Exception was created */
     public int getMaxClauseCount() {
       return maxClauseCount;

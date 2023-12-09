@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -301,7 +303,7 @@ public class FSTCompletionLookup extends Lookup {
   public synchronized boolean load(DataInput input) throws IOException {
     count = input.readVLong();
     this.higherWeightsCompletion =
-        new FSTCompletion(new FST<>(input, input, NoOutputs.getSingleton()));
+        new FSTCompletion(new FST<>(readMetadata(input, NoOutputs.getSingleton()), input));
     this.normalCompletion =
         new FSTCompletion(higherWeightsCompletion.getFST(), false, exactMatchFirst);
     return true;

@@ -44,11 +44,12 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -699,13 +700,15 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    CollectorManager<TopScoreDocCollector, TopDocs> complete =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
-    ScoreDoc[] completeScoreDocs = searcher.search(query, complete).scoreDocs;
-    CollectorManager<TopScoreDocCollector, TopDocs> topScores =
-        TopScoreDocCollector.createSharedManager(numHits, null, 1);
-    ScoreDoc[] topScoresScoreDocs = searcher.search(query, topScores).scoreDocs;
-    checkEqual(query, completeScoreDocs, topScoresScoreDocs);
+    boolean supportsConcurrency = searcher.getSlices().length > 1;
+    TopScoreDocCollectorManager complete =
+        new TopScoreDocCollectorManager(
+            numHits, null, Integer.MAX_VALUE, supportsConcurrency); // COMPLETE
+    TopScoreDocCollectorManager topScores =
+        new TopScoreDocCollectorManager(numHits, null, 1, supportsConcurrency); // TOP_SCORES
+    TopDocs completeTopDocs = searcher.search(query, complete);
+    TopDocs topScoresTopDocs = searcher.search(query, topScores);
+    checkEqual(query, completeTopDocs.scoreDocs, topScoresTopDocs.scoreDocs);
   }
 
   private static void doCheckMaxScores(Random random, Query query, IndexSearcher searcher)
@@ -717,7 +720,15 @@ public class CheckHits {
     // Check boundaries and max scores when iterating all matches
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
@@ -765,7 +776,15 @@ public class CheckHits {
     // Now check advancing
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;

@@ -130,10 +130,9 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
-    HnswGraphBuilder<float[]> builder =
-        HnswGraphBuilder.create(
-            vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors.size());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
@@ -142,14 +141,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     }
     KnnCollector nn =
         HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            getVectorEncoding(),
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+            buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
 
     TopDocs nodes = nn.topDocs();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);

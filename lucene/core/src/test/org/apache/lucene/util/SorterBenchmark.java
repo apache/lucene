@@ -50,6 +50,7 @@ public class SorterBenchmark {
           return new ArrayInPlaceMergeSorter<>(arr, Entry::compareTo);
         }),
     ;
+
     final String name;
     final Builder builder;
 

@@ -35,6 +35,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
+  protected int lastOrd = -1;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
@@ -60,7 +61,10 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
+    if (lastOrd != targetOrd) {
+      readValue(targetOrd);
+      lastOrd = targetOrd;
+    }
     return binaryValue;
   }
 
@@ -85,8 +89,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
   }
 
-  abstract Bits getAcceptOrds(Bits acceptDocs);
-
   static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
 
     private int doc = -1;
@@ -97,9 +99,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-      return binaryValue;
+      return vectorValue(doc);
     }
 
     @Override
@@ -127,7 +127,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
   }
@@ -164,9 +164,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
+      return vectorValue(disi.index());
     }
 
     @Override
@@ -196,7 +194,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       if (acceptDocs == null) {
         return null;
       }
@@ -268,7 +266,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return null;
     }
   }

@@ -36,6 +36,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -56,10 +57,13 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene90FieldsIndex";
 
@@ -304,6 +308,15 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     bufferedDocs.writeVLong(infoAndBits);
     bufferedDocs.writeVInt(value.length);
     bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, DataInput value, int length) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(length);
+    bufferedDocs.copyBytes(value, length);
   }
 
   @Override

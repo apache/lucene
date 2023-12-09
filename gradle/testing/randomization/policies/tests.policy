@@ -50,14 +50,11 @@ grant {
   permission java.lang.RuntimePermission "getStackTrace";
   // needed for mock filesystems in tests
   permission java.lang.RuntimePermission "fileSystemProvider";
-  // analyzers/uima: needed by lucene expressions' JavascriptCompiler
-  permission java.lang.RuntimePermission "createClassLoader";
   // needed to test unmap hack on platforms that support it
   permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   // needed by cyberneko usage by benchmarks on J9
   permission java.lang.RuntimePermission "accessClassInPackage.org.apache.xerces.util";
-  permission java.lang.RuntimePermission "getClassLoader";
 
   // Needed for loading native library (lucene:misc:native) in lucene:misc
   permission java.lang.RuntimePermission "getFileStoreAttributes";
@@ -111,6 +108,8 @@ grant {
   permission java.lang.RuntimePermission "shutdownHooks";
   // needed by jacoco to instrument classes
   permission java.lang.RuntimePermission "defineClass";
+  // needed by jacoco for God knows what.
+  permission java.lang.RuntimePermission "createClassLoader";
 };
 
 // Grant all permissions to Gradle test runner classes.

@@ -654,7 +654,8 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   public void testOverDecRefDuringReopen() throws Exception {
     MockDirectoryWrapper dir = newMockDirectory();
 
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setCodec(TestUtil.getDefaultCodec());
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();

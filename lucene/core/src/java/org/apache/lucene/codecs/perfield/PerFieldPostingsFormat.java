@@ -83,6 +83,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
   static class FieldsGroup {
     final List<String> fields;
     final int suffix;
+
     /**
      * Custom SegmentWriteState for this group of fields, with the segmentSuffix uniqueified for
      * this PostingsFormat
@@ -118,7 +119,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
     }
   }
-  ;
 
   static String getSuffix(String formatName, String suffix) {
     return formatName + "_" + suffix;
