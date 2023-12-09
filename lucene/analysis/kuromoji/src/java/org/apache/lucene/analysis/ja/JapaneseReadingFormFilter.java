@@ -63,7 +63,8 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
     if (input.incrementToken()) {
       String reading = readingAttr.getReading();
       if (reading == null && containsHiragana(termAttr)) {
-        // When a term is OOV and contains hiragana, convert the term to katakana and treat it as reading.
+        // When a term is OOV and contains hiragana, convert the term to katakana and treat it as
+        // reading.
         int len = termAttr.length();
         char[] readingBuffer = new char[len];
         for (int i = 0; i < len; i++) {
