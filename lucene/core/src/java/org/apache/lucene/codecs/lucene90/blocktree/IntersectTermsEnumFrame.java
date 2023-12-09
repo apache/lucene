@@ -55,6 +55,7 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
+  byte[] floorData = new byte[32];
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -89,6 +90,9 @@ final class IntersectTermsEnumFrame {
 
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
+  // Cumulative output so far
+  BytesRef outputPrefix;
+
   int startBytePos;
   int suffix;
 
@@ -116,7 +120,7 @@ final class IntersectTermsEnumFrame {
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
 
-    load((Long) null);
+    load(null);
   }
 
   public void setState(int state) {
@@ -138,22 +142,12 @@ final class IntersectTermsEnumFrame {
   }
 
   void load(BytesRef frameIndexData) throws IOException {
-    floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
-    load(ite.fr.readVLongOutput(floorDataReader));
-  }
-
-  void load(SegmentTermsEnum.OutputAccumulator outputAccumulator) throws IOException {
-    outputAccumulator.prepareRead();
-    long code = ite.fr.readVLongOutput(outputAccumulator);
-    outputAccumulator.setFloorData(floorDataReader);
-    load(code);
-  }
-
-  void load(Long blockCode) throws IOException {
-    if (blockCode != null) {
-      // This block is the first one in a possible sequence of floor blocks corresponding to a
-      // single seek point from the FST terms index
-      if ((blockCode & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
+    if (frameIndexData != null) {
+      floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
+      // Skip first long -- has redundant fp, hasTerms
+      // flag, isFloor flag
+      final long code = ite.fr.readVLongOutput(floorDataReader);
+      if ((code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
         nextFloorLabel = floorDataReader.readByte() & 0xff;

@@ -55,7 +55,7 @@ final class SegmentTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  int rewindPos;
+  byte[] floorData = new byte[32];
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -104,9 +104,13 @@ final class SegmentTermsEnumFrame {
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
-  public void setFloorData(SegmentTermsEnum.OutputAccumulator outputAccumulator) {
-    outputAccumulator.setFloorData(floorDataReader);
-    rewindPos = floorDataReader.getPosition();
+  public void setFloorData(ByteArrayDataInput in, BytesRef source) {
+    final int numBytes = source.length - (in.getPosition() - source.offset);
+    if (numBytes > floorData.length) {
+      floorData = new byte[ArrayUtil.oversize(numBytes, 1)];
+    }
+    System.arraycopy(source.bytes, source.offset + in.getPosition(), floorData, 0, numBytes);
+    floorDataReader.reset(floorData, 0, numBytes);
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
     // if (DEBUG) {
@@ -243,7 +247,7 @@ final class SegmentTermsEnumFrame {
     nextEnt = -1;
     hasTerms = hasTermsOrig;
     if (isFloor) {
-      floorDataReader.setPosition(rewindPos);
+      floorDataReader.rewind();
       numFollowFloorBlocks = floorDataReader.readVInt();
       assert numFollowFloorBlocks > 0;
       nextFloorLabel = floorDataReader.readByte() & 0xff;
