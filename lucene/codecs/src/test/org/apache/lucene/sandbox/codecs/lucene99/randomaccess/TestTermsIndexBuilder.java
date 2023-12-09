@@ -29,7 +29,7 @@ import org.apache.lucene.util.BytesRef;
 public class TestTermsIndexBuilder extends LuceneTestCase {
 
   public void testBasics() throws IOException {
-    String[] test_terms = {
+    String[] termTerms = {
       "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
     };
 
@@ -37,7 +37,7 @@ public class TestTermsIndexBuilder extends LuceneTestCase {
     Map<String, Integer> termsToOrd = new HashMap<>();
     Map<Integer, Integer> typeCounters = new HashMap<>();
 
-    for (String term : test_terms) {
+    for (String term : termTerms) {
       int termType = random().nextInt(TermType.NUM_TOTAL_TYPES);
       termsToType.put(term, termType);
       int ord = typeCounters.getOrDefault(termType, -1) + 1;
@@ -46,7 +46,7 @@ public class TestTermsIndexBuilder extends LuceneTestCase {
     }
 
     TermsIndexBuilder builder = new TermsIndexBuilder();
-    for (String term : test_terms) {
+    for (String term : termTerms) {
       BytesRef termBytes = new BytesRef(term);
       builder.addTerm(termBytes, TermType.fromId(termsToType.get(term)));
     }
@@ -63,7 +63,7 @@ public class TestTermsIndexBuilder extends LuceneTestCase {
         TermsIndexPrimitive.deserialize(
             new ByteArrayDataInput(metaBytes), new ByteArrayDataInput(dataBytes), false);
 
-    for (String term : test_terms) {
+    for (String term : termTerms) {
       BytesRef termBytes = new BytesRef(term);
       TermsIndex.TypeAndOrd typeAndOrd = termsIndexPrimitive.getTerm(termBytes);
 

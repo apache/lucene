@@ -52,7 +52,7 @@ final class TermsIndexBuilder {
     return new TermsIndex(fstCompiler.compile());
   }
 
-  private long encode(long ord, TermType termType) {
+  static long encode(long ord, TermType termType) {
     // use a single long to encode `ord` and `termType`
     // also consider the special value of `PositiveIntOutputs.NO_OUTPUT == 0`
     // so it looks like this |...  ord ...| termType| ... hasOutput  ...|
