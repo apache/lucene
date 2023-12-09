@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -174,7 +173,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    * Implements a TopFieldCollector over one SortField criteria, with tracking
    * document scores and maxScore.
    */
-  private static class SimpleFieldCollector extends TopFieldCollector {
+  static class SimpleFieldCollector extends TopFieldCollector {
     final Sort sort;
     final FieldValueHitQueue<Entry> queue;
 
@@ -216,7 +215,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   /*
    * Implements a TopFieldCollector when after != null.
    */
-  private static final class PagingFieldCollector extends TopFieldCollector {
+  static final class PagingFieldCollector extends TopFieldCollector {
 
     final Sort sort;
     int collectedHits;
@@ -387,9 +386,13 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static TopFieldCollector create(Sort sort, int numHits, int totalHitsThreshold) {
-    return create(sort, numHits, null, totalHitsThreshold);
+    return new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, false)
+        .newCollector();
   }
 
   /**
@@ -411,106 +414,29 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    *     field is indexed both with doc values and points. In this case, there is an assumption that
    *     the same data is stored in these points and doc values.
    * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static TopFieldCollector create(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    if (totalHitsThreshold < 0) {
-      throw new IllegalArgumentException(
-          "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
-    }
-
-    return create(
-        sort,
-        numHits,
-        after,
-        HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits)),
-        null /* bottomValueChecker */);
-  }
-
-  /**
-   * Same as above with additional parameters to allow passing in the threshold checker and the max
-   * score accumulator.
-   */
-  static TopFieldCollector create(
-      Sort sort,
-      int numHits,
-      FieldDoc after,
-      HitsThresholdChecker hitsThresholdChecker,
-      MaxScoreAccumulator minScoreAcc) {
-
-    if (sort.getSort().length == 0) {
-      throw new IllegalArgumentException("Sort must contain at least one field");
-    }
-
-    if (numHits <= 0) {
-      throw new IllegalArgumentException(
-          "numHits must be > 0; please use TotalHitCountCollector if you just need the total hit count");
-    }
-
-    if (hitsThresholdChecker == null) {
-      throw new IllegalArgumentException("hitsThresholdChecker should not be null");
-    }
-
-    FieldValueHitQueue<Entry> queue = FieldValueHitQueue.create(sort.getSort(), numHits);
-
-    if (after == null) {
-      // inform a comparator that sort is based on this single field
-      // to enable some optimizations for skipping over non-competitive documents
-      // We can't set single sort when the `after` parameter is non-null as it's
-      // an implicit sort over the document id.
-      if (queue.comparators.length == 1) {
-        queue.comparators[0].setSingleSort();
-      }
-      return new SimpleFieldCollector(sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
-    } else {
-      if (after.fields == null) {
-        throw new IllegalArgumentException(
-            "after.fields wasn't set; you must pass fillFields=true for the previous search");
-      }
-
-      if (after.fields.length != sort.getSort().length) {
-        throw new IllegalArgumentException(
-            "after.fields has "
-                + after.fields.length
-                + " values but sort has "
-                + sort.getSort().length);
-      }
-
-      return new PagingFieldCollector(
-          sort, queue, after, numHits, hitsThresholdChecker, minScoreAcc);
-    }
+    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, false)
+        .newCollector();
   }
 
   /**
    * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments if the
    * primary sort is by relevancy.
+   *
+   * @deprecated This method is deprecated in favor of the constructor of {@link
+   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
    */
+  @Deprecated
   public static CollectorManager<TopFieldCollector, TopFieldDocs> createSharedManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
 
-    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
-    return new CollectorManager<>() {
-      private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(totalHitsMax);
-      private final MaxScoreAccumulator minScoreAcc =
-          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
-
-      @Override
-      public TopFieldCollector newCollector() throws IOException {
-        return create(sort, numHits, after, hitsThresholdChecker, minScoreAcc);
-      }
-
-      @Override
-      public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
-        final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
-        int i = 0;
-        for (TopFieldCollector collector : collectors) {
-          topDocs[i++] = collector.topDocs();
-        }
-        return TopDocs.merge(sort, 0, numHits, topDocs);
-      }
-    };
+    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, true);
   }
 
   /**
