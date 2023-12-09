@@ -31,13 +31,15 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
-// Run something like this:
-//    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
+// Similar to Test2BFST but will build and read the FST off-heap and can be run with small heap
 
-@Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
+// Run something like this:
+//    ./gradlew test --tests Test2BFSTOffHeap -Dtests.verbose=true --max-workers=1
+
+@Ignore("Will take long time to run (~4.5 hours)")
 @SuppressSysoutChecks(bugUrl = "test prints helpful progress reports with time")
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
-public class Test2BFST extends LuceneTestCase {
+public class Test2BFSTOffHeap extends LuceneTestCase {
 
   private static long LIMIT = 3L * 1024 * 1024 * 1024;
 
@@ -48,49 +50,52 @@ public class Test2BFST extends LuceneTestCase {
     IntsRef input = new IntsRef(ints, 0, ints.length);
     long seed = random().nextLong();
 
-    Directory dir = new MMapDirectory(createTempDir("2BFST"));
+    Directory dir = new MMapDirectory(createTempDir("2BFSTOffHeap"));
 
-    for (int iter = 0; iter < 1; iter++) {
-      // Build FST w/ NoOutputs and stop when nodeCount > 2.2B
-      {
-        System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
-        Outputs<Object> outputs = NoOutputs.getSingleton();
-        Object NO_OUTPUT = outputs.getNoOutput();
-        final FSTCompiler<Object> fstCompiler =
-            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
+    // Build FST w/ NoOutputs and stop when nodeCount > 2.2B
+    {
+      System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
+      Outputs<Object> outputs = NoOutputs.getSingleton();
+      Object NO_OUTPUT = outputs.getNoOutput();
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      final FSTCompiler<Object> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(indexOutput).build();
 
-        int count = 0;
-        Random r = new Random(seed);
-        int[] ints2 = new int[200];
-        IntsRef input2 = new IntsRef(ints2, 0, ints2.length);
-        long startTime = System.nanoTime();
-        while (true) {
-          // System.out.println("add: " + input + " -> " + output);
-          for (int i = 10; i < ints2.length; i++) {
-            ints2[i] = r.nextInt(256);
-          }
-          fstCompiler.add(input2, NO_OUTPUT);
-          count++;
-          if (count % 100000 == 0) {
-            System.out.println(
-                count
-                    + ": "
-                    + fstCompiler.fstRamBytesUsed()
-                    + " RAM bytes used; "
-                    + fstCompiler.fstSizeInBytes()
-                    + " FST bytes; "
-                    + fstCompiler.getNodeCount()
-                    + " nodes; took "
-                    + (long) ((System.nanoTime() - startTime) / 1e9)
-                    + " seconds");
-          }
-          if (fstCompiler.getNodeCount() > Integer.MAX_VALUE + 100L * 1024 * 1024) {
-            break;
-          }
-          nextInput(r, ints2);
+      int count = 0;
+      Random r = new Random(seed);
+      int[] ints2 = new int[200];
+      IntsRef input2 = new IntsRef(ints2, 0, ints2.length);
+      long startTime = System.nanoTime();
+      while (true) {
+        // System.out.println("add: " + input + " -> " + output);
+        for (int i = 10; i < ints2.length; i++) {
+          ints2[i] = r.nextInt(256);
         }
+        fstCompiler.add(input2, NO_OUTPUT);
+        count++;
+        if (count % 100000 == 0) {
+          System.out.println(
+              count
+                  + ": "
+                  + fstCompiler.fstRamBytesUsed()
+                  + " RAM bytes used; "
+                  + fstCompiler.fstSizeInBytes()
+                  + " FST bytes; "
+                  + fstCompiler.getNodeCount()
+                  + " nodes; took "
+                  + (long) ((System.nanoTime() - startTime) / 1e9)
+                  + " seconds");
+        }
+        if (fstCompiler.getNodeCount() > Integer.MAX_VALUE + 100L * 1024 * 1024) {
+          break;
+        }
+        nextInput(r, ints2);
+      }
 
-        FST<Object> fst = fstCompiler.compile();
+      FST<Object> fst = fstCompiler.compile();
+      indexOutput.close();
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -138,52 +143,47 @@ public class Test2BFST extends LuceneTestCase {
             nextInput(r, ints2);
           }
           assertEquals(count, upto);
+        }
+      } finally {
+        dir.deleteFile("fst");
+      }
+    }
 
-          if (verify == 0) {
-            System.out.println("\nTEST: save/load FST and re-verify");
-            IndexOutput out = dir.createOutput("fst", IOContext.DEFAULT);
-            fst.save(out, out);
-            out.close();
-            IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(FST.readMetadata(in, outputs), in);
-            in.close();
-          } else {
-            dir.deleteFile("fst");
+    // Build FST w/ ByteSequenceOutputs and stop when FST
+    // size = 3GB
+    {
+      System.out.println("\nTEST: 3 GB size; outputs=bytes");
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      Outputs<BytesRef> outputs = ByteSequenceOutputs.getSingleton();
+      final FSTCompiler<BytesRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(indexOutput).build();
+
+      byte[] outputBytes = new byte[20];
+      BytesRef output = new BytesRef(outputBytes);
+      Arrays.fill(ints, 0);
+      int count = 0;
+      Random r = new Random(seed);
+      while (true) {
+        r.nextBytes(outputBytes);
+        // System.out.println("add: " + input + " -> " + output);
+        fstCompiler.add(input, BytesRef.deepCopyOf(output));
+        count++;
+        if (count % 10000 == 0) {
+          long size = fstCompiler.fstSizeInBytes();
+          if (count % 1000000 == 0) {
+            System.out.println(count + "...: " + size + " bytes");
+          }
+          if (size > LIMIT) {
+            break;
           }
         }
+        nextInput(r, ints);
       }
 
-      // Build FST w/ ByteSequenceOutputs and stop when FST
-      // size = 3GB
-      {
-        System.out.println("\nTEST: 3 GB size; outputs=bytes");
-        Outputs<BytesRef> outputs = ByteSequenceOutputs.getSingleton();
-        final FSTCompiler<BytesRef> fstCompiler =
-            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
-
-        byte[] outputBytes = new byte[20];
-        BytesRef output = new BytesRef(outputBytes);
-        Arrays.fill(ints, 0);
-        int count = 0;
-        Random r = new Random(seed);
-        while (true) {
-          r.nextBytes(outputBytes);
-          // System.out.println("add: " + input + " -> " + output);
-          fstCompiler.add(input, BytesRef.deepCopyOf(output));
-          count++;
-          if (count % 10000 == 0) {
-            long size = fstCompiler.fstSizeInBytes();
-            if (count % 1000000 == 0) {
-              System.out.println(count + "...: " + size + " bytes");
-            }
-            if (size > LIMIT) {
-              break;
-            }
-          }
-          nextInput(r, ints);
-        }
-
-        FST<BytesRef> fst = fstCompiler.compile();
+      FST<BytesRef> fst = fstCompiler.compile();
+      indexOutput.close();
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -228,52 +228,47 @@ public class Test2BFST extends LuceneTestCase {
             nextInput(r, ints);
           }
           assertEquals(count, upto);
+        }
+      } finally {
+        dir.deleteFile("fst");
+      }
+    }
 
-          if (verify == 0) {
-            System.out.println("\nTEST: save/load FST and re-verify");
-            IndexOutput out = dir.createOutput("fst", IOContext.DEFAULT);
-            fst.save(out, out);
-            out.close();
-            IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(FST.readMetadata(in, outputs), in);
-            in.close();
-          } else {
-            dir.deleteFile("fst");
+    // Build FST w/ PositiveIntOutputs and stop when FST
+    // size = 3GB
+    {
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      System.out.println("\nTEST: 3 GB size; outputs=long");
+      Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
+      final FSTCompiler<Long> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(indexOutput).build();
+
+      long output = 1;
+
+      Arrays.fill(ints, 0);
+      int count = 0;
+      Random r = new Random(seed);
+      while (true) {
+        // System.out.println("add: " + input + " -> " + output);
+        fstCompiler.add(input, output);
+        output += 1 + r.nextInt(10);
+        count++;
+        if (count % 10000 == 0) {
+          long size = fstCompiler.fstSizeInBytes();
+          if (count % 1000000 == 0) {
+            System.out.println(count + "...: " + size + " bytes");
+          }
+          if (size > LIMIT) {
+            break;
           }
         }
+        nextInput(r, ints);
       }
 
-      // Build FST w/ PositiveIntOutputs and stop when FST
-      // size = 3GB
-      {
-        System.out.println("\nTEST: 3 GB size; outputs=long");
-        Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-        final FSTCompiler<Long> fstCompiler =
-            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
-
-        long output = 1;
-
-        Arrays.fill(ints, 0);
-        int count = 0;
-        Random r = new Random(seed);
-        while (true) {
-          // System.out.println("add: " + input + " -> " + output);
-          fstCompiler.add(input, output);
-          output += 1 + r.nextInt(10);
-          count++;
-          if (count % 10000 == 0) {
-            long size = fstCompiler.fstSizeInBytes();
-            if (count % 1000000 == 0) {
-              System.out.println(count + "...: " + size + " bytes");
-            }
-            if (size > LIMIT) {
-              break;
-            }
-          }
-          nextInput(r, ints);
-        }
-
-        FST<Long> fst = fstCompiler.compile();
+      FST<Long> fst = fstCompiler.compile();
+      indexOutput.close();
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
 
         for (int verify = 0; verify < 2; verify++) {
 
@@ -322,19 +317,9 @@ public class Test2BFST extends LuceneTestCase {
             nextInput(r, ints);
           }
           assertEquals(count, upto);
-
-          if (verify == 0) {
-            System.out.println("\nTEST: save/load FST and re-verify");
-            IndexOutput out = dir.createOutput("fst", IOContext.DEFAULT);
-            fst.save(out, out);
-            out.close();
-            IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-            fst = new FST<>(FST.readMetadata(in, outputs), in);
-            in.close();
-          } else {
-            dir.deleteFile("fst");
-          }
         }
+      } finally {
+        dir.deleteFile("fst");
       }
     }
     dir.close();
