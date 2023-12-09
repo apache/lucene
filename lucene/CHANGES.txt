@@ -196,6 +196,14 @@ Other
 
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
+======================== Lucene 9.9.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#12899: Revert "Optimize outputs accumulating for SegmentTermsEnum and InterssectTermsEnum" as it caused
+  index corruption. (Luca Cavanna)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
