@@ -199,6 +199,12 @@ public abstract class RadixSelector extends Selector {
    * @see #buildHistogram
    */
   private int computeCommonPrefixLengthAndBuildHistogram(int from, int to, int k, int[] histogram) {
+    int commonPrefixLength = computeInitialCommonPrefixLength(from, k);
+    return computeCommonPrefixLengthAndBuildHistogramPart1(
+        from, to, k, histogram, commonPrefixLength);
+  }
+
+  private int computeInitialCommonPrefixLength(int from, int k) {
     final int[] commonPrefix = this.commonPrefix;
     int commonPrefixLength = Math.min(commonPrefix.length, maxLength - k);
     for (int j = 0; j < commonPrefixLength; ++j) {
@@ -209,7 +215,12 @@ public abstract class RadixSelector extends Selector {
         break;
       }
     }
+    return commonPrefixLength;
+  }
 
+  private int computeCommonPrefixLengthAndBuildHistogramPart1(
+      int from, int to, int k, int[] histogram, int commonPrefixLength) {
+    final int[] commonPrefix = this.commonPrefix;
     int i;
     outer:
     for (i = from + 1; i < to; ++i) {
@@ -226,7 +237,12 @@ public abstract class RadixSelector extends Selector {
         }
       }
     }
+    return computeCommonPrefixLengthAndBuildHistogramPart2(
+        from, to, k, histogram, commonPrefixLength, i);
+  }
 
+  private int computeCommonPrefixLengthAndBuildHistogramPart2(
+      int from, int to, int k, int[] histogram, int commonPrefixLength, int i) {
     if (i < to) {
       // the loop got broken because there is no common prefix
       assert commonPrefixLength == 0;
