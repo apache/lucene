@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +25,9 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -201,7 +201,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           nodeBuffer = new int[neighborArray.size()];
         }
         size = neighborArray.size();
-        if (size >= 0) System.arraycopy(neighborArray.node, 0, nodeBuffer, 0, size);
+        if (size >= 0) System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
       } finally {
         neighborArray.rwlock.readLock().unlock();
       }

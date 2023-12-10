@@ -17,15 +17,16 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
@@ -164,7 +165,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
-      return cur.node[upto];
+      return cur.nodes()[upto];
     }
     return NO_MORE_DOCS;
   }

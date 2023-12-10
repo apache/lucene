@@ -17,15 +17,16 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
+
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -308,7 +309,7 @@ public class HnswGraphSearcher {
     @Override
     int graphNextNeighbor(HnswGraph graph) {
       if (++upto < cur.size()) {
-        return cur.node[upto];
+        return cur.nodes()[upto];
       }
       return NO_MORE_DOCS;
     }
