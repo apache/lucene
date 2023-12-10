@@ -153,8 +153,7 @@ public class FSTCompiler<T> {
    * @return the DataOutput
    */
   public static DataOutput getOnHeapReaderWriter(int blockBits) {
-    return new ReadWriteDataOutput(
-        new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
+    return new ReadWriteDataOutput(blockBits);
   }
 
   private FSTCompiler(

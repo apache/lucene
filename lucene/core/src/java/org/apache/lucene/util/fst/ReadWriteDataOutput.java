@@ -22,6 +22,9 @@ import java.util.List;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
+import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
+import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
+
 /**
  * An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader}. It allows the FST
  * to be readable immediately after writing
@@ -36,9 +39,9 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
   // whether this DataOutput is already frozen
   private boolean frozen;
 
-  public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
-    this.dataOutput = dataOutput;
-    this.blockBits = dataOutput.getBlockBits();
+  public ReadWriteDataOutput(int blockBits) {
+    this.dataOutput = new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE);
+    this.blockBits = blockBits;
     this.blockSize = 1 << blockBits;
     this.blockMask = blockSize - 1;
   }
