@@ -16,14 +16,14 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
+import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
-
-import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
-import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
 
 /**
  * An adapter class to use {@link ByteBuffersDataOutput} as a {@link FSTReader}. It allows the FST
@@ -40,7 +40,8 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
   private boolean frozen;
 
   public ReadWriteDataOutput(int blockBits) {
-    this.dataOutput = new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE);
+    this.dataOutput =
+        new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE);
     this.blockBits = blockBits;
     this.blockSize = 1 << blockBits;
     this.blockMask = blockSize - 1;
