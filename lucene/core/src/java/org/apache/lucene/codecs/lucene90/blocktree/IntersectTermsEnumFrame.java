@@ -89,6 +89,9 @@ final class IntersectTermsEnumFrame {
 
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
+  // Cumulative outputs so far
+  BytesRef[] outputPrefix;
+
   int startBytePos;
   int suffix;
 

@@ -114,6 +114,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.prefix = 0;
     f.setState(0);
     f.arc = arc;
+    f.outputPrefix = new BytesRef[] {arc.output()};
     f.load(fr.rootCode);
 
     // for assert:
@@ -185,7 +186,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     assert currentFrame.suffix > 0;
 
     outputAccumulator.reset();
-    outputAccumulator.push(arc.output());
+    for (BytesRef output : currentFrame.outputPrefix) {
+      outputAccumulator.push(output);
+    }
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -198,6 +201,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     }
 
     f.arc = arc;
+    f.outputPrefix = outputAccumulator.bytesRefs();
     assert arc.isFinal();
     outputAccumulator.push(arc.nextFinalOutput());
     f.load(outputAccumulator);

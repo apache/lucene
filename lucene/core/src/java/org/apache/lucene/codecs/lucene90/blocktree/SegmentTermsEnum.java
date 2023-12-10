@@ -1239,5 +1239,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     public void skipBytes(long numBytes) throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    BytesRef[] bytesRefs() {
+      return ArrayUtil.copyOfSubArray(outputs, 0, num);
+    }
   }
 }
