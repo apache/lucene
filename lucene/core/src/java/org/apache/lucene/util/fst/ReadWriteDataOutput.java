@@ -17,7 +17,8 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import org.apache.lucene.store.ByteBuffersDataInput;
+import java.nio.ByteBuffer;
+import java.util.List;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 
@@ -28,13 +29,18 @@ import org.apache.lucene.store.DataOutput;
 final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   private final ByteBuffersDataOutput dataOutput;
-  // the DataInput to read from once we finish writing
-  private ByteBuffersDataInput dataInput;
+  private final int blockBits;
+  private final int blockSize;
+  private final int blockMask;
+  private List<ByteBuffer> byteBuffers;
   // whether this DataOutput is already frozen
   private boolean frozen;
 
   public ReadWriteDataOutput(ByteBuffersDataOutput dataOutput) {
     this.dataOutput = dataOutput;
+    this.blockBits = dataOutput.getBlockBits();
+    this.blockSize = 1 << blockBits;
+    this.blockMask = blockSize - 1;
   }
 
   @Override
@@ -56,14 +62,59 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   public void freeze() {
     frozen = true;
-    // this operation are costly, so we want to compute it once and cache
-    dataInput = dataOutput.toDataInput();
+    // this operation is costly, so we want to compute it once and cache
+    this.byteBuffers = dataOutput.toWriteableBufferList();
   }
 
   @Override
   public FST.BytesReader getReverseBytesReader() {
-    assert dataInput != null; // freeze() must be called first
-    return new ReverseRandomAccessReader(dataInput);
+    assert byteBuffers != null; // freeze() must be called first
+    if (byteBuffers.size() == 1) {
+      // use a faster implementation for single-block case
+      return new ReverseBytesReader(byteBuffers.get(0).array());
+    }
+    return new FST.BytesReader() {
+      private byte[] current = byteBuffers.get(0).array();
+      private int nextBuffer = -1;
+      private int nextRead = 0;
+
+      @Override
+      public byte readByte() {
+        if (nextRead == -1) {
+          current = byteBuffers.get(nextBuffer--).array();
+          nextRead = blockSize - 1;
+        }
+        return current[nextRead--];
+      }
+
+      @Override
+      public void skipBytes(long count) {
+        setPosition(getPosition() - count);
+      }
+
+      @Override
+      public void readBytes(byte[] b, int offset, int len) {
+        for (int i = 0; i < len; i++) {
+          b[offset + i] = readByte();
+        }
+      }
+
+      @Override
+      public long getPosition() {
+        return ((long) nextBuffer + 1) * blockSize + nextRead;
+      }
+
+      @Override
+      public void setPosition(long pos) {
+        int bufferIndex = (int) (pos >> blockBits);
+        if (nextBuffer != bufferIndex - 1) {
+          nextBuffer = bufferIndex - 1;
+          current = byteBuffers.get(bufferIndex).array();
+        }
+        nextRead = (int) (pos & blockMask);
+        assert getPosition() == pos : "pos=" + pos + " getPos()=" + getPosition();
+      }
+    };
   }
 
   @Override
