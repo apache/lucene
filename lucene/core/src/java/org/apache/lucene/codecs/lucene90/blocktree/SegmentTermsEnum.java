@@ -1187,6 +1187,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     void push(BytesRef output) {
       if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        assert output.length > 0;
         outputs = ArrayUtil.grow(outputs, num + 1);
         outputs[num++] = output;
       }
