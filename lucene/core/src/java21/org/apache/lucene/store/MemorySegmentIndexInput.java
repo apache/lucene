@@ -323,7 +323,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         return;
       }
 
-      final int flag = curSegment.get(LAYOUT_BYTE, curPosition++) & 0xFF;
+      final int flag = readByte() & 0xFF;
       curPosition +=
           GroupVIntUtil.readGroupVInt(
               flag, p -> curSegment.get(LAYOUT_LE_INT, p), curPosition, dst, offset);

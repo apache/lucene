@@ -160,7 +160,7 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void mmap_byteBufferReadVInt(Blackhole bh) throws IOException {
+  public void benchMMapDirectoryInputs_readVInt(Blackhole bh) throws IOException {
     byteBufferVIntIn.seek(0);
     for (int i = 0; i < size; i++) {
       values[i] = byteBufferVIntIn.readVInt();
@@ -169,21 +169,21 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void mmap_byteBufferReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchMMapDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
     byteBufferGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void mmap_byteBufferReadGroupVIntBaseline(Blackhole bh) throws IOException {
+  public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
     byteBufferGVIntIn.readGroupVIntsBaseline(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void byteArrayReadVInt(Blackhole bh) {
+  public void benchByteArrayDataInput_readVInt(Blackhole bh) {
     byteArrayVIntIn.rewind();
     for (int i = 0; i < size; i++) {
       values[i] = byteArrayVIntIn.readVInt();
@@ -192,35 +192,35 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchByteArrayDataInput_readGroupVInt(Blackhole bh) throws IOException {
     byteArrayGVIntIn.rewind();
     byteArrayGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void nioReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchNIOFSDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     nioGVIntIn.seek(0);
     nioGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void nioReadGroupVIntBaseline(Blackhole bh) throws IOException {
+  public void benchNIOFSDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     nioGVIntIn.seek(0);
     nioGVIntIn.readGroupVIntsBaseline(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void byteBuffersReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchByteBuffersIndexInput_readGroupVInt(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
     byteBuffersGVIntIn.readGroupVInts(values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void byteBuffersReadGroupVIntBaseline(Blackhole bh) throws IOException {
+  public void benchByteBuffersIndexInput_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
     byteBuffersGVIntIn.readGroupVIntsBaseline(values, size);
     bh.consume(values);
