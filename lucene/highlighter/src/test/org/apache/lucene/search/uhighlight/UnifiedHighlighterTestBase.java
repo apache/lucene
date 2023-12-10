@@ -16,14 +16,30 @@
  */
 package org.apache.lucene.search.uhighlight;
 
+import com.carrotsearch.randomizedtesting.annotations.Name;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOUtils;
+import org.junit.After;
+import org.junit.Before;
 
-/** Helper for {@link UnifiedHighlighter} tests. */
-class UHTestHelper {
+/** Parent class for unified highlighter tests. */
+abstract class UnifiedHighlighterTestBase extends LuceneTestCase {
+  /** Randomized field type for the "body" field, generally. */
+  protected final FieldType fieldType;
+
+  protected MockAnalyzer indexAnalyzer;
+  protected Directory dir;
 
   static final FieldType postingsType = new FieldType(TextField.TYPE_STORED);
   static final FieldType tvType = new FieldType(TextField.TYPE_STORED);
@@ -44,6 +60,46 @@ class UHTestHelper {
     postingsWithTvType.freeze();
 
     // re-analysis type needs no further changes.
+  }
+
+  UnifiedHighlighterTestBase(@Name("fieldType") FieldType fieldType) {
+    this.fieldType = fieldType;
+  }
+
+  @Before
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    dir = newDirectory();
+    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
+  }
+
+  @After
+  @Override
+  public void tearDown() throws Exception {
+    IOUtils.close(dir);
+    super.tearDown();
+  }
+
+  /**
+   * @return Returns a {@link RandomIndexWriter} but avoids using random merge policy, which may
+   *     reorder documents (which assertions rely on).
+   */
+  static RandomIndexWriter newIndexOrderPreservingWriter(Directory dir, Analyzer indexAnalyzer)
+      throws IOException {
+    return new RandomIndexWriter(
+        random(),
+        dir,
+        LuceneTestCase.newIndexWriterConfig(indexAnalyzer)
+            .setMergePolicy(LuceneTestCase.newMergePolicy(random(), false)));
+  }
+
+  /**
+   * @return Returns a {@link RandomIndexWriter} but avoids using random merge policy, which may
+   *     reorder documents (which assertions rely on).
+   */
+  RandomIndexWriter newIndexOrderPreservingWriter() throws IOException {
+    return newIndexOrderPreservingWriter(dir, indexAnalyzer);
   }
 
   public static FieldType randomFieldType(Random random, FieldType... typePossibilities) {

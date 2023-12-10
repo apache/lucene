@@ -33,6 +33,7 @@ import static org.apache.lucene.util.fst.FST.VERSION_CURRENT;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -145,7 +146,8 @@ public class FSTCompiler<T> {
   private long numBytesWritten;
 
   /**
-   * Get an on-heap DataOutput that allows the FST to be read immediately after writing.
+   * Get an on-heap DataOutput that allows the FST to be read immediately after writing, and also
+   * optionally saved to an external DataOutput.
    *
    * @param blockBits how many bits wide to make each block of the DataOutput
    * @return the DataOutput
@@ -193,8 +195,7 @@ public class FSTCompiler<T> {
 
   // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
   // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
-  // NullFSTReader
-  // will throw UnsupportedOperationException
+  // NullFSTReader will throw UnsupportedOperationException
   private FSTReader toFSTReader(DataOutput dataOutput) {
     if (dataOutput instanceof FSTReader) {
       return (FSTReader) dataOutput;
@@ -292,8 +293,7 @@ public class FSTCompiler<T> {
 
     /**
      * Set the {@link DataOutput} which is used for low-level writing of FST. If you want the FST to
-     * be immediately readable, you need to use a DataOutput that also implements {@link FSTReader},
-     * such as {@link FSTCompiler#getOnHeapReaderWriter(int)}.
+     * be immediately readable, you need to use {@link FSTCompiler#getOnHeapReaderWriter(int)}.
      *
      * <p>Otherwise you need to construct the corresponding {@link
      * org.apache.lucene.store.DataInput} and use the FST constructor to read it.
@@ -303,7 +303,7 @@ public class FSTCompiler<T> {
      * @see FSTCompiler#getOnHeapReaderWriter(int)
      */
     public Builder<T> dataOutput(DataOutput dataOutput) {
-      this.dataOutput = dataOutput;
+      this.dataOutput = Objects.requireNonNull(dataOutput, "DataOutput cannot be null");
       return this;
     }
 

@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -417,9 +418,8 @@ public final class FST<T> implements Accountable {
 
   /** Create the FST with a metadata object and a FSTReader. */
   FST(FSTMetadata<T> metadata, FSTReader fstReader) {
-    assert metadata != null;
     assert fstReader != null;
-    this.metadata = metadata;
+    this.metadata = Objects.requireNonNull(metadata, "FSTMetadata cannot be null");
     this.outputs = metadata.outputs;
     this.fstReader = fstReader;
   }

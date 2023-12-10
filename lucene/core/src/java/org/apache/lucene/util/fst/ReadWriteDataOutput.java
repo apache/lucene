@@ -45,17 +45,13 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   @Override
   public void writeByte(byte b) {
-    if (frozen) {
-      throw new IllegalStateException("Already frozen");
-    }
+    assert frozen == false;
     dataOutput.writeByte(b);
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) {
-    if (frozen) {
-      throw new IllegalStateException("Already frozen");
-    }
+    assert frozen == false;
     dataOutput.writeBytes(b, offset, length);
   }
 
@@ -66,7 +62,7 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
 
   public void freeze() {
     frozen = true;
-    // these operations are costly, so we want to compute it once and cache
+    // this operation is costly, so we want to compute it once and cache
     this.byteBuffers = dataOutput.toWriteableBufferList();
   }
 
