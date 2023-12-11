@@ -109,10 +109,11 @@ public final class FST<T> implements Accountable {
 
   // Increment version to change it
   private static final String FILE_FORMAT_NAME = "FST";
-  private static final int VERSION_START = 6;
+  public static final int VERSION_START = 6;
   private static final int VERSION_LITTLE_ENDIAN = 8;
-  private static final int VERSION_CONTINUOUS_ARCS = 9;
-  static final int VERSION_CURRENT = VERSION_CONTINUOUS_ARCS;
+  public static final int VERSION_CONTINUOUS_ARCS = 9;
+  public static final int VERSION_CURRENT = VERSION_CONTINUOUS_ARCS;
+  public static final int VERSION_90 = VERSION_LITTLE_ENDIAN;
 
   // Never serialized; just used to represent the virtual
   // final node w/ no arcs:
