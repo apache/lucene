@@ -101,12 +101,6 @@ dependencies {
   groovy "org.codehaus.groovy:groovy-all:3.0.12"
 }
 
-repositories {
-  maven {
-    url "https://repo.eclipse.org/content/repositories/eclipse-snapshots/"
-  }
-}
-
 apply from: file('buildSrc/scriptDepVersions.gradle')
 
 // Include smaller chunks configuring dedicated build areas.
