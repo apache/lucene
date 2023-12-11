@@ -42,6 +42,7 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.codecs.uniformsplit;
   exports org.apache.lucene.tests.codecs.vector;
   exports org.apache.lucene.tests.geo;
+  exports org.apache.lucene.tests.terms;
   exports org.apache.lucene.tests.index;
   exports org.apache.lucene.tests.mockfile;
   exports org.apache.lucene.tests.search.similarities;

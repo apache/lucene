@@ -41,6 +41,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
       'nocfs': 'index',
       'sorted': 'sorted',
       'moreterms': 'moreterms',
+      'wikiterms': 'wikiterms',
       'dvupdates': 'dvupdates',
       'emptyIndex': 'empty'
     }[indextype]
@@ -63,6 +64,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     'cfs': 'testCreateCFS',
     'nocfs': 'testCreateNoCFS',
     'sorted': 'testCreateSortedIndex',
+    'wikiterms': 'testCreateWikiTermsIndex',
     'moreterms': 'testCreateMoreTermsIndex',
     'dvupdates': 'testCreateIndexWithDocValuesUpdates',
     'emptyIndex': 'testCreateEmptyIndex'
@@ -240,6 +242,7 @@ def main():
   current_version = scriptutil.Version.parse(scriptutil.find_current_version())
   create_and_add_index(source, 'cfs', c.version, current_version, c.temp_dir)
   create_and_add_index(source, 'nocfs', c.version, current_version, c.temp_dir)
+  create_and_add_index(source, 'wikiterms', c.version, current_version, c.temp_dir)
   should_make_sorted =     current_version.is_back_compat_with(c.version) \
                        and (c.version.major > 6 or (c.version.major == 6 and c.version.minor >= 2))
   if should_make_sorted:

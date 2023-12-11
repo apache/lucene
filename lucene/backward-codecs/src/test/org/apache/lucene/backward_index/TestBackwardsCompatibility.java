@@ -118,11 +118,13 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.terms.TermsTestUtil;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
@@ -2267,19 +2269,48 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String wikiTermsIndex = "wikiterms.9.8.0.zip";
+  public static final String[] oldWikiTermsNames = {
+      "wikiterms.9.8.0.zip"
+  };
+
+  public void testCreateWikiTermsIndex() throws Exception {
+    Path indexDir = getIndexDir().resolve("wikiterms");
+    Files.deleteIfExists(indexDir);
+    Directory dir = newFSDirectory(indexDir);
+
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    BytesRefIterator termsEnum = TermsTestUtil.load(TermsTestUtil.WIKI_40000_TERMS_FILE);
+    BytesRef term;
+    while ((term = termsEnum.next()) != null) {
+      Document document = new Document();
+      document.add(new StringField("body", term, Field.Store.NO));
+      writer.addDocument(document);
+    }
+
+    writer.flush();
+    writer.commit();
+    writer.forceMerge(1);
+    writer.close();
+    dir.close();
+
+    // Gives you time to copy the index out!: (there is also
+    // a test option to not remove temp dir...):
+    Thread.sleep(100000);
+  }
 
   public void testWikiTerms() throws Exception {
-    Path oldIndexDir = createTempDir("wikiterms");
-    TestUtil.unzip(getDataInputStream(wikiTermsIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    DirectoryReader reader = DirectoryReader.open(dir);
+    for (String wikiTermsIndex : oldWikiTermsNames) {
+      Path oldIndexDir = createTempDir("wikiterms");
+      TestUtil.unzip(getDataInputStream(wikiTermsIndex), oldIndexDir);
+      Directory dir = newFSDirectory(oldIndexDir);
+      DirectoryReader reader = DirectoryReader.open(dir);
 
-    verifyUsesDefaultCodec(dir, wikiTermsIndex);
-    IndexSearcher searcher = new IndexSearcher(reader);
-    searcher.count(new WildcardQuery(new Term("body", "*fo*")));
+      verifyUsesDefaultCodec(dir, wikiTermsIndex);
+      IndexSearcher searcher = new IndexSearcher(reader);
+      searcher.count(new WildcardQuery(new Term("body", "*fo*")));
 
-    reader.close();
-    dir.close();
+      reader.close();
+      dir.close();
+    }
   }
 }
