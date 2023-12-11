@@ -7,12 +7,20 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import java.io.IOException;
 import java.util.Map;
 
+/**
+ * A {@link TokenFilter} that normalizes small letters (捨て仮名) in hiragana and katakana into normal letters.
+ * For instance, "ストップウォッチ" will be translated to "ストツプウオツチ".
+ *
+ * <p>This filter is useful if you want to search against old style Japanese text such as patents,
+ * legal, contract policies, etc.
+ */
 public final class JapaneseKanaUppercaseFilter extends TokenFilter {
     private static final Map<Character, Character> s2l;
 
     static {
         // supported characters are:
-        // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
+        // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ
+        // ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
         s2l = Map.ofEntries(
                 Map.entry('ぁ', 'あ'),
                 Map.entry('ぃ', 'い'),
