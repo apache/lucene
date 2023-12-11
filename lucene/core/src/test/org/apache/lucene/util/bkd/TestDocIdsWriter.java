@@ -17,6 +17,8 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +34,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
@@ -155,10 +158,13 @@ public class TestDocIdsWriter extends LuceneTestCase {
     dir.deleteFile("tmp");
   }
 
-  // This simple test tickles a JVM JIT crash on JDK's less than 21.0.1
-  // Needs to be run with C2, so with the environment variable `CI` set
+  // This simple test tickles a JVM C2 JIT crash on JDK's less than 21.0.1
+  // Crashes only when run with C2, so with the environment variable `CI` set
+  // Regardless of whether C2 is enabled or not, the test should never fail.
   public void testCrash() throws IOException {
-    for (int i = 0; i < 100; i++) {
+    assumeTrue("Requires C2, which is only enabled when CI env is set", getCIEnv() != null);
+    int itrs = atLeast(100);
+    for (int i = 0; i < itrs; i++) {
       try (Directory dir = newDirectory();
           IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null))) {
         for (int d = 0; d < 20_000; d++) {
@@ -167,5 +173,12 @@ public class TestDocIdsWriter extends LuceneTestCase {
         }
       }
     }
+  }
+
+  @SuppressForbidden(reason = "needed to check if C2 is enabled")
+  @SuppressWarnings("removal")
+  private static String getCIEnv() {
+    PrivilegedAction<String> pa = () -> System.getenv("CI");
+    return AccessController.doPrivileged(pa);
   }
 }
