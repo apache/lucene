@@ -113,6 +113,9 @@ public final class FST<T> implements Accountable {
   /** First supported version, this is the version that was used when releasing Lucene 7.0. */
   public static final int VERSION_START = 6;
 
+  // Version 7 introduced direct addressing for arcs, but it's not recorded here because it doesn't
+  // need version checks on the read side, it uses new flag values on arcs instead.
+
   private static final int VERSION_LITTLE_ENDIAN = 8;
 
   /** Version that started storing continuous arcs. */
