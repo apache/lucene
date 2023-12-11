@@ -27,7 +27,6 @@ import static org.apache.lucene.util.fst.FST.BIT_STOP_NODE;
 import static org.apache.lucene.util.fst.FST.BIT_TARGET_NEXT;
 import static org.apache.lucene.util.fst.FST.FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
-import static org.apache.lucene.util.fst.FST.VERSION_CURRENT;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
@@ -118,6 +117,7 @@ public class FSTCompiler<T> {
 
   final boolean allowFixedLengthArcs;
   final float directAddressingMaxOversizingFactor;
+  final int version;
   long directAddressingExpansionCredit;
 
   final BytesStore bytes;
@@ -128,14 +128,16 @@ public class FSTCompiler<T> {
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
-      float directAddressingMaxOversizingFactor) {
+      float directAddressingMaxOversizingFactor,
+      int version) {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
+    this.version = version;
     bytes = new BytesStore(bytesPageBits);
     // pad: ensure no node gets address 0 which is reserved to mean
     // the stop state w/ no arcs
     bytes.writeByte((byte) 0);
-    fst = new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, VERSION_CURRENT, 0), bytes);
+    fst = new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0), bytes);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
@@ -167,6 +169,7 @@ public class FSTCompiler<T> {
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
+    private int version = FST.VERSION_CURRENT;
 
     /**
      * @param inputType The input type (transition labels). Can be anything from {@link INPUT_TYPE}
@@ -246,6 +249,21 @@ public class FSTCompiler<T> {
       return this;
     }
 
+    /** Expert: Set the codec version. * */
+    public Builder<T> setVersion(int version) {
+      if (version < FST.VERSION_90 || version > FST.VERSION_CURRENT) {
+        throw new IllegalArgumentException(
+            "Expected version in range ["
+                + FST.VERSION_90
+                + ", "
+                + FST.VERSION_CURRENT
+                + "], got "
+                + version);
+      }
+      this.version = version;
+      return this;
+    }
+
     /** Creates a new {@link FSTCompiler}. */
     public FSTCompiler<T> build() throws IOException {
       return new FSTCompiler<>(
@@ -254,7 +272,8 @@ public class FSTCompiler<T> {
           outputs,
           allowFixedLengthArcs,
           bytesPageBits,
-          directAddressingMaxOversizingFactor);
+          directAddressingMaxOversizingFactor,
+          version);
     }
   }
 
@@ -437,7 +456,7 @@ public class FSTCompiler<T> {
       int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
       assert labelRange > 0;
       boolean continuousLabel = labelRange == nodeIn.numArcs;
-      if (continuousLabel) {
+      if (continuousLabel && version >= FST.VERSION_CONTINUOUS_ARCS) {
         writeNodeForDirectAddressingOrContinuous(
             nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange, true);
         continuousNodeCount++;
