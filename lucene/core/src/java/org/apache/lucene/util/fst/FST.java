@@ -109,10 +109,19 @@ public final class FST<T> implements Accountable {
 
   // Increment version to change it
   private static final String FILE_FORMAT_NAME = "FST";
+
+  /** First supported version, this is the version that was used when releasing Lucene 7.0. */
   public static final int VERSION_START = 6;
+
   private static final int VERSION_LITTLE_ENDIAN = 8;
+
+  /** Version that started storing continuous arcs. */
   public static final int VERSION_CONTINUOUS_ARCS = 9;
+
+  /** Current version. */
   public static final int VERSION_CURRENT = VERSION_CONTINUOUS_ARCS;
+
+  /** Version that was used when releasing Lucene 9.0. */
   public static final int VERSION_90 = VERSION_LITTLE_ENDIAN;
 
   // Never serialized; just used to represent the virtual
