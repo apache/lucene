@@ -330,10 +330,10 @@ public class FSTCompiler<T> {
 
     /** Expert: Set the codec version. * */
     public Builder<T> setVersion(int version) {
-      if (version < FST.VERSION_START || version > FST.VERSION_CURRENT) {
+      if (version < FST.VERSION_90 || version > FST.VERSION_CURRENT) {
         throw new IllegalArgumentException(
             "Expected version in range ["
-                + FST.VERSION_START
+                + FST.VERSION_90
                 + ", "
                 + FST.VERSION_CURRENT
                 + "], got "
