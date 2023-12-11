@@ -9,9 +9,9 @@ import java.io.IOException;
 
 
 /**
- * Tests for {@link JapaneseKanaUppercaseFilter}
+ * Tests for {@link JapaneseHiraganaUppercaseFilter}
  */
-public class TestJapaneseKanaUppercaseFilter extends BaseTokenStreamTestCase {
+public class TestJapaneseHiraganaUppercaseFilter extends BaseTokenStreamTestCase {
     private Analyzer keywordAnalyzer, japaneseAnalyzer;
 
     @Override
@@ -21,14 +21,15 @@ public class TestJapaneseKanaUppercaseFilter extends BaseTokenStreamTestCase {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-                return new TokenStreamComponents(tokenizer, new JapaneseKanaUppercaseFilter(tokenizer));
+                return new TokenStreamComponents(tokenizer, new JapaneseHiraganaUppercaseFilter(tokenizer));
             }
         };
         japaneseAnalyzer = new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new JapaneseTokenizer(newAttributeFactory(), null, false, JapaneseTokenizer.Mode.SEARCH);
-                return new TokenStreamComponents(tokenizer, new JapaneseKanaUppercaseFilter(tokenizer));
+                Tokenizer tokenizer = new JapaneseTokenizer(
+                        newAttributeFactory(), null, false, JapaneseTokenizer.Mode.SEARCH);
+                return new TokenStreamComponents(tokenizer, new JapaneseHiraganaUppercaseFilter(tokenizer));
             }
         };
     }
@@ -36,35 +37,34 @@ public class TestJapaneseKanaUppercaseFilter extends BaseTokenStreamTestCase {
     @Override
     public void tearDown() throws Exception {
         keywordAnalyzer.close();
-        keywordAnalyzer.close();
+        japaneseAnalyzer.close();
         super.tearDown();
     }
 
     public void testKanaUppercase() throws IOException {
         assertAnalyzesTo(
                 keywordAnalyzer,
-                "ぁぃぅぇぉっゃゅょゎゕゖァィゥェォヵㇰヶㇱㇲッㇳㇴㇵㇶㇷㇷ゚ㇸㇹㇺャュョㇻㇼㇽㇾㇿヮ",
-                new String[]{"あいうえおつやゆよわかけアイウエオカクケシスツトヌハヒフプヘホムヤユヨラリルレロワ"}
+                "ぁぃぅぇぉっゃゅょゎゕゖ",
+                new String[]{"あいうえおつやゆよわかけ"}
         );
         assertAnalyzesTo(
                 keywordAnalyzer,
-                "ストップウォッチ しょうじょ",
-                new String[]{"ストツプウオツチ", "しようじよ"}
+                "ちょっとまって",
+                new String[]{"ちよつとまつて"}
         );
+    }
+
+    public void testKanaUppercaseWithSurrogatePair() throws IOException {
+        // 𠀋 : \uD840\uDC0B
         assertAnalyzesTo(
                 keywordAnalyzer,
-                "サラニㇷ゚ カムイチェㇷ゚ ㇷ゚ㇷ゚",
-                new String[]{"サラニプ", "カムイチエプ", "ププ"}
+                "\uD840\uDC0Bちょっとまって ちょっと\uD840\uDC0Bまって ちょっとまって\uD840\uDC0B",
+                new String[]{"\uD840\uDC0Bちよつとまつて", "ちよつと\uD840\uDC0Bまつて", "ちよつとまつて\uD840\uDC0B"}
         );
     }
 
     public void testKanaUppercaseWithJapaneseTokenizer() throws IOException {
-        assertAnalyzesTo(japaneseAnalyzer, "時間をストップウォッチで測る", new String[]{"時間", "を", "ストツプウオツチ", "で", "測る"});
-    }
-
-    public void testUnsupportedHalfWidthVariants() throws IOException {
-        // The below result is expected since only full-width katakana is supported
-        assertAnalyzesTo(keywordAnalyzer, "ｽﾄｯﾌﾟｳｫｯﾁ", new String[]{"ｽﾄｯﾌﾟｳｫｯﾁ"});
+        assertAnalyzesTo(japaneseAnalyzer, "ちょっとまって", new String[]{"ちよつと", "まつ", "て"});
     }
 
     public void testRandomData() throws IOException {
@@ -74,5 +74,4 @@ public class TestJapaneseKanaUppercaseFilter extends BaseTokenStreamTestCase {
     public void testEmptyTerm() throws IOException {
         assertAnalyzesTo(keywordAnalyzer, "", new String[]{});
     }
-
 }
