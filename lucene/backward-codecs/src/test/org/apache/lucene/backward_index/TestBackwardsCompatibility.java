@@ -128,7 +128,6 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 /*
   Verify we can read previous versions' indexes, do searches
