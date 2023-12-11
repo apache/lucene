@@ -81,11 +81,14 @@ public class NeighborArray {
   }
 
   /**
-   * In addition to {@link #addOutOfOrder(int, float)}, this function will also remove the least-diverse node
-   * if the node array is full after insertion
+   * In addition to {@link #addOutOfOrder(int, float)}, this function will also remove the
+   * least-diverse node if the node array is full after insertion
+   *
    * @param nodeId node Id of the owner of this NeighbourArray
    */
-  public void addAndEnsureDiversity(int newNode, float newScore, int nodeId, RandomVectorScorerSupplier scorerSupplier) throws IOException {
+  public void addAndEnsureDiversity(
+      int newNode, float newScore, int nodeId, RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
     addOutOfOrder(newNode, newScore);
     if (size < nodes.length) {
       return;
@@ -142,9 +145,9 @@ public class NeighborArray {
             ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
             : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
     System.arraycopy(
-            nodes, insertionPoint, nodes, insertionPoint + 1, sortedNodeSize - insertionPoint);
+        nodes, insertionPoint, nodes, insertionPoint + 1, sortedNodeSize - insertionPoint);
     System.arraycopy(
-            scores, insertionPoint, scores, insertionPoint + 1, sortedNodeSize - insertionPoint);
+        scores, insertionPoint, scores, insertionPoint + 1, sortedNodeSize - insertionPoint);
     nodes[insertionPoint] = tmpNode;
     scores[insertionPoint] = tmpScore;
     ++sortedNodeSize;
@@ -206,7 +209,8 @@ public class NeighborArray {
     int insertionPoint = Arrays.binarySearch(scores, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
-      while ((insertionPoint < bound - 1) && (scores[insertionPoint + 1] == scores[insertionPoint])) {
+      while ((insertionPoint < bound - 1)
+          && (scores[insertionPoint + 1] == scores[insertionPoint])) {
         insertionPoint++;
       }
       insertionPoint++;
@@ -231,7 +235,8 @@ public class NeighborArray {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(int nodeOrd, RandomVectorScorerSupplier scorerSupplier) throws IOException {
+  private int findWorstNonDiverse(int nodeOrd, RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
     int[] uncheckedIndexes = sort(scorer);
     if (uncheckedIndexes == null) {
@@ -255,8 +260,11 @@ public class NeighborArray {
   }
 
   private boolean isWorstNonDiverse(
-          int candidateIndex, int[] uncheckedIndexes, int uncheckedCursor, RandomVectorScorerSupplier scorerSupplier)
-          throws IOException {
+      int candidateIndex,
+      int[] uncheckedIndexes,
+      int uncheckedCursor,
+      RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
     float minAcceptedSimilarity = scores[candidateIndex];
     RandomVectorScorer scorer = scorerSupplier.scorer(nodes[candidateIndex]);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
