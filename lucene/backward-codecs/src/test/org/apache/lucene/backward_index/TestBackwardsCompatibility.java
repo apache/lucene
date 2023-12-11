@@ -2269,9 +2269,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String[] oldWikiTermsNames = {
-      "wikiterms.9.8.0.zip"
-  };
+  public static final String[] oldWikiTermsNames = {"wikiterms.9.8.0.zip"};
 
   public void testCreateWikiTermsIndex() throws Exception {
     Path indexDir = getIndexDir().resolve("wikiterms");
