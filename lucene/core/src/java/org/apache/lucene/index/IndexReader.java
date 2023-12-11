@@ -119,7 +119,7 @@ public abstract class IndexReader implements Closeable {
    *
    * @lucene.experimental
    */
-  public static interface CacheHelper {
+  public interface CacheHelper {
 
     /**
      * Get a key that the resource can be cached on. The given entry can be compared using identity,
@@ -146,7 +146,7 @@ public abstract class IndexReader implements Closeable {
    * @lucene.experimental
    */
   @FunctionalInterface
-  public static interface ClosedListener {
+  public interface ClosedListener {
     /**
      * Invoked when the resource (segment core, or index reader) that is being cached on is closed.
      */
