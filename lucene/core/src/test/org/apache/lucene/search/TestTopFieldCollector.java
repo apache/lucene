@@ -59,7 +59,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
     }
     ir = iw.getReader();
     iw.close();
-    is = newSearcher(ir);
+    // cannot use threads with this IndexSearcher since some tests rely on no threads
+    is = newSearcher(ir, true, true, false);
   }
 
   @Override
