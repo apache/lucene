@@ -41,7 +41,6 @@ public class TestPolishAnalyzer extends BaseTokenStreamTestCase {
   /** test use of exclusion set */
   public void testExclude() throws IOException {
     CharArraySet exclusionSet = new CharArraySet(asSet("studenta"), false);
-    ;
     Analyzer a = new PolishAnalyzer(PolishAnalyzer.getDefaultStopSet(), exclusionSet);
     checkOneTerm(a, "studenta", "studenta");
     checkOneTerm(a, "studenci", "student");

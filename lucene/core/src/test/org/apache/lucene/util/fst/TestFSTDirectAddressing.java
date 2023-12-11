@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,7 +67,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       entries.add(new BytesRef(b));
     }
-    long size = buildFST(entries).ramBytesUsed();
+    long size = buildFST(entries).numBytes();
     // Size is 1648 when we use only list-encoding. We were previously failing to ever de-dup
     // direct addressing, which led this case to blow up.
     // This test will fail if there is more than 1% size increase with direct addressing.
@@ -172,7 +174,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 ((double) (fstCompiler.continuousNodeCount) / fixedLengthArcNodeCount * 100)));
   }
 
-  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor) {
+  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor)
+      throws IOException {
     return new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, NoOutputs.getSingleton())
         .directAddressingMaxOversizingFactor(directAddressingMaxOversizingFactor)
         .build();
@@ -218,7 +221,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
   private static void countFSTArcs(String fstFilePath) throws IOException {
     byte[] buf = Files.readAllBytes(Paths.get(fstFilePath));
     DataInput in = new ByteArrayDataInput(buf);
-    FST<BytesRef> fst = new FST<>(in, in, ByteSequenceOutputs.getSingleton());
+    FST<BytesRef> fst = new FST<>(readMetadata(in, ByteSequenceOutputs.getSingleton()), in);
     BytesRefFSTEnum<BytesRef> fstEnum = new BytesRefFSTEnum<>(fst);
     int binarySearchArcCount = 0,
         directAddressingArcCount = 0,
@@ -285,7 +288,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
 
       System.out.println("Reading FST");
       long startTimeMs = System.nanoTime();
-      FST<CharsRef> originalFst = new FST<>(in, in, CharSequenceOutputs.getSingleton());
+      FST<CharsRef> originalFst =
+          new FST<>(readMetadata(in, CharSequenceOutputs.getSingleton()), in);
       long endTimeMs = System.nanoTime();
       System.out.println(
           "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");

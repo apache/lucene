@@ -57,7 +57,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -314,9 +314,10 @@ public final class SearchImpl extends LukeModel implements Search {
       topDocs = searcher.searchAfter(after, query, pageSize, sort);
     } else {
       int hitsThreshold = exactHitsCount ? Integer.MAX_VALUE : DEFAULT_TOTAL_HITS_THRESHOLD;
-      TopScoreDocCollector collector = TopScoreDocCollector.create(pageSize, after, hitsThreshold);
-      searcher.search(query, collector);
-      topDocs = collector.topDocs();
+      TopScoreDocCollectorManager collectorManager =
+          new TopScoreDocCollectorManager(
+              pageSize, after, hitsThreshold, searcher.getSlices().length > 1);
+      topDocs = searcher.search(query, collectorManager);
     }
 
     // reset total hits for the current query

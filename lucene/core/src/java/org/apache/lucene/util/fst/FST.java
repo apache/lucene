@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import static org.apache.lucene.util.fst.FST.Arc.BitTable;
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -25,6 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -123,10 +125,7 @@ public final class FST<T> implements Accountable {
   /** If arc has this label then that arc is final/accepted */
   public static final int END_LABEL = -1;
 
-  /**
-   * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
-   * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
-   */
+  /** The reader of the FST, used to read bytes from the underlying FST storage */
   private final FSTReader fstReader;
 
   public final Outputs<T> outputs;
@@ -404,18 +403,8 @@ public final class FST<T> implements Accountable {
    * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs) throws IOException {
-    this(metaIn, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
-  }
-
-  /**
-   * Load a previously saved FST with a DataInput for metdata and a FSTStore. If using {@link
-   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
-   * to hold the FST bytes.
-   */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
-      throws IOException {
-    this(readMetadata(metaIn, outputs), in, outputs, fstStore);
+  public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
+    this(metadata, in, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
   }
 
   /**
@@ -423,15 +412,15 @@ public final class FST<T> implements Accountable {
    * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
    * to hold the FST bytes.
    */
-  public FST(FSTMetadata<T> metadata, DataInput in, Outputs<T> outputs, FSTStore fstStore)
-      throws IOException {
-    this(metadata, outputs, fstStore.init(in, metadata.numBytes));
+  public FST(FSTMetadata<T> metadata, DataInput in, FSTStore fstStore) throws IOException {
+    this(metadata, fstStore.init(in, metadata.numBytes));
   }
 
   /** Create the FST with a metadata object and a FSTReader. */
-  FST(FSTMetadata<T> metadata, Outputs<T> outputs, FSTReader fstReader) {
-    this.metadata = metadata;
-    this.outputs = outputs;
+  FST(FSTMetadata<T> metadata, FSTReader fstReader) {
+    assert fstReader != null;
+    this.metadata = Objects.requireNonNull(metadata, "FSTMetadata cannot be null");
+    this.outputs = metadata.outputs;
     this.fstReader = fstReader;
   }
 
@@ -453,9 +442,11 @@ public final class FST<T> implements Accountable {
     if (metaIn.readByte() == 1) {
       // accepts empty string
       // 1 KB blocks:
-      BytesStore emptyBytes = new BytesStore(10);
+      ReadWriteDataOutput emptyBytes = (ReadWriteDataOutput) getOnHeapReaderWriter(10);
       int numBytes = metaIn.readVInt();
       emptyBytes.copyBytes(metaIn, numBytes);
+
+      emptyBytes.freeze();
 
       // De-serialize empty-string output:
       BytesReader reader = emptyBytes.getReverseBytesReader();
@@ -486,7 +477,7 @@ public final class FST<T> implements Accountable {
     }
     long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
-    return new FSTMetadata<>(inputType, emptyOutput, startNode, version, numBytes);
+    return new FSTMetadata<>(inputType, outputs, emptyOutput, startNode, version, numBytes);
   }
 
   @Override
@@ -511,6 +502,14 @@ public final class FST<T> implements Accountable {
     return metadata;
   }
 
+  /**
+   * Save the FST to DataOutput. If you use an {@link org.apache.lucene.store.IndexOutput} to build
+   * the FST, then you should not and do not need to call this method, as the FST is already saved.
+   * Doing so will throw an {@link UnsupportedOperationException}.
+   *
+   * @param metaOut the DataOutput to write the metadata to
+   * @param out the DataOutput to write the FST bytes to
+   */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
     saveMetadata(metaOut);
     fstReader.writeTo(out);
@@ -519,7 +518,7 @@ public final class FST<T> implements Accountable {
   /**
    * Save the metadata to a DataOutput
    *
-   * @param metaOut the DataOutput to save
+   * @param metaOut the DataOutput to write the metadata to
    */
   public void saveMetadata(DataOutput metaOut) throws IOException {
     CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
@@ -574,7 +573,7 @@ public final class FST<T> implements Accountable {
   public static <T> FST<T> read(Path path, Outputs<T> outputs) throws IOException {
     try (InputStream is = Files.newInputStream(path)) {
       DataInput in = new InputStreamDataInput(new BufferedInputStream(is));
-      return new FST<>(in, in, outputs);
+      return new FST<>(readMetadata(in, outputs), in);
     }
   }
 
@@ -1202,6 +1201,7 @@ public final class FST<T> implements Accountable {
    */
   public static final class FSTMetadata<T> {
     final INPUT_TYPE inputType;
+    final Outputs<T> outputs;
     final int version;
     // if non-null, this FST accepts the empty string and
     // produces this output
@@ -1210,8 +1210,14 @@ public final class FST<T> implements Accountable {
     long numBytes;
 
     public FSTMetadata(
-        INPUT_TYPE inputType, T emptyOutput, long startNode, int version, long numBytes) {
+        INPUT_TYPE inputType,
+        Outputs<T> outputs,
+        T emptyOutput,
+        long startNode,
+        int version,
+        long numBytes) {
       this.inputType = inputType;
+      this.outputs = outputs;
       this.emptyOutput = emptyOutput;
       this.startNode = startNode;
       this.version = version;

@@ -906,7 +906,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // TestUtil#checkIndex checks segment concurrently using another thread, but making
           // call back to synchronized methods such as MockDirectoryWrapper#fileLength.
           // Hence passing concurrent = false to this method to turn off concurrent checks.
-          TestUtil.checkIndex(this, getCrossCheckTermVectorsOnClose(), true, false, null);
+          TestUtil.checkIndex(this, getLevelForCheckOnClose(), true, false, null);
         }
 
         // TODO: factor this out / share w/ TestIW.assertNoUnreferencedFiles
