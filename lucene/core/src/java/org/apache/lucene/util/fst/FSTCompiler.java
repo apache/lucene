@@ -243,7 +243,7 @@ public class FSTCompiler<T> {
     private boolean allowFixedLengthArcs = true;
     private DataOutput dataOutput;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
-    private int version;
+    private int version = FST.VERSION_CURRENT;
 
     /**
      * @param inputType The input type (transition labels). Can be anything from {@link INPUT_TYPE}
