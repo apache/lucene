@@ -84,8 +84,8 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     assertRandomAccessTransition(runAutomaton1, runAutomaton2, 0, new HashSet<>());
   }
 
-  private void assertRandomAccessTransition(NFARunAutomaton automaton1, NFARunAutomaton automaton2,
-                                            int state, Set<Integer> visited) {
+  private void assertRandomAccessTransition(
+      NFARunAutomaton automaton1, NFARunAutomaton automaton2, int state, Set<Integer> visited) {
     if (visited.contains(state)) {
       return;
     }
@@ -102,7 +102,6 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       assertEquals(t1.toString(), t2.toString());
       assertRandomAccessTransition(automaton1, automaton2, t1.dest, visited);
     }
-
   }
 
   public void testRandomAutomatonQuery() throws IOException {
