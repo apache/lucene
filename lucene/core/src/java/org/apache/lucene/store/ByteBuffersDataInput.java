@@ -217,25 +217,20 @@ public final class ByteBuffersDataInput extends DataInput
   public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(dst, i);
+      final ByteBuffer block = blocks[blockIndex(pos)];
+      final int blockOffset = blockOffset(pos);
+      // We MUST save the return value to local variable, could not use pos += readGroupVInt(...).
+      // because `pos +=` in java will move current value(not address) of pos to register first,
+      // then call the function, but we will update pos value in function via readByte(), then
+      // `pos +=` will use an old pos value plus return value, thereby missing 1 byte.
+      final int len =
+          GroupVIntUtil.readGroupVInt(
+              this, block.limit() - blockOffset, p -> block.getInt((int) p), blockOffset, dst, i);
+      pos += len;
     }
     for (; i < limit; ++i) {
       dst[i] = readVInt();
     }
-  }
-
-  private void readGroupVInt(long[] dst, int offset) throws IOException {
-    ByteBuffer block = blocks[blockIndex(pos)];
-    final int blockOffset = blockOffset(pos);
-    int curPosition = blockOffset;
-    if (block.limit() - blockOffset < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
-      GroupVIntUtil.readGroupVInt(this, dst, offset);
-      return;
-    }
-    final int flag = block.get(curPosition++) & 0xFF;
-    pos +=
-        GroupVIntUtil.readGroupVInt(flag, p -> block.getInt((int) p), curPosition, dst, offset)
-            + 1; // +1 for flag, because read the flag does not update to `pos`
   }
 
   @Override

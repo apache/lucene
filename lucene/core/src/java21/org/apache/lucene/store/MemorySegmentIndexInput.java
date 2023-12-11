@@ -307,28 +307,24 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   @Override
   public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
-    for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(dst, i);
+    try {
+      for (i = 0; i <= limit - 4; i += 4) {
+        final MemorySegment curSegment = this.curSegment;
+        final int len =
+            GroupVIntUtil.readGroupVInt(
+                this,
+                curSegment.byteSize() - curPosition,
+                p -> curSegment.get(LAYOUT_LE_INT, p),
+                curPosition,
+                dst,
+                i);
+        curPosition += len;
+      }
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
     }
     for (; i < limit; ++i) {
       dst[i] = readVInt();
-    }
-  }
-
-  private void readGroupVInt(long[] dst, int offset) throws IOException {
-    try {
-      final MemorySegment curSegment = this.curSegment;
-      if (curSegment.byteSize() - curPosition < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
-        GroupVIntUtil.readGroupVInt(this, dst, offset);
-        return;
-      }
-
-      final int flag = readByte() & 0xFF;
-      curPosition +=
-          GroupVIntUtil.readGroupVInt(
-              flag, p -> curSegment.get(LAYOUT_LE_INT, p), curPosition, dst, offset);
-    } catch (NullPointerException | IllegalStateException e) {
-      throw alreadyClosed(e);
     }
   }
 

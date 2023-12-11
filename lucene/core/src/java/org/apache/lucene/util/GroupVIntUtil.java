@@ -76,17 +76,25 @@ public final class GroupVIntUtil {
    * Faster implementation of read single group, It read values from the buffer that would not cross
    * boundaries.
    *
-   * @param flag the flag of group varint.
+   * @param in the input to use to read data.
+   * @param remaining the number of remaining bytes allowed to read for current block/segment.
    * @param reader the supplier of read int.
    * @param pos the start pos to read from the reader.
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
-   * @return the number of bytes read, it is a positive number and less than {@link
+   * @return the number of bytes read excluding the flag. this indicates the number of positions
+   *     should to be increased for caller, it is a positive number and less than {@link
    *     #MAX_LENGTH_PER_GROUP}
    */
-  public static int readGroupVInt(int flag, IntReader reader, long pos, long[] dst, int offset)
+  public static int readGroupVInt(
+      DataInput in, long remaining, IntReader reader, long pos, long[] dst, int offset)
       throws IOException {
-    final long posStart = pos;
+    if (remaining < MAX_LENGTH_PER_GROUP) {
+      GroupVIntUtil.readGroupVInt(in, dst, offset);
+      return 0;
+    }
+    final int flag = in.readByte() & 0xFF;
+    final long posStart = ++pos; // exclude the flag bytes, the position has updated via readByte().
     final int n1Minus1 = flag >> 6;
     final int n2Minus1 = (flag >> 4) & 0x03;
     final int n3Minus1 = (flag >> 2) & 0x03;
