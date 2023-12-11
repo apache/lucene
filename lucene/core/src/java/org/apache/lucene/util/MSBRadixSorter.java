@@ -213,12 +213,15 @@ public abstract class MSBRadixSorter extends Sorter {
    *
    * @see #buildHistogram
    */
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
+  // See https://github.com/apache/lucene/issues/12898
   private int computeCommonPrefixLengthAndBuildHistogram(int from, int to, int k, int[] histogram) {
     int commonPrefixLength = computeInitialCommonPrefixLength(from, k);
     return computeCommonPrefixLengthAndBuildHistogramPart1(
         from, to, k, histogram, commonPrefixLength);
   }
 
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
   private int computeInitialCommonPrefixLength(int from, int k) {
     final int[] commonPrefix = this.commonPrefix;
     int commonPrefixLength = Math.min(commonPrefix.length, maxLength - k);
@@ -233,6 +236,7 @@ public abstract class MSBRadixSorter extends Sorter {
     return commonPrefixLength;
   }
 
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
   private int computeCommonPrefixLengthAndBuildHistogramPart1(
       int from, int to, int k, int[] histogram, int commonPrefixLength) {
     final int[] commonPrefix = this.commonPrefix;
@@ -254,6 +258,7 @@ public abstract class MSBRadixSorter extends Sorter {
         from, to, k, histogram, commonPrefixLength, i);
   }
 
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
   private int computeCommonPrefixLengthAndBuildHistogramPart2(
       int from, int to, int k, int[] histogram, int commonPrefixLength, int i) {
     if (i < to) {
