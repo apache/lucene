@@ -158,7 +158,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
   public void testRandomFilter() throws IOException {
     // Filter a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
-    int endIndex = random().nextInt(startIndex, numDocs);
+    int endIndex = random().nextInt(numDocs - startIndex) + startIndex;
     Query filter = IntField.newRangeQuery(idField, startIndex, endIndex);
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
@@ -277,7 +277,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
   public void testSomeDeletes() throws IOException {
     // Delete a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
-    int endIndex = random().nextInt(startIndex, numDocs);
+    int endIndex = random().nextInt(numDocs - startIndex) + startIndex;
     Query delete = IntField.newRangeQuery(idField, startIndex, endIndex);
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
@@ -336,7 +336,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testBoostQuery() throws IOException {
     // Define the boost and allowed delta
-    float boost = random().nextFloat(5, 10);
+    float boost = random().nextInt(5) + 5;
     float delta = 1e-3f;
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
@@ -366,7 +366,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testVectorsAboveSimilarity() throws IOException {
     // Pick number of docs to accept
-    int numAccepted = random().nextInt(numDocs / 3, numDocs / 2);
+    int numAccepted = random().nextInt(numDocs / 2 - numDocs / 3) + numDocs / 3;
     float delta = 1e-3f;
 
     V[] vectors = getRandomVectors(numDocs, dim);
@@ -409,8 +409,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testFallbackToExact() throws IOException {
     // Restrictive filter, along with similarity to visit a large number of nodes
-    int numFiltered = random().nextInt(numDocs / 10, numDocs / 5);
-    int targetVisited = random().nextInt(numFiltered * 2, numDocs);
+    int numFiltered = random().nextInt(numDocs / 5 - numDocs / 10) + numDocs / 10;
+    int targetVisited = random().nextInt(numDocs - numFiltered * 2) + numFiltered * 2;
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);
@@ -433,8 +433,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testApproximate() throws IOException {
     // Non-restrictive filter, along with similarity to visit a small number of nodes
-    int numFiltered = random().nextInt((numDocs * 4) / 5, numDocs);
-    int targetVisited = random().nextInt(numFiltered / 10, numFiltered / 8);
+    int numFiltered = random().nextInt(numDocs - (numDocs * 4) / 5) + (numDocs * 4) / 5;
+    int targetVisited = random().nextInt(numFiltered / 8 - numFiltered / 10) + numFiltered / 10;
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);

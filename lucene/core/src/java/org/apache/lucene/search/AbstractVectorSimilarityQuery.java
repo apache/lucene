@@ -115,7 +115,8 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         }
 
         BitSet acceptDocs;
-        if (liveDocs == null && scorer.iterator() instanceof BitSetIterator bitSetIterator) {
+        if (liveDocs == null && scorer.iterator() instanceof BitSetIterator) {
+          BitSetIterator bitSetIterator = (BitSetIterator) scorer.iterator();
           // If there are no deletions, and matching docs are already cached
           acceptDocs = bitSetIterator.getBitSet();
         } else {
