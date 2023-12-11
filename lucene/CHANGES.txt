@@ -42,6 +42,8 @@ Other
 ---------------------
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
+* GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
