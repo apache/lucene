@@ -109,6 +109,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -2264,5 +2265,21 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
       }
     }
+  }
+
+  public static final String wikiTermsIndex = "wikiterms.9.8.0.zip";
+
+  public void testWikiTerms() throws Exception {
+    Path oldIndexDir = createTempDir("wikiterms");
+    TestUtil.unzip(getDataInputStream(wikiTermsIndex), oldIndexDir);
+    Directory dir = newFSDirectory(oldIndexDir);
+    DirectoryReader reader = DirectoryReader.open(dir);
+
+    verifyUsesDefaultCodec(dir, wikiTermsIndex);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.count(new WildcardQuery(new Term("body", "*fo*")));
+
+    reader.close();
+    dir.close();
   }
 }
