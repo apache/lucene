@@ -73,11 +73,43 @@ public final class GroupVIntUtil {
   }
 
   /**
-   * Faster implementation of read single group, It read values from the buffer that would not cross
-   * boundaries.
+   * Faster implementation of read groups, the specialized method can only be used only when the
+   * input implementation is base on random access buffer, it also means skipBytes an efficient
+   * implementation. (only changes file pointer, does not read bytes.)
    *
    * @param in the input to use to read data.
-   * @param remaining the number of remaining bytes allowed to read for current block/segment.
+   * @param remaining the number of remaining bytes allowed to read for current block/segment. it
+   *     read values from the buffer that would not cross boundaries.
+   * @param reader the supplier of read int.
+   * @param pos the start pos to read from the reader.
+   * @param dst the array to read ints into.
+   * @param limit the number of int values to read.
+   */
+  public static void readGroupVInts(
+      DataInput in, long remaining, IntReader reader, long pos, long[] dst, int limit)
+      throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      if (remaining < MAX_LENGTH_PER_GROUP) {
+        readGroupVInt(in, dst, i);
+      } else {
+        final int len = readGroupVInt(in, reader, pos, dst, i);
+        pos += len + 1;
+        remaining -= len + 1;
+        in.skipBytes(len);
+      }
+    }
+
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
+    }
+  }
+
+  /**
+   * Read a group base on a random-access reader, the caller must be make sure the remaining byte
+   * greater than {@link #MAX_LENGTH_PER_GROUP}
+   *
+   * @param in the input to use to read data.
    * @param reader the supplier of read int.
    * @param pos the start pos to read from the reader.
    * @param dst the array to read ints into.
@@ -86,13 +118,8 @@ public final class GroupVIntUtil {
    *     should to be increased for caller, it is a positive number and less than {@link
    *     #MAX_LENGTH_PER_GROUP}
    */
-  public static int readGroupVInt(
-      DataInput in, long remaining, IntReader reader, long pos, long[] dst, int offset)
+  private static int readGroupVInt(DataInput in, IntReader reader, long pos, long[] dst, int offset)
       throws IOException {
-    if (remaining < MAX_LENGTH_PER_GROUP) {
-      GroupVIntUtil.readGroupVInt(in, dst, offset);
-      return 0;
-    }
     final int flag = in.readByte() & 0xFF;
     final long posStart = ++pos; // exclude the flag bytes, the position has updated via readByte().
     final int n1Minus1 = flag >> 6;
