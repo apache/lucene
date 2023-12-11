@@ -5,44 +5,70 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 public final class JapaneseKanaUppercaseFilter extends TokenFilter {
-    private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+    private static final Map<Character, Character> s2l;
 
-    private Map<Character, Character> s2l;
+    static {
+        // supported characters are:
+        // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
+        s2l = Map.ofEntries(
+                Map.entry('ぁ', 'あ'),
+                Map.entry('ぃ', 'い'),
+                Map.entry('ぅ', 'う'),
+                Map.entry('ぇ', 'え'),
+                Map.entry('ぉ', 'お'),
+                Map.entry('っ', 'つ'),
+                Map.entry('ゃ', 'や'),
+                Map.entry('ゅ', 'ゆ'),
+                Map.entry('ょ', 'よ'),
+                Map.entry('ゎ', 'わ'),
+                Map.entry('ゕ', 'か'),
+                Map.entry('ゖ', 'け'),
+                Map.entry('ァ', 'ア'),
+                Map.entry('ィ', 'イ'),
+                Map.entry('ゥ', 'ウ'),
+                Map.entry('ェ', 'エ'),
+                Map.entry('ォ', 'オ'),
+                Map.entry('ヵ', 'カ'),
+                Map.entry('ㇰ', 'ク'),
+                Map.entry('ヶ', 'ケ'),
+                Map.entry('ㇱ', 'シ'),
+                Map.entry('ㇲ', 'ス'),
+                Map.entry('ッ', 'ツ'),
+                Map.entry('ㇳ', 'ト'),
+                Map.entry('ㇴ', 'ヌ'),
+                Map.entry('ㇵ', 'ハ'),
+                Map.entry('ㇶ', 'ヒ'),
+                Map.entry('ㇷ', 'フ'),
+                Map.entry('ㇸ', 'ヘ'),
+                Map.entry('ㇹ', 'ホ'),
+                Map.entry('ㇺ', 'ム'),
+                Map.entry('ャ', 'ヤ'),
+                Map.entry('ュ', 'ユ'),
+                Map.entry('ョ', 'ヨ'),
+                Map.entry('ㇻ', 'ラ'),
+                Map.entry('ㇼ', 'リ'),
+                Map.entry('ㇽ', 'ル'),
+                Map.entry('ㇾ', 'レ'),
+                Map.entry('ㇿ', 'ロ'),
+                Map.entry('ヮ', 'ワ')
+        );
+    }
+
+    private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
 
     public JapaneseKanaUppercaseFilter(TokenStream input) {
         super(input);
-        s2l = new HashMap<Character, Character>();
-        s2l.put('ぁ', 'あ');
-        s2l.put('ぃ', 'い');
-        s2l.put('ぅ', 'う');
-        s2l.put('ぇ', 'え');
-        s2l.put('ぉ', 'お');
-        s2l.put('ゃ', 'や');
-        s2l.put('ゅ', 'ゆ');
-        s2l.put('ょ', 'よ');
-        s2l.put('っ', 'つ');
-        s2l.put('ゎ', 'わ');
-
-        s2l.put('ァ', 'ア');
-        s2l.put('ィ', 'イ');
-        s2l.put('ゥ', 'ウ');
-        s2l.put('ェ', 'エ');
-        s2l.put('ォ', 'オ');
-        s2l.put('ャ', 'ヤ');
-        s2l.put('ュ', 'ユ');
-        s2l.put('ョ', 'ヨ');
-        s2l.put('ッ', 'ツ');
-        s2l.put('ヮ', 'ワ');
     }
 
     @Override
     public boolean incrementToken() throws IOException {
         if (input.incrementToken()) {
             String term = termAttr.toString();
+            // Small letter "ㇷ゚" is not single character, so it should be converted to "プ" as String
+            term = term.replace("ㇷ゚", "プ");
             char[] src = term.toCharArray();
             char[] result = new char[src.length];
             for (int i = 0; i < src.length; i++) {
