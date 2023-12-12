@@ -1206,7 +1206,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       num -= cnt;
     }
 
-    public int outputCount() {
+    int outputCount() {
       return num;
     }
 
