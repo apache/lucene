@@ -84,6 +84,11 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.automaton.Automata;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -2333,6 +2338,33 @@ public final class CheckIndex implements Closeable {
               }
             }
           }
+        }
+
+        // Test Terms#intersect
+        TermsEnum allTerms = terms.iterator();
+        // An automaton that should match a good number of terms
+        Automaton a =
+            Operations.concatenate(
+                Arrays.asList(
+                    Automata.makeAnyBinary(),
+                    Automata.makeCharRange('a', 'e'),
+                    Automata.makeAnyBinary()));
+        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        CompiledAutomaton ca = new CompiledAutomaton(a);
+        ByteRunAutomaton runAutomaton = new ByteRunAutomaton(a);
+        TermsEnum filteredTerms = terms.intersect(ca, null);
+        for (BytesRef term = allTerms.next(); term != null; term = allTerms.next()) {
+          if (runAutomaton.run(term.bytes, term.offset, term.length)) {
+            BytesRef filteredTerm = filteredTerms.next();
+            if (Objects.equals(term, filteredTerm) == false) {
+              throw new CheckIndexException(
+                  "Expected next filtered term: " + term + ", but got " + filteredTerm);
+            }
+          }
+        }
+        BytesRef filteredTerm = filteredTerms.next();
+        if (filteredTerm != null) {
+          throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
         }
       }
     }
