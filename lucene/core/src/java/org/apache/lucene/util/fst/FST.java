@@ -1236,5 +1236,9 @@ public final class FST<T> implements Accountable {
       this.version = version;
       this.numBytes = numBytes;
     }
+
+    public int getVersion() {
+      return version;
+    }
   }
 }
