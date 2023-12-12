@@ -34,8 +34,8 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
-  private float[] scores;
-  private int[] nodes;
+  private final float[] scores;
+  private final int[] nodes;
   private int sortedNodeSize;
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
@@ -83,6 +83,9 @@ public class NeighborArray {
   /**
    * In addition to {@link #addOutOfOrder(int, float)}, this function will also remove the
    * least-diverse node if the node array is full after insertion
+   *
+   * <p>In multi-threading environment, this method need to be locked as it will be called by
+   * multiple threads while other add method is only supposed to be called by one thread.
    *
    * @param nodeId node Id of the owner of this NeighbourArray
    */
@@ -239,10 +242,7 @@ public class NeighborArray {
       throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
     int[] uncheckedIndexes = sort(scorer);
-    if (uncheckedIndexes == null) {
-      // all nodes are checked, we will directly return the most distant one
-      return size - 1;
-    }
+    assert uncheckedIndexes != null : "We will always have something unchecked";
     int uncheckedCursor = uncheckedIndexes.length - 1;
     for (int i = size - 1; i > 0; i--) {
       if (uncheckedCursor < 0) {
