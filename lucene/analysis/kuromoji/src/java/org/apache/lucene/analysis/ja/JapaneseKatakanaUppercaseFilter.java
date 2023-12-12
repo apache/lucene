@@ -30,12 +30,12 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * legal, contract policies, etc.
  */
 public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
-  private static final Map<Character, Character> s2l;
+  private static final Map<Character, Character> LETTER_MAPPINGS;
 
   static {
     // supported characters are:
     // ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
-    s2l =
+    LETTER_MAPPINGS =
         Map.ofEntries(
             Map.entry('ァ', 'ア'),
             Map.entry('ィ', 'イ'),
@@ -82,7 +82,7 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
       char[] src = term.toCharArray();
       char[] result = new char[src.length];
       for (int i = 0; i < src.length; i++) {
-        Character c = s2l.get(src[i]);
+        Character c = LETTER_MAPPINGS.get(src[i]);
         if (c != null) {
           result[i] = c;
         } else {

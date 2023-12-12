@@ -30,12 +30,12 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * legal, contract policies, etc.
  */
 public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
-  private static final Map<Character, Character> s2l;
+  private static final Map<Character, Character> LETTER_MAPPINGS;
 
   static {
     // supported characters are:
     // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ
-    s2l =
+    LETTER_MAPPINGS =
         Map.ofEntries(
             Map.entry('ぁ', 'あ'),
             Map.entry('ぃ', 'い'),
@@ -60,15 +60,13 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      String term = termAttr.toString();
-      char[] src = term.toCharArray();
-      char[] result = new char[src.length];
-      for (int i = 0; i < src.length; i++) {
-        Character c = s2l.get(src[i]);
+      char[] result = new char[termAttr.length()];
+      for (int i = 0; i < termAttr.length(); i++) {
+        Character c = LETTER_MAPPINGS.get(termAttr.charAt(i));
         if (c != null) {
           result[i] = c;
         } else {
-          result[i] = src[i];
+          result[i] = termAttr.charAt(i);
         }
       }
       String resultTerm = String.copyValueOf(result);
