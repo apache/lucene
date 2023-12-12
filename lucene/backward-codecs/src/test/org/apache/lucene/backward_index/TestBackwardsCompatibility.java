@@ -128,7 +128,6 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 /*
   Verify we can read previous versions' indexes, do searches
@@ -2245,7 +2244,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
   // IntersectTermsEnum (used by WildcardQuery)
-  @Ignore("re-enable once we merge #12900")
   public void testWildcardQueryExceptions990() throws IOException {
     Path path = createTempDir("12895");
 
