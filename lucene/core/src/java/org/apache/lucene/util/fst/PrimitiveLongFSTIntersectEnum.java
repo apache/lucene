@@ -88,8 +88,7 @@ public final class PrimitiveLongFSTIntersectEnum {
     while (currentLevel >= 0) {
       Frame currentFrame = stack[currentLevel];
 
-      if (hasDescendants(currentFrame.fstNode, currentFrame.fsaState)
-          || currentFrame.fstCandidateNode != null) {
+      if (!currentFrame.isFresh || hasDescendants(currentFrame.fstNode, currentFrame.fsaState)) {
         // current frame has candidates
         if (findNextIntersection(currentFrame)) {
           term.grow(currentLevel + 1);
@@ -97,12 +96,7 @@ public final class PrimitiveLongFSTIntersectEnum {
           term.setLength(currentLevel + 1);
           // early prune - only push a new frame when the candidate has descendants
           if (hasDescendants(currentFrame.fstCandidateNode, currentFrame.fsaTransition.dest)) {
-            Frame nextFrame = new Frame();
-            nextFrame.fstNode = currentFrame.fstCandidateNode;
-            nextFrame.fsaState = currentFrame.fsaTransition.dest;
-            nextFrame.output = currentFrame.output + currentFrame.fstNode.output();
-            ensureStackCapacity();
-            stack[++currentLevel] = nextFrame;
+            fillNextFrame(currentFrame);
           }
           // setup output
           if (isAccept(currentFrame.fstCandidateNode, currentFrame.fsaTransition.dest)) {
@@ -137,8 +131,10 @@ public final class PrimitiveLongFSTIntersectEnum {
       Frame currentFrame = stack[currentLevel];
       int target = startTerm.bytes[startTerm.offset + currentLevel] & 0xff;
 
-      if (hasDescendants(currentFrame.fstNode, currentFrame.fsaState)) {
+      if (currentFrame.numTransitions > 0
+          || hasDescendants(currentFrame.fstNode, currentFrame.fsaState)) {
         initArcAndTransition(currentFrame, false);
+        currentFrame.isFresh = false;
         fstAdvanceCeil(target, currentFrame.fstCandidateNode);
         fsaAdvanceCeil(currentFrame, target);
 
@@ -146,12 +142,7 @@ public final class PrimitiveLongFSTIntersectEnum {
             && (currentFrame.fsaTransition.min <= target
                 && target <= currentFrame.fsaTransition.max)) {
           term.append((byte) target);
-          Frame nextFrame = new Frame();
-          nextFrame.fstNode = currentFrame.fstCandidateNode;
-          nextFrame.fsaState = currentFrame.fsaTransition.dest;
-          nextFrame.output = currentFrame.output + currentFrame.fstNode.output();
-          ensureStackCapacity();
-          stack[++currentLevel] = nextFrame;
+          fillNextFrame(currentFrame);
           continue;
         }
 
@@ -165,6 +156,23 @@ public final class PrimitiveLongFSTIntersectEnum {
         break;
       }
     }
+  }
+
+  private void fillNextFrame(Frame currentFrame) {
+    ensureStackCapacity();
+    Frame nextFrame;
+    // reuse previous allocations
+    if (stack[currentLevel + 1] == null) {
+      nextFrame = new Frame();
+    } else {
+      nextFrame = stack[currentLevel + 1];
+      nextFrame.numTransitions = 0;
+      nextFrame.isFresh = true;
+    }
+    nextFrame.fstNode = currentFrame.fstCandidateNode;
+    nextFrame.fsaState = currentFrame.fsaTransition.dest;
+    nextFrame.output = currentFrame.output + currentFrame.fstNode.output();
+    stack[++currentLevel] = nextFrame;
   }
 
   private void popFrame() {
@@ -183,11 +191,9 @@ public final class PrimitiveLongFSTIntersectEnum {
 
   private void initArcAndTransition(Frame frame, boolean advanceToFirstTransition)
       throws IOException {
-    frame.fstCandidateNode = new PrimitiveLongArc();
     fst.readFirstRealTargetArc(frame.fstNode.target(), frame.fstCandidateNode, fstBytesReader);
-
-    frame.fsaTransition = new Transition();
     frame.numTransitions = transitionAccessor.initTransition(frame.fsaState, frame.fsaTransition);
+    frame.transitionUpto = 0;
     if (advanceToFirstTransition) {
       transitionAccessor.getNextTransition(frame.fsaTransition);
       frame.transitionUpto++;
@@ -195,9 +201,10 @@ public final class PrimitiveLongFSTIntersectEnum {
   }
 
   private boolean findNextIntersection(Frame frame) throws IOException {
-    if (frame.fstCandidateNode == null) {
+    if (frame.isFresh) {
       // when called first time, init first FST arc and the FSA transition
       initArcAndTransition(frame, true);
+      frame.isFresh = false;
     } else if (pending) {
       pending = false;
     } else {
@@ -359,16 +366,18 @@ public final class PrimitiveLongFSTIntersectEnum {
   static final class Frame {
     PrimitiveLongArc fstNode;
 
-    PrimitiveLongArc fstCandidateNode;
+    PrimitiveLongArc fstCandidateNode = new PrimitiveLongArc();
 
     int fsaState;
 
     long output;
 
-    Transition fsaTransition;
+    Transition fsaTransition = new Transition();
 
     int transitionUpto;
 
     int numTransitions;
+
+    boolean isFresh = true;
   }
 }
