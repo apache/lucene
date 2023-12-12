@@ -24,6 +24,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base IndexInput implementation that uses an array of ByteBuffers to represent a file.
@@ -291,6 +292,25 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
       return super.readLong();
+    } catch (NullPointerException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    try {
+      final int len =
+          GroupVIntUtil.readGroupVInt(
+              this,
+              curBuf.remaining(),
+              p -> guard.getInt(curBuf, (int) p),
+              curBuf.position(),
+              dst,
+              offset);
+      if (len > 0) {
+        curBuf.position(curBuf.position() + len);
+      }
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
     }
