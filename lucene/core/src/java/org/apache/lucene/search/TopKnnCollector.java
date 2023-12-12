@@ -26,16 +26,17 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  * @lucene.experimental
  */
 public final class TopKnnCollector extends AbstractKnnCollector {
+  // greediness of globally non-competitive search: [0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
 
   private final NeighborQueue queue;
   private final float greediness;
-  private final NeighborQueue queueg;
+  private final NeighborQueue nonCompetitiveQueue;
   private final MaxScoreAccumulator globalMinSimAcc;
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
-
-  // greediness of globally non-competitive search: [0,1]
+  private float minCompetitiveSim = Float.NEGATIVE_INFINITY;
+  private float globalMinCompetitiveSim = Float.NEGATIVE_INFINITY;
 
   /**
    * @param k the number of neighbors to collect
@@ -46,9 +47,13 @@ public final class TopKnnCollector extends AbstractKnnCollector {
     super(k, visitLimit);
     this.greediness = DEFAULT_GREEDINESS;
     this.queue = new NeighborQueue(k, false);
-    int queuegSize = Math.max(1, Math.round((1 - greediness) * k));
-    this.queueg = new NeighborQueue(queuegSize, false);
     this.globalMinSimAcc = globalMinSimAcc;
+    if (globalMinSimAcc == null) {
+      this.nonCompetitiveQueue = null;
+    } else {
+      this.nonCompetitiveQueue =
+          new NeighborQueue(Math.max(1, Math.round((1 - greediness) * k)), false);
+    }
   }
 
   public TopKnnCollector(
@@ -56,40 +61,55 @@ public final class TopKnnCollector extends AbstractKnnCollector {
     super(k, visitLimit);
     this.greediness = greediness;
     this.queue = new NeighborQueue(k, false);
-    this.queueg = new NeighborQueue(Math.round((1 - greediness) * k), false);
     this.globalMinSimAcc = globalMinSimAcc;
+    if (globalMinSimAcc == null) {
+      this.nonCompetitiveQueue = null;
+    } else {
+      this.nonCompetitiveQueue =
+          new NeighborQueue(Math.max(1, Math.round((1 - greediness) * k)), false);
+    }
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    boolean result = queue.insertWithOverflow(docId, similarity);
-    queueg.insertWithOverflow(docId, similarity);
-
-    boolean reachedKResults = (kResultsCollected == false && queue.size() == k());
-    if (reachedKResults) {
+    boolean localSimUpdated = queue.insertWithOverflow(docId, similarity);
+    boolean firstKResultsCollected = (kResultsCollected == false && queue.size() == k());
+    if (firstKResultsCollected) {
       kResultsCollected = true;
     }
-    if (globalMinSimAcc != null && kResultsCollected) {
-      // as we've collected k results, we can start exchanging globally
-      globalMinSimAcc.accumulate(queue.topNode(), queue.topScore());
+    if (localSimUpdated && kResultsCollected) {
+      minCompetitiveSim = queue.topScore();
+    }
 
-      // periodically update the local copy of global similarity
-      if (reachedKResults || (visitedCount & globalMinSimAcc.modInterval) == 0) {
-        MaxScoreAccumulator.DocAndScore docAndScore = globalMinSimAcc.get();
-        cachedGlobalMinSim = docAndScore.score;
+    boolean globalSimUpdated = false;
+    if (globalMinSimAcc != null) {
+      globalSimUpdated = nonCompetitiveQueue.insertWithOverflow(docId, similarity);
+      if (kResultsCollected) {
+        // as we've collected k results, we can start exchanging globally
+        globalMinSimAcc.accumulate(queue.topNode(), queue.topScore());
+
+        // periodically update the local copy of global similarity
+        if (firstKResultsCollected || (visitedCount & globalMinSimAcc.modInterval) == 0) {
+          MaxScoreAccumulator.DocAndScore docAndScore = globalMinSimAcc.get();
+          cachedGlobalMinSim = docAndScore.score;
+          globalSimUpdated = true;
+        }
+        if (localSimUpdated || globalSimUpdated) {
+          globalMinCompetitiveSim =
+              Math.max(
+                  minCompetitiveSim, Math.min(nonCompetitiveQueue.topScore(), cachedGlobalMinSim));
+        }
       }
     }
-    return result;
+    return localSimUpdated || globalSimUpdated;
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    float minSim = kResultsCollected ? queue.topScore() : Float.NEGATIVE_INFINITY;
     if (globalMinSimAcc == null) {
-      return minSim;
+      return minCompetitiveSim;
     } else {
-      float globalAccountedSim = Math.min(queueg.topScore(), cachedGlobalMinSim);
-      return Math.max(minSim, globalAccountedSim);
+      return globalMinCompetitiveSim;
     }
   }
 
