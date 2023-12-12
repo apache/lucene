@@ -195,6 +195,9 @@ Bug Fixes
 * GITHUB#12558: Ensure #finish is called on all drill-sideways FacetsCollectors even when no hits are scored.
   (Greg Miller)
 
+* GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
+  fail with certain random seeds. (Greg Miller)
+
 Other
 ---------------------
 
