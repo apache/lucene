@@ -22,7 +22,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * The {@link ExitableIndexReader} is used to timeout I/O operation which is done during query
@@ -44,6 +47,11 @@ public final class ExitableIndexReader extends IndexReader {
     this.indexReader = indexReader;
     this.queryTimeout = queryTimeout;
     doWrapIndexReader(indexReader, queryTimeout);
+  }
+
+  /** Returns queryTimeout instance. */
+  public QueryTimeout getQueryTimeout() {
+    return queryTimeout;
   }
 
   /** Thrown when elapsed search time exceeds allowed search time. */
@@ -92,17 +100,11 @@ public final class ExitableIndexReader extends IndexReader {
 
   @Override
   protected void doClose() throws IOException {
-    if (queryTimeout.shouldExit()) {
-      throw new ExitableIndexReader.TimeExceededException();
-    }
     indexReader.doClose();
   }
 
   @Override
   public IndexReaderContext getContext() {
-    if (queryTimeout.shouldExit()) {
-      throw new ExitableIndexReader.TimeExceededException();
-    }
     return indexReader.getContext();
   }
 
@@ -163,7 +165,7 @@ public final class ExitableIndexReader extends IndexReader {
       for (LeafReaderContext leafCtx : leaves) {
         LeafReader reader = leafCtx.reader();
         readers.add(reader);
-        // we try to reuse the life docs instances here if the reader cache key didn't change
+        // we try to reuse the live docs instances here if the reader cache key didn't change
         if (reader instanceof ExitableIndexReader.TimeoutLeafReader
             && reader.getReaderCacheHelper() != null) {
           readerCache.put((reader).getReaderCacheHelper().getKey(), reader);
@@ -218,7 +220,7 @@ public final class ExitableIndexReader extends IndexReader {
    * TimeoutLeafReader is wrapper class for FilterLeafReader which is imposing timeout on different
    * operations of FilterLeafReader
    */
-  public static class TimeoutLeafReader extends FilterLeafReader {
+  private static class TimeoutLeafReader extends FilterLeafReader {
     /** To be wrapped {@link LeafReader} */
     protected final LeafReader in;
 
@@ -244,10 +246,7 @@ public final class ExitableIndexReader extends IndexReader {
      *     ExitableIndexReader.TimeExceededException} is thrown
      */
     protected TimeoutLeafReader(LeafReader in, QueryTimeout queryTimeout) {
-      super(in);
-      if (in == null) {
-        throw new NullPointerException("incoming LeafReader must not be null");
-      }
+      super(Objects.requireNonNull(in));
       this.in = in;
       this.queryTimeout = queryTimeout;
       in.registerParentReader(this);
@@ -340,11 +339,11 @@ public final class ExitableIndexReader extends IndexReader {
 
     @Override
     public Terms terms(String field) throws IOException {
-      ensureOpen();
-      if (queryTimeout.shouldExit()) {
-        throw new ExitableIndexReader.TimeExceededException();
+      Terms terms = in.terms(field);
+      if (terms == null) {
+        return null;
       }
-      return in.terms(field);
+      return new ExitableTerms(terms, queryTimeout);
     }
 
     @Override
@@ -431,6 +430,70 @@ public final class ExitableIndexReader extends IndexReader {
     /** Returns the wrapped {@link LeafReader}. */
     public LeafReader getDelegate() {
       return in;
+    }
+  }
+
+  /** ExitableTerms is wrapper class for Terms */
+  public static class ExitableTerms extends FilterLeafReader.FilterTerms {
+
+    private QueryTimeout queryTimeout;
+
+    /** Constructor * */
+    public ExitableTerms(Terms terms, QueryTimeout queryTimeout) {
+      super(terms);
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
+    }
+
+    @Override
+    public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
+      return new ExitableTermsEnum(in.intersect(compiled, startTerm), queryTimeout);
+    }
+
+    @Override
+    public TermsEnum iterator() throws IOException {
+      return new ExitableTermsEnum(in.iterator(), queryTimeout);
+    }
+
+    @Override
+    public BytesRef getMin() throws IOException {
+      return in.getMin();
+    }
+
+    @Override
+    public BytesRef getMax() throws IOException {
+      return in.getMax();
+    }
+  }
+
+  /**
+   * Wrapper class for TermsEnum that is used by ExitableTerms for implementing an exitable
+   * enumeration of terms.
+   */
+  public static class ExitableTermsEnum extends FilterLeafReader.FilterTermsEnum {
+    private final QueryTimeout queryTimeout;
+
+    /** Constructor * */
+    public ExitableTermsEnum(TermsEnum termsEnum, QueryTimeout queryTimeout) {
+      super(termsEnum);
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
+      checkTimeoutWithSampling();
+    }
+
+    /**
+     * Throws {@link ExitableDirectoryReader.ExitingReaderException} if {@link
+     * QueryTimeout#shouldExit()} returns true, or if {@link Thread#interrupted()} returns true.
+     */
+    private void checkTimeoutWithSampling() {
+      if (queryTimeout.shouldExit()) {
+        throw new ExitableIndexReader.TimeExceededException();
+      }
+    }
+
+    @Override
+    public BytesRef next() throws IOException {
+      // Before every iteration, check if the iteration should exit
+      checkTimeoutWithSampling();
+      return in.next();
     }
   }
 }

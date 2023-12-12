@@ -26,8 +26,6 @@ import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
-import org.apache.lucene.index.ExitableIndexReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -149,10 +147,6 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
           Math.min(5 * sampled.value.floatValue(), numDocs / 10.f),
           1.0);
     }
-    IndexReader r = searcher.getIndexReader();
-    if (r instanceof ExitableIndexReader) {
-      r = r.getContext().reader();
-    }
-    IOUtils.close(r, taxoReader, dir, taxoDir);
+    IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
 }

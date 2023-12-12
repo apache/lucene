@@ -37,7 +37,7 @@ public class TestExitableIndexReader extends LuceneTestCase {
     int n = 10000;
     for (int i = 0; i < n; i++) {
       Document d = new Document();
-      d.add(newTextField("abc", "ones ", Field.Store.YES));
+      d.add(newTextField("abc", "ones", Field.Store.YES));
       writer.addDocument(d);
     }
     writer.forceMerge(1);
@@ -47,23 +47,27 @@ public class TestExitableIndexReader extends LuceneTestCase {
     FuzzyQuery query = new FuzzyQuery(new Term("field", "abc"), FuzzyQuery.defaultMaxEdits, 1);
 
     DirectoryReader directoryReader = DirectoryReader.open(directory);
-    IndexSearcher searcher = new IndexSearcher(directoryReader);
-    searcher.setTimeout(countingQueryTimeout(1));
-    expectThrows(TimeExceededException.class, () -> searcher.search(query, n));
+
+    expectThrows(
+        TimeExceededException.class,
+        () ->
+            new IndexSearcher(new ExitableIndexReader(directoryReader, countingQueryTimeout(1)))
+                .search(query, n));
+    // expectThrows(TimeExceededException.class, () -> searcher.search(query, n));
 
     directoryReader.close();
     directory.close();
   }
 
-  private static QueryTimeout countingQueryTimeout(int timeallowed) {
+  private static QueryTimeout countingQueryTimeout(int timeAllowed) {
 
     return new QueryTimeout() {
-      static int counter = 0;
+      static int counter;
 
       @Override
       public boolean shouldExit() {
         counter++;
-        if (counter == timeallowed) {
+        if (counter == timeAllowed) {
           return true;
         }
         return false;

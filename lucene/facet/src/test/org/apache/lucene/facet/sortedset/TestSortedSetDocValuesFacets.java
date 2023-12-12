@@ -42,7 +42,6 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
-import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
@@ -61,12 +60,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
   // NOTE: TestDrillSideways.testRandom also sometimes
   // randomly uses SortedSetDV
-  private IndexReader getIndexReaderForTest(IndexReader r) {
-    if (r instanceof ExitableIndexReader) {
-      return r.getContext().reader();
-    }
-    return r;
-  }
 
   public void testBasic() throws Exception {
     FacetsConfig config = new FacetsConfig();
@@ -92,13 +85,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       writer.addDocument(config.build(doc));
 
       // NRT open
-      try (IndexReader r = getIndexReaderForTest(writer.getReader())) {
+      try (IndexReader r = writer.getReader()) {
         IndexSearcher searcher = newSearcher(r);
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -249,13 +241,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       writer.addDocument(config.build(doc));
 
       // NRT open
-      try (IndexReader r = getIndexReaderForTest(writer.getReader())) {
+      try (IndexReader r = writer.getReader()) {
         IndexSearcher searcher = newSearcher(r);
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -360,13 +351,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       writer.addDocument(config.build(doc));
 
       // NRT open
-      try (IndexReader r = getIndexReaderForTest(writer.getReader())) {
+      try (IndexReader r = writer.getReader()) {
         IndexSearcher searcher = newSearcher(r);
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -473,8 +463,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         Facets facets = new SortedSetDocValuesFacetCounts(state);
 
@@ -573,8 +562,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         Facets facets = new SortedSetDocValuesFacetCounts(state);
 
@@ -667,8 +655,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -731,8 +718,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1062,8 +1048,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1157,7 +1142,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
-          if (getIndexReaderForTest(searcher.getIndexReader()).leaves().size() > 1) {
+          if ((searcher.getIndexReader()).leaves().size() > 1) {
             assertTrue(state.ramBytesUsed() > 0);
             assertFalse(resources.isEmpty());
             assertTrue(resources.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1206,8 +1191,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1244,7 +1228,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
-          if (getIndexReaderForTest(searcher.getIndexReader()).leaves().size() > 1) {
+          if ((searcher.getIndexReader()).leaves().size() > 1) {
             assertTrue(state.ramBytesUsed() > 0);
             assertFalse(resources.isEmpty());
             assertTrue(resources.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1285,8 +1269,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1341,8 +1324,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1407,8 +1389,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // Per-top-reader state:
           SortedSetDocValuesReaderState state =
-              new DefaultSortedSetDocValuesReaderState(
-                  getIndexReaderForTest(searcher.getIndexReader()), config);
+              new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
           ExecutorService exec = randomExecutorServiceOrNull();
           try {
             int iters = atLeast(100);
@@ -1556,8 +1537,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // Per-top-reader state:
           SortedSetDocValuesReaderState state =
-              new DefaultSortedSetDocValuesReaderState(
-                  getIndexReaderForTest(getIndexReaderForTest(searcher.getIndexReader())), config);
+              new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
           ExecutorService exec = randomExecutorServiceOrNull();
           try {
             int iters = atLeast(100);
@@ -1814,8 +1794,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         IndexSearcher searcher = newSearcher(r);
 
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1849,8 +1828,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         IndexSearcher searcher = newSearcher(r);
 
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
@@ -1889,8 +1867,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         IndexSearcher searcher = newSearcher(r);
 
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(
-                getIndexReaderForTest(searcher.getIndexReader()), config);
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {

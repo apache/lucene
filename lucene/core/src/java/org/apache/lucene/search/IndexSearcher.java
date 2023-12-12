@@ -196,6 +196,12 @@ public class IndexSearcher {
     this(r, null);
   }
 
+  /** Creates a searcher searching the provided index. */
+  public IndexSearcher(ExitableIndexReader r) {
+    this(r, null);
+    setTimeout(r.getQueryTimeout());
+  }
+
   /**
    * Runs searches for each segment separately, using the provided Executor. NOTE: if you are using
    * {@link NIOFSDirectory}, do not use the shutdownNow method of ExecutorService as this uses
@@ -373,9 +379,6 @@ public class IndexSearcher {
 
   /** Return the {@link IndexReader} this searches. */
   public IndexReader getIndexReader() {
-    if (queryTimeout != null) {
-      return new ExitableIndexReader(reader, queryTimeout);
-    }
     return reader;
   }
 

@@ -19,7 +19,6 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
@@ -47,11 +46,7 @@ public class StringDocValuesReaderState {
    * (e.g., to pickup NRT updates) requires constructing a new state instance.
    */
   public StringDocValuesReaderState(IndexReader reader, String field) throws IOException {
-    if (reader instanceof ExitableIndexReader) {
-      this.reader = reader.getContext().reader();
-    } else {
-      this.reader = reader;
-    }
+    this.reader = reader;
     this.field = field;
     ordinalMap = buildOrdinalMap(this.reader, this.field);
   }
