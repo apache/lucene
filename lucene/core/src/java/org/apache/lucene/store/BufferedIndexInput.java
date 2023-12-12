@@ -151,9 +151,13 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public void readGroupVInts(long[] dst, int limit) throws IOException {
-    GroupVIntUtil.readGroupVInts(
-        this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, limit);
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    final int len =
+        GroupVIntUtil.readGroupVInt(
+            this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
+    if (len > 0) {
+      buffer.position(buffer.position() + len);
+    }
   }
 
   @Override
