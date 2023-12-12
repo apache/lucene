@@ -147,6 +147,7 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
           Math.min(5 * sampled.value.floatValue(), numDocs / 10.f),
           1.0);
     }
+
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
 }

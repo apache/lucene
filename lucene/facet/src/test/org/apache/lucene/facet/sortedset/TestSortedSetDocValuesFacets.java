@@ -1142,7 +1142,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
-          if ((searcher.getIndexReader()).leaves().size() > 1) {
+          if (searcher.getIndexReader().leaves().size() > 1) {
             assertTrue(state.ramBytesUsed() > 0);
             assertFalse(resources.isEmpty());
             assertTrue(resources.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1228,7 +1228,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
-          if ((searcher.getIndexReader()).leaves().size() > 1) {
+          if (searcher.getIndexReader().leaves().size() > 1) {
             assertTrue(state.ramBytesUsed() > 0);
             assertFalse(resources.isEmpty());
             assertTrue(resources.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));

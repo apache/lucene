@@ -48,7 +48,7 @@ public class StringDocValuesReaderState {
   public StringDocValuesReaderState(IndexReader reader, String field) throws IOException {
     this.reader = reader;
     this.field = field;
-    ordinalMap = buildOrdinalMap(this.reader, this.field);
+    ordinalMap = buildOrdinalMap(reader, field);
   }
 
   private static OrdinalMap buildOrdinalMap(IndexReader reader, String field) throws IOException {

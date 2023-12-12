@@ -163,7 +163,9 @@ public class QueryUtils {
    */
   public static IndexSearcher wrapUnderlyingReader(
       Random random, final IndexSearcher s, final int edge) throws IOException {
+
     IndexReader r = s.getIndexReader();
+
     // we can't put deleted docs before the nested reader, because
     // it will throw off the docIds
     IndexReader[] readers =
