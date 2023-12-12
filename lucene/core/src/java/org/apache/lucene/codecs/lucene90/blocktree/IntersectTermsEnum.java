@@ -65,7 +65,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private BytesRef savedStartTerm;
 
-  private final SegmentTermsEnum.OutputAccumulator outputAccumulator =
+  private final SegmentTermsEnum.OutputAccumulator outputAccumulatorTry =
       new SegmentTermsEnum.OutputAccumulator();
 
   // TODO: in some cases we can filter by length?  eg
@@ -120,6 +120,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     assert setSavedStartTerm(startTerm);
 
     currentFrame = f;
+    outputAccumulatorTry.push(currentFrame.arc.output());
+
     if (startTerm != null) {
       seekToStartTerm(startTerm);
     }
@@ -184,14 +186,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
 
-    outputAccumulator.reset();
-    if (currentFrame.outputPrefix == null) {
-      outputAccumulator.push(arc.output());
-    } else {
-      for (BytesRef output : currentFrame.outputPrefix) {
-        outputAccumulator.push(output);
-      }
-    }
+    int initOutputCount = outputAccumulatorTry.outputCount();
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -199,15 +194,16 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      outputAccumulator.push(arc.output());
+      outputAccumulatorTry.push(arc.output());
       idx++;
     }
 
     f.arc = arc;
-    f.outputPrefix = outputAccumulator.bytesRefs();
+    f.outputNum = outputAccumulatorTry.outputCount() - initOutputCount;
     assert arc.isFinal();
-    outputAccumulator.push(arc.nextFinalOutput());
-    f.load(outputAccumulator);
+    outputAccumulatorTry.push(arc.nextFinalOutput());
+    f.load(outputAccumulatorTry);
+    outputAccumulatorTry.pop(arc.nextFinalOutput());
     return f;
   }
 
@@ -350,6 +346,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
           throw NoMoreTermsException.INSTANCE;
         }
         final long lastFP = currentFrame.fpOrig;
+        outputAccumulatorTry.pop(currentFrame.outputNum);
         currentFrame = stack[currentFrame.ord - 1];
         currentTransition = currentFrame.transition;
         assert currentFrame.lastSubFP == lastFP;
@@ -436,6 +433,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
               currentFrame = null;
               return null;
             }
+            outputAccumulatorTry.pop(currentFrame.outputNum);
             currentFrame = stack[currentFrame.ord - 1];
             currentTransition = currentFrame.transition;
             isSubBlock = popPushNext();

@@ -495,7 +495,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       outputAccumulator.push(arc.nextFinalOutput());
       currentFrame = pushFrame(arc, 0);
-      outputAccumulator.pop();
+      outputAccumulator.pop(arc.nextFinalOutput());
     }
 
     // if (DEBUG) {
@@ -569,7 +569,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    arc is final!");
           outputAccumulator.push(arc.nextFinalOutput());
           currentFrame = pushFrame(arc, targetUpto);
-          outputAccumulator.pop();
+          outputAccumulator.pop(arc.nextFinalOutput());
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -767,7 +767,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       outputAccumulator.push(arc.nextFinalOutput());
       currentFrame = pushFrame(arc, 0);
-      outputAccumulator.pop();
+      outputAccumulator.pop(arc.nextFinalOutput());
     }
 
     // if (DEBUG) {
@@ -841,7 +841,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    arc is final!");
           outputAccumulator.push(arc.nextFinalOutput());
           currentFrame = pushFrame(arc, targetUpto);
-          outputAccumulator.pop();
+          outputAccumulator.pop(arc.nextFinalOutput());
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -1193,9 +1193,21 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       }
     }
 
-    void pop() {
-      assert num > 0;
-      num--;
+    void pop(BytesRef output) {
+      if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        assert num > 0;
+        assert outputs[num - 1] == output;
+        num--;
+      }
+    }
+
+    void pop(int cnt) {
+      assert num >= cnt;
+      num -= cnt;
+    }
+
+    public int outputCount() {
+      return num;
     }
 
     void reset() {
@@ -1239,10 +1251,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     @Override
     public void skipBytes(long numBytes) throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    BytesRef[] bytesRefs() {
-      return ArrayUtil.copyOfSubArray(outputs, 0, num);
     }
   }
 }
