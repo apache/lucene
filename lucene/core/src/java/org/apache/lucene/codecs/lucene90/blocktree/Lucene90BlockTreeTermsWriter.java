@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -236,6 +238,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   final int maxDoc;
   final int minItemsInBlock;
   final int maxItemsInBlock;
+  final int version;
 
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
@@ -253,10 +256,37 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       int minItemsInBlock,
       int maxItemsInBlock)
       throws IOException {
+    this(
+        state,
+        postingsWriter,
+        minItemsInBlock,
+        maxItemsInBlock,
+        Lucene90BlockTreeTermsReader.VERSION_CURRENT);
+  }
+
+  /** Expert constructor that allows configuring the version, used for bw tests. */
+  public Lucene90BlockTreeTermsWriter(
+      SegmentWriteState state,
+      PostingsWriterBase postingsWriter,
+      int minItemsInBlock,
+      int maxItemsInBlock,
+      int version)
+      throws IOException {
     validateSettings(minItemsInBlock, maxItemsInBlock);
 
     this.minItemsInBlock = minItemsInBlock;
     this.maxItemsInBlock = maxItemsInBlock;
+    if (version < Lucene90BlockTreeTermsReader.VERSION_START
+        || version > Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
+      throw new IllegalArgumentException(
+          "Expected version in range ["
+              + Lucene90BlockTreeTermsReader.VERSION_START
+              + ", "
+              + Lucene90BlockTreeTermsReader.VERSION_CURRENT
+              + "], but got "
+              + version);
+    }
+    this.version = version;
 
     this.maxDoc = state.segmentInfo.maxDoc();
     this.fieldInfos = state.fieldInfos;
@@ -274,7 +304,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeIndexHeader(
           termsOut,
           Lucene90BlockTreeTermsReader.TERMS_CODEC_NAME,
-          Lucene90BlockTreeTermsReader.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
 
@@ -287,7 +317,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeIndexHeader(
           indexOut,
           Lucene90BlockTreeTermsReader.TERMS_INDEX_CODEC_NAME,
-          Lucene90BlockTreeTermsReader.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       // segment = state.segmentInfo.name;
@@ -301,7 +331,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeIndexHeader(
           metaOut,
           Lucene90BlockTreeTermsReader.TERMS_META_CODEC_NAME,
-          Lucene90BlockTreeTermsReader.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
 
@@ -449,7 +479,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL)));
   }
 
-  private static final class PendingBlock extends PendingEntry {
+  private final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
     public FST<BytesRef> index;
@@ -492,7 +522,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       assert scratchBytes.size() == 0;
 
       // write the leading vLong in MSB order for better outputs sharing in the FST
-      writeMSBVLong(encodeOutput(fp, hasTerms, isFloor), scratchBytes);
+      if (version >= Lucene90BlockTreeTermsReader.VERSION_MSB_VLONG_OUTPUT) {
+        writeMSBVLong(encodeOutput(fp, hasTerms, isFloor), scratchBytes);
+      } else {
+        scratchBytes.writeVLong(encodeOutput(fp, hasTerms, isFloor));
+      }
       if (isFloor) {
         scratchBytes.writeVInt(blocks.size() - 1);
         for (int i = 1; i < blocks.size(); i++) {
@@ -520,12 +554,19 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
 
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
+      final int fstVersion;
+      if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
+        fstVersion = FST.VERSION_CURRENT;
+      } else {
+        fstVersion = FST.VERSION_90;
+      }
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
               // Disable suffixes sharing for block tree index because suffixes are mostly dropped
               // from the FST index and left in the term blocks.
               .suffixRAMLimitMB(0d)
-              .bytesPageBits(pageBits)
+              .dataOutput(getOnHeapReaderWriter(pageBits))
+              .setVersion(fstVersion)
               .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);

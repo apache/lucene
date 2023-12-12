@@ -241,20 +241,18 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     // Don't use threads so that we can assert on the number of visited hits
     IndexSearcher is = newSearcher(ir, true, true, false);
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(10, null, 10);
-    TopDocs topDocs =
-        is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
+    TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
+    TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
-    manager = TopScoreDocCollector.createSharedManager(10, null, 10);
+    c = new TopScoreDocCollectorManager(10, 10);
     Query query =
         new BooleanQuery.Builder()
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), Occur.SHOULD)
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
-    topDocs = is.search(query, manager);
+    topDocs = is.search(query, c);
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
