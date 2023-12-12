@@ -2319,7 +2319,7 @@ public final class CheckIndex implements Closeable {
         checkTermsIntersect(terms, automaton, startTerm);
 
         automaton = Automata.makeAnyBinary();
-        startTerm = new BytesRef(new byte[] { 'l' });
+        startTerm = new BytesRef(new byte[] {'l'});
         checkTermsIntersect(terms, automaton, startTerm);
 
         // a term that likely compares greater than every other term in the dictionary
