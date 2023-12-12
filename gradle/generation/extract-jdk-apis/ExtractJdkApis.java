@@ -189,7 +189,7 @@ public final class ExtractJdkApis {
     }
     
     @Override
-    public void visitPermittedSubclass​(String c) {
+    public void visitPermittedSubclass(String c) {
     }
 
   }

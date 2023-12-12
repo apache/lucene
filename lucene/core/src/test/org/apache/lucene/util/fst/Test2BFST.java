@@ -31,9 +31,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
-// TODO: soon we will be able to run this test with small heaps!  Once #12633 and #12543
-// are done
-//
 // Run something like this:
 //    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
 

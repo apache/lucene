@@ -143,8 +143,14 @@ public class FacetsCollector extends SimpleCollector {
 
   @Override
   public void finish() throws IOException {
-    matchingDocs.add(new MatchingDocs(this.context, docsBuilder.build(), totalHits, scores));
-    docsBuilder = null;
+    DocIdSet bits;
+    if (docsBuilder != null) {
+      bits = docsBuilder.build();
+      docsBuilder = null;
+    } else {
+      bits = DocIdSet.EMPTY;
+    }
+    matchingDocs.add(new MatchingDocs(this.context, bits, totalHits, scores));
     scores = null;
     context = null;
   }

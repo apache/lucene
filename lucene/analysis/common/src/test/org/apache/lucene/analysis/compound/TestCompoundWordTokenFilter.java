@@ -528,7 +528,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(tf8, new String[] {"fußball"});
   }
 
-  public static interface MockRetainAttribute extends Attribute {
+  public interface MockRetainAttribute extends Attribute {
     void setRetain(boolean attr);
 
     boolean getRetain();

@@ -33,15 +33,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     expectThrows(
         NullPointerException.class,
         () -> {
-          JavascriptCompiler.compile("100", null, getClass().getClassLoader());
-        });
-  }
-
-  public void testNullLoader() throws Exception {
-    expectThrows(
-        NullPointerException.class,
-        () -> {
-          JavascriptCompiler.compile("100", JavascriptCompiler.DEFAULT_FUNCTIONS, null);
+          JavascriptCompiler.compile("100", null);
         });
   }
 

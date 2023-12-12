@@ -100,8 +100,8 @@ public final class SuggestRebuildTestUtil {
    * Simple marker interface to allow {@link #testLookupsDuringReBuild} callbacks to throw
    * Exceptions
    */
-  public static interface ExceptionalCallback {
-    public void check(final Lookup suggester) throws Exception;
+  public interface ExceptionalCallback {
+    void check(final Lookup suggester) throws Exception;
   }
 
   /**

@@ -200,6 +200,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         }
         toAdd.add(makeParent(new int[] {6, 7, 8, 9, 10}));
         w.addDocuments(toAdd);
+        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         assertEquals(1, reader.leaves().size());

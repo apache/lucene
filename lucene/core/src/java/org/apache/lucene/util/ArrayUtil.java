@@ -714,7 +714,7 @@ public final class ArrayUtil {
 
   /** Comparator for a fixed number of bytes. */
   @FunctionalInterface
-  public static interface ByteArrayComparator {
+  public interface ByteArrayComparator {
 
     /**
      * Compare bytes starting from the given offsets. The return value has the same contract as

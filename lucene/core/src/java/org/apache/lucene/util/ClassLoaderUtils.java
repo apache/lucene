@@ -32,7 +32,7 @@ public interface ClassLoaderUtils {
    * returned (this is fine, because if we get a {@code SecurityException} it is for sure no
    * parent).
    */
-  public static boolean isParentClassLoader(final ClassLoader parent, final ClassLoader child) {
+  static boolean isParentClassLoader(final ClassLoader parent, final ClassLoader child) {
     try {
       ClassLoader cl = child;
       while (cl != null) {

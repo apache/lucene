@@ -279,21 +279,22 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     // First try to find the answer in the LRU cache:
+    Integer res;
     synchronized (ordinalCache) {
-      Integer res = ordinalCache.get(cp);
-      if (res != null) {
-        if (res < indexReader.maxDoc()) {
-          // Since the cache is shared with DTR instances allocated from
-          // doOpenIfChanged, we need to ensure that the ordinal is one that
-          // this DTR instance recognizes.
-          return res;
-        } else {
-          // if we get here, it means that the category was found in the cache,
-          // but is not recognized by this TR instance. Therefore, there's no
-          // need to continue search for the path on disk, because we won't find
-          // it there too.
-          return TaxonomyReader.INVALID_ORDINAL;
-        }
+      res = ordinalCache.get(cp);
+    }
+    if (res != null) {
+      if (res < indexReader.maxDoc()) {
+        // Since the cache is shared with DTR instances allocated from
+        // doOpenIfChanged, we need to ensure that the ordinal is one that
+        // this DTR instance recognizes.
+        return res;
+      } else {
+        // if we get here, it means that the category was found in the cache,
+        // but is not recognized by this TR instance. Therefore, there's no
+        // need to continue search for the path on disk, because we won't find
+        // it there too.
+        return TaxonomyReader.INVALID_ORDINAL;
       }
     }
 

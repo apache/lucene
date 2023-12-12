@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.expressions;
 
+import java.io.IOException;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
@@ -89,7 +90,7 @@ public abstract class Expression {
    * @param functionValues {@link DoubleValues} for each element of {@link #variables}.
    * @return The computed value of the expression for the given document.
    */
-  public abstract double evaluate(DoubleValues[] functionValues);
+  public abstract double evaluate(DoubleValues[] functionValues) throws IOException;
 
   /**
    * Get a DoubleValuesSource which can compute the value of this expression in the context of the

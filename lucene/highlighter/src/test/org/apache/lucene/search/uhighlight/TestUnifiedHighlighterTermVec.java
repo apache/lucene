@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -42,13 +41,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -58,22 +51,10 @@ import org.junit.Test;
  * tests pick the offset source at random (to include term vectors) and in-effect test term vectors
  * generally.
  */
-public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
+public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
-  private Analyzer indexAnalyzer;
-  private Directory dir;
-
-  @Before
-  public void doBefore() {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
-    dir = newDirectory();
-  }
-
-  @After
-  public void doAfter() throws IOException {
-    dir.close();
+  public TestUnifiedHighlighterTermVec() {
+    super(randomFieldType(random()));
   }
 
   public void testFetchTermVecsOncePerDoc() throws IOException {
@@ -86,16 +67,16 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     List<FieldType> fieldTypes = new ArrayList<>(numTvFields);
     for (int i = 0; i < numTvFields; i++) {
       fields.add("body" + i);
-      fieldTypes.add(UHTestHelper.randomFieldType(random()));
+      fieldTypes.add(randomFieldType(random()));
     }
     // ensure at least one has TVs by setting one randomly to it:
-    fieldTypes.set(random().nextInt(fieldTypes.size()), UHTestHelper.tvType);
+    fieldTypes.set(random().nextInt(fieldTypes.size()), tvType);
 
     final int numDocs = 1 + random().nextInt(3);
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       for (String field : fields) {
-        doc.add(new Field(field, "some test text", UHTestHelper.tvType));
+        doc.add(new Field(field, "some test text", tvType));
       }
       iw.addDocument(doc);
     }
@@ -179,7 +160,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
 
   @Test(expected = IllegalArgumentException.class)
   public void testUserFailedToIndexOffsets() throws IOException {
-    FieldType fieldType = new FieldType(UHTestHelper.tvType); // note: it's indexed too
+    FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
     fieldType.setStoreTermVectorOffsets(false);
 

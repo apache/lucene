@@ -23,8 +23,6 @@ grant {
   // jetty-specific:
   permission java.lang.RuntimePermission "getenv.JETTY_AVAILABLE_PROCESSORS";
   permission java.lang.RuntimePermission "getenv.JETTY_WORKER_INSTANCE";
-  // servlet stuff
-  permission java.lang.RuntimePermission "setContextClassLoader";
   // allow TestNRTReplication fork its jvm
   permission java.io.FilePermission "${java.home}${/}-", "read,execute";
   // read/write access to all system properties (required by jetty in these tests)

@@ -44,7 +44,7 @@ public final class OffsetsFromValues implements OffsetsRetrievalStrategy {
   public List<OffsetRange> get(
       MatchesIterator matchesIterator, MatchRegionRetriever.FieldValueProvider doc)
       throws IOException {
-    List<CharSequence> values = doc.getValues(field);
+    List<String> values = doc.getValues(field);
 
     ArrayList<OffsetRange> ranges = new ArrayList<>();
     int valueOffset = 0;

@@ -264,7 +264,7 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final String UNMAP_NOT_SUPPORTED_REASON;
 
-  static interface MMapIndexInputProvider {
+  interface MMapIndexInputProvider {
     IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
         throws IOException;
 

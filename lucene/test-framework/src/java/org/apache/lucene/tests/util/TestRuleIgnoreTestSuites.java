@@ -30,7 +30,7 @@ import org.junit.runners.model.Statement;
  */
 public final class TestRuleIgnoreTestSuites implements TestRule {
   /** Marker interface for nested suites that should be ignored if executed in stand-alone mode. */
-  public static interface NestedTestSuite {}
+  public interface NestedTestSuite {}
 
   /** A boolean system property indicating nested suites should be executed normally. */
   public static final String PROPERTY_RUN_NESTED = "tests.runnested";

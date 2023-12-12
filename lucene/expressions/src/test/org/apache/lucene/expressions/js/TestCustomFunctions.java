@@ -18,24 +18,24 @@ package org.apache.lucene.expressions.js;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
 import java.text.ParseException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests customing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
   private static double DELTA = 0.0000001;
+  private static final Lookup LOOKUP = MethodHandles.lookup();
 
   /** empty list of methods */
   public void testEmpty() throws Exception {
-    Map<String, Method> functions = Collections.emptyMap();
+    Map<String, MethodHandle> functions = Map.of();
     ParseException expected =
         expectThrows(
             ParseException.class,
@@ -49,7 +49,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** using the default map explicitly */
   public void testDefaultList() throws Exception {
-    Map<String, Method> functions = JavascriptCompiler.DEFAULT_FUNCTIONS;
+    Map<String, MethodHandle> functions = JavascriptCompiler.DEFAULT_FUNCTIONS;
     Expression expr = compile("sqrt(20)", functions);
     assertEquals(Math.sqrt(20), expr.evaluate(null), DELTA);
   }
@@ -58,10 +58,20 @@ public class TestCustomFunctions extends CompilerTestCase {
     return 5;
   }
 
+  private static MethodHandle localMethod(String name, MethodType type)
+      throws NoSuchMethodException, IllegalAccessException {
+    return LOOKUP.findStatic(LOOKUP.lookupClass(), name, type);
+  }
+
+  private static MethodHandle localMethod(String name, int arity)
+      throws NoSuchMethodException, IllegalAccessException {
+    return localMethod(
+        name, MethodType.methodType(double.class, Collections.nCopies(arity, double.class)));
+  }
+
   /** tests a method with no arguments */
   public void testNoArgMethod() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("zeroArgMethod"));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("zeroArgMethod", 0));
     Expression expr = compile("foo()", functions);
     assertEquals(5, expr.evaluate(null), DELTA);
   }
@@ -72,8 +82,7 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** tests a method with one arguments */
   public void testOneArgMethod() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("oneArgMethod", double.class));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("oneArgMethod", 1));
     Expression expr = compile("foo(3)", functions);
     assertEquals(6, expr.evaluate(null), DELTA);
   }
@@ -84,18 +93,15 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** tests a method with three arguments */
   public void testThreeArgMethod() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put(
-        "foo", getClass().getMethod("threeArgMethod", double.class, double.class, double.class));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("threeArgMethod", 3));
     Expression expr = compile("foo(3, 4, 5)", functions);
     assertEquals(12, expr.evaluate(null), DELTA);
   }
 
   /** tests a map with 2 functions */
   public void testTwoMethods() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("zeroArgMethod"));
-    functions.put("bar", getClass().getMethod("oneArgMethod", double.class));
+    Map<String, MethodHandle> functions =
+        Map.of("foo", localMethod("zeroArgMethod", 0), "bar", localMethod("oneArgMethod", 1));
     Expression expr = compile("foo() + bar(3)", functions);
     assertEquals(11, expr.evaluate(null), DELTA);
   }
@@ -142,8 +148,8 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong return type: must be double */
   public void testWrongReturnType() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("bogusReturnType"));
+    Map<String, MethodHandle> functions =
+        Map.of("foo", localMethod("bogusReturnType", MethodType.methodType(String.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -159,8 +165,10 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong param type: must be doubles */
   public void testWrongParameterType() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("bogusParameterType", String.class));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            localMethod("bogusParameterType", MethodType.methodType(double.class, String.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -176,8 +184,11 @@ public class TestCustomFunctions extends CompilerTestCase {
 
   /** wrong modifiers: must be static */
   public void testWrongNotStatic() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getMethod("nonStaticMethod"));
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            LOOKUP.findVirtual(
+                LOOKUP.lookupClass(), "nonStaticMethod", MethodType.methodType(double.class)));
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -188,147 +199,49 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   static double nonPublicMethod() {
-    return 0;
+    return 7;
   }
 
-  /** wrong modifiers: must be public */
-  public void testWrongNotPublic() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", getClass().getDeclaredMethod("nonPublicMethod"));
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              compile("foo()", functions);
-            });
-    assertTrue(expected.getMessage().contains("not public"));
+  /** non public methods work as the lookup allows access */
+  public void testNotPublic() throws Exception {
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("nonPublicMethod", 0));
+    Expression expr = compile("foo()", functions);
+    assertEquals(7, expr.evaluate(null), DELTA);
   }
 
   static class NestedNotPublic {
     public static double method() {
-      return 0;
+      return 41;
     }
   }
 
-  /** wrong class modifiers: class containing method is not public */
-  public void testWrongNestedNotPublic() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", NestedNotPublic.class.getMethod("method"));
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              compile("foo()", functions);
-            });
-    assertTrue(expected.getMessage().contains("not public"));
+  /** class containing method is not public */
+  public void testNestedNotPublic() throws Exception {
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            LOOKUP.findStatic(
+                NestedNotPublic.class, "method", MethodType.methodType(double.class)));
+    Expression expr = compile("foo()", functions);
+    assertEquals(41, expr.evaluate(null), DELTA);
   }
 
-  /**
-   * Classloader that can be used to create a fake static class that has one method returning a
-   * static var
-   */
-  static final class Loader extends ClassLoader implements Opcodes {
-    Loader(ClassLoader parent) {
-      super(parent);
-    }
-
-    public Class<?> createFakeClass() {
-      String className = TestCustomFunctions.class.getName() + "$Foo";
-      ClassWriter classWriter =
-          new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-      classWriter.visit(
-          Opcodes.V1_5,
-          ACC_PUBLIC | ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC,
-          className.replace('.', '/'),
-          null,
-          Type.getInternalName(Object.class),
-          null);
-
-      org.objectweb.asm.commons.Method m =
-          org.objectweb.asm.commons.Method.getMethod("void <init>()");
-      GeneratorAdapter constructor =
-          new GeneratorAdapter(ACC_PRIVATE | ACC_SYNTHETIC, m, null, null, classWriter);
-      constructor.loadThis();
-      constructor.loadArgs();
-      constructor.invokeConstructor(Type.getType(Object.class), m);
-      constructor.returnValue();
-      constructor.endMethod();
-
-      GeneratorAdapter gen =
-          new GeneratorAdapter(
-              ACC_STATIC | ACC_PUBLIC | ACC_SYNTHETIC,
-              org.objectweb.asm.commons.Method.getMethod("double bar()"),
-              null,
-              null,
-              classWriter);
-      gen.push(2.0);
-      gen.returnValue();
-      gen.endMethod();
-
-      byte[] bc = classWriter.toByteArray();
-      return defineClass(className, bc, 0, bc.length);
-    }
-  }
-
-  /**
-   * uses this test with a different classloader and tries to register it using the default
-   * classloader, which should fail
-   */
-  public void testClassLoader() throws Exception {
-    ClassLoader thisLoader = getClass().getClassLoader();
-    Loader childLoader = new Loader(thisLoader);
-    Class<?> fooClass = childLoader.createFakeClass();
-
-    Method barMethod = fooClass.getMethod("bar");
-    Map<String, Method> functions = Collections.singletonMap("bar", barMethod);
-    assertNotSame(thisLoader, fooClass.getClassLoader());
-    assertNotSame(thisLoader, barMethod.getDeclaringClass().getClassLoader());
-
-    // this should pass:
-    Expression expr = compile("bar()", functions, childLoader);
-    assertEquals(2.0, expr.evaluate(null), DELTA);
-
-    // use our classloader, not the foreign one, which should fail!
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              compile("bar()", functions, thisLoader);
-            });
-    assertTrue(
-        expected
-            .getMessage()
-            .contains(
-                "is not declared by a class which is accessible by the given parent ClassLoader"));
-
-    // mix foreign and default functions
-    Map<String, Method> mixedFunctions = new HashMap<>(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    mixedFunctions.putAll(functions);
-    expr = compile("bar()", mixedFunctions, childLoader);
-    assertEquals(2.0, expr.evaluate(null), DELTA);
-    expr = compile("sqrt(20)", mixedFunctions, childLoader);
-    assertEquals(Math.sqrt(20), expr.evaluate(null), DELTA);
-
-    // use our classloader, not the foreign one, which should fail!
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              compile("bar()", mixedFunctions, thisLoader);
-            });
-    assertTrue(
-        expected
-            .getMessage()
-            .contains(
-                "is not declared by a class which is accessible by the given parent ClassLoader"));
+  /** class containing method is not public */
+  public void testNonDirectMethodHandle() throws Exception {
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo",
+            MethodHandles.constant(double.class, 9),
+            "bar",
+            MethodHandles.identity(double.class));
+    Expression expr = compile("foo() + bar(7)", functions);
+    assertEquals(16, expr.evaluate(null), DELTA);
   }
 
   static String MESSAGE = "This should not happen but it happens";
 
-  public static class StaticThrowingException {
-    public static double method() {
-      throw new ArithmeticException(MESSAGE);
-    }
+  public static double staticThrowingException() {
+    throw new ArithmeticException(MESSAGE);
   }
 
   /**
@@ -336,8 +249,7 @@ public class TestCustomFunctions extends CompilerTestCase {
    * code of the expression as file name.
    */
   public void testThrowingException() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo", StaticThrowingException.class.getMethod("method"));
+    Map<String, MethodHandle> functions = Map.of("foo", localMethod("staticThrowingException", 0));
     String source = "3 * foo() / 5";
     Expression expr = compile(source, functions);
     ArithmeticException expected =
@@ -351,16 +263,49 @@ public class TestCustomFunctions extends CompilerTestCase {
     PrintWriter pw = new PrintWriter(sw);
     expected.printStackTrace(pw);
     pw.flush();
-    assertTrue(
-        sw.toString().contains("JavascriptCompiler$CompiledExpression.evaluate(" + source + ")"));
+    String exceptionText = sw.toString();
+    if (LuceneTestCase.VERBOSE) {
+      System.err.println("Exception thrown with full stacktrace:");
+      System.err.println(exceptionText);
+    }
+    assertTrue(exceptionText.contains(expr.getClass().getName() + ".evaluate(" + source + ")"));
   }
 
-  /** test that namespaces work with custom expressions. */
-  public void testNamespaces() throws Exception {
-    Map<String, Method> functions = new HashMap<>();
-    functions.put("foo.bar", getClass().getMethod("zeroArgMethod"));
+  /** test that namespaces work with custom expressions as direct method handle. */
+  public void testNamespacesWithDirectMH() throws Exception {
+    Map<String, MethodHandle> functions = Map.of("foo.bar", localMethod("zeroArgMethod", 0));
     String source = "foo.bar()";
     Expression expr = compile(source, functions);
     assertEquals(5, expr.evaluate(null), DELTA);
+  }
+
+  /**
+   * test that namespaces work with general method handles (ensure field name of handle is correct).
+   */
+  public void testNamespacesWithoutDirectMH() throws Exception {
+    Map<String, MethodHandle> functions =
+        Map.of(
+            "foo.bar",
+            MethodHandles.constant(double.class, 9),
+            "bar.foo",
+            MethodHandles.identity(double.class));
+    Expression expr = compile("foo.bar() + bar.foo(7)", functions);
+    assertEquals(16, expr.evaluate(null), DELTA);
+  }
+
+  public void testLegacyFunctions() throws Exception {
+    var functions =
+        Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
+    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
+    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
+    Expression expr = compile("foo(3) + abs(-7)", newFunctions);
+    assertEquals(13, expr.evaluate(null), DELTA);
+  }
+
+  public void testInvalidLegacyFunctions() throws Exception {
+    var functions = Map.of("foo", TestCustomFunctions.class.getMethod("nonStaticMethod"));
+    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
+    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
+    expectThrows(IllegalArgumentException.class, () -> compile("foo(3) + abs(-7)", newFunctions));
   }
 }

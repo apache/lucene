@@ -30,5 +30,5 @@ public interface AttributeReflector {
    * method once using {@code org.apache.lucene.analysis.tokenattributes.CharTermAttribute.class} as
    * attribute class, {@code "term"} as key and the actual value as a String.
    */
-  public void reflect(Class<? extends Attribute> attClass, String key, Object value);
+  void reflect(Class<? extends Attribute> attClass, String key, Object value);
 }

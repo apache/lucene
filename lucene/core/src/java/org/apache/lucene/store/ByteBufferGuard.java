@@ -39,7 +39,7 @@ final class ByteBufferGuard {
    * this to allow unmapping of bytebuffers with private Java APIs.
    */
   @FunctionalInterface
-  static interface BufferCleaner {
+  interface BufferCleaner {
     void freeBuffer(String resourceDescription, ByteBuffer b) throws IOException;
   }
 

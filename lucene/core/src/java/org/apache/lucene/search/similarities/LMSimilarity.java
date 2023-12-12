@@ -121,12 +121,12 @@ public abstract class LMSimilarity extends SimilarityBase {
   }
 
   /** A strategy for computing the collection language model. */
-  public static interface CollectionModel {
+  public interface CollectionModel {
     /**
      * Computes the probability {@code p(w|C)} according to the language model strategy for the
      * current term.
      */
-    public double computeProbability(BasicStats stats);
+    double computeProbability(BasicStats stats);
 
     /** The name of the collection model strategy. */
     public String getName();

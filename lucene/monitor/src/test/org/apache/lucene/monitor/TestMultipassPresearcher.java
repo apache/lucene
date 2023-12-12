@@ -18,6 +18,7 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -111,25 +112,33 @@ public class TestMultipassPresearcher extends PresearcherTestBase {
                                 must(
                                     new BooleanQuery.Builder()
                                         .add(
-                                            should(new TermInSetQuery("f_0", new BytesRef("test"))))
+                                            should(
+                                                new TermInSetQuery(
+                                                    "f_0", List.of(new BytesRef("test")))))
                                         .build()))
                             .add(
                                 must(
                                     new BooleanQuery.Builder()
                                         .add(
-                                            should(new TermInSetQuery("f_1", new BytesRef("test"))))
+                                            should(
+                                                new TermInSetQuery(
+                                                    "f_1", List.of(new BytesRef("test")))))
                                         .build()))
                             .add(
                                 must(
                                     new BooleanQuery.Builder()
                                         .add(
-                                            should(new TermInSetQuery("f_2", new BytesRef("test"))))
+                                            should(
+                                                new TermInSetQuery(
+                                                    "f_2", List.of(new BytesRef("test")))))
                                         .build()))
                             .add(
                                 must(
                                     new BooleanQuery.Builder()
                                         .add(
-                                            should(new TermInSetQuery("f_3", new BytesRef("test"))))
+                                            should(
+                                                new TermInSetQuery(
+                                                    "f_3", List.of(new BytesRef("test")))))
                                         .build()))
                             .build()))
                 .add(should(new TermQuery(new Term("__anytokenfield", "__ANYTOKEN__"))))

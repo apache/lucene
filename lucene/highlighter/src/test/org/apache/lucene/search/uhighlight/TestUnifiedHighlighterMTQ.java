@@ -61,48 +61,24 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.UnicodeUtil;
-import org.junit.After;
-import org.junit.Before;
 
 /** Some tests that highlight wildcard, fuzzy, etc queries. */
-public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
-
-  final FieldType fieldType;
-
-  BaseDirectoryWrapper dir;
-  Analyzer indexAnalyzer;
+public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
 
   @ParametersFactory
   public static Iterable<Object[]> parameters() {
-    return UHTestHelper.parametersFactoryList();
+    return parametersFactoryList();
   }
 
   public TestUnifiedHighlighterMTQ(FieldType fieldType) {
-    this.fieldType = fieldType;
-  }
-
-  @Before
-  public void doBefore() throws IOException {
-    dir = newDirectory();
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
-  }
-
-  @After
-  public void doAfter() throws IOException {
-    dir.close();
+    super(fieldType);
   }
 
   public void testWildcards() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -160,7 +136,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testOnePrefix() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -203,7 +179,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testOneRegexp() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -245,7 +221,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testFuzzy() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -305,7 +281,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testRanges() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -415,7 +391,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testWildcardInBoolean() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -459,7 +435,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testWildcardInFiltered() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -491,7 +467,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testWildcardInConstantScore() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -519,7 +495,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testWildcardInDisjunctionMax() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -549,7 +525,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testSpanWildcard() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -577,7 +553,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testSpanOr() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -607,7 +583,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testSpanNear() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -637,7 +613,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testSpanNot() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -667,7 +643,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testSpanPositionCheck() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -700,7 +676,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
    * Runs a query with two MTQs and confirms the formatter can tell which query matched which hit.
    */
   public void testWhichMTQMatched() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -800,7 +776,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   //
 
   public void testWithMaxLen() throws IOException {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -833,7 +809,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testWithMaxLenAndMultipleWildcardMatches() throws IOException {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -871,7 +847,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
   public void testTokenStreamIsClosed() throws Exception {
     // note: test is a derivative of testWithMaxLen()
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -924,7 +900,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     try {
       highlighter.highlight("body", query, topDocs, 2);
       // don't even care what the results are; just want to test exception behavior
-      if (fieldType == UHTestHelper.reanalysisType) {
+      if (fieldType == reanalysisType) {
         fail("Expecting EXPECTED IOException");
       }
     } catch (Exception e) {
@@ -945,7 +921,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
   /** Not empty but nothing analyzes. Ensures we address null term-vectors. */
   public void testNothingAnalyzes() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
     doc.add(new Field("body", " ", fieldType)); // just a space! (thus not empty)
@@ -978,7 +954,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
 
   public void testMultiSegment() throws Exception {
     // If we incorrectly got the term vector from mis-matched global/leaf doc ID, this test may fail
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
     doc.add(new Field("body", "word aberration", fieldType));
@@ -1007,7 +983,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testPositionSensitiveWithWildcardDoesNotHighlight() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Document doc = new Document();
     doc.add(new Field("body", "iterate insect ipswitch illinois indirect", fieldType));
     doc.add(newTextField("id", "id", Field.Store.YES));
@@ -1044,7 +1020,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   public void testCustomSpanQueryHighlighting() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Document doc = new Document();
     doc.add(
         new Field(

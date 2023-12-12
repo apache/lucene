@@ -90,7 +90,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
    * Attribute that records if it was cleared or not. This is used for testing that
    * clearAttributes() was called correctly.
    */
-  public static interface CheckClearAttributesAttribute extends Attribute {
+  public interface CheckClearAttributesAttribute extends Attribute {
     boolean getAndResetClearCalled();
   }
 
@@ -129,7 +129,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
 
     @Override
     public void copyTo(AttributeImpl target) {
-      ((CheckClearAttributesAttributeImpl) target).clear();
+      target.clear();
     }
 
     @Override
