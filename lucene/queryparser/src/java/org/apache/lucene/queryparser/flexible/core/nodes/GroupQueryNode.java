@@ -44,12 +44,14 @@ public class GroupQueryNode extends QueryNodeImpl {
   }
 
   public QueryNode getChild() {
-    return getChildren().get(0);
+    if (getChildren() != null && !getChildren().isEmpty()) return getChildren().get(0);
+    return null;
   }
 
   @Override
   public String toString() {
-    return "<group>" + "\n" + getChild().toString() + "\n</group>";
+    if (getChild() != null) return "<group>\n" + getChild().toString() + "\n</group>";
+    return "<group>\n null \n</group>";
   }
 
   @Override

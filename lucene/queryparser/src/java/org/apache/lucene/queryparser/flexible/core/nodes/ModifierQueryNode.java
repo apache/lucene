@@ -105,7 +105,8 @@ public class ModifierQueryNode extends QueryNodeImpl {
   }
 
   public QueryNode getChild() {
-    return getChildren().get(0);
+    if (getChildren() != null && !getChildren().isEmpty()) return getChildren().get(0);
+    return null;
   }
 
   public Modifier getModifier() {
@@ -114,12 +115,14 @@ public class ModifierQueryNode extends QueryNodeImpl {
 
   @Override
   public String toString() {
-    return "<modifier operation='"
-        + this.modifier.toString()
-        + "'>"
-        + "\n"
-        + getChild().toString()
-        + "\n</modifier>";
+    if (getChild() != null) {
+      return "<modifier operation='"
+          + this.modifier.toString()
+          + "'>\n"
+          + getChild().toString()
+          + "\n</modifier>";
+    }
+    return "<modifier operation='" + this.modifier.toString() + "'>\nnull\n</modifier>";
   }
 
   @Override

@@ -128,58 +128,61 @@ public class Trie {
   public CharSequence[] getAll(CharSequence key) {
     int[] res = new int[key.length()];
     int resc = 0;
-    Row now = getRow(root);
     int w;
     StrEnum e = new StrEnum(key, forward);
     boolean br = false;
-
-    for (int i = 0; i < key.length() - 1; i++) {
-      Character ch = e.next();
-      w = now.getCmd(ch);
-      if (w >= 0) {
-        int n = w;
-        for (int j = 0; j < resc; j++) {
-          if (n == res[j]) {
-            n = -1;
-            break;
+    Row now = getRow(root);
+    if (now != null) {
+      for (int i = 0; i < key.length() - 1; i++) {
+        Character ch = e.next();
+        w = now.getCmd(ch);
+        if (w >= 0) {
+          int n = w;
+          for (int j = 0; j < resc; j++) {
+            if (n == res[j]) {
+              n = -1;
+              break;
+            }
+          }
+          if (n >= 0) {
+            res[resc++] = n;
           }
         }
-        if (n >= 0) {
-          res[resc++] = n;
+        w = now.getRef(ch);
+        if (w >= 0) {
+          now = getRow(w);
+        } else {
+          br = true;
+          break;
         }
       }
-      w = now.getRef(ch);
-      if (w >= 0) {
-        now = getRow(w);
-      } else {
-        br = true;
-        break;
-      }
-    }
-    if (br == false) {
-      w = now.getCmd(e.next());
-      if (w >= 0) {
-        int n = w;
-        for (int j = 0; j < resc; j++) {
-          if (n == res[j]) {
-            n = -1;
-            break;
+      if (br == false) {
+        w = now.getCmd(e.next());
+        if (w >= 0) {
+          int n = w;
+          for (int j = 0; j < resc; j++) {
+            if (n == res[j]) {
+              n = -1;
+              break;
+            }
+          }
+          if (n >= 0) {
+            res[resc++] = n;
           }
         }
-        if (n >= 0) {
-          res[resc++] = n;
-        }
       }
-    }
 
-    if (resc < 1) {
+      if (resc < 1) {
+        return null;
+      }
+      CharSequence[] R = new CharSequence[resc];
+      for (int j = 0; j < resc; j++) {
+        R[j] = cmds.get(res[j]);
+      }
+      return R;
+    } else {
       return null;
     }
-    CharSequence[] R = new CharSequence[resc];
-    for (int j = 0; j < resc; j++) {
-      R[j] = cmds.get(res[j]);
-    }
-    return R;
   }
 
   /**
@@ -222,38 +225,40 @@ public class Trie {
    * @return the associated element
    */
   public CharSequence getFully(CharSequence key) {
-    Row now = getRow(root);
     int w;
     Cell c;
     int cmd = -1;
     StrEnum e = new StrEnum(key, forward);
     Character ch = null;
+    Row now = getRow(root);
 
-    for (int i = 0; i < key.length(); ) {
-      ch = e.next();
-      i++;
+    if (now != null) {
+      for (int i = 0; i < key.length(); ) {
+        ch = e.next();
+        i++;
 
-      c = now.at(ch);
-      if (c == null) {
-        return null;
-      }
-
-      cmd = c.cmd;
-
-      for (int skip = c.skip; skip > 0; skip--) {
-        if (i < key.length()) {
-          e.next();
-        } else {
+        c = now.at(ch);
+        if (c == null) {
           return null;
         }
-        i++;
-      }
 
-      w = now.getRef(ch);
-      if (w >= 0) {
-        now = getRow(w);
-      } else if (i < key.length()) {
-        return null;
+        cmd = c.cmd;
+
+        for (int skip = c.skip; skip > 0; skip--) {
+          if (i < key.length()) {
+            e.next();
+          } else {
+            return null;
+          }
+          i++;
+        }
+
+        w = now.getRef(ch);
+        if (w >= 0) {
+          now = getRow(w);
+        } else if (i < key.length()) {
+          return null;
+        }
       }
     }
     return (cmd == -1) ? null : cmds.get(cmd);
@@ -266,26 +271,30 @@ public class Trie {
    * @return the last on path element
    */
   public CharSequence getLastOnPath(CharSequence key) {
-    Row now = getRow(root);
     int w;
     CharSequence last = null;
     StrEnum e = new StrEnum(key, forward);
+    Row now = getRow(root);
 
-    for (int i = 0; i < key.length() - 1; i++) {
-      Character ch = e.next();
-      w = now.getCmd(ch);
-      if (w >= 0) {
-        last = cmds.get(w);
+    if (now != null) {
+      for (int i = 0; i < key.length() - 1; i++) {
+        Character ch = e.next();
+        w = now.getCmd(ch);
+        if (w >= 0) {
+          last = cmds.get(w);
+        }
+        w = now.getRef(ch);
+        if (w >= 0) {
+          now = getRow(w);
+        } else {
+          return last;
+        }
       }
-      w = now.getRef(ch);
-      if (w >= 0) {
-        now = getRow(w);
-      } else {
-        return last;
-      }
+      w = now.getCmd(e.next());
+      return (w >= 0) ? cmds.get(w) : last;
+    } else {
+      return null;
     }
-    w = now.getCmd(e.next());
-    return (w >= 0) ? cmds.get(w) : last;
   }
 
   /**
@@ -342,20 +351,22 @@ public class Trie {
 
     StrEnum e = new StrEnum(key, forward);
 
-    for (int i = 0; i < e.length() - 1; i++) {
-      Character ch = e.next();
-      node = r.getRef(ch);
-      if (node >= 0) {
-        r = getRow(node);
-      } else {
-        node = rows.size();
-        Row n;
-        rows.add(n = new Row());
-        r.setRef(ch, node);
-        r = n;
+    if (r != null) {
+      for (int i = 0; i < e.length() - 1; i++) {
+        Character ch = e.next();
+        node = r.getRef(ch);
+        if (node >= 0) {
+          r = getRow(node);
+        } else {
+          node = rows.size();
+          Row n;
+          rows.add(n = new Row());
+          r.setRef(ch, node);
+          r = n;
+        }
       }
+      r.setCmd(e.next(), id_cmd);
     }
-    r.setCmd(e.next(), id_cmd);
   }
 
   /**

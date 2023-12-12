@@ -51,7 +51,8 @@ public class SlopQueryNode extends QueryNodeImpl implements FieldableNode {
   }
 
   public QueryNode getChild() {
-    return getChildren().get(0);
+    if (getChildren() != null && getChildren().isEmpty() == false) return getChildren().get(0);
+    return null;
   }
 
   public int getValue() {
@@ -66,7 +67,11 @@ public class SlopQueryNode extends QueryNodeImpl implements FieldableNode {
 
   @Override
   public String toString() {
-    return "<slop value='" + getValueString() + "'>" + "\n" + getChild().toString() + "\n</slop>";
+    if (getChild() != null) {
+      return "<slop value='" + getValueString() + "'>\n" + getChild().toString() + "\n</slop>";
+    }
+
+    return "<slop value='" + getValueString() + "'>\nnull\n</slop>";
   }
 
   @Override

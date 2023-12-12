@@ -205,6 +205,8 @@ Other
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
+* GITHUB#7721: Addressing several cases of potential null dereference. (Rishabh Patel via Jakub Slowinski)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes

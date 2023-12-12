@@ -87,7 +87,9 @@ public class BoostQueryNode extends QueryNodeImpl {
 
   @Override
   public String toString() {
-    return "<boost value='" + getValueString() + "'>" + "\n" + getChild().toString() + "\n</boost>";
+    QueryNode q = getChild();
+    String s = (q != null) ? q.toString() : "null";
+    return "<boost value='" + getValueString() + "'>\n" + s + "\n</boost>";
   }
 
   @Override

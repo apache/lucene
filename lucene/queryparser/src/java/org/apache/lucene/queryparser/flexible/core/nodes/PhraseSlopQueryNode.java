@@ -43,7 +43,8 @@ public class PhraseSlopQueryNode extends QueryNodeImpl implements FieldableNode 
   }
 
   public QueryNode getChild() {
-    return getChildren().get(0);
+    if (getChildren() != null && !getChildren().isEmpty()) return getChildren().get(0);
+    return null;
   }
 
   public int getValue() {
@@ -58,12 +59,14 @@ public class PhraseSlopQueryNode extends QueryNodeImpl implements FieldableNode 
 
   @Override
   public String toString() {
-    return "<phraseslop value='"
-        + getValueString()
-        + "'>"
-        + "\n"
-        + getChild().toString()
-        + "\n</phraseslop>";
+    if (getChild() != null) {
+      return "<phraseslop value='"
+          + getValueString()
+          + "'>\n"
+          + getChild().toString()
+          + "\n</phraseslop>";
+    }
+    return "<phraseslop value='" + getValueString() + "'>\nnull\n</phraseslop>";
   }
 
   @Override
