@@ -43,8 +43,11 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
     this(input, false);
   }
 
+  private static final char HIRAGANA_START = 0x3041;
+  private static final char HIRAGANA_END = 0x3096;
+
   private boolean isHiragana(char ch) {
-    return ch >= 0x3041 && ch <= 0x3096;
+    return ch >= HIRAGANA_START && ch <= HIRAGANA_END;
   }
 
   private boolean containsHiragana(CharSequence s) {
