@@ -433,8 +433,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testApproximate() throws IOException {
     // Non-restrictive filter, along with similarity to visit a small number of nodes
-    int numFiltered = random().nextInt(numDocs - (numDocs * 4) / 5) + (numDocs * 4) / 5;
-    int targetVisited = random().nextInt(numFiltered / 8 - numFiltered / 10) + numFiltered / 10;
+    int numFiltered = numDocs - 1;
+    int targetVisited = random().nextInt(numFiltered / 10 - 1) + 1;
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);
