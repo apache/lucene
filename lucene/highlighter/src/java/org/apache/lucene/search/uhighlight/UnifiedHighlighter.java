@@ -1131,7 +1131,9 @@ public class UnifiedHighlighter {
           @Override
           public void visitLeaf(Query query) {
             if (MultiTermHighlighting.canExtractAutomataFromLeafQuery(query) == false) {
-              if (!(query instanceof MatchAllDocsQuery || query instanceof MatchNoDocsQuery || query instanceof FunctionQuery)) {
+              if (!(query instanceof MatchAllDocsQuery
+                  || query instanceof MatchNoDocsQuery
+                  || query instanceof FunctionQuery)) {
                 hasUnknownLeaf[0] = true;
               }
             }
