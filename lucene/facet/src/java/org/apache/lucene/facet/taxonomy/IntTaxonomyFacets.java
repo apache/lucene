@@ -46,9 +46,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   /** Sparse ordinal values. */
   IntIntHashMap sparseValues;
 
-  /** Have value counters been initialized. */
-  boolean initialized;
-
   /** Sole constructor. */
   IntTaxonomyFacets(
       String indexFieldName,
@@ -61,25 +58,21 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     this.aggregationFunction = aggregationFunction;
   }
 
-  @Override
-  boolean hasValues() {
-    return initialized;
-  }
-
   void initializeValueCounters() {
     if (initialized) {
       return;
     }
-    initialized = true;
+    super.initializeValueCounters();
+
     assert sparseValues == null && values == null;
-    if (useHashTable(fc, taxoReader)) {
+    if (sparseCounts != null) {
       sparseValues = new IntIntHashMap();
     } else {
       values = new int[taxoReader.getSize()];
     }
   }
 
-  /** Set the count for this ordinal to {@code newValue}. */
+  /** Set the value associated with this ordinal to {@code newValue}. */
   void setValue(int ordinal, int newValue) {
     if (sparseValues != null) {
       sparseValues.put(ordinal, newValue);
@@ -88,7 +81,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
-  /** Get the count for this ordinal. */
+  /** Get the value associated with this ordinal. */
   int getValue(int ordinal) {
     if (sparseValues != null) {
       return sparseValues.get(ordinal);
@@ -137,29 +130,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return aggregatedValue;
-  }
-
-  /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
-    if (taxoReader.getSize() < 1024) {
-      // small number of unique values: use an array
-      return false;
-    }
-
-    if (fc == null) {
-      // counting all docs: use an array
-      return false;
-    }
-
-    int maxDoc = 0;
-    int sumTotalHits = 0;
-    for (MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
-    }
-
-    // if our result set is < 10% of the index, we collect sparsely (use hash map):
-    return sumTotalHits < maxDoc / 10;
   }
 
   @Override
