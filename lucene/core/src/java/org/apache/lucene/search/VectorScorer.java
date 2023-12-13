@@ -87,6 +87,7 @@ abstract class VectorScorer {
 
     @Override
     public float score() throws IOException {
+      assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
       return similarity.compare(query, values.vectorValue());
     }
   }
@@ -117,6 +118,7 @@ abstract class VectorScorer {
 
     @Override
     public float score() throws IOException {
+      assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
       return similarity.compare(query, values.vectorValue());
     }
   }
