@@ -145,7 +145,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
       (~$/\$$Header\b/$) : 'svn keyword',
       (~$/\$$Source\b/$) : 'svn keyword',
       (~$/^\uFEFF/$) : 'UTF-8 byte order mark',
-      (~$/import java\.lang\.\w+;/$) : 'java.lang import is unnecessary'
+      (~$/import java\.lang\.\w+;/$) : 'java.lang import is unnecessary',
+      (~$/[\u200B\uFEFF]/$) : 'zero-width codepoints',
     ]
 
     // Python and others merrily use var declarations, this is a problem _only_ in Java at least for 8x where we're forbidding var declarations
