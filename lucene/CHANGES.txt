@@ -205,6 +205,15 @@ Other
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
+======================== Lucene 9.9.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#12898: JVM SIGSEGV crash when compiling computeCommonPrefixLengthAndBuildHistogram (Chris Hegarty)
+
+* GITHUB#12900: Push and pop OutputAccumulator as IntersectTermsEnumFrames are pushed and popped (Guo Feng, Mike McCandless)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
