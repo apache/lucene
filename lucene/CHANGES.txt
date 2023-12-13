@@ -198,6 +198,12 @@ Bug Fixes
 * GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
   fail with certain random seeds. (Greg Miller)
 
+Build
+---------------------
+
+* GITHUB#12931, GITHUB#12936, GITHUB#12937: Improve source file validation to detect incorrect
+  UTF-8 sequences and forbid U+200B; enable errorprone DisableUnicodeInCode check.  (Robert Muir, Uwe Schindler)
+
 Other
 ---------------------
 
