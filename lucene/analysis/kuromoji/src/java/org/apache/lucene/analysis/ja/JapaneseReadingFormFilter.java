@@ -48,10 +48,8 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
   }
 
   private boolean containsHiragana(CharSequence s) {
-    int len = s.length();
-    for (int i = 0; i < len; i++) {
-      char ch = s.charAt(i);
-      if (isHiragana(ch)) {
+    for (int i = 0; i < s.length(); i++) {
+      if (isHiragana(s.charAt(i))) {
         return true;
       }
     }
