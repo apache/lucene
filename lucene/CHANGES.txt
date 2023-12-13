@@ -7,7 +7,10 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12898: JVM SIGSEGV crash when compiling computeCommonPrefixLengthAndBuildHistogram (Chris Hegarty)
+
+* GITHUB#12900: Push and pop OutputAccumulator as IntersectTermsEnumFrames are pushed and popped (Guo Feng, Mike McCandless)
 
 ======================== Lucene 9.9.0 =======================
 
