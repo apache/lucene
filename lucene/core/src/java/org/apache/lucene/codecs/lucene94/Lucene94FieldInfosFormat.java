@@ -131,13 +131,14 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
       Throwable priorE = null;
       FieldInfo[] infos = null;
       try {
-        int format = CodecUtil.checkIndexHeader(
-            input,
-            Lucene94FieldInfosFormat.CODEC_NAME,
-            Lucene94FieldInfosFormat.FORMAT_START,
-            Lucene94FieldInfosFormat.FORMAT_CURRENT,
-            segmentInfo.getId(),
-            segmentSuffix);
+        int format =
+            CodecUtil.checkIndexHeader(
+                input,
+                Lucene94FieldInfosFormat.CODEC_NAME,
+                Lucene94FieldInfosFormat.FORMAT_START,
+                Lucene94FieldInfosFormat.FORMAT_CURRENT,
+                segmentInfo.getId(),
+                segmentSuffix);
 
         final int size = input.readVInt(); // read in the size
         infos = new FieldInfo[size];
@@ -157,7 +158,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean omitNorms = (bits & OMIT_NORMS) != 0;
           boolean storePayloads = (bits & STORE_PAYLOADS) != 0;
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
-          boolean isParentField = format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
+          boolean isParentField =
+              format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
