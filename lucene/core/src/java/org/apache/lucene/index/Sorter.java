@@ -211,16 +211,17 @@ public final class Sorter {
 
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
     LeafMetaData metaData = reader.getMetaData();
-    if (metaData.hasBlocks() && sort.getParentField() != null) {
+    FieldInfos fieldInfos = reader.getFieldInfos();
+    if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
       BitSet parents =
-          BitSet.of(reader.getNumericDocValues(sort.getParentField()), reader.maxDoc());
+          BitSet.of(reader.getNumericDocValues(fieldInfos.getParentField()), reader.maxDoc());
       comparatorWrapper =
           in ->
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
     if (metaData.hasBlocks()
-        && sort.getParentField() == null
+        && fieldInfos.getParentField() == null
         && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
       throw new CorruptIndexException(
           "parent field is not set but the index has blocks. indexCreatedVersionMajor: "

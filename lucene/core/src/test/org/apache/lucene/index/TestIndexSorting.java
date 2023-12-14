@@ -3195,7 +3195,8 @@ public class TestIndexSorting extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       String parentField = "parent";
-      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
+      iwc.setParentField(parentField);
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         List<Runnable> runnabels =
@@ -3237,8 +3238,7 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testIndexWithSortIsCongruent() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      String parentField = "parent";
-      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Document child1 = new Document();
@@ -3259,7 +3259,7 @@ public class TestIndexSorting extends LuceneTestCase {
               IllegalArgumentException.class,
               () -> {
                 IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
-                Sort sort = new Sort("someOther", new SortField("foo", SortField.Type.INT));
+                Sort sort = new Sort(new SortField("foo", SortField.Type.INT));
                 config.setIndexSort(sort);
                 new IndexWriter(dir, config);
               });
@@ -3286,8 +3286,9 @@ public class TestIndexSorting extends LuceneTestCase {
       AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
       iwc.setCodec(codec);
       String parentField = "parent";
-      Sort indexSort = new Sort(parentField, new SortField("foo", SortField.Type.INT));
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
       iwc.setIndexSort(indexSort);
+      iwc.setParentField(parentField);
       LogMergePolicy policy = newLogMergePolicy();
       // make sure that merge factor is always > 2
       if (policy.getMergeFactor() <= 2) {

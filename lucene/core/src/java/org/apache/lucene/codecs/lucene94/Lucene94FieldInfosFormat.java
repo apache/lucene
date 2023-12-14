@@ -157,6 +157,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean omitNorms = (bits & OMIT_NORMS) != 0;
           boolean storePayloads = (bits & STORE_PAYLOADS) != 0;
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
+          boolean isParentField = (bits & PARENT_FIELD_FIELD) != 0;
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
@@ -200,7 +201,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     vectorEncoding,
                     vectorDistFunc,
-                    isSoftDeletesField);
+                    isSoftDeletesField,
+                    isParentField);
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(
@@ -348,6 +350,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
+        if (fi.isParentField()) bits |= PARENT_FIELD_FIELD;
         output.writeByte(bits);
 
         output.writeByte(indexOptionsByte(fi.getIndexOptions()));
@@ -375,11 +378,13 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   // Codec header
   static final String CODEC_NAME = "Lucene94FieldInfos";
   static final int FORMAT_START = 0;
-  static final int FORMAT_CURRENT = FORMAT_START;
+  static final int FORMAT_PARENT_FIELD = 1;
+  static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;
   static final byte OMIT_NORMS = 0x2;
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
+  static final byte PARENT_FIELD_FIELD = 0x10;
 }

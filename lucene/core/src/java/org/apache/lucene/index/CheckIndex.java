@@ -1182,16 +1182,17 @@ public final class CheckIndex implements Closeable {
 
       try {
         LeafMetaData metaData = reader.getMetaData();
+        FieldInfos fieldInfos = reader.getFieldInfos();
         if (metaData.hasBlocks()
-            && sort.getParentField() == null
+            && fieldInfos.getParentField() == null
             && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
           throw new IllegalStateException(
               "parent field is not set but the index has document blocks and was created with version: "
                   + metaData.getCreatedVersionMajor());
         }
         final DocIdSetIterator iter =
-            metaData.hasBlocks() && sort.getParentField() != null
-                ? reader.getNumericDocValues(sort.getParentField())
+            metaData.hasBlocks() && fieldInfos.getParentField() != null
+                ? reader.getNumericDocValues(fieldInfos.getParentField())
                 : DocIdSetIterator.all(reader.maxDoc());
         int prevDoc = iter.nextDoc();
         int nextDoc;

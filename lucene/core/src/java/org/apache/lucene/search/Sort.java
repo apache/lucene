@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * Encapsulates sort criteria for returned hits.
@@ -44,7 +43,6 @@ public final class Sort {
 
   // internal representation of the sort criteria
   private final SortField[] fields;
-  private final String parentField;
 
   /**
    * Sorts by computed relevance. This is the same sort criteria as calling {@link
@@ -61,29 +59,10 @@ public final class Sort {
    * is still a tie after all SortFields are checked, the internal Lucene docid is used to break it.
    */
   public Sort(SortField... fields) {
-    this(null, fields);
-  }
-
-  /**
-   * Sets the sort to the given criteria in succession: the first SortField is checked first, but if
-   * it produces a tie, then the second SortField is used to break the tie, etc. Finally, if there
-   * is still a tie after all SortFields are checked, the internal Lucene docid is used to break it.
-   *
-   * @param parentField the name of a numeric doc values field that marks the last document of a
-   *     document blocks indexed with {@link
-   *     org.apache.lucene.index.IndexWriter#addDocuments(Iterable)} or it's update relatives at
-   *     index time. This is required for indices that use index sorting in combination with
-   *     document blocks in order to maintain the document order of the blocks documents. Index
-   *     sorting will effectively compare the parent (last document) of a block in order to stable
-   *     sort all it's adjacent documents that belong to a block. This field must be a numeric doc
-   *     values field.
-   */
-  public Sort(String parentField, SortField... fields) {
     if (fields.length == 0) {
       throw new IllegalArgumentException("There must be at least 1 sort field");
     }
     this.fields = fields;
-    this.parentField = parentField;
   }
 
   /**
@@ -93,11 +72,6 @@ public final class Sort {
    */
   public SortField[] getSort() {
     return fields;
-  }
-
-  /** Returns the field name that marks a document as a parent in a document block. */
-  public String getParentField() {
-    return parentField;
   }
 
   /**
@@ -111,9 +85,6 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-    if (parentField != null) {
-      throw new IllegalStateException("parentFields must not be used with search time sorting");
-    }
     SortField[] rewrittenSortFields = new SortField[fields.length];
     for (int i = 0; i < fields.length; i++) {
       rewrittenSortFields[i] = fields[i].rewrite(searcher);
@@ -128,9 +99,6 @@ public final class Sort {
   @Override
   public String toString() {
     StringBuilder buffer = new StringBuilder();
-    if (parentField != null) {
-      buffer.append("parent field: ").append(parentField).append(' ');
-    }
     for (int i = 0; i < fields.length; i++) {
       buffer.append(fields[i].toString());
       if ((i + 1) < fields.length) buffer.append(',');
@@ -145,14 +113,13 @@ public final class Sort {
     if (this == o) return true;
     if (!(o instanceof Sort)) return false;
     final Sort other = (Sort) o;
-    return Objects.equals(parentField, other.parentField)
-        && Arrays.equals(this.fields, other.fields);
+    return Arrays.equals(this.fields, other.fields);
   }
 
   /** Returns a hash code value for this object. */
   @Override
   public int hashCode() {
-    return 0x45aaf665 + Arrays.hashCode(fields) + Objects.hashCode(parentField);
+    return 0x45aaf665 + Arrays.hashCode(fields);
   }
 
   /** Returns true if the relevance score is needed to sort documents. */

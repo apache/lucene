@@ -98,6 +98,8 @@ public class LiveIndexWriterConfig {
   /** The field names involved in the index sort */
   protected Set<String> indexSortFields = Collections.emptySet();
 
+  protected String parentField = null;
+
   /**
    * if an indexing thread should check for pending flushes on update in order to help out on a full
    * flush
@@ -458,6 +460,10 @@ public class LiveIndexWriterConfig {
     return eventListener;
   }
 
+  public String getParentField() {
+    return parentField;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -486,6 +492,7 @@ public class LiveIndexWriterConfig {
     sb.append("maxFullFlushMergeWaitMillis=").append(getMaxFullFlushMergeWaitMillis()).append("\n");
     sb.append("leafSorter=").append(getLeafSorter()).append("\n");
     sb.append("eventListener=").append(getIndexWriterEventListener()).append("\n");
+    sb.append("parentField=").append(getParentField()).append("\n");
     return sb.toString();
   }
 }

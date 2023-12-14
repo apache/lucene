@@ -54,12 +54,14 @@ final class MultiSorter {
       comparables[i] = sorter.getComparableProviders(readers);
       for (int j = 0; j < readers.size(); j++) {
         CodecReader codecReader = readers.get(j);
+        FieldInfos fieldInfos = codecReader.getFieldInfos();
         LeafMetaData metaData = codecReader.getMetaData();
-        if (metaData.hasBlocks() && sort.getParentField() != null) {
-          NumericDocValues parentDocs = codecReader.getNumericDocValues(sort.getParentField());
+        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+          NumericDocValues parentDocs =
+              codecReader.getNumericDocValues(fieldInfos.getParentField());
           assert parentDocs != null
               : "parent field: "
-                  + sort.getParentField()
+                  + fieldInfos.getParentField()
                   + " must be present if index sorting is used with blocks";
           BitSet parents = BitSet.of(parentDocs, codecReader.maxDoc());
           IndexSorter.ComparableProvider[] providers = comparables[i];
@@ -67,7 +69,7 @@ final class MultiSorter {
           providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
         }
         assert metaData.hasBlocks() == false
-                || sort.getParentField() != null
+                || fieldInfos.getParentField() != null
                 || metaData.getCreatedVersionMajor() < Version.LUCENE_10_0_0.major
             : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
                 + metaData.getCreatedVersionMajor();

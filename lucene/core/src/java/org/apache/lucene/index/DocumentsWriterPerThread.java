@@ -195,11 +195,10 @@ final class DocumentsWriterPerThread implements Accountable {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
-    if (indexWriterConfig.getIndexSort() != null
-        && indexWriterConfig.getIndexSort().getParentField() != null) {
+    if (indexWriterConfig.getParentField() != null) {
       this.parentField =
           indexingChain.markAsReserved(
-              new NumericDocValuesField(indexWriterConfig.getIndexSort().getParentField(), -1));
+              new NumericDocValuesField(indexWriterConfig.getParentField(), -1));
     } else {
       this.parentField = null;
     }
@@ -248,21 +247,22 @@ final class DocumentsWriterPerThread implements Accountable {
         final Iterator<? extends Iterable<? extends IndexableField>> iterator = docs.iterator();
         while (iterator.hasNext()) {
           Iterable<? extends IndexableField> doc = iterator.next();
-          if (segmentInfo.getIndexSort() != null) {
-            if (parentField != null) {
-              if (iterator.hasNext() == false) {
-                int numChildren = numDocsInRAM - docsInRamBefore;
-                parentField.getDelegate().setLongValue(numChildren);
-                doc = addParentField(doc, parentField);
-              }
-            } else if (iterator.hasNext() && indexVersionCreated >= Version.LUCENE_10_0_0.major) {
-              // sort is configured but parent field is missing, yet we have a doc-block
-              // yet we must not fail if this index was created in an earlier version where this
-              // behavior was permitted.
-              throw new IllegalArgumentException(
-                  "a parent field must be set in order to use document blocks with index sorting; see Sort#getParentField");
+          if (parentField != null) {
+            if (iterator.hasNext() == false) {
+              int numChildren = numDocsInRAM - docsInRamBefore;
+              parentField.getDelegate().setLongValue(numChildren);
+              doc = addParentField(doc, parentField);
             }
+          } else if (segmentInfo.getIndexSort() != null
+              && iterator.hasNext()
+              && indexVersionCreated >= Version.LUCENE_10_0_0.major) {
+            // sort is configured but parent field is missing, yet we have a doc-block
+            // yet we must not fail if this index was created in an earlier version where this
+            // behavior was permitted.
+            throw new IllegalArgumentException(
+                "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#getParentField");
           }
+
           // Even on exception, the document is still added (but marked
           // deleted), so we don't need to un-reserve at that point.
           // Aborting exceptions will actually "lose" more than one

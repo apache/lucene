@@ -66,8 +66,6 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
   static final BytesRef SI_FILE = new BytesRef("      file ");
   static final BytesRef SI_ID = new BytesRef("    id ");
   static final BytesRef SI_SORT = new BytesRef("    sort ");
-  static final BytesRef SI_SORT_HAS_PARENT_FIELD = new BytesRef("    has parent ");
-  static final BytesRef SI_SORT_PARENT_FIELD = new BytesRef("    parent ");
   static final BytesRef SI_SORT_TYPE = new BytesRef("      type ");
   static final BytesRef SI_SORT_NAME = new BytesRef("      name ");
   static final BytesRef SI_SORT_BYTES = new BytesRef("      bytes ");
@@ -199,21 +197,12 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         sortField[i] = SortFieldProvider.forName(provider).readSortField(bytes);
         assert bytes.eof();
       }
+
       final Sort indexSort;
       if (sortField.length == 0) {
         indexSort = null;
       } else {
-        String parentField = null;
-        SimpleTextUtil.readLine(input, scratch);
-        assert StringHelper.startsWith(scratch.get(), SI_SORT_HAS_PARENT_FIELD);
-        final boolean hasParent =
-            Boolean.parseBoolean(readString(SI_SORT_HAS_PARENT_FIELD.length, scratch));
-        if (hasParent) {
-          SimpleTextUtil.readLine(input, scratch);
-          assert StringHelper.startsWith(scratch.get(), SI_SORT_PARENT_FIELD);
-          parentField = readString(SI_SORT_PARENT_FIELD.length, scratch);
-        }
-        indexSort = new Sort(parentField, sortField);
+        indexSort = new Sort(sortField);
       }
 
       SimpleTextUtil.checkFooter(input);
@@ -352,21 +341,6 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         SortFieldProvider.write(sortField, b);
         SimpleTextUtil.write(output, b.bytes.get().toString(), scratch);
         SimpleTextUtil.writeNewline(output);
-      }
-      if (numSortFields > 0) {
-        if (indexSort.getParentField() != null) {
-          SimpleTextUtil.write(output, SI_SORT_HAS_PARENT_FIELD);
-          SimpleTextUtil.write(output, "true", scratch);
-          SimpleTextUtil.writeNewline(output);
-
-          SimpleTextUtil.write(output, SI_SORT_PARENT_FIELD);
-          SimpleTextUtil.write(output, indexSort.getParentField(), scratch);
-          SimpleTextUtil.writeNewline(output);
-        } else {
-          SimpleTextUtil.write(output, SI_SORT_HAS_PARENT_FIELD);
-          SimpleTextUtil.write(output, "false", scratch);
-          SimpleTextUtil.writeNewline(output);
-        }
       }
       SimpleTextUtil.writeChecksum(output, scratch);
     }

@@ -545,4 +545,9 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     this.eventListener = eventListener;
     return this;
   }
+
+  public IndexWriterConfig setParentField(String parentField) {
+    this.parentField = parentField;
+    return this;
+  }
 }

@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -1225,9 +1224,6 @@ public class IndexWriter
 
   /** Returns true if <code>indexSort</code> is a prefix of <code>otherSort</code>. */
   static boolean isCongruentSort(Sort indexSort, Sort otherSort) {
-    if (Objects.equals(indexSort.getParentField(), otherSort.getParentField()) == false) {
-      return false;
-    }
     final SortField[] fields1 = indexSort.getSort();
     final SortField[] fields2 = otherSort.getSort();
     if (fields1.length > fields2.length) {
@@ -1264,7 +1260,8 @@ public class IndexWriter
    * If this {@link SegmentInfos} has no global field number map the returned instance is empty
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
-    final FieldNumbers map = new FieldNumbers(config.softDeletesField);
+    final FieldNumbers map =
+        new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
 
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
@@ -6617,10 +6614,12 @@ public class IndexWriter
           }
 
           @Override
-          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+          public FieldInfosBuilder newFieldInfosBuilder(
+              String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
               private FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, parentFieldName));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

@@ -392,9 +392,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
           sortFields[j] = randomIndexSortField();
         }
         if (supportsHasBlocks()) {
-          String parentField =
-              random().nextBoolean() ? null : TestUtil.randomSimpleString(random(), 1, 10);
-          sort = new Sort(parentField, sortFields);
+          sort = new Sort(sortFields);
         } else {
           sort = new Sort(sortFields);
         }

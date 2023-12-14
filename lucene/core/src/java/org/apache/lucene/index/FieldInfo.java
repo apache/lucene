@@ -63,6 +63,8 @@ public final class FieldInfo {
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
 
+  private final boolean parentField;
+
   /**
    * Sole constructor.
    *
@@ -84,7 +86,8 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean softDeletesField) {
+      boolean softDeletesField,
+      boolean parentField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
@@ -111,6 +114,7 @@ public final class FieldInfo {
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
+    this.parentField = parentField;
     this.checkConsistency();
   }
 
@@ -632,5 +636,13 @@ public final class FieldInfo {
    */
   public boolean isSoftDeletesField() {
     return softDeletesField;
+  }
+
+  /**
+   * Returns true if this field is configured and used as the parent document field field. See
+   * {@link IndexWriterConfig#setParentField(String)}
+   */
+  public boolean isParentField() {
+    return parentField;
   }
 }

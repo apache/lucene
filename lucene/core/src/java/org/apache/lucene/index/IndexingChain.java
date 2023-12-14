@@ -226,12 +226,12 @@ final class IndexingChain implements Accountable {
     LeafReader docValuesReader = getDocValuesLeafReader();
     Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
 
-    if (state.segmentInfo.getHasBlocks() && indexSort.getParentField() != null) {
+    if (state.segmentInfo.getHasBlocks() && state.fieldInfos.getParentField() != null) {
       final DocIdSetIterator readerValues =
-          docValuesReader.getNumericDocValues(indexSort.getParentField());
+          docValuesReader.getNumericDocValues(state.fieldInfos.getParentField());
       if (readerValues == null) {
         throw new CorruptIndexException(
-            "missing doc values for parent field \"" + indexSort.getParentField() + "\"",
+            "missing doc values for parent field \"" + state.fieldInfos.getParentField() + "\"",
             "IndexingChain");
       }
       BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
@@ -241,7 +241,7 @@ final class IndexingChain implements Accountable {
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
     }
     if (state.segmentInfo.getHasBlocks()
-        && indexSort.getParentField() == null
+        && state.fieldInfos.getParentField() == null
         && indexCreatedVersionMajor >= Version.LUCENE_10_0_0.major) {
       throw new CorruptIndexException(
           "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
@@ -687,7 +687,8 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
-                pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
+                pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
+                pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
     if (fi.getIndexOptions() != IndexOptions.NONE) {
       pf.setInvertState();
