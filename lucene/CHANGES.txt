@@ -35,7 +35,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
+  DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
 
 Bug Fixes
 ---------------------
