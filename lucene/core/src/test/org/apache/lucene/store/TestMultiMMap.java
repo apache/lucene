@@ -33,6 +33,10 @@ import org.junit.BeforeClass;
  */
 public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
 
+  interface DataReader {
+    void read(IndexInput in) throws IOException;
+  }
+
   @Override
   protected Directory getDirectory(Path path, int maxChunkSize) throws IOException {
     return new MMapDirectory(path, maxChunkSize);
@@ -83,31 +87,43 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   // TODO: can we improve ByteBuffersDirectory (without overhead) and move these clone safety tests
   // to the base test case?
 
+  private void assertAlreadyClosed(
+      IndexInput one, IndexInput two, IndexInput three, DataReader reader) throws Exception {
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          reader.read(one);
+        });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          reader.read(two);
+        });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          reader.read(three);
+        });
+  }
+
   public void testCloneSafety() throws Exception {
     Directory mmapDir = getDirectory(createTempDir("testCloneSafety"));
     IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
+    long[] longs = new long[2];
+    int[] ints = new int[2];
+    float[] floats = new float[2];
     io.writeVInt(5);
+    io.writeLong(1);
+    io.writeLong(2);
     io.close();
     IndexInput one = mmapDir.openInput("bytes", IOContext.DEFAULT);
     IndexInput two = one.clone();
     IndexInput three = two.clone(); // clone of clone
     one.close();
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          one.readVInt();
-        });
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          two.readVInt();
-        });
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          three.readVInt();
-        });
-
+    assertAlreadyClosed(one, two, three, in -> in.readVInt());
+    assertAlreadyClosed(one, two, three, in -> in.readLongs(longs, 0, 2));
+    assertAlreadyClosed(one, two, three, in -> in.readInts(ints, 0, 2)); // read as int
+    assertAlreadyClosed(one, two, three, in -> in.readFloats(floats, 0, 2)); // read as float
     two.close();
     three.close();
     // test double close of master:
