@@ -16,3 +16,9 @@ void get_postings_from_cache(uint32_t query_id, uint8_t nr_terms, uint8_t segmen
     mram_read(&postings_cache[query_id][segment_id * MAX_NR_TERMS],
                     elems, nr_terms * sizeof(postings_info_t));
 }
+
+void update_postings_in_cache(uint32_t query_id, uint8_t nr_terms, uint8_t segment_id, postings_info_t *elems) {
+
+    mram_write(elems, &postings_cache[query_id][segment_id * MAX_NR_TERMS],
+                     nr_terms * sizeof(postings_info_t));
+}

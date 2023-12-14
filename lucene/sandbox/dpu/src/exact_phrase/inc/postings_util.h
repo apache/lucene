@@ -22,4 +22,9 @@ void set_postings_in_cache(uint32_t query_id, uint8_t term_id, uint8_t nr_segmen
  */
 void get_postings_from_cache(uint32_t query_id, uint8_t nr_terms, uint8_t segment_id, postings_info_t *elems);
 
+/**
+ * update postings information in the cache for the given query, term and DPU segment
+ */
+void update_postings_in_cache(uint32_t query_id, uint8_t nr_terms, uint8_t segment_id, postings_info_t *elems);
+
 #endif

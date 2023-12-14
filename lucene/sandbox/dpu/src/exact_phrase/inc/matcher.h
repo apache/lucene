@@ -64,6 +64,14 @@ seek_pos_t seek_pos(did_matcher_t *matchers, uint32_t nr_terms, uint32_t max_pos
  * Get the maximum position id among all matchers
  */
 void get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t *index, uint32_t *max_pos);
+/**
+ * Returns the current address of the matcher for the given term, where the next did or position would be searched
+ */
+uintptr_t matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id);
+/**
+ * Returns the current frequency for the given term and for the doc at which the matcher is positioned
+ */
+uint32_t matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id);
 
 void start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);
 void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);

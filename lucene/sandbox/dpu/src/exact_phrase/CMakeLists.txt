@@ -14,7 +14,8 @@ add_executable(
   src/decoder.c
   src/query_parser.c
   src/term_lookup.c
-  src/postings_util.c)
+  src/postings_util.c
+  src/score_lower_bound.c)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC -DNR_TASKLETS=16
                                                   -DSTACK_SIZE_DEFAULT=512)

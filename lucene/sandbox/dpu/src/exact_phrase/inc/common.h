@@ -48,5 +48,10 @@
  */
 #define PIM_PHRASE_QUERY_TYPE 1
 
+/*
+ * Maximum number of scores stored
+ */
+#define MAX_NB_SCORES 8
+
 #endif
 

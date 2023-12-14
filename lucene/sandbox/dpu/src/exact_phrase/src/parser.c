@@ -136,3 +136,5 @@ bool parse_pos(parser_t *parser, uint32_t *pos)
 // Aborts the parsing of positions, moving the cursor to the next
 // document or segment descriptor.
 void abort_parse_pos(parser_t *parser) { seek_decoder(parser->decoder, parser->pos_parser.pos_end_addr); }
+
+uintptr_t parser_get_curr_address(parser_t *parser) { return get_absolute_address_from(parser->decoder); }

@@ -13,6 +13,7 @@
 #include "term_lookup.h"
 #include "query_result.h"
 #include "postings_util.h"
+#include "score_lower_bound.h"
 
 //#define PERF_MESURE
 #ifdef PERF_MESURE
@@ -30,6 +31,8 @@ __host uint32_t nb_queries_in_batch;
 __host uint32_t nb_bytes_in_batch;
 __mram_noinit uint8_t query_batch[DPU_QUERY_BATCH_BYTE_SIZE];
 __host uint32_t query_offset_in_batch[DPU_MAX_BATCH_SIZE];
+__host uint32_t nb_max_doc_match;
+__host uint32_t new_query;
 
 /**
   Output results
@@ -40,6 +43,7 @@ __host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
 __mram_noinit uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS];
 __mram_noinit uint32_t results_segment_offset[DPU_MAX_BATCH_SIZE * MAX_NR_SEGMENTS];
 __dma_aligned uint32_t segment_offset_cache[NR_TASKLETS][8];
+__host uint64_t search_done;
 
 /* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
@@ -83,7 +87,9 @@ static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz);
 static void sort_query_results();
 static void flush_query_buffer();
 static void get_segments_info(uintptr_t);
-static void adder(int *i, void *args) { *i += 1; }
+static void adder(int *i, void *args) { *i += (int)args; }
+static void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
+static void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
 
 int main() {
 
@@ -97,41 +103,48 @@ int main() {
 #endif
     if(me() == 0) {
 
-        mem_reset();
+        if(new_query) {
 
 #ifdef PERF_MESURE
-        perfcounter_config(COUNT_CYCLES, true);
-        printf("Number of queries: %d\n", nb_queries_in_batch);
+            perfcounter_config(COUNT_CYCLES, true);
+            printf("Number of queries: %d\n", nb_queries_in_batch);
 #endif
-        batch_num = 0;
-        results_buffer_index = 0;
-        initialize_decoder_pool();
+            mem_reset();
+            results_buffer_index = 0;
+            initialize_decoder_pool();
 #ifdef TEST
-        // in test mode set the queries inputs correctly
-        nb_queries_in_batch = test_nb_queries_in_batch;
-        nb_bytes_in_batch = test_nb_bytes_in_batch;
-        mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
-        memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
-        dpu_index = (uintptr_t)(&index_mram[0]);
+            // in test mode set the queries inputs correctly
+            nb_queries_in_batch = test_nb_queries_in_batch;
+            nb_bytes_in_batch = test_nb_bytes_in_batch;
+            mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
+            memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
+            dpu_index = (uintptr_t)(&index_mram[0]);
 #else
-        dpu_index = (uintptr_t)DPU_MRAM_HEAP_POINTER;
+            dpu_index = (uintptr_t)DPU_MRAM_HEAP_POINTER;
 #endif
-        get_segments_info(dpu_index);
-        assert(nr_segments_log2 >=0 && nr_segments_log2 < 8);
-        assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
-        memset(results_index_lucene_segments, 0,
-            nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1)) * sizeof(uint32_t));
+            get_segments_info(dpu_index);
+            assert(nr_segments_log2 >=0 && nr_segments_log2 < 8);
+            assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
+            memset(results_index_lucene_segments, 0,
+                nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1)) * sizeof(uint32_t));
+        }
+        batch_num = 0;
+        search_done = 1;
+        reset_scores(nb_queries_in_batch);
     }
-    barrier_wait(&barrier);
+    // TODO is this barrier really useful ?
+    //barrier_wait(&barrier);
 
     // first lookup the postings addresses for each query/term/segment
     // store them in MRAM for later use by the tasklets to find matching document/positions
-    for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
-            lookup_postings_info_for_query(dpu_index, i);
-            results_index[i] = 0;
+    if(new_query) {
+        for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
+                lookup_postings_info_for_query(dpu_index, i);
+                results_index[i] = 0;
+        }
+        //TODO avoid a barrier here ? Load balancing of lookup postings operation is not very good
+        barrier_wait(&barrier);
     }
-    //TODO avoid a barrier here ? Load balancing of lookup postings operation is not very good
-    barrier_wait(&barrier);
 
     // each tasklet loops and take the next pair (query/segment) in the batch, until no more queries
     uint32_t batch_num_tasklet;
@@ -142,6 +155,9 @@ int main() {
         if(batch_num_tasklet >= nb_queries_in_batch << nr_segments_log2)
             break;
 
+        // TODO instead make several tasklet work on different queries in parallel
+        //uint32_t segment_id = batch_num_tasklet / nb_queries_in_batch;
+        //uint32_t query_id = batch_num_tasklet - ((1 << nr_segments_log2) * nb_queries_in_batch);
         uint32_t query_id = batch_num_tasklet >> nr_segments_log2;
         uint32_t segment_id = batch_num_tasklet - (query_id << nr_segments_log2);
         uint8_t nr_terms = queries_nb_terms[query_id];
@@ -156,6 +172,9 @@ int main() {
             init_results_cache(query_id, 0, segment_id);
 
             get_postings_from_cache(query_id, nr_terms, segment_id, postings_cache_wram[me()]);
+            if(postings_cache_wram[me()][0].size == 0)
+                continue;
+
             did_matcher_t *matchers = setup_matchers(nr_terms, postings_cache_wram[me()]);
 
     #ifdef DEBUG
@@ -180,10 +199,17 @@ int main() {
 #ifdef DEBUG
         printf("tid %d nr_results for query %d:%d = %lu\n", me(), query_id, segment_id, nr_results);
 #endif
-        mram_write_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id], nr_results);
+        if(nr_results)
+            mram_update_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id],
+                                    adder, (void*)nr_results);
     }
 
     barrier_wait(&barrier);
+
+    // if not all documents have been searched (early exit for lower bound on score)
+    // return here
+    if(!search_done)
+        return 0;
 
     // prefix sum of the query index values
     if(me() == 0) {
@@ -193,8 +219,6 @@ int main() {
     }
     // read the segment offsets for this query and prefix sum the values and write it back
     prefix_sum_each_query(results_segment_offset, 1 << nr_segments_log2);
-    // read the lucene segment offsets for this query and prefix sum the values and write it back
-    /*prefix_sum_each_query(results_index_lucene_segments, nr_lucene_segments);*/
 
     barrier_wait(&barrier);
 
@@ -233,15 +257,15 @@ int main() {
 
 static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unused)) uint32_t pos);
 
-static bool perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *matchers,
+static uint32_t perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *matchers,
                                                 unsigned int nr_terms, uint32_t did)
 {
+    uint32_t nr_results = 0;
     start_pos_matching(matchers, nr_terms);
 
     if (!matchers_has_next_pos(matchers, nr_terms))
         goto end;
 
-    bool result_found = false;
     while (true) {
         uint32_t max_pos, index;
 
@@ -250,7 +274,7 @@ static bool perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *match
         switch (seek_pos(matchers, nr_terms, max_pos, index)) {
         case POSITIONS_FOUND: {
             store_query_result(query_id, did, max_pos - index);
-            result_found = true;
+            nr_results++;
 #ifdef DEBUG
             printf("Found a result for query %d: did=%d, pos=%d\n", query_id, did, max_pos - index);
 #endif
@@ -266,11 +290,12 @@ static bool perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *match
     }
 end:
     stop_pos_matching(matchers, nr_terms);
-    return result_found;
+    return nr_results;
 }
 
 static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment_id, did_matcher_t *matchers, uint32_t nr_terms)
 {
+    uint32_t nr_doc_match = 0;
     uint32_t nr_results = 0;
     while (true) {
         // This is either the initial loop, or we come back from a
@@ -290,17 +315,33 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
 #ifdef DEBUG
                 printf("Found did %d query %d segment_id %d\n", did, query_id, segment_id);
 #endif
-                if(perform_pos_matching_for_did(query_id, matchers, nr_terms, did))
-                    nr_results++;
+                // if the upper bound on this doc's score is lower than the lower bound, skip it
+                if(is_score_competitive(query_id, did, matchers, nr_terms)) {
+
+                    uint32_t freq = perform_pos_matching_for_did(query_id, matchers, nr_terms, did);
+                    if(freq) {
+                        nr_results++;
+                        add_match_for_best_scores(query_id, did, freq);
+                    }
+
+                    if(++nr_doc_match == nb_max_doc_match) {
+                        // should stop here, early exit to allow the host to provide a lower bound on score
+                        early_exit(query_id, segment_id, nr_terms, matchers);
+                        return nr_results;
+                    }
+
 #ifdef DEBUG
-                printf("nr_results after pos match did=%d %d\n", did, nr_results);
+                    printf("nr_results after pos match did=%d %d\n", did, nr_results);
 #endif
+                }
             } break;
             case DID_NOT_FOUND:
                 break;
             }
         } while (did_status == DID_NOT_FOUND);
     }
+
+    normal_exit(query_id, segment_id, nr_terms);
     return nr_results;
 }
 
@@ -371,7 +412,7 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
 
     // atomic increment of the results per lucene segments info
     mram_update_int_atomic(&results_index_lucene_segments[query_id * nr_lucene_segments + current_segment[me()]],
-                            adder, 0);
+                            adder, (void*)1);
 }
 
 static void sort_query_results() {
@@ -461,6 +502,9 @@ static void get_segments_info(uintptr_t index) {
     for(int i = 0; i < nr_lucene_segments; ++i)
         lucene_segment_maxdoc[i] = decode_vint_from(decoder);
 
+    // TODO retrieve the norms info
+    init_lower_bound_globals(0 /*ndocs*/, 0 /*norms_addr*/);
+
     decoder_pool_release_one(decoder);
 }
 
@@ -488,4 +532,33 @@ static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz) {
                                     nbElem * sizeof(uint32_t));
         }
     }
+}
+
+void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers) {
+
+    // mark the search as unfinished
+    mutex_lock(results_mutex);
+    search_done = 0;
+    mutex_unlock(results_mutex);
+
+    // update the current state in the postings cache for this query and DPU segment
+    postings_info_t *cache = postings_cache_wram[me()];
+    for(int i = 0; i < nr_terms; ++i) {
+        uint32_t curr_addr = matcher_get_curr_address(matchers, i);
+        assert(cache[i].addr >= curr_addr);
+        uint32_t curr_size = cache[i].addr - curr_addr;
+        assert(cache[i].size >= curr_size);
+        cache[i].size -= curr_size;
+        cache[i].addr = curr_addr;
+    }
+    update_postings_in_cache(query_id, nr_terms, segment_id, cache);
+}
+
+void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms) {
+
+    postings_info_t *cache = postings_cache_wram[me()];
+    for(int i = 0; i < nr_terms; ++i) {
+        cache[i].size = 0;
+    }
+    update_postings_in_cache(query_id, nr_terms, segment_id, cache);
 }

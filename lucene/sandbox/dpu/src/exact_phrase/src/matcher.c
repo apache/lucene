@@ -174,3 +174,13 @@ void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
         abort_parse_pos(matchers[i].parser);
     }
 }
+
+uintptr_t matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id) {
+
+    return parser_get_curr_address(matchers[term_id].parser);
+}
+
+uint32_t matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id) {
+
+    return matchers[term_id].current_pos_freq;
+}
