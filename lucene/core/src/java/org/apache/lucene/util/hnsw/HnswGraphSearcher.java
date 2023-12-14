@@ -308,7 +308,7 @@ public class HnswGraphSearcher {
     @Override
     int graphNextNeighbor(HnswGraph graph) {
       if (++upto < cur.size()) {
-        return cur.node[upto];
+        return cur.nodes()[upto];
       }
       return NO_MORE_DOCS;
     }

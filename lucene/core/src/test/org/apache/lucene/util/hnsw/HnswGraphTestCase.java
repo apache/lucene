@@ -455,7 +455,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     for (int i = 0; i < nDoc; i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
-      int[] nnodes = neighbors.node;
+      int[] nnodes = neighbors.nodes();
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
         assertTrue(nnodes[j] < nDoc);
@@ -852,7 +852,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   private void assertLevel0Neighbors(OnHeapHnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
     NeighborArray nn = graph.getNeighbors(0, node);
-    int[] actual = ArrayUtil.copyOfSubArray(nn.node, 0, nn.size());
+    int[] actual = ArrayUtil.copyOfSubArray(nn.nodes(), 0, nn.size());
     Arrays.sort(actual);
     assertArrayEquals(
         "expected: " + Arrays.toString(expected) + " actual: " + Arrays.toString(actual),
