@@ -1208,7 +1208,7 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Represent the FST metadata
+   * Represents the FST metadata.
    *
    * @param <T> the FST output type
    */
@@ -1235,6 +1235,15 @@ public final class FST<T> implements Accountable {
       this.startNode = startNode;
       this.version = version;
       this.numBytes = numBytes;
+    }
+
+    /**
+     * Returns the version constant of the binary format this FST was written in. See the {@code
+     * static final int VERSION} constants in FST's javadoc, e.g. {@link
+     * FST#VERSION_CONTINUOUS_ARCS}.
+     */
+    public int getVersion() {
+      return version;
     }
   }
 }
