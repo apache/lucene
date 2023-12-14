@@ -4893,4 +4893,17 @@ public class TestIndexWriter extends LuceneTestCase {
     doc.add(newField(field, "value", storedTextType));
     writer.addDocument(doc);
   }
+
+  public void testParentAndSoftDeletesAreTheSame() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig indexWriterConfig = newIndexWriterConfig(new MockAnalyzer(random()));
+      indexWriterConfig.setSoftDeletesField("foo");
+      indexWriterConfig.setParentField("foo");
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class, () -> new IndexWriter(dir, indexWriterConfig));
+      assertEquals(
+          "parent document and soft-deletes field can't be the same field", iae.getMessage());
+    }
+  }
 }

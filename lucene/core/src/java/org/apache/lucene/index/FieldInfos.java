@@ -381,6 +381,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.storeTermVectors = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
       this.parentFieldName = parentFieldName;
+      if (softDeletesFieldName != null
+          && parentFieldName != null
+          && parentFieldName.equals(softDeletesFieldName)) {
+        throw new IllegalArgumentException(
+            "parent document and soft-deletes field can't be the same field");
+      }
     }
 
     synchronized void verifyFieldInfo(FieldInfo fi) {

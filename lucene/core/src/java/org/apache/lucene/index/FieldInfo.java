@@ -210,6 +210,13 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
+
+    if (softDeletesField && parentField) {
+      throw new IllegalArgumentException(
+          "field can't be used as soft-deletes field and parent document fields (field: '"
+              + name
+              + "')");
+    }
   }
 
   /**
