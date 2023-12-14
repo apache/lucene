@@ -49,7 +49,7 @@ This manual provides a step-by-step guide through the process of "bumping" the v
   * Where it exists, increment the `VERSION_CURRENT` variable.
 
 ### Unit tests
-* The codec version changes to it's unit tests follow a similar structure to the non-test code.
+* The codec version changes to it's unit tests follow a similar structure to the source code.
 * Move existing test files related to forked files to the `backward_codecs` package.
 * Create RW forks of the required `backwards_codecs` components (otherwise we cannot test writing to `backwards_codecs`) for use in 
   backwards compatibility unit tests (the ones moved to backward_codecs). Copy previous implementations of the RW classes and update with the 
