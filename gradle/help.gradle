@@ -45,7 +45,7 @@ configure(rootProject) {
   help {
     doLast {
       println ""
-      println "This is an experimental Lucene/Solr gradle build. See some"
+      println "This is Lucene's gradle build. See some"
       println "guidelines, ant-equivalent commands etc. under help/*; or type:"
       println ""
       helpFiles.each { section, path, sectionInfo ->

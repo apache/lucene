@@ -52,8 +52,8 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for fis format. NOTE: This test focuses on the fis impl, nothing
  * else. The [stretch] goal is for this test to be so thorough in testing a new fis format that if
- * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
- * given fis Format that this test fails to catch then this test needs to be improved!
+ * this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a given fis
+ * Format that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTestCase {
 

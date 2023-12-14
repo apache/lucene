@@ -94,9 +94,9 @@ import org.apache.lucene.util.automaton.RegExp;
 /**
  * Abstract class to do basic tests for a docvalues format. NOTE: This test focuses on the docvalues
  * impl, nothing else. The [stretch] goal is for this test to be so thorough in testing a new
- * DocValuesFormat that if this test passes, then all Lucene/Solr tests should also pass. Ie, if
- * there is some bug in a given DocValuesFormat that this test fails to catch then this test needs
- * to be improved!
+ * DocValuesFormat that if this test passes, then all Lucene tests should also pass. Ie, if there is
+ * some bug in a given DocValuesFormat that this test fails to catch then this test needs to be
+ * improved!
  */
 public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTestCase {
 
