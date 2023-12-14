@@ -310,15 +310,11 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (mask[i] == false) {
         continue;
       }
-      int nbr = candidates.node[i];
+      int nbr = candidates.nodes()[i];
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.rwlock.writeLock().lock();
       try {
-        nbrsOfNbr.addOutOfOrder(node, candidates.score[i]);
-        if (nbrsOfNbr.size() > maxConnOnLevel) {
-          int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
-          nbrsOfNbr.removeIndex(indexToRemove);
-        }
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
       } finally {
         nbrsOfNbr.rwlock.writeLock().unlock();
       }
@@ -336,8 +332,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
-      int cNode = candidates.node[i];
-      float cScore = candidates.score[i];
+      int cNode = candidates.nodes()[i];
+      float cScore = candidates.scores()[i];
       assert cNode <= hnsw.maxNodeId();
       if (diversityCheck(cNode, cScore, neighbors)) {
         mask[i] = true;
@@ -371,68 +367,12 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.node[i]);
+      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
       if (neighborSimilarity >= score) {
         return false;
       }
     }
     return true;
-  }
-
-  /**
-   * Find first non-diverse neighbour among the list of neighbors starting from the most distant
-   * neighbours
-   */
-  private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
-    int[] uncheckedIndexes = neighbors.sort(scorer);
-    if (uncheckedIndexes == null) {
-      // all nodes are checked, we will directly return the most distant one
-      return neighbors.size() - 1;
-    }
-    int uncheckedCursor = uncheckedIndexes.length - 1;
-    for (int i = neighbors.size() - 1; i > 0; i--) {
-      if (uncheckedCursor < 0) {
-        // no unchecked node left
-        break;
-      }
-      if (isWorstNonDiverse(i, neighbors, uncheckedIndexes, uncheckedCursor)) {
-        return i;
-      }
-      if (i == uncheckedIndexes[uncheckedCursor]) {
-        uncheckedCursor--;
-      }
-    }
-    return neighbors.size() - 1;
-  }
-
-  private boolean isWorstNonDiverse(
-      int candidateIndex, NeighborArray neighbors, int[] uncheckedIndexes, int uncheckedCursor)
-      throws IOException {
-    float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    RandomVectorScorer scorer = scorerSupplier.scorer(neighbors.node[candidateIndex]);
-    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
-      // the candidate itself is unchecked
-      for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(neighbors.node[i]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
-    } else {
-      // else we just need to make sure candidate does not violate diversity with the (newly
-      // inserted) unchecked nodes
-      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
-      for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(neighbors.node[uncheckedIndexes[i]]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {
