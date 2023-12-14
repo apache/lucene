@@ -221,7 +221,7 @@ public class TestBoolean2 extends LuceneTestCase {
     bigSearcher = null;
   }
 
-  private static String[] docFields = {
+  private static final String[] docFields = {
     "w1 w2 w3 w4 w5", "w1 w3 w2 w3", "w1 xx w2 yy w3", "w1 w3 xx w2 yy mm"
   };
 
@@ -239,18 +239,18 @@ public class TestBoolean2 extends LuceneTestCase {
     // The asserting searcher will sometimes return the bulk scorer and
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
-    ScoreDoc[] hits1 = searcher.search(query, manager).scoreDocs;
-    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
-    ScoreDoc[] hits2 = searcher.search(query, manager).scoreDocs;
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
+    ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
+    ScoreDoc[] hits2 = searcher.search(query, collectorManager).scoreDocs;
 
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
-    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
-    TopDocs topDocs = singleSegmentSearcher.search(query, manager);
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
+    TopDocs topDocs = singleSegmentSearcher.search(query, collectorManager);
     hits2 = topDocs.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
@@ -258,10 +258,10 @@ public class TestBoolean2 extends LuceneTestCase {
     assertEquals(mulFactor * topDocs.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
-    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
-    hits1 = bigSearcher.search(query, manager).scoreDocs;
-    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
-    hits2 = bigSearcher.search(query, manager).scoreDocs;
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
+    hits1 = bigSearcher.search(query, collectorManager).scoreDocs;
+    collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
+    hits2 = bigSearcher.search(query, collectorManager).scoreDocs;
 
     // NOTE: just comparing results, not vetting against expDocNrs
     // since we have dups in bigSearcher
@@ -390,10 +390,8 @@ public class TestBoolean2 extends LuceneTestCase {
 
         // check diff (randomized) scorers (from AssertingSearcher) produce the same results
         ScoreDoc[] hits1 =
-            searcher.search(q1, TopFieldCollector.createSharedManager(sort, 1000, null, 1))
-                .scoreDocs;
-        TopDocs topDocs =
-            searcher.search(q1, TopFieldCollector.createSharedManager(sort, 1000, null, 1));
+            searcher.search(q1, new TopFieldCollectorManager(sort, 1000, 1)).scoreDocs;
+        TopDocs topDocs = searcher.search(q1, new TopFieldCollectorManager(sort, 1000, 1));
         ScoreDoc[] hits2 = topDocs.scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
 
@@ -406,12 +404,10 @@ public class TestBoolean2 extends LuceneTestCase {
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
         hits1 =
-            bigSearcher.search(
-                    q1, TopFieldCollector.createSharedManager(sort, 1000 * mulFactor, null, 1))
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
                 .scoreDocs;
         hits2 =
-            bigSearcher.search(
-                    q1, TopFieldCollector.createSharedManager(sort, 1000 * mulFactor, null, 1))
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
                 .scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
@@ -427,8 +423,8 @@ public class TestBoolean2 extends LuceneTestCase {
 
   // used to set properties or change every BooleanQuery
   // generated from randBoolQuery.
-  public static interface Callback {
-    public void postCreate(BooleanQuery.Builder q);
+  public interface Callback {
+    void postCreate(BooleanQuery.Builder q);
   }
 
   // Random rnd is passed in so that the exact same random query may be created

@@ -109,6 +109,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -374,7 +375,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.7.0-cfs",
     "9.7.0-nocfs",
     "9.8.0-cfs",
-    "9.8.0-nocfs"
+    "9.8.0-nocfs",
+    "9.9.0-cfs",
+    "9.9.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -392,7 +395,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.5.0",
     "sorted.9.6.0",
     "sorted.9.7.0",
-    "sorted.9.8.0"
+    "sorted.9.8.0",
+    "sorted.9.9.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -2237,6 +2241,25 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
                   "only supports reading from version " + Version.LATEST.major + " upwards."));
       // now open with allowed min version
       StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
+    }
+  }
+
+  // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
+  // of wikibigall unique terms) that shows the read-time exception of
+  // IntersectTermsEnum (used by WildcardQuery)
+  public void testWildcardQueryExceptions990() throws IOException {
+    Path path = createTempDir("12895");
+
+    String name = "index.12895.9.8.0.zip";
+    InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name);
+    assertNotNull("missing zip file to reproduce #12895", resource);
+    TestUtil.unzip(resource, path);
+
+    try (Directory dir = newFSDirectory(path);
+        DirectoryReader reader = DirectoryReader.open(dir)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+
+      searcher.count(new WildcardQuery(new Term("field", "*qx*")));
     }
   }
 

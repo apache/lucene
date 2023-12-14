@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.MultiTermQuery;
@@ -103,7 +104,7 @@ public class SortedSetDocValuesField extends Field {
    * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on postings, such as
    * {@link TermInSetQuery}.
    */
-  public static Query newSlowSetQuery(String field, BytesRef... values) {
+  public static Query newSlowSetQuery(String field, Collection<BytesRef> values) {
     return new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
   }
 }

@@ -139,7 +139,9 @@ public class TestCheckIndex extends BaseTestCheckIndex {
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
+      CheckIndex.Status status =
+          TestUtil.checkIndex(
+              dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, output);
 
       assertEquals(1, status.segmentInfos.size());
 

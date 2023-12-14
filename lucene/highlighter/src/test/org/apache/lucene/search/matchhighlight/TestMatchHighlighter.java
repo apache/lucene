@@ -613,16 +613,15 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
-                  if (values.length <= limit) {
-                    return Arrays.asList(values);
+                  if (values.size() <= limit) {
+                    return values;
                   } else {
-                    List<String> collected =
-                        Stream.of(values).limit(limit).collect(Collectors.toList());
-                    int remaining = values.length - collected.size();
+                    List<String> collected = values.subList(0, limit);
+                    int remaining = values.size() - collected.size();
                     collected.add(String.format(Locale.ROOT, "[%d omitted]", remaining));
                     return collected;
                   }
@@ -729,7 +728,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
