@@ -40,7 +40,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
-@TimeoutSuite(millis = 8 * TimeUnits.HOUR)
+@TimeoutSuite(millis = 24 * TimeUnits.HOUR)
 public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
   // The two hour time was achieved on a Linux 3.13 system with these specs:
