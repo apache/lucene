@@ -121,7 +121,10 @@ public final class CompetitiveImpactAccumulator {
 
     System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
 
-    otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
+    // TODO: optimize add operation for this empty treeset.
+    for (Impact entry : acc.otherFreqNormPairs) {
+      add(entry, otherFreqNormPairs);
+    }
 
     empty = false;
     assert assertConsistent();
