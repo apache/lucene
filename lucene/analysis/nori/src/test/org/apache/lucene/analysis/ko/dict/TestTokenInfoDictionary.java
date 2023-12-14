@@ -205,7 +205,7 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
               + FST.VERSION_CURRENT
               + " but got: "
               + actualVersion
-              + "; run \"./gradlew regenerate\" to regenerate this FST and all other resources",
+              + "; run \"./gradlew :lucene:analysis:nori:regenerate\" to regenerate this FST",
           FST.VERSION_CURRENT,
           actualVersion);
     }
