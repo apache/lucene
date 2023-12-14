@@ -202,7 +202,7 @@ public class StringValueFacetCounts extends Facets {
           }
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
-            bottomCount = q.top().value;
+            bottomCount = (int) q.top().value;
             bottomOrd = q.top().ord;
           }
         }
@@ -224,7 +224,7 @@ public class StringValueFacetCounts extends Facets {
             }
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
-              bottomCount = q.top().value;
+              bottomCount = (int) q.top().value;
               bottomOrd = q.top().ord;
             }
           }
