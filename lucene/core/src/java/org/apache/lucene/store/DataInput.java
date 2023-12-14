@@ -99,17 +99,6 @@ public abstract class DataInput implements Cloneable {
     return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
   }
 
-  // just for benchmark only, it will be removed before the PR is merged
-  public final void readGroupVIntsBaseline(long[] dst, int limit) throws IOException {
-    int i;
-    for (i = 0; i <= limit - 4; i += 4) {
-      GroupVIntUtil.readGroupVInt(this, dst, i);
-    }
-    for (; i < limit; ++i) {
-      dst[i] = readVInt();
-    }
-  }
-
   /**
    * Read all the group varints, including the tail vints. we need a long[] because this is what
    * postings are using, all longs are actually required to be integers.

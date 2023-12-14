@@ -25,12 +25,14 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -139,6 +141,16 @@ public class GroupVIntBenchmark {
     byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
   }
 
+  private void readGroupVIntsBaseline(DataInput in, long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      GroupVIntUtil.readGroupVInt(in, dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
+    }
+  }
+
   @Setup(Level.Trial)
   public void init() throws Exception {
     long[] docs = new long[maxSize];
@@ -178,7 +190,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
-    byteBufferGVIntIn.readGroupVIntsBaseline(values, size);
+    this.readGroupVIntsBaseline(byteBufferGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -208,7 +220,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchNIOFSDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     nioGVIntIn.seek(0);
-    nioGVIntIn.readGroupVIntsBaseline(values, size);
+    this.readGroupVIntsBaseline(nioGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -222,7 +234,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchByteBuffersIndexInput_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
-    byteBuffersGVIntIn.readGroupVIntsBaseline(values, size);
+    this.readGroupVIntsBaseline(byteBuffersGVIntIn, values, size);
     bh.consume(values);
   }
 }
