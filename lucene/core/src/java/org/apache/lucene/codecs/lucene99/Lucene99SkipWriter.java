@@ -166,7 +166,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
     this.curPayPointer = payFP;
     this.curPosBufferUpto = posBufferUpto;
     this.curPayloadByteUpto = payloadByteUpto;
-    this.curCompetitiveFreqNorms[0].merge(competitiveFreqNorms);
+    this.curCompetitiveFreqNorms[0].copy(competitiveFreqNorms);
     bufferSkip(numDocs);
   }
 
@@ -202,7 +202,11 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
     CompetitiveImpactAccumulator competitiveFreqNorms = curCompetitiveFreqNorms[level];
     assert competitiveFreqNorms.getCompetitiveFreqNormPairs().size() > 0;
     if (level + 1 < numberOfSkipLevels) {
-      curCompetitiveFreqNorms[level + 1].merge(competitiveFreqNorms);
+      if (curCompetitiveFreqNorms[level + 1].isEmpty()) {
+        curCompetitiveFreqNorms[level + 1].copy(competitiveFreqNorms);
+      } else {
+        curCompetitiveFreqNorms[level + 1].addAll(competitiveFreqNorms);
+      }
     }
     writeImpacts(competitiveFreqNorms, freqNormOut);
     skipBuffer.writeVInt(Math.toIntExact(freqNormOut.size()));

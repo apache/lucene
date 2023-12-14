@@ -86,14 +86,13 @@ public final class CompetitiveImpactAccumulator {
     assert assertConsistent();
   }
 
-  /** Merge {@code acc} into this. */
-  public void merge(CompetitiveImpactAccumulator acc) {
-    if (empty) {
-      copy(acc);
-      empty = false;
-    } else {
-      addAll(acc);
-    }
+  /**
+   * Returns {@code true} if this acc contains no elements.
+   *
+   * @return {@code true} if this acc contains no elements
+   */
+  public boolean isEmpty() {
+    return empty;
   }
 
   /** Add {@code acc} into this. */
@@ -108,19 +107,23 @@ public final class CompetitiveImpactAccumulator {
       add(entry, otherFreqNormPairs);
     }
 
+    empty = false;
     assert assertConsistent();
   }
 
   /** Copy {@code acc} into this empty acc. */
   public void copy(CompetitiveImpactAccumulator acc) {
+    assert Arrays.stream(maxFreqs).sum() == 0;
+    assert otherFreqNormPairs.isEmpty();
+
     int[] maxFreqs = this.maxFreqs;
     int[] otherMaxFreqs = acc.maxFreqs;
-    assert Arrays.stream(maxFreqs).sum() == 0;
 
     System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
 
     otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
 
+    empty = false;
     assert assertConsistent();
   }
 
