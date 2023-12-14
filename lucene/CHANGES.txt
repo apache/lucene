@@ -213,6 +213,8 @@ Other
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
+* GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
 ======================== Lucene 9.9.1 =======================
 
 Bug Fixes

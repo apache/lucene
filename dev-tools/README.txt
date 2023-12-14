@@ -5,8 +5,8 @@ as to the usefulness of the tools.
 
 Description of dev-tools/ contents:
 
-./size-estimator-lucene-solr.xls -- Spreadsheet for estimating memory and disk usage in Lucene/Solr
+./aws-jmh/       -- Scripts for running microbenchmarks across different ec2 instance types.
+./doap/          -- Lucene project descriptors in DOAP RDF format.
 ./missing-doclet -- JavaDoc validation doclet subproject
-./doap/       -- Lucene and Solr project descriptors in DOAP RDF format.
-./scripts/    -- Odds and ends for building releases, etc.
-./test-patch/ -- Scripts for automatically validating patches
+./scripts/       -- Odds and ends for building releases, etc.
+./test-patch/    -- Scripts for automatically validating patches
