@@ -94,7 +94,10 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     Transition t1 = new Transition();
     Transition t2 = new Transition();
     automaton1.initTransition(state, t1);
-    automaton2.initTransition(state, t2);
+    if (random().nextBoolean()) {
+      // init is not really necessary for t2
+      automaton2.initTransition(state, t2);
+    }
     int numStates = automaton2.getNumTransitions(state);
     for (int i = 0; i < numStates; i++) {
       automaton1.getNextTransition(t1);
