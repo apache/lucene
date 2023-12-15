@@ -211,7 +211,8 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
 }
 
 
-bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_address) {
+bool get_field_address(uintptr_t index, const term_t* field,
+                        uintptr_t* field_norms_address, uintptr_t* field_bt_address) {
 
     // get a decoder from the pool
     decoder_t* decoder = decoder_pool_get_one();
@@ -234,13 +235,17 @@ bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_ad
     lookup_term_block(decoder, field, &term_blocks[me()]);
 
     if(term_blocks[me()].term == 0) {
-        *field_address = 0;
+        *field_norms_address = 0;
+        *field_bt_address = 0;
         // field not found
         decoder_pool_release_one(decoder);
         return false;
     }
 
-    *field_address = index_begin_addr + block_table_offset + term_blocks[me()].block_address;
+    seek_decoder(decoder, index_begin_addr + block_table_offset + term_blocks[me()].block_address);
+    uint32_t skip_norms = decode_vint_from(decoder);
+    *field_norms_address = get_absolute_address_from(decoder);
+    *field_bt_address = *field_norms_address + skip_norms;
     decoder_pool_release_one(decoder);
 
     return true;

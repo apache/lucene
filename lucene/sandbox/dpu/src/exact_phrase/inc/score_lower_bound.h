@@ -18,7 +18,7 @@ typedef struct _score {
     uint32_t freq_and_norm;
 } score_t;
 
-void init_lower_bound_globals(uint32_t ndocs, uintptr_t norms_addr);
+void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr);
 
 void reset_scores(uint32_t);
 

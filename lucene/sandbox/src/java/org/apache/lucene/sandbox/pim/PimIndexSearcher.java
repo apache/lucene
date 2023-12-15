@@ -439,6 +439,9 @@ public class PimIndexSearcher implements Closeable {
       blockTableTree = null;
       try {
         blockTableInput.seek(fieldResult.block.address);
+        // skip norms info from index
+        int skip = blockTableInput.readVInt();
+        blockTableInput.skipBytes(skip);
         blockTableTree = BytesRefToDataBlockTreeMap.read(blockTableInput);
       } catch (IOException e) {
         throw new RuntimeException(e);

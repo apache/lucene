@@ -253,9 +253,13 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     dpuSystem.async().exec(null);
 
     if (DpuConstants.DEBUG_DPU) {
-      dpuSystem.async().sync();
-      for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
-        dpuSystem.ranks().get(i).log();
+      try {
+        dpuSystem.async().sync();
+      }
+      finally {
+        for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
+          dpuSystem.ranks().get(i).log();
+        }
       }
     }
 

@@ -5,7 +5,7 @@
  * Maximum number of queries in a batch
  * TODO enforce it on the host
  */
-#define DPU_MAX_BATCH_SIZE 128
+#define DPU_MAX_BATCH_SIZE 64
 /**
  * Maximum size in bytes of a batch of queries
  * TODO enforce it on the host

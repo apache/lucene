@@ -103,6 +103,9 @@ int main() {
 #endif
     if(me() == 0) {
 
+        // TODO hack for test
+        new_query = 1;
+        nb_max_doc_match = UINT32_MAX;
         if(new_query) {
 
 #ifdef PERF_MESURE
@@ -133,7 +136,7 @@ int main() {
         reset_scores(nb_queries_in_batch);
     }
     // TODO is this barrier really useful ?
-    //barrier_wait(&barrier);
+    barrier_wait(&barrier);
 
     // first lookup the postings addresses for each query/term/segment
     // store them in MRAM for later use by the tasklets to find matching document/positions
@@ -164,7 +167,7 @@ int main() {
         uint64_t nr_results = 0;
         current_segment[me()] = 0;
 
-        /*printf("tid:%d start query %d segment %d nr_terms %d\n", me(), query_id, segment_id, nr_terms);*/
+        //printf("tid:%d start query %d segment %d nr_terms %d\n", me(), query_id, segment_id, nr_terms);
 
         // nr_terms is set to zero if the field was not found, or no postings were found for some of the terms
         if(nr_terms != 0) {
@@ -172,8 +175,9 @@ int main() {
             init_results_cache(query_id, 0, segment_id);
 
             get_postings_from_cache(query_id, nr_terms, segment_id, postings_cache_wram[me()]);
-            if(postings_cache_wram[me()][0].size == 0)
+            if(postings_cache_wram[me()][0].size == 0) {
                 continue;
+            }
 
             did_matcher_t *matchers = setup_matchers(nr_terms, postings_cache_wram[me()]);
 
@@ -199,8 +203,11 @@ int main() {
 #ifdef DEBUG
         printf("tid %d nr_results for query %d:%d = %lu\n", me(), query_id, segment_id, nr_results);
 #endif
-        if(nr_results)
-            mram_update_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id],
+        if(new_query)
+                mram_write_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id],
+                                        nr_results);
+        else if(nr_results)
+                mram_update_int_atomic(&results_segment_offset[query_id * (1 << nr_segments_log2) + segment_id],
                                     adder, (void*)nr_results);
     }
 
@@ -454,14 +461,18 @@ static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id) {
     read_query_type(&query_parser, &query_type);
     assert(query_type == PIM_PHRASE_QUERY_TYPE); // only PIM PHRASE QUERY TYPE supported
 
-    // lookup the field block table address, if not found return
+    // lookup the field norms and block table addresses, if not found return
     // do it only once for all the terms
-    uintptr_t field_address;
+    uintptr_t field_norms_address, field_bt_address;
     term_t term;
     read_field(&query_parser, &term);
 
-    if(!get_field_address(index, &term, &field_address))
+    if(!get_field_address(index, &term, &field_norms_address, &field_bt_address))
         goto end;
+
+    //printf("query_id= %d norms_addr=%p block_addr=%p\n", query_id, field_norms_address, field_bt_address);
+    // register where the norms are to be read for this query
+    set_query_doc_norms_addr(query_id, field_norms_address);
 
     uint32_t nr_terms;
     read_nr_terms(&query_parser, &nr_terms);
@@ -474,7 +485,7 @@ static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id) {
 
     for (int each_term = 0; each_term < nr_terms; each_term++) {
         read_term(&query_parser, &term);
-        if(!get_term_postings(field_address, &term, postings_cache_wram[me()]))
+        if(!get_term_postings(field_bt_address, &term, postings_cache_wram[me()]))
                 goto end;
         set_postings_in_cache(query_id, each_term, 1 << nr_segments_log2, postings_cache_wram[me()]);
     }
@@ -501,9 +512,6 @@ static void get_segments_info(uintptr_t index) {
     // read lucene segments max doc info
     for(int i = 0; i < nr_lucene_segments; ++i)
         lucene_segment_maxdoc[i] = decode_vint_from(decoder);
-
-    // TODO retrieve the norms info
-    init_lower_bound_globals(0 /*ndocs*/, 0 /*norms_addr*/);
 
     decoder_pool_release_one(decoder);
 }

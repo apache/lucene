@@ -13,8 +13,10 @@
 
 /**
  * Lookup the address of a field in the index
+ * Provides the address of the norms hash table and the address of the terms block table
  */
-bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_address);
+bool get_field_address(uintptr_t index, const term_t* field,
+                            uintptr_t* field_norms_address, uintptr_t* field_bt_address);
 
 /**
  * Lookup the postings of a term in the index for all its segments

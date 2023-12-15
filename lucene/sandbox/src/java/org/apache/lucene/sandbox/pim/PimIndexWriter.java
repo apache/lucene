@@ -29,19 +29,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -171,6 +161,19 @@ public class PimIndexWriter extends IndexWriter {
           // Send the term enum to DpuTermIndexes.
           // DpuTermIndexes separates the term docs according to the docId range split per DPU.
           dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos));
+
+          // write the norms to be stored in PIM index
+          int startDoc = 0;
+          for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
+            LeafReaderContext leafReaderContext = leaves.get(leafIdx);
+            LeafReader reader = leafReaderContext.reader();
+            NumericDocValues norms = reader.getNormValues(fieldInfo.name);
+            dpuTermIndexes.writeDocNorms(norms, startDoc);
+            SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
+            startDoc += segmentCommitInfo.info.maxDoc();
+          }
+
+          dpuTermIndexes.endField();
         }
       }
       // successfully updated the PIM index, register it
@@ -392,9 +395,21 @@ public class PimIndexWriter extends IndexWriter {
         }
         termsEnum.next();
       }
+    }
+
+    void endField() {
 
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.endField();
+      }
+    }
+
+    void writeDocNorms(NumericDocValues norms, int startDoc) throws IOException {
+      int doc;
+      while((doc = norms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        doc += startDoc;
+        int dpu = getDpuForDoc(doc);
+        termIndexes[dpu].writeDocNorm(doc, norms.longValue());
       }
     }
 
@@ -503,6 +518,8 @@ public class PimIndexWriter extends IndexWriter {
         for (int j = 1; j < pimIndexInfo.getNumSegments(); ++j)
           compoundOutput.writeVInt(pimIndexInfo.getStartDoc(j));
         compoundOutput.writeVInt(Integer.MAX_VALUE);
+
+        // TODO write nbDocs and the hash table for doc norms
 
         // write offset to each section
         compoundOutput.writeVLong(dpuIndexBlockTableAddr[i]);
@@ -614,6 +631,7 @@ public class PimIndexWriter extends IndexWriter {
 
       ByteArrayOutputStream statsOut;
       IndexInfo info;
+      HashMap<Integer, Integer> docNormsMap;
 
       DpuTermIndex(
           int dpuIndex,
@@ -642,6 +660,7 @@ public class PimIndexWriter extends IndexWriter {
           this.statsOut = new ByteArrayOutputStream();
         }
         this.info = null;
+        this.docNormsMap = new HashMap<Integer, Integer>();
       }
 
       void resetForNextField() {
@@ -807,6 +826,61 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
 
+      static int wangHash(int key) {
+        key += ~(key << 15);
+        key ^= (key >>> 10);
+        key += (key << 3);
+        key ^= (key >>> 6);
+        key += ~(key << 11);
+        key ^= (key >>> 16);
+        return key;
+      }
+
+      private void writeNormsHashTable() throws IOException {
+
+        int nbDocs = docNormsMap.size();
+        // TODO, is this correct ?
+        if(nbDocs == 0) return;
+
+        // hashSize is the next power of 2 after nbDocs
+        // we need hashSize to be a power of 2 so that modulo is easily computable in DPU
+        int hashSize = 1 << (32 - Integer.numberOfLeadingZeros(nbDocs - 1));
+        short[] hashTable = new short[hashSize];
+        for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
+          //System.out.println("key=" + entry.getKey() + " hash=" + (wangHash(entry.getKey())) + " hashSize=" + hashSize
+          //        + " nbDocs=" + nbDocs + " " + (Integer.numberOfLeadingZeros(0)));
+          //System.out.flush();
+          int hash = wangHash(entry.getKey()) & (hashSize - 1);
+          // Note: we encode a conflict with a value of 0
+          // There is also the case (is it possible ?) that the norm is effectively 0
+          // This will be handled as if there was a conflict
+          assert entry.getValue() < 256;
+          if(entry.getValue() == 0 || hashTable[hash] != 0) {
+            // conflict, store the norm value at the end
+            hashTable[hash] = 0;
+            posBuffer.writeVInt(entry.getKey());
+            posBuffer.writeByte((byte) (entry.getValue() & 0xFF));
+          }
+          else {
+              hashTable[hash] = entry.getValue().shortValue();
+              //System.out.println("doc=" + entry.getKey() + " norm=" + entry.getValue().byteValue());
+          }
+        }
+
+        // hashSize is a power of 2, the number of trailing zeros should be the log2
+        int hashSizeLog2 = Integer.numberOfTrailingZeros(hashSize);
+        assert hashSizeLog2 < 256;
+        int skipInfo = Math.toIntExact(1 + hashSize + posBuffer.size());
+        //System.out.println("skipInfo=" + skipInfo + " hashSize=" + hashSize + "posBuffer=" + posBuffer.size());
+        blocksTableOutput.writeVInt(skipInfo);
+        blocksTableOutput.writeByte((byte) (hashSizeLog2 & 0xFF));
+        for(int i = 0; i < hashSize; ++i)
+          blocksTableOutput.writeByte((byte) (hashTable[i] & 0xFF));
+        if(posBuffer.size() != 0)
+          posBuffer.copyTo(blocksTableOutput);
+        posBuffer.reset();
+      }
+
       void writeBlockTable() throws IOException {
 
         if (blockList.size() == 0) return;
@@ -868,6 +942,7 @@ public class PimIndexWriter extends IndexWriter {
           // write byte size of the postings of the last term (if any) and write the segment skip
           // info
           finishDpuSegmentsInfo();
+          writeNormsHashTable();
           writeBlockTable();
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -894,6 +969,10 @@ public class PimIndexWriter extends IndexWriter {
         blocksTableOutput.close();
         blocksOutput.close();
         postingsOutput.close();
+      }
+
+      public void writeDocNorm(int doc, long norm) {
+        docNormsMap.put(doc, ((byte) norm) & 0xFF);
       }
 
       public static class IndexInfo {
