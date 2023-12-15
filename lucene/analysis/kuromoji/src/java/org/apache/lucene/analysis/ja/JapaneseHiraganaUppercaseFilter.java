@@ -60,17 +60,13 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      char[] result = new char[termAttr.length()];
-      for (int i = 0; i < termAttr.length(); i++) {
-        Character c = LETTER_MAPPINGS.get(termAttr.charAt(i));
+      char[] termBuffer = termAttr.buffer();
+      for (int i = 0; i < termBuffer.length; i++) {
+        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
         if (c != null) {
-          result[i] = c;
-        } else {
-          result[i] = termAttr.charAt(i);
+          termBuffer[i] = c;
         }
       }
-      String resultTerm = String.copyValueOf(result);
-      termAttr.setEmpty().append(resultTerm);
       return true;
     } else {
       return false;
