@@ -4952,4 +4952,29 @@ public class TestIndexWriter extends LuceneTestCase {
           ex.getMessage());
     }
   }
+
+  public void testParentFieldIsAlreadyUsed() throws IOException {
+    try (Directory dir = newDirectory()) {
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document doc = new Document();
+        doc.add(new StringField("parent", Integer.toString(1), Field.Store.YES));
+        writer.addDocument(doc);
+        writer.commit();
+      }
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                config.setParentField("parent");
+
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "cannot configure [parent] as parent document field ; this index uses [parent] as non parent document field already",
+          iae.getMessage());
+    }
+  }
 }
