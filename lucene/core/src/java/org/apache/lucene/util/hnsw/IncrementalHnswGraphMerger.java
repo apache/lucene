@@ -181,9 +181,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
         newDocId = mergedVectorIterator.nextDoc()) {
-      if (newIdToOldOrdinal.containsKey(newDocId)) {
+      int hashDocIndex = newIdToOldOrdinal.indexOf(newDocId);
+      if (newIdToOldOrdinal.indexExists(hashDocIndex)) {
         initializedNodes.set(newOrd);
-        oldToNewOrdinalMap[newIdToOldOrdinal.get(newDocId)] = newOrd;
+        oldToNewOrdinalMap[newIdToOldOrdinal.indexGet(hashDocIndex)] = newOrd;
       }
       newOrd++;
     }
