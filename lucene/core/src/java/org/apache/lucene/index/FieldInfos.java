@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
@@ -184,17 +185,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
       return leaves.get(0).reader().getFieldInfos();
     } else {
       final String softDeletesField =
-          leaves.stream()
-              .map(l -> l.reader().getFieldInfos().getSoftDeletesField())
-              .filter(Objects::nonNull)
-              .findAny()
-              .orElse(null);
+          getAndValidateSpecialField(
+              "soft-deletes", leaves, r -> r.getFieldInfos().getSoftDeletesField());
       final String parentField =
-          leaves.stream()
-              .map(l -> l.reader().getFieldInfos().getParentField())
-              .filter(Objects::nonNull)
-              .findAny()
-              .orElse(null);
+          getAndValidateSpecialField("parent", leaves, r -> r.getFieldInfos().getParentField());
       final Builder builder = new Builder(new FieldNumbers(softDeletesField, parentField));
       for (final LeafReaderContext ctx : leaves) {
         for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
@@ -203,6 +197,29 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
       return builder.finish();
     }
+  }
+
+  private static String getAndValidateSpecialField(
+      String type, List<LeafReaderContext> leaves, Function<LeafReader, String> provider) {
+    boolean set = false;
+    String theField = null;
+    for (LeafReaderContext ctx : leaves) {
+      String field = provider.apply(ctx.reader());
+      if (set && Objects.equals(field, theField) == false) {
+        throw new IllegalStateException(
+            "expected "
+                + type
+                + " field to be \""
+                + theField
+                + " \" across all segments but found a segment with different field \""
+                + field
+                + "\"");
+      } else {
+        theField = field;
+        set = true;
+      }
+    }
+    return theField;
   }
 
   /** Returns a set of names of fields that have a terms index. The order is undefined. */

@@ -98,6 +98,7 @@ public class LiveIndexWriterConfig {
   /** The field names involved in the index sort */
   protected Set<String> indexSortFields = Collections.emptySet();
 
+  /** parent document field */
   protected String parentField = null;
 
   /**
@@ -460,6 +461,7 @@ public class LiveIndexWriterConfig {
     return eventListener;
   }
 
+  /** Returns the parent document field name if configured. */
   public String getParentField() {
     return parentField;
   }
