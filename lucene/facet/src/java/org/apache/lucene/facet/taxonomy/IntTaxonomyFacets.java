@@ -27,7 +27,10 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to int. */
-abstract class IntTaxonomyFacets extends TaxonomyFacetAssociations {
+abstract class IntTaxonomyFacets extends TaxonomyFacets {
+
+  /** Aggregation function used for combining values. */
+  protected final AssociationAggregationFunction aggregationFunction;
 
   /** Dense ordinal values. */
   int[] values;
@@ -43,7 +46,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacetAssociations {
       AssociationAggregationFunction aggregationFunction,
       FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config, aggregationFunction, fc);
+    super(indexFieldName, taxoReader, config, fc);
+    this.aggregationFunction = aggregationFunction;
     valueComparator = Comparator.comparingInt(o -> (int) o);
   }
 
@@ -86,15 +90,15 @@ abstract class IntTaxonomyFacets extends TaxonomyFacetAssociations {
   }
 
   @Override
-  protected void updateValue(int ordinal, int childOrdinal) throws IOException {
-    int currentValue = getValue(ordinal);
-    int newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
-    setValue(ordinal, newValue);
+  protected Number aggregate(Number existingVal, Number newVal) {
+    return aggregationFunction.aggregate((int) existingVal, (int) newVal);
   }
 
   @Override
-  protected Number aggregate(Number existingVal, Number newVal) {
-    return aggregationFunction.aggregate((int) existingVal, (int) newVal);
+  protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    int currentValue = getValue(ordinal);
+    int newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
+    setValue(ordinal, newValue);
   }
 
   private int rollup(int ord) throws IOException {
@@ -102,7 +106,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacetAssociations {
     int[] siblings = getSiblings();
     int aggregatedValue = 0;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      updateValue(ord, children[ord]);
+      updateValueFromRollup(ord, children[ord]);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
       ord = siblings[ord];
     }
@@ -116,13 +120,13 @@ abstract class IntTaxonomyFacets extends TaxonomyFacetAssociations {
   @Override
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
-    TopOrdAndNumberQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
+    TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
     int bottomOrd = Integer.MAX_VALUE;
 
     int aggregatedValue = 0;
     int childCount = 0;
-    TopOrdAndNumberQueue.OrdAndValue reuse = null;
+    TopOrdAndIntQueue.OrdAndValue reuse = null;
 
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap

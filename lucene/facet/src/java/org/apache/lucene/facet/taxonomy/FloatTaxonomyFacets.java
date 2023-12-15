@@ -24,7 +24,10 @@ import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to float. */
-abstract class FloatTaxonomyFacets extends TaxonomyFacetAssociations {
+abstract class FloatTaxonomyFacets extends TaxonomyFacets {
+
+  /** Aggregation function used for combining values. */
+  protected final AssociationAggregationFunction aggregationFunction;
 
   /** Dense ordinal values. */
   float[] values;
@@ -40,7 +43,8 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacetAssociations {
       FacetsConfig config,
       FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config, aggregationFunction, fc);
+    super(indexFieldName, taxoReader, config, fc);
+    this.aggregationFunction = aggregationFunction;
     valueComparator = (o1, o2) -> Float.compare(o1.floatValue(), o2.floatValue());
   }
 
@@ -83,15 +87,15 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacetAssociations {
   }
 
   @Override
-  protected void updateValue(int ordinal, int childOrdinal) throws IOException {
-    float currentValue = getValue(ordinal);
-    float newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
-    setValue(ordinal, newValue);
+  protected Number aggregate(Number existingVal, Number newVal) {
+    return aggregationFunction.aggregate(existingVal.floatValue(), newVal.floatValue());
   }
 
   @Override
-  protected Number aggregate(Number existingVal, Number newVal) {
-    return aggregationFunction.aggregate(existingVal.floatValue(), newVal.floatValue());
+  protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    float currentValue = getValue(ordinal);
+    float newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
+    setValue(ordinal, newValue);
   }
 
   private float rollup(int ord) throws IOException {
@@ -99,7 +103,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacetAssociations {
     int[] siblings = getSiblings();
     float aggregatedValue = 0f;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      updateValue(ord, children[ord]);
+      updateValueFromRollup(ord, children[ord]);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
       ord = siblings[ord];
     }

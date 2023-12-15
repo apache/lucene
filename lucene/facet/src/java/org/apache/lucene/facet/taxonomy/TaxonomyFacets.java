@@ -47,9 +47,9 @@ abstract class TaxonomyFacets extends Facets {
   private static class DimValue {
     String dim;
     int dimOrd;
-    int value;
+    Number value;
 
-    DimValue(String dim, int dimOrd, int value) {
+    DimValue(String dim, int dimOrd, Number value) {
       this.dim = dim;
       this.dimOrd = dimOrd;
       this.value = value;
@@ -100,6 +100,8 @@ abstract class TaxonomyFacets extends Facets {
   /** Have value counters been initialized. */
   boolean initialized;
 
+  protected Comparator<Number> valueComparator;
+
   /** Sole constructor. */
   TaxonomyFacets(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
@@ -109,6 +111,7 @@ abstract class TaxonomyFacets extends Facets {
     this.config = config;
     this.fc = fc;
     parents = taxoReader.getParallelTaxonomyArrays().parents();
+    valueComparator = Comparator.comparingInt((x) -> (int) x);
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
@@ -163,6 +166,14 @@ abstract class TaxonomyFacets extends Facets {
     } else {
       return counts[ordinal];
     }
+  }
+
+  Number getNumberValue(int ordinal) {
+    return getCount(ordinal);
+  }
+
+  protected Number aggregate(Number existingVal, Number newVal) {
+    return (int) existingVal + (int) newVal;
   }
 
   /** Were any values actually aggregated during counting? */
@@ -234,6 +245,10 @@ abstract class TaxonomyFacets extends Facets {
     return dimConfig;
   }
 
+  protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    setCount(ordinal, getCount(ordinal) + rollup(childOrdinal));
+  }
+
   /** Rolls up any single-valued hierarchical dimensions. */
   void rollup() throws IOException {
     if (initialized == false) {
@@ -242,9 +257,9 @@ abstract class TaxonomyFacets extends Facets {
 
     // Rollup any necessary dims:
     int[] children = null;
-    for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
+    for (Map.Entry<String, FacetsConfig.DimConfig> ent : config.getDimConfigs().entrySet()) {
       String dim = ent.getKey();
-      DimConfig ft = ent.getValue();
+      FacetsConfig.DimConfig ft = ent.getValue();
       if (ft.hierarchical && ft.multiValued == false) {
         int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
         // It can be -1 if this field was declared in the
@@ -254,9 +269,7 @@ abstract class TaxonomyFacets extends Facets {
             // lazy init
             children = getChildren();
           }
-          int currentValue = getCount(dimRootOrd);
-          int newValue = currentValue + rollup(children[dimRootOrd]);
-          setCount(dimRootOrd, newValue);
+          updateValueFromRollup(dimRootOrd, children[dimRootOrd]);
         }
       }
     }
@@ -280,7 +293,7 @@ abstract class TaxonomyFacets extends Facets {
    * Create a FacetResult for the provided dim + path and intermediate results. Does the extra work
    * of resolving ordinals -> labels, etc. Will return null if there are no children.
    */
-  protected FacetResult createFacetResult(
+  private FacetResult createFacetResult(
       TopChildrenForPath topChildrenForPath, String dim, String... path) throws IOException {
     // If the intermediate result is null or there are no children, we return null:
     if (topChildrenForPath == null || topChildrenForPath.childCount == 0) {
@@ -326,17 +339,20 @@ abstract class TaxonomyFacets extends Facets {
       return null;
     }
 
-    int aggregatedValue = 0;
+    Number aggregatedValue = 0;
+    int aggregatedCount = 0;
 
     IntArrayList ordinals = new IntArrayList();
-    IntArrayList ordValues = new IntArrayList();
+    List<Number> ordValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor c : sparseCounts) {
-        int value = c.value;
-        int ord = c.key;
-        if (parents[ord] == dimOrd && value > 0) {
-          aggregatedValue += value;
+      for (IntIntCursor ordAndCount : sparseCounts) {
+        int ord = ordAndCount.key;
+        int count = ordAndCount.value;
+        Number value = getNumberValue(ord);
+        if (parents[ord] == dimOrd && count > 0) {
+          aggregatedCount += count;
+          aggregatedValue = aggregate(aggregatedValue, value);
           ordinals.add(ord);
           ordValues.add(value);
         }
@@ -346,9 +362,11 @@ abstract class TaxonomyFacets extends Facets {
       int[] siblings = getSiblings();
       int ord = children[dimOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        int value = counts[ord];
-        if (value > 0) {
-          aggregatedValue += value;
+        Number value = getNumberValue(ord);
+        int count = counts[ord];
+        if (count > 0) {
+          aggregatedCount += count;
+          aggregatedValue = aggregate(aggregatedValue, value);
           ordinals.add(ord);
           ordValues.add(value);
         }
@@ -356,19 +374,19 @@ abstract class TaxonomyFacets extends Facets {
       }
     }
 
-    if (aggregatedValue == 0) {
+    if (aggregatedCount == 0) {
       return null;
     }
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = getCount(dimOrd);
+        aggregatedValue = getNumberValue(dimOrd);
       } else {
-        // Our sum'd count is not correct, in general:
+        // Our sum'd value is not correct, in general:
         aggregatedValue = -1;
       }
     } else {
-      // Our sum'd dim count is accurate, so we keep it
+      // Our sum'd dim value is accurate, so we keep it
     }
 
     // TODO: It would be nice if TaxonomyReader let us pass in a buffer + size so we didn't have to
@@ -386,7 +404,7 @@ abstract class TaxonomyFacets extends Facets {
    * Determine the top-n children for a specified dimension + path. Results are in an intermediate
    * form.
    */
-  private TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
+  protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
@@ -492,7 +510,7 @@ abstract class TaxonomyFacets extends Facets {
     if (ord < 0) {
       return -1;
     }
-    return initialized ? getCount(ord) : 0;
+    return initialized ? getNumberValue(ord) : 0;
   }
 
   @Override
@@ -544,13 +562,14 @@ abstract class TaxonomyFacets extends Facets {
         new PriorityQueue<>(topNDims) {
           @Override
           protected boolean lessThan(DimValue a, DimValue b) {
-            if (a.value > b.value) {
-              return false;
-            } else if (a.value < b.value) {
+            int comparison = valueComparator.compare(a.value, b.value);
+            if (comparison < 0) {
               return true;
-            } else {
-              return a.dim.compareTo(b.dim) > 0;
             }
+            if (comparison > 0) {
+              return false;
+            }
+            return a.dim.compareTo(b.dim) > 0;
           }
         };
 
@@ -566,12 +585,12 @@ abstract class TaxonomyFacets extends Facets {
         FacetLabel cp = new FacetLabel(dim);
         int dimOrd = taxoReader.getOrdinal(cp);
         if (dimOrd != -1) {
-          int dimValue;
+          Number dimValue;
           if (dimConfig.multiValued) {
             if (dimConfig.requireDimCount) {
               // If the dim is configured as multi-valued and requires dim counts, we can access
               // an accurate count for the dim computed at indexing time:
-              dimValue = getCount(dimOrd);
+              dimValue = getNumberValue(dimOrd);
             } else {
               // If the dim is configured as multi-valued but not requiring dim counts, we cannot
               // compute an accurate dim count, and use -1 as a place-holder:
@@ -588,14 +607,15 @@ abstract class TaxonomyFacets extends Facets {
               intermediateResults = new HashMap<>();
             }
             intermediateResults.put(dim, topChildrenForPath);
-            dimValue = (int) topChildrenForPath.pathValue;
+            dimValue = topChildrenForPath.pathValue();
           }
-          if (dimValue != 0) {
+          if (valueComparator.compare(dimValue, 0) != 0) {
             if (pq.size() < topNDims) {
               pq.add(new DimValue(dim, dimOrd, dimValue));
             } else {
-              if (dimValue > pq.top().value
-                  || (dimValue == pq.top().value && dim.compareTo(pq.top().dim) < 0)) {
+              if (valueComparator.compare(dimValue, pq.top().value) > 0
+                  || (valueComparator.compare(dimValue, pq.top().value) == 0
+                      && dim.compareTo(pq.top().dim) < 0)) {
                 DimValue bottomDim = pq.top();
                 bottomDim.dim = dim;
                 bottomDim.value = dimValue;
