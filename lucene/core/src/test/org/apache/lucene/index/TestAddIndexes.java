@@ -1890,28 +1890,28 @@ public class TestAddIndexes extends LuceneTestCase {
 
   public void testSetDiagnostics() throws IOException {
     MergePolicy myMergePolicy =
-            new FilterMergePolicy(newLogMergePolicy(4)) {
-              @Override
-              public MergeSpecification findMerges(CodecReader... readers) throws IOException {
-                MergeSpecification spec = super.findMerges(readers);
-                if (spec == null) {
-                  return null;
-                }
-                MergeSpecification newSpec = new MergeSpecification();
-                for (OneMerge merge : spec.merges) {
-                  newSpec.add(
-                          new OneMerge(merge) {
-                            @Override
-                            public void setMergeInfo(SegmentCommitInfo info) {
-                              super.setMergeInfo(info);
-                              info.info.addDiagnostics(
-                                      Collections.singletonMap("merge_policy", "my_merge_policy"));
-                            }
-                          });
-                }
-                return newSpec;
-              }
-            };
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            MergeSpecification spec = super.findMerges(readers);
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
     Directory sourceDir = newDirectory();
     try (IndexWriter w = new IndexWriter(sourceDir, newIndexWriterConfig())) {
       Document doc = new Document();
@@ -1922,7 +1922,7 @@ public class TestAddIndexes extends LuceneTestCase {
 
     Directory targetDir = newDirectory();
     try (IndexWriter w =
-                 new IndexWriter(targetDir, newIndexWriterConfig().setMergePolicy(myMergePolicy))) {
+        new IndexWriter(targetDir, newIndexWriterConfig().setMergePolicy(myMergePolicy))) {
       w.addIndexes(codecReader);
     }
 
@@ -1930,7 +1930,7 @@ public class TestAddIndexes extends LuceneTestCase {
     assertNotEquals(0, si.size());
     for (SegmentCommitInfo sci : si) {
       assertEquals(
-              IndexWriter.SOURCE_ADDINDEXES_READERS, sci.info.getDiagnostics().get(IndexWriter.SOURCE));
+          IndexWriter.SOURCE_ADDINDEXES_READERS, sci.info.getDiagnostics().get(IndexWriter.SOURCE));
       assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
     }
     reader.close();
