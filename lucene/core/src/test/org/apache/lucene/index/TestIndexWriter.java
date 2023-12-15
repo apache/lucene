@@ -4906,4 +4906,50 @@ public class TestIndexWriter extends LuceneTestCase {
           "parent document and soft-deletes field can't be the same field", iae.getMessage());
     }
   }
+
+  public void testIndexWithParentFieldIsCongruent() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        if (random().nextBoolean()) {
+          Document child1 = new Document();
+          child1.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          Document child2 = new Document();
+          child2.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          Document parent = new Document();
+          parent.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          writer.addDocuments(Arrays.asList(child1, child2, parent));
+          writer.flush();
+          if (random().nextBoolean()) {
+            writer.addDocuments(Arrays.asList(child1, child2, parent));
+          }
+        } else {
+          writer.addDocument(new Document());
+        }
+        writer.commit();
+      }
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                config.setParentField("someOtherField");
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "cannot configure [someOtherField] as parent document field ; this index uses [parent] as parent document field  already",
+          ex.getMessage());
+      ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "this index has [parent] as parent document field already but parent document field is not configured in IWC",
+          ex.getMessage());
+    }
+  }
 }

@@ -3185,7 +3185,7 @@ public class TestIndexSorting extends LuceneTestCase {
                   writer.addDocuments(Arrays.asList(new Document(), new Document()));
                 });
         assertEquals(
-            "a parent field must be set in order to use document blocks with index sorting; see Sort#getParentField",
+            "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#getParentField",
             ex.getMessage());
       }
     }
@@ -3232,51 +3232,6 @@ public class TestIndexSorting extends LuceneTestCase {
           runnable.run();
         }
       }
-    }
-  }
-
-  public void testIndexWithSortIsCongruent() throws IOException {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
-      iwc.setIndexSort(indexSort);
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        Document child1 = new Document();
-        child1.add(new StringField("id", Integer.toString(1), Store.YES));
-        Document child2 = new Document();
-        child2.add(new StringField("id", Integer.toString(1), Store.YES));
-        Document parent = new Document();
-        parent.add(new StringField("id", Integer.toString(1), Store.YES));
-        writer.addDocuments(Arrays.asList(child1, child2, parent));
-        writer.flush();
-        if (random().nextBoolean()) {
-          writer.addDocuments(Arrays.asList(child1, child2, parent));
-        }
-        writer.commit();
-      }
-      IllegalArgumentException ex =
-          expectThrows(
-              IllegalArgumentException.class,
-              () -> {
-                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
-                Sort sort = new Sort(new SortField("foo", SortField.Type.INT));
-                config.setIndexSort(sort);
-                new IndexWriter(dir, config);
-              });
-      assertTrue(
-          ex.getMessage(),
-          ex.getMessage().endsWith(" to new indexSort=parent field: someOther <int: \"foo\">"));
-
-      ex =
-          expectThrows(
-              IllegalArgumentException.class,
-              () -> {
-                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
-                Sort sort = new Sort(new SortField("foo", SortField.Type.INT));
-                config.setIndexSort(sort);
-                new IndexWriter(dir, config);
-              });
-      assertTrue(ex.getMessage(), ex.getMessage().endsWith(" to new indexSort=<int: \"foo\">"));
     }
   }
 
