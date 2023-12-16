@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOConsumer;
 import org.junit.BeforeClass;
 
 /**
@@ -32,10 +33,6 @@ import org.junit.BeforeClass;
  * &gt; Integer.MAX_VALUE in size using multiple byte buffers.
  */
 public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
-
-  interface DataReader {
-    void read(IndexInput in) throws IOException;
-  }
 
   @Override
   protected Directory getDirectory(Path path, int maxChunkSize) throws IOException {
@@ -88,21 +85,21 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   // to the base test case?
 
   private void assertAlreadyClosed(
-      IndexInput one, IndexInput two, IndexInput three, DataReader reader) throws Exception {
+      IndexInput one, IndexInput two, IndexInput three, IOConsumer<DataInput> consumer) {
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          reader.read(one);
+          consumer.accept(one);
         });
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          reader.read(two);
+          consumer.accept(two);
         });
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          reader.read(three);
+          consumer.accept(three);
         });
   }
 
