@@ -77,20 +77,17 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       String term = termAttr.toString();
-      // Small letter "ㇷ゚" is not single character, so it should be converted to "プ" as String
-      term = term.replace("ㇷ゚", "プ");
-      char[] src = term.toCharArray();
-      char[] result = new char[src.length];
-      for (int i = 0; i < src.length; i++) {
-        Character c = LETTER_MAPPINGS.get(src[i]);
+      if (term.contains("ㇷ゚")) {
+        term = term.replace("ㇷ゚", "プ");
+        termAttr.setEmpty().append(term);
+      }
+      char[] termBuffer = termAttr.buffer();
+      for (int i = 0; i < termBuffer.length; i++) {
+        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
         if (c != null) {
-          result[i] = c;
-        } else {
-          result[i] = src[i];
+          termBuffer[i] = c;
         }
       }
-      String resultTerm = String.copyValueOf(result);
-      termAttr.setEmpty().append(resultTerm);
       return true;
     } else {
       return false;
