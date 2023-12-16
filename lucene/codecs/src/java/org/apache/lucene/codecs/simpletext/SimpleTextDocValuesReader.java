@@ -329,7 +329,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
               } catch (ParseException pe) {
                 throw new CorruptIndexException("failed to parse int length", in, pe);
               }
-              term.grow(len);
+              term.growNoCopy(len);
               term.setLength(len);
               in.readBytes(term.bytes(), 0, len);
               return term.get();
@@ -569,7 +569,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();
@@ -756,7 +756,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();

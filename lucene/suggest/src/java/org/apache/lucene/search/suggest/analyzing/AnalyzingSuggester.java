@@ -452,7 +452,7 @@ public class AnalyzingSuggester extends Lookup {
             payload = null;
           }
 
-          buffer = ArrayUtil.grow(buffer, requiredLength);
+          buffer = ArrayUtil.growNoCopy(buffer, requiredLength);
 
           output.reset(buffer);
 
@@ -522,7 +522,7 @@ public class AnalyzingSuggester extends Lookup {
         }
         input.reset(bytes.bytes, bytes.offset, bytes.length);
         short analyzedLength = input.readShort();
-        analyzed.grow(analyzedLength + 2);
+        analyzed.growNoCopy(analyzedLength + 2);
         input.readBytes(analyzed.bytes(), 0, analyzedLength);
         analyzed.setLength(analyzedLength);
 
