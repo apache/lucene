@@ -61,7 +61,7 @@ public class BytesRefBuilder {
   }
 
   /**
-   * Used to grow the builder without coping bytes. see {@link ArrayUtil#growNoCopy(byte[], int)}.
+   * Used to grow the builder without copying bytes. see {@link ArrayUtil#growNoCopy(byte[], int)}.
    */
   public void growNoCopy(int capacity) {
     ref.bytes = ArrayUtil.growNoCopy(ref.bytes, capacity);
