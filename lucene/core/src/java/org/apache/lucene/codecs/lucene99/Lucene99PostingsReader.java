@@ -315,7 +315,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
-    private final long[] freqBuffer = new long[BLOCK_SIZE];
+    private final long[] freqBuffer;
 
     private int docBufferUpto;
 
@@ -370,6 +370,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
+      if (indexHasFreq) {
+        freqBuffer = new long[BLOCK_SIZE];
+      } else {
+        freqBuffer = new long[1]; // only used when docFreq is 1
+      }
     }
 
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
@@ -399,11 +404,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       doc = -1;
       this.needsFreq = PostingsEnum.featureRequested(flags, PostingsEnum.FREQS);
       this.isFreqsRead = true;
-      if (indexHasFreq == false || needsFreq == false) {
-        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-          freqBuffer[i] = 1;
-        }
-      }
       accum = 0;
       blockUpto = 0;
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
@@ -414,10 +414,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int freq() throws IOException {
+      if (indexHasFreq == false || needsFreq == false) {
+        return 1;
+      }
       if (isFreqsRead == false) {
         pforUtil.decode(docIn, freqBuffer); // read freqBuffer for this block
         isFreqsRead = true;
       }
+      // if docFreq is 1, it will only return from freqBuffer[0]
       return (int) freqBuffer[docBufferUpto - 1];
     }
 
@@ -470,7 +474,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         blockUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
-        freqBuffer[0] = totalTermFreq;
+        freqBuffer[0] = totalTermFreq; // this case is not relevant to indexHasFreq or needsFreq
         docBuffer[1] = NO_MORE_DOCS;
         blockUpto++;
       } else {
