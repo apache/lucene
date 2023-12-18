@@ -433,6 +433,8 @@ public class PimIndexWriter extends IndexWriter {
       return dpuForDoc.get(doc);
     }
 
+    //TODO since we go over fields sequentially, the load balancing will be based
+    // on the first field, which in case of wikipedia can be the title and not the contents
     int getDpuWithSmallerIndex() {
 
       DpuIndexSize dpu = dpuPrQ.pop();
@@ -840,8 +842,12 @@ public class PimIndexWriter extends IndexWriter {
       private void writeNormsHashTable() throws IOException {
 
         int nbDocs = docNormsMap.size();
-        // TODO, is this correct ?
-        if(nbDocs == 0) return;
+
+        // if this field has no norms, just write skipInfo which is zero
+        if(nbDocs == 0) {
+          blocksTableOutput.writeVInt(0);
+          return;
+        }
 
         // hashSize is the next power of 2 after nbDocs
         // we need hashSize to be a power of 2 so that modulo is easily computable in DPU

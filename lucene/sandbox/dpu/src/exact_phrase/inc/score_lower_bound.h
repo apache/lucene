@@ -18,6 +18,8 @@ typedef struct _score {
     uint32_t freq_and_norm;
 } score_t;
 
+void set_query_no_norms(uint32_t query_id);
+
 void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr);
 
 void reset_scores(uint32_t);

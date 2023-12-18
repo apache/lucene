@@ -19,6 +19,8 @@ __host uint32_t score_lower_bound[DPU_MAX_BATCH_SIZE] = {0};
 uint8_t nb_docs_log2[DPU_MAX_BATCH_SIZE];
 uintptr_t doc_norms_addr[DPU_MAX_BATCH_SIZE];
 
+#define DEFAULT_NORM_VALUE 1
+
 MUTEX_POOL_INIT(mut_pool, 8);
 
 //TODO check simpler hash functions
@@ -33,6 +35,11 @@ static inline uint32_t wang_hash_func(uint32_t key) {
 }
 
 static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
+
+    if(nb_docs_log2[query_id] == UINT8_MAX) {
+        // no norms for this field, default value
+        return DEFAULT_NORM_VALUE;
+    }
 
     uint32_t hash = wang_hash_func(doc_id);
     uint32_t nb_docs = 1 << nb_docs_log2[query_id];
@@ -79,6 +86,12 @@ void reset_scores(uint32_t nb_queries) {
     // TODO hack for test
     for(int i = 0; i < 256; ++i)
         quantized_norm_inv_cache[i] = 1;
+}
+
+void set_query_no_norms(uint32_t query_id) {
+
+    nb_docs_log2[query_id] = UINT8_MAX;
+    doc_norms_addr[query_id] = 0;
 }
 
 void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr) {

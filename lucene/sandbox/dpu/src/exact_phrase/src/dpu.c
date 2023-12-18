@@ -471,8 +471,15 @@ static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id) {
         goto end;
 
     //printf("query_id= %d norms_addr=%p block_addr=%p\n", query_id, field_norms_address, field_bt_address);
-    // register where the norms are to be read for this query
-    set_query_doc_norms_addr(query_id, field_norms_address);
+
+    if(field_bt_address == field_norms_address) {
+        // this field has no norm
+        set_query_no_norms(query_id);
+    }
+    else {
+        // register where the norms are to be read for this query
+        set_query_doc_norms_addr(query_id, field_norms_address);
+    }
 
     uint32_t nr_terms;
     read_nr_terms(&query_parser, &nr_terms);
