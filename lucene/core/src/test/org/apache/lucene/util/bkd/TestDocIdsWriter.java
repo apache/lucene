@@ -17,8 +17,6 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -35,7 +33,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.SuppressForbidden;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
@@ -163,7 +160,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
   // Crashes only when run with C2, so with the environment variable `CI` set
   // Regardless of whether C2 is enabled or not, the test should never fail.
   public void testCrash() throws IOException {
-    assumeFalse("Requires C2 compiler (won't work on client VM).", Constants.IS_CLIENT_VM);
+    assumeTrue(
+        "Requires HotSpot C2 compiler (won't work on client VM).",
+        Constants.IS_HOTSPOT_VM && !Constants.IS_CLIENT_VM);
     int itrs = atLeast(100);
     for (int i = 0; i < itrs; i++) {
       try (Directory dir = newDirectory();
@@ -174,12 +173,5 @@ public class TestDocIdsWriter extends LuceneTestCase {
         }
       }
     }
-  }
-
-  @SuppressForbidden(reason = "needed to check if C2 is enabled")
-  @SuppressWarnings("removal")
-  private static String getCIEnv() {
-    PrivilegedAction<String> pa = () -> System.getenv("CI");
-    return AccessController.doPrivileged(pa);
   }
 }
