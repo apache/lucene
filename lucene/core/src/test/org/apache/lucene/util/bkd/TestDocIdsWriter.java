@@ -34,6 +34,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 public class TestDocIdsWriter extends LuceneTestCase {
@@ -162,7 +163,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
   // Crashes only when run with C2, so with the environment variable `CI` set
   // Regardless of whether C2 is enabled or not, the test should never fail.
   public void testCrash() throws IOException {
-    assumeTrue("Requires C2, which is only enabled when CI env is set", getCIEnv() != null);
+    assumeFalse("Requires C2 compiler (won't work on client VM).", Constants.IS_CLIENT_VM);
     int itrs = atLeast(100);
     for (int i = 0; i < itrs; i++) {
       try (Directory dir = newDirectory();
