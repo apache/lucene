@@ -63,6 +63,7 @@ static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
     }
     //TODO error handling
     assert(count < nb_docs);
+    if(count >= nb_docs) norm= 1;
 
     norm = decode_byte_from(decoder);
     decoder_pool_release_one(decoder);

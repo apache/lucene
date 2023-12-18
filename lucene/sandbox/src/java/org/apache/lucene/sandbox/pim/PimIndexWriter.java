@@ -168,7 +168,8 @@ public class PimIndexWriter extends IndexWriter {
             LeafReaderContext leafReaderContext = leaves.get(leafIdx);
             LeafReader reader = leafReaderContext.reader();
             NumericDocValues norms = reader.getNormValues(fieldInfo.name);
-            dpuTermIndexes.writeDocNorms(norms, startDoc);
+            if(norms != null)
+              dpuTermIndexes.writeDocNorms(norms, startDoc);
             SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
             startDoc += segmentCommitInfo.info.maxDoc();
           }
