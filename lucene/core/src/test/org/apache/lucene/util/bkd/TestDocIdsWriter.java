@@ -157,7 +157,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   // This simple test tickles a JVM C2 JIT crash on JDK's less than 21.0.1
-  // Crashes only when run with C2, so with the environment variable `CI` set
+  // Crashes only when run with HotSpot C2.
   // Regardless of whether C2 is enabled or not, the test should never fail.
   public void testCrash() throws IOException {
     assumeTrue(
