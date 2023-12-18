@@ -295,7 +295,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         for (int i = 0; i < size; i++) {
           int nnode = nnodes[i];

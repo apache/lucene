@@ -78,8 +78,8 @@ import org.apache.lucene.util.bkd.BKDWriter;
  * test focuses on geospatial (distance queries, polygon queries, etc) indexing and search, not any
  * underlying storage format or encoding: it merely supplies two hooks for the encoding so that
  * tests can be exact. The [stretch] goal is for this test to be so thorough in testing a new geo
- * impl that if this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some
- * bug in a given geo impl that this test fails to catch then this test needs to be improved!
+ * impl that if this test passes, then all Lucene tests should also pass. Ie, if there is some bug
+ * in a given geo impl that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 

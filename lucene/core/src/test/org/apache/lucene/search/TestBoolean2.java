@@ -221,7 +221,7 @@ public class TestBoolean2 extends LuceneTestCase {
     bigSearcher = null;
   }
 
-  private static String[] docFields = {
+  private static final String[] docFields = {
     "w1 w2 w3 w4 w5", "w1 w3 w2 w3", "w1 xx w2 yy w3", "w1 w3 xx w2 yy mm"
   };
 
@@ -423,8 +423,8 @@ public class TestBoolean2 extends LuceneTestCase {
 
   // used to set properties or change every BooleanQuery
   // generated from randBoolQuery.
-  public static interface Callback {
-    public void postCreate(BooleanQuery.Builder q);
+  public interface Callback {
+    void postCreate(BooleanQuery.Builder q);
   }
 
   // Random rnd is passed in so that the exact same random query may be created

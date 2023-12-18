@@ -201,7 +201,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           nodeBuffer = new int[neighborArray.size()];
         }
         size = neighborArray.size();
-        if (size >= 0) System.arraycopy(neighborArray.node, 0, nodeBuffer, 0, size);
+        if (size >= 0) System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
       } finally {
         neighborArray.rwlock.readLock().unlock();
       }
