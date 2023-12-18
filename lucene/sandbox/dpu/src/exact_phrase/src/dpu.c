@@ -104,8 +104,8 @@ int main() {
     if(me() == 0) {
 
         // TODO hack for test
-        new_query = 1;
-        nb_max_doc_match = UINT32_MAX;
+        //new_query = 1;
+        //nb_max_doc_match = UINT32_MAX;
         if(new_query) {
 
 #ifdef PERF_MESURE
@@ -553,8 +553,8 @@ void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_m
     postings_info_t *cache = postings_cache_wram[me()];
     for(int i = 0; i < nr_terms; ++i) {
         uint32_t curr_addr = matcher_get_curr_address(matchers, i);
-        assert(cache[i].addr >= curr_addr);
-        uint32_t curr_size = cache[i].addr - curr_addr;
+        assert(curr_addr >= cache[i].addr);
+        uint32_t curr_size = curr_addr - cache[i].addr;
         assert(cache[i].size >= curr_size);
         cache[i].size -= curr_size;
         cache[i].addr = curr_addr;

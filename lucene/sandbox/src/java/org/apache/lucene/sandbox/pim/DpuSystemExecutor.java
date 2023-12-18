@@ -250,6 +250,13 @@ class DpuSystemExecutor implements PimQueriesExecutor {
 
     // System.out.println(">> Launching DPUs");
     // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
+
+    // TEST: make two launches, one with max number of matches to 1, the second with UINT_MAX
+    copyIntToDpus("nb_max_doc_match", 1);
+    copyIntToDpus("new_query", 1);
+    dpuSystem.async().exec(null);
+    copyIntToDpus("nb_max_doc_match", Integer.MAX_VALUE);
+    copyIntToDpus("new_query", 0);
     dpuSystem.async().exec(null);
 
     if (DpuConstants.DEBUG_DPU) {
