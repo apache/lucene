@@ -171,7 +171,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
+  and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
 Improvements
 ---------------------
