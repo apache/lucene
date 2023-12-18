@@ -77,6 +77,9 @@ API Changes
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
 
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
+
 New Features
 ---------------------
 
