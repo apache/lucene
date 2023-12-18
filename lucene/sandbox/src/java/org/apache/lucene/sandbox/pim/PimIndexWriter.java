@@ -853,6 +853,15 @@ public class PimIndexWriter extends IndexWriter {
         // we need hashSize to be a power of 2 so that modulo is easily computable in DPU
         int hashSize = 1 << (32 - Integer.numberOfLeadingZeros(nbDocs - 1));
         short[] hashTable = new short[hashSize];
+        short[] hashCount = new short[hashSize];
+
+        // first loop, count the number of elements per hash to identify conflicts
+        for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
+          int hash = wangHash(entry.getKey()) & (hashSize - 1);
+          hashCount[hash]++;
+        }
+
+        // second loop, write norms in hash table or in conflict list
         for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
           //System.out.println("key=" + entry.getKey() + " hash=" + (wangHash(entry.getKey())) + " hashSize=" + hashSize
           //        + " nbDocs=" + nbDocs + " " + (Integer.numberOfLeadingZeros(0)));
@@ -862,7 +871,7 @@ public class PimIndexWriter extends IndexWriter {
           // There is also the case (is it possible ?) that the norm is effectively 0
           // This will be handled as if there was a conflict
           assert entry.getValue() < 256;
-          if(entry.getValue() == 0 || hashTable[hash] != 0) {
+          if(entry.getValue() == 0 || hashCount[hash] > 1) {
             // conflict, store the norm value at the end
             hashTable[hash] = 0;
             posBuffer.writeVInt(entry.getKey());
