@@ -16,12 +16,15 @@ typedef struct _query_result {
  * stored in the following structure.
  * Stores the buffer id, the number of results in the buffer,
  * the dpu segment id and the query id.
+ * Optionally stores a mram_id if this buffer is already partially written
+ * in MRAM and has already an id where to be written in MRAM (UINT16_MAX if not defined)
  */
 typedef struct _query_buffer_info {
-    uint32_t buffer_id;
+    uint16_t buffer_id;
     uint8_t buffer_size;
     uint8_t segment_id;
     uint16_t query_id;
+    uint16_t mram_id;
 } query_buffer_info_t;
 
 /**

@@ -62,6 +62,12 @@ uint16_t nr_lucene_segments;
 uint32_t lucene_segment_maxdoc[DPU_MAX_NR_LUCENE_SEGMENTS];
 uint16_t current_segment[NR_TASKLETS];
 
+struct results_mram_buffer_info {
+    uint32_t buffer_id;
+    uint32_t nb_results;
+};
+__mram_noinit struct results_mram_buffer_info results_buffer_info[DPU_MAX_BATCH_SIZE][MAX_NR_SEGMENTS];
+
 uint8_t nr_segments_log2 = 0;
 uintptr_t dpu_index = 0;
 
@@ -90,6 +96,7 @@ static void get_segments_info(uintptr_t);
 static void adder(int *i, void *args) { *i += (int)args; }
 static void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
 static void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
+void restore_results_buffer(uint16_t query_id, uint8_t segment_id);
 
 int main() {
 
@@ -178,6 +185,10 @@ int main() {
             if(postings_cache_wram[me()][0].size == 0) {
                 continue;
             }
+            if(!new_query) {
+                // when this is a subsequent run for the same query, restore the results buffer
+                restore_results_buffer(query_id, segment_id);
+            }
 
             did_matcher_t *matchers = setup_matchers(nr_terms, postings_cache_wram[me()]);
 
@@ -191,7 +202,6 @@ int main() {
             }
 
             release_matchers(matchers, nr_terms);
-            flush_query_buffer();
 
             //TODO could use a mutex pool here, but is it worth ?
             if(nr_results != 0) {
@@ -309,7 +319,7 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
         // set of matching DIDs. Whatever the case is, need to
         // warm up the iterator again by fetching next DIDs.
         if (!matchers_has_next_did(matchers, nr_terms))
-            return nr_results;
+            goto end;
 
         seek_did_t did_status;
         do {
@@ -317,7 +327,7 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
             did_status = seek_did(matchers, nr_terms, did);
             switch (did_status) {
             case END_OF_INDEX_TABLE:
-                return nr_results;
+                goto end;
             case DID_FOUND: {
 #ifdef DEBUG
                 printf("Found did %d query %d segment_id %d\n", did, query_id, segment_id);
@@ -348,6 +358,7 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
         } while (did_status == DID_NOT_FOUND);
     }
 
+end:
     normal_exit(query_id, segment_id, nr_terms);
     return nr_results;
 }
@@ -358,14 +369,21 @@ static void flush_query_buffer() {
         return;
 
     uint32_t mram_buffer_id = 0;
-    mutex_lock(results_mutex);
-    mram_buffer_id = results_buffer_index++;
-    mutex_unlock(results_mutex);
-    if(mram_buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t) >= DPU_RESULTS_MAX_BYTE_SIZE) {
-        // the size of results is exceeded, we need to send a corresponding status to the host
-        //TODO
-        return;
+    if(results_cache[me()][0].info.mram_id == UINT16_MAX) {
+        mutex_lock(results_mutex);
+        mram_buffer_id = results_buffer_index++;
+        mutex_unlock(results_mutex);
+        assert(mram_buffer_id < UINT16_MAX);
+        if(mram_buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t) >= DPU_RESULTS_MAX_BYTE_SIZE) {
+                // the size of results is exceeded, we need to send a corresponding status to the host
+                //TODO
+                return;
+        }
+        results_cache[me()][0].info.mram_id = mram_buffer_id;
     }
+    else
+        mram_buffer_id = results_cache[me()][0].info.mram_id;
+
     // TODO possibly avoid writting the cache fully for the last buffer where it is not full
     mram_write(results_cache[me()],
                 &results_batch[mram_buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t)],
@@ -378,6 +396,7 @@ static void init_results_cache(uint32_t query_id, uint32_t buffer_id, uint8_t se
     results_cache[me()][0].info.buffer_size = 0;
     results_cache[me()][0].info.segment_id = segment_id;
     results_cache[me()][0].info.query_id = query_id;
+    results_cache[me()][0].info.mram_id = UINT16_MAX;
 }
 
 static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unused)) uint32_t pos) {
@@ -523,6 +542,17 @@ static void get_segments_info(uintptr_t index) {
     decoder_pool_release_one(decoder);
 }
 
+void restore_results_buffer(uint16_t query_id, uint8_t segment_id) {
+
+     struct results_mram_buffer_info binfo;
+     mram_read(&results_buffer_info[query_id][segment_id], &binfo, 8);
+     if(binfo.nb_results) {
+           mram_read(&results_batch[binfo.buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t)],
+                         results_cache[me()],
+                         (binfo.nb_results + 1) * sizeof(query_buffer_elem_t));
+     }
+}
+
 #define NB_ELEM_TRANSFER 8
 static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz) {
 
@@ -567,6 +597,13 @@ void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_m
         cache[i].addr = curr_addr;
     }
     update_postings_in_cache(query_id, nr_terms, segment_id, cache);
+
+    // save information on the current partial buffer of results
+    struct results_mram_buffer_info binfo;
+    binfo.nb_results = results_cache[me()][0].info.buffer_size;
+    flush_query_buffer();
+    binfo.buffer_id = results_cache[me()][0].info.mram_id;
+    mram_write(&binfo, &results_buffer_info[query_id][segment_id], 8);
 }
 
 void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms) {
@@ -576,4 +613,5 @@ void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms) {
         cache[i].size = 0;
     }
     update_postings_in_cache(query_id, nr_terms, segment_id, cache);
+    flush_query_buffer();
 }
