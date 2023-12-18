@@ -12,19 +12,20 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLGS_DEBUG
-    "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address -fno-omit-frame-pointer")
+  "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra")
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
-add_library(${PROJECT_NAME} src/nativelib.c)
+add_library(${PROJECT_NAME} src/nativelib.c src/topdoc_sync.c)
 target_include_directories(
-  ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS})
+  ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} PRIVATE STC/include)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES})
 
 check_ipo_supported(RESULT result OUTPUT output)
+
 if(result)
   set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION
-                                               TRUE)
+    TRUE)
 else()
   message(WARNING "IPO is not supported: ${output}")
 endif()

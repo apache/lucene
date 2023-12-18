@@ -1,0 +1,3 @@
+[submodule "lucene/sandbox/dpu/src/native_lib/STC"]
+	path = lucene/sandbox/dpu/src/native_lib/STC
+	url = git@github.com:stclib/STC.git

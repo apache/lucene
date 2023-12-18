@@ -1,0 +1,30 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+#include <dpu.h>
+#include <stdint.h>
+
+/**
+ * Performs successive synchronization steps to update the lower bound of the
+ * topdocs for all the DPUs in the set.
+ *
+ * @param set The DPU set to perform the calculation on.
+ * @param nr_dpus The number of DPUs in the set.
+ * @param nr_ranks The number of ranks in the set.
+ */
+dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set, uint32_t nr_dpus, uint32_t nr_ranks, uint32_t *nr_topdocs, int nr_queries);

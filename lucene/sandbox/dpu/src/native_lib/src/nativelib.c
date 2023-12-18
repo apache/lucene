@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "topdocs_sync.h"
+
 // TODO(sbrocard): increase version if needed
 #define JNI_VERSION JNI_VERSION_1_1
 
@@ -351,6 +353,10 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     dpu_get_nr_dpus(set, &nr_dpus);
     dpu_get_nr_ranks(set, &nr_ranks);
 
+    // Perform the intermediate synchronizations for the topdocs lower bound
+    topdocs_lower_bound_sync(set, nr_dpus, nr_ranks, nr_topdocs, nr_queries);
+
+    // Retrieve the metadata information
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);
     size_t total_nr_results = metadata.total_nr_results;
     size_t max_nr_results = metadata.max_nr_results;
