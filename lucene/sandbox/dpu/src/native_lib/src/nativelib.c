@@ -396,13 +396,15 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     prefix_sum_indices(&sc_args, dpu_results, nr_dpus, queries_indices, segments_indices);
 
     // TODO(sbrocard): use callback to make transfer per rank to not share the max transfer size
-    THROW_ON_ERROR(dpu_push_sg_xfer(set,
-        DPU_XFER_FROM_DPU,
-        "results_batch_sorted",
-        0,
-        sizeof(result_t[max_nr_results]),
-        &get_block_info,
-        DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+    if(max_nr_results != 0) {
+        THROW_ON_ERROR(dpu_push_sg_xfer(set,
+            DPU_XFER_FROM_DPU,
+            "results_batch_sorted",
+            0,
+            sizeof(result_t[max_nr_results]),
+            &get_block_info,
+            DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+    }
 
     free(block_addresses);
 end:

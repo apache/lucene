@@ -663,7 +663,7 @@ public class PimIndexWriter extends IndexWriter {
           this.statsOut = new ByteArrayOutputStream();
         }
         this.info = null;
-        this.docNormsMap = new HashMap<Integer, Integer>();
+        this.docNormsMap = new HashMap<>();
       }
 
       void resetForNextField() {

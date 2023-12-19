@@ -29,7 +29,7 @@ did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings)
             return 0;
         }
         matcher->parser = setup_parser(each_term, postings[each_term].addr,
-                                        postings[each_term].size);
+                                        postings[each_term].size, postings[each_term].start_did);
     }
     return tasklet_matchers;
 }
@@ -183,4 +183,9 @@ uintptr_t matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id) {
 uint32_t matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id) {
 
     return matchers[term_id].current_pos_freq;
+}
+
+uint32_t matcher_get_curr_did(did_matcher_t *matchers, uint32_t term_id) {
+
+    return matchers[term_id].current_did;
 }

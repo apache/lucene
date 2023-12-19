@@ -10,6 +10,8 @@
 typedef struct _postings_info {
     uint32_t addr;
     uint32_t size;
+    uint32_t start_did;
+    uint32_t padding;
 } postings_info_t;
 
 /**

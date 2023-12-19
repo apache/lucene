@@ -40,13 +40,13 @@ __host uint32_t new_query;
 __mram_noinit uint8_t results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
 __mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
 __host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
-__mram_noinit uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS];
+__mram uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS] = {0};
 __mram_noinit uint32_t results_segment_offset[DPU_MAX_BATCH_SIZE * MAX_NR_SEGMENTS];
-__dma_aligned uint32_t segment_offset_cache[NR_TASKLETS][8];
 __host uint64_t search_done;
 
 /* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
+__dma_aligned uint32_t segment_offset_cache[NR_TASKLETS][8];
 MUTEX_INIT(results_mutex);
 uint32_t results_buffer_index = 0;
 
@@ -182,12 +182,14 @@ int main() {
             init_results_cache(query_id, 0, segment_id);
 
             get_postings_from_cache(query_id, nr_terms, segment_id, postings_cache_wram[me()]);
-            if(postings_cache_wram[me()][0].size == 0) {
-                continue;
-            }
+
             if(!new_query) {
-                // when this is a subsequent run for the same query, restore the results buffer
-                restore_results_buffer(query_id, segment_id);
+                if(postings_cache_wram[me()][0].size == 0) {
+                    continue;
+                }
+                else
+                    // when this is a subsequent run for the same query, restore the results buffer
+                    restore_results_buffer(query_id, segment_id);
             }
 
             did_matcher_t *matchers = setup_matchers(nr_terms, postings_cache_wram[me()]);
@@ -590,17 +592,26 @@ void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_m
     postings_info_t *cache = postings_cache_wram[me()];
     for(int i = 0; i < nr_terms; ++i) {
         uint32_t curr_addr = matcher_get_curr_address(matchers, i);
+        uint32_t curr_did = matcher_get_curr_did(matchers, i);
         assert(curr_addr >= cache[i].addr);
         uint32_t curr_size = curr_addr - cache[i].addr;
         assert(cache[i].size >= curr_size);
         cache[i].size -= curr_size;
         cache[i].addr = curr_addr;
+        cache[i].start_did = curr_did;
     }
     update_postings_in_cache(query_id, nr_terms, segment_id, cache);
 
     // save information on the current partial buffer of results
     struct results_mram_buffer_info binfo;
     binfo.nb_results = results_cache[me()][0].info.buffer_size;
+    if(binfo.nb_results >= DPU_RESULTS_CACHE_SIZE - 1) {
+      // this is the case where the buffer full
+      // no need to retrieve any partial results for the subsequent run of the
+      // same query batch
+      binfo.nb_results = 0;
+    }
+
     flush_query_buffer();
     binfo.buffer_id = results_cache[me()][0].info.mram_id;
     mram_write(&binfo, &results_buffer_info[query_id][segment_id], 8);

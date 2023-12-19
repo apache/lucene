@@ -72,6 +72,10 @@ uintptr_t matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id);
  * Returns the current frequency for the given term and for the doc at which the matcher is positioned
  */
 uint32_t matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id);
+/**
+ * Returns the current doc id for the given term
+ */
+uint32_t matcher_get_curr_did(did_matcher_t *matchers, uint32_t term_id);
 
 void start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);
 void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);
