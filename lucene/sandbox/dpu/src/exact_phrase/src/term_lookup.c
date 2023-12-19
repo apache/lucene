@@ -257,8 +257,8 @@ static void decode_postings_address_foreach_segment(decoder_t* decoder,
     int addr = offset + decode_vint_from(decoder);
     decode_vint_from(decoder); // ignore skip info
     for(int i = 0; i < nr_segments; ++i) {
-        postings_for_segments[i] = (postings_info_t){.addr = addr, .size = decode_vint_from(decoder),
-                                    .start_did = 0, .padding = 0};
+        postings_for_segments[i].addr = addr;
+        postings_for_segments[i].size = decode_vint_from(decoder);
         addr += postings_for_segments[i].size;
     }
 }

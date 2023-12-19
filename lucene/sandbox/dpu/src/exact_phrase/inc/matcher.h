@@ -15,7 +15,7 @@ typedef struct _did_matcher did_matcher_t;
  * Setup matchers to decode the posting addresses and sizes passed as input for each term
  * initialize one decoder per term at the posting address
  */
-did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings);
+did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_id);
 /**
  * Releases the matchers. Internally releases the decoders used by the matchers
  */

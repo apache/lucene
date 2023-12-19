@@ -17,7 +17,7 @@ static did_matcher_t matchers[NR_TASKLETS][MAX_NR_TERMS];
 // =============================================================================
 // INIT MATCHERS FUNCTIONS
 // =============================================================================
-did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings)
+did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_did)
 {
     allocate_parsers(nr_terms);
     did_matcher_t* tasklet_matchers = matchers[me()];
@@ -29,7 +29,7 @@ did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings)
             return 0;
         }
         matcher->parser = setup_parser(each_term, postings[each_term].addr,
-                                        postings[each_term].size, postings[each_term].start_did);
+                                        postings[each_term].size, start_did);
     }
     return tasklet_matchers;
 }
