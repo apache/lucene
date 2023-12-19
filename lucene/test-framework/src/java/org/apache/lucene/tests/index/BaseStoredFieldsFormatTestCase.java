@@ -72,6 +72,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper.Throttling;
+import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -1010,5 +1011,35 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     iw.forceMerge(TestUtil.nextInt(random(), 1, 3));
     verifyStoreFields.run();
     IOUtils.close(iw, dir);
+  }
+
+  /** Test realistic data, which typically compresses better than random data. */
+  public void testLineFileDocs() throws IOException {
+    // Use a FS dir and a non-randomized IWC to not slow down indexing
+    try (Directory dir = newFSDirectory(createTempDir())) {
+      try (LineFileDocs docs = new LineFileDocs(random());
+          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+        final int numDocs = atLeast(10_000);
+        for (int i = 0; i < numDocs; ++i) {
+          // Only keep stored fields
+          Document doc = docs.nextDoc();
+          Document storedDoc = new Document();
+          for (IndexableField field : doc.getFields()) {
+            if (field.fieldType().stored()) {
+              IndexableField storedField = field;
+              if (field.stringValue() != null) {
+                // Disable indexing
+                storedField = new StoredField(field.name(), field.stringValue());
+              }
+              storedDoc.add(storedField);
+            }
+          }
+
+          w.addDocument(storedDoc);
+        }
+        w.forceMerge(1);
+      }
+      TestUtil.checkIndex(dir);
+    }
   }
 }
