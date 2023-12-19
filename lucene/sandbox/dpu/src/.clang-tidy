@@ -2,7 +2,8 @@ Checks: >
   *,
   -llvmlibc*,
   -fuchsia*,
-  -cert-dcl50-cpp
+  -cert-dcl50-cpp,
+  -altera*
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
