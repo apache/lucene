@@ -37,7 +37,7 @@ struct update_bounds_atomic_context {
 
 // TODO(sbrocard) Implement this
 static dpu_error_t
-update_bounds_atomic(struct dpu_set_t rank, __attribute__((unused)) uint32_t rank_id, void *args)
+update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
     struct update_bounds_atomic_context *ctx = args;
     const uint32_t nr_queries = ctx->nr_queries;
@@ -45,29 +45,32 @@ update_bounds_atomic(struct dpu_set_t rank, __attribute__((unused)) uint32_t ran
     DPU_PROPAGATE(dpu_get_nr_dpus(rank, &nr_dpus));
     const uint32_t *nr_topdocs = ctx->nr_topdocs;
 
-    int *my_bounds = &ctx->bound_by_dpu[(size_t)rank_id * MAX_NR_DPUS_PER_RANK * nr_queries];
+    int(*my_bounds)[MAX_NR_DPUS_PER_RANK][nr_queries]
+        = (void *)&ctx->bound_by_dpu[(size_t)MAX_NR_DPUS_PER_RANK * rank_id * nr_queries];
 
-    struct dpu_set_t dpu;
-    uint32_t each_dpu;
-    DPU_FOREACH (rank, dpu, each_dpu) {
-        DPU_PROPAGATE(dpu_prepare_xfer(dpu, &my_bounds[(size_t)each_dpu * nr_queries]));
+    {
+        struct dpu_set_t dpu;
+        uint32_t each_dpu = 0;
+        DPU_FOREACH (rank, dpu, each_dpu) {
+            DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_bounds)[each_dpu][nr_queries]));
+        }
+        // TODO(sbrocard): handle uneven nr_queries
+        DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "best_scores", 0, ctx->nr_queries * sizeof(int), DPU_XFER_DEFAULT));
     }
-    // TODO(sbrocard): handle uneven nr_queries
-    DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "best_scores", 0, ctx->nr_queries * sizeof(int), DPU_XFER_DEFAULT));
 
-    for (int i = 0; i < nr_queries; i++) {
-        int *best_scores = &my_bounds[(size_t)each_dpu * nr_queries];
-        for (int j = 0; j < nr_dpus; j++) {
-            SSet *score_set = &ctx->score_sets[i];
-            pthread_mutex_lock(&ctx->mutex_array[i]);
-            if (best_scores[j] > *SSet_front(score_set)) {
-                SSet_result res = SSet_insert(score_set, best_scores[j]);
-                if (res.inserted && SSet_size(score_set) > nr_topdocs[i]) {
+    for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
+        SSet *score_set = &ctx->score_sets[i_qry];
+        pthread_mutex_lock(&ctx->mutex_array[i_qry]);
+        for (int i_dpu = 0; i_dpu < nr_dpus; i_dpu++) {
+            int best_score = (*my_bounds)[i_dpu][i_qry];
+            if (best_score > *SSet_front(score_set)) {
+                SSet_result res = SSet_insert(score_set, best_score);
+                if (res.inserted && SSet_size(score_set) > nr_topdocs[i_qry]) {
                     SSet_erase_at(score_set, SSet_begin(score_set));
                 }
             }
-            pthread_mutex_unlock(&ctx->mutex_array[i]);
         }
+        pthread_mutex_unlock(&ctx->mutex_array[i_qry]);
     }
 
     return DPU_OK;
@@ -92,13 +95,34 @@ topdocs_lower_bound_sync(struct dpu_set_t set, uint32_t nr_dpus, uint32_t nr_ran
 
     int *bound_by_dpu = malloc((size_t)nr_ranks * MAX_NR_DPUS_PER_RANK * nr_queries * sizeof(int));
 
-    while (!all_dpus_have_finished()) {
-        DPU_PROPAGATE(dpu_callback(set, update_bounds_atomic, NULL, DPU_CALLBACK_ASYNC));
+    struct update_bounds_atomic_context ctx = {
+        nr_queries,
+        nr_topdocs,
+        bound_by_dpu,
+        mutex_array,
+        score_sets,
+    };
 
+    while (!all_dpus_have_finished()) {
+        DPU_PROPAGATE(dpu_callback(set, update_bounds_atomic, &ctx, DPU_CALLBACK_ASYNC));
+
+        // TODO(sbrocard) : benchmark if needed
         DPU_PROPAGATE(dpu_sync(set));
 
         DPU_PROPAGATE(broadcast_new_bounds(set));
 
         DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
     }
+
+    for (int i = 0; i < nr_queries; i++) {
+        pthread_mutex_destroy(&mutex_array[i]);
+    }
+    free(mutex_array);
+    free(bound_by_dpu);
+    for (int i = 0; i < nr_queries; i++) {
+        SSet_drop(&score_sets[i]);
+    }
+    free(score_sets);
+
+    return DPU_OK;
 }
