@@ -63,6 +63,8 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.CheckIndex;
@@ -1425,7 +1427,19 @@ public final class TestUtil {
       final Field field2;
       final DocValuesType dvType = field1.fieldType().docValuesType();
       final int dimCount = field1.fieldType().pointDimensionCount();
-      if (dvType != DocValuesType.NONE) {
+      if (f instanceof KeywordField) {
+        field2 =
+            new KeywordField(
+                f.name(),
+                f.stringValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (f instanceof IntField) {
+        field2 =
+            new IntField(
+                f.name(),
+                f.numericValue().intValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (dvType != DocValuesType.NONE) {
         switch (dvType) {
           case NUMERIC:
             field2 = new NumericDocValuesField(field1.name(), field1.numericValue().longValue());
