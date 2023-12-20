@@ -96,6 +96,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    super.updateValueFromRollup(ordinal, childOrdinal);
     int currentValue = getValue(ordinal);
     int newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
     setValue(ordinal, newValue);
@@ -121,7 +122,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
-    int bottomValue = 0;
+    int bottomValue = Integer.MIN_VALUE;
     int bottomOrd = Integer.MAX_VALUE;
 
     int aggregatedValue = 0;
@@ -134,7 +135,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       for (IntIntCursor c : sparseValues) {
         int value = c.value;
         int ord = c.key;
-        if (parents[ord] == pathOrd && value > 0) {
+        int count = sparseCounts.get(ord);
+        if (parents[ord] == pathOrd && count > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
           if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
@@ -157,7 +159,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       int ord = children[pathOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int value = values[ord];
-        if (value > 0) {
+        int count = counts[ord];
+        if (count > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
           if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {

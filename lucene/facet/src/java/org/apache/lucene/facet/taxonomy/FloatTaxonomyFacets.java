@@ -17,11 +17,15 @@
 package org.apache.lucene.facet.taxonomy;
 
 import com.carrotsearch.hppc.IntFloatHashMap;
+import com.carrotsearch.hppc.cursors.IntFloatCursor;
+import com.carrotsearch.hppc.cursors.IntIntCursor;
+
 import java.io.IOException;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
+import org.apache.lucene.facet.TopOrdAndIntQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to float. */
 abstract class FloatTaxonomyFacets extends TaxonomyFacets {
@@ -93,6 +97,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    super.updateValueFromRollup(ordinal, childOrdinal);
     float currentValue = getValue(ordinal);
     float newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
     setValue(ordinal, newValue);
@@ -116,50 +121,75 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
    */
   @Override
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
-      throws IOException {
-
+          throws IOException {
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
-    float bottomValue = 0;
+    float bottomValue = -Float.MAX_VALUE;
     int bottomOrd = Integer.MAX_VALUE;
 
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-
-    int ord = children[pathOrd];
-    float aggregatedValue = 0;
+    float aggregatedValue = 0f;
     int childCount = 0;
-
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
-    while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float value = values[ord];
-      if (value > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
-        childCount++;
-        if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
-          if (reuse == null) {
-            reuse = new TopOrdAndFloatQueue.OrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = value;
-          reuse = q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomValue = (float) q.top().value;
-            bottomOrd = q.top().ord;
+
+    // TODO: would be faster if we had a "get the following children" API?  then we
+    // can make a single pass over the hashmap
+    if (sparseValues != null) {
+      for (IntFloatCursor c : sparseValues) {
+        float value = c.value;
+        int ord = c.key;
+        int count = sparseCounts.get(ord);
+        if (parents[ord] == pathOrd && count > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+          childCount++;
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+            if (reuse == null) {
+              reuse = new TopOrdAndFloatQueue.OrdAndValue();
+            }
+            reuse.ord = ord;
+            reuse.value = value;
+            reuse = q.insertWithOverflow(reuse);
+            if (q.size() == topN) {
+              bottomValue = (float) q.top().value;
+              bottomOrd = q.top().ord;
+            }
           }
         }
       }
-
-      ord = siblings[ord];
+    } else {
+      int[] children = getChildren();
+      int[] siblings = getSiblings();
+      int ord = children[pathOrd];
+      while (ord != TaxonomyReader.INVALID_ORDINAL) {
+        float value = values[ord];
+        int count = counts[ord];
+        if (count > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+          childCount++;
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+            if (reuse == null) {
+              reuse = new TopOrdAndFloatQueue.OrdAndValue();
+            }
+            reuse.ord = ord;
+            reuse.value = value;
+            reuse = q.insertWithOverflow(reuse);
+            if (q.size() == topN) {
+              bottomValue = (float) q.top().value;
+              bottomOrd = q.top().ord;
+            }
+          }
+        }
+        ord = siblings[ord];
+      }
     }
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = values[pathOrd];
+        aggregatedValue = getValue(pathOrd);
       } else {
-        // Our sum'd count is not correct, in general:
+        // Our sum'd value is not correct, in general:
         aggregatedValue = -1;
       }
     }
+
     return new TopChildrenForPath(aggregatedValue, childCount, q);
   }
 }

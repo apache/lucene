@@ -407,10 +407,10 @@ abstract class TaxonomyFacets extends Facets {
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
-    int bottomValue = 0;
+    int bottomCount = 0;
     int bottomOrd = Integer.MAX_VALUE;
 
-    int aggregatedValue = 0;
+    int aggregatedCount = 0;
     int childCount = 0;
     TopOrdAndIntQueue.OrdAndValue reuse = null;
 
@@ -418,20 +418,20 @@ abstract class TaxonomyFacets extends Facets {
     // can make a single pass over the hashmap
     if (sparseCounts != null) {
       for (IntIntCursor c : sparseCounts) {
-        int value = c.value;
+        int count = c.value;
         int ord = c.key;
-        if (parents[ord] == pathOrd && value > 0) {
-          aggregatedValue += value;
+        if (parents[ord] == pathOrd && count > 0) {
+          aggregatedCount += count;
           childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+          if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
             reuse.ord = ord;
-            reuse.value = value;
+            reuse.value = count;
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
-              bottomValue = (int) q.top().value;
+              bottomCount = (int) q.top().value;
               bottomOrd = q.top().ord;
             }
           }
@@ -442,19 +442,19 @@ abstract class TaxonomyFacets extends Facets {
       int[] siblings = getSiblings();
       int ord = children[pathOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        int value = counts[ord];
-        if (value > 0) {
-          aggregatedValue += value;
+        int count = counts[ord];
+        if (count > 0) {
+          aggregatedCount += count;
           childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+          if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
             reuse.ord = ord;
-            reuse.value = value;
+            reuse.value = count;
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
-              bottomValue = (int) q.top().value;
+              bottomCount = (int) q.top().value;
               bottomOrd = q.top().ord;
             }
           }
@@ -465,14 +465,14 @@ abstract class TaxonomyFacets extends Facets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = getCount(pathOrd);
+        aggregatedCount = getCount(pathOrd);
       } else {
         // Our sum'd count is not correct, in general:
-        aggregatedValue = -1;
+        aggregatedCount = -1;
       }
     }
 
-    return new TopChildrenForPath(aggregatedValue, childCount, q);
+    return new TopChildrenForPath(aggregatedCount, childCount, q);
   }
 
   @Override
