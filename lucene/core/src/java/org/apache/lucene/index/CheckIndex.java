@@ -2335,7 +2335,7 @@ public final class CheckIndex implements Closeable {
         startTerm = new BytesRef();
         checkTermsIntersect(terms, automaton, startTerm);
 
-        automaton = Automata.makeAnyBinary();
+        automaton = Automata.makeNonEmptyBinary();
         startTerm = new BytesRef(new byte[] {'l'});
         checkTermsIntersect(terms, automaton, startTerm);
 
@@ -2386,8 +2386,11 @@ public final class CheckIndex implements Closeable {
       throws IOException {
     TermsEnum allTerms = terms.iterator();
     automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    CompiledAutomaton compiledAutomaton = new CompiledAutomaton(automaton);
-    ByteRunAutomaton runAutomaton = new ByteRunAutomaton(automaton);
+    CompiledAutomaton compiledAutomaton =
+        new CompiledAutomaton(
+            automaton, null, true, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, true);
+    ByteRunAutomaton runAutomaton =
+        new ByteRunAutomaton(automaton, true, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     TermsEnum filteredTerms = terms.intersect(compiledAutomaton, startTerm);
     BytesRef term;
     if (startTerm != null) {
