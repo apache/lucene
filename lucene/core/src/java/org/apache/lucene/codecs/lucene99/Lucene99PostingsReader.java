@@ -261,7 +261,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       } else {
         docsEnum = new BlockDocsEnum(fieldInfo);
       }
-      return docsEnum.reset((IntBlockTermState) termState, flags);
+      return docsEnum.reset((IntBlockTermState) termState, flags, reuse == docsEnum);
     } else {
       EverythingEnum everythingEnum;
       if (reuse instanceof EverythingEnum) {
@@ -382,7 +382,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           && indexHasPayloads == fieldInfo.hasPayloads();
     }
 
-    public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
+    public PostingsEnum reset(IntBlockTermState termState, int flags, boolean reuse)
+        throws IOException {
       docFreq = termState.docFreq;
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : docFreq;
       docTermStartFP = termState.docStartFP;
@@ -399,7 +400,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       doc = -1;
       this.needsFreq = PostingsEnum.featureRequested(flags, PostingsEnum.FREQS);
       this.isFreqsRead = true;
-      if (indexHasFreq == false || needsFreq == false) {
+      // if reuse, we don't consider whether the needsFreq is changed. this is undefined in freq().
+      // see also: BasePostingsFormatTestCase#testPostingsEnumFreqs
+      if ((indexHasFreq == false || needsFreq == false) && reuse == false) {
         for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
           freqBuffer[i] = 1;
         }
