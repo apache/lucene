@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include "dpu_error.h"
 #include "dpu_types.h"
@@ -37,10 +38,16 @@ typedef struct {
     uint32_t nr_mutexes;
 } mutex_array;
 
+typedef struct {
+    score_t **buffers;
+    uint32_t nr_ranks;
+    uint32_t nr_queries;
+} inbound_scores_array;
+
 struct update_bounds_atomic_context {
     uint32_t nr_queries;
     uint32_t *nr_topdocs;
-    score_t *bound_by_dpu;
+    inbound_scores_array inbound_scores;
     mutex_array query_mutexes;
     pque_array score_pques;
     bool *finished_ranks;
@@ -50,7 +57,7 @@ const uint32_t MAX_NR_DPUS_PER_RANK = DPU_MAX_NR_CIS * DPU_MAX_NR_DPUS_PER_CI;
 
 /* Initialization functions */
 
-pque_array
+static pque_array
 init_pques(uint32_t nr_queries, uint32_t *nr_topdocs)
 {
     PQue *score_pques = malloc(nr_queries * sizeof(*score_pques));
@@ -61,7 +68,7 @@ init_pques(uint32_t nr_queries, uint32_t *nr_topdocs)
     return (pque_array) { score_pques, nr_queries };
 }
 
-mutex_array
+static mutex_array
 init_mutex_array(uint32_t nr_queries)
 {
     pthread_mutex_t *query_mutexes = malloc(nr_queries * sizeof(pthread_mutex_t));
@@ -70,6 +77,27 @@ init_mutex_array(uint32_t nr_queries)
     }
 
     return (mutex_array) { query_mutexes, nr_queries };
+}
+
+static dpu_error_t
+init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
+{
+    inbound_scores_array *inbound_scores = args;
+    uint32_t nr_dpus = 0;
+    DPU_PROPAGATE(dpu_get_nr_dpus(rank, &nr_dpus));
+    inbound_scores->buffers[rank_id] = malloc((size_t)nr_dpus * inbound_scores->nr_queries * sizeof(**inbound_scores->buffers));
+
+    return DPU_OK;
+}
+
+static dpu_error_t
+init_inbound_buffers(struct dpu_set_t set, inbound_scores_array inbound_scores)
+{
+    DPU_PROPAGATE(dpu_get_nr_ranks(set, &inbound_scores.nr_ranks));
+    inbound_scores.buffers = malloc(inbound_scores.nr_ranks * sizeof(*inbound_scores.buffers));
+    DPU_PROPAGATE(dpu_callback(set, init_inbound_buffer, &inbound_scores, DPU_CALLBACK_ASYNC));
+
+    return DPU_OK;
 }
 
 /* Cleanup functions */
@@ -97,6 +125,17 @@ cleanup_mutex_array(mutex_array *mutex_array)
     }
     free(mutex_array->mutexes);
 }
+
+static void
+cleanup_inbound_buffers(inbound_scores_array *inbound_scores)
+{
+    for (int i = 0; i < inbound_scores->nr_ranks; i++) {
+        free(inbound_scores->buffers[i]);
+    }
+    free(inbound_scores->buffers);
+}
+
+/* Other functions */
 
 static dpu_error_t
 update_rank_status(struct dpu_set_t rank, bool *finished)
@@ -166,7 +205,7 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
     struct update_bounds_atomic_context *ctx = args;
     const uint32_t nr_queries = ctx->nr_queries;
 
-    score_t *my_bounds_buf = &ctx->bound_by_dpu[(size_t)MAX_NR_DPUS_PER_RANK * rank_id * nr_queries];
+    score_t *my_bounds_buf = ctx->inbound_scores.buffers[rank_id];
     bool *finished = &ctx->finished_ranks[rank_id];
 
     DPU_PROPAGATE(update_rank_status(rank, finished));
@@ -210,17 +249,16 @@ topdocs_lower_bound_sync(struct dpu_set_t set, uint32_t *nr_topdocs, int nr_quer
 {
     CLEANUP(cleanup_pques) pque_array score_pques = init_pques(nr_queries, nr_topdocs);
     CLEANUP(cleanup_mutex_array) mutex_array query_mutexes = init_mutex_array(nr_queries);
+    CLEANUP(cleanup_inbound_buffers) inbound_scores_array inbound_scores = { NULL, 0, nr_queries };
+    DPU_PROPAGATE(init_inbound_buffers(set, inbound_scores));
 
     uint32_t nr_ranks = 0;
     DPU_PROPAGATE(dpu_get_nr_ranks(set, &nr_ranks));
-    // TODO(sbrocard): allocate this by rank for NUMA affinity
-    CLEANUP(cleanup_free)
-    score_t *bound_by_dpu = malloc((size_t)nr_ranks * MAX_NR_DPUS_PER_RANK * nr_queries * sizeof(*bound_by_dpu));
     CLEANUP(cleanup_free) score_t *updated_bounds = malloc(nr_queries * sizeof(*updated_bounds));
     CLEANUP(cleanup_free) bool *finished_ranks = malloc(nr_ranks * sizeof(*finished_ranks));
 
     struct update_bounds_atomic_context ctx
-        = { nr_queries, nr_topdocs, bound_by_dpu, query_mutexes, score_pques, finished_ranks };
+        = { nr_queries, nr_topdocs, inbound_scores, query_mutexes, score_pques, finished_ranks };
 
     bool first_run = true;
     do {
