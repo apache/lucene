@@ -55,7 +55,7 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p>The lifecycle is:
  *
  * <ol>
- *   <li>DocValuesConsumer is created by {@link NormsFormat#normsConsumer(SegmentWriteState)}.
+ *   <li>DocValuesConsumer is created by {@link DocValuesFormat#fieldsConsumer(SegmentWriteState)}.
  *   <li>{@link #addNumericField}, {@link #addBinaryField}, {@link #addSortedField}, {@link
  *       #addSortedSetField}, or {@link #addSortedNumericField} are called for each Numeric, Binary,
  *       Sorted, SortedSet, or SortedNumeric docvalues field. The API is a "pull" rather than
