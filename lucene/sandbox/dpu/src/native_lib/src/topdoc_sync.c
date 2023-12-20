@@ -1,13 +1,11 @@
 #include "topdocs_sync.h"
 
-#include <bits/pthreadtypes.h>
 #include <dpu.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/types.h>
 
 #include "dpu_error.h"
 #include "dpu_types.h"
