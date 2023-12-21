@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
@@ -116,20 +118,32 @@ final class ConcurrentApproximatePriorityQueue<T> {
         }
       }
     }
-    for (int i = 0; i < concurrency; ++i) {
-      final int index = (threadHash + i) % concurrency;
-      final Lock lock = locks[index];
-      final ApproximatePriorityQueue<T> queue = queues[index];
-      lock.lock();
-      try {
+
+    // We want to make sure we return a non-null entry if this queue is not empty. This requires us
+    // to not release locks until we're done, otherwise if there is a single non-empty sub queue, as
+    // we iterate through all sub queues, there is a chance that an entry gets added to a queue we
+    // just checked and that the existing entry gets removed from a queue we haven't checked yet.
+    // This would make this method return `null` even though the queue was empty at no point in
+    // time.
+
+    final List<Lock> toUnlock = new ArrayList<>();
+    try {
+      for (int index = 0; index < concurrency; ++index) {
+        final Lock lock = locks[index];
+        final ApproximatePriorityQueue<T> queue = queues[index];
+        lock.lock();
+        toUnlock.add(lock);
         T entry = queue.poll(predicate);
         if (entry != null) {
           return entry;
         }
-      } finally {
+      }
+    } finally {
+      for (Lock lock : toUnlock) {
         lock.unlock();
       }
     }
+
     return null;
   }
 
