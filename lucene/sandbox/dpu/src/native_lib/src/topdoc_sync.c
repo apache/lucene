@@ -40,6 +40,14 @@
             return DPU_ERR_SYSTEM;                                                                                               \
         }                                                                                                                        \
     } while (0)
+#define CHECK_REALLOC(ptr, prev)                                                                                                 \
+    do {                                                                                                                         \
+        if (ptr == NULL) {                                                                                                       \
+            free(prev);                                                                                                          \
+            (void)fprintf(stderr, "realloc failed, errno=%d\n", errno);                                                          \
+            return DPU_ERR_SYSTEM;                                                                                               \
+        }                                                                                                                        \
+    } while (0)
 
 typedef struct {
     PQue *pques;
@@ -66,18 +74,33 @@ struct update_bounds_atomic_context {
 
 static pthread_key_t key;
 static const uint32_t MAX_NR_DPUS_PER_RANK = DPU_MAX_NR_CIS * DPU_MAX_NR_DPUS_PER_CI;
+static pque_array pque_pool = { NULL, 0 };
+static mutex_array mutex_pool = { NULL, 0 };
 
 /* Initialization functions */
 
 static dpu_error_t
 init_pques(pque_array *score_pques, const uint32_t *nr_topdocs) __attribute_warn_unused_result__
 {
-    uint32_t nr_pques = score_pques->nr_pques;
+    int nr_pques = score_pques->nr_pques;
 
-    PQue *pques = malloc(nr_pques * sizeof(*pques));
-    CHECK_MALLOC(pques);
-    for (int i = 0; i < nr_pques; i++) {
-        pques[i] = PQue_with_capacity(nr_topdocs[i]);
+    // PQue *pques = malloc(nr_pques * sizeof(*pques));
+    PQue *pques = pque_pool.pques;
+    if (pque_pool.nr_pques < nr_pques) {
+        pques = realloc(pque_pool.pques, nr_pques * sizeof(*pques));
+        CHECK_REALLOC(pques, pque_pool.pques);
+        for (int i = 0; i < pque_pool.nr_pques; i++) {
+            PQue_reserve(&pques[i], nr_topdocs[i]);
+        }
+        for (int i = pque_pool.nr_pques; i < nr_pques; i++) {
+            pques[i] = PQue_with_capacity(nr_topdocs[i]);
+        }
+        pque_pool.pques = pques;
+        pque_pool.nr_pques = nr_pques;
+    } else {
+        for (int i = 0; i < nr_pques; i++) {
+            PQue_reserve(&pques[i], nr_topdocs[i]);
+        }
     }
 
     score_pques->pques = pques;
@@ -88,18 +111,23 @@ init_pques(pque_array *score_pques, const uint32_t *nr_topdocs) __attribute_warn
 static dpu_error_t
 init_mutex_array(mutex_array *query_mutexes) __attribute_warn_unused_result__
 {
-    uint32_t nr_mutexes = query_mutexes->nr_mutexes;
+    int nr_mutexes = query_mutexes->nr_mutexes;
 
-    pthread_mutex_t *mutexes = malloc(nr_mutexes * sizeof(pthread_mutex_t));
-    CHECK_MALLOC(mutexes);
-    for (int i = 0; i < nr_mutexes; i++) {
-        if (pthread_mutex_init(&mutexes[i], NULL) != 0) {
-            (void)fprintf(stderr, "pthread_mutex_init failed, errno=%d\n", errno);
-            return DPU_ERR_SYSTEM;
+    pthread_mutex_t *mutex_array = mutex_pool.mutexes;
+    if (mutex_pool.nr_mutexes < nr_mutexes) {
+        mutex_array = realloc(mutex_pool.mutexes, nr_mutexes * sizeof(*mutex_array));
+        CHECK_REALLOC(mutex_array, mutex_pool.mutexes);
+        for (int i = mutex_pool.nr_mutexes; i < nr_mutexes; i++) {
+            if (pthread_mutex_init(&mutex_array[i], NULL) != 0) {
+                (void)fprintf(stderr, "pthread_mutex_init failed, errno=%d\n", errno);
+                return DPU_ERR_SYSTEM;
+            }
         }
+        mutex_pool.mutexes = mutex_array;
+        mutex_pool.nr_mutexes = nr_mutexes;
     }
 
-    query_mutexes->mutexes = mutexes;
+    query_mutexes->mutexes = mutex_array;
 
     return DPU_OK;
 }
@@ -124,14 +152,9 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args) __attri
     } else {
         if (inbound_scores->nr_queries < nr_queries) {
             score_t *new_buffer = realloc(inbound_scores->buffer, (size_t)nr_dpus * nr_queries * sizeof(*inbound_scores->buffer));
-            if (new_buffer) {
-                inbound_scores->buffer = new_buffer;
-                inbound_scores->nr_queries = nr_queries;
-            } else {
-                free(inbound_scores->buffer);
-                (void)fprintf(stderr, "realloc failed, rank %u, errno=%d\n", rank_id, errno);
-                return DPU_ERR_SYSTEM;
-            }
+            CHECK_REALLOC(new_buffer, inbound_scores->buffer);
+            inbound_scores->buffer = new_buffer;
+            inbound_scores->nr_queries = nr_queries;
         }
     }
 
@@ -164,6 +187,9 @@ cleanup_free(void *ptr)
 static void
 cleanup_pques(const pque_array *pque_array)
 {
+    if (pque_array->pques == NULL) {
+        return;
+    }
     for (int i = 0; i < pque_array->nr_pques; i++) {
         PQue_drop(&pque_array->pques[i]);
     }
@@ -173,6 +199,9 @@ cleanup_pques(const pque_array *pque_array)
 static void
 cleanup_mutex_array(const mutex_array *mutex_array)
 {
+    if (mutex_array->mutexes == NULL) {
+        return;
+    }
     for (int i = 0; i < mutex_array->nr_mutexes; i++) {
         if (pthread_mutex_destroy(&mutex_array->mutexes[i]) != 0) {
             (void)fprintf(stderr, "pthread_mutex_destroy failed, errno=%d\n", errno);
@@ -307,9 +336,9 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 dpu_error_t
 topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int nr_queries)
 {
-    CLEANUP(cleanup_pques) pque_array score_pques = { NULL, nr_queries };
+    pque_array score_pques = { NULL, nr_queries };
     DPU_PROPAGATE(init_pques(&score_pques, nr_topdocs));
-    CLEANUP(cleanup_mutex_array) mutex_array query_mutexes = { NULL, nr_queries };
+    mutex_array query_mutexes = { NULL, nr_queries };
     DPU_PROPAGATE(init_mutex_array(&query_mutexes));
     DPU_PROPAGATE(init_inbound_buffers(set, nr_queries));
 
@@ -319,8 +348,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int n
     CLEANUP(cleanup_free) bool *finished_ranks = malloc(nr_ranks * sizeof(*finished_ranks));
     CHECK_MALLOC(finished_ranks);
 
-    const struct update_bounds_atomic_context ctx
-        = { nr_queries, nr_topdocs, query_mutexes, score_pques, finished_ranks };
+    const struct update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, finished_ranks };
 
     bool first_run = true;
     do {
@@ -335,4 +363,14 @@ topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int n
     } while (!all_dpus_have_finished(finished_ranks, nr_ranks));
 
     return DPU_OK;
+}
+
+void
+free_topdocs_sync(void)
+{
+    pthread_key_delete(key);
+
+    cleanup_pques(&pque_pool);
+
+    cleanup_mutex_array(&mutex_pool);
 }

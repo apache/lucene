@@ -28,3 +28,8 @@
  * @param nr_ranks The number of ranks in the set.
  */
 dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int nr_queries) __attribute_warn_unused_result__;
+
+/**
+ * Frees the resources allocated for the topdocs synchronization.
+ */
+void free_topdocs_sync(void);

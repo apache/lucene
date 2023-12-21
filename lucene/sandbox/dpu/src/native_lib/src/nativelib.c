@@ -486,6 +486,7 @@ JNI_OnLoad(JavaVM *vm, __attribute__((unused)) void *reserved)
 JNIEXPORT void
 JNI_OnUnload(__attribute__((unused)) JavaVM *vm, __attribute__((unused)) void *reserved)
 {
+    free_topdocs_sync();
     release_callback(env);
 
     env = NULL;
