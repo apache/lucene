@@ -2315,31 +2315,26 @@ public final class CheckIndex implements Closeable {
         }
 
         // Test Terms#intersect
-        TermsEnum allTerms = terms.iterator();
         // An automaton that should match a good number of terms
-        Automaton a =
+        Automaton automaton =
             Operations.concatenate(
                 Arrays.asList(
                     Automata.makeAnyBinary(),
                     Automata.makeCharRange('a', 'e'),
                     Automata.makeAnyBinary()));
-        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        CompiledAutomaton ca = new CompiledAutomaton(a);
-        ByteRunAutomaton runAutomaton = new ByteRunAutomaton(a);
-        TermsEnum filteredTerms = terms.intersect(ca, null);
-        for (BytesRef term = allTerms.next(); term != null; term = allTerms.next()) {
-          if (runAutomaton.run(term.bytes, term.offset, term.length)) {
-            BytesRef filteredTerm = filteredTerms.next();
-            if (Objects.equals(term, filteredTerm) == false) {
-              throw new CheckIndexException(
-                  "Expected next filtered term: " + term + ", but got " + filteredTerm);
-            }
-          }
-        }
-        BytesRef filteredTerm = filteredTerms.next();
-        if (filteredTerm != null) {
-          throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
-        }
+        BytesRef startTerm = null;
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        startTerm = new BytesRef();
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        automaton = Automata.makeNonEmptyBinary();
+        startTerm = new BytesRef(new byte[] {'l'});
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        // a term that likely compares greater than every other term in the dictionary
+        startTerm = new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        checkTermsIntersect(terms, automaton, startTerm);
       }
     }
 
@@ -2378,6 +2373,45 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  private static void checkTermsIntersect(Terms terms, Automaton automaton, BytesRef startTerm)
+      throws IOException {
+    TermsEnum allTerms = terms.iterator();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    CompiledAutomaton compiledAutomaton = new CompiledAutomaton(automaton, false, true, true);
+    ByteRunAutomaton runAutomaton = new ByteRunAutomaton(automaton, true);
+    TermsEnum filteredTerms = terms.intersect(compiledAutomaton, startTerm);
+    BytesRef term;
+    if (startTerm != null) {
+      switch (allTerms.seekCeil(startTerm)) {
+        case FOUND:
+          term = allTerms.next();
+          break;
+        case NOT_FOUND:
+          term = allTerms.term();
+          break;
+        case END:
+        default:
+          term = null;
+          break;
+      }
+    } else {
+      term = allTerms.next();
+    }
+    for (; term != null; term = allTerms.next()) {
+      if (runAutomaton.run(term.bytes, term.offset, term.length)) {
+        BytesRef filteredTerm = filteredTerms.next();
+        if (Objects.equals(term, filteredTerm) == false) {
+          throw new CheckIndexException(
+              "Expected next filtered term: " + term + ", but got " + filteredTerm);
+        }
+      }
+    }
+    BytesRef filteredTerm = filteredTerms.next();
+    if (filteredTerm != null) {
+      throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
+    }
   }
 
   /**
