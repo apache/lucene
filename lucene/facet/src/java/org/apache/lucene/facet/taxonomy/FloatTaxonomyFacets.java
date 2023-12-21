@@ -18,14 +18,11 @@ package org.apache.lucene.facet.taxonomy;
 
 import com.carrotsearch.hppc.IntFloatHashMap;
 import com.carrotsearch.hppc.cursors.IntFloatCursor;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
-
 import java.io.IOException;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
-import org.apache.lucene.facet.TopOrdAndIntQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to float. */
 abstract class FloatTaxonomyFacets extends TaxonomyFacets {
@@ -121,7 +118,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
    */
   @Override
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
-          throws IOException {
+      throws IOException {
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
     float bottomValue = -Float.MAX_VALUE;
     int bottomOrd = Integer.MAX_VALUE;
