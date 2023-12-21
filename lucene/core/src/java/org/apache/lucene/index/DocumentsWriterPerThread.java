@@ -303,18 +303,18 @@ final class DocumentsWriterPerThread implements Accountable {
 
         @Override
         public boolean hasNext() {
-          return first.hasNext() || additionalField != null;
+          return additionalField != null || first.hasNext();
         }
 
         @Override
         public IndexableField next() {
-          if (first.hasNext()) {
-            IndexableField field = first.next();
-            return field;
-          }
           if (additionalField != null) {
             IndexableField field = additionalField;
             additionalField = null;
+            return field;
+          }
+          if (first.hasNext()) {
+            IndexableField field = first.next();
             return field;
           }
           throw new NoSuchElementException();

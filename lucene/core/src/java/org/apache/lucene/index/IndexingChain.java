@@ -224,7 +224,8 @@ final class IndexingChain implements Accountable {
     }
 
     LeafReader docValuesReader = getDocValuesLeafReader();
-    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
+    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper =
+        Function.identity();
 
     if (state.segmentInfo.getHasBlocks() && state.fieldInfos.getParentField() != null) {
       final DocIdSetIterator readerValues =
@@ -244,7 +245,7 @@ final class IndexingChain implements Accountable {
         && state.fieldInfos.getParentField() == null
         && indexCreatedVersionMajor >= Version.LUCENE_10_0_0.major) {
       throw new CorruptIndexException(
-          "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+          "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
               + indexCreatedVersionMajor,
           "IndexingChain");
     }

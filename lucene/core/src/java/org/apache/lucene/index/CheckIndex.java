@@ -1208,7 +1208,6 @@ public final class CheckIndex implements Closeable {
               break;
             }
           }
-          prevDoc = nextDoc;
           if (cmp > 0) {
             throw new CheckIndexException(
                 "segment has indexSort="
@@ -1218,6 +1217,7 @@ public final class CheckIndex implements Closeable {
                     + " sorts after docID="
                     + nextDoc);
           }
+          prevDoc = nextDoc;
         }
         msg(
             infoStream,

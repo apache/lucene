@@ -161,6 +161,11 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean isParentField =
               format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
 
+          assert (bits & 0xE0) == 0
+              : "unused bits are set \"" + Integer.toBinaryString(bits) + "\"";
+          assert format >= FORMAT_PARENT_FIELD || (bits & 0xF0) == 0
+              : "parent field bit is set but shouldn't' \"" + Integer.toBinaryString(bits) + "\"";
+
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
           // DV Types are packed in one byte
@@ -380,6 +385,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   // Codec header
   static final String CODEC_NAME = "Lucene94FieldInfos";
   static final int FORMAT_START = 0;
+  // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
   static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
 

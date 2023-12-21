@@ -213,7 +213,7 @@ public final class FieldInfo {
 
     if (softDeletesField && parentField) {
       throw new IllegalArgumentException(
-          "field can't be used as soft-deletes field and parent document fields (field: '"
+          "field can't be used as soft-deletes field and parent document field (field: '"
               + name
               + "')");
     }

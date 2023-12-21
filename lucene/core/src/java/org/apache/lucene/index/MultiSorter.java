@@ -68,11 +68,14 @@ final class MultiSorter {
           IndexSorter.ComparableProvider provider = providers[j];
           providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
         }
-        assert metaData.hasBlocks() == false
-                || fieldInfos.getParentField() != null
-                || metaData.getCreatedVersionMajor() < Version.LUCENE_10_0_0.major
-            : "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
-                + metaData.getCreatedVersionMajor();
+        if (metaData.hasBlocks()
+            && fieldInfos.getParentField() == null
+            && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+          throw new CorruptIndexException(
+              "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
+                  + metaData.getCreatedVersionMajor(),
+              "IndexingChain");
+        }
       }
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;
     }
