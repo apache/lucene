@@ -293,67 +293,41 @@ public class WeightedSpanTermExtractor {
    */
   protected void extractWeightedSpanTerms(
       Map<String, WeightedSpanTerm> terms, SpanQuery spanQuery, float boost) throws IOException {
-    Set<String> fieldNames;
 
-    if (fieldName == null) {
-      fieldNames = new HashSet<>();
-      collectSpanQueryFields(spanQuery, fieldNames);
-    } else {
-      fieldNames = new HashSet<>(1);
-      fieldNames.add(fieldName);
-    }
-    // To support the use of the default field name
-    if (defaultField != null) {
-      fieldNames.add(defaultField);
-    }
-
-    Map<String, SpanQuery> queries = new HashMap<>();
-
-    Set<Term> nonWeightedTerms = new HashSet<>();
     final boolean mustRewriteQuery = mustRewriteQuery(spanQuery);
     final IndexSearcher searcher = new IndexSearcher(getLeafContext());
     searcher.setQueryCache(null);
-    if (mustRewriteQuery) {
-      final SpanQuery rewrittenQuery = (SpanQuery) searcher.rewrite(spanQuery);
-      for (final String field : fieldNames) {
-        queries.put(field, rewrittenQuery);
-      }
-      rewrittenQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
-    } else {
-      spanQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
+    final SpanQuery query = mustRewriteQuery ? (SpanQuery) searcher.rewrite(spanQuery) : spanQuery;
+
+    final Set<Term> nonWeightedTerms = new HashSet<>();
+    query.visit(QueryVisitor.termCollector(nonWeightedTerms));
+    if (nonWeightedTerms.isEmpty()) {
+      return;
     }
 
-    List<PositionSpan> spanPositions = new ArrayList<>();
+    final List<PositionSpan> spanPositions = new ArrayList<>();
 
-    for (final String field : fieldNames) {
-      final SpanQuery q;
-      if (mustRewriteQuery) {
-        q = queries.get(field);
-      } else {
-        q = spanQuery;
-      }
-      LeafReaderContext context = getLeafContext();
-      SpanWeight w =
-          (SpanWeight) searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
-      Bits acceptDocs = context.reader().getLiveDocs();
-      final Spans spans = w.getSpans(context, SpanWeight.Postings.POSITIONS);
-      if (spans == null) {
-        return;
-      }
+    LeafReaderContext context = getLeafContext();
+    SpanWeight w =
+        (SpanWeight)
+            searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
+    final Spans spans = w.getSpans(context, SpanWeight.Postings.POSITIONS);
+    if (spans == null) {
+      return;
+    }
 
-      // collect span positions
-      while (spans.nextDoc() != Spans.NO_MORE_DOCS) {
-        if (acceptDocs != null && acceptDocs.get(spans.docID()) == false) {
-          continue;
-        }
-        while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
-          spanPositions.add(new PositionSpan(spans.startPosition(), spans.endPosition() - 1));
-        }
+    final Bits acceptDocs = context.reader().getLiveDocs();
+    // collect span positions
+    while (spans.nextDoc() != Spans.NO_MORE_DOCS) {
+      if (acceptDocs != null && acceptDocs.get(spans.docID()) == false) {
+        continue;
+      }
+      while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
+        spanPositions.add(new PositionSpan(spans.startPosition(), spans.endPosition() - 1));
       }
     }
 
-    if (spanPositions.size() == 0) {
-      // no spans found
+    if (spanPositions.isEmpty()) {
       return;
     }
 
