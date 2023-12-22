@@ -62,7 +62,7 @@ typedef struct {
 
 typedef struct {
     score_t *buffer;
-    int nr_queries;
+    int size;
 } inbound_scores_array;
 
 struct update_bounds_atomic_context {
@@ -137,6 +137,35 @@ init_mutex_array(mutex_array *query_mutexes)
 }
 
 nodiscard static dpu_error_t
+create_inbound_buffer(uint32_t rank_id, inbound_scores_array *inbound_scores, int nr_queries, uint32_t nr_dpus)
+{
+    inbound_scores = malloc(sizeof(*inbound_scores));
+    CHECK_MALLOC(inbound_scores);
+    inbound_scores->size = nr_queries;
+    score_t *buffer = malloc((size_t)nr_dpus * nr_queries * sizeof(*buffer));
+    CHECK_MALLOC(buffer);
+    inbound_scores->buffer = buffer;
+    if (pthread_setspecific(key, inbound_scores) != 0) {
+        (void)fprintf(stderr, "pthread_setspecific failed, rank %u, errno=%d\n", rank_id, errno);
+        free(buffer);
+        return DPU_ERR_SYSTEM;
+    }
+
+    return DPU_OK;
+}
+
+nodiscard static dpu_error_t
+resize_inbound_buffer(inbound_scores_array *inbound_scores, int nr_queries, uint32_t nr_dpus)
+{
+    score_t *new_buffer = realloc(inbound_scores->buffer, (size_t)nr_dpus * nr_queries * sizeof(*inbound_scores->buffer));
+    CHECK_REALLOC(new_buffer, inbound_scores->buffer);
+    inbound_scores->buffer = new_buffer;
+    inbound_scores->size = nr_queries;
+
+    return DPU_OK;
+}
+
+nodiscard static dpu_error_t
 init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
     const int nr_queries = *(int *)args;
@@ -144,24 +173,9 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
 
     inbound_scores_array *inbound_scores = pthread_getspecific(key);
     if (inbound_scores == NULL) {
-        inbound_scores = malloc(sizeof(*inbound_scores));
-        CHECK_MALLOC(inbound_scores);
-        inbound_scores->nr_queries = nr_queries;
-        score_t *buffer = malloc((size_t)nr_dpus * nr_queries * sizeof(*buffer));
-        CHECK_MALLOC(buffer);
-        inbound_scores->buffer = buffer;
-        if (pthread_setspecific(key, inbound_scores) != 0) {
-            (void)fprintf(stderr, "pthread_setspecific failed, rank %u, errno=%d\n", rank_id, errno);
-            free(buffer);
-            return DPU_ERR_SYSTEM;
-        }
-    } else {
-        if (inbound_scores->nr_queries < nr_queries) {
-            score_t *new_buffer = realloc(inbound_scores->buffer, (size_t)nr_dpus * nr_queries * sizeof(*inbound_scores->buffer));
-            CHECK_REALLOC(new_buffer, inbound_scores->buffer);
-            inbound_scores->buffer = new_buffer;
-            inbound_scores->nr_queries = nr_queries;
-        }
+        DPU_PROPAGATE(create_inbound_buffer(rank_id, inbound_scores, nr_queries, nr_dpus));
+    } else if (inbound_scores->size < nr_queries) {
+        DPU_PROPAGATE(resize_inbound_buffer(inbound_scores, nr_queries, nr_dpus));
     }
 
     return DPU_OK;
