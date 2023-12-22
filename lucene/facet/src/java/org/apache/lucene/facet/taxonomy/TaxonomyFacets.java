@@ -151,7 +151,7 @@ abstract class TaxonomyFacets extends Facets {
   }
 
   /** Set the count for this ordinal to {@code newValue}. */
-  void setCount(int ordinal, int newValue) {
+  protected void setCount(int ordinal, int newValue) {
     if (sparseCounts != null) {
       sparseCounts.put(ordinal, newValue);
     } else {
@@ -160,7 +160,7 @@ abstract class TaxonomyFacets extends Facets {
   }
 
   /** Get the count for this ordinal. */
-  int getCount(int ordinal) {
+  protected int getCount(int ordinal) {
     if (sparseCounts != null) {
       return sparseCounts.get(ordinal);
     } else {
@@ -168,11 +168,15 @@ abstract class TaxonomyFacets extends Facets {
     }
   }
 
-  Number getNumberValue(int ordinal) {
+  /** Get the aggregation value for this ordinal. */
+  protected Number getAggregationValue(int ordinal) {
+    // By default, this is just the count.
     return getCount(ordinal);
   }
 
+  /** Apply an aggregation to the two values and return the result. */
   protected Number aggregate(Number existingVal, Number newVal) {
+    // By default, we are computing counts, so the values are interpreted as integers and summed.
     return (int) existingVal + (int) newVal;
   }
 
@@ -245,14 +249,26 @@ abstract class TaxonomyFacets extends Facets {
     return dimConfig;
   }
 
+  /**
+   * Roll-up the aggregation values from {@code childOrdinal} to {@code ordinal}. Overrides should
+   * probably call this to update the counts. Overriding allows us to work with primitive types for
+   * the aggregation values, keeping aggregation efficient.
+   */
   protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
     setCount(ordinal, getCount(ordinal) + rollup(childOrdinal));
   }
 
+  /**
+   * Return a {@link TopOrdAndNumberQueue} of the appropriate type, i.e. a {@link TopOrdAndIntQueue}
+   * or a {@link org.apache.lucene.facet.TopOrdAndFloatQueue}.
+   */
   protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
     return new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
   }
 
+  // TODO: We don't need this if we're okay with having an integer -1 in the results even for float
+  // aggregations.
+  /** Return the value for a missing aggregation, i.e. {@code -1} or {@code -1f}. */
   protected Number missingAggregationValue() {
     return -1;
   }
@@ -357,7 +373,7 @@ abstract class TaxonomyFacets extends Facets {
       for (IntIntCursor ordAndCount : sparseCounts) {
         int ord = ordAndCount.key;
         int count = ordAndCount.value;
-        Number value = getNumberValue(ord);
+        Number value = getAggregationValue(ord);
         if (parents[ord] == dimOrd && count > 0) {
           aggregatedCount += count;
           aggregatedValue = aggregate(aggregatedValue, value);
@@ -371,7 +387,7 @@ abstract class TaxonomyFacets extends Facets {
       int ord = children[dimOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int count = counts[ord];
-        Number value = getNumberValue(ord);
+        Number value = getAggregationValue(ord);
         if (count > 0) {
           aggregatedCount += count;
           aggregatedValue = aggregate(aggregatedValue, value);
@@ -388,7 +404,7 @@ abstract class TaxonomyFacets extends Facets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = getNumberValue(dimOrd);
+        aggregatedValue = getAggregationValue(dimOrd);
       } else {
         // Our aggregated value is not correct, in general:
         aggregatedValue = missingAggregationValue();
@@ -451,7 +467,7 @@ abstract class TaxonomyFacets extends Facets {
       for (IntIntCursor c : sparseCounts) {
         int ord = c.key;
         int count = c.value;
-        Number value = getNumberValue(ord);
+        Number value = getAggregationValue(ord);
         if (parents[ord] == pathOrd && count > 0) {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
@@ -466,7 +482,7 @@ abstract class TaxonomyFacets extends Facets {
       int ord = children[pathOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int count = counts[ord];
-        Number value = getNumberValue(ord);
+        Number value = getAggregationValue(ord);
         if (count > 0) {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
@@ -480,7 +496,7 @@ abstract class TaxonomyFacets extends Facets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = getNumberValue(pathOrd);
+        aggregatedValue = getAggregationValue(pathOrd);
       } else {
         // Our aggregated value is not correct, in general:
         aggregatedValue = missingAggregationValue();
@@ -525,7 +541,7 @@ abstract class TaxonomyFacets extends Facets {
     if (ord < 0) {
       return -1;
     }
-    return initialized ? getNumberValue(ord) : 0;
+    return initialized ? getAggregationValue(ord) : 0;
   }
 
   @Override
@@ -605,7 +621,7 @@ abstract class TaxonomyFacets extends Facets {
             if (dimConfig.requireDimCount) {
               // If the dim is configured as multi-valued and requires dim counts, we can access
               // an accurate count for the dim computed at indexing time:
-              dimValue = getNumberValue(dimOrd);
+              dimValue = getAggregationValue(dimOrd);
             } else {
               // If the dim is configured as multi-valued but not requiring dim counts, we cannot
               // compute an accurate dim count, and use -1 as a place-holder:

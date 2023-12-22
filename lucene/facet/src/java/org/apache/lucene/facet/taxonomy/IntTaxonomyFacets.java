@@ -81,7 +81,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   @Override
-  Number getNumberValue(int ordinal) {
+  protected Number getAggregationValue(int ordinal) {
     return getValue(ordinal);
   }
 

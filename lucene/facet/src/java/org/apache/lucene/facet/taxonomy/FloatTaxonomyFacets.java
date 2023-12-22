@@ -82,7 +82,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   }
 
   @Override
-  Number getNumberValue(int ordinal) {
+  protected Number getAggregationValue(int ordinal) {
     return getValue(ordinal);
   }
 
@@ -99,6 +99,16 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     setValue(ordinal, newValue);
   }
 
+  @Override
+  protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
+    return new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
+  }
+
+  @Override
+  protected Number missingAggregationValue() {
+    return -1f;
+  }
+
   private float rollup(int ord) throws IOException {
     int[] children = getChildren();
     int[] siblings = getSiblings();
@@ -109,13 +119,5 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return aggregatedValue;
-  }
-
-  protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
-    return new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
-  }
-
-  protected Number missingAggregationValue() {
-    return -1f;
   }
 }
