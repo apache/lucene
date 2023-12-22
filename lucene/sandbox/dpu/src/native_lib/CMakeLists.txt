@@ -3,6 +3,14 @@ project(dpuLucene VERSION 0.0.0)
 
 find_package(JNI REQUIRED)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+find_package(CUnit REQUIRED)
+include(CTest)
+enable_testing()
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 include("${UPMEM_HOME}/share/upmem/cmake/include/host/DpuHost.cmake")
 include(CheckIPOSupported)
 
@@ -16,10 +24,10 @@ set(CMAKE_C_FLGS_DEBUG
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra")
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
-add_library(${PROJECT_NAME} src/nativelib.c src/topdoc_sync.c)
+add_library(${PROJECT_NAME} src/nativelib.c src/topdocs_sync.c)
 target_include_directories(
   ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} PRIVATE STC/include)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES} Threads::Threads)
 
 check_ipo_supported(RESULT result OUTPUT output)
 
@@ -31,3 +39,12 @@ else()
 endif()
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX})
+
+add_executable(run_test test/test.c)
+
+target_link_libraries(run_test PRIVATE ${CUNIT_LIBRARIES} ${DPU_HOST_LIBRARIES} Threads::Threads)
+target_include_directories(run_test PRIVATE ${CUNIT_INCLUDE_DIRS} $<TARGET_PROPERTY:dpuLucene,INCLUDE_DIRECTORIES> src)
+target_compile_options(run_test PRIVATE -Wall -Wextra -Werror -g3 -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(run_test PRIVATE -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer)
+
+add_test(NAME run_test COMMAND run_test)

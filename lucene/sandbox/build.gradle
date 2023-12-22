@@ -46,6 +46,12 @@ task cmakeInstall (type: dev.welbyseely.CMakeBuildTask) {
   outputs.files('dpu/build/libdpuLucene.so', 'dpu/build/dpu_program_exact_phrase')
 }
 
+task cmakeBuildTest (type: dev.welbyseely.CMakeBuildTask) {
+  configureFromProject()
+  buildTarget = 'run_test'
+  inputs.files(fileTree('dpu/src'))
+}
+
 cmakeInstall.dependsOn cmakeBuild
 assemble.dependsOn cmakeInstall
 clean.dependsOn cmakeClean
