@@ -14,6 +14,7 @@
 #include "query_result.h"
 #include "postings_util.h"
 #include "score_lower_bound.h"
+#include "context_save_restore.h"
 
 //#define PERF_MESURE
 #ifdef PERF_MESURE
@@ -62,13 +63,6 @@ uint16_t nr_lucene_segments;
 uint32_t lucene_segment_maxdoc[DPU_MAX_NR_LUCENE_SEGMENTS];
 uint16_t current_segment[NR_TASKLETS];
 
-struct results_mram_buffer_info {
-    uint16_t buffer_id;
-    uint16_t nb_results;
-    uint32_t start_did;
-};
-__mram_noinit struct results_mram_buffer_info results_buffer_info[DPU_MAX_BATCH_SIZE][MAX_NR_SEGMENTS];
-
 uint8_t nr_segments_log2 = 0;
 uintptr_t dpu_index = 0;
 
@@ -97,7 +91,7 @@ static void get_segments_info(uintptr_t);
 static void adder(int *i, void *args) { *i += (int)args; }
 static void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
 static void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
-void restore_results_buffer(uint16_t query_id, uint8_t segment_id, uint32_t *start_did);
+
 
 int main() {
 
@@ -190,8 +184,8 @@ int main() {
                     continue;
                 }
                 else
-                    // when this is a subsequent run for the same query, restore the results buffer
-                    restore_results_buffer(query_id, segment_id, &start_did);
+                    // when this is a subsequent run for the same query, restore the context
+                    restore_context(query_id, segment_id, &start_did, results_cache[me()], results_batch);
             }
 
             did_matcher_t *matchers = setup_matchers(nr_terms, postings_cache_wram[me()], start_did);
@@ -546,18 +540,6 @@ static void get_segments_info(uintptr_t index) {
     decoder_pool_release_one(decoder);
 }
 
-void restore_results_buffer(uint16_t query_id, uint8_t segment_id, uint32_t *start_did) {
-
-     struct results_mram_buffer_info binfo;
-     mram_read(&results_buffer_info[query_id][segment_id], &binfo, 8);
-     if(binfo.nb_results) {
-           mram_read(&results_batch[binfo.buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t)],
-                         results_cache[me()],
-                         (binfo.nb_results + 1) * sizeof(query_buffer_elem_t));
-     }
-     //TODO here we can read the start_id for the query/segment and return it for the matchers
-}
-
 #define NB_ELEM_TRANSFER 8
 static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz) {
 
@@ -605,20 +587,10 @@ void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_m
     }
     update_postings_in_cache(query_id, nr_terms, segment_id, cache);
 
-    // save information on the current partial buffer of results
-    struct results_mram_buffer_info binfo;
-    binfo.nb_results = results_cache[me()][0].info.buffer_size;
-    binfo.start_did = curr_did;
-    if(binfo.nb_results >= DPU_RESULTS_CACHE_SIZE - 1) {
-      // this is the case where the buffer full
-      // no need to retrieve any partial results for the subsequent run of the
-      // same query batch
-      binfo.nb_results = 0;
-    }
-
     flush_query_buffer();
-    binfo.buffer_id = results_cache[me()][0].info.mram_id;
-    mram_write(&binfo, &results_buffer_info[query_id][segment_id], 8);
+
+    // save information on the current partial buffer of results
+    save_context(query_id, segment_id, results_cache[me()], curr_did);
 }
 
 void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms) {
