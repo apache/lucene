@@ -25,8 +25,7 @@ public class TopOrdAndIntQueue extends TopOrdAndNumberQueue {
   }
 
   @Override
-  protected boolean lessThan(
-      TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
+  public boolean lessThan(TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
     int comparison = (int) a.value - (int) b.value;
     if (comparison < 0) {
       return true;

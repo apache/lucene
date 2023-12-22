@@ -17,13 +17,10 @@
 package org.apache.lucene.facet.taxonomy;
 
 import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.FacetsConfig.DimConfig;
-import org.apache.lucene.facet.TopOrdAndIntQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to int. */
 abstract class IntTaxonomyFacets extends TaxonomyFacets {
@@ -111,83 +108,5 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return aggregatedValue;
-  }
-
-  /**
-   * Determine the top-n children for a specified dimension + path. Results are in an intermediate
-   * form.
-   */
-  @Override
-  protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
-      throws IOException {
-    TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
-    int bottomValue = Integer.MIN_VALUE;
-    int bottomOrd = Integer.MAX_VALUE;
-
-    int aggregatedValue = 0;
-    int childCount = 0;
-    TopOrdAndIntQueue.OrdAndValue reuse = null;
-
-    // TODO: would be faster if we had a "get the following children" API?  then we
-    // can make a single pass over the hashmap
-    if (sparseValues != null) {
-      for (IntIntCursor c : sparseValues) {
-        int value = c.value;
-        int ord = c.key;
-        int count = sparseCounts.get(ord);
-        if (parents[ord] == pathOrd && count > 0) {
-          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
-          childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
-            if (reuse == null) {
-              reuse = new TopOrdAndIntQueue.OrdAndValue();
-            }
-            reuse.ord = ord;
-            reuse.value = value;
-            reuse = q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomValue = (int) q.top().value;
-              bottomOrd = q.top().ord;
-            }
-          }
-        }
-      }
-    } else {
-      int[] children = getChildren();
-      int[] siblings = getSiblings();
-      int ord = children[pathOrd];
-      while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        int value = values[ord];
-        int count = counts[ord];
-        if (count > 0) {
-          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
-          childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
-            if (reuse == null) {
-              reuse = new TopOrdAndIntQueue.OrdAndValue();
-            }
-            reuse.ord = ord;
-            reuse.value = value;
-            reuse = q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomValue = (int) q.top().value;
-              bottomOrd = q.top().ord;
-            }
-          }
-        }
-        ord = siblings[ord];
-      }
-    }
-
-    if (dimConfig.multiValued) {
-      if (dimConfig.requireDimCount) {
-        aggregatedValue = getValue(pathOrd);
-      } else {
-        // Our sum'd value is not correct, in general:
-        aggregatedValue = -1;
-      }
-    }
-
-    return new TopChildrenForPath(aggregatedValue, childCount, q);
   }
 }

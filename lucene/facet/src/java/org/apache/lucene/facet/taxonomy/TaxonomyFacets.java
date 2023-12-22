@@ -249,6 +249,14 @@ abstract class TaxonomyFacets extends Facets {
     setCount(ordinal, getCount(ordinal) + rollup(childOrdinal));
   }
 
+  protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
+    return new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
+  }
+
+  protected Number missingAggregationValue() {
+    return -1;
+  }
+
   /** Rolls up any single-valued hierarchical dimensions. */
   void rollup() throws IOException {
     if (initialized == false) {
@@ -308,7 +316,7 @@ abstract class TaxonomyFacets extends Facets {
     Number[] values = new Number[labelValues.length];
 
     for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      TopOrdAndNumberQueue.OrdAndValue ordAndValue = q.pop();
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
       values[i] = ordAndValue.value;
@@ -362,8 +370,8 @@ abstract class TaxonomyFacets extends Facets {
       int[] siblings = getSiblings();
       int ord = children[dimOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        Number value = getNumberValue(ord);
         int count = counts[ord];
+        Number value = getNumberValue(ord);
         if (count > 0) {
           aggregatedCount += count;
           aggregatedValue = aggregate(aggregatedValue, value);
@@ -382,11 +390,11 @@ abstract class TaxonomyFacets extends Facets {
       if (dimConfig.requireDimCount) {
         aggregatedValue = getNumberValue(dimOrd);
       } else {
-        // Our sum'd value is not correct, in general:
-        aggregatedValue = -1;
+        // Our aggregated value is not correct, in general:
+        aggregatedValue = missingAggregationValue();
       }
     } else {
-      // Our sum'd dim value is accurate, so we keep it
+      // Our aggregateddim value is accurate, so we keep it
     }
 
     // TODO: It would be nice if TaxonomyReader let us pass in a buffer + size so we didn't have to
@@ -400,41 +408,56 @@ abstract class TaxonomyFacets extends Facets {
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
+  private TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
+      TopOrdAndNumberQueue q,
+      int topN,
+      TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue,
+      TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue,
+      int ord,
+      Number value) {
+    if (incomingOrdAndValue == null) {
+      incomingOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
+    }
+    incomingOrdAndValue.ord = ord;
+    incomingOrdAndValue.value = value;
+
+    if (q.size() < topN || q.lessThan(bottomOrdAndValue, incomingOrdAndValue)) {
+      incomingOrdAndValue = q.insertWithOverflow(incomingOrdAndValue);
+      bottomOrdAndValue.ord = q.top().ord;
+      bottomOrdAndValue.value = q.top().value;
+    }
+    return incomingOrdAndValue;
+  }
+
   /**
    * Determine the top-n children for a specified dimension + path. Results are in an intermediate
    * form.
    */
   protected TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
-    TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
-    int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
+    TopOrdAndNumberQueue q = makeTopOrdAndNumberQueue(topN);
 
-    int aggregatedCount = 0;
+    Number aggregatedValue = 0;
     int childCount = 0;
-    TopOrdAndIntQueue.OrdAndValue reuse = null;
+
+    TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue = null;
+    TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
+    bottomOrdAndValue.ord = Integer.MAX_VALUE;
+    bottomOrdAndValue.value = 0;
 
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap
     if (sparseCounts != null) {
       for (IntIntCursor c : sparseCounts) {
-        int count = c.value;
         int ord = c.key;
+        int count = c.value;
+        Number value = getNumberValue(ord);
         if (parents[ord] == pathOrd && count > 0) {
-          aggregatedCount += count;
+          aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
-          if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-            if (reuse == null) {
-              reuse = new TopOrdAndIntQueue.OrdAndValue();
-            }
-            reuse.ord = ord;
-            reuse.value = count;
-            reuse = q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomCount = (int) q.top().value;
-              bottomOrd = q.top().ord;
-            }
-          }
+
+          incomingOrdAndValue =
+              insertIntoQueue(q, topN, bottomOrdAndValue, incomingOrdAndValue, ord, value);
         }
       }
     } else {
@@ -443,21 +466,13 @@ abstract class TaxonomyFacets extends Facets {
       int ord = children[pathOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int count = counts[ord];
+        Number value = getNumberValue(ord);
         if (count > 0) {
-          aggregatedCount += count;
+          aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
-          if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-            if (reuse == null) {
-              reuse = new TopOrdAndIntQueue.OrdAndValue();
-            }
-            reuse.ord = ord;
-            reuse.value = count;
-            reuse = q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomCount = (int) q.top().value;
-              bottomOrd = q.top().ord;
-            }
-          }
+
+          incomingOrdAndValue =
+              insertIntoQueue(q, topN, bottomOrdAndValue, incomingOrdAndValue, ord, value);
         }
         ord = siblings[ord];
       }
@@ -465,14 +480,14 @@ abstract class TaxonomyFacets extends Facets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedCount = getCount(pathOrd);
+        aggregatedValue = getNumberValue(pathOrd);
       } else {
-        // Our sum'd count is not correct, in general:
-        aggregatedCount = -1;
+        // Our aggregated value is not correct, in general:
+        aggregatedValue = missingAggregationValue();
       }
     }
 
-    return new TopChildrenForPath(aggregatedCount, childCount, q);
+    return new TopChildrenForPath(aggregatedValue, childCount, q);
   }
 
   @Override

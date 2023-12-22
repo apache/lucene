@@ -40,6 +40,6 @@ public abstract class TopOrdAndNumberQueue extends PriorityQueue<TopOrdAndNumber
   }
 
   @Override
-  protected abstract boolean lessThan(
+  public abstract boolean lessThan(
       TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b);
 }

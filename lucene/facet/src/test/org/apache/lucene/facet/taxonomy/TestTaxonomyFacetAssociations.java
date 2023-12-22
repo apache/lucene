@@ -308,7 +308,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "float",
         new String[0],
         2,
-        -1,
+        -1f,
         new LabelAndValue[] {
           new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
         });
