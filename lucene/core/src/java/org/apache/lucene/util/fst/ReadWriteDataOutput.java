@@ -80,7 +80,7 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
     return new FST.BytesReader() {
       private byte[] current = byteBuffers.get(0).array();
       private int nextBuffer = -1;
-      private int nextRead = 0;
+      private int nextRead;
 
       @Override
       public byte readByte() {
