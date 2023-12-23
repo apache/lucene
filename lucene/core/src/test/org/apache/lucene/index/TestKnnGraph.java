@@ -100,22 +100,18 @@ public class TestKnnGraph extends LuceneTestCase {
           }
         };
 
-    if (vectorEncoding == VectorEncoding.FLOAT32) {
-      float32Codec = codec;
-    } else {
-      float32Codec =
-          new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-            @Override
-            public KnnVectorsFormat knnVectorsFormat() {
-              return new PerFieldKnnVectorsFormat() {
-                @Override
-                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                  return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-                }
-              };
-            }
-          };
-    }
+    float32Codec =
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
+          @Override
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+              }
+            };
+          }
+        };
   }
 
   private VectorEncoding randomVectorEncoding() {

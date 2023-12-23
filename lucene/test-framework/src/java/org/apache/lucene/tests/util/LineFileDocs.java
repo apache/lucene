@@ -37,14 +37,14 @@ import java.util.zip.GZIPInputStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 
@@ -199,17 +199,16 @@ public class LineFileDocs implements Closeable {
     final Document doc;
     final Field titleTokenized;
     final Field title;
-    final Field titleDV;
     final Field body;
     final Field id;
     final Field idNum;
-    final Field idNumDV;
     final Field date;
+    final Field pageViews;
 
     public DocState() {
       doc = new Document();
 
-      title = new StringField("title", "", Field.Store.NO);
+      title = new KeywordField("title", "", Field.Store.NO);
       doc.add(title);
 
       FieldType ft = new FieldType(TextField.TYPE_STORED);
@@ -227,16 +226,15 @@ public class LineFileDocs implements Closeable {
       id = new StringField("docid", "", Field.Store.YES);
       doc.add(id);
 
-      idNum = new IntPoint("docid_int", 0);
+      idNum = new IntField("docid_int", 0, Field.Store.NO);
       doc.add(idNum);
 
       date = new StringField("date", "", Field.Store.YES);
       doc.add(date);
 
-      titleDV = new SortedDocValuesField("titleDV", new BytesRef());
-      idNumDV = new NumericDocValuesField("docid_intDV", 0);
-      doc.add(titleDV);
-      doc.add(idNumDV);
+      // A numeric DV field that can be used for DV updates
+      pageViews = new NumericDocValuesField("page_views", 0L);
+      doc.add(pageViews);
     }
   }
 
@@ -277,17 +275,12 @@ public class LineFileDocs implements Closeable {
     docState.body.setStringValue(line.substring(1 + spot2, line.length()));
     final String title = line.substring(0, spot);
     docState.title.setStringValue(title);
-    if (docState.titleDV != null) {
-      docState.titleDV.setBytesValue(new BytesRef(title));
-    }
     docState.titleTokenized.setStringValue(title);
     docState.date.setStringValue(line.substring(1 + spot, spot2));
     final int i = id.getAndIncrement();
     docState.id.setStringValue(Integer.toString(i));
     docState.idNum.setIntValue(i);
-    if (docState.idNumDV != null) {
-      docState.idNumDV.setLongValue(i);
-    }
+    docState.pageViews.setLongValue(random.nextInt(10_000));
 
     if (random.nextInt(5) == 4) {
       // Make some sparse fields

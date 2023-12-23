@@ -16,5 +16,5 @@ IMPORTANT: There is *no* way to mark sections of the code as excluded
 from formatting. This is by design and cannot be altered. In vast
 majority of cases the formatter will do a great job of cleaning up the
 code. Occasionally you may want to rewrite the code (introduce a local
-variable orreshape code paths) so that it's easier to read after
+variable or reshape code paths) so that it's easier to read after
 automatic formatting.

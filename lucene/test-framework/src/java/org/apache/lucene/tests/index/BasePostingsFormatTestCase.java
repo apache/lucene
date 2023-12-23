@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
@@ -75,9 +77,9 @@ import org.junit.BeforeClass;
 /**
  * Abstract class to do basic tests for a postings format. NOTE: This test focuses on the postings
  * (docs/freqs/positions/payloads/offsets) impl, not the terms dict. The [stretch] goal is for this
- * test to be so thorough in testing a new PostingsFormat that if this test passes, then all
- * Lucene/Solr tests should also pass. Ie, if there is some bug in a given PostingsFormat that this
- * test fails to catch then this test needs to be improved!
+ * test to be so thorough in testing a new PostingsFormat that if this test passes, then all Lucene
+ * tests should also pass. Ie, if there is some bug in a given PostingsFormat that this test fails
+ * to catch then this test needs to be improved!
  */
 
 // TODO can we make it easy for testing to pair up a "random terms dict impl" with your postings
@@ -1608,6 +1610,31 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       for (int j = 0; j < numFields; ++j) {
         doc.add(new Field("f_" + opts, TestUtil.randomSimpleString(random(), 2), ft));
       }
+    }
+  }
+
+  /** Test realistic data, which is often better at uncovering real bugs. */
+  @Nightly // this test takes a few seconds
+  public void testLineFileDocs() throws IOException {
+    // Use a FS dir and a non-randomized IWC to not slow down indexing
+    try (Directory dir = newFSDirectory(createTempDir())) {
+      try (LineFileDocs docs = new LineFileDocs(random());
+          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+        final int numDocs = atLeast(10_000);
+        for (int i = 0; i < numDocs; ++i) {
+          // Only keep the body field, and don't index term vectors on it, we only care about
+          // postings
+          Document doc = docs.nextDoc();
+          IndexableField body = doc.getField("body");
+          assertNotNull(body);
+          assertNotNull(body.stringValue());
+          assertNotEquals(IndexOptions.NONE, body.fieldType().indexOptions());
+          body = new TextField("body", body.stringValue(), Store.NO);
+          w.addDocument(Collections.singletonList(body));
+        }
+        w.forceMerge(1);
+      }
+      TestUtil.checkIndex(dir);
     }
   }
 }

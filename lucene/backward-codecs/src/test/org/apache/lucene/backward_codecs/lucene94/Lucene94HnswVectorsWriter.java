@@ -358,7 +358,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     vectorIndex.writeInt(size);
 
     // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.node();
+    int[] nnodes = neighbors.nodes();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -482,7 +482,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         for (int i = 0; i < size; i++) {
           int nnode = nnodes[i];
