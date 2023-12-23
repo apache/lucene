@@ -279,21 +279,22 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     // First try to find the answer in the LRU cache:
+    Integer res;
     synchronized (ordinalCache) {
-      Integer res = ordinalCache.get(cp);
-      if (res != null) {
-        if (res < indexReader.maxDoc()) {
-          // Since the cache is shared with DTR instances allocated from
-          // doOpenIfChanged, we need to ensure that the ordinal is one that
-          // this DTR instance recognizes.
-          return res;
-        } else {
-          // if we get here, it means that the category was found in the cache,
-          // but is not recognized by this TR instance. Therefore, there's no
-          // need to continue search for the path on disk, because we won't find
-          // it there too.
-          return TaxonomyReader.INVALID_ORDINAL;
-        }
+      res = ordinalCache.get(cp);
+    }
+    if (res != null) {
+      if (res < indexReader.maxDoc()) {
+        // Since the cache is shared with DTR instances allocated from
+        // doOpenIfChanged, we need to ensure that the ordinal is one that
+        // this DTR instance recognizes.
+        return res;
+      } else {
+        // if we get here, it means that the category was found in the cache,
+        // but is not recognized by this TR instance. Therefore, there's no
+        // need to continue search for the path on disk, because we won't find
+        // it there too.
+        return TaxonomyReader.INVALID_ORDINAL;
       }
     }
 
@@ -327,7 +328,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
     // First try to find results in the cache:
     int[] result = new int[categoryPaths.length];
-    int[] indexesMissingFromCache = new int[10]; // initial size, will grow when required
+    // Will grow when required, but never beyond categoryPaths.length
+    int[] indexesMissingFromCache = new int[Math.min(10, categoryPaths.length)];
     int numberOfMissingFromCache = 0;
     FacetLabel cp;
     Integer res;
@@ -351,7 +353,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         }
       } else {
         indexesMissingFromCache =
-            ArrayUtil.grow(indexesMissingFromCache, numberOfMissingFromCache + 1);
+            ArrayUtil.growInRange(
+                indexesMissingFromCache, numberOfMissingFromCache + 1, categoryPaths.length);
         indexesMissingFromCache[numberOfMissingFromCache++] = i;
       }
     }

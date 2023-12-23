@@ -144,7 +144,6 @@ allprojects {
          "tests.leaveTemporary",
          "tests.leavetemporary",
          "tests.leavetmpdir",
-         "solr.test.leavetmpdir",
       ].find { prop ->
         def v = Boolean.parseBoolean(propertyOrDefault(prop, "false"))
         if (v) {

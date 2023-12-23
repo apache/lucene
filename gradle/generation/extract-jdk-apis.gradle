@@ -62,7 +62,8 @@ configure(project(":lucene:core")) {
       classpath = configurations.apiextractor
       mainClass = file("${resources}/ExtractJdkApis.java") as String
       systemProperties = [
-        'user.timezone': 'UTC'
+        'user.timezone': 'UTC',
+        'file.encoding': 'UTF-8',
       ]
       args = [
         jdkVersion,
