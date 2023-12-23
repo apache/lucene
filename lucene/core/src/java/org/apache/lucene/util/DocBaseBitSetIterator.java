@@ -69,6 +69,9 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
 
   @Override
   public int nextDoc() {
+    if (doc == NO_MORE_DOCS) {
+      return NO_MORE_DOCS;
+    }
     return advance(doc + 1);
   }
 
