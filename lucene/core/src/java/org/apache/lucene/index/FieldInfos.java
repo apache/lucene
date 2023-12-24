@@ -400,7 +400,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
           && parentFieldName != null
           && parentFieldName.equals(softDeletesFieldName)) {
         throw new IllegalArgumentException(
-            "parent document and soft-deletes field can't be the same field");
+            "parent document and soft-deletes field can't be the same field \""
+                + parentFieldName
+                + "\"");
       }
     }
 
@@ -501,7 +503,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] as parent document field  already");
         }
-      } else if (fieldName.equals(parentFieldName)) {
+      } else if (fieldName.equals(parentFieldName)) { // else case -- isParentField == false
         throw new IllegalArgumentException(
             "cannot configure ["
                 + parentFieldName

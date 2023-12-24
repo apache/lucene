@@ -161,10 +161,15 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean isParentField =
               format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
 
-          assert (bits & 0xE0) == 0
-              : "unused bits are set \"" + Integer.toBinaryString(bits) + "\"";
-          assert format >= FORMAT_PARENT_FIELD || (bits & 0xF0) == 0
-              : "parent field bit is set but shouldn't' \"" + Integer.toBinaryString(bits) + "\"";
+          if ((bits & 0xE0) != 0) {
+            throw new CorruptIndexException(
+                "unused bits are set \"" + Integer.toBinaryString(bits) + "\"", input);
+          }
+          if (format < FORMAT_PARENT_FIELD && (bits & 0xF0) != 0) {
+            throw new CorruptIndexException(
+                "parent field bit is set but shouldn't \"" + Integer.toBinaryString(bits) + "\"",
+                input);
+          }
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 

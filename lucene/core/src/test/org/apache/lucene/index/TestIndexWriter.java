@@ -4903,7 +4903,8 @@ public class TestIndexWriter extends LuceneTestCase {
           expectThrows(
               IllegalArgumentException.class, () -> new IndexWriter(dir, indexWriterConfig));
       assertEquals(
-          "parent document and soft-deletes field can't be the same field", iae.getMessage());
+          "parent document and soft-deletes field can't be the same field \"foo\"",
+          iae.getMessage());
     }
   }
 
