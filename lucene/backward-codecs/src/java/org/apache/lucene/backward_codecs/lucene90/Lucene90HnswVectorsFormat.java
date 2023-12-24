@@ -94,8 +94,8 @@ public class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
-   * HnswGraph} for details.
+   * node. Defaults to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
    */
   final int beamWidth;
 

@@ -88,7 +88,7 @@ public class TestLegacyPackedInts extends LuceneTestCase {
           final long expectedBytesUsed = RamUsageTester.ramUsed(r);
           final long computedBytesUsed = r.ramBytesUsed();
           assertEquals(
-              r.getClass() + "expected " + expectedBytesUsed + ", got: " + computedBytesUsed,
+              r.getClass() + " expected " + expectedBytesUsed + ", got: " + computedBytesUsed,
               expectedBytesUsed,
               computedBytesUsed);
         }

@@ -96,7 +96,7 @@ public class IndexSearcher {
   }
 
   /**
-   * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
+   * By default, we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
    */
   private static final int TOTAL_HITS_THRESHOLD = 1000;
@@ -226,7 +226,7 @@ public class IndexSearcher {
    */
   public IndexSearcher(IndexReaderContext context, Executor executor) {
     assert context.isTopLevel
-        : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
+        : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
     this.executor = executor;
     this.taskExecutor =
@@ -236,7 +236,7 @@ public class IndexSearcher {
     Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
         executor == null
             ? leaves ->
-                leaves.size() == 0
+                leaves.isEmpty()
                     ? new LeafSlice[0]
                     : new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))}
             : this::slices;
@@ -651,7 +651,7 @@ public class IndexSearcher {
     if (leafSlices.length == 0) {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
-      assert leafContexts.size() == 0;
+      assert leafContexts.isEmpty();
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
@@ -858,7 +858,7 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns this searchers the top-level {@link IndexReaderContext}.
+   * Returns this searcher's top-level {@link IndexReaderContext}.
    *
    * @see IndexReader#getContext()
    */
@@ -980,7 +980,7 @@ public class IndexSearcher {
 
   /**
    * Thrown when a client attempts to execute a Query that has more than {@link
-   * #getMaxClauseCount()} total clauses cumulatively in all of it's children.
+   * #getMaxClauseCount()} total clauses cumulatively in all of its children.
    *
    * @see #rewrite
    */
