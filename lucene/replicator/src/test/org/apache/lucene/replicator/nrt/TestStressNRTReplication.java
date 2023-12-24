@@ -94,8 +94,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 // hazardous window
 //   - replica comes up just as the primary is crashing / moving
 //   - electing a new primary when a replica is just finishing its nrt sync: we need to wait for it
-// so we are sure to get the "most up to
-//     date" replica
+// so we are sure to get the "most up to date" replica
 //   - replica comes up after merged segment finished so it doesn't copy over the merged segment
 // "promptly" (i.e. only sees it on NRT refresh)
 
@@ -210,7 +209,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     if (NUM_NODES == null) {
       numNodes = TestUtil.nextInt(random(), 2, 10);
     } else {
-      numNodes = NUM_NODES.intValue();
+      numNodes = NUM_NODES;
     }
 
     System.out.println("TEST: using " + numNodes + " nodes");
@@ -347,7 +346,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
     restarter.join();
 
-    // Close replicas before primary so we cancel any in-progres replications:
+    // Close replicas before primary so we cancel any in-progress replications:
     System.out.println("TEST: top: now close replicas");
     List<Closeable> toClose = new ArrayList<>();
     for (NodeProcess node : nodes) {
@@ -484,7 +483,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     // When the primary starts, the userData in its latest commit point tells us which version it
     // had indexed up to, so we know where to
-    // replay from in the xlog.  However, we forcefuly advance the version, and then IW on init (or
+    // replay from in the xlog.  However, we forcefully advance the version, and then IW on init (or
     // maybe getReader) also adds 1 to it.
     // Since we publish the primary in this state (before xlog replay is done), a replica can start
     // up at this point and pull this version,
@@ -648,7 +647,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     int tcpPort = -1;
     long initCommitVersion = -1;
     long initInfosVersion = -1;
-    Pattern logTimeStart = Pattern.compile("^[0-9\\.]+s .*");
+    Pattern logTimeStart = Pattern.compile("^[0-9.]+s .*");
     boolean willCrash = false;
 
     while (true) {
@@ -723,48 +722,43 @@ public class TestStressNRTReplication extends LuceneTestCase {
     // nodeClosed once it exits:
     Thread pumper =
         ThreadPumper.start(
-            new Runnable() {
-              @Override
-              public void run() {
-                message("now wait for process " + p);
-                try {
-                  p.waitFor();
-                } catch (Throwable t) {
-                  throw new RuntimeException(t);
-                }
-
-                message("done wait for process " + p);
-                int exitValue = p.exitValue();
-                message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
-                if (childLog != null) {
-                  try {
-                    childLog.write("process done; exitValue=" + exitValue + "\n");
-                    childLog.close();
-                  } catch (IOException ioe) {
-                    throw new RuntimeException(ioe);
-                  }
-                }
-                if (exitValue != 0
-                    && finalWillCrash == false
-                    && crashingNodes.remove(id) == false) {
-                  // should fail test
-                  failed.set(true);
-                  if (childLog != null) {
-                    throw new RuntimeException(
-                        "node "
-                            + id
-                            + " process had unexpected non-zero exit status="
-                            + exitValue
-                            + "; see "
-                            + childLog
-                            + " for details");
-                  } else {
-                    throw new RuntimeException(
-                        "node " + id + " process had unexpected non-zero exit status=" + exitValue);
-                  }
-                }
-                nodeClosed(id);
+            () -> {
+              message("now wait for process " + p);
+              try {
+                p.waitFor();
+              } catch (Throwable t) {
+                throw new RuntimeException(t);
               }
+
+              message("done wait for process " + p);
+              int exitValue = p.exitValue();
+              message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
+              if (childLog != null) {
+                try {
+                  childLog.write("process done; exitValue=" + exitValue + "\n");
+                  childLog.close();
+                } catch (IOException ioe) {
+                  throw new RuntimeException(ioe);
+                }
+              }
+              if (exitValue != 0 && finalWillCrash == false && crashingNodes.remove(id) == false) {
+                // should fail test
+                failed.set(true);
+                if (childLog != null) {
+                  throw new RuntimeException(
+                      "node "
+                          + id
+                          + " process had unexpected non-zero exit status="
+                          + exitValue
+                          + "; see "
+                          + childLog
+                          + " for details");
+                } else {
+                  throw new RuntimeException(
+                      "node " + id + " process had unexpected non-zero exit status=" + exitValue);
+                }
+              }
+              nodeClosed(id);
             },
             r,
             System.out,
@@ -920,7 +914,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
             }
             b.append(String.format(Locale.ROOT, "%s%d(%.1fs)", prefix, i, sec));
           }
-          message("node status" + b.toString());
+          message("node status" + b);
           message("downNodes=" + downNodes);
 
           // If primary is down, promote a replica:
@@ -1084,23 +1078,18 @@ public class TestStressNRTReplication extends LuceneTestCase {
             } else {
               // Just ensure that all nodes show the same hit count for
               // the same version, i.e. they really are replicas of one another:
-              if (oldHitCount.intValue() != hitCount) {
+              if (oldHitCount != hitCount) {
                 failed.set(true);
                 stop.set(true);
                 message(
                     "top: searcher: wrong version hitCount: version="
                         + version
                         + " oldHitCount="
-                        + oldHitCount.intValue()
+                        + oldHitCount
                         + " hitCount="
                         + hitCount);
                 fail(
-                    "version="
-                        + version
-                        + " oldHitCount="
-                        + oldHitCount.intValue()
-                        + " hitCount="
-                        + hitCount);
+                    "version=" + version + " oldHitCount=" + oldHitCount + " hitCount=" + hitCount);
               }
             }
           } catch (
@@ -1333,24 +1322,22 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   static void message(String message) {
     long now = System.nanoTime();
-    System.out.println(
-        String.format(
-            Locale.ROOT,
-            "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            Thread.currentThread().getName(),
-            message));
+    System.out.printf(
+        Locale.ROOT,
+        "%5.3fs       :     parent [%11s] %s%n",
+        (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        Thread.currentThread().getName(),
+        message);
   }
 
   static void message(String message, long localStartNS) {
     long now = System.nanoTime();
-    System.out.println(
-        String.format(
-            Locale.ROOT,
-            "%5.3fs %5.1fs:     parent [%11s] %s",
-            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            Thread.currentThread().getName(),
-            message));
+    System.out.printf(
+        Locale.ROOT,
+        "%5.3fs %5.1fs:     parent [%11s] %s%n",
+        (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        Thread.currentThread().getName(),
+        message);
   }
 }
