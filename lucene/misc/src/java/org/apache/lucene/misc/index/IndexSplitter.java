@@ -22,10 +22,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
@@ -67,18 +66,10 @@ public class IndexSplitter {
     if (args[1].equals("-l")) {
       is.listSegments();
     } else if (args[1].equals("-d")) {
-      List<String> segs = new ArrayList<>();
-      for (int x = 2; x < args.length; x++) {
-        segs.add(args[x]);
-      }
-      is.remove(segs.toArray(new String[0]));
+      is.remove(Arrays.copyOfRange(args, 2, args.length));
     } else {
       Path targetDir = Paths.get(args[1]);
-      List<String> segs = new ArrayList<>();
-      for (int x = 2; x < args.length; x++) {
-        segs.add(args[x]);
-      }
-      is.split(targetDir, segs.toArray(new String[0]));
+      is.split(targetDir, Arrays.copyOfRange(args, 2, args.length));
     }
   }
 
