@@ -17,11 +17,12 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,6 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 
 // MockRandom's .sd file has no index header/footer:
@@ -120,12 +120,7 @@ public class TestNRTReplication extends LuceneTestCase {
 
     Process p = pb.start();
 
-    BufferedReader r;
-    try {
-      r = new BufferedReader(new InputStreamReader(p.getInputStream(), IOUtils.UTF_8));
-    } catch (UnsupportedEncodingException uee) {
-      throw new RuntimeException(uee);
-    }
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), UTF_8));
 
     int tcpPort = -1;
     long initCommitVersion = -1;
