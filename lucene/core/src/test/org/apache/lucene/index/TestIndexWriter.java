@@ -869,7 +869,7 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
-  private class IndexerThreadInterrupt extends Thread {
+  private static class IndexerThreadInterrupt extends Thread {
     volatile boolean failed;
     volatile boolean finish;
 
@@ -4333,7 +4333,7 @@ public class TestIndexWriter extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig();
     iwc.setMergePolicy(
         new FilterMergePolicy(newMergePolicy()) {
-          boolean keepFullyDeletedSegment = random().nextBoolean();
+          final boolean keepFullyDeletedSegment = random().nextBoolean();
 
           @Override
           public boolean keepFullyDeletedSegment(IOSupplier<CodecReader> readerIOSupplier) {
@@ -4759,7 +4759,7 @@ public class TestIndexWriter extends LuceneTestCase {
             List<SegmentCommitInfo> fullyDeletedSegments =
                 segmentInfos.asList().stream()
                     .filter(s -> s.info.maxDoc() - s.getDelCount() == 0)
-                    .collect(Collectors.toList());
+                    .toList();
             if (fullyDeletedSegments.isEmpty()) {
               return null;
             }

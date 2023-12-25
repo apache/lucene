@@ -75,8 +75,8 @@ public class TableUtils {
   }
 
   public static <T extends TableColumnInfo> String[] columnNames(T[] columns) {
-    return columnMap(columns).entrySet().stream()
-        .map(e -> e.getValue().getColName())
+    return columnMap(columns).values().stream()
+        .map(TableColumnInfo::getColName)
         .toArray(String[]::new);
   }
 

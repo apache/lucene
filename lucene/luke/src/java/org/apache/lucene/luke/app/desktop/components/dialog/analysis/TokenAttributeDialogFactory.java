@@ -24,7 +24,6 @@ import java.awt.FlowLayout;
 import java.awt.Window;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -103,7 +102,7 @@ public final class TokenAttributeDialogFactory implements DialogOpener.DialogFac
                 att ->
                     att.getAttValues().entrySet().stream()
                         .map(e -> TokenAttValue.of(att.getAttClass(), e.getKey(), e.getValue())))
-            .collect(Collectors.toList());
+            .toList();
     TableUtils.setupTable(
         attributesTable,
         ListSelectionModel.SINGLE_SELECTION,
