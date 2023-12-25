@@ -32,6 +32,7 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST.Arc;
 import org.apache.lucene.util.fst.FST.BytesReader;
+import org.apache.lucene.util.fst.PrimitiveLongFST.PrimitiveLongArc;
 
 /**
  * Static helper methods.
@@ -897,6 +898,88 @@ public final class Util {
   }
 
   /**
+   * TODO: can we work around this???
+   *
+   * <p>Same as {@link Util#readCeilArc(int, FST, Arc, Arc, BytesReader)} but for {@link
+   * PrimitiveLongFST}
+   */
+  public static PrimitiveLongArc readCeilArc(
+      int label,
+      PrimitiveLongFST fst,
+      PrimitiveLongArc follow,
+      PrimitiveLongArc arc,
+      BytesReader in)
+      throws IOException {
+    if (label == PrimitiveLongFST.END_LABEL) {
+      return PrimitiveLongFST.readEndArc(follow, arc);
+    }
+    if (!PrimitiveLongFST.targetHasArcs(follow)) {
+      return null;
+    }
+    fst.readFirstTargetArc(follow, arc, in);
+    if (arc.bytesPerArc() != 0 && arc.label() != PrimitiveLongFST.END_LABEL) {
+      if (arc.nodeFlags() == PrimitiveLongFST.ARCS_FOR_DIRECT_ADDRESSING) {
+        // Fixed length arcs in a direct addressing node.
+        int targetIndex = label - arc.label();
+        if (targetIndex >= arc.numArcs()) {
+          return null;
+        } else if (targetIndex < 0) {
+          return arc;
+        } else {
+          if (PrimitiveLongArc.BitTable.isBitSet(targetIndex, arc, in)) {
+            fst.readArcByDirectAddressing(arc, in, targetIndex);
+            assert arc.label() == label;
+          } else {
+            int ceilIndex = PrimitiveLongArc.BitTable.nextBitSet(targetIndex, arc, in);
+            assert ceilIndex != -1;
+            fst.readArcByDirectAddressing(arc, in, ceilIndex);
+            assert arc.label() > label;
+          }
+          return arc;
+        }
+      } else if (arc.nodeFlags() == PrimitiveLongFST.ARCS_FOR_CONTINUOUS) {
+        int targetIndex = label - arc.label();
+        if (targetIndex >= arc.numArcs()) {
+          return null;
+        } else if (targetIndex < 0) {
+          return arc;
+        } else {
+          fst.readArcByContinuous(arc, in, targetIndex);
+          assert arc.label() == label;
+          return arc;
+        }
+      }
+      // Fixed length arcs in a binary search node.
+      int idx = binarySearch(fst, arc, label);
+      if (idx >= 0) {
+        return fst.readArcByIndex(arc, in, idx);
+      }
+      idx = -1 - idx;
+      if (idx == arc.numArcs()) {
+        // DEAD END!
+        return null;
+      }
+      return fst.readArcByIndex(arc, in, idx);
+    }
+
+    // Variable length arcs in a linear scan list,
+    // or special arc with label == FST.END_LABEL.
+    fst.readFirstRealTargetArc(follow.target(), arc, in);
+
+    while (true) {
+      // System.out.println("  non-bs cycle");
+      if (arc.label() >= label) {
+        // System.out.println("    found!");
+        return arc;
+      } else if (arc.isLast()) {
+        return null;
+      } else {
+        fst.readNextRealArc(arc, in);
+      }
+    }
+  }
+
+  /**
    * Perform a binary search of Arcs encoded as a packed array
    *
    * @param fst the FST from which to read
@@ -910,6 +993,34 @@ public final class Util {
    * @throws IOException when the FST reader does
    */
   static <T> int binarySearch(FST<T> fst, FST.Arc<T> arc, int targetLabel) throws IOException {
+    assert arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH
+        : "Arc is not encoded as packed array for binary search (nodeFlags="
+            + arc.nodeFlags()
+            + ")";
+    BytesReader in = fst.getBytesReader();
+    int low = arc.arcIdx();
+    int mid;
+    int high = arc.numArcs() - 1;
+    while (low <= high) {
+      mid = (low + high) >>> 1;
+      in.setPosition(arc.posArcsStart());
+      in.skipBytes((long) arc.bytesPerArc() * mid + 1);
+      final int midLabel = fst.readLabel(in);
+      final int cmp = midLabel - targetLabel;
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        return mid;
+      }
+    }
+    return -1 - low;
+  }
+
+  /** Same as {@link Util#binarySearch(FST, Arc, int)} but for {@link PrimitiveLongFST} */
+  static int binarySearch(PrimitiveLongFST fst, PrimitiveLongArc arc, int targetLabel)
+      throws IOException {
     assert arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH
         : "Arc is not encoded as packed array for binary search (nodeFlags="
             + arc.nodeFlags()

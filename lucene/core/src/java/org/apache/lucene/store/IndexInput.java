@@ -141,7 +141,7 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * implements absolute reads as seek+read.
    */
   public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
-    final IndexInput slice = slice("randomaccess", offset, length);
+    final IndexInput slice = slice(null, offset, length);
     if (slice instanceof RandomAccessInput) {
       // slice() already supports random access
       return (RandomAccessInput) slice;
