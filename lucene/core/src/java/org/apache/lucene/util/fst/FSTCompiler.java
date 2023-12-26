@@ -164,14 +164,12 @@ public class FSTCompiler<T> {
       boolean allowFixedLengthArcs,
       DataOutput dataOutput,
       float directAddressingMaxOversizingFactor,
-      int version)
-      throws IOException {
+      int version) {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     this.version = version;
     // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    dataOutput.writeByte((byte) 0);
+    // the stop state w/ no arcs. the actual byte will be written lazily
     numBytesWritten++;
     this.dataOutput = dataOutput;
     fst =
@@ -344,7 +342,7 @@ public class FSTCompiler<T> {
     }
 
     /** Creates a new {@link FSTCompiler}. */
-    public FSTCompiler<T> build() throws IOException {
+    public FSTCompiler<T> build() {
       // create a default DataOutput if not specified
       if (dataOutput == null) {
         dataOutput = getOnHeapReaderWriter(15);
@@ -552,6 +550,10 @@ public class FSTCompiler<T> {
     }
 
     reverseScratchBytes();
+    if (numBytesWritten == 1) {
+      // first time, write the padding byte
+      dataOutput.writeByte((byte) 0);
+    }
     scratchBytes.writeTo(dataOutput);
     numBytesWritten += scratchBytes.getPosition();
 
