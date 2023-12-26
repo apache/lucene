@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.util;
 
-import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -173,7 +172,7 @@ public class TestReproduceMessage extends WithNestedTests {
 
   static void checkTestName(String syserr, String expectedName) {
     Assert.assertTrue(syserr.contains("NOTE: reproduce with:"));
-    Assert.assertThat(syserr, Matchers.containsString(" --tests " + expectedName));
+    Assert.assertTrue(syserr.contains(" --tests " + expectedName));
   }
 
   @Test

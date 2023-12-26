@@ -17,8 +17,6 @@
 
 package org.apache.lucene.monitor;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.document.Document;
@@ -71,7 +69,7 @@ public abstract class FieldFilterPresearcherComponentTestBase extends Presearche
           expectThrows(
               IllegalArgumentException.class,
               () -> monitor.match(new Document[] {doc1, doc2}, QueryMatch.SIMPLE_MATCHER));
-      assertThat(e.getMessage(), containsString("language:"));
+      assertTrue(e.getMessage().contains("language:"));
     }
   }
 

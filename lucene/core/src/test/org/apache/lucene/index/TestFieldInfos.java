@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.sameInstance;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -205,9 +202,8 @@ public class TestFieldInfos extends LuceneTestCase {
 
     IndexReader reader = DirectoryReader.open(writer);
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
-    FieldInfos expected = FieldInfos.EMPTY;
 
-    assertThat(actual, sameInstance(expected));
+    assertSame(FieldInfos.EMPTY, actual);
 
     reader.close();
     writer.close();
@@ -234,8 +230,8 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
     FieldInfos expected = reader.leaves().get(0).reader().getFieldInfos();
 
-    assertThat(reader.leaves().size(), equalTo(1));
-    assertThat(actual, sameInstance(expected));
+    assertEquals(1, reader.leaves().size());
+    assertSame(expected, actual);
 
     reader.close();
     writer.close();

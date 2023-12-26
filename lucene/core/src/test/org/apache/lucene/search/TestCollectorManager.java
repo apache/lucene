@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,7 +60,7 @@ public class TestCollectorManager extends LuceneTestCase {
 
       // Test only wrapping one of the collector managers:
       Object result = collectAll(ctx, expected, cm);
-      assertThat(result, instanceOf(List.class));
+      assertTrue(result instanceof List);
       IntStream intResults = ((List<Integer>) result).stream().mapToInt(i -> i);
       assertArrayEquals(
           IntStream.concat(expectedEven, expectedOdd).sorted().toArray(),

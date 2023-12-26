@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
@@ -359,7 +357,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
-    assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
+    assertTrue(rewrittenQuery instanceof IndexSortSortedNumericDocValuesRangeQuery);
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;
