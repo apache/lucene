@@ -551,14 +551,17 @@ public class FSTCompiler<T> {
 
     reverseScratchBytes();
     if (numBytesWritten == 1) {
-      // first time, write the padding byte
-      dataOutput.writeByte((byte) 0);
+      writePaddingByte();
     }
     scratchBytes.writeTo(dataOutput);
     numBytesWritten += scratchBytes.getPosition();
 
     nodeCount++;
     return numBytesWritten - 1;
+  }
+
+  private void writePaddingByte() throws IOException {
+    dataOutput.writeByte((byte) 0);
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
@@ -970,6 +973,10 @@ public class FSTCompiler<T> {
     if (root.numArcs == 0) {
       if (fst.metadata.emptyOutput == null) {
         return null;
+      } else {
+        // we haven't written the pad byte so far, but the FST is still valid
+        assert numBytesWritten == 1;
+        writePaddingByte();
       }
     }
 
