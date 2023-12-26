@@ -87,6 +87,7 @@ public class FSTTermsReader extends FieldsProducer {
     try {
       verifyInput(state, in);
       verifyInput(state, fstTermsInput);
+
       this.postingsReader.init(in, state);
       seekDir(in);
 
@@ -101,10 +102,9 @@ public class FSTTermsReader extends FieldsProducer {
         long sumDocFreq =
             fieldInfo.getIndexOptions() == IndexOptions.DOCS ? sumTotalTermFreq : in.readVLong();
         int docCount = in.readVInt();
-        long startFP = in.readVLong();
-        fstTermsInput.seek(startFP);
         TermsReader current =
-            new TermsReader(fieldInfo, in, fstTermsInput, numTerms, sumTotalTermFreq, sumDocFreq, docCount);
+            new TermsReader(
+                fieldInfo, in, fstTermsInput, numTerms, sumTotalTermFreq, sumDocFreq, docCount);
         TermsReader previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
       }
@@ -521,11 +521,7 @@ public class FSTTermsReader extends FieldsProducer {
           if (meta.bytes != null) {
             bytesReader.reset(meta.bytes, 0, meta.bytes.length);
           }
-          try {
-            postingsReader.decodeTerm(bytesReader, fieldInfo, state, true);
-          } catch (Exception ex) {
-            System.out.println("bingo");
-          }
+          postingsReader.decodeTerm(bytesReader, fieldInfo, state, true);
           decoded = true;
         }
       }

@@ -216,8 +216,6 @@ public class FSTTermsWriter extends FieldsConsumer {
           }
           metaOut.writeVLong(field.sumDocFreq);
           metaOut.writeVInt(field.docCount);
-          // write the starting file pointer
-          metaOut.writeVLong(dataOut.getFilePointer() - field.dict.numBytes());
           field.dict.saveMetadata(metaOut);
         }
         writeTrailer(metaOut, dirStart);
@@ -274,9 +272,8 @@ public class FSTTermsWriter extends FieldsConsumer {
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);
       this.outputs = new FSTTermOutputs(fieldInfo);
-      this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-          .dataOutput(dataOut)
-          .build();
+      this.fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(dataOut).build();
     }
 
     public void finishTerm(BytesRef text, BlockTermState state) throws IOException {
@@ -298,7 +295,6 @@ public class FSTTermsWriter extends FieldsConsumer {
       // save FST dict
       if (numTerms > 0) {
         final FST<FSTTermOutputs.TermData> fst = fstCompiler.compile();
-        fst.saveMetadata(metaOut);
         fields.add(
             new FieldMetaData(fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fst));
       }
