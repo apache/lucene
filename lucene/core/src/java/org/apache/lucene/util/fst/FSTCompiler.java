@@ -550,6 +550,7 @@ public class FSTCompiler<T> {
     }
 
     reverseScratchBytes();
+    // write the padding byte if needed
     if (numBytesWritten == 1) {
       writePaddingByte();
     }
@@ -561,6 +562,7 @@ public class FSTCompiler<T> {
   }
 
   private void writePaddingByte() throws IOException {
+    assert numBytesWritten == 1;
     dataOutput.writeByte((byte) 0);
   }
 
@@ -975,7 +977,6 @@ public class FSTCompiler<T> {
         return null;
       } else {
         // we haven't written the pad byte so far, but the FST is still valid
-        assert numBytesWritten == 1;
         writePaddingByte();
       }
     }
