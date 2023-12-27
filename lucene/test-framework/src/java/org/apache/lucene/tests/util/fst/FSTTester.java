@@ -282,11 +282,13 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = fstCompiler.compile();
+
+    FST<T> fst = null;
+    FST.FSTMetadata<T> fstMetadata = fstCompiler.compile();
 
     if (useOffHeap) {
       indexOutput.close();
-      if (fst == null) {
+      if (fstMetadata == null) {
         dir.deleteFile("fstOffHeap.bin");
       } else {
         try (IndexInput in = dir.openInput("fstOffHeap.bin", IOContext.DEFAULT)) {
@@ -295,7 +297,8 @@ public class FSTTester<T> {
           dir.deleteFile("fstOffHeap.bin");
         }
       }
-    } else if (random.nextBoolean() && fst != null) {
+    } else if (random.nextBoolean() && fstMetadata != null) {
+      fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
       IOContext context = LuceneTestCase.newIOContext(random);
       try (IndexOutput out = dir.createOutput("fst.bin", context)) {
         fst.save(out, out);
