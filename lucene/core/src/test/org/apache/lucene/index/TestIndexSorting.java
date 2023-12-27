@@ -2121,6 +2121,10 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testAddIndexes(boolean withDeletes, boolean useReaders) throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc1 = newIndexWriterConfig();
+    boolean useParent = rarely();
+    if (useParent) {
+      iwc1.setParentField("___parent");
+    }
     Sort indexSort =
         new Sort(
             new SortField("foo", SortField.Type.LONG), new SortField("bar", SortField.Type.LONG));
@@ -2152,6 +2156,9 @@ public class TestIndexSorting extends LuceneTestCase {
       iwc.setIndexSort(new Sort(new SortField("foo", SortField.Type.LONG)));
     } else {
       iwc.setIndexSort(indexSort);
+    }
+    if (useParent) {
+      iwc.setParentField("___parent");
     }
     IndexWriter w2 = new IndexWriter(dir2, iwc);
 
@@ -3291,7 +3298,7 @@ public class TestIndexSorting extends LuceneTestCase {
           int doc;
           int expectedDocID = 2;
           while ((doc = parentDISI.nextDoc()) != NO_MORE_DOCS) {
-            assertEquals(2, parentDISI.longValue());
+            assertEquals(-1, parentDISI.longValue());
             assertEquals(expectedDocID, doc);
             int id = ids.nextDoc();
             long child1ID = ids.longValue();
@@ -3311,6 +3318,134 @@ public class TestIndexSorting extends LuceneTestCase {
             assertEquals(child1ID, parent);
             assertEquals(child2ID, parent);
             expectedDocID += 3;
+          }
+        }
+      }
+    }
+  }
+
+  @SuppressWarnings("fallthrough")
+  public void testMixRandomDocumentsWithBlocks() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      AssertingNeedsIndexSortCodec codec = new AssertingNeedsIndexSortCodec();
+      iwc.setCodec(codec);
+      String parentField = "parent";
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      iwc.setParentField(parentField);
+      RandomIndexWriter randomIndexWriter = new RandomIndexWriter(random(), dir, iwc);
+      int numDocs = random().nextInt(100, 1000);
+      for (int i = 0; i < numDocs; i++) {
+        if (rarely()) {
+          randomIndexWriter.deleteDocuments(new Term("id", "" + random().nextInt(0, i + 1)));
+        }
+        List<Document> docs = new ArrayList<>();
+        switch (random().nextInt(100) % 5) {
+          case 4:
+            Document child3 = new Document();
+            child3.add(new StringField("id", Integer.toString(i), Store.YES));
+            child3.add(new NumericDocValuesField("type", 2));
+            child3.add(new NumericDocValuesField("child_ord", 3));
+            child3.add(new NumericDocValuesField("foo", random().nextInt()));
+            docs.add(child3);
+          case 3:
+            Document child2 = new Document();
+            child2.add(new StringField("id", Integer.toString(i), Store.YES));
+            child2.add(new NumericDocValuesField("type", 2));
+            child2.add(new NumericDocValuesField("child_ord", 2));
+            child2.add(new NumericDocValuesField("foo", random().nextInt()));
+            docs.add(child2);
+          case 2:
+            Document child1 = new Document();
+            child1.add(new StringField("id", Integer.toString(i), Store.YES));
+            child1.add(new NumericDocValuesField("type", 2));
+            child1.add(new NumericDocValuesField("child_ord", 1));
+            child1.add(new NumericDocValuesField("foo", random().nextInt()));
+            docs.add(child1);
+          case 1:
+            Document root = new Document();
+            root.add(new StringField("id", Integer.toString(i), Store.YES));
+            root.add(new NumericDocValuesField("type", 1));
+            root.add(new NumericDocValuesField("num_children", docs.size()));
+            root.add(new NumericDocValuesField("foo", random().nextInt()));
+            docs.add(root);
+            randomIndexWriter.addDocuments(docs);
+            break;
+          case 0:
+            Document single = new Document();
+            single.add(new StringField("id", Integer.toString(i), Store.YES));
+            single.add(new NumericDocValuesField("type", 0));
+            single.add(new NumericDocValuesField("foo", random().nextInt()));
+            randomIndexWriter.addDocument(single);
+        }
+        if (rarely()) {
+          randomIndexWriter.forceMerge(1);
+        }
+        randomIndexWriter.commit();
+      }
+
+      randomIndexWriter.close();
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          LeafReader leaf = ctx.reader();
+          NumericDocValues parentDISI = leaf.getNumericDocValues(parentField);
+          assertNotNull(parentDISI);
+          NumericDocValues type = leaf.getNumericDocValues("type");
+          NumericDocValues childOrd = leaf.getNumericDocValues("child_ord");
+          NumericDocValues numChildren = leaf.getNumericDocValues("num_children");
+          int numCurrentChildren = 0;
+          int totalPendingChildren = 0;
+          String childId = null;
+          for (int i = 0; i < leaf.maxDoc(); i++) {
+            if (leaf.getLiveDocs() == null || leaf.getLiveDocs().get(i)) {
+              assertTrue(type.advanceExact(i));
+              int typeValue = (int) type.longValue();
+              switch (typeValue) {
+                case 2:
+                  assertFalse(parentDISI.advanceExact(i));
+                  assertTrue(childOrd.advanceExact(i));
+                  if (numCurrentChildren == 0) { // first child
+                    childId = leaf.storedFields().document(i).get("id");
+                    totalPendingChildren = (int) childOrd.longValue() - 1;
+                  } else {
+                    assertNotNull(childId);
+                    assertEquals(totalPendingChildren--, childOrd.longValue());
+                    assertEquals(childId, leaf.storedFields().document(i).get("id"));
+                  }
+                  numCurrentChildren++;
+                  break;
+                case 1:
+                  assertTrue(parentDISI.advanceExact(i));
+                  assertEquals(-1, parentDISI.longValue());
+                  if (childOrd != null) {
+                    assertFalse(childOrd.advanceExact(i));
+                  }
+                  assertTrue(numChildren.advanceExact(i));
+                  assertEquals(0, totalPendingChildren);
+                  assertEquals(numCurrentChildren, numChildren.longValue());
+                  if (numCurrentChildren > 0) {
+                    assertEquals(childId, leaf.storedFields().document(i).get("id"));
+                  } else {
+                    assertNull(childId);
+                  }
+                  numCurrentChildren = 0;
+                  childId = null;
+                  break;
+                case 0:
+                  assertEquals(-1, parentDISI.longValue());
+                  assertTrue(parentDISI.advanceExact(i));
+                  if (childOrd != null) {
+                    assertFalse(childOrd.advanceExact(i));
+                  }
+                  if (numChildren != null) {
+                    assertFalse(numChildren.advanceExact(i));
+                  }
+                  break;
+                default:
+                  fail();
+              }
+            }
           }
         }
       }

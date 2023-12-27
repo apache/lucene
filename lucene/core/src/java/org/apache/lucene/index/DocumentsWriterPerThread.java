@@ -249,8 +249,6 @@ final class DocumentsWriterPerThread implements Accountable {
           Iterable<? extends IndexableField> doc = iterator.next();
           if (parentField != null) {
             if (iterator.hasNext() == false) {
-              int numChildren = numDocsInRAM - docsInRamBefore;
-              parentField.getDelegate().setLongValue(numChildren);
               doc = addParentField(doc, parentField);
             }
           } else if (segmentInfo.getIndexSort() != null
