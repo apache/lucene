@@ -131,12 +131,14 @@ public class FSTTermsWriter extends FieldsConsumer {
 
     this.postingsWriter = postingsWriter;
     this.fieldInfos = state.fieldInfos;
-    this.metaOut = state.directory.createOutput(termsMetaFileName, state.context);
-    this.dataOut = state.directory.createOutput(termsDataFileName, state.context);
     this.maxDoc = state.segmentInfo.maxDoc();
 
+    IndexOutput metaOut = null, dataOut = null;
     boolean success = false;
     try {
+      metaOut = state.directory.createOutput(termsMetaFileName, state.context);
+      dataOut = state.directory.createOutput(termsDataFileName, state.context);
+
       CodecUtil.writeIndexHeader(
           metaOut,
           TERMS_CODEC_NAME,
@@ -152,6 +154,8 @@ public class FSTTermsWriter extends FieldsConsumer {
           state.segmentSuffix);
 
       this.postingsWriter.init(metaOut, state);
+      this.metaOut = metaOut;
+      this.dataOut = dataOut;
       success = true;
     } finally {
       if (!success) {
