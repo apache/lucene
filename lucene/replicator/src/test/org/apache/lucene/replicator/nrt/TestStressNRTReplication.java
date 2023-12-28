@@ -17,14 +17,14 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -619,10 +619,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
       message("logging to " + childOut);
       childLog =
           Files.newBufferedWriter(
-              childOut,
-              StandardCharsets.UTF_8,
-              StandardOpenOption.APPEND,
-              StandardOpenOption.CREATE);
+              childOut, UTF_8, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
       childLog.write("\n\nSTART NEW CHILD:\n");
     } else {
       childLog = null;
@@ -637,12 +634,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     Process p = pb.start();
 
-    BufferedReader r;
-    try {
-      r = new BufferedReader(new InputStreamReader(p.getInputStream(), IOUtils.UTF_8));
-    } catch (UnsupportedEncodingException uee) {
-      throw new RuntimeException(uee);
-    }
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), UTF_8));
 
     int tcpPort = -1;
     long initCommitVersion = -1;
