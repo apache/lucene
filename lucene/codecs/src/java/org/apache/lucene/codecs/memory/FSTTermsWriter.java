@@ -115,8 +115,10 @@ public class FSTTermsWriter extends FieldsConsumer {
 
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
-  IndexOutput dataOut;
+  // IndexOutput for FST metadata
   IndexOutput metaOut;
+  // IndexOutput for FST data
+  IndexOutput dataOut;
   final int maxDoc;
   final List<FieldMetaData> fields = new ArrayList<>();
 

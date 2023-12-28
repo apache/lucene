@@ -65,7 +65,9 @@ import org.apache.lucene.util.fst.Util;
 public class FSTTermsReader extends FieldsProducer {
   private final TreeMap<String, TermsReader> fields = new TreeMap<>();
   private final PostingsReaderBase postingsReader;
+  // IndexInput for FST metadata
   private final IndexInput fstMetaInput;
+  // IndexInput for FST data
   private final IndexInput fstDataInput;
 
   public FSTTermsReader(SegmentReadState state, PostingsReaderBase postingsReader)

@@ -77,6 +77,9 @@ API Changes
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
 
+* GITHUB#12980: Make FSTPostingsFormat to build FST off-heap. This PostingsFormat will now
+  create 2 FST files (tfp.meta and tfp.data) instead of a single one. (Anh Dung Bui)
+
 New Features
 ---------------------
 
