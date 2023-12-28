@@ -80,6 +80,9 @@ API Changes
 * GITHUB#12980: Make FSTPostingsFormat to build FST off-heap. This PostingsFormat will now
   create 2 FST files (tfp.meta and tfp.data) instead of a single one. (Anh Dung Bui)
 
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
+
 New Features
 ---------------------
 
@@ -119,6 +122,8 @@ Optimizations
   to count. (Greg Miller)
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
 
 Bug Fixes
 ---------------------
@@ -191,7 +196,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
+  DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
 
 Bug Fixes
 ---------------------
@@ -215,6 +222,8 @@ Other
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
+
+* GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
 ======================== Lucene 9.9.1 =======================
 

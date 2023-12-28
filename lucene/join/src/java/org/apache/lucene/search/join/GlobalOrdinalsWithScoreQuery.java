@@ -153,11 +153,11 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     return "GlobalOrdinalsQuery{"
         + "joinField="
         + joinField
-        + "min="
+        + ",min="
         + min
-        + "max="
+        + ",max="
         + max
-        + "fromQuery="
+        + ",fromQuery="
         + fromQuery
         + '}';
   }

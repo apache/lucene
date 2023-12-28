@@ -94,9 +94,9 @@ import org.apache.lucene.util.automaton.RegExp;
 /**
  * Abstract class to do basic tests for a docvalues format. NOTE: This test focuses on the docvalues
  * impl, nothing else. The [stretch] goal is for this test to be so thorough in testing a new
- * DocValuesFormat that if this test passes, then all Lucene/Solr tests should also pass. Ie, if
- * there is some bug in a given DocValuesFormat that this test fails to catch then this test needs
- * to be improved!
+ * DocValuesFormat that if this test passes, then all Lucene tests should also pass. Ie, if there is
+ * some bug in a given DocValuesFormat that this test fails to catch then this test needs to be
+ * improved!
  */
 public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -1294,7 +1294,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     }
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      String id = "" + i + numDocs;
+      String id = "" + (i + numDocs);
       doc.add(newTextField("id", id, Field.Store.YES));
       String string = TestUtil.randomRealisticUnicodeString(random(), 1, maxLength);
       BytesRef br = newBytesRef(string);
@@ -2272,7 +2272,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, conf);
 
-    Set<String> valueSet = new HashSet<String>();
+    Set<String> valueSet = new HashSet<>();
     for (int i = 0; i < 10000 && valueSet.size() < maxUniqueValues; ++i) {
       final int length = TestUtil.nextInt(random(), minLength, maxLength);
       valueSet.add(TestUtil.randomSimpleString(random(), length));
@@ -3631,9 +3631,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
   }
 
   private interface FieldCreator {
-    public Field next();
+    Field next();
 
-    public DocIdSetIterator iterator(IndexReader r) throws IOException;
+    DocIdSetIterator iterator(IndexReader r) throws IOException;
   }
 
   private void doTestRandomAdvance(FieldCreator fieldCreator) throws IOException {

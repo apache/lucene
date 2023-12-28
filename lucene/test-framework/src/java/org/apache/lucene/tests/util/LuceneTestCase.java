@@ -494,8 +494,7 @@ public abstract class LuceneTestCase extends Assert {
         Arrays.asList(
             "tests.leaveTemporary" /* ANT tasks's (junit4) flag. */,
             "tests.leavetemporary" /* lowercase */,
-            "tests.leavetmpdir" /* default */,
-            "solr.test.leavetmpdir" /* Solr's legacy */)) {
+            "tests.leavetmpdir" /* default */)) {
       defaultValue |= systemPropertyAsBoolean(property, false);
     }
     LEAVE_TEMPORARY = defaultValue;
@@ -659,13 +658,7 @@ public abstract class LuceneTestCase extends Assert {
 
                     // We reset the default locale and timezone; these properties change as a
                     // side-effect
-                    "user.language",
-                    "user.timezone",
-
-                    // TODO: these should, ideally, be moved to Solr's base class.
-                    "solr.directoryFactory",
-                    "solr.solr.home",
-                    "solr.data.dir"))
+                    "user.language", "user.timezone"))
             .around(classEnvRule = new TestRuleSetupAndRestoreClassEnv());
   }
 

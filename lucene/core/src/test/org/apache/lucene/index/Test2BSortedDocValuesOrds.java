@@ -84,7 +84,7 @@ public class Test2BSortedDocValuesOrds extends LuceneTestCase {
     int counter = 0;
     for (LeafReaderContext context : r.leaves()) {
       LeafReader reader = context.reader();
-      BinaryDocValues dv = DocValues.getBinary(reader, "dv");
+      SortedDocValues dv = DocValues.getSorted(reader, "dv");
       for (int i = 0; i < reader.maxDoc(); i++) {
         assertEquals(i, dv.nextDoc());
         bytes[0] = (byte) (counter >> 24);
@@ -92,7 +92,7 @@ public class Test2BSortedDocValuesOrds extends LuceneTestCase {
         bytes[2] = (byte) (counter >> 8);
         bytes[3] = (byte) counter;
         counter++;
-        final BytesRef term = dv.binaryValue();
+        final BytesRef term = dv.lookupOrd(dv.ordValue());
         assertEquals(data, term);
       }
     }
