@@ -512,7 +512,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     public void compileIndex(
         List<PendingBlock> blocks,
         ByteBuffersDataOutput scratchBytes,
-        IntsRefBuilder scratchIntsRef)
+        IntsRefBuilder scratchIntsRef,
+        DataOutput fstDataOutput)
         throws IOException {
 
       assert (isFloor && blocks.size() > 1) || (isFloor == false && blocks.size() == 1)
@@ -542,17 +543,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      long estimateSize = prefix.length;
-      for (PendingBlock block : blocks) {
-        if (block.subIndices != null) {
-          for (FST<BytesRef> subIndex : block.subIndices) {
-            estimateSize += subIndex.numBytes();
-          }
-        }
-      }
-      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
-      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
-
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final int fstVersion;
       if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
@@ -565,7 +555,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
               // Disable suffixes sharing for block tree index because suffixes are mostly dropped
               // from the FST index and left in the term blocks.
               .suffixRAMLimitMB(0d)
-              .dataOutput(getOnHeapReaderWriter(pageBits))
+              .dataOutput(fstDataOutput)
               .setVersion(fstVersion)
               .build();
       // if (DEBUG) {
@@ -619,8 +609,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
   private final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
-
-  static final BytesRef EMPTY_BYTES_REF = new BytesRef();
 
   private static class StatsWriter {
 
@@ -795,7 +783,12 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);
+      boolean isRootBlock = prefixLength == 0 && count == pending.size();
+      // Create a proper DataOutput for the FST. For root block, we will write to the IndexOut
+      // directly. For sub blocks, we will use the on-heap ReadWriteDataOutput
+      DataOutput fstDataOutput = getFSTDataOutput(newBlocks, firstBlock.prefix.length, isRootBlock);
+
+      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef, fstDataOutput);
 
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
@@ -804,6 +797,25 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       pending.add(firstBlock);
 
       newBlocks.clear();
+    }
+
+    private DataOutput getFSTDataOutput(
+        List<PendingBlock> blocks, int prefixLength, boolean isRootBlock) {
+      if (isRootBlock) {
+        return indexOut;
+      }
+      long estimateSize = prefixLength;
+      for (PendingBlock block : blocks) {
+        if (block.subIndices != null) {
+          for (FST<BytesRef> subIndex : block.subIndices) {
+            estimateSize += subIndex.numBytes();
+          }
+        }
+      }
+      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
+      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
+
+      return getOnHeapReaderWriter(pageBits);
     }
 
     private boolean allEqual(byte[] b, int startOffset, int endOffset, byte value) {
@@ -1200,9 +1212,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         metaOut.writeVInt(docsSeen.cardinality());
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
-        metaOut.writeVLong(indexOut.getFilePointer());
+        // Write the address to the beginning of the FST. Note that the FST is already written to
+        // indexOut by this point
+        metaOut.writeVLong(indexOut.getFilePointer() - root.index.numBytes());
         // Write FST to index
-        root.index.save(metaOut, indexOut);
+        root.index.saveMetadata(metaOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 
         /*
