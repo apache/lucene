@@ -17,16 +17,16 @@
 package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -73,8 +73,9 @@ public class TestSimpleTextSegmentInfoFormat extends BaseSegmentInfoFormatTestCa
         fail("SegmentInfos should not be this large");
       }
       byte[] bytes = new byte[(int) length];
-      input.readBytes(bytes, 0, bytes.length);
-      StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes));
+      BytesRef bytesRef = new BytesRef(bytes);
+      // If the following are equal, it means the bytes were not well-formed UTF8.
+      assertNotEquals(bytesRef.toString(), Term.toString(bytesRef));
     }
     dir.close();
   }
