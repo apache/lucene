@@ -39,6 +39,8 @@ Optimizations
 * GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
   DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
 
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
