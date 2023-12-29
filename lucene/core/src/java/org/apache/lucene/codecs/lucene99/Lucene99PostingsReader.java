@@ -149,7 +149,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       boolean indexHasFreq,
       boolean decodeFreq)
       throws IOException {
-    GroupVIntReader.readValues(docIn, docBuffer, num);
+    docIn.readGroupVInts(docBuffer, num);
     if (indexHasFreq && decodeFreq) {
       for (int i = 0; i < num; ++i) {
         freqBuffer[i] = docBuffer[i] & 0x01;
