@@ -69,9 +69,9 @@ public final class BlockingFloatHeap {
   /**
    * Inserts array of values into this heap.
    *
-   * <p>Values are expected to be sorted in ascending order.
+   * <p>Values must be sorted in ascending order.
    *
-   * @param values a set of values to insert
+   * @param values a set of values to insert, must be sorted in ascending order
    * @return the new 'top' element in the queue.
    */
   public float offer(float[] values) {
@@ -83,6 +83,8 @@ public final class BlockingFloatHeap {
         } else {
           if (values[i] >= heap[1]) {
             updateTop(values[i]);
+          } else {
+            break;
           }
         }
       }

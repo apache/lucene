@@ -29,14 +29,21 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  */
 public final class TopKnnCollector extends AbstractKnnCollector {
 
-  // greediness of globally non-competitive search: [0,1]
+  // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
+  // the local queue of the results with the highest similarities collected so far in the current
+  // segment
   private final NeighborQueue queue;
-  private final float greediness;
-  private final FloatHeap nonCompetitiveQueue;
-  private final FloatHeap updatesQueue;
-  private final int interval = 0x3ff; // 1023
+  // the global queue of the highest similarities collected so far across all segments
   private final BlockingFloatHeap globalSimilarityQueue;
+  // the local queue of the highest similarities if we are not competitive globally
+  // the size of this queue is defined by greediness
+  private final FloatHeap nonCompetitiveQueue;
+  private final float greediness;
+  // the queue of the local similarities to periodically update with the global queue
+  private final FloatHeap updatesQueue;
+  // interval to synchronize the local and global queues, as a number of visited vectors
+  private final int interval = 0xff; // 255
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
 
@@ -89,10 +96,10 @@ public final class TopKnnCollector extends AbstractKnnCollector {
       return Float.NEGATIVE_INFINITY;
     }
     float minSim = queue.topScore();
-    if (globalSimilarityQueue != null) {
-      return Math.max(minSim, Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
-    } else {
+    if (globalSimilarityQueue == null) {
       return minSim;
+    } else {
+      return Math.max(minSim, Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
     }
   }
 
