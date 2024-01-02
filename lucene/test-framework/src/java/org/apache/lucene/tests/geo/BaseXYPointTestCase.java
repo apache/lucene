@@ -650,7 +650,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should not match but did");
           }
           System.out.println("  rect=" + rect);
-          System.out.println("  x=" + xDoc1 + " y=" + yDoc1 + "\n  x=" + xDoc2 + " y" + yDoc2);
+          System.out.println("  x=" + xDoc1 + " y=" + yDoc1 + "\n  x=" + xDoc2 + " y=" + yDoc2);
           System.out.println("  result1=" + result1 + " result2=" + result2);
           fail = true;
         }
@@ -773,7 +773,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
   protected abstract Query newGeometryQuery(String field, XYGeometry... geometries);
 
-  static final boolean rectContainsPoint(XYRectangle rect, double x, double y) {
+  static boolean rectContainsPoint(XYRectangle rect, double x, double y) {
     if (y < rect.minY || y > rect.maxY) {
       return false;
     }
@@ -1365,7 +1365,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
           float docX = storedFields.document(doc).getField("x").numericValue().floatValue();
           float docY = storedFields.document(doc).getField("y").numericValue().floatValue();
           double distance = cartesianDistance(x, y, docX, docY);
-          System.out.println("" + doc + ": (" + x + "," + y + "), distance=" + distance);
+          System.out.println(doc + ": (" + x + "," + y + "), distance=" + distance);
         }
         throw e;
       }

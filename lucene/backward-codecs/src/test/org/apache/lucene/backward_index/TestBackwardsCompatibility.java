@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
@@ -125,7 +126,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
@@ -948,7 +948,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       CheckIndex checker = new CheckIndex(dir);
-      checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+      checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
       if (unsupportedNames[i].startsWith("8.")) {
         assertTrue(indexStatus.clean);
@@ -958,8 +958,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         // IndexFormatTooOldException
         // or an IllegalArgumentException saying that the codec doesn't exist.
         boolean formatTooOld =
-            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName());
-        boolean missingCodec = bos.toString(IOUtils.UTF_8).contains("Could not load codec");
+            bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
+        boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
         assertTrue(formatTooOld || missingCodec);
       }
       checker.close();
@@ -1125,9 +1125,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals("wrong number of hits", expectedCount, hitCount);
     StoredFields storedFields = reader.storedFields();
     TermVectors termVectors = reader.termVectors();
-    for (int i = 0; i < hitCount; i++) {
-      storedFields.document(hits[i].doc);
-      termVectors.get(hits[i].doc);
+    for (ScoreDoc hit : hits) {
+      storedFields.document(hit.doc);
+      termVectors.get(hit.doc);
     }
   }
 

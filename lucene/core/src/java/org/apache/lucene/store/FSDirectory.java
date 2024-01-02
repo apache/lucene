@@ -98,8 +98,7 @@ public abstract class FSDirectory extends BaseDirectory {
    * Maps files that we are trying to delete (or we tried already but failed) before attempting to
    * delete that key.
    */
-  private final Set<String> pendingDeletes =
-      Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+  private final Set<String> pendingDeletes = ConcurrentHashMap.newKeySet();
 
   private final AtomicInteger opsSinceLastDelete = new AtomicInteger();
 
@@ -186,7 +185,7 @@ public abstract class FSDirectory extends BaseDirectory {
       }
     }
 
-    String[] array = entries.toArray(new String[entries.size()]);
+    String[] array = entries.toArray(new String[0]);
     // Directory.listAll javadocs state that we sort the results here, so we don't let filesystem
     // specifics leak out of this abstraction:
     Arrays.sort(array);
@@ -214,7 +213,7 @@ public abstract class FSDirectory extends BaseDirectory {
     maybeDeletePendingFiles();
     // If this file was pending delete, we are now bringing it back to life:
     if (pendingDeletes.remove(name)) {
-      privateDeleteFile(name, true); // try again to delete it - this is best effort
+      privateDeleteFile(name, true); // try again to delete it - this is the best effort
       pendingDeletes.remove(name); // watch out - if the delete fails it put
     }
     return new FSIndexOutput(name);
@@ -266,8 +265,8 @@ public abstract class FSDirectory extends BaseDirectory {
     }
     maybeDeletePendingFiles();
     if (pendingDeletes.remove(dest)) {
-      privateDeleteFile(dest, true); // try again to delete it - this is best effort
-      pendingDeletes.remove(dest); // watch out if the delete fails it's back in here.
+      privateDeleteFile(dest, true); // try again to delete it - this is the best effort
+      pendingDeletes.remove(dest); // watch out if the delete fails, it's back in here
     }
     Files.move(directory.resolve(source), directory.resolve(dest), StandardCopyOption.ATOMIC_MOVE);
   }

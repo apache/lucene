@@ -107,7 +107,7 @@ public final class SearchImpl extends LukeModel implements Search {
         .map(f -> IndexUtils.getFieldInfo(reader, f))
         .filter(info -> !info.getDocValuesType().equals(DocValuesType.NONE))
         .map(info -> info.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override
@@ -116,7 +116,7 @@ public final class SearchImpl extends LukeModel implements Search {
         .map(f -> IndexUtils.getFieldInfo(reader, f))
         .filter(info -> !info.getIndexOptions().equals(IndexOptions.NONE))
         .map(info -> info.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override
@@ -155,7 +155,7 @@ public final class SearchImpl extends LukeModel implements Search {
         query = query.rewrite(searcher);
       } catch (IOException e) {
         throw new LukeException(
-            String.format(Locale.ENGLISH, "Failed to rewrite query: %s", query.toString()), e);
+            String.format(Locale.ENGLISH, "Failed to rewrite query: %s", query), e);
       }
     }
 
@@ -428,7 +428,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortField(name, SortField.Type.FLOAT),
                   new SortField(name, SortField.Type.DOUBLE)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED_NUMERIC:
         return Arrays.stream(
@@ -438,7 +438,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortedNumericSortField(name, SortField.Type.FLOAT),
                   new SortedNumericSortField(name, SortField.Type.DOUBLE)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED:
         return Arrays.stream(
@@ -446,7 +446,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortField(name, SortField.Type.STRING),
                   new SortField(name, SortField.Type.STRING_VAL)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED_SET:
         return Collections.singletonList(new SortedSetSortField(name, false));
