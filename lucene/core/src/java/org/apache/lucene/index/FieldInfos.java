@@ -501,7 +501,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + parentFieldName
                   + "] as parent document field ; this index uses ["
                   + fieldName
-                  + "] as parent document field  already");
+                  + "] as parent document field already");
         }
       } else if (fieldName.equals(parentFieldName)) { // else case -- isParentField == false
         throw new IllegalArgumentException(

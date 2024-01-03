@@ -137,11 +137,11 @@ final class DocumentsWriterPerThread implements Accountable {
   private final ReentrantLock lock = new ReentrantLock();
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
-  private final int indexVersionCreated;
+  private final int indexMajorVersionCreated;
   private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
 
   DocumentsWriterPerThread(
-      int indexVersionCreated,
+      int indexMajorVersionCreated,
       String segmentName,
       Directory directoryOrig,
       Directory directory,
@@ -150,7 +150,7 @@ final class DocumentsWriterPerThread implements Accountable {
       FieldInfos.Builder fieldInfos,
       AtomicLong pendingNumDocs,
       boolean enableTestPoints) {
-    this.indexVersionCreated = indexVersionCreated;
+    this.indexMajorVersionCreated = indexMajorVersionCreated;
     this.directory = new TrackingDirectoryWrapper(directory);
     this.fieldInfos = fieldInfos;
     this.indexWriterConfig = indexWriterConfig;
@@ -189,7 +189,7 @@ final class DocumentsWriterPerThread implements Accountable {
     this.enableTestPoints = enableTestPoints;
     indexingChain =
         new IndexingChain(
-            indexVersionCreated,
+            indexMajorVersionCreated,
             segmentInfo,
             this.directory,
             fieldInfos,
@@ -253,7 +253,7 @@ final class DocumentsWriterPerThread implements Accountable {
             }
           } else if (segmentInfo.getIndexSort() != null
               && iterator.hasNext()
-              && indexVersionCreated >= Version.LUCENE_10_0_0.major) {
+              && indexMajorVersionCreated >= Version.LUCENE_10_0_0.major) {
             // sort is configured but parent field is missing, yet we have a doc-block
             // yet we must not fail if this index was created in an earlier version where this
             // behavior was permitted.
@@ -312,8 +312,7 @@ final class DocumentsWriterPerThread implements Accountable {
             return field;
           }
           if (first.hasNext()) {
-            IndexableField field = first.next();
-            return field;
+            return first.next();
           }
           throw new NoSuchElementException();
         }
