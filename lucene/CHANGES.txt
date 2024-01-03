@@ -90,10 +90,10 @@ New Features
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
 
-* GITHUB#12829: IndexWriter now preserves document blocks indexed via IndexWriter#addDocuments
-  et.al. when index sorting is configured. Document blocks are maintained alongside their
-  parent documents during sort and merge. IndexWriterConfig requires a parent field to be specified
-  if index sorting is used together with documents blocks. (Simon Willnauer)
+* GITHUB#12829: For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
+  IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
+  maintained alongside their parent documents during sort and merge. IndexWriterConfig now requires a parent field to be
+  specified if index sorting is used together with documents blocks. (Simon Willnauer)
 
 Improvements
 ---------------------
@@ -139,9 +139,8 @@ Bug Fixes
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
-* GITHUB#12829: IndexWriter#addDocuments et.al. now require a parent field name to be
-  specified in IndexWriterConfig is documents blocks are indexed and index time sorting
-  is configured. (Simon Willnauer)
+* GITHUB#12829: IndexWriter#addDocuments or IndexWriter#updateDocuments now require a parent field name to be
+  specified in IndexWriterConfig is documents blocks are indexed and index time sorting is configured. (Simon Willnauer)
 
 Other
 ---------------------

@@ -1186,10 +1186,12 @@ public final class CheckIndex implements Closeable {
               "parent field is not set but the index has document blocks and was created with version: "
                   + metaData.getCreatedVersionMajor());
         }
-        final DocIdSetIterator iter =
-            metaData.hasBlocks() && fieldInfos.getParentField() != null
-                ? reader.getNumericDocValues(fieldInfos.getParentField())
-                : DocIdSetIterator.all(reader.maxDoc());
+        final DocIdSetIterator iter;
+        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+          iter = reader.getNumericDocValues(fieldInfos.getParentField());
+        } else {
+          iter = DocIdSetIterator.all(reader.maxDoc());
+        }
         int prevDoc = iter.nextDoc();
         int nextDoc;
         while ((nextDoc = iter.nextDoc()) != NO_MORE_DOCS) {

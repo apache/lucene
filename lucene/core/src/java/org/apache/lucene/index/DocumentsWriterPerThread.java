@@ -258,7 +258,7 @@ final class DocumentsWriterPerThread implements Accountable {
             // yet we must not fail if this index was created in an earlier version where this
             // behavior was permitted.
             throw new IllegalArgumentException(
-                "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#getParentField");
+                "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#setParentField");
           }
 
           // Even on exception, the document is still added (but marked

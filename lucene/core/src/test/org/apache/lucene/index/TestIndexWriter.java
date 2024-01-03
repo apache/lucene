@@ -4911,7 +4911,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 new IndexWriter(dir, config);
               });
       assertEquals(
-          "cannot configure [someOtherField] as parent document field ; this index uses [parent] as parent document field  already",
+          "cannot configure [someOtherField] as parent document field ; this index uses [parent] as parent document field already",
           ex.getMessage());
       ex =
           expectThrows(
@@ -4946,7 +4946,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 new IndexWriter(dir, config);
               });
       assertEquals(
-          "cannot configure [parent] as parent document field ; this index uses [parent] as non parent document field already",
+          "cannot configure [parent] as non parent document field ; this index uses [parent] as parent document field already",
           iae.getMessage());
     }
   }
