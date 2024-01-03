@@ -1755,6 +1755,44 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testSingleDocsDoNotTriggerHasBlocks() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMaxBufferedDocs(Integer.MAX_VALUE)
+                  .setRAMBufferSizeMB(100))) {
+
+        int docs = random().nextInt(1, 100);
+        for (int i = 0; i < docs; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("id", "" + i, Field.Store.NO));
+          w.addDocuments(Arrays.asList(doc));
+        }
+        w.commit();
+        SegmentInfos si = w.cloneSegmentInfos();
+        assertEquals(1, si.size());
+        assertFalse(si.asList().get(0).info.getHasBlocks());
+
+        Document doc = new Document();
+        doc.add(new StringField("id", "XXX", Field.Store.NO));
+        w.addDocuments(Arrays.asList(doc, doc));
+        w.commit();
+        si = w.cloneSegmentInfos();
+        assertEquals(2, si.size());
+        assertFalse(si.asList().get(0).info.getHasBlocks());
+        assertTrue(si.asList().get(1).info.getHasBlocks());
+        w.forceMerge(1);
+
+        w.commit();
+        si = w.cloneSegmentInfos();
+        assertEquals(1, si.size());
+        assertTrue(si.asList().get(0).info.getHasBlocks());
+      }
+    }
+  }
+
   public void testCarryOverHasBlocks() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
