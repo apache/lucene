@@ -3192,7 +3192,7 @@ public class TestIndexSorting extends LuceneTestCase {
                   writer.addDocuments(Arrays.asList(new Document(), new Document()));
                 });
         assertEquals(
-            "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#getParentField",
+            "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#setParentField",
             ex.getMessage());
       }
     }
