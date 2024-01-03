@@ -1977,7 +1977,7 @@ public class TestAddIndexes extends LuceneTestCase {
                 })
             .getMessage();
     assertEquals(
-        "cannot configure [foo] as parent document field ; this index uses [foobar] as parent document field  already",
+        "cannot configure [foo] as parent document field ; this index uses [foobar] as parent document field already",
         message);
 
     Directory dir3 = newDirectory();
