@@ -503,13 +503,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] as parent document field already");
         }
-      } else if (fieldName.equals(parentFieldName)) { // else case -- isParentField == false
+      } else if (fieldName.equals(parentFieldName)) { // isParent == false
+        // this would be the case if the current index has a parent field that is
+        // not a parent field in the incoming index (think addIndices)
         throw new IllegalArgumentException(
             "cannot configure ["
                 + parentFieldName
-                + "] as parent document field ; this index uses ["
+                + "] as non parent document field ; this index uses ["
                 + fieldName
-                + "] as non parent document field already");
+                + "] as parent document field already");
       }
     }
 
