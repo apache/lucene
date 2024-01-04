@@ -29,6 +29,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.TreeMap;
+
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 
@@ -45,6 +48,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   private final int[] dpuIdOffset;
   private int nbLuceneSegments;
   private SGReturnPool sgReturnPool;
+  private TreeMap<String, Integer> fieldNormInverseQuantFactor;
 
   /*
    * Static load of the DPU jni library specific to PIM lucene
@@ -165,6 +169,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                   throw new DpuException(e.getMessage());
                 }
               });
+
+
     }
 
     // send a value to all DPU indicating whether an index
@@ -193,6 +199,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     sgReturnPool =
         new SGReturnPool(
             INIT_SG_RETURN_CAPACITY, getInitSgResultsByteSize(pimIndexInfo.getNumDocs()));
+    fieldNormInverseQuantFactor = pimIndexInfo.fieldNormInverseQuantFactor;
   }
 
   private int getInitSgResultsByteSize(int numDocs) {
@@ -270,12 +277,22 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       }
     }
 
+    // create an array with the LeafSimScorer objects for the JNI layer
+    // create an array with the quantization factors used for the norm inverse of each field
+    LeafSimScorer[] scorers = new LeafSimScorer[queryBuffers.size()];
+    int[] quantFactors = new int[queryBuffers.size()];
+    for(int i = 0; i < queryBuffers.size(); ++i) {
+      scorers[i] = queryBuffers.get(i).scorer;
+      Integer qf = fieldNormInverseQuantFactor.get(queryBuffers.get(i).query.getField());
+      if(qf != null) quantFactors[i] = qf;
+    }
+
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer
-    SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments);
+    SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), /*scorers, */ nbLuceneSegments);
     int resSize = sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
     if (resSize > 0) {
-      // buffer passed to the JNI layer was to small, request a larger one from the pool and
+      // buffer passed to the JNI layer was too small, request a larger one from the pool and
       // call again
       results.endReading(queryBuffers.size() * nbLuceneSegments);
       results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);

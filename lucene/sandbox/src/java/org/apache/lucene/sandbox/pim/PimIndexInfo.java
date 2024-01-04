@@ -18,6 +18,9 @@
 package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.TreeMap;
+
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
@@ -33,14 +36,15 @@ import org.apache.lucene.store.IndexOutput;
 public class PimIndexInfo {
 
   Directory pimDir;
-  int numDpus;
-  int numSegments;
-  int numDpuSegments;
-  int numDocs;
-  String segmentCommitName;
-  int startDoc[];
+  private int numDpus;
+  private int numSegments;
+  private int numDpuSegments;
+  private int numDocs;
+  private String segmentCommitName;
+  private int startDoc[];
   byte segmentId[][];
   byte segmentCommitId[][];
+  TreeMap<String, Integer> fieldNormInverseQuantFactor;
 
   /**
    * Constructor
@@ -48,8 +52,10 @@ public class PimIndexInfo {
    * @param pimDir the PIM index directory
    * @param nbDpus the number of DPUs
    * @param segmentInfos SegmentInfos of the Lucene index
+   * @param fieldNormInverseQuantFactor the quantization factors used for the norm inverse of each field
    */
-  PimIndexInfo(Directory pimDir, int nbDpus, int numDpuSegments, SegmentInfos segmentInfos) {
+  PimIndexInfo(Directory pimDir, int nbDpus, int numDpuSegments,
+               SegmentInfos segmentInfos, TreeMap<String, Integer> fieldNormInverseQuantFactor) {
 
     this.pimDir = pimDir;
     this.numSegments = segmentInfos.size();
@@ -59,6 +65,7 @@ public class PimIndexInfo {
     startDoc = new int[numSegments];
     segmentId = new byte[numSegments][];
     segmentCommitId = new byte[numSegments][];
+    this.fieldNormInverseQuantFactor = fieldNormInverseQuantFactor;
 
     numDocs = 0;
     for (int i = 0; i < numSegments; ++i) {
@@ -284,6 +291,10 @@ public class PimIndexInfo {
       out.writeInt(segmentCommitId[i].length);
       out.writeBytes(segmentCommitId[i], segmentCommitId[i].length);
     }
+    out.writeSetOfStrings(fieldNormInverseQuantFactor.keySet());
+    for(Integer e : fieldNormInverseQuantFactor.values()) {
+      out.writeInt(e);
+    }
   }
 
   public static PimIndexInfo readExternal(IndexInput in) throws IOException {
@@ -297,6 +308,7 @@ public class PimIndexInfo {
     info.segmentId = new byte[info.numSegments][];
     info.segmentCommitId = new byte[info.numSegments][];
     info.segmentCommitName = in.readString();
+    info.fieldNormInverseQuantFactor = new TreeMap<>();
 
     for (int i = 0; i < info.startDoc.length; ++i) {
       info.startDoc[i] = in.readInt();
@@ -310,6 +322,10 @@ public class PimIndexInfo {
       int size = in.readInt();
       info.segmentCommitId[i] = new byte[size];
       in.readBytes(info.segmentCommitId[i], 0, info.segmentCommitId[i].length);
+    }
+    Set<String> fields = in.readSetOfStrings();
+    for(String field : fields) {
+      info.fieldNormInverseQuantFactor.put(field, in.readInt());
     }
     return info;
   }

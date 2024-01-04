@@ -30,7 +30,7 @@ public interface PimQuery {
    * @param output the output to be written
    * @throws IOException if the query failed to be written
    */
-  public void writeToPim(DataOutput output) throws IOException;
+  void writeToPim(DataOutput output) throws IOException;
 
   /**
    * This API specifies the size in bytes of a result for this PIM query
@@ -50,4 +50,9 @@ public interface PimQuery {
    * @throws IOException if failing to read results from the input
    */
   float scorePimResult(int docId, int freq, LeafSimScorer scorer) throws IOException;
+
+  /**
+   * @return the field associated to this query
+   */
+  String getField();
 }

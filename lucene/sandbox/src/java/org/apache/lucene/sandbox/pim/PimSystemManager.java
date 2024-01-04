@@ -241,7 +241,7 @@ public class PimSystemManager {
 
     if (cacheRes == null) {
       // if not run the query on PIM
-      runSearchQuery(query);
+      runSearchQuery(query, simScorer);
       cacheRes = dpuResultsCache.get().get(query, remove);
     }
 
@@ -262,11 +262,11 @@ public class PimSystemManager {
     return cacheRes;
   }
 
-  private <QueryType extends Query & PimQuery> void runSearchQuery(QueryType query)
+  private <QueryType extends Query & PimQuery> void runSearchQuery(QueryType query, LeafSimScorer simScorer)
       throws PimQueryQueueFullException {
 
     assert isQuerySupported(query);
-    QueryBuffer queryBuffer = threadQueryBuffer.get().reset(query);
+    QueryBuffer queryBuffer = threadQueryBuffer.get().reset(query, simScorer);
     writeQueryToPim(query, queryBuffer);
     if (!queryQueue.offer(queryBuffer)) {
       throw new PimQueryQueueFullException();
@@ -298,10 +298,12 @@ public class PimSystemManager {
     byte[] bytes = new byte[128];
     int length;
     PimQuery query;
+    LeafSimScorer scorer;
 
-    QueryBuffer reset(PimQuery query) {
+    QueryBuffer reset(PimQuery query, LeafSimScorer scorer) {
       length = 0;
       this.query = query;
+      this.scorer = scorer;
       return this;
     }
 

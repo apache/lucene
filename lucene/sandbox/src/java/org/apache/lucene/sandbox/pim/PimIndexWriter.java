@@ -29,8 +29,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.TreeMap;
 
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
@@ -39,6 +53,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.SmallFloat;
 
 /**
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit. The term
@@ -93,6 +108,18 @@ public class PimIndexWriter extends IndexWriter {
   private static final boolean DEBUG_INDEX = false;
   private PimIndexInfo pimIndexInfo;
 
+  // default parameters for BM25 similarity scoring
+  static private final float k1 = 1.2f;
+  static private final float b = 0.75f;
+  /** Cache of decoded bytes. TODO extracted from BM25Similarity class */
+  private static final float[] LENGTH_TABLE = new float[256];
+
+  static {
+    for (int i = 0; i < 256; i++) {
+      LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
+    }
+  }
+
   public PimIndexWriter(
       Directory directory,
       Directory pimDirectory,
@@ -123,6 +150,7 @@ public class PimIndexWriter extends IndexWriter {
     // Create a DpuTermIndexes that will build the term index for each DPU separately.
     try (DpuTermIndexes dpuTermIndexes = new DpuTermIndexes(segmentInfos, nbDocPerDPUSegment)) {
 
+      TreeMap<String, Integer> fieldNormInverseQuantFactor = new TreeMap<>();
       try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
         List<LeafReaderContext> leaves = indexReader.leaves();
 
@@ -130,6 +158,8 @@ public class PimIndexWriter extends IndexWriter {
           // Iterate on segments.
           // There will be a different term index sub-part per segment and per DPU.
           TermsEnum[] termsEnums = new TermsEnum[leaves.size()];
+          int docCount = 0;
+          int sumTotalTermFreq = 0;
           for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
             LeafReaderContext leafReaderContext = leaves.get(leafIdx);
             LeafReader reader = leafReaderContext.reader();
@@ -152,15 +182,19 @@ public class PimIndexWriter extends IndexWriter {
             // the live docs.
             Terms terms = reader.terms(fieldInfo.name);
             if (terms != null) {
-              int docCount = terms.getDocCount();
-              if (DEBUG_INDEX) System.out.println("  " + docCount + " docs");
+              int leafDocCount = terms.getDocCount();
+              docCount += leafDocCount;
+              sumTotalTermFreq += terms.getSumTotalTermFreq();
+              if (DEBUG_INDEX) System.out.println("  " + leafDocCount + " docs");
               TermsEnum termsEnum = terms.iterator();
               termsEnums[leafIdx] = termsEnum;
             }
           }
+
           // Send the term enum to DpuTermIndexes.
           // DpuTermIndexes separates the term docs according to the docId range split per DPU.
-          dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos));
+          dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos),
+                  (float) (sumTotalTermFreq / (double) docCount));
 
           // write the norms to be stored in PIM index
           int startDoc = 0;
@@ -174,20 +208,23 @@ public class PimIndexWriter extends IndexWriter {
             startDoc += segmentCommitInfo.info.maxDoc();
           }
 
+          fieldNormInverseQuantFactor.put(fieldInfo.name, dpuTermIndexes.normInverseQuantFactor);
           dpuTermIndexes.endField();
         }
       }
       // successfully updated the PIM index, register it
-      writePimIndexInfo(segmentInfos, pimConfig.getNumDpuSegments());
+      writePimIndexInfo(segmentInfos, pimConfig.getNumDpuSegments(), fieldNormInverseQuantFactor);
     }
     if (DEBUG_INDEX)
       System.out.printf(
           "\nPIM index creation took %.2f secs\n", (System.nanoTime() - start) * 1e-9);
   }
 
-  private void writePimIndexInfo(SegmentInfos segmentInfos, int numDpuSegments) throws IOException {
+  private void writePimIndexInfo(SegmentInfos segmentInfos, int numDpuSegments,
+                                 TreeMap<String, Integer> fieldNormInverseQuantFactor) throws IOException {
 
-    pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, numDpuSegments, segmentInfos);
+    pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, numDpuSegments,
+            segmentInfos, fieldNormInverseQuantFactor);
     Set<String> fileNames = Set.of(pimDirectory.listAll());
     if (fileNames.contains("pimIndexInfo")) {
       pimDirectory.deleteFile("pimIndexInfo");
@@ -210,8 +247,8 @@ public class PimIndexWriter extends IndexWriter {
    */
   private class CompositeTermsEnum {
 
-    int startDoc[];
-    TreeSet<LeafTermsEnum> sortedEnums;
+    private int startDoc[];
+    private TreeSet<LeafTermsEnum> sortedEnums;
 
     public CompositeTermsEnum(TermsEnum[] termsEnums, SegmentInfos segmentInfos)
         throws IOException {
@@ -224,7 +261,7 @@ public class PimIndexWriter extends IndexWriter {
       sortedEnums = new TreeSet<>();
       for (int i = 0; i < termsEnums.length; ++i) {
         if (termsEnums[i] != null && termsEnums[i].next() != null) {
-          sortedEnums.add(new LeafTermsEnum(termsEnums[i], i));
+            sortedEnums.add(new LeafTermsEnum(termsEnums[i], i));
         }
       }
     }
@@ -287,6 +324,8 @@ public class PimIndexWriter extends IndexWriter {
     private FieldInfo fieldInfo;
     private final int nbDocPerDpuSegment;
     PriorityQueue<DpuIndexSize> dpuPrQ;
+    final byte[] normInverseCache;
+    int normInverseQuantFactor;
     static final int blockSize = 8;
 
     DpuTermIndexes(SegmentInfos segmentsInfo, int nbDocPerDpuSegment) throws IOException {
@@ -332,6 +371,9 @@ public class PimIndexWriter extends IndexWriter {
       for (int i = pimConfig.getNumDpus() - 1; i >= 0; --i) {
         dpuPrQ.add(new DpuIndexSize(i, 0));
       }
+
+      this.normInverseCache = new byte[256];
+      this.normInverseQuantFactor = 1;
     }
 
     private IndexOutput createIndexOutput(String ext, int dpuIndex, Set<String> fileNames)
@@ -367,9 +409,11 @@ public class PimIndexWriter extends IndexWriter {
               commitName, Integer.toString(dpuIndex), DPU_TERM_POSTINGS_INDEX_EXTENSION));
     }
 
-    void writeTerms(FieldInfo fieldInfo, CompositeTermsEnum termsEnum) throws IOException {
+    void writeTerms(FieldInfo fieldInfo, CompositeTermsEnum termsEnum,
+                    float avgFieldLength) throws IOException {
 
       this.fieldInfo = fieldInfo;
+      computeNormInverseCache(avgFieldLength);
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.resetForNextField();
       }
@@ -411,6 +455,22 @@ public class PimIndexWriter extends IndexWriter {
         doc += startDoc;
         int dpu = getDpuForDoc(doc);
         termIndexes[dpu].writeDocNorm(doc, norms.longValue());
+      }
+    }
+
+    private void computeNormInverseCache(float avgFieldLength) {
+
+      // set the norm inverse cache to be used for this field
+      float[] cache = new float[256];
+      float max = 0.0f;
+      for (int i = 0; i < 256; i++) {
+        cache[i] = 1f / (k1 * ((1 - b) + b * LENGTH_TABLE[i] / avgFieldLength));
+        if(i == 0 || cache[i] > max)
+          max = cache[i];
+      }
+      normInverseQuantFactor = (int) (256.0f / max);
+      for (int i = 0; i < 256; i++) {
+        normInverseCache[i] = (byte) ((int)(Math.ceil(cache[i] * normInverseQuantFactor)) & 0xFF);
       }
     }
 
@@ -886,15 +946,24 @@ public class PimIndexWriter extends IndexWriter {
         // hashSize is a power of 2, the number of trailing zeros should be the log2
         int hashSizeLog2 = Integer.numberOfTrailingZeros(hashSize);
         assert hashSizeLog2 < 256;
-        int skipInfo = Math.toIntExact(1 + hashSize + posBuffer.size());
+        int skipInfo = Math.toIntExact(1 + 256 + hashSize + posBuffer.size());
         //System.out.println("skipInfo=" + skipInfo + " hashSize=" + hashSize + "posBuffer=" + posBuffer.size());
         blocksTableOutput.writeVInt(skipInfo);
         blocksTableOutput.writeByte((byte) (hashSizeLog2 & 0xFF));
+        // write norm inverse cache
+        writeNormInverseCache();
         for(int i = 0; i < hashSize; ++i)
           blocksTableOutput.writeByte((byte) (hashTable[i] & 0xFF));
         if(posBuffer.size() != 0)
           posBuffer.copyTo(blocksTableOutput);
         posBuffer.reset();
+      }
+
+      private void writeNormInverseCache() throws IOException {
+
+        for (int i = 0; i < 256; i++) {
+          blocksTableOutput.writeByte(normInverseCache[i]);
+        }
       }
 
       void writeBlockTable() throws IOException {

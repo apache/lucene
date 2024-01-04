@@ -51,7 +51,12 @@
 /*
  * Maximum number of scores stored
  */
-#define MAX_NB_SCORES 8
+#define MAX_NB_SCORES_LOG2 3
+
+/*
+ * type for storing the quantized values of norm inverse in the index
+ */
+#define NORM_INV_TYPE uint8_t
 
 #endif
 

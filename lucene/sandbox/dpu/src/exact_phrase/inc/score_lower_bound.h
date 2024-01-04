@@ -6,6 +6,8 @@
 #include "common.h"
 #include "matcher.h"
 
+#define MAX_NB_SCORES (1 << MAX_NB_SCORES_LOG2)
+
 /**
  * a structure to store a current score of DPU result
  * this will be retrieved by the host to compute a lower bound
