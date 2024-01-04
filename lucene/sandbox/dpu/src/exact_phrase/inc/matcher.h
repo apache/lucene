@@ -79,5 +79,6 @@ uint32_t matcher_get_curr_did(did_matcher_t *matchers, uint32_t term_id);
 
 void start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);
 void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms);
+void abort_did(did_matcher_t *matchers, uint32_t nr_terms);
 
 #endif /* MATCHER_H_ */

@@ -352,6 +352,8 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
                     printf("nr_results after pos match did=%d %d\n", did, nr_results);
 #endif
                 }
+                else
+                    abort_did(matchers, nr_terms);
             } break;
             case DID_NOT_FOUND:
                 break;

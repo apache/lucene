@@ -79,7 +79,7 @@ static NORM_INV_TYPE get_norm_inverse(uint32_t query_id, uint8_t norm) {
 
     uint64_t norm_buff;
     NORM_INV_TYPE *norm_inverse = mram_read_unaligned(
-                             (__mram_ptr uint8_t*)doc_norms_addr[query_id] - ((256 + norm) * sizeof(NORM_INV_TYPE)),
+                             (__mram_ptr uint8_t*)doc_norms_addr[query_id] - ((256 - norm) * sizeof(NORM_INV_TYPE)),
                              &norm_buff,
                              sizeof(NORM_INV_TYPE));
     return *norm_inverse;
@@ -110,6 +110,13 @@ void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr) {
 
 static uint32_t get_score_quant(uint8_t query_id, uint8_t norm, uint32_t freq) {
 
+     if(nb_docs_log2[query_id] == UINT8_MAX) {
+         // no norms for the field of this query
+         // The default norm will apply, this is the same value for every doc.
+         // Hence the norm inverse value has no effect in the DPU scoring
+         return freq;
+    }
+
     uint16_t norm_inv_quant = get_norm_inverse(query_id, norm);
     uint32_t score_quant = norm_inv_quant * freq;
     return score_quant;
@@ -128,7 +135,7 @@ bool is_score_competitive(uint32_t query_id, uint32_t did, did_matcher_t *matche
     }
     // avoid possible overflow, if the frequence is too large, assume the score to be competitive
     if(min_freq > MIN_FREQ_COMPETITIVE) return true;
-    return get_score_quant(query_id, get_doc_norm(query_id, did), min_freq) > score_lower_bound[query_id];
+    return get_score_quant(query_id, get_doc_norm(query_id, did), min_freq) >= score_lower_bound[query_id];
 }
 
 __dma_aligned score_t score_buffer[NR_TASKLETS];

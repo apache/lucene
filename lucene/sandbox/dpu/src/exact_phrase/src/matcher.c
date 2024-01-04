@@ -102,6 +102,14 @@ uint32_t get_max_did(did_matcher_t *matchers, uint32_t nr_terms)
     return max;
 }
 
+void abort_did(did_matcher_t *matchers, uint32_t nr_terms) {
+
+    for (uint32_t i = 0; i < nr_terms; i++) {
+      abort_parse_did(matchers[i].parser, matchers[i].current_pos_len);
+    }
+}
+
+
 // ============================================================================
 // POS MATCHING FUNCTIONS
 // ============================================================================
