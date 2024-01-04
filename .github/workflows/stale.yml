@@ -21,10 +21,16 @@ jobs:
     - uses: actions/stale@v5
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
+
         days-before-pr-stale: 14
-        exempt-draft-pr: true
+        days-before-issue-stale: -1   # don't mark issues as stale
+        exempt-draft-pr: true         # don't mark draft PRs as stale
+
+        days-before-close: -1         # don't close stale PRs/issues
+
         stale-pr-message: >
           This PR has not had activity in the past 2 weeks, labeling it as stale.
           If the PR is waiting for review, notify the dev@lucene.apache.org list.
           Thank you for your contribution!
-        stale-pr-label: 'no-pr-activity'
+
+        debug-only: true
