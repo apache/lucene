@@ -22,6 +22,7 @@ jobs:
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         days-before-pr-stale: 14
+        exempt-draft-pr: true
         stale-pr-message: >
           This PR has not had activity in the past 2 weeks, labeling it as stale.
           If the PR is waiting for review, notify the dev@lucene.apache.org list.
