@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
@@ -30,6 +29,7 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SuppressForbidden;
 
 /**
@@ -50,7 +50,7 @@ public class IndexSplitter {
 
   Path dir;
 
-  @SuppressForbidden(reason = "System.out required: command line tool")
+  @SuppressForbidden(reason = "System.err required: command line tool")
   public static void main(String[] args) throws Exception {
     if (args.length < 2) {
       System.err.println("Usage: IndexSplitter <srcDir> -l (list the segments and their sizes)");
@@ -66,10 +66,10 @@ public class IndexSplitter {
     if (args[1].equals("-l")) {
       is.listSegments();
     } else if (args[1].equals("-d")) {
-      is.remove(Arrays.copyOfRange(args, 2, args.length));
+      is.remove(ArrayUtil.copyOfSubArray(args, 2, args.length));
     } else {
       Path targetDir = Paths.get(args[1]);
-      is.split(targetDir, Arrays.copyOfRange(args, 2, args.length));
+      is.split(targetDir, ArrayUtil.copyOfSubArray(args, 2, args.length));
     }
   }
 
