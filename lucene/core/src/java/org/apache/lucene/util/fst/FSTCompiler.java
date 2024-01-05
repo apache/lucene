@@ -896,17 +896,16 @@ public class FSTCompiler<T> {
       assert validOutput(lastOutput);
 
       final T commonOutputPrefix;
-      final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
         commonOutputPrefix = fst.outputs.common(output, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        T wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
         assert validOutput(wordSuffix);
         parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
         node.prependOutput(wordSuffix);
       } else {
-        commonOutputPrefix = wordSuffix = NO_OUTPUT;
+        commonOutputPrefix = NO_OUTPUT;
       }
 
       output = fst.outputs.subtract(output, commonOutputPrefix);
@@ -1095,13 +1094,6 @@ public class FSTCompiler<T> {
       // assert target.node != -2;
       arc.nextFinalOutput = nextFinalOutput;
       arc.isFinal = isFinal;
-    }
-
-    void deleteLast(int label, Node target) {
-      assert numArcs > 0;
-      assert label == arcs[numArcs - 1].label;
-      assert target == arcs[numArcs - 1].target;
-      numArcs--;
     }
 
     void setLastOutput(int labelToMatch, T newOutput) {
