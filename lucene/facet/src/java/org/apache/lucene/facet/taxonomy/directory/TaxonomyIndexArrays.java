@@ -171,10 +171,13 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
 
     for (int i = first; i < length; i++) {
+      int parent = parents.get(i);
+      // The existing youngest child of the parent is the next older sibling of i.
       // note that parents[i] is always < i, so the right-hand-side of
       // the following line is already set when we get here
-      siblings.set(i, children.get(parents.get(i)));
-      children.set(parents.get(i), i);
+      siblings.set(i, children.get(parent));
+      // The new youngest child of the parent is i.
+      children.set(parent, i);
     }
   }
 
