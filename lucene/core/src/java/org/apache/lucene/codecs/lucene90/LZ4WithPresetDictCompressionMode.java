@@ -128,8 +128,9 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       }
 
       // Read blocks that intersect with the interval we need
-      if (offsetInBlock < offset + length) {
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + offset + length - offsetInBlock);
+      int bytesNeeded = bytes.length + offset + length - offsetInBlock;
+      if (offsetInBlock < offset + length && bytes.bytes.length < bytesNeeded) {
+        bytes.bytes = ArrayUtil.growExact(bytes.bytes, bytesNeeded);
       }
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
