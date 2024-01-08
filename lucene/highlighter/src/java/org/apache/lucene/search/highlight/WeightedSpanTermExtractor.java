@@ -294,6 +294,14 @@ public class WeightedSpanTermExtractor {
   protected void extractWeightedSpanTerms(
       Map<String, WeightedSpanTerm> terms, SpanQuery spanQuery, float boost) throws IOException {
 
+    Set<String> queryFieldNames = new HashSet<>();
+    collectSpanQueryFields(spanQuery, queryFieldNames);
+    if (fieldName != null
+        && queryFieldNames.contains(fieldName) == false
+        && (defaultField == null || queryFieldNames.contains(defaultField) == false)) {
+      return;
+    }
+
     final boolean mustRewriteQuery = mustRewriteQuery(spanQuery);
     final IndexSearcher searcher = new IndexSearcher(getLeafContext());
     searcher.setQueryCache(null);
