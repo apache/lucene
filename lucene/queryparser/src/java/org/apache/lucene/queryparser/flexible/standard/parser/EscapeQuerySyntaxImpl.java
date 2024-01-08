@@ -186,7 +186,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
    * Returns a String where the escape char has been removed, or kept only once if there was a
    * double escape.
    *
-   * <p>Supports escaped Unicode characters, e.g. translates <code>A</code> to <code>A</code>.
+   * <p>Supports escaped Unicode characters, e.g. translates {@code \u005Cu0041} to {@code A}.
    */
   public static UnescapedCharSequence discardEscapeChar(CharSequence input) throws ParseException {
     // Create char array to hold unescaped char sequence
@@ -203,8 +203,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
     boolean lastCharWasEscapeChar = false;
 
     // The multiplier the current unicode digit must be multiplied with.
-    // E.g. the first digit must be multiplied with 16^3, the second with
-    // 16^2...
+    // E.g. the first digit must be multiplied with 16^3, the second with 16^2...
     int codePointMultiplier = 0;
 
     // Used to calculate the codepoint of the escaped unicode character
