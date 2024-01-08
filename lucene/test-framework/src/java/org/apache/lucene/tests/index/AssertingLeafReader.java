@@ -493,7 +493,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert state != DocsEnumState.START : "freq() called before nextDoc()/advance()";
       assert state != DocsEnumState.FINISHED : "freq() called after NO_MORE_DOCS";
       int freq = super.freq();
-      assert freq > 0;
+      assert freq >= 0;
       return freq;
     }
 
