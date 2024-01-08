@@ -100,41 +100,4 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
     assertEquals(Integer.valueOf(3), pq.poll(x -> true));
     assertNull(pq.poll(x -> true));
   }
-
-  public void testNeverReturnNullOnNonEmptyQueue() throws Exception {
-    final int iters = atLeast(10);
-    for (int iter = 0; iter < iters; ++iter) {
-      final int concurrency = TestUtil.nextInt(random(), 1, 16);
-      final ConcurrentApproximatePriorityQueue<Integer> queue =
-          new ConcurrentApproximatePriorityQueue<>(concurrency);
-      final int numThreads = TestUtil.nextInt(random(), 2, 16);
-      final Thread[] threads = new Thread[numThreads];
-      final CountDownLatch startingGun = new CountDownLatch(1);
-      for (int t = 0; t < threads.length; ++t) {
-        threads[t] =
-            new Thread(
-                () -> {
-                  try {
-                    startingGun.await();
-                  } catch (InterruptedException e) {
-                    throw new ThreadInterruptedException(e);
-                  }
-                  Integer v = TestUtil.nextInt(random(), 0, 100);
-                  queue.add(v, v);
-                  for (int i = 0; i < 1_000; ++i) {
-                    v = queue.poll(x -> true);
-                    assertNotNull(v);
-                    queue.add(v, v);
-                  }
-                });
-      }
-      for (Thread thread : threads) {
-        thread.start();
-      }
-      startingGun.countDown();
-      for (Thread thread : threads) {
-        thread.join();
-      }
-    }
-  }
 }

@@ -44,8 +44,8 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
 
   private final Set<DocumentsWriterPerThread> dwpts =
       Collections.newSetFromMap(new IdentityHashMap<>());
-  private final ConcurrentApproximatePriorityQueue<DocumentsWriterPerThread> freeList =
-      new ConcurrentApproximatePriorityQueue<>();
+  private final LockableConcurrentApproximatePriorityQueue<DocumentsWriterPerThread> freeList =
+      new LockableConcurrentApproximatePriorityQueue<>();
   private final Supplier<DocumentsWriterPerThread> dwptFactory;
   private int takenWriterPermits = 0;
   private volatile boolean closed;
@@ -114,10 +114,11 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
    */
   DocumentsWriterPerThread getAndLock() {
     ensureOpen();
-    DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
+    DocumentsWriterPerThread dwpt = freeList.lockAndPoll();
     if (dwpt != null) {
       return dwpt;
     }
+
     // newWriter() adds the DWPT to the `dwpts` set as a side-effect. However it is not added to
     // `freeList` at this point, it will be added later on once DocumentsWriter has indexed a
     // document into this DWPT and then gives it back to the pool by calling
@@ -139,8 +140,7 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
     final long ramBytesUsed = state.ramBytesUsed();
     assert contains(state)
         : "we tried to add a DWPT back to the pool but the pool doesn't know about this DWPT";
-    freeList.add(state, ramBytesUsed);
-    state.unlock();
+    freeList.addAndUnlock(state, ramBytesUsed);
   }
 
   @Override
