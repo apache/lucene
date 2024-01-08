@@ -43,6 +43,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
 
@@ -82,6 +83,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
   static class FieldsGroup {
     final List<String> fields;
     final int suffix;
+
     /**
      * Custom SegmentWriteState for this group of fields, with the segmentSuffix uniqueified for
      * this PostingsFormat
@@ -117,7 +119,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
     }
   }
-  ;
 
   static String getSuffix(String formatName, String suffix) {
     return formatName + "_" + suffix;
@@ -266,7 +267,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
-          new HashMap<>((int) (formatToGroupBuilders.size() / 0.75f) + 1);
+          CollectionUtil.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;

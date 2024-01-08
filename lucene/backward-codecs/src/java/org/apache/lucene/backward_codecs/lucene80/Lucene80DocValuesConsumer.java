@@ -959,11 +959,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     long numOrds = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       numDocsWithField++;
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        numOrds++;
-      }
+      numOrds += values.docValueCount();
     }
 
     if (numDocsWithField == numOrds) {
@@ -1005,10 +1001,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(data, numOrds, numberOfBitsPerOrd);
     values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        writer.add(ord);
+      for (int i = 0; i < values.docValueCount(); i++) {
+        writer.add(values.nextOrd());
       }
     }
     writer.finish();
@@ -1026,11 +1020,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     addressesWriter.add(addr);
     values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      values.nextOrd();
-      addr++;
-      while (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
-        addr++;
-      }
+      addr += values.docValueCount();
       addressesWriter.add(addr);
     }
     addressesWriter.finish();

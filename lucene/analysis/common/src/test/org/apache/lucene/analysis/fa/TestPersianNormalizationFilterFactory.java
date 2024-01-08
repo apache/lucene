@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.fa;
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Persian normalization factory is working. */
@@ -31,6 +32,15 @@ public class TestPersianNormalizationFilterFactory extends BaseTokenStreamFactor
     assertTokenStreamContents(stream, new String[] {"هاي"});
   }
 
+  /** Test PersianStemFilterFactory */
+  public void testStemmer() throws Exception {
+    Reader reader = new StringReader("کتابها بهترین دوستان");
+    Tokenizer tokenizer = whitespaceMockTokenizer(reader);
+    TokenStream stream = tokenFilterFactory("PersianNormalization").create(tokenizer);
+    stream = tokenFilterFactory("PersianStem").create(stream);
+    assertTokenStreamContents(stream, new String[] {"كتاب", "به", "دوست"});
+  }
+
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
     IllegalArgumentException expected =
@@ -38,6 +48,14 @@ public class TestPersianNormalizationFilterFactory extends BaseTokenStreamFactor
             IllegalArgumentException.class,
             () -> {
               tokenFilterFactory("PersianNormalization", "bogusArg", "bogusValue");
+            });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              tokenFilterFactory("PersianStem", "bogusArg", "bogusValue");
             });
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }

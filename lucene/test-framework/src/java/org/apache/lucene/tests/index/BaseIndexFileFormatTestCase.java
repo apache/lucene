@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -50,6 +52,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.EmptyDocValuesProducer;
@@ -78,6 +81,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -103,10 +107,10 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   // metadata or Directory-level objects
   private static final Set<Class<?>> EXCLUDED_CLASSES =
-      Collections.newSetFromMap(new IdentityHashMap<Class<?>, Boolean>());
+      Collections.newSetFromMap(new IdentityHashMap<>());
 
   static {
-    // Directory objects, don't take into account eg. the NIO buffers
+    // Directory objects, don't take into account, e.g. the NIO buffers
     EXCLUDED_CLASSES.add(Directory.class);
     EXCLUDED_CLASSES.add(IndexInput.class);
 
@@ -245,16 +249,14 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
    * that store the same content.
    */
   protected Collection<String> excludedExtensionsFromByteCounts() {
-    return new HashSet<String>(
+    return new HashSet<>(
         Arrays.asList(
-            new String[] {
-              // segment infos store various pieces of information that don't solely depend
-              // on the content of the index in the diagnostics (such as a timestamp) so we
-              // exclude this file from the bytes counts
-              "si",
-              // lock files are 0 bytes (one directory in the test could be RAMDir, the other FSDir)
-              "lock"
-            }));
+            // segment infos store various pieces of information that don't solely depend
+            // on the content of the index in the diagnostics (such as a timestamp) so we
+            // exclude this file from the bytes counts
+            "si",
+            // lock files are 0 bytes (one directory in the test could be RAMDir, the other FSDir)
+            "lock"));
   }
 
   /**
@@ -339,6 +341,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             "_0",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -360,6 +363,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.getPointIndexDimensionCount(),
             proto.getPointNumBytes(),
             proto.getVectorDimension(),
+            proto.getVectorEncoding(),
             proto.getVectorSimilarityFunction(),
             proto.isSoftDeletesField());
 
@@ -392,7 +396,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState)) {
       final Fields fields =
           new Fields() {
-            TreeSet<String> indexedFields =
+            final TreeSet<String> indexedFields =
                 new TreeSet<>(FieldInfos.getIndexedFields(oneDocReader));
 
             @Override
@@ -568,7 +572,29 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     try (StoredFieldsWriter consumer =
         codec.storedFieldsFormat().fieldsWriter(dir, segmentInfo, writeState.context)) {
       consumer.startDocument();
-      consumer.writeField(field, customField);
+      StoredValue value = customField.storedValue();
+      switch (value.getType()) {
+        case INTEGER:
+          consumer.writeField(field, value.getIntValue());
+          break;
+        case LONG:
+          consumer.writeField(field, value.getLongValue());
+          break;
+        case FLOAT:
+          consumer.writeField(field, value.getFloatValue());
+          break;
+        case DOUBLE:
+          consumer.writeField(field, value.getDoubleValue());
+          break;
+        case BINARY:
+          consumer.writeField(field, value.getBinaryValue());
+          break;
+        case STRING:
+          consumer.writeField(field, value.getStringValue());
+          break;
+        default:
+          throw new AssertionError();
+      }
       consumer.finishDocument();
       consumer.finish(1);
       IOUtils.close(consumer);
@@ -596,7 +622,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     // log all exceptions we hit, in case we fail (for debugging)
     ByteArrayOutputStream exceptionLog = new ByteArrayOutputStream();
-    PrintStream exceptionStream = new PrintStream(exceptionLog, true, "UTF-8");
+    PrintStream exceptionStream = new PrintStream(exceptionLog, true, UTF_8);
     // PrintStream exceptionStream = System.out;
 
     Analyzer analyzer = new MockAnalyzer(random());
@@ -703,14 +729,14 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     } catch (Throwable t) {
       System.out.println("Unexpected exception: dumping fake-exception-log:...");
       exceptionStream.flush();
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
       System.out.flush();
       Rethrow.rethrow(t);
     }
 
     if (VERBOSE) {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
     }
   }
 
@@ -746,8 +772,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
   /** A directory that tracks created files that haven't been deleted. */
   protected static class FileTrackingDirectoryWrapper extends FilterDirectory {
 
-    private final Set<String> files =
-        Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    private final Set<String> files = ConcurrentHashMap.newKeySet();
 
     /** Sole constructor. */
     FileTrackingDirectoryWrapper(Directory in) {
@@ -779,40 +804,18 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
   }
 
-  private static class ReadBytesIndexInputWrapper extends IndexInput {
+  private static class ReadBytesIndexInputWrapper extends FilterIndexInput {
 
-    private final IndexInput in;
     private final IntConsumer readByte;
 
     ReadBytesIndexInputWrapper(IndexInput in, IntConsumer readByte) {
-      super(in.toString());
-      this.in = in;
+      super(in.toString(), in);
       this.readByte = readByte;
     }
 
     @Override
     public IndexInput clone() {
       return new ReadBytesIndexInputWrapper(in.clone(), readByte);
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return in.getFilePointer();
-    }
-
-    @Override
-    public void seek(long pos) throws IOException {
-      in.seek(pos);
-    }
-
-    @Override
-    public long length() {
-      return in.length();
     }
 
     @Override
@@ -865,8 +868,8 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
 
     @Override
-    public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
-      ChecksumIndexInput in = super.openChecksumInput(name, context);
+    public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+      ChecksumIndexInput in = super.openChecksumInput(name);
       final FixedBitSet set =
           readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {
@@ -928,7 +931,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
   }
 
   /**
-   * This test is a best effort at verifying that checkIntegrity doesn't miss any files. It tests
+   * This test is the best effort at verifying that checkIntegrity doesn't miss any files. It tests
    * that the combination of opening a reader and calling checkIntegrity on it reads all bytes of
    * all files.
    */
@@ -975,9 +978,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
                 + unread
                 + " of file "
                 + name
-                + "("
+                + " ("
                 + unreadBytes.length()
-                + "bytes) was not read.");
+                + " bytes) was not read.");
       }
     }
     assertTrue(String.join("\n", messages), messages.isEmpty());

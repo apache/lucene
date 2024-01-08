@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -1240,7 +1241,8 @@ public class TestShingleFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+            Tokenizer tokenizer =
+                new MockTokenizer(MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2);
             return new TokenStreamComponents(tokenizer, new ShingleFilter(tokenizer));
           }
         };

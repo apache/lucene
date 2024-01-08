@@ -127,7 +127,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     /** Adds a term to this builder. */
     public Builder addTerm(BytesRef term) {
-      if (termsSet.size() > IndexSearcher.getMaxClauseCount()) {
+      if (termsSet.size() >= IndexSearcher.getMaxClauseCount()) {
         throw new IndexSearcher.TooManyClauses();
       }
       termsSet.add(term);
@@ -253,7 +253,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }
@@ -330,7 +330,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       termStates = new TermStates[fieldTerms.length];
       for (int i = 0; i < termStates.length; i++) {
         FieldAndWeight field = fieldAndWeights.get(fieldTerms[i].field());
-        TermStates ts = TermStates.build(searcher.getTopReaderContext(), fieldTerms[i], true);
+        TermStates ts = TermStates.build(searcher, fieldTerms[i], true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
           TermStatistics termStats =
@@ -352,13 +352,14 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     private CollectionStatistics mergeCollectionStatistics(IndexSearcher searcher)
         throws IOException {
-      long maxDoc = searcher.getIndexReader().maxDoc();
+      long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
         CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
         if (collectionStats != null) {
+          maxDoc = Math.max(collectionStats.maxDoc(), maxDoc);
           docCount = Math.max(collectionStats.docCount(), docCount);
           sumDocFreq = Math.max(collectionStats.sumDocFreq(), sumDocFreq);
           sumTotalTermFreq += (double) fieldWeight.weight * collectionStats.sumTotalTermFreq();

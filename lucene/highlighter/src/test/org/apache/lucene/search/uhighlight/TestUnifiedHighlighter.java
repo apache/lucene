@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.uhighlight;
 
+import com.carrotsearch.randomizedtesting.annotations.Name;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -53,42 +54,17 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Before;
+import org.apache.lucene.util.automaton.Automata;
 
-public class TestUnifiedHighlighter extends LuceneTestCase {
-
-  private final FieldType
-      fieldType; // for "body" generally, but not necessarily others. See constructor
-
-  private MockAnalyzer indexAnalyzer;
-  private Directory dir;
-
+public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
   @ParametersFactory
   public static Iterable<Object[]> parameters() {
-    return UHTestHelper.parametersFactoryList();
+    return parametersFactoryList();
   }
 
-  public TestUnifiedHighlighter(FieldType fieldType) {
-    this.fieldType = fieldType;
-  }
-
-  @Before
-  public void doBefore() throws IOException {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
-    dir = newDirectory();
-  }
-
-  @After
-  public void doAfter() throws IOException {
-    dir.close();
+  public TestUnifiedHighlighter(@Name("fieldType") FieldType fieldType) {
+    super(fieldType);
   }
 
   static Set<HighlightFlag> generateRandomHighlightFlags(EnumSet<HighlightFlag> requiredFlags) {
@@ -175,7 +151,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   //
 
   public void testBasics() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -238,7 +214,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
     int maxLength = 17;
 
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     final Field body = new Field("body", bodyText, fieldType);
 
@@ -268,7 +244,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   // simple test highlighting last word.
   public void testHighlightLastWord() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -294,7 +270,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   // simple test with one sentence documents.
   public void testOneSentence() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -323,7 +299,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   // simple test with multiple values that make a result longer than maxLength.
   public void testMaxLengthWithMultivalue() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -354,10 +330,10 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testMultipleFields() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
-    Field title = new Field("title", "", UHTestHelper.randomFieldType(random()));
+    Field title = new Field("title", "", randomFieldType(random()));
     Document doc = new Document();
     doc.add(body);
     doc.add(title);
@@ -393,7 +369,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testMultipleTerms() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -427,7 +403,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testMultiplePassages() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -469,7 +445,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
             + "and Madhyamaka - Yogacara, the Epistemological tradition, and Tathagatagarbha - Tantric "
             + "Buddhism (Including China and Japan); Buddhism in Nepal and Tibet - Buddhism in South and "
             + "Southeast Asia, and - Buddhism in China, East Asia, and Japan.";
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", text, fieldType);
     Document document = new Document();
@@ -501,7 +477,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testHighlighterDefaultFlags() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Document document = new Document();
     document.add(new Field("body", "test body", fieldType));
     iw.addDocument(document);
@@ -525,7 +501,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
             + "Curious George and the Firefighters is a story based on H. A. and Margret Rey’s "
             + "popular primate and painted in the original watercolor and charcoal style. "
             + "Firefighters are a famously brave lot, but can they withstand a visit from one curious monkey?";
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", text, fieldType);
     Document document = new Document();
@@ -557,7 +533,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                 this.getClass().getResourceAsStream("CambridgeMA.utf8"), StandardCharsets.UTF_8));
     String text = r.readLine();
     r.close();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Field body = new Field("body", text, fieldType);
     Document document = new Document();
     document.add(body);
@@ -585,7 +561,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testPassageRanking() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -613,7 +589,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testBooleanMustNot() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body =
         new Field(
@@ -649,7 +625,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testHighlightAllText() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -681,7 +657,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testSpecificDocIDs() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -717,7 +693,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testCustomFieldValueSource() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -769,7 +745,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   /** Make sure highlighter returns first N sentences if there were no hits. */
   public void testEmptyHighlights() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -800,7 +776,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   /** Not empty but nothing analyzes. Ensures we address null term-vectors. */
   public void testNothingAnalyzes() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
     doc.add(new Field("body", " ", fieldType)); // just a space! (thus not empty)
@@ -834,7 +810,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   /** Make sure highlighter we can customize how emtpy highlight is returned. */
   public void testCustomEmptyHighlights() throws Exception {
     indexAnalyzer.setPositionIncrementGap(10);
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -868,7 +844,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   /** Make sure highlighter returns whole text when there are no hits and BreakIterator is null. */
   public void testEmptyHighlightsWhole() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -903,7 +879,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   /** Make sure highlighter is OK with entirely missing field. */
   public void testFieldIsMissing() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
 
@@ -933,7 +909,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testFieldIsJustSpace() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
     doc.add(new Field("body", "   ", fieldType));
@@ -965,7 +941,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testFieldIsEmptyString() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Document doc = new Document();
     doc.add(new Field("body", "", fieldType));
@@ -997,7 +973,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testMultipleDocs() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; i++) {
@@ -1031,7 +1007,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     String[] snippets = highlighter.highlight("body", query, hits);
     assertEquals(numDocs, snippets.length);
     for (int hit = 0; hit < numDocs; hit++) {
-      Document doc = searcher.doc(hits.scoreDocs[hit].doc);
+      Document doc = searcher.storedFields().document(hits.scoreDocs[hit].doc);
       int id = Integer.parseInt(doc.get("id"));
       String expected = "the <b>answer</b> is " + id;
       if ((id & 1) == 0) {
@@ -1044,10 +1020,10 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testMultipleSnippetSizes() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
-    Field title = new Field("title", "", UHTestHelper.randomFieldType(random()));
+    Field title = new Field("title", "", randomFieldType(random()));
     Document doc = new Document();
     doc.add(body);
     doc.add(title);
@@ -1080,7 +1056,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testEncode() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -1111,7 +1087,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
 
   // LUCENE-4906
   public void testObjectFormatter() throws Exception {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -1159,7 +1135,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   private IndexReader indexSomeFields() throws IOException {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     FieldType ft = new FieldType();
     ft.setIndexOptions(IndexOptions.NONE);
     ft.setTokenized(false);
@@ -1550,11 +1526,11 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testNotReanalyzed() throws Exception {
-    if (fieldType == UHTestHelper.reanalysisType) {
+    if (fieldType == reanalysisType) {
       return; // we're testing the *other* cases
     }
 
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -1588,7 +1564,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   public void testUnknownQueryWithWeightMatches() throws IOException {
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
     Document doc = new Document();
@@ -1618,7 +1594,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                   }
 
                   @Override
-                  public Query rewrite(IndexReader reader) {
+                  public Query rewrite(IndexSearcher indexSearcher) {
                     return this;
                   }
 
@@ -1656,6 +1632,33 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     String[] snippets = highlighter.highlight("body", query, topDocs);
     assertEquals(1, snippets.length);
     assertEquals("Test a <b>one</b> <b>sentence</b> document.", snippets[0]);
+
+    ir.close();
+  }
+
+  public void testQueryWithLongTerm() throws IOException {
+    IndexReader ir = indexSomeFields();
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter =
+        randomUnifiedHighlighter(
+            searcher, indexAnalyzer, EnumSet.of(HighlightFlag.WEIGHT_MATCHES), true);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(
+                new TermQuery(new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH))),
+                BooleanClause.Occur.SHOULD)
+            .add(
+                new TermQuery(
+                    new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH + 1))),
+                BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("title", "title")), BooleanClause.Occur.SHOULD)
+            .build();
+
+    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+
+    String[] snippets = highlighter.highlight("title", query, topDocs);
+    assertArrayEquals(new String[] {"This is the <b>title</b> field."}, snippets);
 
     ir.close();
   }

@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
@@ -527,7 +526,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[urlList.size()]);
+      urls = urlList.toArray(new String[0]);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -576,7 +575,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           emailList.add(line);
         }
       }
-      emails = emailList.toArray(new String[emailList.size()]);
+      emails = emailList.toArray(new String[0]);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -667,7 +666,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[urlList.size()]);
+      urls = urlList.toArray(new String[0]);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -678,8 +677,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeWordBreaks() throws Exception {
-    WordBreakTestUnicode_12_1_0 wordBreakTest = new WordBreakTestUnicode_12_1_0();
-    wordBreakTest.test(a);
+    WordBreakTestUnicode_12_1_0.test(a);
   }
 
   public void testSupplementary() throws Exception {
@@ -852,8 +850,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeEmojiTests() throws Exception {
-    EmojiTokenizationTestUnicode_12_1 emojiTest = new EmojiTokenizationTestUnicode_12_1();
-    emojiTest.test(a);
+    EmojiTokenizationTestUnicode_12_1.test(a);
   }
 
   /** blast some random strings through the analyzer */
@@ -883,7 +880,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           }
         };
 
-    for (String tld : TLDs.collect(Collectors.toList())) {
+    for (String tld : TLDs.toList()) {
       String URL = "example." + tld;
       BaseTokenStreamTestCase.assertAnalyzesTo(
           analyzer, URL, new String[] {URL}, new String[] {"<URL>"});

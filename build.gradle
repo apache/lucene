@@ -20,12 +20,13 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "2.0.0"
-  id "org.owasp.dependencycheck" version "5.3.0"
-  id 'de.thetaphi.forbiddenapis' version '3.2' apply false
-  id "de.undercouch.download" version "4.1.1" apply false
-  id "net.ltgt.errorprone" version "2.0.2" apply false
-  id 'com.diffplug.spotless' version "5.14.3" apply false
+  id "com.palantir.consistent-versions" version "2.11.0"
+  id "org.owasp.dependencycheck" version "7.2.0"
+  id 'de.thetaphi.forbiddenapis' version '3.6' apply false
+  id "de.undercouch.download" version "5.2.0" apply false
+  id "net.ltgt.errorprone" version "3.1.0" apply false
+  id 'com.diffplug.spotless' version "6.5.2" apply false
+  id 'org.barfuin.gradle.jacocolog' version "3.1.0" apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -46,7 +47,7 @@ version = {
   String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
   return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
 }()
-description = 'Grandparent project for Apache Lucene Core and Apache Solr'
+description = 'Grandparent project for Apache Lucene Core'
 
 // Propagate version and derived properties across projects.
 allprojects {
@@ -72,7 +73,7 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_11
+  minJavaVersion = JavaVersion.VERSION_17
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
@@ -97,7 +98,7 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:3.0.9"
+  groovy "org.codehaus.groovy:groovy-all:3.0.12"
 }
 
 apply from: file('buildSrc/scriptDepVersions.gradle')
@@ -110,6 +111,9 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 
 apply from: file('gradle/generation/local-settings.gradle')
 
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
+
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
 apply from: file('gradle/ide/eclipse.gradle')
@@ -118,6 +122,7 @@ apply from: file('gradle/ide/eclipse.gradle')
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
 apply from: file('gradle/java/javac.gradle')
+apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
@@ -155,11 +160,10 @@ apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
 apply from: file('gradle/generation/forUtil.gradle')
 apply from: file('gradle/generation/antlr.gradle')
+apply from: file('gradle/generation/unicode-test-classes.gradle')
+apply from: file('gradle/generation/extract-jdk-apis.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
-
-// Shared configuration of subprojects containing native code.
-apply from: file('gradle/native/disable-native.gradle')
 
 // Additional development aids.
 apply from: file('gradle/testing/per-project-summary.gradle')

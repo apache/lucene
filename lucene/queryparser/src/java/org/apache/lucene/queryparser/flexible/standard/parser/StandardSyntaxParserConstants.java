@@ -81,41 +81,43 @@ public interface StandardSyntaxParserConstants {
   /** RegularExpression Id. */
   int FN_OR = 36;
   /** RegularExpression Id. */
-  int MAXGAPS = 37;
+  int FUZZYTERM = 37;
   /** RegularExpression Id. */
-  int MAXWIDTH = 38;
+  int MAXGAPS = 38;
   /** RegularExpression Id. */
-  int NON_OVERLAPPING = 39;
+  int MAXWIDTH = 39;
   /** RegularExpression Id. */
-  int NOT_CONTAINED_BY = 40;
+  int NON_OVERLAPPING = 40;
   /** RegularExpression Id. */
-  int NOT_CONTAINING = 41;
+  int NOT_CONTAINED_BY = 41;
   /** RegularExpression Id. */
-  int NOT_WITHIN = 42;
+  int NOT_CONTAINING = 42;
   /** RegularExpression Id. */
-  int ORDERED = 43;
+  int NOT_WITHIN = 43;
   /** RegularExpression Id. */
-  int OVERLAPPING = 44;
+  int ORDERED = 44;
   /** RegularExpression Id. */
-  int PHRASE = 45;
+  int OVERLAPPING = 45;
   /** RegularExpression Id. */
-  int UNORDERED = 46;
+  int PHRASE = 46;
   /** RegularExpression Id. */
-  int UNORDERED_NO_OVERLAPS = 47;
+  int UNORDERED = 47;
   /** RegularExpression Id. */
-  int WILDCARD = 48;
+  int UNORDERED_NO_OVERLAPS = 48;
   /** RegularExpression Id. */
-  int WITHIN = 49;
+  int WILDCARD = 49;
   /** RegularExpression Id. */
-  int RANGE_TO = 50;
+  int WITHIN = 50;
   /** RegularExpression Id. */
-  int RANGEIN_END = 51;
+  int RANGE_TO = 51;
   /** RegularExpression Id. */
-  int RANGEEX_END = 52;
+  int RANGEIN_END = 52;
   /** RegularExpression Id. */
-  int RANGE_QUOTED = 53;
+  int RANGEEX_END = 53;
   /** RegularExpression Id. */
-  int RANGE_GOOP = 54;
+  int RANGE_QUOTED = 54;
+  /** RegularExpression Id. */
+  int RANGE_GOOP = 55;
 
   /** Lexical state. */
   int Function = 0;
@@ -163,6 +165,7 @@ public interface StandardSyntaxParserConstants {
     "\"containing\"",
     "\"extend\"",
     "\"or\"",
+    "<FUZZYTERM>",
     "<MAXGAPS>",
     "<MAXWIDTH>",
     "<NON_OVERLAPPING>",

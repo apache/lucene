@@ -607,7 +607,6 @@ public class TestFuzzySuggester extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testRandom() throws Exception {
 
     int numQueries = atLeast(20);
@@ -1201,7 +1200,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
   // and tweaked to return the edit distance not the float
   // lucene measure
 
-  /* Finds unicode (code point) Levenstein (edit) distance
+  /* Finds unicode (code point) Levenshtein (edit) distance
    * between two strings, including transpositions. */
   public int getDistance(String target, String other, boolean allowTransposition) {
     IntsRef targetPoints;

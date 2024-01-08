@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.UserPrincipalLookupService;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
@@ -55,7 +54,7 @@ public class FilterFileSystem extends FileSystem {
   }
 
   @Override
-  public FileSystemProvider provider() {
+  public FilterFileSystemProvider provider() {
     return parent;
   }
 
@@ -100,7 +99,7 @@ public class FilterFileSystem extends FileSystem {
 
         @Override
         public Path next() {
-          return new FilterPath(iterator.next(), FilterFileSystem.this);
+          return parent.wrapPath(iterator.next());
         }
 
         @Override
@@ -142,7 +141,7 @@ public class FilterFileSystem extends FileSystem {
 
   @Override
   public Path getPath(String first, String... more) {
-    return new FilterPath(delegate.getPath(first, more), this);
+    return parent.wrapPath(delegate.getPath(first, more));
   }
 
   @Override
@@ -169,10 +168,5 @@ public class FilterFileSystem extends FileSystem {
   /** Returns the {@code FileSystem} we wrap. */
   public FileSystem getDelegate() {
     return delegate;
-  }
-
-  /** Returns the {@code FilterFileSystemProvider} sent to this on init. */
-  public FileSystemProvider getParent() {
-    return parent;
   }
 }

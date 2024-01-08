@@ -21,6 +21,7 @@ import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -31,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +43,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(RandomizedRunner.class)
 public class TestCodecLoadingDeadlock extends Assert {
-  private static int MAX_TIME_SECONDS = 30;
+  private static final int MAX_TIME_SECONDS = 30;
 
   @Test
   public void testDeadlock() throws Exception {
@@ -57,21 +59,15 @@ public class TestCodecLoadingDeadlock extends Assert {
         new ArrayList<>(avail = DocValuesFormat.availableDocValuesFormats())
             .get(rnd.nextInt(avail.size()));
 
-    System.out.println(
-        String.format(Locale.ROOT, "codec: %s, pf: %s, dvf: %s", codecName, pfName, dvfName));
+    System.out.printf(Locale.ROOT, "codec: %s, pf: %s, dvf: %s%n", codecName, pfName, dvfName);
+
+    List<String> args = new ArrayList<>();
+    args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+    args.addAll(LuceneTestCase.getJvmForkArguments());
+    args.addAll(List.of(getClass().getName(), codecName, pfName, dvfName));
 
     // Fork a separate JVM to reinitialize classes.
-    final Process p =
-        new ProcessBuilder(
-                Paths.get(System.getProperty("java.home"), "bin", "java").toString(),
-                "-cp",
-                System.getProperty("java.class.path"),
-                getClass().getName(),
-                codecName,
-                pfName,
-                dvfName)
-            .inheritIO()
-            .start();
+    final Process p = new ProcessBuilder(args).inheritIO().start();
     if (p.waitFor(MAX_TIME_SECONDS * 2, TimeUnit.SECONDS)) {
       assertEquals("Process died abnormally?", 0, p.waitFor());
     } else {

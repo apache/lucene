@@ -18,6 +18,7 @@ package org.apache.lucene.tests.store;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -56,7 +57,9 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
 
 /** Base class for {@link Directory} implementations. */
@@ -243,6 +246,65 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testAlignedInts() throws Exception {
+    try (Directory dir = getDirectory(createTempDir("testAlignedInts"))) {
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        out.writeInt(3);
+        out.writeInt(Integer.MAX_VALUE);
+        out.writeInt(-3);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        assertEquals(12, input.length());
+        int[] i = new int[4];
+        input.readInts(i, 1, 3);
+        assertArrayEquals(new int[] {0, 3, Integer.MAX_VALUE, -3}, i);
+        assertEquals(12, input.getFilePointer());
+      }
+    }
+  }
+
+  public void testUnalignedInts() throws Exception {
+    int padding = random().nextInt(3) + 1;
+    try (Directory dir = getDirectory(createTempDir("testUnalignedInts"))) {
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        for (int i = 0; i < padding; i++) {
+          out.writeByte((byte) 2);
+        }
+        out.writeInt(3);
+        out.writeInt(Integer.MAX_VALUE);
+        out.writeInt(-3);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        assertEquals(12 + padding, input.length());
+        for (int i = 0; i < padding; i++) {
+          assertEquals(2, input.readByte());
+        }
+        int[] i = new int[4];
+        input.readInts(i, 1, 3);
+        assertArrayEquals(new int[] {0, 3, Integer.MAX_VALUE, -3}, i);
+        assertEquals(12 + padding, input.getFilePointer());
+      }
+    }
+  }
+
+  public void testIntsUnderflow() throws Exception {
+    try (Directory dir = getDirectory(createTempDir("testIntsUnderflow"))) {
+      final int offset = random().nextInt(4);
+      final int length = TestUtil.nextInt(random(), 1, 16);
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        byte[] b =
+            new byte
+                [offset + length * Integer.BYTES - TestUtil.nextInt(random(), 1, Integer.BYTES)];
+        random().nextBytes(b);
+        out.writeBytes(b, b.length);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        input.seek(offset);
+        expectThrows(EOFException.class, () -> input.readInts(new int[length], 0, length));
+      }
+    }
+  }
+
   public void testAlignedFloats() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testAlignedFloats"))) {
       try (IndexOutput out = dir.createOutput("Floats", newIOContext(random()))) {
@@ -385,7 +447,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           longs[i] = random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE;
           break;
         case 2:
-          longs[i] = (random().nextBoolean() ? -1 : 1) * random().nextInt(1024);
+          longs[i] = (random().nextBoolean() ? -1 : 1) * (long) random().nextInt(1024);
           break;
         default:
           throw new AssertionError();
@@ -508,7 +570,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       output.writeBytes(bytes, 0, bytes.length);
       output.close();
 
-      ChecksumIndexInput input = dir.openChecksumInput("checksum", newIOContext(random()));
+      ChecksumIndexInput input = dir.openChecksumInput("checksum");
       input.skipBytes(numBytes);
 
       assertEquals(expected.getValue(), input.getChecksum());
@@ -626,8 +688,8 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       o.close();
 
       IndexInput i = dir.openInput("out", newIOContext(random()));
-      i.seek(2 * bufferLength - 1);
-      i.seek(3 * bufferLength);
+      i.seek(2L * bufferLength - 1);
+      i.seek(3L * bufferLength);
       i.seek(bufferLength);
       i.readBytes(bytes, 0, 2 * bufferLength);
       i.close();
@@ -896,16 +958,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("longs", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < longs.length; i++) {
-        assertEquals(longs[i], slice.readLong(i * 8));
+        assertEquals(longs[i], slice.readLong(i * 8L));
       }
 
       // subslices
       for (int i = 1; i < longs.length; i++) {
-        long offset = i * 8;
+        long offset = i * 8L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < longs.length; j++) {
-          assertEquals(longs[j], subslice.readLong((j - i) * 8));
+          assertEquals(longs[j], subslice.readLong((j - i) * 8L));
         }
       }
 
@@ -921,8 +985,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < longs.length; j++) {
-          assertEquals(longs[j], whole.readLong(j * 8));
+          assertEquals(longs[j], whole.readLong(j * 8L));
         }
         padded.close();
       }
@@ -945,16 +1010,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("ints", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < ints.length; i++) {
-        assertEquals(ints[i], slice.readInt(i * 4));
+        assertEquals(ints[i], slice.readInt(i * 4L));
       }
 
       // subslices
       for (int i = 1; i < ints.length; i++) {
-        long offset = i * 4;
+        long offset = i * 4L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < ints.length; j++) {
-          assertEquals(ints[j], subslice.readInt((j - i) * 4));
+          assertEquals(ints[j], subslice.readInt((j - i) * 4L));
         }
       }
 
@@ -970,8 +1037,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < ints.length; j++) {
-          assertEquals(ints[j], whole.readInt(j * 4));
+          assertEquals(ints[j], whole.readInt(j * 4L));
         }
         padded.close();
       }
@@ -993,16 +1061,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("shorts", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < shorts.length; i++) {
-        assertEquals(shorts[i], slice.readShort(i * 2));
+        assertEquals(shorts[i], slice.readShort(i * 2L));
       }
 
       // subslices
       for (int i = 1; i < shorts.length; i++) {
-        long offset = i * 2;
+        long offset = i * 2L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < shorts.length; j++) {
-          assertEquals(shorts[j], subslice.readShort((j - i) * 2));
+          assertEquals(shorts[j], subslice.readShort((j - i) * 2L));
         }
       }
 
@@ -1018,8 +1088,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < shorts.length; j++) {
-          assertEquals(shorts[j], whole.readShort(j * 2));
+          assertEquals(shorts[j], whole.readShort(j * 2L));
         }
         padded.close();
       }
@@ -1030,7 +1101,10 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testRandomByte() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testBytes"))) {
       IndexOutput output = dir.createOutput("bytes", newIOContext(random()));
-      int num = TestUtil.nextInt(random(), 50, 3000);
+      int num =
+          TEST_NIGHTLY
+              ? TestUtil.nextInt(random(), 1000, 3000)
+              : TestUtil.nextInt(random(), 50, 1000);
       byte[] bytes = new byte[num];
       random().nextBytes(bytes);
       for (int i = 0; i < bytes.length; i++) {
@@ -1041,21 +1115,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("bytes", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
-      for (int i = 0; i < bytes.length; i++) {
-        assertEquals(bytes[i], slice.readByte(i));
-      }
+      assertEquals(input.length(), slice.length());
+      assertBytes(slice, bytes, 0);
 
       // subslices
-      for (int i = 1; i < bytes.length; i++) {
-        long offset = i;
+      for (int offset = 1; offset < bytes.length; offset++) {
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
-        for (int j = i; j < bytes.length; j++) {
-          assertEquals(bytes[j], subslice.readByte(j - i));
-        }
+        assertEquals(input.length() - offset, subslice.length());
+        assertBytes(subslice, bytes, offset);
       }
 
       // with padding
-      for (int i = 0; i < 7; i++) {
+      for (int i = 1; i < 7; i++) {
         String name = "bytes-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
         byte[] junk = new byte[i];
@@ -1066,12 +1137,30 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
-        for (int j = 0; j < bytes.length; j++) {
-          assertEquals(bytes[j], whole.readByte(j));
-        }
+        assertEquals(padded.length() - i, whole.length());
+        assertBytes(whole, bytes, 0);
         padded.close();
       }
       input.close();
+    }
+  }
+
+  protected void assertBytes(RandomAccessInput slice, byte[] bytes, int bytesOffset)
+      throws IOException {
+    int toRead = bytes.length - bytesOffset;
+    for (int i = 0; i < toRead; i++) {
+      assertEquals(bytes[bytesOffset + i], slice.readByte(i));
+      int offset = random().nextInt(1000);
+      byte[] sub1 = new byte[offset + i];
+      slice.readBytes(0, sub1, offset, i);
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(bytes, bytesOffset, bytesOffset + i),
+          ArrayUtil.copyOfSubArray(sub1, offset, sub1.length));
+      byte[] sub2 = new byte[offset + toRead - i];
+      slice.readBytes(i, sub2, offset, toRead - i);
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(bytes, bytesOffset + i, bytes.length),
+          ArrayUtil.copyOfSubArray(sub2, offset, sub2.length));
     }
   }
 
@@ -1350,5 +1439,77 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       Arrays.sort(expected);
       assertArrayEquals(expected, actual);
     }
+  }
+
+  public void testDataTypes() throws IOException {
+    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeByte((byte) 43);
+      out.writeShort((short) 12345);
+      out.writeInt(1234567890);
+      out.writeGroupVInts(values, 4);
+      out.writeLong(1234567890123456789L);
+      out.close();
+
+      long[] restored = new long[4];
+      IndexInput in = dir.openInput("test", IOContext.DEFAULT);
+      assertEquals(43, in.readByte());
+      assertEquals(12345, in.readShort());
+      assertEquals(1234567890, in.readInt());
+      in.readGroupVInts(restored, 4);
+      assertArrayEquals(values, restored);
+      assertEquals(1234567890123456789L, in.readLong());
+      in.close();
+    }
+  }
+
+  public void testGroupVInt() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
+      // test fallback to default implementation of readGroupVInt
+      doTestGroupVInt(dir, 5, 1, 6, 8);
+
+      // use more iterations to covers all bpv
+      doTestGroupVInt(dir, atLeast(100), 1, 31, 128);
+
+      // we use BaseChunkedDirectoryTestCase#testGroupVIntMultiBlocks cover multiple blocks for
+      // ByteBuffersDataInput and MMapDirectory
+    }
+  }
+
+  protected void doTestGroupVInt(
+      Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
+    long[] values = new long[maxNumValues];
+    int[] numValuesArray = new int[iterations];
+    IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
+    IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
+
+    // encode
+    for (int iter = 0; iter < iterations; iter++) {
+      final int bpv = TestUtil.nextInt(random(), minBpv, maxBpv);
+      numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
+        values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
+        vIntOut.writeVInt((int) values[j]);
+      }
+      groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
+    }
+    groupVIntOut.close();
+    vIntOut.close();
+
+    // decode
+    IndexInput groupVIntIn = dir.openInput("group-varint", IOContext.DEFAULT);
+    IndexInput vIntIn = dir.openInput("vint", IOContext.DEFAULT);
+    for (int iter = 0; iter < iterations; iter++) {
+      groupVIntIn.readGroupVInts(values, numValuesArray[iter]);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
+        assertEquals(vIntIn.readVInt(), values[j]);
+      }
+    }
+
+    groupVIntIn.close();
+    vIntIn.close();
+    dir.deleteFile("group-varint");
+    dir.deleteFile("vint");
   }
 }

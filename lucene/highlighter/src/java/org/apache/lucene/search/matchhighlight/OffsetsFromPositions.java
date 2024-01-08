@@ -36,7 +36,7 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
   private final String field;
   private final Analyzer analyzer;
 
-  OffsetsFromPositions(String field, Analyzer analyzer) {
+  public OffsetsFromPositions(String field, Analyzer analyzer) {
     this.field = field;
     this.analyzer = analyzer;
   }
@@ -56,20 +56,11 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
     }
 
     // Convert from positions to offsets.
-    return convertPositionsToOffsets(positionRanges, analyzer, field, doc.getValues(field));
+    return convertPositionsToOffsets(positionRanges, doc.getValues(field));
   }
 
-  @Override
-  public boolean requiresDocument() {
-    return true;
-  }
-
-  private static List<OffsetRange> convertPositionsToOffsets(
-      ArrayList<OffsetRange> positionRanges,
-      Analyzer analyzer,
-      String fieldName,
-      List<CharSequence> values)
-      throws IOException {
+  List<OffsetRange> convertPositionsToOffsets(
+      ArrayList<OffsetRange> positionRanges, List<String> values) throws IOException {
 
     if (positionRanges.isEmpty()) {
       return positionRanges;
@@ -103,10 +94,10 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
     int position = -1;
     int valueOffset = 0;
     for (int valueIndex = 0, max = values.size(); valueIndex < max; valueIndex++) {
-      final String value = values.get(valueIndex).toString();
+      final String value = values.get(valueIndex);
       final boolean lastValue = valueIndex + 1 == max;
 
-      TokenStream ts = analyzer.tokenStream(fieldName, value);
+      TokenStream ts = analyzer.tokenStream(field, value);
       OffsetAttribute offsetAttr = ts.getAttribute(OffsetAttribute.class);
       PositionIncrementAttribute posAttr = ts.getAttribute(PositionIncrementAttribute.class);
       ts.reset();
@@ -144,8 +135,8 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
         }
       }
       ts.end();
-      position += posAttr.getPositionIncrement() + analyzer.getPositionIncrementGap(fieldName);
-      valueOffset += offsetAttr.endOffset() + analyzer.getOffsetGap(fieldName);
+      position += posAttr.getPositionIncrement() + analyzer.getPositionIncrementGap(field);
+      valueOffset += offsetAttr.endOffset() + analyzer.getOffsetGap(field);
       ts.close();
     }
 

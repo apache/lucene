@@ -41,14 +41,12 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Slow;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
-@Slow
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterWithThreads extends LuceneTestCase {
 
@@ -118,7 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           }
         } catch (
             @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+            IllegalStateException ise) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {
@@ -326,10 +324,12 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       if (success) {
         IndexReader reader = DirectoryReader.open(dir);
         final Bits delDocs = MultiBits.getLiveDocs(reader);
+        StoredFields storedFields = reader.storedFields();
+        TermVectors termVectors = reader.termVectors();
         for (int j = 0; j < reader.maxDoc(); j++) {
           if (delDocs == null || !delDocs.get(j)) {
-            reader.document(j);
-            reader.getTermVectors(j);
+            storedFields.document(j);
+            termVectors.get(j);
           }
         }
         reader.close();

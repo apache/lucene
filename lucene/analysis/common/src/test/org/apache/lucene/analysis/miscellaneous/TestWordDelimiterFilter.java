@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -579,7 +580,9 @@ public class TestWordDelimiterFilter extends BaseTokenStreamTestCase {
 
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-              Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+              Tokenizer tokenizer =
+                  new MockTokenizer(
+                      MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2);
               return new TokenStreamComponents(
                   tokenizer, new WordDelimiterFilter(tokenizer, flags, protectedWords));
             }

@@ -28,6 +28,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcard tests the '*' and '?' wildcard characters. */
 public class TestWildcard extends LuceneTestCase {
@@ -66,16 +67,36 @@ public class TestWildcard extends LuceneTestCase {
     MultiTermQuery wq = new WildcardQuery(new Term("field", "nowildcard"));
     assertMatches(searcher, wq, 1);
 
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    Query q = searcher.rewrite(wq);
+    Query q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.SCORING_BOOLEAN_REWRITE));
     assertTrue(q instanceof TermQuery);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE));
     assertTrue(q instanceof MultiTermQueryConstantScoreWrapper);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE));
+    assertTrue(q instanceof MultiTermQueryConstantScoreBlendedWrapper);
+
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
     assertTrue(q instanceof ConstantScoreQuery);
     reader.close();
     indexStore.close();
@@ -87,8 +108,11 @@ public class TestWildcard extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(indexStore);
     IndexSearcher searcher = newSearcher(reader);
 
-    MultiTermQuery wq = new WildcardQuery(new Term("field", ""));
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    MultiTermQuery wq =
+        new WildcardQuery(
+            new Term("field", ""),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertMatches(searcher, wq, 0);
     Query q = searcher.rewrite(wq);
     assertTrue(q instanceof MatchNoDocsQuery);
@@ -369,6 +393,27 @@ public class TestWildcard extends LuceneTestCase {
         assertEquals(i, hits[0].doc);
       }
     }
+
+    reader.close();
+    dir.close();
+  }
+
+  /** Tests large Wildcard queries */
+  public void testLarge() throws IOException {
+    // big string from a user
+    String big =
+        "{group-bm-http-server-02083.node.dm.reg,group-bm-http-server-02082.node.dm.reg,group-bm-http-server-02081.node.dm.reg,group-bm-http-server-02080.node.dm.reg,group-bm-http-server-02079.node.dm.reg,group-bm-http-server-02078.node.dm.reg,group-bm-http-server-02077.node.dm.reg,group-bm-http-server-02076.node.dm.reg,group-bm-http-server-02073.node.dm.reg,group-bm-http-server-02070.node.dm.reg,group-bm-http-server-02067.node.dm.reg,group-bm-http-server-02064.node.dm.reg,group-bm-http-server-02029.node.dm.reg,group-bm-http-server-02028.node.dm.reg,group-bm-http-server-02027.node.dm.reg,group-bm-http-server-02026.node.dm.reg,group-bm-http-server-02025.node.dm.reg,group-bm-http-server-02023.node.dm.reg,group-bm-http-server-02022.node.dm.reg,group-bm-http-server-02021.node.dm.reg,group-bm-http-server-02020.node.dm.reg,group-bm-http-server-02019.node.dm.reg,group-bm-http-server-02018.node.dm.reg,group-bm-http-server-02016.node.dm.reg,group-bm-http-server-02015.node.dm.reg,group-bm-http-server-02014.node.dm.reg,group-bm-http-server-02009.node.dm.reg,group-bm-http-server-02007.node.dm.reg,group-bm-http-server-02004.node.dm.reg,group-bm-http-server-02003.node.dm.reg,group-bm-http-server-02002.node.dm.reg,group-bm-http-server-01311.node.dm.reg,group-bm-http-server-01309.node.dm.reg,group-bm-http-server-01307.node.dm.reg}";
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(newStringField("body", big, Field.Store.YES));
+    writer.addDocument(doc);
+    writer.close();
+
+    IndexReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = newSearcher(reader);
+    Query query = new WildcardQuery(new Term("body", big + "*"));
+    assertMatches(searcher, query, 1);
 
     reader.close();
     dir.close();

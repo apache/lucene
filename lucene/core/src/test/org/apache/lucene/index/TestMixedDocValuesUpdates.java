@@ -34,7 +34,7 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
@@ -307,7 +307,8 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
             long bdvValue = TestBinaryDocValuesUpdates.getValue(bdv) * 2;
             //              if (ctrlValue != bdvValue) {
             //                System.out.println("seg=" + r + ", f=f" + i + ", doc=" + j + ",
-            // group=" + r.document(j).get("updKey") + ", ctrlValue=" + ctrlValue + ", bdvBytes=" +
+            // group=" + r.storedFields().document(j).get("updKey") + ", ctrlValue=" + ctrlValue +
+            // ", bdvBytes=" +
             // scratch);
             //              }
             assertEquals(ctrlValue, bdvValue);
@@ -674,10 +675,11 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     try (DirectoryReader reader = DirectoryReader.open(writer)) {
       IndexSearcher searcher = new IndexSearcher(reader);
 
-      TopDocs is_live = searcher.search(new DocValuesFieldExistsQuery("is_live"), 5);
+      TopDocs is_live = searcher.search(new FieldExistsQuery("is_live"), 5);
       assertEquals(numHits, is_live.totalHits.value);
+      StoredFields storedFields = reader.storedFields();
       for (ScoreDoc doc : is_live.scoreDocs) {
-        int id = Integer.parseInt(reader.document(doc.doc).get("id"));
+        int id = Integer.parseInt(storedFields.document(doc.doc).get("id"));
         int i = ReaderUtil.subIndex(doc.doc, reader.leaves());
         assertTrue(i >= 0);
         LeafReaderContext leafReaderContext = reader.leaves().get(i);

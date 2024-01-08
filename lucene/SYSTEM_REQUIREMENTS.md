@@ -17,11 +17,11 @@
 
 # System Requirements 
 
-Apache Lucene runs on Java 11 or greater.
+Apache Lucene runs on Java 17 or greater.
 
 It is also recommended to always use the latest update version of your
 Java VM, because bugs may affect Lucene. An overview of known JVM bugs
-can be found on http://wiki.apache.org/lucene-java/JavaBugs
+can be found on https://cwiki.apache.org/confluence/display/LUCENE/JavaBugs
 
 With all Java versions it is strongly recommended to not use experimental
 `-XX` JVM options.

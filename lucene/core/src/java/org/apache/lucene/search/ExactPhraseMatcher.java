@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
@@ -62,25 +61,26 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     super(matchCost);
 
     final DocIdSetIterator approximation =
-        ConjunctionUtils.intersectIterators(
-            Arrays.stream(postings).map(p -> p.postings).collect(Collectors.toList()));
+        ConjunctionUtils.intersectIterators(Arrays.stream(postings).map(p -> p.postings).toList());
     final ImpactsSource impactsSource =
         mergeImpacts(Arrays.stream(postings).map(p -> p.impacts).toArray(ImpactsEnum[]::new));
 
+    this.impactsApproximation =
+        new ImpactsDISI(approximation, new MaxScoreCache(impactsSource, scorer));
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      this.approximation =
-          this.impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
+      // TODO: only do this when this is the top-level scoring clause
+      // (ScorerSupplier#setTopLevelScoringClause) to save the overhead of wrapping with ImpactsDISI
+      // when it would not help
+      this.approximation = impactsApproximation;
     } else {
       this.approximation = approximation;
-      this.impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
     }
 
     List<PostingsAndPosition> postingsAndPositions = new ArrayList<>();
     for (PhraseQuery.PostingsAndFreq posting : postings) {
       postingsAndPositions.add(new PostingsAndPosition(posting.postings, posting.position));
     }
-    this.postings =
-        postingsAndPositions.toArray(new PostingsAndPosition[postingsAndPositions.size()]);
+    this.postings = postingsAndPositions.toArray(new PostingsAndPosition[0]);
   }
 
   @Override
@@ -103,8 +103,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /**
-   * Advance the given pos enum to the first doc on or after {@code target}. Return {@code false} if
-   * the enum was exhausted before reaching {@code target} and {@code true} otherwise.
+   * Advance the given pos enum to the first position on or after {@code target}. Return {@code
+   * false} if the enum was exhausted before reaching {@code target} and {@code true} otherwise.
    */
   private static boolean advancePosition(PostingsAndPosition posting, int target)
       throws IOException {
@@ -201,7 +201,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
 
     return new ImpactsSource() {
 
-      class SubIterator {
+      static class SubIterator {
         final Iterator<Impact> iterator;
         Impact current;
 
@@ -260,7 +260,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             final int docIdUpTo = getDocIdUpTo(level);
 
             PriorityQueue<SubIterator> pq =
-                new PriorityQueue<SubIterator>(impacts.length) {
+                new PriorityQueue<>(impacts.length) {
                   @Override
                   protected boolean lessThan(SubIterator a, SubIterator b) {
                     return a.current.freq < b.current.freq;
@@ -269,6 +269,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
 
             boolean hasImpacts = false;
             List<Impact> onlyImpactList = null;
+            List<SubIterator> subIterators = new ArrayList<>(impacts.length);
             for (int i = 0; i < impacts.length; ++i) {
               int impactsLevel = getLevel(impacts[i], docIdUpTo);
               if (impactsLevel == -1) {
@@ -284,7 +285,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
               }
 
               SubIterator subIterator = new SubIterator(impactList);
-              pq.add(subIterator);
+              subIterators.add(subIterator);
               if (hasImpacts == false) {
                 hasImpacts = true;
                 onlyImpactList = impactList;
@@ -308,6 +309,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             // We walk impacts in parallel through a PQ ordered by freq. At any time,
             // the competitive impact consists of the lowest freq among all entries of
             // the PQ (the top) and the highest norm (tracked separately).
+            pq.addAll(subIterators);
             List<Impact> mergedImpacts = new ArrayList<>();
             SubIterator top = pq.top();
             int currentFreq = top.current.freq;

@@ -24,32 +24,24 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -59,22 +51,10 @@ import org.junit.Test;
  * tests pick the offset source at random (to include term vectors) and in-effect test term vectors
  * generally.
  */
-public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
+public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
-  private Analyzer indexAnalyzer;
-  private Directory dir;
-
-  @Before
-  public void doBefore() throws IOException {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
-    dir = newDirectory();
-  }
-
-  @After
-  public void doAfter() throws IOException {
-    dir.close();
+  public TestUnifiedHighlighterTermVec() {
+    super(randomFieldType(random()));
   }
 
   public void testFetchTermVecsOncePerDoc() throws IOException {
@@ -87,16 +67,16 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     List<FieldType> fieldTypes = new ArrayList<>(numTvFields);
     for (int i = 0; i < numTvFields; i++) {
       fields.add("body" + i);
-      fieldTypes.add(UHTestHelper.randomFieldType(random()));
+      fieldTypes.add(randomFieldType(random()));
     }
     // ensure at least one has TVs by setting one randomly to it:
-    fieldTypes.set(random().nextInt(fieldTypes.size()), UHTestHelper.tvType);
+    fieldTypes.set(random().nextInt(fieldTypes.size()), tvType);
 
     final int numDocs = 1 + random().nextInt(3);
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       for (String field : fields) {
-        doc.add(new Field(field, "some test text", UHTestHelper.tvType));
+        doc.add(new Field(field, "some test text", tvType));
       }
       iw.addDocument(doc);
     }
@@ -106,7 +86,8 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     IndexReader ir = new AssertOnceTermVecDirectoryReader(originalReader);
     iw.close();
 
-    IndexSearcher searcher = newSearcher(ir);
+    IndexSearcher searcher =
+        newSearcher(ir, false); // wrapping the reader messes up our counting logic
     UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
     BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
     for (String field : fields) {
@@ -123,7 +104,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
       assertArrayEquals(expectedSnippetsByDoc, fieldToSnippets.get(field));
     }
 
-    ir.document(0); // ensure this works because the ir hasn't been closed
+    ir.storedFields().document(0); // ensure this works because the ir hasn't been closed
     ir.close();
   }
 
@@ -133,20 +114,20 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
           @Override
           public LeafReader wrap(LeafReader reader) {
             return new FilterLeafReader(reader) {
-              BitSet seenDocIDs = new BitSet();
+              final BitSet seenDocIDs = new BitSet();
 
               @Override
-              public Fields getTermVectors(int docID) throws IOException {
-                // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO see
-                // LUCENE-6868
-                if (callStackContains(ParallelLeafReader.class) == false
-                    && callStackContains(CheckIndex.class) == false) {
-                  assertFalse(
-                      "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
-                  seenDocIDs.set(docID);
-                }
-
-                return super.getTermVectors(docID);
+              public TermVectors termVectors() throws IOException {
+                TermVectors orig = in.termVectors();
+                return new TermVectors() {
+                  @Override
+                  public Fields get(int docID) throws IOException {
+                    assertFalse(
+                        "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
+                    seenDocIDs.set(docID);
+                    return orig.get(docID);
+                  }
+                };
               }
 
               @Override
@@ -179,7 +160,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
 
   @Test(expected = IllegalArgumentException.class)
   public void testUserFailedToIndexOffsets() throws IOException {
-    FieldType fieldType = new FieldType(UHTestHelper.tvType); // note: it's indexed too
+    FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
     fieldType.setStoreTermVectorOffsets(false);
 

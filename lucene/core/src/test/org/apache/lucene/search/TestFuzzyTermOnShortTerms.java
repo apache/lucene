@@ -62,9 +62,8 @@ public class TestFuzzyTermOnShortTerms extends LuceneTestCase {
     Directory d = getDirectory(analyzer, docs);
     IndexReader r = DirectoryReader.open(d);
     IndexSearcher s = new IndexSearcher(r);
-    TotalHitCountCollector c = new TotalHitCountCollector();
-    s.search(q, c);
-    assertEquals(q.toString(), expected, c.getTotalHits());
+    int totalHits = s.count(q);
+    assertEquals(q.toString(), expected, totalHits);
     r.close();
     d.close();
   }

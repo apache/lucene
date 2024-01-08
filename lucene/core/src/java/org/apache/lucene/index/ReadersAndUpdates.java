@@ -18,8 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -527,7 +526,6 @@ final class ReadersAndUpdates {
       return docIDOut;
     }
   }
-  ;
 
   private synchronized Set<String> writeFieldInfosGen(
       FieldInfos fieldInfos, Directory dir, FieldInfosFormat infosFormat) throws IOException {
@@ -554,8 +552,6 @@ final class ReadersAndUpdates {
     FieldInfos fieldInfos = null;
     boolean any = false;
     for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
-      // Sort by increasing delGen:
-      Collections.sort(updates, Comparator.comparingLong(a -> a.delGen));
       for (DocValuesFieldUpdates update : updates) {
         if (update.delGen <= maxDelGen && update.any()) {
           any = true;
@@ -701,7 +697,7 @@ final class ReadersAndUpdates {
               Locale.ROOT,
               "done write field updates for seg=%s; took %.3fs; new files: %s",
               info,
-              (System.nanoTime() - startTimeNS) / 1000000000.0,
+              (System.nanoTime() - startTimeNS) / (double) TimeUnit.SECONDS.toNanos(1),
               newDVFiles));
     }
     return true;
@@ -722,6 +718,7 @@ final class ReadersAndUpdates {
         fi.getPointIndexDimensionCount(),
         fi.getPointNumBytes(),
         fi.getVectorDimension(),
+        fi.getVectorEncoding(),
         fi.getVectorSimilarityFunction(),
         fi.isSoftDeletesField());
   }

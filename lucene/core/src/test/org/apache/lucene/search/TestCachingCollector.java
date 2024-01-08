@@ -29,11 +29,6 @@ public class TestCachingCollector extends LuceneTestCase {
     public float score() {
       return 0;
     }
-
-    @Override
-    public int docID() {
-      return 0;
-    }
   }
 
   private static class NoOpCollector extends SimpleCollector {
@@ -57,6 +52,7 @@ public class TestCachingCollector extends LuceneTestCase {
       for (int i = 0; i < 1000; i++) {
         acc.collect(i);
       }
+      acc.finish();
 
       // now replay them
       cc.replay(
@@ -127,6 +123,7 @@ public class TestCachingCollector extends LuceneTestCase {
       acc.collect(0);
 
       assertTrue(cc.isCached());
+      acc.finish();
       cc.replay(new NoOpCollector());
     }
   }

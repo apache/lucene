@@ -68,7 +68,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
             if (hits.totalHits.value == 0) {
               return null;
             } else {
-              Document doc = s.doc(hits.scoreDocs[0].doc);
+              Document doc = s.storedFields().document(hits.scoreDocs[0].doc);
               return (Integer) doc.getField("field").numericValue();
             }
           }

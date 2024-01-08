@@ -47,6 +47,7 @@ public class MockTokenizer extends Tokenizer {
       new CharacterRunAutomaton(
           Operations.determinize(
               new RegExp("[^ \t\r\n]+").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+
   /**
    * Acts Similar to KeywordTokenizer. TODO: Keyword returns an "empty" token for an empty reader...
    */
@@ -54,6 +55,7 @@ public class MockTokenizer extends Tokenizer {
       new CharacterRunAutomaton(
           Operations.determinize(
               new RegExp(".*").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+
   /** Acts like LetterTokenizer. */
   // the ugly regex below is incomplete Unicode 5.2 [:Letter:]
   public static final CharacterRunAutomaton SIMPLE =
@@ -62,10 +64,19 @@ public class MockTokenizer extends Tokenizer {
               new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toAutomaton(),
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
 
+  /**
+   * Limit the default token length to a size that doesn't cause random analyzer failures on
+   * unpredictable data like the enwiki data set.
+   *
+   * <p>This value defaults to {@code CharTokenizer.DEFAULT_MAX_WORD_LEN} (255).
+   *
+   * @see "https://issues.apache.org/jira/browse/LUCENE-10541"
+   */
+  public static final int DEFAULT_MAX_TOKEN_LENGTH = 255;
+
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;
   private final int maxTokenLength;
-  public static final int DEFAULT_MAX_TOKEN_LENGTH = Integer.MAX_VALUE;
   private int state;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);

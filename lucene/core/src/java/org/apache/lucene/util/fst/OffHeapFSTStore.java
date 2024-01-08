@@ -38,7 +38,7 @@ public final class OffHeapFSTStore implements FSTStore {
   private long numBytes;
 
   @Override
-  public void init(DataInput in, long numBytes) throws IOException {
+  public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (in instanceof IndexInput) {
       this.in = (IndexInput) in;
       this.numBytes = numBytes;
@@ -48,6 +48,7 @@ public final class OffHeapFSTStore implements FSTStore {
           "parameter:in should be an instance of IndexInput for using OffHeapFSTStore, not a "
               + in.getClass().getName());
     }
+    return this;
   }
 
   @Override
@@ -55,7 +56,6 @@ public final class OffHeapFSTStore implements FSTStore {
     return BASE_RAM_BYTES_USED;
   }
 
-  @Override
   public long size() {
     return numBytes;
   }

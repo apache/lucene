@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -33,6 +34,7 @@ import org.apache.lucene.analysis.tokenattributes.*;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -1276,7 +1278,8 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        Tokenizer tokenizer =
+            new MockTokenizer(MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2);
         // Make a local variable so testRandomHuge doesn't share it across threads!
         SynonymGraphFilter synFilter = new SynonymGraphFilter(tokenizer, map, ignoreCase);
         TestSynonymGraphFilter.this.flattenFilter = null;
@@ -1292,7 +1295,8 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
+        Tokenizer tokenizer =
+            new MockTokenizer(MockTokenizer.WHITESPACE, true, IndexWriter.MAX_TERM_LENGTH / 2);
         // Make a local variable so testRandomHuge doesn't share it across threads!
         SynonymGraphFilter synFilter = new SynonymGraphFilter(tokenizer, map, ignoreCase);
         FlattenGraphFilter flattenFilter = new FlattenGraphFilter(synFilter);
@@ -1398,7 +1402,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
         for (int j = 0; j < synCount; j++) {
           OneSyn syn2 = syns.get(i);
           keepOrig |= syn2.keepOrig;
-          if (syn1.in.equals(syn2.in)) {
+          if (Arrays.equals(syn1.in, syn2.in)) {
             count += syn2.out.length;
           }
         }

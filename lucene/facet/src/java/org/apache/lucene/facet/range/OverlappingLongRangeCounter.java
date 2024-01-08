@@ -34,8 +34,10 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
 
   /** segment tree root node */
   private final LongRangeNode root;
+
   /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
+
   /**
    * whether-or-not there are elementary interval counts that still need to be rolled up at the end
    */
@@ -48,11 +50,13 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocElementaryIntervalHits;
+
   /** whether-or-not a requested range has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocRangeHits;
 
   // Used during rollup
   private int elementaryIntervalUpto;
+
   /** number of counted documents that haven't matched any requested ranges */
   private int missingCount;
 
@@ -84,7 +88,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     if (multiValuedDocElementaryIntervalHits == null) {
       multiValuedDocElementaryIntervalHits = new FixedBitSet(boundaries.length);
     } else {
-      multiValuedDocElementaryIntervalHits.clear(0, multiValuedDocElementaryIntervalHits.length());
+      multiValuedDocElementaryIntervalHits.clear();
     }
   }
 
@@ -103,7 +107,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     if (multiValuedDocRangeHits == null) {
       multiValuedDocRangeHits = new FixedBitSet(rangeCount());
     } else {
-      multiValuedDocRangeHits.clear(0, multiValuedDocRangeHits.length());
+      multiValuedDocRangeHits.clear();
     }
     elementaryIntervalUpto = 0;
     rollupMultiValued(root);

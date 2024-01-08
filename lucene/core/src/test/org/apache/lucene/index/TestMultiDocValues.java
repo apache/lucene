@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -280,18 +279,10 @@ public class TestMultiDocValues extends LuceneTestCase {
           break;
         }
 
-        ArrayList<Long> expectedList = new ArrayList<>();
-        long ord;
-        while ((ord = single.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          expectedList.add(ord);
+        assertEquals(single.docValueCount(), multi.docValueCount());
+        for (int i = 0; i < single.docValueCount(); i++) {
+          assertEquals(single.nextOrd(), multi.nextOrd());
         }
-
-        int upto = 0;
-        while ((ord = multi.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          assertEquals(expectedList.get(upto).longValue(), ord);
-          upto++;
-        }
-        assertEquals(expectedList.size(), upto);
       }
     }
     testRandomAdvance(
@@ -353,18 +344,11 @@ public class TestMultiDocValues extends LuceneTestCase {
         if (docID == NO_MORE_DOCS) {
           break;
         }
-        ArrayList<Long> expectedList = new ArrayList<>();
-        long ord;
-        while ((ord = single.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          expectedList.add(ord);
-        }
 
-        int upto = 0;
-        while ((ord = multi.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          assertEquals(expectedList.get(upto).longValue(), ord);
-          upto++;
+        assertEquals(single.docValueCount(), multi.docValueCount());
+        for (int i = 0; i < single.docValueCount(); i++) {
+          assertEquals(single.nextOrd(), multi.nextOrd());
         }
-        assertEquals(expectedList.size(), upto);
       }
     }
     testRandomAdvance(

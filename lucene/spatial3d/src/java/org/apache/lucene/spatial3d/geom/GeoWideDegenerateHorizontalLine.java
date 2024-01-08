@@ -28,20 +28,25 @@ import java.io.OutputStream;
 class GeoWideDegenerateHorizontalLine extends GeoBaseBBox {
   /** The latitude of the line */
   protected final double latitude;
+
   /** The left longitude cutoff of the line */
   protected final double leftLon;
+
   /** The right longitude cutoff of the line */
   protected final double rightLon;
 
   /** The left end of the line */
   protected final GeoPoint LHC;
+
   /** The right end of the line */
   protected final GeoPoint RHC;
 
   /** The plane the line is in */
   protected final Plane plane;
+
   /** The left cutoff plane */
   protected final SidedPlane leftPlane;
+
   /** The right cutoff plane */
   protected final SidedPlane rightPlane;
 
@@ -83,7 +88,7 @@ class GeoWideDegenerateHorizontalLine extends GeoBaseBBox {
     if (extent < 0.0) {
       extent += 2.0 * Math.PI;
     }
-    if (extent < Math.PI) {
+    if (extent < GeoWideRectangle.MIN_WIDE_EXTENT) {
       throw new IllegalArgumentException("Width of rectangle too small");
     }
 

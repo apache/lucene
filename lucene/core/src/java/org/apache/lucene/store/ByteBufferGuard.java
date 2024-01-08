@@ -17,10 +17,11 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.LongBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A guard that is created for every {@link ByteBufferIndexInput} that tries on best effort to
@@ -38,7 +39,7 @@ final class ByteBufferGuard {
    * this to allow unmapping of bytebuffers with private Java APIs.
    */
   @FunctionalInterface
-  static interface BufferCleaner {
+  interface BufferCleaner {
     void freeBuffer(String resourceDescription, ByteBuffer b) throws IOException;
   }
 
@@ -47,9 +48,6 @@ final class ByteBufferGuard {
 
   /** Not volatile; see comments on visibility below! */
   private boolean invalidated = false;
-
-  /** Used as a store-store barrier; see comments below! */
-  private final AtomicInteger barrier = new AtomicInteger();
 
   /**
    * Creates an instance to be used for a single {@link ByteBufferIndexInput} which must be shared
@@ -68,10 +66,9 @@ final class ByteBufferGuard {
       // the "invalidated" field update visible to other threads. We specifically
       // don't make "invalidated" field volatile for performance reasons, hoping the
       // JVM won't optimize away reads of that field and hardware should ensure
-      // caches are in sync after this call. This isn't entirely "fool-proof"
-      // (see LUCENE-7409 discussion), but it has been shown to work in practice
-      // and we count on this behavior.
-      barrier.lazySet(0);
+      // caches are in sync after this call.
+      // For previous implementation (based on `AtomicInteger#lazySet(0)`) see LUCENE-7409.
+      VarHandle.fullFence();
       // we give other threads a bit of time to finish reads on their ByteBuffer...:
       Thread.yield();
       // finally unmap the ByteBuffers:
@@ -81,11 +78,20 @@ final class ByteBufferGuard {
     }
   }
 
+  public boolean isInvalidated() {
+    return invalidated;
+  }
+
   private void ensureValid() {
     if (invalidated) {
       // this triggers an AlreadyClosedException in ByteBufferIndexInput:
       throw new NullPointerException();
     }
+  }
+
+  public void getBytes(ByteBuffer receiver, int pos, byte[] dst, int offset, int length) {
+    ensureValid();
+    receiver.get(pos, dst, offset, length);
   }
 
   public void getBytes(ByteBuffer receiver, byte[] dst, int offset, int length) {
@@ -134,6 +140,11 @@ final class ByteBufferGuard {
   }
 
   public void getLongs(LongBuffer receiver, long[] dst, int offset, int length) {
+    ensureValid();
+    receiver.get(dst, offset, length);
+  }
+
+  public void getInts(IntBuffer receiver, int[] dst, int offset, int length) {
     ensureValid();
     receiver.get(dst, offset, length);
   }

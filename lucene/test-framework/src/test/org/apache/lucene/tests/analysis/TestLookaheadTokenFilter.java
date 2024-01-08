@@ -21,6 +21,7 @@ import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.index.IndexWriter;
 
 public class TestLookaheadTokenFilter extends BaseTokenStreamTestCase {
 
@@ -30,7 +31,11 @@ public class TestLookaheadTokenFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Random random = random();
-            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, random.nextBoolean());
+            Tokenizer tokenizer =
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE,
+                    random.nextBoolean(),
+                    IndexWriter.MAX_TERM_LENGTH / 2);
             TokenStream output = new MockRandomLookaheadTokenFilter(random, tokenizer);
             return new TokenStreamComponents(tokenizer, output);
           }
@@ -62,7 +67,10 @@ public class TestLookaheadTokenFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer =
-                new MockTokenizer(MockTokenizer.WHITESPACE, random().nextBoolean());
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE,
+                    random().nextBoolean(),
+                    IndexWriter.MAX_TERM_LENGTH / 2);
             TokenStream output = new NeverPeeksLookaheadTokenFilter(tokenizer);
             return new TokenStreamComponents(tokenizer, output);
           }

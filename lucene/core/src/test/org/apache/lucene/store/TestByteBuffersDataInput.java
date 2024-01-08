@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.store;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
@@ -28,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IOUtils.IOConsumer;
+import org.apache.lucene.util.IOConsumer;
 import org.junit.Test;
 
 public final class TestByteBuffersDataInput extends RandomizedTest {
@@ -203,7 +204,6 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   public void testSlicingWindow() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     assertEquals(0, dst.toDataInput().slice(0, 0).size());
-    ;
 
     dst.writeBytes(randomBytesOfLength(1024 * 8));
     ByteBuffersDataInput in = dst.toDataInput();

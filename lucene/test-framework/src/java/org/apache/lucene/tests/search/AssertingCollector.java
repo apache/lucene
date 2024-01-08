@@ -22,17 +22,29 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Weight;
 
-/** A collector that asserts that it is used correctly. */
-class AssertingCollector extends FilterCollector {
+/**
+ * A collector that asserts that it is used correctly.
+ *
+ * @lucene.internal
+ */
+public class AssertingCollector extends FilterCollector {
 
+  private boolean weightSet = false;
   private int maxDoc = -1;
   private int previousLeafMaxDoc = 0;
 
+  // public visibility for drill-sideways testing, since drill-sideways can't directly use
+  // AssertingIndexSearcher
+  // TODO: this is a pretty hacky workaround. It would be nice to rethink drill-sideways (for
+  // multiple reasons) and move this back to pkg-private at some point
+  public boolean hasFinishedCollectingPreviousLeaf = true;
+
   /** Wrap the given collector in order to add assertions. */
-  public static Collector wrap(Collector in) {
+  public static AssertingCollector wrap(Collector in) {
     if (in instanceof AssertingCollector) {
-      return in;
+      return (AssertingCollector) in;
     }
     return new AssertingCollector(in);
   }
@@ -43,10 +55,13 @@ class AssertingCollector extends FilterCollector {
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    assert weightSet : "Set the weight first";
     assert context.docBase >= previousLeafMaxDoc;
     previousLeafMaxDoc = context.docBase + context.reader().maxDoc();
 
+    assert hasFinishedCollectingPreviousLeaf;
     final LeafCollector in = super.getLeafCollector(context);
+    hasFinishedCollectingPreviousLeaf = false;
     final int docBase = context.docBase;
     return new AssertingLeafCollector(in, 0, DocIdSetIterator.NO_MORE_DOCS) {
       @Override
@@ -63,6 +78,20 @@ class AssertingCollector extends FilterCollector {
         super.collect(doc);
         maxDoc = docBase + doc;
       }
+
+      @Override
+      public void finish() throws IOException {
+        hasFinishedCollectingPreviousLeaf = true;
+        super.finish();
+      }
     };
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    assert weightSet == false : "Weight set twice";
+    weightSet = true;
+    assert weight != null;
+    in.setWeight(weight);
   }
 }

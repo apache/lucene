@@ -127,7 +127,7 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
    *
    * <p>Names must be all ascii alphanumeric, and less than 128 characters in length.
    */
-  public static interface NamedSPI {
+  public interface NamedSPI {
     String getName();
   }
 }

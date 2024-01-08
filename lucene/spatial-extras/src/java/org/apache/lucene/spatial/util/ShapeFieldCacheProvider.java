@@ -18,7 +18,11 @@ package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
 import java.util.WeakHashMap;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.locationtech.spatial4j.shape.Shape;
@@ -54,22 +58,20 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
 
     idx = new ShapeFieldCache<>(reader.maxDoc(), defaultSize);
     PostingsEnum docs = null;
-    Terms terms = reader.terms(shapeField);
-    if (terms != null) {
-      TermsEnum te = terms.iterator();
-      BytesRef term = te.next();
-      while (term != null) {
-        T shape = readShape(term);
-        if (shape != null) {
-          docs = te.postings(docs, PostingsEnum.NONE);
-          Integer docid = docs.nextDoc();
-          while (docid != DocIdSetIterator.NO_MORE_DOCS) {
-            idx.add(docid, shape);
-            docid = docs.nextDoc();
-          }
+    Terms terms = Terms.getTerms(reader, shapeField);
+    TermsEnum te = terms.iterator();
+    BytesRef term = te.next();
+    while (term != null) {
+      T shape = readShape(term);
+      if (shape != null) {
+        docs = te.postings(docs, PostingsEnum.NONE);
+        Integer docid = docs.nextDoc();
+        while (docid != DocIdSetIterator.NO_MORE_DOCS) {
+          idx.add(docid, shape);
+          docid = docs.nextDoc();
         }
-        term = te.next();
       }
+      term = te.next();
     }
     sidx.put(reader, idx);
     return idx;

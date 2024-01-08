@@ -35,7 +35,7 @@ public class TestKoreanPartOfSpeechStopFilterFactory extends BaseTokenStreamTest
     ((Tokenizer) ts).setReader(new StringReader(" 한국은 대단한 나라입니다."));
     Map<String, String> args = new HashMap<>();
     args.put("luceneMatchVersion", Version.LATEST.toString());
-    args.put("tags", "E, J");
+    args.put("tags", "EP, EF, EC, ETN, ETM, JKS, JKC, JKG, JKO, JKB, JKV, JKQ, JX, JC");
     KoreanPartOfSpeechStopFilterFactory factory = new KoreanPartOfSpeechStopFilterFactory(args);
     ts = factory.create(ts);
     assertTokenStreamContents(ts, new String[] {"한국", "대단", "하", "나라", "이"});

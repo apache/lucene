@@ -29,13 +29,11 @@ import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Slow;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 /** Compares one codec against another */
-@Slow
 public class TestDuelingCodecs extends LuceneTestCase {
   Directory leftDir;
   IndexReader leftReader;

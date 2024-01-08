@@ -27,6 +27,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -148,8 +149,7 @@ public class TestTaxonomyFacetLabels extends FacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     TaxonomyFacetLabels taxoLabels =
         new TaxonomyFacetLabels(taxoReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);

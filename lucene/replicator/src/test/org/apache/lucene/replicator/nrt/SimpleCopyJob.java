@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -151,7 +152,7 @@ class SimpleCopyJob extends CopyJob {
         String.format(
             Locale.ROOT,
             "top: file copy done; took %.1f msec to copy %d bytes; now rename %d tmp files",
-            (System.nanoTime() - startNS) / 1000000.0,
+            (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
             totBytesCopied,
             copiedFiles.size()));
 
@@ -270,8 +271,7 @@ class SimpleCopyJob extends CopyJob {
 
   @Override
   public void runBlocking() throws IOException {
-    while (visit() == false)
-      ;
+    while (visit() == false) {}
 
     if (getFailed()) {
       throw new RuntimeException("copy failed: " + cancelReason, exc);

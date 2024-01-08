@@ -31,8 +31,104 @@ import java.util.jar.Manifest;
  */
 public final class Version {
 
-  /** @deprecated (10.0.0) Use latest */
+  /**
+   * Match settings and bugs in Lucene's 9.0.0 release.
+   *
+   * @deprecated (9.1.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_0_0 = new Version(9, 0, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.1.0 release.
+   *
+   * @deprecated (9.2.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_1_0 = new Version(9, 1, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.2.0 release.
+   *
+   * @deprecated (9.3.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_2_0 = new Version(9, 2, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.3.0 release.
+   *
+   * @deprecated (9.4.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_3_0 = new Version(9, 3, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.4.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_0 = new Version(9, 4, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.4.1 release.
+   *
+   * @deprecated Use latest
+   * @deprecated (9.4.2) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_1 = new Version(9, 4, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 9.4.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_2 = new Version(9, 4, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 9.5.0 release.
+   *
+   * @deprecated (9.6.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_5_0 = new Version(9, 5, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.6.0 release.
+   *
+   * @deprecated (9.7.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_6_0 = new Version(9, 6, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.7.0 release.
+   *
+   * @deprecated (9.8.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_7_0 = new Version(9, 7, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.8.0 release.
+   *
+   * @deprecated (9.9.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_8_0 = new Version(9, 8, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.9.0 release.
+   *
+   * @deprecated (9.9.1) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_0 = new Version(9, 9, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.9.1 release.
+   *
+   * @deprecated (9.10.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_1 = new Version(9, 9, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 9.10.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_10_0 = new Version(9, 10, 0);
 
   /**
    * Match settings and bugs in Lucene's 10.0.0 release.
@@ -70,7 +166,9 @@ public final class Version {
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
 
-  /** @see #getPackageImplementationVersion() */
+  /**
+   * @see #getPackageImplementationVersion()
+   */
   private static String implementationVersion;
 
   /**
@@ -226,10 +324,13 @@ public final class Version {
 
   /** Major version, the difference between stable and trunk */
   public final int major;
+
   /** Minor version, incremented within the stable branch */
   public final int minor;
+
   /** Bugfix number, incremented on release branches */
   public final int bugfix;
+
   /** Prerelease version, currently 0 (alpha), 1 (beta), or 2 (final) */
   public final int prerelease;
 

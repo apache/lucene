@@ -1,0 +1,10 @@
+name: Enhancement Request/Suggestion
+description: File an enhancement request or suggestion
+labels: ["type:enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true

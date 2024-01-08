@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.LowerCaseFilter;
@@ -332,440 +331,207 @@ public class TestMatchHighlighter extends LuceneTestCase {
           }
         };
 
-    String field = FLD_TEXT2;
-    new IndexBuilder(this::toField)
-        // Just one document and multiple interval queries.
-        .doc(field, "The quick brown fox jumps over the lazy dog")
-        .build(
-            analyzer,
-            reader -> {
-              IndexSearcher searcher = new IndexSearcher(reader);
-              Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
+    // Rerun the same test on fields with offsets and without offsets.
+    for (String field : List.of(FLD_TEXT1, FLD_TEXT2)) {
+      String inputDocument = "The quick brown fox jumps over the lazy dog";
 
-              MatchHighlighter highlighter =
-                  new MatchHighlighter(searcher, analyzer)
-                      .appendFieldHighlighter(
-                          FieldValueHighlighters.highlighted(
-                              80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
-                      .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
+      String[][] queryResultPairs =
+          new String[][] {
+            {"fn:ordered(brown dog)", "0. %s: The quick >brown fox jumps over the lazy dog<"},
+            {
+              "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:containedBy(fox fn:ordered(brown fox dog))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:atLeast(2 quick fox \"furry dog\")",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+            },
+            {"fn:or(quick \"fox\")", "0. %s: The >quick< brown >fox< jumps over the lazy dog"},
+            {"fn:or(\"quick fox\")"},
+            {"fn:phrase(quick brown fox)", "0. %s: The >quick brown fox< jumps over the lazy dog"},
+            {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
+            {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
+            {"fn:fuzzyTerm(fxo)", "0. %s: The quick brown >fox< jumps over the lazy dog"},
+            {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
+            {
+              "fn:phrase(fn:ordered(quick fox) jumps)",
+              "0. %s: The >quick brown fox jumps< over the lazy dog"
+            },
+            {"fn:ordered(quick jumps dog)", "0. %s: The >quick brown fox jumps over the lazy dog<"},
+            {
+              "fn:ordered(quick fn:or(fox dog))",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:ordered(quick jumps fn:or(fox dog))",
+              "0. %s: The >quick brown fox jumps over the lazy dog<"
+            },
+            {
+              "fn:unordered(dog jumps quick)",
+              "0. %s: The >quick brown fox jumps over the lazy dog<"
+            },
+            {
+              "fn:unordered(fn:or(fox dog) quick)",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
+              "0. %s: The quick >brown fox jumps< over the lazy dog"
+            },
+            {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+            {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+            {
+              "fn:before(fn:or(brown lazy) fox)",
+              "0. %s: The quick >brown< fox jumps over the lazy dog"
+            },
+            {
+              "fn:before(fn:or(brown lazy) fn:or(dog fox))",
+              "0. %s: The quick >brown< fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:after(fn:or(brown lazy) fox)",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:after(fn:or(brown lazy) fn:or(dog fox))",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy >dog<"
+            },
+            {
+              "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
+              "0. %s: The quick brown >fox jumps over the lazy dog<"
+            },
+            {
+              "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
+              "0. %s: The quick brown fox jumps over >the lazy dog<"
+            },
+            {
+              "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
+              "0. %s: The quick >brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
+              "0. %s: The quick >brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
+              "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
+            },
+            {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
+            {
+              "fn:extend(fn:or(dog fox) 2 0)",
+              "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+            },
+            {
+              "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
+              "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+            },
+            {
+              "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            }
+          };
 
-              StandardQueryParser qp = new StandardQueryParser(analyzer);
+      // Verify assertions.
+      new IndexBuilder(this::toField)
+          // Just one document and multiple interval queries to check.
+          .doc(field, inputDocument)
+          .build(
+              analyzer,
+              reader -> {
+                IndexSearcher searcher = new IndexSearcher(reader);
+                Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
 
-              // Run all pairs of query-expected highlight.
-              List<String> errors = new ArrayList<>();
-              for (var queryHighlightPair :
-                  new String[][] {
-                    {
-                      "fn:ordered(brown dog)",
-                      "0. %s: The quick >brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:containedBy(fox fn:ordered(brown fox dog))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
-                      "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
-                    },
-                    {
-                      "fn:atLeast(2 quick fox \"furry dog\")",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:or(quick \"fox\")",
-                      "0. %s: The >quick< brown >fox< jumps over the lazy dog"
-                    },
-                    {"fn:or(\"quick fox\")"},
-                    {
-                      "fn:phrase(quick brown fox)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
-                    {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
-                    {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
-                    {
-                      "fn:phrase(fn:ordered(quick fox) jumps)",
-                      "0. %s: The >quick brown fox jumps< over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps dog)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:ordered(quick fn:or(fox dog))",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps fn:or(fox dog))",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(dog jumps quick)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(fn:or(fox dog) quick)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox jumps< over the lazy dog"
-                    },
-                    {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {
-                      "fn:before(fn:or(brown lazy) fox)",
-                      "0. %s: The quick >brown< fox jumps over the lazy dog"
-                    },
-                    {
-                      "fn:before(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick >brown< fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fox)",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
-                    {
-                      "fn:extend(fn:or(dog fox) 2 0)",
-                      "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
-                      "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
-                      "0. %s: The quick brown >fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
-                      "0. %s: The quick brown fox jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                  }) {
-                assert queryHighlightPair.length >= 1;
-                String queryString = queryHighlightPair[0];
-                var query = qp.parse(queryString, field);
-                var expected =
-                    Arrays.stream(queryHighlightPair)
-                        .skip(1)
-                        .map(v -> String.format(Locale.ROOT, v, field))
-                        .toArray(String[]::new);
+                MatchHighlighter highlighter =
+                    new MatchHighlighter(searcher, analyzer)
+                        .appendFieldHighlighter(
+                            FieldValueHighlighters.highlighted(
+                                80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
+                        .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
 
-                try {
-                  assertHighlights(
-                      toDocList(
-                          highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
-                      expected);
-                } catch (AssertionError e) {
-                  errors.add("MISMATCH: query: " + queryString + "\n" + e.getMessage());
+                StandardQueryParser qp = new StandardQueryParser(analyzer);
+
+                // Run all pairs of query-expected highlight.
+                List<String> errors = new ArrayList<>();
+                for (var queryHighlightPair : queryResultPairs) {
+                  assert queryHighlightPair.length >= 1;
+                  String queryString = queryHighlightPair[0];
+                  var query = qp.parse(queryString, field);
+                  var expected =
+                      Arrays.stream(queryHighlightPair)
+                          .skip(1)
+                          .map(v -> String.format(Locale.ROOT, v, field))
+                          .toArray(String[]::new);
+
+                  try {
+                    assertHighlights(
+                        toDocList(
+                            highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
+                        expected);
+                  } catch (AssertionError e) {
+                    errors.add("MISMATCH: query: " + queryString + "\n" + e.getMessage());
+                  }
                 }
-              }
-              if (errors.size() > 0) {
-                throw new AssertionError(String.join("\n\n", errors));
-              }
-            });
-  }
-
-  /**
-   * Almost the same as the one above, make sure the fields indexed with offsets are also
-   * highlighted correctly
-   */
-  @Test
-  public void testIntervalFunctionsWithOffsetField() throws Exception {
-    Analyzer analyzer =
-        new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new StandardTokenizer();
-            TokenStream ts = tokenizer;
-            ts = new LowerCaseFilter(ts);
-            return new TokenStreamComponents(tokenizer, ts);
-          }
-        };
-
-    String field = FLD_TEXT1;
-    new IndexBuilder(this::toField)
-        // Just one document and multiple interval queries.
-        .doc(field, "The quick brown fox jumps over the lazy dog")
-        .build(
-            analyzer,
-            reader -> {
-              IndexSearcher searcher = new IndexSearcher(reader);
-              Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
-
-              MatchHighlighter highlighter =
-                  new MatchHighlighter(searcher, analyzer)
-                      .appendFieldHighlighter(
-                          FieldValueHighlighters.highlighted(
-                              80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
-                      .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
-
-              StandardQueryParser qp = new StandardQueryParser(analyzer);
-
-              // Run all pairs of query-expected highlight.
-              List<String> errors = new ArrayList<>();
-              for (var queryHighlightPair :
-                  new String[][] {
-                    {
-                      "fn:ordered(brown dog)",
-                      "0. %s: The quick >brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:containedBy(fox fn:ordered(brown fox dog))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:atLeast(2 quick fox \"furry dog\")",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:or(quick \"fox\")",
-                      "0. %s: The >quick< brown >fox< jumps over the lazy dog"
-                    },
-                    {"fn:or(\"quick fox\")"},
-                    {
-                      "fn:phrase(quick brown fox)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
-                    {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
-                    {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
-                    {
-                      "fn:phrase(fn:ordered(quick fox) jumps)",
-                      "0. %s: The >quick brown fox jumps< over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps dog)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:ordered(quick fn:or(fox dog))",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps fn:or(fox dog))",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(dog jumps quick)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(fn:or(fox dog) quick)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox jumps< over the lazy dog"
-                    },
-                    {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {
-                      "fn:before(fn:or(brown lazy) fox)",
-                      "0. %s: The quick >brown< fox jumps over the lazy dog"
-                    },
-                    {
-                      "fn:before(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick >brown< fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fox)",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
-                      "0. %s: The quick brown >fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
-                      "0. %s: The quick brown fox jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
-                      "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
-                    },
-                    /*
-                    The test cases below do not work for fields enabled with offset yet:
-                    mainly "extend"
-                    TODO: LUCENE-10229: fix these remaining cases.
-
-                    {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
-                    {
-                      "fn:extend(fn:or(dog fox) 2 0)",
-                      "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
-                      "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    } */
-                  }) {
-                assert queryHighlightPair.length >= 1;
-                String queryString = queryHighlightPair[0];
-                var query = qp.parse(queryString, field);
-                var expected =
-                    Arrays.stream(queryHighlightPair)
-                        .skip(1)
-                        .map(v -> String.format(Locale.ROOT, v, field))
-                        .toArray(String[]::new);
-
-                try {
-                  assertHighlights(
-                      toDocList(
-                          highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
-                      expected);
-                } catch (AssertionError e) {
-                  errors.add("MISMATCH: query: " + queryString + "\n" + e.getMessage());
+                if (errors.size() > 0) {
+                  throw new AssertionError(String.join("\n\n", errors));
                 }
-              }
-              if (errors.size() > 0) {
-                throw new AssertionError(String.join("\n\n", errors));
-              }
-            });
+              });
+    }
   }
 
   @Test
@@ -839,16 +605,15 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
-                  if (values.length <= limit) {
-                    return Arrays.asList(values);
+                  if (values.size() <= limit) {
+                    return values;
                   } else {
-                    List<String> collected =
-                        Stream.of(values).limit(limit).collect(Collectors.toList());
-                    int remaining = values.length - collected.size();
+                    List<String> collected = values.subList(0, limit);
+                    int remaining = values.size() - collected.size();
                     collected.add(String.format(Locale.ROOT, "[%d omitted]", remaining));
                     return collected;
                   }
@@ -955,7 +720,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
@@ -1016,9 +781,8 @@ public class TestMatchHighlighter extends LuceneTestCase {
       }
     }
 
-    var expectedTrimmed =
-        Stream.of(expectedFormattedLines).map(String::trim).collect(Collectors.toList());
-    var actualTrimmed = actualLines.stream().map(String::trim).collect(Collectors.toList());
+    var expectedTrimmed = Stream.of(expectedFormattedLines).map(String::trim).toList();
+    var actualTrimmed = actualLines.stream().map(String::trim).toList();
     if (!Objects.equals(expectedTrimmed, actualTrimmed)) {
       throw new AssertionError(
           "Actual hits were:\n"
@@ -1034,8 +798,8 @@ public class TestMatchHighlighter extends LuceneTestCase {
             docHighlights ->
                 docHighlights.fields.entrySet().stream()
                     .map(e -> e.getKey() + ": " + String.join(", ", e.getValue()))
-                    .collect(Collectors.toList()))
-        .collect(Collectors.toList());
+                    .toList())
+        .toList();
   }
 
   private IndexableField toField(String name, String value) {

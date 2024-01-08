@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.ngram.NGramTokenizer;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.TestUtil;
@@ -218,7 +219,8 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.KEYWORD, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(MockTokenizer.KEYWORD, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -326,7 +328,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -346,7 +350,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -366,7 +372,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -386,7 +394,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override

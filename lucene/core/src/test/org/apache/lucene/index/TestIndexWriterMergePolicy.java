@@ -18,7 +18,9 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,6 +44,76 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
+  /**
+   * A less sophisticated version of LogDocMergePolicy, only for testing the interaction between
+   * IndexWriter and the MergePolicy.
+   */
+  private static class MockMergePolicy extends MergePolicy {
+
+    private int mergeFactor = 10;
+
+    public int getMergeFactor() {
+      return mergeFactor;
+    }
+
+    public void setMergeFactor(int mergeFactor) {
+      this.mergeFactor = mergeFactor;
+    }
+
+    @Override
+    public MergeSpecification findMerges(
+        MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+        throws IOException {
+      List<SegmentCommitInfo> segments = new ArrayList<>();
+      for (SegmentCommitInfo sci : segmentInfos) {
+        segments.add(sci);
+      }
+      MergeSpecification spec = null;
+      for (int start = 0; start <= segments.size() - mergeFactor; ) {
+
+        final int startDocCount = segments.get(start).info.maxDoc();
+        // Now search for the right-most segment that could be merged with the start segment
+        int end = start + 1;
+        for (int i = segments.size() - 1; i > start; --i) {
+          int docCount = segments.get(i).info.maxDoc();
+          if ((long) docCount * mergeFactor > startDocCount
+              && docCount < (long) mergeFactor * startDocCount) {
+            end = i + 1;
+            break;
+          }
+        }
+
+        // Now record a merge if possible
+        if (start + mergeFactor <= end) {
+          if (spec == null) {
+            spec = new MergeSpecification();
+          }
+          spec.add(new OneMerge(segments.subList(start, start + mergeFactor)));
+          start += mergeFactor;
+        } else {
+          start++;
+        }
+      }
+      return spec;
+    }
+
+    @Override
+    public MergeSpecification findForcedMerges(
+        SegmentInfos segmentInfos,
+        int maxSegmentCount,
+        Map<SegmentCommitInfo, Boolean> segmentsToMerge,
+        MergeContext mergeContext)
+        throws IOException {
+      return null;
+    }
+
+    @Override
+    public MergeSpecification findForcedDeletesMerges(
+        SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
+      return null;
+    }
+  }
+
   // Test the normal case
   public void testNormalCase() throws IOException {
     Directory dir = newDirectory();
@@ -51,7 +123,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(10)
-                .setMergePolicy(new LogDocMergePolicy()));
+                .setMergePolicy(new MockMergePolicy()));
 
     for (int i = 0; i < 100; i++) {
       addDoc(writer);
@@ -71,7 +143,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(10)
-                .setMergePolicy(new LogDocMergePolicy()));
+                .setMergePolicy(new MockMergePolicy()));
 
     boolean noOverMerge = false;
     for (int i = 0; i < 100; i++) {
@@ -91,8 +163,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
   public void testForceFlush() throws IOException {
     Directory dir = newDirectory();
 
-    LogDocMergePolicy mp = new LogDocMergePolicy();
-    mp.setMinMergeDocs(100);
+    MockMergePolicy mp = new MockMergePolicy();
     mp.setMergeFactor(10);
     IndexWriter writer =
         new IndexWriter(
@@ -103,19 +174,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     for (int i = 0; i < 100; i++) {
       addDoc(writer);
-      writer.close();
-
-      mp = new LogDocMergePolicy();
-      mp.setMergeFactor(10);
-      writer =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig(new MockAnalyzer(random()))
-                  .setOpenMode(OpenMode.APPEND)
-                  .setMaxBufferedDocs(10)
-                  .setMergePolicy(mp));
-      mp.setMinMergeDocs(100);
-      checkInvariants(writer);
+      writer.flush();
     }
 
     writer.close();
@@ -131,7 +190,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(10)
-                .setMergePolicy(newLogMergePolicy())
+                .setMergePolicy(new MockMergePolicy())
                 .setMergeScheduler(new SerialMergeScheduler()));
 
     for (int i = 0; i < 250; i++) {
@@ -139,7 +198,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
       checkInvariants(writer);
     }
 
-    ((LogMergePolicy) writer.getConfig().getMergePolicy()).setMergeFactor(5);
+    ((MockMergePolicy) writer.getConfig().getMergePolicy()).setMergeFactor(5);
 
     // merge policy only fixes segments on levels where merges
     // have been triggered, so check invariants after all adds
@@ -162,7 +221,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(101)
-                .setMergePolicy(new LogDocMergePolicy())
+                .setMergePolicy(new MockMergePolicy())
                 .setMergeScheduler(new SerialMergeScheduler()));
 
     // leftmost* segment has 1 doc
@@ -180,12 +239,12 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setOpenMode(OpenMode.APPEND)
                   .setMaxBufferedDocs(101)
-                  .setMergePolicy(new LogDocMergePolicy())
+                  .setMergePolicy(new MockMergePolicy())
                   .setMergeScheduler(new SerialMergeScheduler()));
     }
 
     writer.close();
-    LogDocMergePolicy ldmp = new LogDocMergePolicy();
+    MockMergePolicy ldmp = new MockMergePolicy();
     ldmp.setMergeFactor(10);
     writer =
         new IndexWriter(
@@ -219,7 +278,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
   public void testMergeDocCount0() throws IOException {
     Directory dir = newDirectory();
 
-    LogDocMergePolicy ldmp = new LogDocMergePolicy();
+    MockMergePolicy ldmp = new MockMergePolicy();
     ldmp.setMergeFactor(100);
     IndexWriter writer =
         new IndexWriter(
@@ -243,7 +302,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     writer.deleteDocuments(new Term("content", "aaa"));
     writer.close();
 
-    ldmp = new LogDocMergePolicy();
+    ldmp = new MockMergePolicy();
     ldmp.setMergeFactor(5);
     writer =
         new IndexWriter(
@@ -277,65 +336,31 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
   private void checkInvariants(IndexWriter writer) throws IOException {
     writer.waitForMerges();
     int maxBufferedDocs = writer.getConfig().getMaxBufferedDocs();
-    int mergeFactor = ((LogMergePolicy) writer.getConfig().getMergePolicy()).getMergeFactor();
-    int maxMergeDocs = ((LogMergePolicy) writer.getConfig().getMergePolicy()).getMaxMergeDocs();
+    int mergeFactor = ((MockMergePolicy) writer.getConfig().getMergePolicy()).getMergeFactor();
 
     int ramSegmentCount = writer.getNumBufferedDocuments();
     assertTrue(ramSegmentCount < maxBufferedDocs);
 
-    int lowerBound = -1;
-    int upperBound = maxBufferedDocs;
-    int numSegments = 0;
-
     int segmentCount = writer.getSegmentCount();
-    for (int i = segmentCount - 1; i >= 0; i--) {
-      int docCount = writer.maxDoc(i);
-      assertTrue(
-          "docCount="
-              + docCount
-              + " lowerBound="
-              + lowerBound
-              + " upperBound="
-              + upperBound
-              + " i="
-              + i
-              + " segmentCount="
-              + segmentCount
-              + " index="
-              + writer.segString()
-              + " config="
-              + writer.getConfig(),
-          docCount > lowerBound);
-
-      if (docCount <= upperBound) {
-        numSegments++;
-      } else {
-        if (upperBound * mergeFactor <= maxMergeDocs) {
-          assertTrue(
-              "maxMergeDocs="
-                  + maxMergeDocs
-                  + "; numSegments="
-                  + numSegments
-                  + "; upperBound="
-                  + upperBound
-                  + "; mergeFactor="
-                  + mergeFactor
-                  + "; segs="
-                  + writer.segString()
-                  + " config="
-                  + writer.getConfig(),
-              numSegments < mergeFactor);
-        }
-
-        do {
-          lowerBound = upperBound;
-          upperBound *= mergeFactor;
-        } while (docCount > upperBound);
-        numSegments = 1;
-      }
+    int lowerBound = Integer.MAX_VALUE;
+    for (int i = 0; i < segmentCount; ++i) {
+      lowerBound = Math.min(lowerBound, writer.maxDoc(i));
     }
-    if (upperBound * mergeFactor <= maxMergeDocs) {
-      assertTrue(numSegments < mergeFactor);
+    int upperBound = lowerBound * mergeFactor;
+
+    int segmentsAcrossLevels = 0;
+    while (segmentsAcrossLevels < segmentCount) {
+
+      int segmentsOnCurrentLevel = 0;
+      for (int i = 0; i < segmentCount; ++i) {
+        int docCount = writer.maxDoc(i);
+        if (docCount >= lowerBound && docCount < upperBound) {
+          segmentsOnCurrentLevel++;
+        }
+      }
+
+      assertTrue(segmentsOnCurrentLevel < mergeFactor);
+      segmentsAcrossLevels += segmentsOnCurrentLevel;
     }
   }
 
@@ -343,7 +368,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
   public void testSetters() {
     assertSetters(new LogByteSizeMergePolicy());
-    assertSetters(new LogDocMergePolicy());
+    assertSetters(new MockMergePolicy());
   }
 
   // Test basic semantics of merge on commit
@@ -370,14 +395,13 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
 
     DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy);
@@ -386,8 +410,8 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      assertEquals(6, reader.numDocs());
-      assertEquals(6, searcher.count(new MatchAllDocsQuery()));
+      assertEquals(5, reader.numDocs());
+      assertEquals(5, searcher.count(new MatchAllDocsQuery()));
     }
 
     writerWithMergePolicy.close();
@@ -421,16 +445,14 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setIndexWriterEventListener(eventListener);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-
     assertFalse(eventListener.isEventsRecorded());
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
     assertTrue(eventListener.isEventsRecorded());
 
@@ -444,11 +466,11 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
-    lmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024 / 1024.);
+    lmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -868,5 +890,64 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
       }
       return null;
     }
+  }
+
+  public void testSetDiagnostics() throws IOException {
+    MergePolicy myMergePolicy =
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(super.findMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          @Override
+          public MergeSpecification findFullFlushMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(
+                super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          private MergeSpecification wrapSpecification(MergeSpecification spec) {
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir, newIndexWriterConfig().setMergePolicy(myMergePolicy).setMaxBufferedDocs(2));
+    Document doc = new Document();
+    for (int i = 0; i < 20; ++i) {
+      w.addDocument(doc);
+    }
+    w.close();
+    SegmentInfos si = SegmentInfos.readLatestCommit(dir);
+    boolean hasOneMergedSegment = false;
+    for (SegmentCommitInfo sci : si) {
+      if (IndexWriter.SOURCE_MERGE.equals(sci.info.getDiagnostics().get(IndexWriter.SOURCE))) {
+        assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
+        hasOneMergedSegment = true;
+      }
+    }
+    assertTrue(hasOneMergedSegment);
+    w.close();
+    dir.close();
   }
 }

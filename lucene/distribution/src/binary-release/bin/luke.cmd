@@ -13,9 +13,30 @@
 @rem See the License for the specific language governing permissions and
 @rem limitations under the License.
 
-@echo off
+@ECHO OFF
 
 SETLOCAL
 SET MODULES=%~dp0..
-start javaw --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke
+
+IF DEFINED LAUNCH_CMD GOTO testing
+REM Windows 'start' command takes the first quoted argument to be the title of the started window. Since we
+REM quote the LAUNCH_CMD (because it can contain spaces), it misinterprets it as the title and fails to run.
+REM force the window title here.
+SET LAUNCH_START=start "Lucene Luke"
+SET LAUNCH_CMD=javaw
+SET LAUNCH_OPTS=
+goto launch
+
+:testing
+REM For distribution testing we don't use start and pass an explicit java command path,
+REM This is required because otherwise we can't block on luke invocation and can't intercept
+REM the return status. We also force UTF-8 encoding so that we don't have to interpret the output in
+REM an unknown local platform encoding.
+SET LAUNCH_START=
+SET LAUNCH_OPTS=-Dfile.encoding=UTF-8
+
+:launch
+%LAUNCH_START% "%LAUNCH_CMD%" %LAUNCH_OPTS% --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke %*
+SET EXITVAL=%errorlevel%
+EXIT /b %EXITVAL%
 ENDLOCAL

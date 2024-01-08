@@ -67,11 +67,6 @@ public abstract class GroupFacetCollector extends SimpleCollector {
    */
   public GroupedFacetResult mergeSegmentResults(int size, int minCount, boolean orderByCount)
       throws IOException {
-    if (segmentFacetCounts != null) {
-      segmentResults.add(createSegmentResult());
-      segmentFacetCounts = null; // reset
-    }
-
     int totalCount = 0;
     int missingCount = 0;
     SegmentResultPriorityQueue segments = new SegmentResultPriorityQueue(segmentResults.size());
@@ -107,6 +102,12 @@ public abstract class GroupFacetCollector extends SimpleCollector {
       facetResult.addFacetCount(currentFacetValue, count);
     }
     return facetResult;
+  }
+
+  @Override
+  public void finish() throws IOException {
+    segmentResults.add(createSegmentResult());
+    segmentFacetCounts = null;
   }
 
   protected abstract SegmentResult createSegmentResult() throws IOException;
@@ -263,12 +264,16 @@ public abstract class GroupFacetCollector extends SimpleCollector {
       return "FacetEntry{" + "value=" + value.utf8ToString() + ", count=" + count + '}';
     }
 
-    /** @return The value of this facet entry */
+    /**
+     * @return The value of this facet entry
+     */
     public BytesRef getValue() {
       return value;
     }
 
-    /** @return The count (number of groups) of this facet entry. */
+    /**
+     * @return The count (number of groups) of this facet entry.
+     */
     public int getCount() {
       return count;
     }

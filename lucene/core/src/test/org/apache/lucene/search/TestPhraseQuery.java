@@ -567,7 +567,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   /* test that a single term is rewritten to a term query */
   public void testRewrite() throws IOException {
     PhraseQuery pq = new PhraseQuery("foo", "bar");
-    Query rewritten = pq.rewrite(searcher.getIndexReader());
+    Query rewritten = pq.rewrite(searcher);
     assertTrue(rewritten instanceof TermQuery);
   }
 
@@ -772,13 +772,14 @@ public class TestPhraseQuery extends LuceneTestCase {
             new PhraseQuery("f", "d", "d") // repeated term
             )) {
       for (int topN = 1; topN <= 2; ++topN) {
-        TopScoreDocCollector collector1 =
-            TopScoreDocCollector.create(topN, null, Integer.MAX_VALUE);
-        searcher.search(query, collector1);
-        ScoreDoc[] hits1 = collector1.topDocs().scoreDocs;
-        TopScoreDocCollector collector2 = TopScoreDocCollector.create(topN, null, 1);
-        searcher.search(query, collector2);
-        ScoreDoc[] hits2 = collector2.topDocs().scoreDocs;
+        TopScoreDocCollectorManager collectorManager =
+            new TopScoreDocCollectorManager(topN, Integer.MAX_VALUE);
+        ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
+
+        collectorManager = new TopScoreDocCollectorManager(topN, 1);
+        TopDocs topDocs2 = searcher.search(query, collectorManager);
+        ScoreDoc[] hits2 = topDocs2.scoreDocs;
+
         assertTrue("" + query, hits1.length > 0);
         CheckHits.checkEqual(query, hits1, hits2);
       }
@@ -1029,13 +1030,14 @@ public class TestPhraseQuery extends LuceneTestCase {
       for (String secondTerm : new String[] {"a", "b", "c"}) {
         Query query = new PhraseQuery("foo", newBytesRef(firstTerm), newBytesRef(secondTerm));
 
-        TopScoreDocCollector collector1 =
-            TopScoreDocCollector.create(10, null, Integer.MAX_VALUE); // COMPLETE
-        TopScoreDocCollector collector2 = TopScoreDocCollector.create(10, null, 10); // TOP_SCORES
+        TopScoreDocCollectorManager completeManager =
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        TopScoreDocCollectorManager topScoresManager =
+            new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
 
-        searcher.search(query, collector1);
-        searcher.search(query, collector2);
-        CheckHits.checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+        TopDocs complete = searcher.search(query, completeManager);
+        TopDocs topScores = searcher.search(query, topScoresManager);
+        CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
 
         Query filteredQuery =
             new BooleanQuery.Builder()
@@ -1043,11 +1045,12 @@ public class TestPhraseQuery extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "b")), Occur.FILTER)
                 .build();
 
-        collector1 = TopScoreDocCollector.create(10, null, Integer.MAX_VALUE); // COMPLETE
-        collector2 = TopScoreDocCollector.create(10, null, 10); // TOP_SCORES
-        searcher.search(filteredQuery, collector1);
-        searcher.search(filteredQuery, collector2);
-        CheckHits.checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+        completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        topScoresManager = new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
+
+        complete = searcher.search(filteredQuery, completeManager);
+        topScores = searcher.search(filteredQuery, topScoresManager);
+        CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
       }
     }
     reader.close();

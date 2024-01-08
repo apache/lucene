@@ -29,6 +29,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.ar.ArabicNormalizationFilter;
 import org.apache.lucene.analysis.core.DecimalDigitFilter;
+import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.util.IOUtils;
 
@@ -86,6 +87,8 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
     }
   }
 
+  private final CharArraySet stemExclusionSet;
+
   /** Builds an analyzer with the default stop words: {@link #DEFAULT_STOPWORD_FILE}. */
   public PersianAnalyzer() {
     this(DefaultSetHolder.DEFAULT_STOP_SET);
@@ -97,7 +100,19 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
    * @param stopwords a stopword set
    */
   public PersianAnalyzer(CharArraySet stopwords) {
+    this(stopwords, CharArraySet.EMPTY_SET);
+  }
+
+  /**
+   * Builds an analyzer with the given stop word. If a none-empty stem exclusion set is provided
+   * this analyzer will add a {@link SetKeywordMarkerFilter} before {@link PersianStemFilter}.
+   *
+   * @param stopwords a stopword set
+   * @param stemExclusionSet a set of terms not to be stemmed
+   */
+  public PersianAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
     super(stopwords);
+    this.stemExclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
   }
 
   /**
@@ -106,8 +121,8 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
    *
    * @return {@link org.apache.lucene.analysis.Analyzer.TokenStreamComponents} built from a {@link
    *     StandardTokenizer} filtered with {@link LowerCaseFilter}, {@link DecimalDigitFilter},
-   *     {@link ArabicNormalizationFilter}, {@link PersianNormalizationFilter} and Persian Stop
-   *     words
+   *     {@link ArabicNormalizationFilter}, {@link PersianNormalizationFilter}, Persian Stop words,
+   *     and {@link PersianStemFilter}.
    */
   @Override
   protected TokenStreamComponents createComponents(String fieldName) {
@@ -121,7 +136,11 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
      * the order here is important: the stopword list is normalized with the
      * above!
      */
-    return new TokenStreamComponents(source, new StopFilter(result, stopwords));
+    result = new StopFilter(result, stopwords);
+    if (!stemExclusionSet.isEmpty()) {
+      result = new SetKeywordMarkerFilter(result, stemExclusionSet);
+    }
+    return new TokenStreamComponents(source, new PersianStemFilter(result));
   }
 
   @Override

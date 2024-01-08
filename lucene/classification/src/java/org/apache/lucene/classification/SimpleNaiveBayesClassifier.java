@@ -35,7 +35,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 
@@ -169,7 +168,6 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     Terms terms = MultiTerms.getTerms(this.indexReader, this.classFieldName);
     int docCount;
     if (terms == null || terms.getDocCount() == -1) { // in case codec doesn't support getDocCount
-      TotalHitCountCollector classQueryCountCollector = new TotalHitCountCollector();
       BooleanQuery.Builder q = new BooleanQuery.Builder();
       q.add(
           new BooleanClause(
@@ -179,8 +177,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
       if (query != null) {
         q.add(query, BooleanClause.Occur.MUST);
       }
-      indexSearcher.search(q.build(), classQueryCountCollector);
-      docCount = classQueryCountCollector.getTotalHits();
+      docCount = indexSearcher.count(q.build());
     } else {
       docCount = terms.getDocCount();
     }
@@ -276,9 +273,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     if (query != null) {
       booleanQuery.add(query, BooleanClause.Occur.MUST);
     }
-    TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-    indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
-    return totalHitCountCollector.getTotalHits();
+    return indexSearcher.count(booleanQuery.build());
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {

@@ -47,25 +47,24 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -79,8 +78,8 @@ import org.apache.lucene.util.bkd.BKDWriter;
  * test focuses on geospatial (distance queries, polygon queries, etc) indexing and search, not any
  * underlying storage format or encoding: it merely supplies two hooks for the encoding so that
  * tests can be exact. The [stretch] goal is for this test to be so thorough in testing a new geo
- * impl that if this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some
- * bug in a given geo impl that this test fails to catch then this test needs to be improved!
+ * impl that if this test passes, then all Lucene tests should also pass. Ie, if there is some bug
+ * in a given geo impl that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
@@ -652,7 +651,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       Document doc = new Document();
       lats[2 * id] = quantizeLat(nextLatitude());
       lons[2 * id] = quantizeLon(nextLongitude());
-      doc.add(newStringField("id", "" + id, Field.Store.YES));
+      doc.add(new StringField("id", "" + id, Field.Store.YES));
       addPointToDoc(FIELD_NAME, doc, lats[2 * id], lons[2 * id]);
       lats[2 * id + 1] = quantizeLat(nextLatitude());
       lons[2 * id + 1] = quantizeLon(nextLongitude());
@@ -689,6 +688,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < lats.length / 2; docID++) {
         double latDoc1 = lats[2 * docID];
         double lonDoc1 = lons[2 * docID];
@@ -701,7 +701,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {
@@ -909,6 +909,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -992,6 +994,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1095,6 +1099,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1179,6 +1185,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1259,7 +1267,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       throws IOException {
     for (int id = 0; id < lats.length; id++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (Double.isNaN(lats[id]) == false) {
         addPointToDoc(FIELD_NAME, doc, lats[id], lons[id]);
@@ -1281,29 +1289,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
   }
 
   private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
-    final FixedBitSet hits = new FixedBitSet(maxDoc);
-    s.search(
-        query,
-        new SimpleCollector() {
-
-          private int docBase;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) {
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) {
-            hits.set(docBase + doc);
-          }
-        });
-    return hits;
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   private void buildError(
@@ -1502,6 +1488,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numQueries; i++) {
       double lat = nextLatitude();
       double lon = nextLongitude();
@@ -1509,8 +1496,10 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       BitSet expected = new BitSet();
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        double docLatitude = reader.document(doc).getField("lat").numericValue().doubleValue();
-        double docLongitude = reader.document(doc).getField("lon").numericValue().doubleValue();
+        double docLatitude =
+            storedFields.document(doc).getField("lat").numericValue().doubleValue();
+        double docLongitude =
+            storedFields.document(doc).getField("lon").numericValue().doubleValue();
         double distance = SloppyMath.haversinMeters(lat, lon, docLatitude, docLongitude);
         if (distance <= radius) {
           expected.set(doc);
@@ -1530,8 +1519,10 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       } catch (AssertionError e) {
         System.out.println("center: (" + lat + "," + lon + "), radius=" + radius);
         for (int doc = 0; doc < reader.maxDoc(); doc++) {
-          double docLatitude = reader.document(doc).getField("lat").numericValue().doubleValue();
-          double docLongitude = reader.document(doc).getField("lon").numericValue().doubleValue();
+          double docLatitude =
+              storedFields.document(doc).getField("lat").numericValue().doubleValue();
+          double docLongitude =
+              storedFields.document(doc).getField("lon").numericValue().doubleValue();
           double distance = SloppyMath.haversinMeters(lat, lon, docLatitude, docLongitude);
           System.out.println(
               "" + doc + ": (" + docLatitude + "," + docLongitude + "), distance=" + distance);

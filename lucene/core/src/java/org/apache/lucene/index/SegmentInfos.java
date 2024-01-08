@@ -43,6 +43,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
@@ -114,13 +115,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** The version at the time when 8.0 was released. */
   public static final int VERSION_74 = 9;
+
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
   static final int VERSION_CURRENT = VERSION_86;
 
   /** Name of the generation reference file name */
-  private static final String OLD_SEGMENTS_GEN = "segments.gen";
+  static final String OLD_SEGMENTS_GEN = "segments.gen";
 
   /** Used to name new segments. */
   public long counter;
@@ -130,6 +132,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   private long generation; // generation of the "segments_N" for the next commit
   private long lastGeneration; // generation of the "segments_N" file we last successfully read
+
   // or wrote; this is normally the same as generation except if
   // there was an IOException that had interrupted a commit
 
@@ -143,7 +146,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    *
    * @see #setInfoStream
    */
-  private static PrintStream infoStream = null;
+  private static PrintStream infoStream;
 
   /** Id for this commit; only written starting with Lucene 5.0 */
   private byte[] id;
@@ -287,7 +290,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READ)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName)) {
       try {
         return readCommit(directory, input, generation, minSupportedMajorVersion);
       } catch (EOFException | NoSuchFileException | FileNotFoundException e) {
@@ -439,7 +442,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
-        Map<Integer, Set<String>> map = new HashMap<>(numDVFields);
+        Map<Integer, Set<String>> map = CollectionUtil.newHashMap(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
           map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }
@@ -516,8 +519,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return readLatestCommit(directory, Version.MIN_SUPPORTED_MAJOR);
   }
 
-  static final SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
-      throws IOException {
+  /**
+   * Find the latest commit ({@code segments_N file}) and load all {@link SegmentCommitInfo}s, as
+   * long as the commit's {@link SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater
+   * than the provided minimum supported major version. If the commit's version is older, an {@link
+   * IndexFormatTooOldException} will be thrown.
+   */
+  public static final SegmentInfos readLatestCommit(
+      Directory directory, int minSupportedMajorVersion) throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {
@@ -1001,6 +1010,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   void replace(SegmentInfos other) {
     rollbackSegmentInfos(other.asList());
     lastGeneration = other.lastGeneration;
+    userData = other.userData;
   }
 
   /** Returns sum of all segment's maxDocs. Note that this does not include deletions */

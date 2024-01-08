@@ -3,6 +3,9 @@ Typical workflow and tasks
 
 This shows some typical workflow gradle commands.
 
+Ensure your changes are correctly formatted (run "gradlew :helpFormatting" for more):
+gradlew tidy
+
 Run tests on a module:
 gradlew -p lucene/core test
 
@@ -22,10 +25,21 @@ Assemble a single module's JAR (here for lucene-core):
 gradlew -p lucene/core assemble
 ls lucene/core/build/libs
 
+Assemble all Lucene artifacts (JARs, and so on):
+gradlew assemble
+
 Create all distributable packages, POMs, etc. and create a
 local maven repository for inspection:
 gradlew mavenLocal
 ls -R build/maven-local/
+
+Assemble Javdocs on a module:
+gradlew -p lucene/core javadoc
+ls lucene/core/build/docs
+
+Assemble entire documentation (including javadocs):
+gradlew documentation
+ls lucene/documentation/build/site
 
 
 Other validation and checks

@@ -113,6 +113,8 @@ allprojects {
               "code: ${result.exitValue}, " +
               "output at: ${outputFile} (and logged above).")
         }
+      } else {
+        logger.info(new String(outputFile.bytes))
       }
 
       return result
@@ -147,5 +149,10 @@ allprojects {
       }
       return taskList
     }
+
+    // detect if we run in CI environment by looking at existence of env vars:
+    // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
+    // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
+    isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
   }
 }

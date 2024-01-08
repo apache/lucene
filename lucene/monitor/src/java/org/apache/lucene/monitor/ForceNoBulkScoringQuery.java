@@ -19,10 +19,8 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
-import org.apache.lucene.search.Matches;
 
 /** Query wrapper that forces its wrapped Query to use the default doc-by-doc BulkScorer. */
 class ForceNoBulkScoringQuery extends Query {
@@ -34,10 +32,10 @@ class ForceNoBulkScoringQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query rewritten = inner.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query rewritten = inner.rewrite(indexSearcher);
     if (rewritten != inner) return new ForceNoBulkScoringQuery(rewritten);
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

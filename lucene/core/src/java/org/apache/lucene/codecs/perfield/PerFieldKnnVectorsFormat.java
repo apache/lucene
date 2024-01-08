@@ -23,16 +23,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -78,6 +80,11 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     return new FieldsReader(state);
   }
 
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return getKnnVectorsFormatForField(fieldName).getMaxDimensions(fieldName);
+  }
+
   /**
    * Returns the numeric vector format that should be used for writing new segments of <code>field
    * </code>.
@@ -98,9 +105,21 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-        throws IOException {
-      getInstance(fieldInfo).writeField(fieldInfo, knnVectorsReader);
+    public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+      KnnVectorsWriter writer = getInstance(fieldInfo);
+      return writer.addField(fieldInfo);
+    }
+
+    @Override
+    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+      for (WriterAndSuffix was : formats.values()) {
+        was.writer.flush(maxDoc, sortMap);
+      }
+    }
+
+    @Override
+    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      getInstance(fieldInfo).mergeOneField(fieldInfo, mergeState);
     }
 
     @Override
@@ -151,9 +170,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         assert suffixes.containsKey(formatName);
         suffix = writerAndSuffix.suffix;
       }
-
       field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
       return writerAndSuffix.writer;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      long total = 0;
+      for (WriterAndSuffix was : formats.values()) {
+        total += was.writer.ramBytesUsed();
+      }
+      return total;
     }
   }
 
@@ -224,23 +251,35 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(field);
       if (knnVectorsReader == null) {
         return null;
       } else {
-        return knnVectorsReader.getVectorValues(field);
+        return knnVectorsReader.getFloatVectorValues(field);
       }
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(field);
       if (knnVectorsReader == null) {
-        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+        return null;
       } else {
-        return knnVectorsReader.search(field, target, k, acceptDocs);
+        return knnVectorsReader.getByteVectorValues(field);
       }
+    }
+
+    @Override
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+        throws IOException {
+      fields.get(field).search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+        throws IOException {
+      fields.get(field).search(field, target, knnCollector, acceptDocs);
     }
 
     @Override

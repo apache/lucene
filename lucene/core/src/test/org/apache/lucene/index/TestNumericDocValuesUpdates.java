@@ -459,12 +459,14 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       long ord = ssdv.nextOrd();
       term = ssdv.lookupOrd(ord);
       assertEquals(i, Integer.parseInt(term.utf8ToString()));
-      if (i != 0) {
+      if (i == 0) {
+        assertEquals(1, ssdv.docValueCount());
+      } else {
+        assertEquals(2, ssdv.docValueCount());
         ord = ssdv.nextOrd();
         term = ssdv.lookupOrd(ord);
         assertEquals(i * 2, Integer.parseInt(term.utf8ToString()));
       }
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, ssdv.nextOrd());
     }
 
     reader.close();
@@ -753,8 +755,9 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println("TEST: maxDoc=" + r.maxDoc());
       }
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < r.maxDoc(); i++) {
-        Document rdoc = r.document(i);
+        Document rdoc = storedFields.document(i);
         assertEquals(i, ndv.nextDoc());
         assertEquals("docid=" + i + " has wrong ndv value; doc=" + rdoc, value, ndv.longValue());
       }
@@ -902,11 +905,12 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
           NumericDocValues values = leafReader.getNumericDocValues("number");
           NumericDocValues sortValues = leafReader.getNumericDocValues("sort");
           Bits liveDocs = leafReader.getLiveDocs();
+          StoredFields storedFields = leafReader.storedFields();
 
           long lastSortValue = Long.MIN_VALUE;
           for (int i = 0; i < leafReader.maxDoc(); i++) {
 
-            Document doc = leafReader.document(i);
+            Document doc = storedFields.document(i);
             OneSortDoc sortDoc = docs.get(Integer.parseInt(doc.get("id")));
 
             assertEquals(i, values.nextDoc());
@@ -1025,6 +1029,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader r = context.reader();
         Bits liveDocs = r.getLiveDocs();
+        StoredFields storedFields = r.storedFields();
         for (int field = 0; field < fieldValues.length; field++) {
           String f = "f" + field;
           NumericDocValues ndv = r.getNumericDocValues(f);
@@ -1037,13 +1042,13 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
                   "invalid value for docID="
                       + doc
                       + " id="
-                      + r.document(doc).get("id")
+                      + storedFields.document(doc).get("id")
                       + ", field="
                       + f
                       + ", reader="
                       + r
                       + " doc="
-                      + r.document(doc),
+                      + storedFields.document(doc),
                   fieldValues[field],
                   ndv.longValue());
             }

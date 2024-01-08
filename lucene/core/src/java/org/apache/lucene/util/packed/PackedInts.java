@@ -120,7 +120,7 @@ public class PackedInts {
       throw new IllegalArgumentException("Unknown format id: " + id);
     }
 
-    private Format(int id) {
+    Format(int id) {
       this.id = id;
     }
 
@@ -231,7 +231,7 @@ public class PackedInts {
   }
 
   /** A decoder for packed integers. */
-  public static interface Decoder {
+  public interface Decoder {
 
     /**
      * The minimum number of long blocks to encode in a single iteration, when using long encoding.
@@ -299,7 +299,7 @@ public class PackedInts {
   }
 
   /** An encoder for packed integers. */
-  public static interface Encoder {
+  public interface Encoder {
 
     /**
      * The minimum number of long blocks to encode in a single iteration, when using long encoding.
@@ -393,23 +393,29 @@ public class PackedInts {
       return gets;
     }
 
-    /** @return the number of values. */
+    /**
+     * @return the number of values.
+     */
     public abstract int size();
   }
 
   /** Run-once iterator interface, to decode previously saved PackedInts. */
-  public static interface ReaderIterator {
+  public interface ReaderIterator {
     /** Returns next value */
     long next() throws IOException;
+
     /**
      * Returns at least 1 and at most <code>count</code> next values, the returned ref MUST NOT be
      * modified
      */
     LongsRef next(int count) throws IOException;
+
     /** Returns number of bits per value */
     int getBitsPerValue();
+
     /** Returns number of values */
     int size();
+
     /** Returns the current position */
     int ord();
   }

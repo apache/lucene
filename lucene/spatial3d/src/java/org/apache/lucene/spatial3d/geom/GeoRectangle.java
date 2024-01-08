@@ -29,41 +29,55 @@ import java.io.OutputStream;
 class GeoRectangle extends GeoBaseBBox {
   /** The top latitude of the rect */
   protected final double topLat;
+
   /** The bottom latitude of the rect */
   protected final double bottomLat;
+
   /** The left longitude of the rect */
   protected final double leftLon;
+
   /** The right longitude of the rect */
   protected final double rightLon;
+
   /** The cosine of a middle latitude */
   protected final double cosMiddleLat;
 
   /** The upper left hand corner point */
   protected final GeoPoint ULHC;
+
   /** The upper right hand corner point */
   protected final GeoPoint URHC;
+
   /** The lower right hand corner point */
   protected final GeoPoint LRHC;
+
   /** The lower left hand corner point */
   protected final GeoPoint LLHC;
 
   /** The top plane */
   protected final SidedPlane topPlane;
+
   /** The bottom plane */
   protected final SidedPlane bottomPlane;
+
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
+
   /** Backing plane (for narrow angles) */
   protected final SidedPlane backingPlane;
 
   /** Notable points for the top plane */
   protected final GeoPoint[] topPlanePoints;
+
   /** Notable points for the bottom plane */
   protected final GeoPoint[] bottomPlanePoints;
+
   /** Notable points for the left plane */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Notable points for the right plane */
   protected final GeoPoint[] rightPlanePoints;
 
@@ -146,10 +160,15 @@ class GeoRectangle extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinMiddleLon, cosMiddleLat, cosMiddleLon);
 
-    this.topPlane = new SidedPlane(centerPoint, planetModel, sinTopLat);
-    this.bottomPlane = new SidedPlane(centerPoint, planetModel, sinBottomLat);
-    this.leftPlane = new SidedPlane(centerPoint, cosLeftLon, sinLeftLon);
-    this.rightPlane = new SidedPlane(centerPoint, cosRightLon, sinRightLon);
+    this.topPlane = new SidedPlane(LLHC, planetModel, sinTopLat);
+    this.bottomPlane = new SidedPlane(URHC, planetModel, sinBottomLat);
+    this.leftPlane = new SidedPlane(URHC, cosLeftLon, sinLeftLon);
+    this.rightPlane = new SidedPlane(LLHC, cosRightLon, sinRightLon);
+
+    assert (topPlane.isWithin(centerPoint));
+    assert (bottomPlane.isWithin(centerPoint));
+    assert (leftPlane.isWithin(centerPoint));
+    assert (rightPlane.isWithin(centerPoint));
 
     // Compute the backing plane
     // The normal for this plane is a unit vector through the origin that goes through the middle

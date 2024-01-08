@@ -90,7 +90,6 @@ public class TestOfflineSorter extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testIntermediateMerges() throws Exception {
     // Sort 20 mb worth of data with 1mb buffer, binary merging.
     try (Directory dir = newFSDirectory(createTempDir())) {
@@ -115,7 +114,6 @@ public class TestOfflineSorter extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testSmallRandom() throws Exception {
     // Sort 20 mb worth of data with 1mb buffer.
     try (Directory dir = newFSDirectory(createTempDir())) {

@@ -1,0 +1,14 @@
+FORBIDDENWORD *
+
+SFX G Y 1
+SFX G   0     ing/S      .
+
+SFX J Y 1
+SFX J   0     ings       .
+
+SFX S Y 1
+SFX S   0     s          .
+
+SFX X Y 2
+SFX X   0     s          .
+SFX X   0     x          .

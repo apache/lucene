@@ -44,8 +44,8 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for si format. NOTE: This test focuses on the si impl, nothing
  * else. The [stretch] goal is for this test to be so thorough in testing a new si format that if
- * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
- * given si Format that this test fails to catch then this test needs to be improved!
+ * this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a given si
+ * Format that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -66,6 +66,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -91,6 +92,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -135,6 +137,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             diagnostics,
             id,
@@ -171,6 +174,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             id,
@@ -204,6 +208,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -230,6 +235,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
                 minV,
                 "_123",
                 1,
+                false,
                 false,
                 codec,
                 Collections.<String, String>emptyMap(),
@@ -368,6 +374,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               "_123",
               1,
               false,
+              false,
               codec,
               Collections.<String, String>emptyMap(),
               id,
@@ -407,6 +414,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -453,6 +461,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -497,6 +506,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -543,6 +553,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -614,6 +625,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               name,
               docCount,
               isCompoundFile,
+              false,
               codec,
               diagnostics,
               id,

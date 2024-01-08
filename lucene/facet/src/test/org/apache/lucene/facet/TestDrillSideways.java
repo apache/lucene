@@ -29,11 +29,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.DrillSideways.DrillSidewaysResult;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
@@ -41,8 +43,10 @@ import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
@@ -50,6 +54,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -58,6 +63,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryCachingPolicy;
 import org.apache.lucene.search.QueryVisitor;
@@ -75,12 +82,14 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.junit.Test;
 
 public class TestDrillSideways extends FacetTestCase {
 
@@ -132,7 +141,11 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    return newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    searcher.setTimeout(null);
+    return searcher;
   }
 
   // See LUCENE-10060:
@@ -197,7 +210,7 @@ public class TestDrillSideways extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     ddq.add("Color", "Blue");
 
-    // Setup an IndexSearcher that will try to cache queries aggressively:
+    // Set up an IndexSearcher that will try to cache queries aggressively:
     IndexSearcher searcher = getNewSearcher(writer.getReader());
     searcher.setQueryCachingPolicy(
         new QueryCachingPolicy() {
@@ -210,7 +223,7 @@ public class TestDrillSideways extends FacetTestCase {
           }
         });
 
-    // Setup a DS instance for searching:
+    // Set up a DS instance for searching:
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
 
@@ -234,24 +247,83 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
         concurrentResult.facets.getTopChildren(10, "Size").toString());
 
-    // Now do the same thing but use a Collector directly:
-    SimpleCollector collector = new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES);
-    // Make sure our Collector _does not_ need scores to ensure IndexSearcher tries to cache:
-    assertFalse(collector.scoreMode().needsScores());
-    // If we incorrectly cache here, the "sideways" FacetsCollectors will get populated with counts
-    // for the deleted
-    // docs. Make sure they don't:
-    DrillSidewaysResult result = ds.search(ddq, collector);
-    assertEquals(2, collector.hits.size());
-    assertEquals(
-        "dim=Color path=[] value=4 childCount=3\n  Blue (2)\n  Red (1)\n  Green (1)\n",
-        result.facets.getTopChildren(10, "Color").toString());
-    assertEquals(
-        "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
-        result.facets.getTopChildren(10, "Size").toString());
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class, () -> concurrentResult.facets.getTopChildren(0, "Color"));
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testCollectionTerminated() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document d = new Document();
+      d.add(new TextField("foo", "bar", Field.Store.NO));
+      w.addDocument(d);
+
+      d = new Document();
+      d.add(new TextField("foo", "bar", Field.Store.NO));
+      w.addDocument(d);
+
+      d = new Document();
+      d.add(new TextField("foo", "baz", Field.Store.NO));
+      w.addDocument(d);
+
+      try (IndexReader r = w.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(r);
+        LeafReaderContext ctx = r.leaves().get(0);
+
+        Query baseQuery = new MatchAllDocsQuery();
+        Weight baseWeight = searcher.createWeight(baseQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        Scorer baseScorer = baseWeight.scorer(ctx);
+
+        Query dimQ = new TermQuery(new Term("foo", "bar"));
+        dimQ = searcher.rewrite(dimQ);
+        Weight dimWeight = searcher.createWeight(dimQ, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        Scorer dimScorer = dimWeight.scorer(ctx);
+
+        FacetsCollector baseFC = new FacetsCollector();
+        FacetsCollector dimFC = new FacetsCollector();
+        DrillSidewaysScorer.DocsAndCost docsAndCost =
+            new DrillSidewaysScorer.DocsAndCost(dimScorer, dimFC.getLeafCollector(ctx));
+
+        LeafCollector baseCollector =
+            new LeafCollector() {
+              int counter = 0;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                // doesn't matter
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                if (++counter > 1) {
+                  throw new CollectionTerminatedException();
+                }
+              }
+            };
+
+        boolean scoreSubDocsAtOnce = random().nextBoolean();
+        DrillSidewaysScorer scorer =
+            new DrillSidewaysScorer(
+                ctx,
+                baseScorer,
+                baseFC.getLeafCollector(ctx),
+                new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
+                scoreSubDocsAtOnce);
+        expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
+
+        // We've set things up so that our base collector with throw CollectionTerminatedException
+        // after collecting the first doc. This means we'll only collect the first indexed doc for
+        // both our base and sideways dim facets collectors. What we really want to test here is
+        // that the matching docs are still correctly present and populated after an early
+        // termination occurs (i.e., #finish is properly called in that scenario):
+        assertEquals(1, baseFC.getMatchingDocs().size());
+        assertEquals(1, dimFC.getMatchingDocs().size());
+      }
+    }
   }
 
   public void testBasic() throws Exception {
@@ -301,36 +373,62 @@ public class TestDrillSideways extends FacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
+    // Run all the basic test cases with a standard DrillSideways implementation:
     DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+    runDrillSidewaysTestCases(config, ds);
 
+    // Run all the basic test cases but make sure DS is set to score all sub-docs at once, so
+    // we exercise the doc-at-a-time scoring methodology:
+    ds = getNewDrillSidewaysScoreSubdocsAtOnce(searcher, config, taxoReader);
+    runDrillSidewaysTestCases(config, ds);
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testLeafCollectorSingleFinishCall() throws Exception {
+    try (Directory dir = newDirectory();
+        Directory taxoDir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+        DirectoryTaxonomyWriter taxoW =
+            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE)) {
+      FacetsConfig facetsConfig = new FacetsConfig();
+
+      Document d = new Document();
+      d.add(new FacetField("foo", "bar"));
+      w.addDocument(facetsConfig.build(taxoW, d));
+
+      try (IndexReader r = w.getReader();
+          TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
+        IndexSearcher searcher = new DrillSidewaysAssertingIndexSearcher(r);
+
+        Query baseQuery = new MatchAllDocsQuery();
+        DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
+        ddq.add("foo", "bar");
+        DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
+
+        // It doesn't really matter what we have our collector manager do here since all we care
+        // about for this test are the assertions provided by the "asserting" collectors/leaf
+        // collectors, etc. But we have this definition already for other tests and it's easy to
+        // use, so we'll use it here and do a little extra checking:
+        SimpleCollectorManager cm =
+            new SimpleCollectorManager(10, Comparator.comparingInt(a -> a.docAndScore.doc));
+
+        DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> result =
+            drillSideways.search(ddq, cm);
+
+        assertEquals(1, result.collectorResult.size());
+      }
+    }
+  }
+
+  private void runDrillSidewaysTestCases(FacetsConfig config, DrillSideways ds) throws Exception {
     //  case: drill-down on a single field; in this
     // case the drill-sideways + drill-down counts ==
     // drill-down of just the query:
     DrillDownQuery ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
     DrillSidewaysResult r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
-    // Publish Date is only drill-down, and Lisa published
-    // one in 2012 and one in 2010:
-    assertEquals(
-        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
-        r.facets.getTopChildren(10, "Publish Date").toString());
-
-    // Author is drill-sideways + drill-down: Lisa
-    // (drill-down) published twice, and Frank/Susan/Bob
-    // published once:
-    assertEquals(
-        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
-        r.facets.getTopChildren(10, "Author").toString());
-
-    // Same simple case, but no baseQuery (pure browse):
-    // drill-down on a single field; in this case the
-    // drill-sideways + drill-down counts == drill-down of
-    // just the query:
-    ddq = new DrillDownQuery(config);
-    ddq.add("Author", "Lisa");
-    r = ds.search(null, ddq, 10);
-
     assertEquals(2, r.hits.totalHits.value);
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
@@ -373,6 +471,23 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(
         "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
         allResults.get(1).toString());
+
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = r.facets.getTopDims(2, 1);
+    assertEquals(2, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n", topNDimsResult.get(0).toString());
+    assertEquals(
+        "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n",
+        topNDimsResult.get(1).toString());
+
+    // test getTopDims(0, 1)
+    List<FacetResult> topDimsResults2 = r.facets.getTopDims(0, 1);
+    assertEquals(0, topDimsResults2.size());
+
+    // test getAllDims(0)
+    DrillSidewaysResult finalR1 = r;
+    expectThrows(IllegalArgumentException.class, () -> finalR1.facets.getAllDims(0));
 
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
@@ -459,8 +574,10 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(0, r.hits.totalHits.value);
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
-    writer.close();
-    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+
+    // test getTopChildren(0, dim)
+    DrillSidewaysResult finalR = r;
+    expectThrows(IllegalArgumentException.class, () -> finalR.facets.getTopChildren(0, "Author"));
   }
 
   public void testBasicWithCollectorManager() throws Exception {
@@ -597,6 +714,17 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
         allResults.get(1).toString());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = r.facets.getTopDims(1, 2);
+    assertEquals(1, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n",
+        topNDimsResult.get(0).toString());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = r.facets.getTopDims(10, 10);
+    assertEquals(allResults, allDimsResults);
+
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -710,7 +838,7 @@ public class TestDrillSideways extends FacetTestCase {
     Query baseQuery =
         new TermQuery(new Term("content", "foo")) {
           @Override
-          public Query rewrite(IndexReader reader) {
+          public Query rewrite(IndexSearcher indexSearcher) {
             // return a new instance, forcing the DrillDownQuery to also rewrite itself, exposing
             // the bug in LUCENE-9988:
             return new TermQuery(getTerm());
@@ -863,7 +991,7 @@ public class TestDrillSideways extends FacetTestCase {
     int[] dims;
 
     // 2nd value per dim for the doc (so we test
-    // multi-valued fields):
+    // multivalued fields):
     int[] dims2;
     boolean deleted;
 
@@ -944,7 +1072,7 @@ public class TestDrillSideways extends FacetTestCase {
           values.add(s);
         }
       }
-      dimValues[dim] = values.toArray(new String[values.size()]);
+      dimValues[dim] = values.toArray(new String[0]);
       valueCount *= 2;
     }
 
@@ -1015,6 +1143,7 @@ public class TestDrillSideways extends FacetTestCase {
             doc.add(new FacetField("dim" + dim, dimValues[dim][dimValue]));
           }
           doc.add(new StringField("dim" + dim, dimValues[dim][dimValue], Field.Store.YES));
+          doc.add(new SortedSetDocValuesField("dim" + dim, new BytesRef(dimValues[dim][dimValue])));
           if (VERBOSE) {
             System.out.println("    dim" + dim + "=" + new BytesRef(dimValues[dim][dimValue]));
           }
@@ -1027,6 +1156,8 @@ public class TestDrillSideways extends FacetTestCase {
             doc.add(new FacetField("dim" + dim, dimValues[dim][dimValue2]));
           }
           doc.add(new StringField("dim" + dim, dimValues[dim][dimValue2], Field.Store.YES));
+          doc.add(
+              new SortedSetDocValuesField("dim" + dim, new BytesRef(dimValues[dim][dimValue2])));
           if (VERBOSE) {
             System.out.println("      dim" + dim + "=" + new BytesRef(dimValues[dim][dimValue2]));
           }
@@ -1068,7 +1199,7 @@ public class TestDrillSideways extends FacetTestCase {
     IndexSearcher s = getNewSearcher(r);
 
     if (doUseDV) {
-      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader());
+      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader(), config);
     } else {
       sortedSetDVState = null;
     }
@@ -1101,7 +1232,6 @@ public class TestDrillSideways extends FacetTestCase {
       String[][] drillDowns = new String[numDims][];
 
       int count = 0;
-      boolean anyMultiValuedDrillDowns = false;
       while (count < numDrillDown) {
         int dim = random().nextInt(numDims);
         if (drillDowns[dim] == null) {
@@ -1112,7 +1242,6 @@ public class TestDrillSideways extends FacetTestCase {
           } else {
             int orCount = TestUtil.nextInt(random(), 1, Math.min(5, dimValues[dim].length));
             drillDowns[dim] = new String[orCount];
-            anyMultiValuedDrillDowns |= orCount > 1;
             for (int i = 0; i < orCount; i++) {
               while (true) {
                 String value = dimValues[dim][random().nextInt(dimValues[dim].length)];
@@ -1152,7 +1281,15 @@ public class TestDrillSideways extends FacetTestCase {
       for (int dim = 0; dim < numDims; dim++) {
         if (drillDowns[dim] != null) {
           for (String value : drillDowns[dim]) {
-            ddq.add("dim" + dim, value);
+            // Sometimes use a "traditional" term query and sometimes use a two-phase approach to
+            // ensure code coverage:
+            if (random().nextBoolean()) {
+              ddq.add("dim" + dim, value);
+            } else {
+              ddq.add(
+                  "dim" + dim,
+                  SortedSetDocValuesField.newSlowExactQuery("dim" + dim, new BytesRef(value)));
+            }
           }
         }
       }
@@ -1183,7 +1320,8 @@ public class TestDrillSideways extends FacetTestCase {
                           @Override
                           public boolean matches() throws IOException {
                             int docID = approximation.docID();
-                            return (Integer.parseInt(context.reader().document(docID).get("id"))
+                            return (Integer.parseInt(
+                                        context.reader().storedFields().document(docID).get("id"))
                                     & 1)
                                 == 0;
                           }
@@ -1230,37 +1368,10 @@ public class TestDrillSideways extends FacetTestCase {
       getNewDrillSideways(s, config, tr)
           .search(
               ddq,
-              new org.apache.lucene.search.SimpleCollector() {
-                int lastDocID;
-
-                @Override
-                public void collect(int doc) {
-                  assert doc > lastDocID;
-                  lastDocID = doc;
-                }
-
-                @Override
-                protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                  lastDocID = -1;
-                }
-
-                @Override
-                public ScoreMode scoreMode() {
-                  return ScoreMode.COMPLETE_NO_SCORES;
-                }
-              });
-
-      // Also separately verify that DS respects the
-      // scoreSubDocsAtOnce method, to ensure that all
-      // subScorers are on the same docID:
-      if (!anyMultiValuedDrillDowns) {
-        // Can only do this test when there are no OR'd
-        // drill-down values, because in that case it's
-        // easily possible for one of the DD terms to be on
-        // a future docID:
-        getNewDrillSidewaysScoreSubdocsAtOnce(s, config, tr)
-            .search(ddq, new AssertingSubDocsAtOnceCollector());
-      }
+              new SimpleCollectorManager(
+                  numDocs,
+                  Comparator.comparing(cr -> cr.docAndScore.doc),
+                  ScoreMode.COMPLETE_NO_SCORES));
 
       Sort sort = new Sort(new SortField("id", SortField.Type.STRING));
       DrillSideways ds;
@@ -1303,7 +1414,7 @@ public class TestDrillSideways extends FacetTestCase {
       TopDocs hits = s.search(baseQuery, numDocs);
       Map<String, Float> scores = new HashMap<>();
       for (ScoreDoc sd : hits.scoreDocs) {
-        scores.put(s.doc(sd.doc).get("id"), sd.score);
+        scores.put(s.storedFields().document(sd.doc).get("id"), sd.score);
       }
       if (VERBOSE) {
         System.out.println("  verify all facets");
@@ -1325,6 +1436,66 @@ public class TestDrillSideways extends FacetTestCase {
 
     w.close();
     IOUtils.close(r, tr, tw, d, td);
+  }
+
+  public void testFinishOnAllDimsNoHitsQuery() throws Exception {
+    try (Directory dir = newDirectory();
+        Directory taxoDir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+        DirectoryTaxonomyWriter taxoW =
+            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE)) {
+      FacetsConfig facetsConfig = new FacetsConfig();
+
+      Document d = new Document();
+      d.add(new FacetField("foo", "bar"));
+      w.addDocument(facetsConfig.build(taxoW, d));
+
+      try (IndexReader r = w.getReader();
+          TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
+        IndexSearcher searcher = new DrillSidewaysAssertingIndexSearcher(r);
+
+        // Creating a query that matches nothing to make sure #finish still gets called on all
+        // facet collectors:
+        Query baseQuery = new MatchNoDocsQuery();
+        DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
+        ddq.add("foo", "bar");
+        DrillSideways drillSideways =
+            new DrillSideways(searcher, facetsConfig, taxoR) {
+              @Override
+              protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
+                return new AssertingFacetsCollectorManager();
+              }
+
+              @Override
+              protected FacetsCollectorManager createDrillSidewaysFacetsCollectorManager() {
+                return new AssertingFacetsCollectorManager();
+              }
+            };
+
+        SimpleCollectorManager cm =
+            new SimpleCollectorManager(10, Comparator.comparingInt(a -> a.docAndScore.doc));
+        DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> result =
+            drillSideways.search(ddq, cm);
+        assertEquals(0, result.collectorResult.size());
+
+        // Make sure the "matching docs" are still populated with the appropriate leaf reader
+        // context, which happens as part of #finish getting called:
+        assertEquals(1, result.drillDownFacetsCollector.getMatchingDocs().size());
+        assertEquals(
+            1, result.drillDownFacetsCollector.getMatchingDocs().get(0).context.reader().maxDoc());
+        assertEquals(1, result.drillSidewaysFacetsCollector.length);
+        assertEquals(1, result.drillSidewaysFacetsCollector[0].getMatchingDocs().size());
+        assertEquals(
+            1,
+            result
+                .drillSidewaysFacetsCollector[0]
+                .getMatchingDocs()
+                .get(0)
+                .context
+                .reader()
+                .maxDoc());
+      }
+    }
   }
 
   private static class Counters {
@@ -1474,10 +1645,62 @@ public class TestDrillSideways extends FacetTestCase {
           .sorted(comparator)
           .map(cr -> new DocAndScore(cr.docAndScore))
           .limit(numDocs)
-          .collect(Collectors.toList());
+          .toList();
     }
   }
-  ;
+
+  // We can't use AssertingIndexSearcher unfortunately since it may randomly decide to bulk
+  // score a sub-range of docs instead of all docs at once. This is incompatible will drill
+  // sideways, so we have to do our own check here. This just makes sure we call #finish on
+  // the last leaf. It's too bad we need to do this and maybe some day we can clean this up
+  // by rethinking drill-sideways:
+  private static final class DrillSidewaysAssertingIndexSearcher extends IndexSearcher {
+
+    DrillSidewaysAssertingIndexSearcher(IndexReader r) {
+      super(r);
+    }
+
+    @Override
+    protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
+        throws IOException {
+      AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+      super.search(leaves, weight, assertingCollector);
+      assert assertingCollector.hasFinishedCollectingPreviousLeaf;
+    }
+  }
+
+  private static final class AssertingFacetsCollectorManager extends FacetsCollectorManager {
+    @Override
+    public FacetsCollector newCollector() throws IOException {
+      return new AssertingFacetsCollector();
+    }
+
+    @Override
+    public FacetsCollector reduce(Collection<FacetsCollector> collectors) throws IOException {
+      for (FacetsCollector fc : collectors) {
+        assert fc instanceof AssertingFacetsCollector;
+        assert ((AssertingFacetsCollector) fc).hasFinishedLastLeaf == true;
+      }
+      return super.reduce(collectors);
+    }
+  }
+
+  private static final class AssertingFacetsCollector extends FacetsCollector {
+    private boolean hasFinishedLastLeaf = true;
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+      assert hasFinishedLastLeaf;
+      hasFinishedLastLeaf = false;
+      super.doSetNextReader(context);
+    }
+
+    @Override
+    public void finish() throws IOException {
+      hasFinishedLastLeaf = true;
+      super.finish();
+    }
+  }
 
   private int[] getTopNOrds(final int[] counts, final String[] values, int topN) {
     final int[] ids = new int[counts.length];
@@ -1604,7 +1827,7 @@ public class TestDrillSideways extends FacetTestCase {
 
     Map<String, Integer> idToDocID = new HashMap<>();
     for (int i = 0; i < s.getIndexReader().maxDoc(); i++) {
-      idToDocID.put(s.doc(i).get("id"), i);
+      idToDocID.put(s.storedFields().document(i).get("id"), i);
     }
 
     Collections.sort(hits);
@@ -1648,7 +1871,8 @@ public class TestDrillSideways extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("    hit " + i + " expected=" + expected.hits.get(i).id);
       }
-      assertEquals(expected.hits.get(i).id, s.doc(actual.results.get(i).doc).get("id"));
+      assertEquals(
+          expected.hits.get(i).id, s.storedFields().document(actual.results.get(i).doc).get("id"));
       // Score should be IDENTICAL:
       assertEquals(scores.get(expected.hits.get(i).id), actual.results.get(i).score, 0.0f);
     }
@@ -1691,8 +1915,7 @@ public class TestDrillSideways extends FacetTestCase {
         if (VERBOSE) {
           idx = 0;
           System.out.println("      expected (sorted)");
-          for (int i = 0; i < topNIDs.length; i++) {
-            int expectedOrd = topNIDs[i];
+          for (int expectedOrd : topNIDs) {
             String value = dimValues[dim][expectedOrd];
             System.out.println(
                 "        "
@@ -1842,11 +2065,6 @@ public class TestDrillSideways extends FacetTestCase {
     DrillSideways ds =
         new DrillSideways(searcher, config, taxoReader, null, executorService) {
           @Override
-          protected FacetsCollector createDrillDownFacetsCollector() {
-            return null;
-          }
-
-          @Override
           protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
             return null;
           }
@@ -1874,6 +2092,15 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         allResults.get(0).toString());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = facets.getTopDims(1, 2);
+    assertEquals(1, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n",
+        topNDimsResult.get(0).toString());
+
+    // test getAllDims(0)
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -1896,7 +2123,7 @@ public class TestDrillSideways extends FacetTestCase {
   }
 
   public void testScorer() throws Exception {
-    // LUCENE-6001 some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
+    // LUCENE-6001 some scorers, e.g. ReqExlScorer, can hit NPE if cost is called after nextDoc
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
 
@@ -1970,16 +2197,8 @@ public class TestDrillSideways extends FacetTestCase {
     SimpleCollectorManager manager =
         new SimpleCollectorManager(
             10, (a, b) -> Float.compare(b.docAndScore.score, a.docAndScore.score));
-    SimpleCollector collector = manager.newCollector();
 
-    // Sometimes pass in a Collector and sometimes CollectorManager
-    // so that we can test both DrillSidewaysResult and ConcurrentDrillSidewaysResult
-    DrillSidewaysResult r;
-    if (random().nextBoolean()) {
-      r = ds.search(ddq, collector);
-    } else {
-      r = ds.search(ddq, manager);
-    }
+    DrillSidewaysResult r = ds.search(ddq, manager);
 
     // compute Facets using exposed FacetCollectors from DrillSidewaysResult
     Map<String, Facets> drillSidewaysFacets = new HashMap<>();
@@ -1999,7 +2218,7 @@ public class TestDrillSideways extends FacetTestCase {
       facets = new MultiFacets(drillSidewaysFacets, drillDownFacets);
     }
 
-    // Facets computed using FacetsCollecter exposed in DrillSidewaysResult
+    // Facets computed using FacetsCollector exposed in DrillSidewaysResult
     // should match the Facets computed by {@link DrillSideways#buildFacetsResult}
     FacetResult facetResultActual = facets.getTopChildren(2, "dim");
     FacetResult facetResultExpected = r.facets.getTopChildren(2, "dim");
@@ -2011,5 +2230,55 @@ public class TestDrillSideways extends FacetTestCase {
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  @Test
+  public void testDrillSidewaysSearchUseCorrectIterator() throws Exception {
+    // This test reproduces an issue (see GitHub #12211) where DrillSidewaysScorer would ultimately
+    // cause multiple consecutive calls to TwoPhaseIterator::matches, which results in a failed
+    // assert in the PostingsReaderBase implementation (or a failing to match a document that should
+    // have matched, if asserts are disabled).
+    Directory dir = newDirectory();
+    var iwc = new IndexWriterConfig(new StandardAnalyzer());
+    var indexWriter = new IndexWriter(dir, iwc);
+    var taxoDir = newDirectory();
+    var taxonomyWriter = new DirectoryTaxonomyWriter(taxoDir);
+    var facetsConfig = new FacetsConfig();
+    facetsConfig.setRequireDimCount("dim1", true);
+    facetsConfig.setDrillDownTermsIndexing("dim1", FacetsConfig.DrillDownTermsIndexing.ALL);
+    // Add a doc that we'll try to match
+    var doc = new Document();
+    doc.add(new TextField("content", "bt tv v1 1b b1 10 04 40 08 81 14 48", Field.Store.NO));
+    doc.add(new FacetField("dim1", "dim1"));
+    indexWriter.addDocument(facetsConfig.build(taxonomyWriter, doc));
+    // Add some more docs as filler in the index
+    for (int i = 0; i < 25; i++) {
+      var fillerDoc = new Document();
+      fillerDoc.add(new TextField("content", "content", Field.Store.NO));
+      fillerDoc.add(new FacetField("dim1", "dim1"));
+      indexWriter.addDocument(facetsConfig.build(taxonomyWriter, fillerDoc));
+    }
+    taxonomyWriter.commit();
+    indexWriter.commit();
+    var taxonomyReader = new DirectoryTaxonomyReader(taxoDir);
+    var indexReader = DirectoryReader.open(indexWriter);
+    var searcher = new IndexSearcher(indexReader);
+    var drill = new DrillSideways(searcher, facetsConfig, taxonomyReader);
+    var drillDownQuery =
+        new DrillDownQuery(
+            facetsConfig,
+            new PhraseQuery(
+                "content", "bt", "tv", "v1", "1b", "b1", "10", "04", "40", "08", "81", "14", "48"));
+    drillDownQuery.add("dim1", "dim1");
+    var result = drill.search(drillDownQuery, 99);
+    // We expect to match exactly one document from the query above
+    assertEquals(1, result.hits.totalHits.value);
+
+    indexReader.close();
+    taxonomyReader.close();
+    taxonomyWriter.close();
+    indexWriter.close();
+    dir.close();
+    taxoDir.close();
   }
 }

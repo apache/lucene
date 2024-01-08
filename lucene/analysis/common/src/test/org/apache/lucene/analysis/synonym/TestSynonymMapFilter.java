@@ -31,6 +31,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
@@ -629,7 +630,8 @@ public class TestSynonymMapFilter extends BaseTokenStreamTestCase {
           new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-              Tokenizer tokenizer = new MockTokenizer(MockTokenizer.SIMPLE, true);
+              Tokenizer tokenizer =
+                  new MockTokenizer(MockTokenizer.SIMPLE, true, IndexWriter.MAX_TERM_LENGTH / 2);
               return new TokenStreamComponents(
                   tokenizer, new SynonymFilter(tokenizer, map, ignoreCase));
             }

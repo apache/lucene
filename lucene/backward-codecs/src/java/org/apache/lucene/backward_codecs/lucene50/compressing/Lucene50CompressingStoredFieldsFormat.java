@@ -17,12 +17,12 @@
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicWriter;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
@@ -45,14 +45,19 @@ public class Lucene50CompressingStoredFieldsFormat extends StoredFieldsFormat {
 
   /** format name */
   protected final String formatName;
+
   /** segment suffix */
   protected final String segmentSuffix;
+
   /** compression mode */
   protected final CompressionMode compressionMode;
+
   /** chunk size */
   protected final int chunkSize;
+
   /** max docs per chunk */
   protected final int maxDocsPerChunk;
+
   /** block shift */
   protected final int blockShift;
 

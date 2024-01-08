@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.BitSet;
+import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -77,6 +78,34 @@ public class TestScorerPerf extends LuceneTestCase {
     return sets;
   }
 
+  private static final class CountingHitCollectorManager
+      implements CollectorManager<CountingHitCollector, CountingHitCollector> {
+
+    private final boolean validate;
+    private final FixedBitSet result;
+
+    CountingHitCollectorManager(boolean validate, FixedBitSet result) {
+      this.validate = validate;
+      this.result = result;
+    }
+
+    @Override
+    public CountingHitCollector newCollector() {
+      return validate ? new MatchingHitCollector(result) : new CountingHitCollector();
+    }
+
+    @Override
+    public CountingHitCollector reduce(Collection<CountingHitCollector> collectors)
+        throws IOException {
+      CountingHitCollector result = new CountingHitCollector();
+      for (CountingHitCollector collector : collectors) {
+        result.count += collector.count;
+        result.sum += collector.sum;
+      }
+      return result;
+    }
+  }
+
   public static class CountingHitCollector extends SimpleCollector {
     int count = 0;
     int sum = 0;
@@ -119,7 +148,7 @@ public class TestScorerPerf extends LuceneTestCase {
 
       pos = answer.nextSetBit(pos + 1);
       if (pos != doc + docBase) {
-        throw new RuntimeException("Expected doc " + pos + " but got " + doc + docBase);
+        throw new RuntimeException("Expected doc " + pos + " but got " + (doc + docBase));
       }
       super.collect(doc);
     }
@@ -191,10 +220,8 @@ public class TestScorerPerf extends LuceneTestCase {
       for (int j = 0; j < nClauses; j++) {
         result = addClause(sets, bq, result);
       }
-
       CountingHitCollector hc =
-          validate ? new MatchingHitCollector(result) : new CountingHitCollector();
-      s.search(bq.build(), hc);
+          s.search(bq.build(), new CountingHitCollectorManager(validate, result));
       ret += hc.getSum();
 
       if (validate) assertEquals(result.cardinality(), hc.getCount());
@@ -227,8 +254,7 @@ public class TestScorerPerf extends LuceneTestCase {
       } // outer
 
       CountingHitCollector hc =
-          validate ? new MatchingHitCollector(result) : new CountingHitCollector();
-      s.search(oq.build(), hc);
+          s.search(oq.build(), new CountingHitCollectorManager(validate, result));
       nMatches += hc.getCount();
       ret += hc.getSum();
       if (validate) assertEquals(result.cardinality(), hc.getCount());
@@ -259,8 +285,7 @@ public class TestScorerPerf extends LuceneTestCase {
         bq.add(tq, BooleanClause.Occur.MUST);
       }
 
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(bq.build(), hc);
+      CountingHitCollector hc = s.search(bq.build(), new CountingHitCollectorManager(false, null));
       nMatches += hc.getCount();
       ret += hc.getSum();
     }
@@ -301,8 +326,7 @@ public class TestScorerPerf extends LuceneTestCase {
         oq.add(bq.build(), BooleanClause.Occur.MUST);
       } // outer
 
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(oq.build(), hc);
+      CountingHitCollector hc = s.search(oq.build(), new CountingHitCollectorManager(false, null));
       nMatches += hc.getCount();
       ret += hc.getSum();
     }
@@ -325,8 +349,7 @@ public class TestScorerPerf extends LuceneTestCase {
       builder.setSlop(termsInIndex);
       PhraseQuery q = builder.build();
 
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(q, hc);
+      CountingHitCollector hc = s.search(q, new CountingHitCollectorManager(false, null));
       ret += hc.getSum();
     }
 

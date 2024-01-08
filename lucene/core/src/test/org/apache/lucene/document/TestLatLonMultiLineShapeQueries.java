@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
@@ -49,11 +50,9 @@ public class TestLatLonMultiLineShapeQueries extends BaseLatLonShapeTestCase {
     List<Field> allFields = new ArrayList<>();
     for (Line line : lines) {
       Field[] fields = LatLonShape.createIndexableFields(name, line);
-      for (Field field : fields) {
-        allFields.add(field);
-      }
+      Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[allFields.size()]);
+    return allFields.toArray(new Field[0]);
   }
 
   @Override
@@ -61,7 +60,7 @@ public class TestLatLonMultiLineShapeQueries extends BaseLatLonShapeTestCase {
     return new MultiLineValidator(ENCODER);
   }
 
-  protected class MultiLineValidator extends Validator {
+  protected static class MultiLineValidator extends Validator {
     TestLatLonLineShapeQueries.LineValidator LINEVALIDATOR;
 
     MultiLineValidator(Encoder encoder) {
@@ -95,7 +94,6 @@ public class TestLatLonMultiLineShapeQueries extends BaseLatLonShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

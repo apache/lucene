@@ -170,6 +170,12 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    ensureOpen();
+    in.readBytes(pos, bytes, offset, length);
+  }
+
+  @Override
   public short readShort(long pos) throws IOException {
     ensureOpen();
     return in.readShort(pos);
@@ -197,6 +203,12 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   public void readLongs(long[] dst, int offset, int length) throws IOException {
     ensureOpen();
     in.readLongs(dst, offset, length);
+  }
+
+  @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    ensureOpen();
+    in.readGroupVInt(dst, offset);
   }
 
   @Override

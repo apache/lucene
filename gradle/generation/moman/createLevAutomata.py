@@ -27,6 +27,73 @@ MODE = 'array'
 PACKED = True
 WORD = 64
 LOG2_WORD = int(math.log(WORD) / math.log(2))
+HEADER_COMMENT = '''/*
+   Parametric transitions for LEV1.
+   ┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+   ┃ char vector ┃ State 0 ┃ State 1 ┃ State 2 ┃ State 3 ┃ State 4 ┃
+   ┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+   │ (0,0)       │ (2, 0)  │ (-1, 0) │ (-1, 0) │ (-1, 0) │ (-1, 0) │
+   │ (0,1)       │ (3, 0)  │ (-1, 0) │ (1, 2)  │ (1, 2)  │ (-1, 0) │
+   │ (1,0)       │ (0, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │
+   │ (1,1)       │ (0, 1)  │ (1, 1)  │ (2, 1)  │ (2, 1)  │ (1, 1)  │
+   └─────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+   char vector is the characteristic vectors in the paper.
+   entry (i,j) in the table means next transitions state is i, next offset is j + currentOffset if we meet the according char vector.
+   When i = -1,it means an empty state.
+   We store this table in toState and offsetIncr.
+   toState = [ i+1  | for entry in entries].
+   offsetIncrs = [j | for entry in entries].
+*/'''
+
+STATE0_COMMENT = '''/*
+   *  1 vectors; 2 states per vector; array length = 2
+   *   Parametric transitions for LEV1  (position = w)
+   *  ┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+   *  ┃ char vector ┃ State 0 ┃ State 1 ┃
+   *  ┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+   *  │ ()          │ (1, 0)  │ (-1, 0) │
+   *  └─────────────┴─────────┴─────────┘
+   */'''
+
+STATE1_COMMENT = '''/*
+   *   2 vectors; 3 states per vector; array length = 6
+   *   Parametric transitions for LEV1 (position = w-1)
+   *  ┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+   *  ┃ char vector ┃ State 0 ┃ State 1 ┃ State 2 ┃
+   *  ┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+   *  │ (0)         │ (2, 0)  │ (-1, 0) │ (-1, 0) │
+   *  │ (1)         │ (0, 1)  │ (1, 1)  │ (1, 1)  │
+   *  └─────────────┴─────────┴─────────┴─────────┘
+   */'''
+STATE2_COMMENT = '''/*
+   *   4 vectors; 5 states per vector; array length = 20
+   *   Parametric transitions for LEV1 ( position == w-2 )
+   *  ┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+   *  ┃ char vector ┃ State 0 ┃ State 1 ┃ State 2 ┃ State 3 ┃ State 4 ┃
+   *  ┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+   *  │ (0,0)       │ (2, 0)  │ (-1, 0) │ (-1, 0) │ (-1, 0) │ (-1, 0) │
+   *  │ (0,1)       │ (3, 0)  │ (-1, 0) │ (1, 2)  │ (1, 2)  │ (-1, 0) │
+   *  │ (1,0)       │ (0, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │
+   *  │ (1,1)       │ (0, 1)  │ (1, 1)  │ (2, 1)  │ (2, 1)  │ (1, 1)  │
+   *  └─────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+   */'''
+STATE3_COMMENT = '''/*
+   *   8 vectors; 5 states per vector; array length = 40
+   *   Parametric transitions for LEV1 (0 <= position <= w-3 )
+   *  ┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+   *  ┃ char vector ┃ State 0 ┃ State 1 ┃ State 2 ┃ State 3 ┃ State 4 ┃
+   *  ┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+   *  │ (0,0,0)     │ (2, 0)  │ (-1, 0) │ (-1, 0) │ (-1, 0) │ (-1, 0) │
+   *  │ (0,0,1)     │ (2, 0)  │ (-1, 0) │ (-1, 0) │ (1, 3)  │ (1, 3)  │
+   *  │ (0,1,0)     │ (3, 0)  │ (-1, 0) │ (1, 2)  │ (1, 2)  │ (-1, 0) │
+   *  │ (0,1,1)     │ (3, 0)  │ (-1, 0) │ (1, 2)  │ (2, 2)  │ (1, 3)  │
+   *  │ (1,0,0)     │ (0, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │ (1, 1)  │
+   *  │ (1,0,1)     │ (0, 1)  │ (1, 1)  │ (1, 1)  │ (4, 1)  │ (4, 1)  │
+   *  │ (1,1,0)     │ (0, 1)  │ (1, 1)  │ (2, 1)  │ (2, 1)  │ (1, 1)  │
+   *  │ (1,1,1)     │ (0, 1)  │ (1, 1)  │ (2, 1)  │ (3, 1)  │ (4, 1)  │
+   *  └─────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+   */'''
+STATE_COMMENT = [STATE0_COMMENT, STATE1_COMMENT, STATE2_COMMENT, STATE3_COMMENT]
 # MODE = 'switch'
 
 class LineOutput:
@@ -144,16 +211,27 @@ def main():
   w('// The following code was generated with the moman/finenight pkg')
   w('// This package is available under the MIT License, see NOTICE.txt')
   w('// for more details.')
+  w('// This source file is auto-generated, Please do not modify it directly.')
+  w('// You should modify the gradle/generation/moman/createAutomata.py instead.')
   w('')
   w('import org.apache.lucene.util.automaton.LevenshteinAutomata.ParametricDescription;')
   w('')
+  if not transpose and n == 1:
+    w(HEADER_COMMENT)
+    w('') 
   if transpose:
     w('/** Parametric description for generating a Levenshtein automaton of degree %s, ' % n)
-    w('    with transpositions as primitive edits */')
+    w('    with transpositions as primitive edits.')
     className = 'Lev%dTParametricDescription' % n
   else:
-    w('/** Parametric description for generating a Levenshtein automaton of degree %s */' % n)
+    w('/** Parametric description for generating a Levenshtein automaton of degree %s.' % n)
     className = 'Lev%dParametricDescription' % n
+  if not transpose and n == 1:
+    w('*/')
+  else:
+    w('   The comment in Lev1ParametricDescription may be helpful for you to understand this class.')
+    w('   @see Lev1ParametricDescription')
+    w('*/')
 
   w('class %s extends ParametricDescription {' % className)
 
@@ -300,8 +378,11 @@ def main():
     for i, (toStateArray, toOffsetIncrsArray, numCasesPerVector, numVectors) in enumerate(machines):
       w('')
       w.outdent()
-      w('// %d vectors; %d states per vector; array length = %d' % \
+      if transpose or n == 2:
+        w('// %d vectors; %d states per vector; array length = %d' % \
         (numVectors, numCasesPerVector, numVectors * numCasesPerVector))
+      else:
+        w(STATE_COMMENT[i]) 
       w.indent()
       if PACKED:
         # pack in python
@@ -417,7 +498,7 @@ def main():
   for sub, repl in subs:
     s = s.replace(sub, repl)
 
-  open(fileOut, 'w').write(s)
+  open(fileOut, 'w', encoding='utf-8').write(s)
 
   print('Wrote %s [%d lines; %.1f KB]' % \
         (fileOut, len(w.l), os.path.getsize(fileOut) / 1024.))

@@ -19,10 +19,8 @@ package org.apache.lucene.tests.mockfile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -31,8 +29,8 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new LeakFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    LeakFS provider = new LeakFS(path.getFileSystem());
+    return provider.wrapPath(path);
   }
 
   /** Test that the delegate gets closed on exception in HandleTrackingFS#onClose */
@@ -40,7 +38,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
     Path path =
         wrap(createTempDir()); // we are using LeakFS under the hood if we don't get closed the test
     // fails
-    FileSystem fs =
+    HandleTrackingFS provider =
         new HandleTrackingFS("test://", path.getFileSystem()) {
           @Override
           protected void onClose(Path path, Object stream) throws IOException {
@@ -51,8 +49,8 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
           protected void onOpen(Path path, Object stream) throws IOException {
             //
           }
-        }.getFileSystem(URI.create("file:///"));
-    Path dir = new FilterPath(path, fs);
+        };
+    Path dir = provider.wrapPath(path);
 
     OutputStream file = Files.newOutputStream(dir.resolve("somefile"));
     file.write(5);
@@ -63,7 +61,6 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
 
     InputStream stream = Files.newInputStream(dir.resolve("somefile"));
     expectThrows(IOException.class, stream::close);
-    fs.close();
 
     DirectoryStream<Path> dirStream = Files.newDirectoryStream(dir);
     expectThrows(IOException.class, dirStream::close);
@@ -74,7 +71,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
     Path path =
         wrap(createTempDir()); // we are using LeakFS under the hood if we don't get closed the test
     // fails
-    FileSystem fs =
+    HandleTrackingFS provider =
         new HandleTrackingFS("test://", path.getFileSystem()) {
           @Override
           protected void onClose(Path path, Object stream) throws IOException {}
@@ -83,17 +80,15 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
           protected void onOpen(Path path, Object stream) throws IOException {
             throw new IOException("boom");
           }
-        }.getFileSystem(URI.create("file:///"));
-    Path dir = new FilterPath(path, fs);
+        };
+    Path dir = provider.wrapPath(path);
 
     expectThrows(IOException.class, () -> Files.newOutputStream(dir.resolve("somefile")));
 
     expectThrows(IOException.class, () -> Files.newByteChannel(dir.resolve("somefile")));
 
     expectThrows(IOException.class, () -> Files.newInputStream(dir.resolve("somefile")));
-    fs.close();
 
     expectThrows(IOException.class, () -> Files.newDirectoryStream(dir));
-    fs.close();
   }
 }

@@ -27,8 +27,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -68,8 +73,9 @@ public class TestDemo extends LuceneTestCase {
         assertEquals(1, hits.totalHits.value);
 
         // Iterate through the results.
+        StoredFields storedFields = searcher.storedFields();
         for (int i = 0; i < hits.scoreDocs.length; i++) {
-          Document hitDoc = searcher.doc(hits.scoreDocs[i].doc);
+          Document hitDoc = storedFields.document(hits.scoreDocs[i].doc);
           assertEquals(text, hitDoc.get("fieldname"));
         }
 

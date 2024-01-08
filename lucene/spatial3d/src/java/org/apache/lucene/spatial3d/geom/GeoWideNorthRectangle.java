@@ -28,8 +28,10 @@ import java.io.OutputStream;
 class GeoWideNorthRectangle extends GeoBaseBBox {
   /** Bottom latitude */
   protected final double bottomLat;
+
   /** Left longitude */
   protected final double leftLon;
+
   /** Right longitude */
   protected final double rightLon;
 
@@ -38,20 +40,25 @@ class GeoWideNorthRectangle extends GeoBaseBBox {
 
   /** The lower right hand corner point */
   protected final GeoPoint LRHC;
+
   /** The lower left hand corner point */
   protected final GeoPoint LLHC;
 
   /** The bottom plane */
   protected final SidedPlane bottomPlane;
+
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
 
   /** Notable points for the bottom plane */
   protected final GeoPoint[] bottomPlanePoints;
+
   /** Notable points for the left plane */
   protected final GeoPoint[] leftPlanePoints;
+
   /** Notable points for the right plane */
   protected final GeoPoint[] rightPlanePoints;
 
@@ -93,7 +100,7 @@ class GeoWideNorthRectangle extends GeoBaseBBox {
     if (extent < 0.0) {
       extent += 2.0 * Math.PI;
     }
-    if (extent < Math.PI) {
+    if (extent < GeoWideRectangle.MIN_WIDE_EXTENT) {
       throw new IllegalArgumentException("Width of rectangle too small");
     }
 

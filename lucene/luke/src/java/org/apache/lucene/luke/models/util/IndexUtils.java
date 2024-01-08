@@ -36,12 +36,33 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CheckIndex;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KeepOnlyLastCommitDeletionPolicy;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NoDeletionPolicy;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -76,7 +97,7 @@ public final class IndexUtils {
     // find all valid index directories in this directory
     Files.walkFileTree(
         root,
-        new SimpleFileVisitor<Path>() {
+        new SimpleFileVisitor<>() {
           @Override
           public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs)
               throws IOException {
@@ -105,7 +126,7 @@ public final class IndexUtils {
     if (readers.size() == 1) {
       return readers.get(0);
     } else {
-      return new MultiReader(readers.toArray(new IndexReader[readers.size()]));
+      return new MultiReader(readers.toArray(new IndexReader[0]));
     }
   }
 
@@ -426,7 +447,7 @@ public final class IndexUtils {
   public static Collection<String> getFieldNames(IndexReader reader) {
     return StreamSupport.stream(getFieldInfos(reader).spliterator(), false)
         .map(f -> f.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   /**

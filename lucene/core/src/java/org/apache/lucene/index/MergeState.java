@@ -21,6 +21,7 @@ import static org.apache.lucene.index.IndexWriter.isCongruentSort;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -176,16 +177,13 @@ public class MergeState {
 
       final int docBase = totalDocs;
       docMaps[i] =
-          new DocMap() {
-            @Override
-            public int get(int docID) {
-              if (liveDocs == null) {
-                return docBase + docID;
-              } else if (liveDocs.get(docID)) {
-                return docBase + (int) delDocMap.get(docID);
-              } else {
-                return -1;
-              }
+          docID -> {
+            if (liveDocs == null) {
+              return docBase + docID;
+            } else if (liveDocs.get(docID)) {
+              return docBase + (int) delDocMap.get(docID);
+            } else {
+              return -1;
             }
           };
       totalDocs += reader.numDocs();
@@ -215,7 +213,9 @@ public class MergeState {
         infoStream.message(
             "SM",
             String.format(
-                Locale.ROOT, "%.2f msec to build merge sorted DocMaps", (t1 - t0) / 1000000.0));
+                Locale.ROOT,
+                "%.2f msec to build merge sorted DocMaps",
+                (t1 - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
       }
       return result;
     }
@@ -239,13 +239,10 @@ public class MergeState {
   }
 
   /** A map of doc IDs. */
-  public abstract static class DocMap {
-    /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-    // Explicitly declared so that we have non-empty javadoc
-    protected DocMap() {}
-
+  @FunctionalInterface
+  public interface DocMap {
     /** Return the mapped docID or -1 if the given doc is not mapped. */
-    public abstract int get(int docID);
+    int get(int docID);
   }
 
   static PackedLongValues removeDeletes(final int maxDoc, final Bits liveDocs) {

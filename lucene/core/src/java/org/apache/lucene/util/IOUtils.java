@@ -175,43 +175,6 @@ public final class IOUtils {
   }
 
   /**
-   * Opens a Reader for the given resource using a {@link CharsetDecoder}. Unlike Java's defaults
-   * this reader will throw an exception if your it detects the read charset doesn't match the
-   * expected {@link Charset}.
-   *
-   * <p>Decoding readers are useful to load configuration files, stopword lists or synonym files to
-   * detect character set problems. However, it's not recommended to use as a common purpose reader.
-   *
-   * @param clazz the class used to locate the resource
-   * @param resource the resource name to load
-   * @param charSet the expected charset
-   * @return a reader to read the given file
-   * @deprecated {@link Class#getResourceAsStream(String)} is caller sensitive and cannot load
-   *     resources across Java Modules. Please call the {@code getResourceAsStream()} directly and
-   *     use {@link #requireResourceNonNull(Object,String)} to signal missing resources {@code null}
-   */
-  @Deprecated(forRemoval = true, since = "9.1")
-  public static Reader getDecodingReader(Class<?> clazz, String resource, Charset charSet)
-      throws IOException {
-    var argModule = clazz.getModule();
-    if (argModule.isNamed() && argModule != IOUtils.class.getModule()) {
-      throw new UnsupportedOperationException(
-          "getDecodingReader(class,...) does not work when Java Module System is enabled.");
-    }
-    InputStream stream = requireResourceNonNull(clazz.getResourceAsStream(resource), resource);
-    boolean success = false;
-    try {
-      final Reader reader = getDecodingReader(stream, charSet);
-      success = true;
-      return reader;
-    } finally {
-      if (!success) {
-        IOUtils.close(stream);
-      }
-    }
-  }
-
-  /**
    * Deletes all given files, suppressing all thrown IOExceptions.
    *
    * <p>Note that the files should not be null.
@@ -504,26 +467,5 @@ public final class IOUtils {
     IOUtils.close(
         collection.stream().filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))
             ::iterator);
-  }
-
-  /**
-   * An IO operation with a single input.
-   *
-   * @see java.util.function.Consumer
-   */
-  @FunctionalInterface
-  public interface IOConsumer<T> {
-    /** Performs this operation on the given argument. */
-    void accept(T input) throws IOException;
-  }
-
-  /**
-   * A Function that may throw an IOException
-   *
-   * @see java.util.function.Function
-   */
-  @FunctionalInterface
-  public interface IOFunction<T, R> {
-    R apply(T t) throws IOException;
   }
 }

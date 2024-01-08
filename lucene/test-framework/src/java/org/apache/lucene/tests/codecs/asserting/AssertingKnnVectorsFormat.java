@@ -18,15 +18,20 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 
@@ -49,6 +54,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     return new AssertingKnnVectorsReader(delegate.fieldsReader(state), state.fieldInfos);
   }
 
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+  }
+
   static class AssertingKnnVectorsWriter extends KnnVectorsWriter {
     final KnnVectorsWriter delegate;
 
@@ -58,15 +68,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-        throws IOException {
+    public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+      return delegate.addField(fieldInfo);
+    }
+
+    @Override
+    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+      delegate.flush(maxDoc, sortMap);
+    }
+
+    @Override
+    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       assert fieldInfo != null;
-      assert knnVectorsReader != null;
-      // assert that knnVectorsReader#getVectorValues returns different instances upon repeated
-      // calls
-      assert knnVectorsReader.getVectorValues(fieldInfo.name)
-          != knnVectorsReader.getVectorValues(fieldInfo.name);
-      delegate.writeField(fieldInfo, knnVectorsReader);
+      assert mergeState != null;
+      delegate.mergeOneField(fieldInfo, mergeState);
     }
 
     @Override
@@ -77,6 +92,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void close() throws IOException {
       delegate.close();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return delegate.ramBytesUsed();
     }
   }
 
@@ -96,10 +116,26 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
-      assert fi != null && fi.getVectorDimension() > 0;
-      VectorValues values = delegate.getVectorValues(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+      FloatVectorValues floatValues = delegate.getFloatVectorValues(field);
+      assert floatValues != null;
+      assert floatValues.docID() == -1;
+      assert floatValues.size() >= 0;
+      assert floatValues.dimension() > 0;
+      return floatValues;
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      ByteVectorValues values = delegate.getByteVectorValues(field);
       assert values != null;
       assert values.docID() == -1;
       assert values.size() >= 0;
@@ -108,13 +144,23 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+        throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
-      assert fi != null && fi.getVectorDimension() > 0;
-      TopDocs hits = delegate.search(field, target, k, acceptDocs);
-      assert hits != null;
-      assert hits.scoreDocs.length <= k;
-      return hits;
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+      delegate.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+        throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      delegate.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override

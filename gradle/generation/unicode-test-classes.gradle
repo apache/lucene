@@ -1,0 +1,76 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Regenerates test classes from unicode data.
+
+configure(project(":lucene:test-framework")) {
+  task generateEmojiTokenizationTestInternal() {
+    def unicodeVersion = "12.1"
+
+    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+    def genScript = file("${genDir}/generateEmojiTokenizationTest.pl")
+    def genOutput = file("${genDir}/EmojiTokenizationTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+
+    description "Regenerate ${genOutput}"
+    group "generation"
+
+    inputs.file genScript
+    inputs.property "unicodeVersion", unicodeVersion
+    outputs.file genOutput
+
+    doLast {
+      quietExec {
+        workingDir genDir
+        executable project.externalTool("perl")
+        args = [
+            genScript,
+            "-v", unicodeVersion
+        ]
+      }
+    }
+  }
+  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
+  task generateJavaUnicodeWordBreakTestInternal() {
+    def unicodeVersion = "12.1"
+
+    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+    def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
+    def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+
+    description "Regenerate ${genOutput}"
+    group "generation"
+
+    inputs.file genScript
+    inputs.property "unicodeVersion", unicodeVersion
+    outputs.file genOutput
+
+    doLast {
+      quietExec {
+        workingDir genDir
+        executable project.externalTool("perl")
+        args = [
+            genScript,
+            "-v", unicodeVersion
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
+}

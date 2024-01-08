@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
-/** @lucene.experimental */
+/**
+ * @lucene.experimental
+ */
 abstract class Consts {
   static final String FULL = "$full_path$";
   static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";

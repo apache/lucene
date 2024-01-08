@@ -49,6 +49,8 @@ public class TestMinimalCodec extends LuceneTestCase {
               .setCodec(useCompoundFile ? new MinimalCompoundCodec() : new MinimalCodec())
               .setUseCompoundFile(useCompoundFile);
       if (!useCompoundFile) {
+        // Avoid using MockMP as it randomly enables compound file creation
+        writerConfig.setMergePolicy(newMergePolicy(random(), false));
         writerConfig.getMergePolicy().setNoCFSRatio(0.0);
         writerConfig.getMergePolicy().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       }

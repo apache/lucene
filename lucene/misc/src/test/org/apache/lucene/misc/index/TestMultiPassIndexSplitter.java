@@ -73,7 +73,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     IndexReader ir;
     ir = DirectoryReader.open(dirs[0]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1); // rounding error
-    Document doc = ir.document(0);
+    Document doc = ir.storedFields().document(0);
     assertEquals("0", doc.get("id"));
     TermsEnum te = MultiTerms.getTerms(ir, "id").iterator();
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("1")));
@@ -81,7 +81,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     ir.close();
     ir = DirectoryReader.open(dirs[1]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
-    doc = ir.document(0);
+    doc = ir.storedFields().document(0);
     assertEquals("1", doc.get("id"));
     te = MultiTerms.getTerms(ir, "id").iterator();
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("0")));
@@ -90,7 +90,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     ir.close();
     ir = DirectoryReader.open(dirs[2]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
-    doc = ir.document(0);
+    doc = ir.storedFields().document(0);
     assertEquals("2", doc.get("id"));
 
     te = MultiTerms.getTerms(ir, "id").iterator();
@@ -111,19 +111,19 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     IndexReader ir;
     ir = DirectoryReader.open(dirs[0]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
-    Document doc = ir.document(0);
+    Document doc = ir.storedFields().document(0);
     assertEquals("0", doc.get("id"));
     int start = ir.numDocs();
     ir.close();
     ir = DirectoryReader.open(dirs[1]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
-    doc = ir.document(0);
+    doc = ir.storedFields().document(0);
     assertEquals(start + "", doc.get("id"));
     start += ir.numDocs();
     ir.close();
     ir = DirectoryReader.open(dirs[2]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
-    doc = ir.document(0);
+    doc = ir.storedFields().document(0);
     assertEquals(start + "", doc.get("id"));
     // make sure the deleted doc is not here
     TermsEnum te = MultiTerms.getTerms(ir, "id").iterator();

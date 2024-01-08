@@ -32,7 +32,6 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -179,10 +178,8 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
         if (query != null) {
           booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
-        TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-        indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
 
-        int ret = totalHitCountCollector.getTotalHits();
+        int ret = indexSearcher.count(booleanQuery.build());
         if (ret != 0) {
           searched.put(cclass, ret);
         }

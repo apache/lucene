@@ -18,11 +18,13 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -70,10 +72,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
             "nutch is an internet search engine with web crawler and is using lucene and hadoop"));
     reader = writer.getReader();
     writer.close();
-    // we do not use newSearcher because the assertingXXX layers break
-    // the toString representations we are relying on
-    // TODO: clean that up
-    searcher = new IndexSearcher(reader);
+    searcher = newSearcher(reader, true, false);
     searcher.setSimilarity(new ClassicSimilarity());
     scorerSearcher = new ScorerIndexSearcher(reader);
     scorerSearcher.setSimilarity(new CountingSimilarity());
@@ -132,9 +131,23 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
 
   static Map<Integer, Integer> getDocCounts(IndexSearcher searcher, Query query)
       throws IOException {
-    MyCollector collector = new MyCollector();
-    searcher.search(query, collector);
-    return collector.docCounts;
+    return searcher.search(
+        query,
+        new CollectorManager<MyCollector, Map<Integer, Integer>>() {
+          @Override
+          public MyCollector newCollector() {
+            return new MyCollector();
+          }
+
+          @Override
+          public Map<Integer, Integer> reduce(Collection<MyCollector> collectors) {
+            Map<Integer, Integer> docCounts = new HashMap<>();
+            for (MyCollector myCollector : collectors) {
+              docCounts.putAll(myCollector.docCounts);
+            }
+            return docCounts;
+          }
+        });
   }
 
   static class MyCollector extends FilterCollector {
@@ -234,11 +247,11 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     query.add(new TermQuery(new Term(F2, "crawler")), Occur.SHOULD);
     query.setMinimumNumberShouldMatch(2);
     query.add(new MatchAllDocsQuery(), Occur.MUST);
-    ScorerSummarizingCollector collector = new ScorerSummarizingCollector();
-    searcher.search(query.build(), collector);
-    assertEquals(1, collector.getNumHits());
-    assertFalse(collector.getSummaries().isEmpty());
-    for (String summary : collector.getSummaries()) {
+    ScoreSummary scoreSummary =
+        searcher.search(query.build(), new ScorerSummarizingCollectorManager());
+    assertEquals(1, scoreSummary.numHits.get());
+    assertFalse(scoreSummary.summaries.isEmpty());
+    for (String summary : scoreSummary.summaries) {
       assertEquals(
           "ConjunctionScorer\n"
               + "    MUST ConstantScoreScorer\n"
@@ -254,26 +267,41 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     final BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(F2, "nutch")), Occur.SHOULD);
     query.add(new TermQuery(new Term(F2, "miss")), Occur.SHOULD);
-    ScorerSummarizingCollector collector = new ScorerSummarizingCollector();
-    scorerSearcher.search(query.build(), collector);
-    assertEquals(1, collector.getNumHits());
-    assertFalse(collector.getSummaries().isEmpty());
-    for (String summary : collector.getSummaries()) {
+    ScoreSummary scoreSummary =
+        scorerSearcher.search(query.build(), new ScorerSummarizingCollectorManager());
+    assertEquals(1, scoreSummary.numHits.get());
+    assertFalse(scoreSummary.summaries.isEmpty());
+    for (String summary : scoreSummary.summaries) {
       assertEquals("TermScorer body:nutch", summary);
     }
   }
 
-  private static class ScorerSummarizingCollector implements Collector {
+  private static class ScoreSummary {
     private final List<String> summaries = new ArrayList<>();
-    private int[] numHits = new int[1];
+    private final AtomicInteger numHits = new AtomicInteger();
+  }
 
-    public int getNumHits() {
-      return numHits[0];
+  private static class ScorerSummarizingCollectorManager
+      implements CollectorManager<ScorerSummarizingCollector, ScoreSummary> {
+    @Override
+    public ScorerSummarizingCollector newCollector() {
+      return new ScorerSummarizingCollector();
     }
 
-    public List<String> getSummaries() {
-      return summaries;
+    @Override
+    public ScoreSummary reduce(Collection<ScorerSummarizingCollector> collectors)
+        throws IOException {
+      ScoreSummary scoreSummary = new ScoreSummary();
+      for (ScorerSummarizingCollector collector : collectors) {
+        scoreSummary.summaries.addAll(collector.scoreSummary.summaries);
+        scoreSummary.numHits.addAndGet(collector.scoreSummary.numHits.get());
+      }
+      return scoreSummary;
     }
+  }
+
+  private static class ScorerSummarizingCollector implements Collector {
+    private final ScoreSummary scoreSummary = new ScoreSummary();
 
     @Override
     public ScoreMode scoreMode() {
@@ -288,12 +316,12 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
         public void setScorer(Scorable scorer) throws IOException {
           final StringBuilder builder = new StringBuilder();
           summarizeScorer(builder, scorer, 0);
-          summaries.add(builder.toString());
+          scoreSummary.summaries.add(builder.toString());
         }
 
         @Override
-        public void collect(int doc) throws IOException {
-          numHits[0]++;
+        public void collect(int doc) {
+          scoreSummary.numHits.incrementAndGet();
         }
       };
     }

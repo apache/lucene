@@ -27,6 +27,8 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
@@ -57,11 +59,39 @@ public class TestProfilerCollector extends LuceneTestCase {
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, collector);
 
+    MatcherAssert.assertThat(collector.getReason(), equalTo("total_hits"));
+    MatcherAssert.assertThat(collector.getName(), equalTo("TotalHitCountCollector"));
     ProfilerCollectorResult profileResult = collector.getProfileResult();
     MatcherAssert.assertThat(profileResult.getReason(), equalTo("total_hits"));
+    MatcherAssert.assertThat(profileResult.getName(), equalTo("TotalHitCountCollector"));
     MatcherAssert.assertThat(profileResult.getTime(), greaterThan(0L));
+    MatcherAssert.assertThat(profileResult.getTime(), equalTo(collector.getTime()));
 
     reader.close();
     dir.close();
+  }
+
+  public void testProfilerCollectorCustomName() {
+    ProfilerCollector collector =
+        new ProfilerCollector(
+            new TestCollector(new TotalHitCountCollector()), "filter", List.of()) {
+          @Override
+          protected String deriveCollectorName(Collector c) {
+            return c.toString();
+          }
+        };
+
+    assertEquals("TestCollector(TotalHitCountCollector)", collector.getName());
+  }
+
+  private static final class TestCollector extends FilterCollector {
+    TestCollector(Collector in) {
+      super(in);
+    }
+
+    @Override
+    public String toString() {
+      return getClass().getSimpleName() + "(" + in.getClass().getSimpleName() + ")";
+    }
   }
 }

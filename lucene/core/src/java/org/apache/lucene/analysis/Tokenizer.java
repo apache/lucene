@@ -103,7 +103,9 @@ public abstract class Tokenizer extends TokenStream {
     inputPending = ILLEGAL_STATE_READER;
   }
 
-  /** @lucene.internal */
+  /**
+   * @lucene.internal
+   */
   protected void setReaderTestPoint() {}
 
   private static final Reader ILLEGAL_STATE_READER =

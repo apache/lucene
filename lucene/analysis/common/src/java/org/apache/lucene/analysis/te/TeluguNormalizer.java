@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  *
  * @since 9.0.0
  */
-public class TeluguNormalizer {
+class TeluguNormalizer {
 
   /**
    * Normalize an input buffer of Telugu text
@@ -34,7 +34,7 @@ public class TeluguNormalizer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int normalize(char s[], int len) {
+  int normalize(char s[], int len) {
 
     for (int i = 0; i < len; i++) {
       switch (s[i]) {

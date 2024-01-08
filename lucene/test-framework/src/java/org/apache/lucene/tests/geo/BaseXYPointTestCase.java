@@ -47,24 +47,23 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -594,7 +593,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       Document doc = new Document();
       xs[2 * id] = nextX();
       ys[2 * id] = nextY();
-      doc.add(newStringField("id", "" + id, Field.Store.YES));
+      doc.add(new StringField("id", "" + id, Field.Store.YES));
       addPointToDoc(FIELD_NAME, doc, xs[2 * id], ys[2 * id]);
       xs[2 * id + 1] = nextX();
       ys[2 * id + 1] = nextY();
@@ -631,6 +630,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < ys.length / 2; docID++) {
         float yDoc1 = ys[2 * docID];
         float xDoc1 = xs[2 * docID];
@@ -643,14 +643,14 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should not match but did");
           }
           System.out.println("  rect=" + rect);
-          System.out.println("  x=" + xDoc1 + " y=" + yDoc1 + "\n  x=" + xDoc2 + " y" + yDoc2);
+          System.out.println("  x=" + xDoc1 + " y=" + yDoc1 + "\n  x=" + xDoc2 + " y=" + yDoc2);
           System.out.println("  result1=" + result1 + " result2=" + result2);
           fail = true;
         }
@@ -773,7 +773,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
   protected abstract Query newGeometryQuery(String field, XYGeometry... geometries);
 
-  static final boolean rectContainsPoint(XYRectangle rect, double x, double y) {
+  static boolean rectContainsPoint(XYRectangle rect, double x, double y) {
     if (y < rect.minY || y > rect.maxY) {
       return false;
     }
@@ -805,6 +805,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -887,6 +889,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -986,6 +990,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1069,6 +1075,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1146,7 +1154,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       throws IOException {
     for (int id = 0; id < xs.length; id++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (Float.isNaN(xs[id]) == false && Float.isNaN(ys[id]) == false) {
         addPointToDoc(FIELD_NAME, doc, xs[id], ys[id]);
@@ -1168,29 +1176,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
   }
 
   private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
-    final FixedBitSet hits = new FixedBitSet(maxDoc);
-    s.search(
-        query,
-        new SimpleCollector() {
-
-          private int docBase;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) {
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) {
-            hits.set(docBase + doc);
-          }
-        });
-    return hits;
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   private void buildError(
@@ -1346,6 +1332,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numQueries; i++) {
       XYCircle circle = ShapeTestUtil.nextCircle();
       float x = circle.getX();
@@ -1354,8 +1341,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
       BitSet expected = new BitSet();
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        float docX = reader.document(doc).getField("x").numericValue().floatValue();
-        float docY = reader.document(doc).getField("y").numericValue().floatValue();
+        float docX = storedFields.document(doc).getField("x").numericValue().floatValue();
+        float docY = storedFields.document(doc).getField("y").numericValue().floatValue();
         double distance = cartesianDistance(x, y, docX, docY);
         if (distance <= radius) {
           expected.set(doc);
@@ -1375,10 +1362,10 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       } catch (AssertionError e) {
         System.out.println("center: (" + x + "," + y + "), radius=" + radius);
         for (int doc = 0; doc < reader.maxDoc(); doc++) {
-          float docX = reader.document(doc).getField("x").numericValue().floatValue();
-          float docY = reader.document(doc).getField("y").numericValue().floatValue();
+          float docX = storedFields.document(doc).getField("x").numericValue().floatValue();
+          float docY = storedFields.document(doc).getField("y").numericValue().floatValue();
           double distance = cartesianDistance(x, y, docX, docY);
-          System.out.println("" + doc + ": (" + x + "," + y + "), distance=" + distance);
+          System.out.println(doc + ": (" + x + "," + y + "), distance=" + distance);
         }
         throw e;
       }

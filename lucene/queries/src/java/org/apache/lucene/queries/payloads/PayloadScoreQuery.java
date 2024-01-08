@@ -19,7 +19,6 @@ package org.apache.lucene.queries.payloads;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -83,12 +82,12 @@ public class PayloadScoreQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query matchRewritten = wrappedQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query matchRewritten = wrappedQuery.rewrite(indexSearcher);
     if (wrappedQuery != matchRewritten && matchRewritten instanceof SpanQuery) {
       return new PayloadScoreQuery((SpanQuery) matchRewritten, function, decoder, includeSpanScore);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

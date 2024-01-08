@@ -223,7 +223,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
             } else if (b.value.doubleValue() > a.value.doubleValue()) {
               return 1;
             } else {
-              return 0;
+              return a.dim.compareTo(b.dim);
             }
           }
         });
@@ -254,14 +254,38 @@ public abstract class FacetTestCase extends LuceneTestCase {
     assertEquals(a.dim, b.dim);
     assertTrue(Arrays.equals(a.path, b.path));
     assertEquals(a.childCount, b.childCount);
-    assertEquals(a.value.floatValue(), b.value.floatValue(), a.value.floatValue() / 1e5);
+    assertNumericValuesEquals(a.value, b.value);
     assertEquals(a.labelValues.length, b.labelValues.length);
     for (int i = 0; i < a.labelValues.length; i++) {
       assertEquals(a.labelValues[i].label, b.labelValues[i].label);
-      assertEquals(
-          a.labelValues[i].value.floatValue(),
-          b.labelValues[i].value.floatValue(),
-          a.labelValues[i].value.floatValue() / 1e5);
+      assertNumericValuesEquals(a.labelValues[i].value, b.labelValues[i].value);
     }
+  }
+
+  protected void assertNumericValuesEquals(Number a, Number b) {
+    assertTrue(a.getClass().isInstance(b));
+    if (a instanceof Float) {
+      assertEquals(a.floatValue(), b.floatValue(), a.floatValue() / 1e5);
+    } else if (a instanceof Double) {
+      assertEquals(a.doubleValue(), b.doubleValue(), a.doubleValue() / 1e5);
+    } else {
+      assertEquals(a, b);
+    }
+  }
+
+  protected void assertFacetResult(
+      FacetResult result,
+      String expectedDim,
+      String[] expectedPath,
+      int expectedChildCount,
+      Number expectedValue,
+      LabelAndValue... expectedChildren) {
+    assertEquals(expectedDim, result.dim);
+    assertArrayEquals(expectedPath, result.path);
+    assertEquals(expectedChildCount, result.childCount);
+    assertNumericValuesEquals(expectedValue, result.value);
+    assertEquals(expectedChildren.length, result.labelValues.length);
+    // assert children equal with no assumption of the children ordering
+    assertTrue(Arrays.asList(result.labelValues).containsAll(Arrays.asList(expectedChildren)));
   }
 }

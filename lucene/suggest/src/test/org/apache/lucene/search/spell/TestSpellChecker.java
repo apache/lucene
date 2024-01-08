@@ -196,6 +196,12 @@ public class TestSpellChecker extends LuceneTestCase {
 
     {
       String[] similar =
+          spellChecker.suggestSimilar("", 2, r, "field1", SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
+      assertEquals(0, similar.length);
+    }
+
+    {
+      String[] similar =
           spellChecker.suggestSimilar(
               "eighty", 2, r, "field1", SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
       assertEquals(1, similar.length);
@@ -208,6 +214,12 @@ public class TestSpellChecker extends LuceneTestCase {
               "eight", 2, r, "field1", SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
       assertEquals(1, similar.length);
       assertEquals("eight", similar[0]);
+    }
+
+    {
+      String[] similar =
+          spellChecker.suggestSimilar("", 5, r, "field1", SuggestMode.SUGGEST_MORE_POPULAR);
+      assertEquals(0, similar.length);
     }
 
     {
@@ -227,6 +239,12 @@ public class TestSpellChecker extends LuceneTestCase {
     {
       String[] similar =
           spellChecker.suggestSimilar("eight", 5, r, "field1", SuggestMode.SUGGEST_MORE_POPULAR);
+      assertEquals(0, similar.length);
+    }
+
+    {
+      String[] similar =
+          spellChecker.suggestSimilar("", 5, r, "field1", SuggestMode.SUGGEST_ALWAYS);
       assertEquals(0, similar.length);
     }
 
@@ -346,10 +364,7 @@ public class TestSpellChecker extends LuceneTestCase {
   }
 
   private void addwords(IndexReader r, SpellChecker sc, String field) throws IOException {
-    long time = System.currentTimeMillis();
     sc.indexDictionary(new LuceneDictionary(r, field), newIndexWriterConfig(null), false);
-    time = System.currentTimeMillis() - time;
-    // System.out.println("time to build " + field + ": " + time);
   }
 
   private int numdoc() throws IOException {

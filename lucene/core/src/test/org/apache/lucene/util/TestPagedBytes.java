@@ -17,7 +17,8 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Random;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IOContext;
@@ -115,9 +116,9 @@ public class TestPagedBytes extends LuceneTestCase {
       final DataOutput out = p.getDataOutput();
       final int numBytes;
       if (TEST_NIGHTLY) {
-        numBytes = random().nextInt(10_000_000);
+        numBytes = TestUtil.nextInt(random(), 1, 10_000_000);
       } else {
-        numBytes = random().nextInt(1_000_000);
+        numBytes = TestUtil.nextInt(random(), 1, 1_000_000);
       }
 
       final byte[] answer = new byte[numBytes];

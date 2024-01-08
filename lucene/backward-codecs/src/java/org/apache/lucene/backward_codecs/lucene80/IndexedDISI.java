@@ -219,7 +219,7 @@ final class IndexedDISI extends DocIdSetIterator {
         // Flush block
         flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
         // Reset for next block
-        buffer.clear(0, buffer.length());
+        buffer.clear();
         totalCardinality += blockCardinality;
         blockCardinality = 0;
       }
@@ -233,7 +233,7 @@ final class IndexedDISI extends DocIdSetIterator {
               jumps, out.getFilePointer() - origo, totalCardinality, jumpBlockIndex, prevBlock + 1);
       totalCardinality += blockCardinality;
       flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
-      buffer.clear(0, buffer.length());
+      buffer.clear();
       prevBlock++;
     }
     final int lastBlock =
@@ -469,8 +469,9 @@ final class IndexedDISI extends DocIdSetIterator {
       // NO_MORE_DOCS
       final int inRangeBlockIndex =
           blockIndex < jumpTableEntryCount ? blockIndex : jumpTableEntryCount - 1;
-      final int index = jumpTable.readInt(inRangeBlockIndex * Integer.BYTES * 2);
-      final int offset = jumpTable.readInt(inRangeBlockIndex * Integer.BYTES * 2 + Integer.BYTES);
+      final int index = jumpTable.readInt(inRangeBlockIndex * (long) Integer.BYTES * 2);
+      final int offset =
+          jumpTable.readInt(inRangeBlockIndex * (long) Integer.BYTES * 2 + Integer.BYTES);
       this.nextBlockIndex = index - 1; // -1 to compensate for the always-added 1 in readBlockHeader
       slice.seek(offset);
       readBlockHeader();
@@ -697,7 +698,7 @@ final class IndexedDISI extends DocIdSetIterator {
 
     // Position the counting logic just after the rank point
     final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
-    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * Long.BYTES);
+    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
     long rankWord = disi.slice.readLong();
     int denseNOO = rank + Long.bitCount(rankWord);
 

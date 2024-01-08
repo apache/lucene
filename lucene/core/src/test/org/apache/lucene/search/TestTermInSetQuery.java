@@ -19,12 +19,14 @@ package org.apache.lucene.search;
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -48,6 +50,57 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 public class TestTermInSetQuery extends LuceneTestCase {
+
+  public void testAllDocsInFieldTerm() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    String field = "f";
+
+    BytesRef denseTerm = new BytesRef(TestUtil.randomAnalysisString(random(), 10, true));
+
+    Set<BytesRef> randomTerms = new HashSet<>();
+    while (randomTerms.size()
+        < AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
+      randomTerms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
+    }
+    assert randomTerms.size()
+        == AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
+    BytesRef[] otherTerms = new BytesRef[randomTerms.size()];
+    int idx = 0;
+    for (BytesRef term : randomTerms) {
+      otherTerms[idx++] = term;
+    }
+
+    // Every doc with a value for `field` will contain `denseTerm`:
+    int numDocs = 10 * otherTerms.length;
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new StringField(field, denseTerm, Store.NO));
+      BytesRef sparseTerm = otherTerms[i % otherTerms.length];
+      doc.add(new StringField(field, sparseTerm, Store.NO));
+      iw.addDocument(doc);
+    }
+
+    // Make sure there are some docs in the index that don't contain a value for the field at all:
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
+    }
+
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    List<BytesRef> queryTerms = Arrays.stream(otherTerms).collect(Collectors.toList());
+    queryTerms.add(denseTerm);
+
+    TermInSetQuery query = new TermInSetQuery(field, queryTerms);
+    TopDocs topDocs = searcher.search(query, numDocs);
+    assertEquals(numDocs, topDocs.totalHits.value);
+
+    reader.close();
+    dir.close();
+  }
 
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
@@ -140,40 +193,42 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
     }
 
-    TermInSetQuery tq1 = new TermInSetQuery("thing", newBytesRef("apple"));
-    TermInSetQuery tq2 = new TermInSetQuery("thing", newBytesRef("orange"));
+    TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
+    TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
     assertFalse(tq1.hashCode() == tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
-    tq1 = new TermInSetQuery("thing", newBytesRef("apple"));
-    tq2 = new TermInSetQuery("thing2", newBytesRef("apple"));
+    tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
+    tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
     assertFalse(tq1.hashCode() == tq2.hashCode());
   }
 
   public void testSimpleEquals() {
     // Two terms with the same hash code
     assertEquals("AaAaBB".hashCode(), "BBBBBB".hashCode());
-    TermInSetQuery left = new TermInSetQuery("id", newBytesRef("AaAaAa"), newBytesRef("AaAaBB"));
-    TermInSetQuery right = new TermInSetQuery("id", newBytesRef("AaAaAa"), newBytesRef("BBBBBB"));
+    TermInSetQuery left =
+        new TermInSetQuery("id", List.of(newBytesRef("AaAaAa"), newBytesRef("AaAaBB")));
+    TermInSetQuery right =
+        new TermInSetQuery("id", List.of(newBytesRef("AaAaAa"), newBytesRef("BBBBBB")));
     assertFalse(left.equals(right));
   }
 
   public void testToString() {
     TermInSetQuery termsQuery =
-        new TermInSetQuery("field1", newBytesRef("a"), newBytesRef("b"), newBytesRef("c"));
+        new TermInSetQuery("field1", List.of(newBytesRef("a"), newBytesRef("b"), newBytesRef("c")));
     assertEquals("field1:(a b c)", termsQuery.toString());
   }
 
   public void testDedup() {
-    Query query1 = new TermInSetQuery("foo", newBytesRef("bar"));
-    Query query2 = new TermInSetQuery("foo", newBytesRef("bar"), newBytesRef("bar"));
+    Query query1 = new TermInSetQuery("foo", List.of(newBytesRef("bar")));
+    Query query2 = new TermInSetQuery("foo", List.of(newBytesRef("bar"), newBytesRef("bar")));
     QueryUtils.checkEqual(query1, query2);
   }
 
   public void testOrderDoesNotMatter() {
     // order of terms if different
-    Query query1 = new TermInSetQuery("foo", newBytesRef("bar"), newBytesRef("baz"));
-    Query query2 = new TermInSetQuery("foo", newBytesRef("baz"), newBytesRef("bar"));
+    Query query1 = new TermInSetQuery("foo", List.of(newBytesRef("bar"), newBytesRef("baz")));
+    Query query2 = new TermInSetQuery("foo", List.of(newBytesRef("baz"), newBytesRef("bar")));
     QueryUtils.checkEqual(query1, query2);
   }
 
@@ -187,7 +242,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
     final long expectedRamBytesUsed = query.ramBytesUsed();
     // error margin within 5%
-    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20.d);
+    assertEquals(
+        (double) expectedRamBytesUsed, (double) actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 
   private static class TermsCountingDirectoryReaderWrapper extends FilterDirectoryReader {
@@ -273,7 +329,10 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final List<BytesRef> terms = new ArrayList<>();
     // enough terms to avoid the rewrite
     final int numTerms =
-        TestUtil.nextInt(random(), TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD + 1, 100);
+        TestUtil.nextInt(
+            random(),
+            AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD + 1,
+            100);
     for (int i = 0; i < numTerms; ++i) {
       final BytesRef term = newBytesRef(RandomStrings.randomUnicodeOfCodepointLength(random(), 10));
       terms.add(term);
@@ -289,12 +348,13 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
   public void testBinaryToString() {
     TermInSetQuery query =
-        new TermInSetQuery("field", newBytesRef(new byte[] {(byte) 0xff, (byte) 0xfe}));
+        new TermInSetQuery("field", List.of(newBytesRef(new byte[] {(byte) 0xff, (byte) 0xfe})));
     assertEquals("field:([ff fe])", query.toString());
   }
 
   public void testIsConsideredCostlyByQueryCache() throws IOException {
-    TermInSetQuery query = new TermInSetQuery("foo", newBytesRef("bar"), newBytesRef("baz"));
+    TermInSetQuery query =
+        new TermInSetQuery("foo", List.of(newBytesRef("bar"), newBytesRef("baz")));
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
     assertFalse(policy.shouldCache(query));
     policy.onUse(query);
@@ -305,7 +365,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
   public void testVisitor() {
     // singleton reports back to consumeTerms()
-    TermInSetQuery singleton = new TermInSetQuery("field", newBytesRef("term1"));
+    TermInSetQuery singleton = new TermInSetQuery("field", List.of(newBytesRef("term1")));
     singleton.visit(
         new QueryVisitor() {
           @Override

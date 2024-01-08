@@ -26,8 +26,17 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 
 /** TestExplanations subclass focusing on span queries */
@@ -252,7 +261,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(new TermQuery(new Term(FIELD, "QQ")));
 
     BooleanQuery.Builder xxYYZZ = new BooleanQuery.Builder();
-    ;
+
     xxYYZZ.add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "yy")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "zz")), Occur.MUST_NOT);
@@ -260,7 +269,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(xxYYZZ.build());
 
     BooleanQuery.Builder xxW1 = new BooleanQuery.Builder();
-    ;
+
     xxW1.add(new TermQuery(new Term(FIELD, "xx")), Occur.MUST_NOT);
     xxW1.add(new TermQuery(new Term(FIELD, "w1")), Occur.MUST_NOT);
 
@@ -275,7 +284,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     q.add(new DisjunctionMaxQuery(disjuncts, 0.2f), Occur.SHOULD);
 
     BooleanQuery.Builder b = new BooleanQuery.Builder();
-    ;
+
     b.setMinimumNumberShouldMatch(2);
     b.add(snear("w1", "w2", 1, true), Occur.SHOULD);
     b.add(snear("w2", "w3", 1, true), Occur.SHOULD);
@@ -310,7 +319,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(new TermQuery(new Term(FIELD, "QQ")));
 
     BooleanQuery.Builder xxYYZZ = new BooleanQuery.Builder();
-    ;
+
     xxYYZZ.add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "yy")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "zz")), Occur.MUST_NOT);
@@ -318,7 +327,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(xxYYZZ.build());
 
     BooleanQuery.Builder xxW1 = new BooleanQuery.Builder();
-    ;
+
     xxW1.add(new TermQuery(new Term(FIELD, "xx")), Occur.MUST_NOT);
     xxW1.add(new TermQuery(new Term(FIELD, "w1")), Occur.MUST_NOT);
 
@@ -336,7 +345,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     q.add(new DisjunctionMaxQuery(disjuncts, 0.2f), Occur.SHOULD);
 
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    ;
+
     builder.setMinimumNumberShouldMatch(2);
     builder.add(snear("w1", "w2", 1, true), Occur.SHOULD);
     builder.add(snear("w2", "w3", 1, true), Occur.SHOULD);

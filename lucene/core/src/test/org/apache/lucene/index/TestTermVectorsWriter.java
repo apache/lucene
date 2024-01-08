@@ -62,7 +62,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    Terms vector = r.getTermVectors(0).terms("field");
+    Terms vector = r.termVectors().get(0).terms("field");
     assertNotNull(vector);
     TermsEnum termsEnum = vector.iterator();
     assertNotNull(termsEnum.next());
@@ -118,7 +118,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertEquals(2, termsEnum.totalTermFreq());
@@ -153,7 +153,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertEquals(2, termsEnum.totalTermFreq());
@@ -191,7 +191,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertEquals(2, termsEnum.totalTermFreq());
@@ -231,7 +231,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertEquals(2, termsEnum.totalTermFreq());
@@ -267,7 +267,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
 
@@ -311,7 +311,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
 
@@ -353,7 +353,7 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    TermsEnum termsEnum = r.getTermVectors(0).terms("field").iterator();
+    TermsEnum termsEnum = r.termVectors().get(0).terms("field").iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
 
@@ -411,9 +411,11 @@ public class TestTermVectorsWriter extends LuceneTestCase {
       writer.close();
 
       IndexReader reader = DirectoryReader.open(dir);
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int i = 0; i < reader.numDocs(); i++) {
-        reader.document(i);
-        reader.getTermVectors(i);
+        storedFields.document(i);
+        termVectors.get(i);
       }
       reader.close();
 
@@ -470,9 +472,9 @@ public class TestTermVectorsWriter extends LuceneTestCase {
       writer.close();
 
       IndexReader reader = DirectoryReader.open(dir);
-      assertNull(reader.getTermVectors(0));
-      assertNull(reader.getTermVectors(1));
-      assertNotNull(reader.getTermVectors(2));
+      assertNull(reader.termVectors().get(0));
+      assertNull(reader.termVectors().get(1));
+      assertNotNull(reader.termVectors().get(2));
       reader.close();
     }
     dir.close();
@@ -519,9 +521,11 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     writer.close();
 
     IndexReader reader = DirectoryReader.open(dir);
+    StoredFields storedFields = reader.storedFields();
+    TermVectors termVectors = reader.termVectors();
     for (int i = 0; i < 10; i++) {
-      reader.getTermVectors(i);
-      reader.document(i);
+      termVectors.get(i);
+      storedFields.document(i);
     }
     reader.close();
     dir.close();

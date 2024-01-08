@@ -38,7 +38,6 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
 
   // LUCENE-5897: slow tokenization of strings of the form
   // (\p{WB:ExtendNumLet}[\p{WB:Format}\p{WB:Extend}]*)+
-  @Slow
   public void testLargePartiallyMatchingToken() throws Exception {
     // TODO: get these lists of chars matching a property from ICU4J
     // http://www.unicode.org/Public/6.3.0/ucd/auxiliary/WordBreakProperty.txt
@@ -464,8 +463,7 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeWordBreaks() throws Exception {
-    WordBreakTestUnicode_12_1_0 wordBreakTest = new WordBreakTestUnicode_12_1_0();
-    wordBreakTest.test(a);
+    WordBreakTestUnicode_12_1_0.test(a);
   }
 
   public void testSupplementary() throws Exception {
@@ -638,8 +636,7 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeEmojiTests() throws Exception {
-    EmojiTokenizationTestUnicode_12_1 emojiTest = new EmojiTokenizationTestUnicode_12_1();
-    emojiTest.test(a);
+    EmojiTokenizationTestUnicode_12_1.test(a);
   }
 
   /** blast some random strings through the analyzer */

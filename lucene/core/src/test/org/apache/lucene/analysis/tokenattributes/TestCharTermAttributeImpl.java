@@ -50,7 +50,6 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
         });
   }
 
-  @Slow
   public void testGrow() {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     StringBuilder buf = new StringBuilder("ab");

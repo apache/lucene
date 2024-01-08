@@ -6,7 +6,6 @@ The Apache Software Foundation (http://www.apache.org/).
 
 Includes software from other Apache Software Foundation projects,
 including, but not limited to:
- - Apache Ant
  - Apache Jakarta Regexp
  - Apache Commons
  - Apache Xerces
@@ -37,9 +36,6 @@ under the 2-clause BSD license.
 
 The Google Code Prettify is Apache License 2.0.
 See http://code.google.com/p/google-code-prettify/
-
-JUnit (junit-4.10) is licensed under the Common Public License v. 1.0
-See http://junit.sourceforge.net/cpl-v10.html
 
 This product includes code (JaspellTernarySearchTrie) from Java Spelling Checkin
 g Package (jaspell): http://jaspell.sourceforge.net/
@@ -91,7 +87,7 @@ and Edmond Nolan.
 The Polish analyzer (stempel) comes with a default
 stopword list that is BSD-licensed created by the Carrot2 project. The file resides
 in stempel/src/resources/org/apache/lucene/analysis/pl/stopwords.txt.
-See https://project.carrot2.org/license.html.
+See https://github.com/carrot2/carrot2.
 
 The SmartChineseAnalyzer source code (smartcn) was
 provided by Xiaoping Gao and copyright 2009 by www.imdict.net.
@@ -101,17 +97,9 @@ is derived from Unicode data such as the Unicode Character Database.
 See http://unicode.org/copyright.html for more details.
 
 The Morfologik analyzer (morfologik) includes BSD-licensed software
-developed by Dawid Weiss and Marcin Miłkowski (http://morfologik.blogspot.com/).
-
-Morfologik uses data from Polish ispell/myspell dictionary
-(http://www.sjp.pl/slownik/en/) licenced on the terms of (inter alia)
-LGPL and Creative Commons ShareAlike.
-
-Morfologic includes data from BSD-licensed dictionary of Polish (SGJP)
-(http://sgjp.pl/morfeusz/)
-
-Servlet-api.jar and javax.servlet-*.jar are under the CDDL license, the original
-source code for this can be found at http://www.eclipse.org/jetty/downloads.php
+developed by Dawid Weiss and Marcin Miłkowski 
+(https://github.com/morfologik/morfologik-stemming) and uses
+data from the BSD-licensed dictionary of Polish (SGJP, http://sgjp.pl/morfeusz/).
 
 ===========================================================================
 Kuromoji Japanese Morphological Analyzer - Apache Lucene Integration
@@ -202,11 +190,8 @@ Nori Korean Morphological Analyzer - Apache Lucene Integration
 
 This software includes a binary and/or source version of data from
 
-  mecab-ko-dic-2.0.3-20170922
+  mecab-ko-dic-2.1.1-20180720
 
 which can be obtained from
 
-  https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.0.3-20170922.tar.gz
-
-The floating point precision conversion in NumericUtils.Float16Converter is derived from work by
-Jeroen van der Zijp, granted for use under the Apache license.
+  https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz

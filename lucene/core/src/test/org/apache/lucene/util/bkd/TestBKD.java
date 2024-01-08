@@ -734,13 +734,7 @@ public class TestBKD extends LuceneTestCase {
             docMaps = new ArrayList<>();
           }
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID1 -> curDocIDBase + docID1);
           Runnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
@@ -770,13 +764,7 @@ public class TestBKD extends LuceneTestCase {
           toMerge.add(out.getFilePointer());
           finalizer.run();
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID -> curDocIDBase + docID);
         }
         out.close();
         in = dir.openInput("bkd", IOContext.DEFAULT);
@@ -1597,12 +1585,12 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            // do nothing
           }
 
           @Override
@@ -1674,6 +1662,7 @@ public class TestBKD extends LuceneTestCase {
     final int numValues = 10;
     final int numBytesPerDim = TestUtil.nextInt(random(), 1, 4);
     final byte[][] pointValue = new byte[11][numBytesPerDim];
+    final int[] docId = new int[11];
     BKDWriter w =
         new BKDWriter(
             numValues + 1,
@@ -1684,9 +1673,14 @@ public class TestBKD extends LuceneTestCase {
             numValues);
     for (int i = 0; i < numValues + 1; i++) {
       random().nextBytes(pointValue[i]);
+      docId[i] = i;
     }
     MutablePointTree val =
         new MutablePointTree() {
+
+          final byte[][] tmpValues = new byte[numValues][];
+          final int[] tmpDocs = new int[numValues];
+
           @Override
           public void getValue(int i, BytesRef packedValue) {
             packedValue.bytes = pointValue[i];
@@ -1701,7 +1695,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public int getDocID(int i) {
-            return i;
+            return docId[i];
           }
 
           @Override
@@ -1709,16 +1703,21 @@ public class TestBKD extends LuceneTestCase {
             byte[] temp = pointValue[i];
             pointValue[i] = pointValue[j];
             pointValue[j] = temp;
+            int tempDocId = docId[i];
+            docId[i] = docId[j];
+            docId[j] = tempDocId;
           }
 
           @Override
           public void save(int i, int j) {
-            throw new UnsupportedOperationException();
+            tmpValues[j] = pointValue[i];
+            tmpDocs[j] = docId[i];
           }
 
           @Override
           public void restore(int i, int j) {
-            throw new UnsupportedOperationException();
+            System.arraycopy(tmpValues, i, pointValue, i, j - i);
+            System.arraycopy(tmpDocs, i, docId, i, j - i);
           }
 
           @Override
@@ -1729,7 +1728,7 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public void visitDocValues(IntersectVisitor visitor) throws IOException {
             for (int i = 0; i < size(); i++) {
-              visitor.visit(i, pointValue[i]);
+              visitor.visit(docId[i], pointValue[i]);
             }
           }
         };

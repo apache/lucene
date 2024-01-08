@@ -33,17 +33,17 @@ public abstract class BaseSynonymParserTestCase extends BaseTokenStreamTestCase 
   /**
    * Helper method to validate synonym parsing.
    *
-   * @param synonynMap the generated synonym map after parsing
+   * @param synonymMap the generated synonym map after parsing
    * @param word word (phrase) we are validating the synonyms for. Should be the value that comes
    *     out of the analyzer. All spaces will be replaced by word separators.
    * @param includeOrig if synonyms should include original
    * @param synonyms actual synonyms. All word separators are replaced with a single space.
    */
   public static void assertEntryEquals(
-      SynonymMap synonynMap, String word, boolean includeOrig, String[] synonyms) throws Exception {
+      SynonymMap synonymMap, String word, boolean includeOrig, String[] synonyms) throws Exception {
     word = word.replace(' ', SynonymMap.WORD_SEPARATOR);
     BytesRef value =
-        Util.get(synonynMap.fst, Util.toUTF32(new CharsRef(word), new IntsRefBuilder()));
+        Util.get(synonymMap.fst, Util.toUTF32(new CharsRef(word), new IntsRefBuilder()));
     assertNotNull("No synonyms found for: " + word, value);
 
     ByteArrayDataInput bytesReader =
@@ -66,7 +66,7 @@ public abstract class BaseSynonymParserTestCase extends BaseTokenStreamTestCase 
 
     BytesRef scratchBytes = new BytesRef();
     for (int i = 0; i < count; i++) {
-      synonynMap.words.get(bytesReader.readVInt(), scratchBytes);
+      synonymMap.words.get(bytesReader.readVInt(), scratchBytes);
       String synonym = scratchBytes.utf8ToString().replace(SynonymMap.WORD_SEPARATOR, ' ');
       assertTrue("Unexpected synonym found: " + synonym, synonymSet.contains(synonym));
     }
@@ -75,20 +75,20 @@ public abstract class BaseSynonymParserTestCase extends BaseTokenStreamTestCase 
   /**
    * Validates that there are no synonyms for the given word.
    *
-   * @param synonynMap the generated synonym map after parsing
+   * @param synonymMap the generated synonym map after parsing
    * @param word word (phrase) we are validating the synonyms for. Should be the value that comes
    *     out of the analyzer. All spaces will be replaced by word separators.
    */
-  public static void assertEntryAbsent(SynonymMap synonynMap, String word) throws IOException {
+  public static void assertEntryAbsent(SynonymMap synonymMap, String word) throws IOException {
     word = word.replace(' ', SynonymMap.WORD_SEPARATOR);
     BytesRef value =
-        Util.get(synonynMap.fst, Util.toUTF32(new CharsRef(word), new IntsRefBuilder()));
+        Util.get(synonymMap.fst, Util.toUTF32(new CharsRef(word), new IntsRefBuilder()));
     assertNull("There should be no synonyms for: " + word, value);
   }
 
   public static void assertEntryEquals(
-      SynonymMap synonynMap, String word, boolean includeOrig, String synonym) throws Exception {
-    assertEntryEquals(synonynMap, word, includeOrig, new String[] {synonym});
+      SynonymMap synonymMap, String word, boolean includeOrig, String synonym) throws Exception {
+    assertEntryEquals(synonymMap, word, includeOrig, new String[] {synonym});
   }
 
   public static void assertAnalyzesToPositions(

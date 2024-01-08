@@ -128,7 +128,10 @@ public class TestTermRangeQuery extends LuceneTestCase {
 
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
-    TermRangeQuery query = TermRangeQuery.newStringRange("content", "B", "J", true, true);
+    MultiTermQuery.RewriteMethod rewriteMethod =
+        new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(50);
+    TermRangeQuery query =
+        TermRangeQuery.newStringRange("content", "B", "J", true, true, rewriteMethod);
     checkBooleanTerms(searcher, query, "B", "C", "D", "E", "F", "G", "H", "I", "J");
 
     final int savedClauseCount = IndexSearcher.getMaxClauseCount();
@@ -143,7 +146,6 @@ public class TestTermRangeQuery extends LuceneTestCase {
 
   private void checkBooleanTerms(IndexSearcher searcher, TermRangeQuery query, String... terms)
       throws IOException {
-    query.setRewriteMethod(new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(50));
     final BooleanQuery bq = (BooleanQuery) searcher.rewrite(query);
     final Set<String> allowedTerms = asSet(terms);
     assertEquals(allowedTerms.size(), bq.clauses().size());

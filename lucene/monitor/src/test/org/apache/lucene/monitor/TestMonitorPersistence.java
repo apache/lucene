@@ -28,16 +28,21 @@ public class TestMonitorPersistence extends MonitorTestBase {
 
   private Path indexDirectory = createTempDir();
 
-  public void testCacheIsRepopulated() throws IOException {
-
-    Document doc = new Document();
-    doc.add(newTextField(FIELD, "test", Field.Store.NO));
+  protected Monitor newMonitorWithPersistence() throws IOException {
     MonitorConfiguration config =
         new MonitorConfiguration()
             .setIndexPath(
                 indexDirectory, MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
 
-    try (Monitor monitor = new Monitor(ANALYZER, config)) {
+    return new Monitor(ANALYZER, config);
+  }
+
+  public void testCacheIsRepopulated() throws IOException {
+
+    Document doc = new Document();
+    doc.add(newTextField(FIELD, "test", Field.Store.NO));
+
+    try (Monitor monitor = newMonitorWithPersistence()) {
       monitor.register(
           mq("1", "test"),
           mq("2", "test"),
@@ -58,7 +63,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
           e.getMessage());
     }
 
-    try (Monitor monitor2 = new Monitor(ANALYZER, config)) {
+    try (Monitor monitor2 = newMonitorWithPersistence()) {
       assertEquals(4, monitor2.getQueryCount());
       assertEquals(4, monitor2.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
 
@@ -67,9 +72,24 @@ public class TestMonitorPersistence extends MonitorTestBase {
     }
   }
 
+  public void testGetQueryPresent() throws IOException {
+    try (Monitor monitor = newMonitorWithPersistence()) {
+      MonitorQuery monitorQuery = mq("1", "test");
+      monitor.register(monitorQuery);
+
+      assertEquals(monitorQuery, monitor.getQuery("1"));
+    }
+  }
+
+  public void testGetQueryNotPresent() throws IOException {
+    try (Monitor monitor = newMonitorWithPersistence()) {
+      assertNull(monitor.getQuery("1"));
+    }
+  }
+
   public void testEphemeralMonitorDoesNotStoreQueries() throws IOException {
 
-    try (Monitor monitor2 = new Monitor(ANALYZER)) {
+    try (Monitor monitor2 = newMonitor(ANALYZER)) {
       IllegalStateException e =
           expectThrows(IllegalStateException.class, () -> monitor2.getQuery("query"));
       assertEquals(

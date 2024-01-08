@@ -314,7 +314,9 @@ public class PatternParser extends DefaultHandler {
     }
   }
 
-  /** @see org.xml.sax.ContentHandler#characters(char[], int, int) */
+  /**
+   * @see org.xml.sax.ContentHandler#characters(char[], int, int)
+   */
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public void characters(char[] ch, int start, int length) {
