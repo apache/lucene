@@ -17,11 +17,10 @@
 package org.apache.lucene.queryparser.surround.query;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -63,14 +62,10 @@ public class SrndPrefixQuery extends SimpleTerm {
   @Override
   public void visitMatchingTerms(IndexReader reader, String fieldName, MatchingTermVisitor mtv)
       throws IOException {
-    Terms terms = MultiTerms.getTerms(reader, fieldName);
-    if (terms != null) {
-      TermsEnum termsEnum = compiled.getTermsEnum(terms);
-
-      BytesRef br;
-      while ((br = termsEnum.next()) != null) {
-        mtv.visitMatchingTerm(new Term(fieldName, BytesRef.deepCopyOf(br)));
-      }
+    Map<BytesRef, TermStates> termStatesMap =
+        collectTerms(reader, fieldName, compiled::getTermsEnum);
+    for (Map.Entry<BytesRef, TermStates> e : termStatesMap.entrySet()) {
+      mtv.visitMatchingTerm(new Term(fieldName, e.getKey()), e.getValue());
     }
   }
 }
