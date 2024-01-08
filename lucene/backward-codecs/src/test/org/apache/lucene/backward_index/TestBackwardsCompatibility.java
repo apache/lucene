@@ -125,6 +125,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -201,6 +202,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     return Paths.get(path);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCreateMoreTermsIndex() throws Exception {
 
     Path indexDir = getIndexDir().resolve("moreterms");

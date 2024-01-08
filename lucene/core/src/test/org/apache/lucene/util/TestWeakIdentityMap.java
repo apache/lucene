@@ -27,6 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestWeakIdentityMap extends LuceneTestCase {
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testSimpleHashMap() {
     final WeakIdentityMap<String, String> map = WeakIdentityMap.newHashMap(random().nextBoolean());
     // we keep strong references to the keys,
@@ -162,6 +163,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     assertTrue(map.isEmpty());
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testConcurrentHashMap() throws Exception {
     // don't make threadCount and keyCount random, otherwise easily OOMs or fails otherwise:
     final int threadCount = TEST_NIGHTLY ? 8 : 2;
