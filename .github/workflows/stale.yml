@@ -33,4 +33,5 @@ jobs:
           If the PR is waiting for review, notify the dev@lucene.apache.org list.
           Thank you for your contribution!
 
-        debug-only: true
+        operations-per-run: 500       # operations budget
+        debug-only: false             # turn on to run the action without applying changes
