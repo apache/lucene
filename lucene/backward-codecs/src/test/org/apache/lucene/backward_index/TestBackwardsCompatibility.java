@@ -223,10 +223,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     docs.close();
     writer.close();
     dir.close();
-
-    // Gives you time to copy the index out!: (there is also
-    // a test option to not remove temp dir...):
-    Thread.sleep(100000);
   }
 
   // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
