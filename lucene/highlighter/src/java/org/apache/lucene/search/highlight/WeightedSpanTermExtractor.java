@@ -100,8 +100,8 @@ import org.apache.lucene.util.IOUtils;
 public class WeightedSpanTermExtractor {
 
   private String fieldName;
-  private TokenStream tokenStream; // set subsequent to getWeightedSpanTerms* methods
-  private String defaultField;
+  private TokenStream tokenStream; // set after getWeightedSpanTerms* methods
+  private final String defaultField;
   private boolean expandMultiTermQuery;
   private boolean cachedTokenStream;
   private boolean wrapToCaching = true;
@@ -244,7 +244,6 @@ public class WeightedSpanTermExtractor {
           && (!expandMultiTermQuery || !fieldNameComparator(((MultiTermQuery) query).getField()))) {
         return;
       }
-      Query origQuery = query;
       final IndexReader reader = getLeafContext().reader();
       Query rewritten;
       if (query instanceof MultiTermQuery) {
@@ -252,12 +251,11 @@ public class WeightedSpanTermExtractor {
             MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(
                 new IndexSearcher(reader), (MultiTermQuery) query);
       } else {
-        rewritten = origQuery.rewrite(new IndexSearcher(reader));
+        rewritten = query.rewrite(new IndexSearcher(reader));
       }
-      if (rewritten != origQuery) {
+      if (rewritten != query) {
         // only rewrite once and then flatten again - the rewritten query could have a special
-        // treatment
-        // if this method is overwritten in a subclass or above in the next recursion
+        // treatment if this method is overwritten in a subclass or above in the next recursion
         extract(rewritten, boost, terms);
       } else {
         extractUnknownQuery(query, terms);
@@ -383,11 +381,9 @@ public class WeightedSpanTermExtractor {
 
   /** Necessary to implement matches for queries against <code>defaultField</code> */
   protected boolean fieldNameComparator(String fieldNameToCheck) {
-    boolean rv =
-        fieldName == null
-            || fieldName.equals(fieldNameToCheck)
-            || (defaultField != null && defaultField.equals(fieldNameToCheck));
-    return rv;
+    return fieldName == null
+        || fieldName.equals(fieldNameToCheck)
+        || (defaultField != null && defaultField.equals(fieldNameToCheck));
   }
 
   protected LeafReaderContext getLeafContext() throws IOException {
@@ -537,11 +533,7 @@ public class WeightedSpanTermExtractor {
   public Map<String, WeightedSpanTerm> getWeightedSpanTermsWithScores(
       Query query, float boost, TokenStream tokenStream, String fieldName, IndexReader reader)
       throws IOException {
-    if (fieldName != null) {
-      this.fieldName = fieldName;
-    } else {
-      this.fieldName = null;
-    }
+    this.fieldName = fieldName;
     this.tokenStream = tokenStream;
 
     Map<String, WeightedSpanTerm> terms = new PositionCheckingMap<>();
@@ -622,7 +614,6 @@ public class WeightedSpanTermExtractor {
    * This class makes sure that if both position sensitive and insensitive versions of the same term
    * are added, the position insensitive one wins.
    */
-  @SuppressWarnings("serial")
   protected static class PositionCheckingMap<K> extends HashMap<K, WeightedSpanTerm> {
 
     @Override
@@ -632,15 +623,12 @@ public class WeightedSpanTermExtractor {
     }
 
     @Override
-    public WeightedSpanTerm put(K key, WeightedSpanTerm value) {
-      WeightedSpanTerm prev = super.put(key, value);
-      if (prev == null) return prev;
-      WeightedSpanTerm prevTerm = prev;
-      WeightedSpanTerm newTerm = value;
-      if (!prevTerm.positionSensitive) {
+    public WeightedSpanTerm put(K key, WeightedSpanTerm newTerm) {
+      WeightedSpanTerm prevTerm = super.put(key, newTerm);
+      if (prevTerm != null && prevTerm.positionSensitive == false) {
         newTerm.positionSensitive = false;
       }
-      return prev;
+      return prevTerm;
     }
   }
 
