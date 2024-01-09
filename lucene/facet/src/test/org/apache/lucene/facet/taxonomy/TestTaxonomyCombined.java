@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.SlowDirectory;
@@ -1101,6 +1103,64 @@ public class TestTaxonomyCombined extends FacetTestCase {
     reader.close();
 
     dir.close();
+  }
+
+  private static String[][] manyCategories(int count, int roundSize) {
+    String[][] result = new String[count / roundSize + 1][];
+    int k = 0;
+    do {
+      k += roundSize;
+      List<String> round = new ArrayList<>();
+      for (int i = k - roundSize + 1; i <= k && i < count; i++) {
+        round.add(String.format(Locale.ROOT, "category %d of %d", i, k));
+      }
+      result[k / roundSize - 1] = round.toArray(new String[0]);
+    } while (k <= count);
+    return result;
+  }
+
+  public void testThousandsOfCategories() throws IOException {
+    int roundSize = random().nextInt(3, 6);
+    int size = random().nextInt(16384, 32768);
+    Directory indexDir = newDirectory();
+    TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
+    String[][] manyCategories = manyCategories(size, roundSize);
+    for (String[] elem : manyCategories) {
+      if (elem == null) {
+        throw new IllegalStateException(
+            "Got null array with size = " + size + " and roundSize = " + roundSize);
+      } else if (elem.length > 0) {
+        tw.addCategory(new FacetLabel(elem));
+      }
+    }
+    tw.close();
+    TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
+    ParallelTaxonomyArrays ca = tr.getParallelTaxonomyArrays();
+    ParallelTaxonomyArrays.IntArray parents = ca.parents();
+    ParallelTaxonomyArrays.IntArray children = ca.children();
+    assertEquals(size, parents.length());
+    assertEquals(size, children.length());
+    for (int j = 1; j < size - roundSize; j += roundSize) {
+      // Top level categories all have root as their parent.
+      assertEquals(0, parents.get(j));
+      for (int i = j; i < j + roundSize - 1; i++) {
+        // Children extend in a chain from the top level category.
+        // The parent/child relationships are symmetric.
+        assertEquals(i + 1, children.get(i));
+        if (i > j) {
+          assertEquals(i - 1, parents.get(i));
+        }
+      }
+    }
+    ParallelTaxonomyArrays.IntArray siblings = ca.siblings();
+    assertEquals(size, siblings.length());
+    for (int i = 1; i < size - roundSize; i += roundSize) {
+      // Each top-level category (after the first) has the previous top-level category as their
+      // older sibling.
+      assertEquals(i, siblings.get(i + roundSize));
+    }
+    tr.close();
+    indexDir.close();
   }
 
   //  TODO (Facet): test multiple readers, one writer. Have the multiple readers
