@@ -1252,7 +1252,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return v;
   }
 
-  private byte[] randomVector8(int dim) {
+  protected byte[] randomVector8(int dim) {
     assert dim > 0;
     float[] v = randomNormalizedVector(dim);
     byte[] b = new byte[dim];

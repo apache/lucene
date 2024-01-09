@@ -26,17 +26,24 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
@@ -55,6 +62,83 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     };
   }
 
+  @Override
+  public void testSparseVectors() throws Exception {
+    int numDocs = atLeast(1000);
+    int numFields = TestUtil.nextInt(random(), 1, 10);
+    int[] fieldDocCounts = new int[numFields];
+    double[] fieldTotals = new double[numFields];
+    int[] fieldDims = new int[numFields];
+    VectorSimilarityFunction[] fieldSimilarityFunctions = new VectorSimilarityFunction[numFields];
+    VectorEncoding[] fieldVectorEncodings = new VectorEncoding[numFields];
+    for (int i = 0; i < numFields; i++) {
+      fieldDims[i] = random().nextInt(20) + 1;
+      fieldSimilarityFunctions[i] = randomSimilarity();
+      fieldVectorEncodings[i] = randomVectorEncoding();
+    }
+    try (Directory dir = newDirectory();
+         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        for (int field = 0; field < numFields; field++) {
+          String fieldName = "int" + field;
+          if (random().nextInt(100) == 17) {
+            switch (fieldVectorEncodings[field]) {
+              case BYTE -> {
+                byte[] b = randomVector8(fieldDims[field]);
+                doc.add(new KnnByteVectorField(fieldName, b, fieldSimilarityFunctions[field]));
+                fieldTotals[field] += b[0];
+              }
+              case FLOAT32 -> {
+                float[] v = randomNormalizedVector(fieldDims[field]);
+                doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
+                fieldTotals[field] += v[0];
+              }
+            }
+            fieldDocCounts[field]++;
+          }
+        }
+        w.addDocument(doc);
+      }
+      try (IndexReader r = w.getReader()) {
+        for (int field = 0; field < numFields; field++) {
+          int docCount = 0;
+          double checksum = 0;
+          String fieldName = "int" + field;
+          switch (fieldVectorEncodings[field]) {
+            case BYTE -> {
+              for (LeafReaderContext ctx : r.leaves()) {
+                ByteVectorValues byteVectorValues = ctx.reader().getByteVectorValues(fieldName);
+                if (byteVectorValues != null) {
+                  docCount += byteVectorValues.size();
+                  while (byteVectorValues.nextDoc() != NO_MORE_DOCS) {
+                    checksum += byteVectorValues.vectorValue()[0];
+                  }
+                }
+              }
+            }
+            case FLOAT32 -> {
+              for (LeafReaderContext ctx : r.leaves()) {
+                FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+                if (vectorValues != null) {
+                  docCount += vectorValues.size();
+                  while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+                    checksum += vectorValues.vectorValue()[0];
+                  }
+                }
+              }
+            }
+          }
+          assertEquals(fieldDocCounts[field], docCount);
+          // Account for quantization done when indexing fields w/BYTE encoding
+          double delta = fieldVectorEncodings[field] == VectorEncoding.BYTE ? numDocs * 0.01 : 1e-5;
+          assertEquals(fieldTotals[field], checksum, delta);
+        }
+      }
+    }
+  }
+
+
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
@@ -65,12 +149,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     for (int i = 0; i < numVectors; i++) {
       vectors.add(randomVector(dim));
     }
-    float confidenceInterval =
-        Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim);
     ScalarQuantizer scalarQuantizer =
-        ScalarQuantizer.fromVectors(
+        ScalarQuantizer.fromVectors2(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-            confidenceInterval);
+          similarityFunction);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {

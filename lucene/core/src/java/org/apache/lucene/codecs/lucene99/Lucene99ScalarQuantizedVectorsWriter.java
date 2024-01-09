@@ -513,6 +513,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     return null;
   }
 
+  @SuppressWarnings("unused")
   private static ScalarQuantizer getQuantizedState(
       KnnVectorsReader vectorsReader, String fieldName) {
     QuantizedVectorsReader reader = getQuantizedKnnVectorsReader(vectorsReader, fieldName);
@@ -524,7 +525,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static ScalarQuantizer mergeAndRecalculateQuantiles(
       MergeState mergeState, FieldInfo fieldInfo, float confidenceInterval) throws IOException {
-    List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
+    FloatVectorValues vectorValues =
+        KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    return ScalarQuantizer.fromVectors2(vectorValues, fieldInfo.getVectorSimilarityFunction());
+    /*List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
     List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
@@ -548,9 +552,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     if (mergedQuantiles == null || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      mergedQuantiles = ScalarQuantizer.fromVectors(vectorValues, confidenceInterval);
+      mergedQuantiles = ScalarQuantizer.fromVectors2(vectorValues, fieldInfo.getVectorSimilarityFunction());
     }
-    return mergedQuantiles;
+    return mergedQuantiles;*/
   }
 
   /**
@@ -634,11 +638,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         return;
       }
       ScalarQuantizer quantizer =
-          ScalarQuantizer.fromVectors(
+          ScalarQuantizer.fromVectors2(
               new FloatVectorWrapper(
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
-              confidenceInterval);
+              fieldInfo.getVectorSimilarityFunction());
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
