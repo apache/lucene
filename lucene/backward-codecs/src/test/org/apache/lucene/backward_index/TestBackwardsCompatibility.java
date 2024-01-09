@@ -2286,11 +2286,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   public void testOpenModeAndCreatedVersion() throws IOException {
     for (String name : oldNames) {
       Directory dir = newDirectory(oldIndexDirs.get(name));
+      int majorVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
+      if (majorVersion != Version.MIN_SUPPORTED_MAJOR && majorVersion != Version.LATEST.major) {
+        fail(
+            "expected one of: ["
+                + Version.MIN_SUPPORTED_MAJOR
+                + ", "
+                + Version.LATEST.major
+                + "] but got: "
+                + majorVersion);
+      }
       for (OpenMode openMode : OpenMode.values()) {
         Directory tmpDir = newDirectory(dir);
-        assertEquals(
-            Version.LATEST.major - 1,
-            SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
         IndexWriter w = new IndexWriter(tmpDir, newIndexWriterConfig().setOpenMode(openMode));
         w.commit();
         w.close();
@@ -2304,8 +2311,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           case CREATE_OR_APPEND:
           default:
             assertEquals(
-                Version.LATEST.major - 1,
-                SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+                majorVersion, SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
         }
         tmpDir.close();
       }
