@@ -20,7 +20,6 @@ package org.apache.lucene.queries.intervals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
@@ -80,10 +79,7 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
       subs.add(mi);
     }
     IntervalIterator it =
-        combine(
-            subs.stream()
-                .map(m -> IntervalMatches.wrapMatches(m, doc))
-                .collect(Collectors.toList()));
+        combine(subs.stream().map(m -> IntervalMatches.wrapMatches(m, doc)).toList());
     if (it.advance(doc) != doc) {
       return null;
     }

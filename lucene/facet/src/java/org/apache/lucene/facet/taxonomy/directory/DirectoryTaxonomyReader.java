@@ -328,7 +328,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
     // First try to find results in the cache:
     int[] result = new int[categoryPaths.length];
-    int[] indexesMissingFromCache = new int[10]; // initial size, will grow when required
+    // Will grow when required, but never beyond categoryPaths.length
+    int[] indexesMissingFromCache = new int[Math.min(10, categoryPaths.length)];
     int numberOfMissingFromCache = 0;
     FacetLabel cp;
     Integer res;
@@ -352,7 +353,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         }
       } else {
         indexesMissingFromCache =
-            ArrayUtil.grow(indexesMissingFromCache, numberOfMissingFromCache + 1);
+            ArrayUtil.growInRange(
+                indexesMissingFromCache, numberOfMissingFromCache + 1, categoryPaths.length);
         indexesMissingFromCache[numberOfMissingFromCache++] = i;
       }
     }

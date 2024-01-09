@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
@@ -123,12 +124,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 /*
   Verify we can read previous versions' indexes, do searches
@@ -224,10 +223,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     docs.close();
     writer.close();
     dir.close();
-
-    // Gives you time to copy the index out!: (there is also
-    // a test option to not remove temp dir...):
-    Thread.sleep(100000);
   }
 
   // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
@@ -376,7 +371,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.7.0-cfs",
     "9.7.0-nocfs",
     "9.8.0-cfs",
-    "9.8.0-nocfs"
+    "9.8.0-nocfs",
+    "9.9.0-cfs",
+    "9.9.0-nocfs",
+    "9.9.1-cfs",
+    "9.9.1-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -394,7 +393,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.5.0",
     "sorted.9.6.0",
     "sorted.9.7.0",
-    "sorted.9.8.0"
+    "sorted.9.8.0",
+    "sorted.9.9.0",
+    "sorted.9.9.1"
   };
 
   public static String[] getOldSortedNames() {
@@ -941,7 +942,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       CheckIndex checker = new CheckIndex(dir);
-      checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+      checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
       if (unsupportedNames[i].startsWith("8.")) {
         assertTrue(indexStatus.clean);
@@ -951,8 +952,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         // IndexFormatTooOldException
         // or an IllegalArgumentException saying that the codec doesn't exist.
         boolean formatTooOld =
-            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName());
-        boolean missingCodec = bos.toString(IOUtils.UTF_8).contains("Could not load codec");
+            bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
+        boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
         assertTrue(formatTooOld || missingCodec);
       }
       checker.close();
@@ -1118,9 +1119,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals("wrong number of hits", expectedCount, hitCount);
     StoredFields storedFields = reader.storedFields();
     TermVectors termVectors = reader.termVectors();
-    for (int i = 0; i < hitCount; i++) {
-      storedFields.document(hits[i].doc);
-      termVectors.get(hits[i].doc);
+    for (ScoreDoc hit : hits) {
+      storedFields.document(hit.doc);
+      termVectors.get(hit.doc);
     }
   }
 
@@ -2245,7 +2246,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
   // IntersectTermsEnum (used by WildcardQuery)
-  @Ignore("re-enable once we merge #12900")
   public void testWildcardQueryExceptions990() throws IOException {
     Path path = createTempDir("12895");
 

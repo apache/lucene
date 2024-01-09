@@ -190,6 +190,6 @@ public class Checksum extends DefaultTask {
 
   private FileCollection filesFor(final Algorithm algo) {
     return getProject()
-        .fileTree(getOutputDir(), files -> files.include("**/*." + algo.toString().toLowerCase()));
+        .fileTree(getOutputDir(), files -> files.include("**/*." + algo.toString().toLowerCase(Locale.ROOT)));
   }
 }

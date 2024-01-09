@@ -77,6 +77,9 @@ API Changes
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
 
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
+
 New Features
 ---------------------
 
@@ -184,9 +187,17 @@ Improvements
 
 * GITHUB#12812: Avoid overflows and false negatives in int slice buffer filled-with-zeros assertion. (Stefan Vodita)
 
+* GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
+
 Optimizations
 ---------------------
-* GITHUB#: Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
+
+* GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
+  DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
+
+* GITHUB#:12997 Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -198,12 +209,29 @@ Bug Fixes
 * GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
   fail with certain random seeds. (Greg Miller)
 
+Build
+---------------------
+
+* GITHUB#12931, GITHUB#12936, GITHUB#12937: Improve source file validation to detect incorrect
+  UTF-8 sequences and forbid U+200B; enable errorprone DisableUnicodeInCode check.  (Robert Muir, Uwe Schindler)
+
 Other
 ---------------------
 
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
+
+* GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
+======================== Lucene 9.9.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#12898: JVM SIGSEGV crash when compiling computeCommonPrefixLengthAndBuildHistogram (Chris Hegarty)
+
+* GITHUB#12900: Push and pop OutputAccumulator as IntersectTermsEnumFrames are pushed and popped (Guo Feng, Mike McCandless)
 
 ======================== Lucene 9.9.0 =======================
 

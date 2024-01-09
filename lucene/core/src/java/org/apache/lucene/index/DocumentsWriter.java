@@ -58,7 +58,7 @@ import org.apache.lucene.util.InfoStream;
  *
  * <p>When flush is called by IndexWriter we check out all DWPTs that are associated with the
  * current {@link DocumentsWriterDeleteQueue} out of the {@link DocumentsWriterPerThreadPool} and
- * write them to disk. The flush process can piggy-back on incoming indexing threads or even block
+ * write them to disk. The flush process can piggyback on incoming indexing threads or even block
  * them from adding documents if flushing can't keep up with new documents being added. Unless the
  * stall control kicks in to block indexing threads flushes are happening concurrently to actual
  * index requests.
@@ -94,7 +94,7 @@ final class DocumentsWriter implements Closeable, Accountable {
   volatile DocumentsWriterDeleteQueue deleteQueue;
   private final DocumentsWriterFlushQueue ticketQueue = new DocumentsWriterFlushQueue();
   /*
-   * we preserve changes during a full flush since IW might not checkout before
+   * we preserve changes during a full flush since IW might not check out before
    * we release all changes. NRT Readers otherwise suddenly return true from
    * isCurrent while there are actually changes currently committed. See also
    * #anyChanges() & #flushAllThreads
@@ -167,7 +167,11 @@ final class DocumentsWriter implements Closeable, Accountable {
   private boolean applyAllDeletes() throws IOException {
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
 
-    if (flushControl.isFullFlush() == false
+    // Check the applyAllDeletes flag first. This helps exit early most of the time without checking
+    // isFullFlush(), which takes a lock and introduces contention on small documents that are quick
+    // to index.
+    if (flushControl.getApplyAllDeletes()
+        && flushControl.isFullFlush() == false
         // never apply deletes during full flush this breaks happens before relationship.
         && deleteQueue.isOpen()
         // if it's closed then it's already fully applied and we have a new delete queue
@@ -236,7 +240,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     }
   }
 
-  final boolean flushOneDWPT() throws IOException {
+  boolean flushOneDWPT() throws IOException {
     if (infoStream.isEnabled("DW")) {
       infoStream.message("DW", "startFlushOneDWPT");
     }
@@ -382,7 +386,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     while (flushControl.anyStalledThreads()
         || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
       // Help out flushing any queued DWPTs so we can un-stall:
-      // Try pick up pending threads here if possible
+      // Try pickup pending threads here if possible
       // no need to loop over the next pending flushes... doFlush will take care of this
       hasEvents |= maybeFlush();
       flushControl.waitIfStalled(); // block if stalled
@@ -460,7 +464,7 @@ final class DocumentsWriter implements Closeable, Accountable {
                 || flushingDWPT.deleteQueue == currentFullFlushDelQueue
             : "expected: "
                 + currentFullFlushDelQueue
-                + "but was: "
+                + " but was: "
                 + flushingDWPT.deleteQueue
                 + " "
                 + flushControl.isFullFlush();

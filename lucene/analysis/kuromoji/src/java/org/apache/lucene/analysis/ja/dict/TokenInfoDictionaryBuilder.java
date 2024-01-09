@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -57,10 +56,7 @@ class TokenInfoDictionaryBuilder {
   public TokenInfoDictionaryWriter build(Path dir) throws IOException {
     try (Stream<Path> files = Files.list(dir)) {
       List<Path> csvFiles =
-          files
-              .filter(path -> path.getFileName().toString().endsWith(".csv"))
-              .sorted()
-              .collect(Collectors.toList());
+          files.filter(path -> path.getFileName().toString().endsWith(".csv")).sorted().toList();
       return buildDictionary(csvFiles);
     }
   }
@@ -123,7 +119,7 @@ class TokenInfoDictionaryBuilder {
         scratch.grow(token.length());
         scratch.setLength(token.length());
         for (int i = 0; i < token.length(); i++) {
-          scratch.setIntAt(i, (int) token.charAt(i));
+          scratch.setIntAt(i, token.charAt(i));
         }
         fstCompiler.add(scratch.get(), ord);
       }
@@ -144,7 +140,7 @@ class TokenInfoDictionaryBuilder {
    * 4-9 - pos
    * 10  - base form
    * 11  - reading
-   * 12  - pronounciation
+   * 12  - pronunciation
    *
    * UniDic features
    *
@@ -178,7 +174,7 @@ class TokenInfoDictionaryBuilder {
 
       // If the surface reading is non-existent, use surface form for reading and pronunciation.
       // This happens with punctuation in UniDic and there are possibly other cases as well
-      if (features[13].length() == 0) {
+      if (features[13].isEmpty()) {
         features2[11] = features[0];
         features2[12] = features[0];
       } else {

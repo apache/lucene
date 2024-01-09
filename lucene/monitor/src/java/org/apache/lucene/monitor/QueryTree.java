@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
@@ -67,11 +66,7 @@ public abstract class QueryTree {
 
   /** Returns a string of {@code width} spaces */
   protected String space(int width) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < width; i++) {
-      sb.append(" ");
-    }
-    return sb.toString();
+    return " ".repeat(width);
   }
 
   /** Returns a leaf node for a particular term */
@@ -149,16 +144,14 @@ public abstract class QueryTree {
   /** Returns a conjunction of a set of child nodes */
   public static QueryTree conjunction(
       List<Function<TermWeightor, QueryTree>> children, TermWeightor weightor) {
-    if (children.size() == 0) {
+    if (children.isEmpty()) {
       throw new IllegalArgumentException("Cannot build a conjunction with no children");
     }
     if (children.size() == 1) {
       return children.get(0).apply(weightor);
     }
-    List<QueryTree> qt = children.stream().map(f -> f.apply(weightor)).collect(Collectors.toList());
-    List<QueryTree> restricted =
-        qt.stream().filter(t -> t.weight() > 0).collect(Collectors.toList());
-    if (restricted.size() == 0) {
+    List<QueryTree> qt = children.stream().map(f -> f.apply(weightor)).toList();
+    if (qt.stream().noneMatch(t -> t.weight() > 0)) {
       // all children are ANY, so just return the first one
       return qt.get(0);
     }
@@ -172,13 +165,13 @@ public abstract class QueryTree {
   /** Returns a disjunction of a set of child nodes */
   public static QueryTree disjunction(
       List<Function<TermWeightor, QueryTree>> children, TermWeightor weightor) {
-    if (children.size() == 0) {
+    if (children.isEmpty()) {
       throw new IllegalArgumentException("Cannot build a disjunction with no children");
     }
     if (children.size() == 1) {
       return children.get(0).apply(weightor);
     }
-    List<QueryTree> qt = children.stream().map(f -> f.apply(weightor)).collect(Collectors.toList());
+    List<QueryTree> qt = children.stream().map(f -> f.apply(weightor)).toList();
     Optional<QueryTree> firstAnyChild = qt.stream().filter(q -> q.weight() == 0).findAny();
     // if any of the children is an ANY node, just return that, otherwise build the disjunction
     return firstAnyChild.orElseGet(() -> new DisjunctionQueryTree(qt));

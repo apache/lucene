@@ -495,7 +495,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       outputAccumulator.push(arc.nextFinalOutput());
       currentFrame = pushFrame(arc, 0);
-      outputAccumulator.pop();
+      outputAccumulator.pop(arc.nextFinalOutput());
     }
 
     // if (DEBUG) {
@@ -569,7 +569,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    arc is final!");
           outputAccumulator.push(arc.nextFinalOutput());
           currentFrame = pushFrame(arc, targetUpto);
-          outputAccumulator.pop();
+          outputAccumulator.pop(arc.nextFinalOutput());
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -767,7 +767,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       outputAccumulator.push(arc.nextFinalOutput());
       currentFrame = pushFrame(arc, 0);
-      outputAccumulator.pop();
+      outputAccumulator.pop(arc.nextFinalOutput());
     }
 
     // if (DEBUG) {
@@ -841,7 +841,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    arc is final!");
           outputAccumulator.push(arc.nextFinalOutput());
           currentFrame = pushFrame(arc, targetUpto);
-          outputAccumulator.pop();
+          outputAccumulator.pop(arc.nextFinalOutput());
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -1187,14 +1187,27 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     void push(BytesRef output) {
       if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        assert output.length > 0;
         outputs = ArrayUtil.grow(outputs, num + 1);
         outputs[num++] = output;
       }
     }
 
-    void pop() {
-      assert num > 0;
-      num--;
+    void pop(BytesRef output) {
+      if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        assert num > 0;
+        assert outputs[num - 1] == output;
+        num--;
+      }
+    }
+
+    void pop(int cnt) {
+      assert num >= cnt;
+      num -= cnt;
+    }
+
+    int outputCount() {
+      return num;
     }
 
     void reset() {
