@@ -123,7 +123,7 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     mi.reset();
     mi.addField("f1", "wibble", analyzer);
-    assertEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))), 1.0e-8);
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))), 0);
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "wibble"))));
 
     // check we can set the Similarity again
@@ -245,13 +245,13 @@ public class TestMemoryIndex extends LuceneTestCase {
     MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer);
 
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field1", "text"))));
-    assertEquals(0.0f, mi.search(new TermQuery(new Term("field2", "text"))), 1.0e-8);
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field2", "text"))), 0);
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field2", "untokenized text"))));
 
-    assertEquals(0.0f, mi.search(new TermQuery(new Term("field1", "some more text"))), 1.0e-8);
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field1", "some more text"))), 0);
     assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "more", "text")));
     assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "text")));
-    assertEquals(0.0f, mi.search(new PhraseQuery("field1", "text", "some")), 1.0e-8);
+    assertEquals(0.0f, mi.search(new PhraseQuery("field1", "text", "some")), 0);
   }
 
   public void testDocValues() throws Exception {

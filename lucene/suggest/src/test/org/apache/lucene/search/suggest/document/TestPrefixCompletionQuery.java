@@ -195,7 +195,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
     assertTrue(suggest.totalHits.value >= 1);
     assertEquals("abc_" + topScore, suggest.scoreLookupDocs()[0].key.toString());
-    assertEquals((float) topScore, suggest.scoreLookupDocs()[0].score, 1.0e-8);
+    assertEquals((float) topScore, suggest.scoreLookupDocs()[0].score, 0);
 
     filter = new NumericRangeBitsProducer("filter_int_fld", 0, 0);
     query = new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"), filter);

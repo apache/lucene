@@ -749,7 +749,7 @@ public class TestSuggestField extends LuceneTestCase {
           assertTrue(topScore >= scoreDoc.score);
         }
         topScore = scoreDoc.score;
-        assertEquals(scoreDoc.score, (float) mappings.get(scoreDoc.key.toString()), 1.0e-8);
+        assertEquals(scoreDoc.score, (float) mappings.get(scoreDoc.key.toString()), 0);
         assertNotNull(mappings.remove(scoreDoc.key.toString()));
       }
     }
@@ -923,7 +923,7 @@ public class TestSuggestField extends LuceneTestCase {
               + " but actual: "
               + toString(lookupDoc);
       assertEquals(msg, expected[i].output, lookupDoc.key.toString());
-      assertEquals(msg, expected[i].value, lookupDoc.score, 1.0e-15);
+      assertEquals(msg, expected[i].value, lookupDoc.score, 0);
       assertEquals(msg, expected[i].context, lookupDoc.context);
     }
     assertEquals(expected.length, suggestScoreDocs.length);

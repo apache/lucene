@@ -63,28 +63,28 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
       assertEquals(2, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // should not reset iterator
       scorer.setMinCompetitiveScore(2f);
       assertEquals(doc, scorer.docID());
       assertEquals(doc, scorer.iterator().docID());
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // "bar foo" match
       doc = scorer.iterator().nextDoc();
       assertEquals(3, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo not bar" match
       doc = scorer.iterator().nextDoc();
       assertEquals(4, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo bar foo" match
       doc = scorer.iterator().nextDoc();
       assertEquals(5, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
       assertEquals(NO_MORE_DOCS, doc);
@@ -99,12 +99,12 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
       assertEquals(2, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       scorer.setMinCompetitiveScore(2f);
       assertEquals(doc, scorer.docID());
       assertEquals(doc, scorer.iterator().docID());
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
       assertEquals(NO_MORE_DOCS, doc);
@@ -127,20 +127,20 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
       assertEquals(2, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // should not reset iterator
       scorer.setMinCompetitiveScore(2f);
       assertEquals(doc, scorer.docID());
       assertEquals(doc, scorer.iterator().docID());
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo not bar" will match the approximation but not the two phase iterator
 
       // "foo bar foo" match
       doc = scorer.iterator().nextDoc();
       assertEquals(5, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
       assertEquals(NO_MORE_DOCS, doc);
@@ -156,12 +156,12 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
       assertEquals(2, doc);
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       scorer.setMinCompetitiveScore(2f);
       assertEquals(doc, scorer.docID());
       assertEquals(doc, scorer.iterator().docID());
-      assertEquals(1f, scorer.score(), 1.0e-8);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
       assertEquals(NO_MORE_DOCS, doc);
