@@ -492,26 +492,26 @@ public class FieldInfos implements Iterable<FieldInfo> {
       if (isParentField) {
         if (parentFieldName == null) {
           throw new IllegalArgumentException(
-              "this index has ["
+              "can't add field ["
                   + fieldName
-                  + "] as parent document field already but parent document field is not configured in IWC");
+                  + "] as parent document field; this IndexWriter has no parent document field configured");
         } else if (fieldName.equals(parentFieldName) == false) {
           throw new IllegalArgumentException(
-              "cannot configure ["
-                  + parentFieldName
-                  + "] as parent document field ; this index uses ["
+              "can't add field ["
                   + fieldName
-                  + "] as parent document field already");
+                  + "] as parent document field; this IndexWriter is configured with ["
+                  + parentFieldName
+                  + "] as parent document field");
         }
       } else if (fieldName.equals(parentFieldName)) { // isParent == false
         // this would be the case if the current index has a parent field that is
         // not a parent field in the incoming index (think addIndices)
         throw new IllegalArgumentException(
-            "cannot configure ["
-                + parentFieldName
-                + "] as non parent document field ; this index uses ["
+            "can't add ["
                 + fieldName
-                + "] as parent document field already");
+                + "] as non parent document field; this IndexWriter is configured with ["
+                + parentFieldName
+                + "] as parent document field");
       }
     }
 

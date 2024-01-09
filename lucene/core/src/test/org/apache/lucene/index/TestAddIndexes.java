@@ -1966,7 +1966,7 @@ public class TestAddIndexes extends LuceneTestCase {
                 })
             .getMessage();
     assertEquals(
-        "cannot configure [foo] as parent document field ; this index uses [foobar] as parent document field already",
+        "can't add field [foobar] as parent document field; this IndexWriter is configured with [foo] as parent document field",
         message);
 
     message =
@@ -1977,7 +1977,7 @@ public class TestAddIndexes extends LuceneTestCase {
                 })
             .getMessage();
     assertEquals(
-        "cannot configure [foo] as parent document field ; this index uses [foobar] as parent document field already",
+        "can't add field [foobar] as parent document field; this IndexWriter is configured with [foo] as parent document field",
         message);
 
     Directory dir3 = newDirectory();
@@ -2014,7 +2014,7 @@ public class TestAddIndexes extends LuceneTestCase {
                 })
             .getMessage();
     assertEquals(
-        "cannot configure [foo] as non parent document field ; this index uses [foo] as parent document field already",
+        "can't add [foo] as non parent document field; this IndexWriter is configured with [foo] as parent document field",
         message);
 
     message =
@@ -2025,7 +2025,7 @@ public class TestAddIndexes extends LuceneTestCase {
                 })
             .getMessage();
     assertEquals(
-        "cannot configure [foo] as non parent document field ; this index uses [foo] as parent document field already",
+        "can't add [foo] as non parent document field; this IndexWriter is configured with [foo] as parent document field",
         message);
 
     IOUtils.close(r1, dir1, w2, dir2);

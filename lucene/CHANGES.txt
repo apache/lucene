@@ -93,7 +93,7 @@ New Features
 * GITHUB#12829: For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
   IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
   maintained alongside their parent documents during sort and merge. IndexWriterConfig now requires a parent field to be
-  specified if index sorting is used together with documents blocks. (Simon Willnauer)
+  specified if index sorting is used together with document blocks. (Simon Willnauer)
 
 Improvements
 ---------------------

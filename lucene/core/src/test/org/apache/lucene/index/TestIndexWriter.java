@@ -4911,7 +4911,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 new IndexWriter(dir, config);
               });
       assertEquals(
-          "cannot configure [someOtherField] as parent document field ; this index uses [parent] as parent document field already",
+          "can't add field [parent] as parent document field; this IndexWriter is configured with [someOtherField] as parent document field",
           ex.getMessage());
       ex =
           expectThrows(
@@ -4921,7 +4921,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 new IndexWriter(dir, config);
               });
       assertEquals(
-          "this index has [parent] as parent document field already but parent document field is not configured in IWC",
+          "can't add field [parent] as parent document field; this IndexWriter has no parent document field configured",
           ex.getMessage());
     }
   }
@@ -4946,7 +4946,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 new IndexWriter(dir, config);
               });
       assertEquals(
-          "cannot configure [parent] as non parent document field ; this index uses [parent] as parent document field already",
+          "can't add [parent] as non parent document field; this IndexWriter is configured with [parent] as parent document field",
           iae.getMessage());
     }
   }
