@@ -429,7 +429,7 @@ public class TestSuggestField extends LuceneTestCase {
         }
       }
 
-      assertSuggestions(actual, expected.toArray(new Entry[0]));
+      assertSuggestions(actual, expected.toArray(new Entry[expected.size()]));
     }
 
     reader.close();
@@ -470,7 +470,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, numLive, false);
-    assertSuggestions(suggest, expectedEntries.toArray(new Entry[0]));
+    assertSuggestions(suggest, expectedEntries.toArray(new Entry[expectedEntries.size()]));
 
     reader.close();
     iw.close();
@@ -670,7 +670,7 @@ public class TestSuggestField extends LuceneTestCase {
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest =
         indexSearcher.suggest(query, entries.isEmpty() ? 1 : entries.size(), false);
-    assertSuggestions(suggest, entries.toArray(new Entry[0]));
+    assertSuggestions(suggest, entries.toArray(new Entry[entries.size()]));
 
     reader.close();
     iw.close();
