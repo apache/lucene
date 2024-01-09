@@ -2282,4 +2282,34 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       }
     }
   }
+
+  public void testOpenModeAndCreatedVersion() throws IOException {
+    for (String name : oldNames) {
+      Directory dir = newDirectory(oldIndexDirs.get(name));
+      for (OpenMode openMode : OpenMode.values()) {
+        Directory tmpDir = newDirectory(dir);
+        assertEquals(
+            Version.LATEST.major - 1,
+            SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+        IndexWriter w = new IndexWriter(tmpDir, newIndexWriterConfig().setOpenMode(openMode));
+        w.commit();
+        w.close();
+        switch (openMode) {
+          case CREATE:
+            assertEquals(
+                Version.LATEST.major,
+                SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+            break;
+          case APPEND:
+          case CREATE_OR_APPEND:
+          default:
+            assertEquals(
+                Version.LATEST.major - 1,
+                SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+        }
+        tmpDir.close();
+      }
+      dir.close();
+    }
+  }
 }
