@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.fst;
 
-import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
-import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_CONTINUOUS;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
@@ -34,7 +32,6 @@ import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -153,8 +150,7 @@ public class FSTCompiler<T> {
    * @return the DataOutput
    */
   public static DataOutput getOnHeapReaderWriter(int blockBits) {
-    return new ReadWriteDataOutput(
-        new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
+    return new ReadWriteDataOutput(blockBits);
   }
 
   private FSTCompiler(

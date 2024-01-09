@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -704,8 +703,8 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
   }
 
   private static class MockTokenEatingAnalyzer extends Analyzer {
-    private int numStopChars;
-    private boolean preserveHoles;
+    private final int numStopChars;
+    private final boolean preserveHoles;
 
     public MockTokenEatingAnalyzer(int numStopChars, boolean preserveHoles) {
       this.preserveHoles = preserveHoles;
@@ -731,7 +730,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
     }
   }
 
-  private static char SEP = '\u001F';
+  private static final char SEP = '\u001F';
 
   public void testRandom() throws Exception {
 
@@ -882,7 +881,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       List<LookupResult> r =
           suggester.lookup(TestUtil.stringToCharSequence(prefix, random()), false, topN);
 
-      // 2. go thru whole set to find suggestions:
+      // 2. go through whole set to find suggestions:
       List<TermFreq2> matches = new ArrayList<>();
 
       // "Analyze" the key:
@@ -919,7 +918,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
         analyzedKey = s;
       }
 
-      if (analyzedKey.length() == 0) {
+      if (analyzedKey.isEmpty()) {
         // Currently suggester can't suggest from the empty
         // string!  You get no results, not all results...
         continue;
@@ -943,17 +942,13 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       assertTrue(numStopChars > 0 || matches.size() > 0);
 
       if (matches.size() > 1) {
-        Collections.sort(
-            matches,
-            new Comparator<TermFreq2>() {
-              @Override
-              public int compare(TermFreq2 left, TermFreq2 right) {
-                int cmp = Long.compare(right.weight, left.weight);
-                if (cmp == 0) {
-                  return left.analyzedForm.compareTo(right.analyzedForm);
-                } else {
-                  return cmp;
-                }
+        matches.sort(
+            (left, right) -> {
+              int cmp = Long.compare(right.weight, left.weight);
+              if (cmp == 0) {
+                return left.analyzedForm.compareTo(right.analyzedForm);
+              } else {
+                return cmp;
               }
             });
       }
@@ -978,7 +973,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
 
       for (int hit = 0; hit < r.size(); hit++) {
         // System.out.println("  check hit " + hit);
-        assertEquals(matches.get(hit).surfaceForm.toString(), r.get(hit).key.toString());
+        assertEquals(matches.get(hit).surfaceForm, r.get(hit).key.toString());
         assertEquals(matches.get(hit).weight, r.get(hit).value);
         if (doPayloads) {
           assertEquals(matches.get(hit).payload, r.get(hit).payload);
@@ -1316,11 +1311,8 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
     IOUtils.close(a, tempDir);
   }
 
-  static final Iterable<Input> shuffle(Input... values) {
-    final List<Input> asList = new ArrayList<>(values.length);
-    for (Input value : values) {
-      asList.add(value);
-    }
+  static Iterable<Input> shuffle(Input... values) {
+    final List<Input> asList = Arrays.asList(values);
     Collections.shuffle(asList, random());
     return asList;
   }
