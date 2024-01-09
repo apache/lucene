@@ -186,7 +186,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#: Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
 
 Bug Fixes
 ---------------------

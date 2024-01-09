@@ -302,9 +302,9 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     assertTrue(termsEnum.seekExact(new BytesRef("value")));
     PostingsEnum docsEnum = termsEnum.postings(null, PostingsEnum.NONE);
     assertEquals(0, docsEnum.nextDoc());
-    assertTrue(docsEnum.freq() == 1 || docsEnum.freq() == 0);
+    assertEquals(1, docsEnum.freq());
     assertEquals(1, docsEnum.nextDoc());
-    assertTrue(docsEnum.freq() == 1 || docsEnum.freq() == 0);
+    assertEquals(1, docsEnum.freq());
     ir.close();
     iw.close();
     dir.close();
