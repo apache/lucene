@@ -25,6 +25,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /** Query that matches String prefixes */
 public class SrndPrefixQuery extends SimpleTerm {
@@ -34,7 +35,12 @@ public class SrndPrefixQuery extends SimpleTerm {
     super(quoted);
     this.prefix = prefix;
     compiled =
-        new CompiledAutomaton(PrefixQuery.toAutomaton(new BytesRef(prefix)), true, true, true);
+        new CompiledAutomaton(
+            PrefixQuery.toAutomaton(new BytesRef(prefix)),
+            true,
+            true,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            true);
     this.truncator = truncator;
   }
 

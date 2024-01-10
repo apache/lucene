@@ -34,10 +34,10 @@ public class SrndTruncQuery extends SimpleTerm {
     this.truncated = truncated;
     compiled =
         new CompiledAutomaton(
-            WildcardQuery.toAutomaton(
-                new Term(null, truncated), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT),
+            WildcardQuery.toAutomaton(new Term(null, truncated)),
             false,
             true,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             true);
   }
 
