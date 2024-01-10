@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -34,6 +37,7 @@ import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 
 public class TestWordBreakSpellChecker extends LuceneTestCase {
@@ -49,7 +53,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
     for (int i = 900; i < 1112; i++) {
       Document doc = new Document();
-      String num = English.intToEnglish(i).replaceAll("[-]", " ").replaceAll("[,]", "");
+      String num = English.intToEnglish(i).replace("-", " ").replace(",", "");
       doc.add(newTextField("numbers", num, Field.Store.NO));
       writer.addDocument(doc);
     }
@@ -105,10 +109,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
 
       // sanity check that our suggester isn't completely broken
-      assertThat(sw.length, org.hamcrest.Matchers.greaterThan(0));
+      MatcherAssert.assertThat(sw.length, greaterThan(0));
 
-      // if maxEvaluations is respected, we can't possibly have more suggestions then that.
-      assertThat(sw.length, org.hamcrest.Matchers.lessThan(maxEvals));
+      // if maxEvaluations is respected, we can't possibly have more suggestions than that
+      MatcherAssert.assertThat(sw.length, lessThan(maxEvals));
     }
   }
 
@@ -338,7 +342,6 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
   public void testRandom() throws Exception {
     int numDocs = TestUtil.nextInt(random(), (10 * RANDOM_MULTIPLIER), (100 * RANDOM_MULTIPLIER));
-    IndexReader ir = null;
 
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
@@ -372,7 +375,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
     writer.commit();
     writer.close();
 
-    ir = DirectoryReader.open(dir);
+    IndexReader ir = DirectoryReader.open(dir);
     WordBreakSpellChecker wbsp = new WordBreakSpellChecker();
     wbsp.setMaxChanges(1);
     wbsp.setMinBreakWordLength(1);
