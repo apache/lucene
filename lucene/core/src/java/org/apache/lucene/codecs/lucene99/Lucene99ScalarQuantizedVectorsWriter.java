@@ -387,6 +387,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       MergeState mergeState,
       ScalarQuantizer mergedQuantizationState)
       throws IOException {
+    if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
+      segmentWriteState.infoStream.message(
+        QUANTIZED_VECTOR_COMPONENT,
+        "quantized field="
+          + " confidenceInterval="
+          + confidenceInterval
+          + " minQuantile="
+          + mergedQuantizationState.getLowerQuantile()
+          + " maxQuantile="
+          + mergedQuantizationState.getUpperQuantile());
+    }
     long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempQuantizedVectorData =
         segmentWriteState.directory.createTempOutput(

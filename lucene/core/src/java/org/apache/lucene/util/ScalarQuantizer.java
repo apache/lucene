@@ -322,19 +322,22 @@ public class ScalarQuantizer {
           reservoirSampleIndices(floatVectorValues.size(), SCALAR_QUANTIZATION_SAMPLE_SIZE);
       int[] sampledDocsIds = reservoirSampleIndices(floatVectorValues.size(), 1000);
       int copyOffset = 0;
-      int index = 0;
       int docId;
       int sampledDocsIdx = 0;
       int vectorsToTakeIdx = 0;
       while ((docId = floatVectorValues.nextDoc()) != NO_MORE_DOCS) {
-        if (sampledDocsIds[sampledDocsIdx] == docId) {
+        if (sampledDocsIdx >= sampledDocsIds.length
+            && vectorsToTakeIdx >= vectorsToTake.length) {
+          break;
+        }
+        if (sampledDocsIdx < sampledDocsIds.length && docId == sampledDocsIds[sampledDocsIdx]) {
           float[] floatVector = floatVectorValues.vectorValue();
           float[] copy = new float[floatVector.length];
           System.arraycopy(floatVector, 0, copy, 0, floatVector.length);
           sampledDocs.add(copy);
           sampledDocsIdx++;
         }
-        if (index == vectorsToTake[vectorsToTakeIdx]) {
+        if (vectorsToTakeIdx < vectorsToTake.length && docId == vectorsToTake[vectorsToTakeIdx]) {
           assert floatVectorValues.docID() != NO_MORE_DOCS;
           float[] floatVector = floatVectorValues.vectorValue();
           System.arraycopy(floatVector, 0, sampledValues, copyOffset, floatVector.length);
