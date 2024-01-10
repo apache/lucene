@@ -77,7 +77,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       fieldVectorEncodings[i] = randomVectorEncoding();
     }
     try (Directory dir = newDirectory();
-         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         for (int field = 0; field < numFields; field++) {
@@ -138,7 +138,6 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     }
   }
 
-
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
@@ -152,7 +151,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectors2(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-          similarityFunction);
+            similarityFunction);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {

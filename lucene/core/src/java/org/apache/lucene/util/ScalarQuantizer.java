@@ -326,8 +326,7 @@ public class ScalarQuantizer {
       int sampledDocsIdx = 0;
       int vectorsToTakeIdx = 0;
       while ((docId = floatVectorValues.nextDoc()) != NO_MORE_DOCS) {
-        if (sampledDocsIdx >= sampledDocsIds.length
-            && vectorsToTakeIdx >= vectorsToTake.length) {
+        if (sampledDocsIdx >= sampledDocsIds.length && vectorsToTakeIdx >= vectorsToTake.length) {
           break;
         }
         if (sampledDocsIdx < sampledDocsIds.length && docId == sampledDocsIds[sampledDocsIdx]) {
@@ -348,16 +347,17 @@ public class ScalarQuantizer {
     }
 
     // Gather the candidate quantiles via two broad confidence intervals
-    float[] upperAndLowerFirst =
-        getUpperAndLowerQuantile(sampledValues, 1 - 1f / (floatVectorValues.dimension() + 1));
-    float al = upperAndLowerFirst[0];
-    float bu = upperAndLowerFirst[1];
     float[] upperAndLowerSecond =
         getUpperAndLowerQuantile(
             sampledValues,
             1
                 - Math.min(32, floatVectorValues.dimension() / 10f)
                     / (floatVectorValues.dimension() + 1));
+    float[] upperAndLowerFirst =
+        getUpperAndLowerQuantile(sampledValues, 1 - 1f / (floatVectorValues.dimension() + 1));
+
+    float al = upperAndLowerFirst[0];
+    float bu = upperAndLowerFirst[1];
     final float au = upperAndLowerSecond[0];
     final float bl = upperAndLowerSecond[1];
     final float[] lowerCandidates = new float[33];
@@ -366,6 +366,7 @@ public class ScalarQuantizer {
     for (float i = 0f; i <= 32f; i += 1f) {
       lowerCandidates[idx] = al + i * (au - al) / 32f;
       upperCandidates[idx] = bl + i * (bu - bl) / 32f;
+      idx++;
     }
     // Now we need to find the best candidate pair by correlating the true quantized nearest
     // neighbor scores
