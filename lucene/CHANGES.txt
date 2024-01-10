@@ -33,6 +33,8 @@ Improvements
 
 * GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
 
+* GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
+
 Optimizations
 ---------------------
 
