@@ -135,6 +135,14 @@ public class PimIndexWriter extends IndexWriter {
     return pimIndexInfo;
   }
 
+  /**
+   * Generates the PIM index from an existing Lucene index
+   * @throws IOException
+   */
+  public void generatePimIndex() throws IOException {
+    doAfterCommit();
+  }
+
   @Override
   protected void doAfterCommit() throws IOException {
 
