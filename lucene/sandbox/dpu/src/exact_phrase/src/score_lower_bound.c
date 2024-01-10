@@ -20,17 +20,6 @@ uintptr_t doc_norms_addr[DPU_MAX_BATCH_SIZE];
 
 MUTEX_POOL_INIT(mut_pool, 8);
 
-//TODO check simpler hash functions
-static inline uint32_t wang_hash_func(uint32_t key) {
-  key += ~(key << 15);
-  key ^= (key >> 10);
-  key += (key << 3);
-  key ^= (key >> 6);
-  key += ~(key << 11);
-  key ^= (key >> 16);
-  return key;
-}
-
 static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
 
     if(nb_docs_log2[query_id] == UINT8_MAX) {
@@ -38,9 +27,8 @@ static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
         return DEFAULT_NORM_VALUE;
     }
 
-    uint32_t hash = wang_hash_func(doc_id);
     uint32_t nb_docs = 1 << nb_docs_log2[query_id];
-    uint32_t ind = hash & (nb_docs - 1);
+    uint32_t ind = doc_id & (nb_docs - 1);
     //printf("doc_id=%u nb_docs=%u ind=%u\n", doc_id, nb_docs, ind);
     uint64_t norm_buff;
     uint8_t *norm_vec = mram_read_unaligned(

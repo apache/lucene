@@ -897,16 +897,6 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
 
-      static int wangHash(int key) {
-        key += ~(key << 15);
-        key ^= (key >>> 10);
-        key += (key << 3);
-        key ^= (key >>> 6);
-        key += ~(key << 11);
-        key ^= (key >>> 16);
-        return key;
-      }
-
       private void writeNormsHashTable() throws IOException {
 
         int nbDocs = docNormsMap.size();
@@ -925,16 +915,17 @@ public class PimIndexWriter extends IndexWriter {
 
         // first loop, count the number of elements per hash to identify conflicts
         for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
-          int hash = wangHash(entry.getKey()) & (hashSize - 1);
+          int hash = entry.getKey() & (hashSize - 1);
           hashCount[hash]++;
         }
 
         // second loop, write norms in hash table or in conflict list
         for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
-          //System.out.println("key=" + entry.getKey() + " hash=" + (wangHash(entry.getKey())) + " hashSize=" + hashSize
+          //System.out.println("key=" + entry.getKey() + " hash=" + (entry.getKey() & (hashSize - 1))
+          //        + " hashSize=" + hashSize
           //        + " nbDocs=" + nbDocs + " " + (Integer.numberOfLeadingZeros(0)));
           //System.out.flush();
-          int hash = wangHash(entry.getKey()) & (hashSize - 1);
+          int hash = entry.getKey() & (hashSize - 1);
           // Note: we encode a conflict with a value of 0
           // There is also the case (is it possible ?) that the norm is effectively 0
           // This will be handled as if there was a conflict
