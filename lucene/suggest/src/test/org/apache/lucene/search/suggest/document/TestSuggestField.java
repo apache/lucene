@@ -17,6 +17,8 @@
 package org.apache.lucene.search.suggest.document;
 
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.assertTokenStreamContents;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
@@ -65,6 +67,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +91,7 @@ public class TestSuggestField extends LuceneTestCase {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class, () -> new SuggestField("suggest_field", "", 3));
-    assertTrue(expected.getMessage().contains("value"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("value"));
   }
 
   @Test
@@ -96,7 +99,7 @@ public class TestSuggestField extends LuceneTestCase {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class, () -> new SuggestField("suggest_field", "sugg", -1));
-    assertTrue(expected.getMessage().contains("weight"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("weight"));
   }
 
   @Test
@@ -108,21 +111,21 @@ public class TestSuggestField extends LuceneTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> new SuggestField("name", charsRefBuilder.toString(), 1));
-    assertTrue(expected.getMessage().contains("[0x1f]"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x1f]"));
 
     charsRefBuilder.setCharAt(2, (char) CompletionAnalyzer.HOLE_CHARACTER);
     expected =
         expectThrows(
             IllegalArgumentException.class,
             () -> new SuggestField("name", charsRefBuilder.toString(), 1));
-    assertTrue(expected.getMessage().contains("[0x1e]"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x1e]"));
 
     charsRefBuilder.setCharAt(2, (char) NRTSuggesterBuilder.END_BYTE);
     expected =
         expectThrows(
             IllegalArgumentException.class,
             () -> new SuggestField("name", charsRefBuilder.toString(), 1));
-    assertTrue(expected.getMessage().contains("[0x0]"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x0]"));
   }
 
   @Test
@@ -703,7 +706,7 @@ public class TestSuggestField extends LuceneTestCase {
     StoredFields storedFields = reader.storedFields();
     for (SuggestScoreDoc suggestScoreDoc : suggest.scoreLookupDocs()) {
       String key = suggestScoreDoc.key.toString();
-      assertTrue(key.startsWith("abc_"));
+      MatcherAssert.assertThat(key, startsWith("abc_"));
       String substring = key.substring(4);
       int fieldValue = Integer.parseInt(substring);
       Document doc = storedFields.document(suggestScoreDoc.doc);

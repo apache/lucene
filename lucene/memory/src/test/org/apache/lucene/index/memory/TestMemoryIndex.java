@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index.memory;
 
+import static org.hamcrest.core.StringContains.containsString;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -82,6 +84,7 @@ import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -113,11 +116,11 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     RuntimeException expected =
         expectThrows(RuntimeException.class, () -> mi.addField("f3", "and yet more", analyzer));
-    assertTrue(expected.getMessage().contains("frozen"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
     expected =
         expectThrows(RuntimeException.class, () -> mi.setSimilarity(new BM25Similarity(1, 1)));
-    assertTrue(expected.getMessage().contains("frozen"));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 

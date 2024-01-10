@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
@@ -34,6 +36,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
 public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCase {
@@ -357,7 +360,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
-    assertTrue(rewrittenQuery instanceof IndexSortSortedNumericDocValuesRangeQuery);
+    MatcherAssert.assertThat(
+        rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;

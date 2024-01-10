@@ -17,11 +17,13 @@
 package org.apache.lucene.geo;
 
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
 import java.util.List;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {
@@ -843,7 +845,7 @@ public class TestTessellator extends LuceneTestCase {
     Polygon polygon = polygons[0];
     TestCountingMonitor monitor = new TestCountingMonitor();
     Tessellator.tessellate(polygon, true, monitor);
-    assertTrue("Expected many monitor calls", monitor.count > 390);
+    MatcherAssert.assertThat("Expected many monitor calls", monitor.count, greaterThan(390));
     assertEquals("Expected specific number of splits", 3, monitor.splitsStarted);
     assertEquals("Expected splits to start and end", monitor.splitsEnded, monitor.splitsStarted);
   }

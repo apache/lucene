@@ -18,6 +18,7 @@
 package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.containsString;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.hamcrest.MatcherAssert;
 
 public class TestIndexSorting extends LuceneTestCase {
   static class AssertingNeedsIndexSortCodec extends FilterCodec {
@@ -2102,13 +2104,13 @@ public class TestIndexSorting extends LuceneTestCase {
       w2.close();
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addIndexes(dir2));
-      assertTrue(expected.getMessage().contains("cannot change index sort"));
+      MatcherAssert.assertThat(expected.getMessage(), containsString("cannot change index sort"));
       CodecReader[] codecReaders = new CodecReader[reader.leaves().size()];
       for (int i = 0; i < codecReaders.length; ++i) {
         codecReaders[i] = (CodecReader) reader.leaves().get(i).reader();
       }
       expected = expectThrows(IllegalArgumentException.class, () -> w.addIndexes(codecReaders));
-      assertTrue(expected.getMessage().contains("cannot change index sort"));
+      MatcherAssert.assertThat(expected.getMessage(), containsString("cannot change index sort"));
 
       reader.close();
       dir2.close();
@@ -2227,8 +2229,9 @@ public class TestIndexSorting extends LuceneTestCase {
     IllegalArgumentException e =
         expectThrows(IllegalArgumentException.class, () -> new IndexWriter(dir, iwc2));
     String message = e.getMessage();
-    assertTrue(message.contains("cannot change previous indexSort=<long: \"foo\">"));
-    assertTrue(message.contains("to new indexSort=<long: \"bar\">"));
+    MatcherAssert.assertThat(
+        message, containsString("cannot change previous indexSort=<long: \"foo\">"));
+    MatcherAssert.assertThat(message, containsString("to new indexSort=<long: \"bar\">"));
     dir.close();
   }
 
@@ -2817,7 +2820,7 @@ public class TestIndexSorting extends LuceneTestCase {
         doc.add(dvs.get(j));
         IllegalArgumentException exc =
             expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-        assertTrue(exc.getMessage().contains("expected field [field] to be "));
+        MatcherAssert.assertThat(exc.getMessage(), containsString("expected field [field] to be "));
         doc.clear();
         doc.add(dvs.get(i));
         w.addDocument(doc);

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -34,6 +37,7 @@ import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 
 public class TestWordBreakSpellChecker extends LuceneTestCase {
@@ -105,10 +109,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
 
       // sanity check that our suggester isn't completely broken
-      assertTrue(sw.length > 0);
+      MatcherAssert.assertThat(sw.length, greaterThan(0));
 
       // if maxEvaluations is respected, we can't possibly have more suggestions than that
-      assertTrue(sw.length < maxEvals);
+      MatcherAssert.assertThat(sw.length, lessThan(maxEvals));
     }
   }
 

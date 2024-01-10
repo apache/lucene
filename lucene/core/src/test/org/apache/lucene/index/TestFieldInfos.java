@@ -139,7 +139,7 @@ public class TestFieldInfos extends LuceneTestCase {
           assertEquals("testValue2", fi.getAttribute("testKey1"));
           break;
         default:
-          assertFalse("Unknown field", true);
+          fail("Unknown field");
       }
     }
     reader.close();
@@ -185,7 +185,7 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfo fi1 = fis.fieldInfo("f1");
     assertEquals("attdoc1", fi1.getAttribute("att1"));
     assertEquals("attdoc1", fi1.getAttribute("att2"));
-    assertEquals(null, fi1.getAttribute("att3"));
+    assertNull(fi1.getAttribute("att3"));
 
     // test that attributes for f2 are introduced by d2
     FieldInfo fi2 = fis.fieldInfo("f2");
