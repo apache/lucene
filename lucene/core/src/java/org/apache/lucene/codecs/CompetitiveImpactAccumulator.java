@@ -38,13 +38,6 @@ public final class CompetitiveImpactAccumulator {
   // encodes norms as bytes.
   private final TreeSet<Impact> otherFreqNormPairs;
 
-  /**
-   * If this is an empty acc, we can copy provided acc into this rather than merge them. There is no
-   * need to modify it in {@link CompetitiveImpactAccumulator#add(int, long)}, because this is a
-   * temp acc only for collecting. Maybe we should rename this field.
-   */
-  private boolean empty = true;
-
   /** Sole constructor. */
   public CompetitiveImpactAccumulator() {
     maxFreqs = new int[256];
@@ -68,7 +61,6 @@ public final class CompetitiveImpactAccumulator {
   public void clear() {
     Arrays.fill(maxFreqs, 0);
     otherFreqNormPairs.clear();
-    empty = true;
     assert assertConsistent();
   }
 
@@ -86,16 +78,7 @@ public final class CompetitiveImpactAccumulator {
     assert assertConsistent();
   }
 
-  /**
-   * Returns {@code true} if this acc contains no elements.
-   *
-   * @return {@code true} if this acc contains no elements
-   */
-  public boolean isEmpty() {
-    return empty;
-  }
-
-  /** Add {@code acc} into this. */
+  /** Merge {@code acc} into this. */
   public void addAll(CompetitiveImpactAccumulator acc) {
     int[] maxFreqs = this.maxFreqs;
     int[] otherMaxFreqs = acc.maxFreqs;
@@ -107,7 +90,6 @@ public final class CompetitiveImpactAccumulator {
       add(entry, otherFreqNormPairs);
     }
 
-    empty = false;
     assert assertConsistent();
   }
 
@@ -120,13 +102,8 @@ public final class CompetitiveImpactAccumulator {
     int[] otherMaxFreqs = acc.maxFreqs;
 
     System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
+    otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
 
-    // TODO: optimize add operation for this empty treeset.
-    for (Impact entry : acc.otherFreqNormPairs) {
-      add(entry, otherFreqNormPairs);
-    }
-
-    empty = false;
     assert assertConsistent();
   }
 
