@@ -196,7 +196,13 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         sortField[i] = SortFieldProvider.forName(provider).readSortField(bytes);
         assert bytes.eof();
       }
-      Sort indexSort = sortField.length == 0 ? null : new Sort(sortField);
+
+      final Sort indexSort;
+      if (sortField.length == 0) {
+        indexSort = null;
+      } else {
+        indexSort = new Sort(sortField);
+      }
 
       SimpleTextUtil.checkFooter(input);
 
@@ -335,7 +341,6 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         SimpleTextUtil.write(output, b.bytes.get().toString(), scratch);
         SimpleTextUtil.writeNewline(output);
       }
-
       SimpleTextUtil.writeChecksum(output, scratch);
     }
   }

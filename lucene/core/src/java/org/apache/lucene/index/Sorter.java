@@ -17,8 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.function.Function;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.TimSorter;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -206,13 +208,25 @@ public final class Sorter {
     SortField[] fields = sort.getSort();
     final IndexSorter.DocComparator[] comparators = new IndexSorter.DocComparator[fields.length];
 
+    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
+    LeafMetaData metaData = reader.getMetaData();
+    FieldInfos fieldInfos = reader.getFieldInfos();
+    if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+      BitSet parents =
+          BitSet.of(reader.getNumericDocValues(fieldInfos.getParentField()), reader.maxDoc());
+      comparatorWrapper =
+          in ->
+              (docID1, docID2) ->
+                  in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
+    }
+
     for (int i = 0; i < fields.length; i++) {
       IndexSorter sorter = fields[i].getIndexSorter();
       if (sorter == null) {
         throw new IllegalArgumentException(
             "Cannot use sortfield + " + fields[i] + " to sort indexes");
       }
-      comparators[i] = sorter.getDocComparator(reader, reader.maxDoc());
+      comparators[i] = comparatorWrapper.apply(sorter.getDocComparator(reader, reader.maxDoc()));
     }
     return sort(reader.maxDoc(), comparators);
   }

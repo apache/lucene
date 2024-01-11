@@ -249,7 +249,7 @@ public class TestFieldInfos extends LuceneTestCase {
 
   public void testFieldNumbersAutoIncrement() {
     FieldInfos.FieldNumbers fieldNumbers =
-        new FieldInfos.FieldNumbers("softDeletes", Version.LATEST.major);
+        new FieldInfos.FieldNumbers("softDeletes", "parentDoc", Version.LATEST.major);
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(
@@ -268,6 +268,7 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false));
     }
     int idx =
@@ -288,6 +289,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
@@ -310,6 +312,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }

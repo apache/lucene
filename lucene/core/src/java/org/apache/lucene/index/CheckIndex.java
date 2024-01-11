@@ -1196,34 +1196,39 @@ public final class CheckIndex implements Closeable {
         comparators[i] = fields[i].getComparator(1, Pruning.NONE).getLeafComparator(readerContext);
       }
 
-      int maxDoc = reader.maxDoc();
-
       try {
-
-        for (int docID = 1; docID < maxDoc; docID++) {
-
+        LeafMetaData metaData = reader.getMetaData();
+        FieldInfos fieldInfos = reader.getFieldInfos();
+        final DocIdSetIterator iter;
+        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+          iter = reader.getNumericDocValues(fieldInfos.getParentField());
+        } else {
+          iter = DocIdSetIterator.all(reader.maxDoc());
+        }
+        int prevDoc = iter.nextDoc();
+        int nextDoc;
+        while ((nextDoc = iter.nextDoc()) != NO_MORE_DOCS) {
           int cmp = 0;
-
           for (int i = 0; i < comparators.length; i++) {
-            // TODO: would be better if copy() didnt cause a term lookup in TermOrdVal & co,
+            // TODO: would be better if copy() didn't cause a term lookup in TermOrdVal & co,
             // the segments are always the same here...
-            comparators[i].copy(0, docID - 1);
+            comparators[i].copy(0, prevDoc);
             comparators[i].setBottom(0);
-            cmp = reverseMul[i] * comparators[i].compareBottom(docID);
+            cmp = reverseMul[i] * comparators[i].compareBottom(nextDoc);
             if (cmp != 0) {
               break;
             }
           }
-
           if (cmp > 0) {
             throw new CheckIndexException(
                 "segment has indexSort="
                     + sort
                     + " but docID="
-                    + (docID - 1)
+                    + (prevDoc)
                     + " sorts after docID="
-                    + docID);
+                    + nextDoc);
           }
+          prevDoc = nextDoc;
         }
         msg(
             infoStream,
