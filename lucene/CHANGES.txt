@@ -199,6 +199,8 @@ Optimizations
 
 * GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
 
+* GITHUB#:12997 Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
