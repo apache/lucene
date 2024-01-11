@@ -109,6 +109,9 @@ public class FSTCompiler<T> {
 
   private final IntsRefBuilder lastInput = new IntsRefBuilder();
 
+  // indicates whether we are not yet to write the padding byte
+  private boolean paddingBytePending;
+
   // NOTE: cutting this over to ArrayList instead loses ~6%
   // in build performance on 9.8M Wikipedia terms; so we
   // left this as an array:
@@ -171,6 +174,7 @@ public class FSTCompiler<T> {
     // pad: ensure no node gets address 0 which is reserved to mean
     // the stop state w/ no arcs. the actual byte will be written lazily
     numBytesWritten++;
+    paddingBytePending = true;
     this.dataOutput = dataOutput;
     fst =
         new FST<>(
@@ -551,7 +555,7 @@ public class FSTCompiler<T> {
 
     reverseScratchBytes();
     // write the padding byte if needed
-    if (numBytesWritten == 1) {
+    if (paddingBytePending) {
       writePaddingByte();
     }
     scratchBytes.writeTo(dataOutput);
@@ -561,9 +565,14 @@ public class FSTCompiler<T> {
     return numBytesWritten - 1;
   }
 
+  /**
+   * Write the padding byte, ensure no node gets address 0 which is reserved to mean the stop state
+   * w/ no arcs
+   */
   private void writePaddingByte() throws IOException {
-    assert numBytesWritten == 1;
+    assert paddingBytePending;
     dataOutput.writeByte((byte) 0);
+    paddingBytePending = false;
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
@@ -974,9 +983,10 @@ public class FSTCompiler<T> {
     freezeTail(0);
     if (root.numArcs == 0) {
       if (fst.metadata.emptyOutput == null) {
+        // return null for completely empty FST which accepts nothing
         return null;
       } else {
-        // we haven't written the pad byte so far, but the FST is still valid
+        // we haven't written the padding byte so far, but the FST is still valid
         writePaddingByte();
       }
     }
