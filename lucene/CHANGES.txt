@@ -105,6 +105,8 @@ Improvements
 * GITHUB#12873: Expressions module now uses JEP 371 "Hidden Classes" with JEP 309
   "Dynamic Class-File Constants" to implement Javascript expressions. (Uwe Schindler)
 
+* GITHUB#12985: Make Lucene90BlockTreePostingsFormat to build FST off-heap for the root block. (Anh Dung Bui)
+
 Optimizations
 ---------------------
 
