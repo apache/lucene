@@ -77,6 +77,9 @@ API Changes
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
 
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
+
 New Features
 ---------------------
 
@@ -186,9 +189,15 @@ Improvements
 
 * GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
 
+* GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
+
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
+  DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
 
 Bug Fixes
 ---------------------
@@ -212,6 +221,8 @@ Other
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
+
+* GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
 ======================== Lucene 9.9.1 =======================
 

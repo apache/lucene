@@ -60,9 +60,6 @@ grant {
   permission java.lang.RuntimePermission "getFileStoreAttributes";
   permission java.lang.RuntimePermission "writeFileDescriptor";
 
-  // needed to check if C2 (implied by the presence of the CI env) is enabled
-  permission java.lang.RuntimePermission "getenv.CI";
-
   // TestLockFactoriesMultiJVM opens a random port on 127.0.0.1 (port 0 = ephemeral port range):
   permission java.net.SocketPermission "127.0.0.1:0", "accept,listen,resolve";
 
@@ -79,11 +76,6 @@ grant {
 
   // used by nested tests? (e.g. TestLeaveFilesIfTestFails). TODO: look into this
   permission java.util.PropertyPermission "tests.runnested", "write";
-
-  // solr properties. TODO: move these out to SolrTestCase
-  permission java.util.PropertyPermission "solr.data.dir", "write";
-  permission java.util.PropertyPermission "solr.solr.home", "write";
-  permission java.util.PropertyPermission "solr.directoryFactory", "write";
 
   // allows LuceneTestCase#runWithRestrictedPermissions to execute with lower (or no) permission
   permission java.security.SecurityPermission "createAccessControlContext";
