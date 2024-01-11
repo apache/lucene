@@ -333,12 +333,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
               termByteArray.grow(len);
               termByteArray.setLength(len);
               in.readBytes(termByteArray.bytes(), 0, len);
-              if (len > 2) {
-                term.copyBytes(
-                    SimpleTextUtil.fromBytesRefString(termByteArray.get().utf8ToString()));
-              } else {
-                term.setLength(0);
-              }
+              term.copyBytes(SimpleTextUtil.fromBytesRefString(termByteArray.get().utf8ToString()));
               return term.get();
             } catch (IOException ioe) {
               throw new RuntimeException(ioe);
