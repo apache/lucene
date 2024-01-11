@@ -93,15 +93,13 @@ public final class CompetitiveImpactAccumulator {
     assert assertConsistent();
   }
 
-  /** Copy {@code acc} into this empty acc. */
+  /** Replace the content of this {@code acc} with the provided {@code acc}. */
   public void copy(CompetitiveImpactAccumulator acc) {
-    assert Arrays.stream(maxFreqs).sum() == 0;
-    assert otherFreqNormPairs.isEmpty();
-
     int[] maxFreqs = this.maxFreqs;
     int[] otherMaxFreqs = acc.maxFreqs;
 
     System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
+    otherFreqNormPairs.clear();
     otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
 
     assert assertConsistent();
