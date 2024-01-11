@@ -123,8 +123,6 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
-* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
-
 Bug Fixes
 ---------------------
 
@@ -194,11 +192,15 @@ Improvements
 
 * GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
 
+* GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
+
 Optimizations
 ---------------------
 
 * GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
   DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
 
 Bug Fixes
 ---------------------

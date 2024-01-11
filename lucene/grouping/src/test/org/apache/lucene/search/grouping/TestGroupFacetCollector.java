@@ -19,7 +19,6 @@ package org.apache.lucene.search.grouping;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -453,13 +452,12 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           System.out.println("Total missing count " + expectedFacetResult.getTotalMissingCount());
           int counter = 0;
           for (TermGroupFacetCollector.FacetEntry expectedFacetEntry : expectedFacetEntries) {
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "%d. Expected facet value %s with count %d",
-                    counter++,
-                    expectedFacetEntry.getValue().utf8ToString(),
-                    expectedFacetEntry.getCount()));
+            System.out.printf(
+                Locale.ROOT,
+                "%d. Expected facet value %s with count %d%n",
+                counter++,
+                expectedFacetEntry.getValue().utf8ToString(),
+                expectedFacetEntry.getCount());
           }
 
           System.out.println("\n=== Actual: \n");
@@ -467,13 +465,12 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           System.out.println("Total missing count " + actualFacetResult.getTotalMissingCount());
           counter = 0;
           for (TermGroupFacetCollector.FacetEntry actualFacetEntry : actualFacetEntries) {
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "%d. Actual facet value %s with count %d",
-                    counter++,
-                    actualFacetEntry.getValue().utf8ToString(),
-                    actualFacetEntry.getCount()));
+            System.out.printf(
+                Locale.ROOT,
+                "%d. Actual facet value %s with count %d%n",
+                counter++,
+                actualFacetEntry.getValue().utf8ToString(),
+                actualFacetEntry.getCount());
           }
           System.out.println(
               "\n===================================================================================");
@@ -581,19 +578,15 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
     NavigableSet<String> uniqueFacetValues =
         new TreeSet<>(
-            new Comparator<String>() {
-
-              @Override
-              public int compare(String a, String b) {
-                if (a == b) {
-                  return 0;
-                } else if (a == null) {
-                  return -1;
-                } else if (b == null) {
-                  return 1;
-                } else {
-                  return a.compareTo(b);
-                }
+            (a, b) -> {
+              if (a == b) {
+                return 0;
+              } else if (a == null) {
+                return -1;
+              } else if (b == null) {
+                return 1;
+              } else {
+                return a.compareTo(b);
               }
             });
     Map<String, Map<String, Set<String>>> searchTermToFacetToGroups = new HashMap<>();
@@ -610,7 +603,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
       String contentStr = contentBrs[random.nextInt(contentBrs.length)];
       if (!searchTermToFacetToGroups.containsKey(contentStr)) {
-        searchTermToFacetToGroups.put(contentStr, new HashMap<String, Set<String>>());
+        searchTermToFacetToGroups.put(contentStr, new HashMap<>());
       }
       Map<String, Set<String>> facetToGroups = searchTermToFacetToGroups.get(contentStr);
 
@@ -619,7 +612,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
         String facetValue = facetValues.get(random.nextInt(facetValues.size()));
         uniqueFacetValues.add(facetValue);
         if (!facetToGroups.containsKey(facetValue)) {
-          facetToGroups.put(facetValue, new HashSet<String>());
+          facetToGroups.put(facetValue, new HashSet<>());
         }
         Set<String> groupsInFacet = facetToGroups.get(facetValue);
         groupsInFacet.add(groupValue);
@@ -634,7 +627,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           String facetValue = facetValues.get(random.nextInt(facetValues.size()));
           uniqueFacetValues.add(facetValue);
           if (!facetToGroups.containsKey(facetValue)) {
-            facetToGroups.put(facetValue, new HashSet<String>());
+            facetToGroups.put(facetValue, new HashSet<>());
           }
           Set<String> groupsInFacet = facetToGroups.get(facetValue);
           groupsInFacet.add(groupValue);
@@ -740,21 +733,15 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
       }
     }
 
-    Collections.sort(
-        entries,
-        new Comparator<TermGroupFacetCollector.FacetEntry>() {
-
-          @Override
-          public int compare(
-              TermGroupFacetCollector.FacetEntry a, TermGroupFacetCollector.FacetEntry b) {
-            if (orderByCount) {
-              int cmp = b.getCount() - a.getCount();
-              if (cmp != 0) {
-                return cmp;
-              }
+    entries.sort(
+        (a, b) -> {
+          if (orderByCount) {
+            int cmp = b.getCount() - a.getCount();
+            if (cmp != 0) {
+              return cmp;
             }
-            return a.getValue().compareTo(b.getValue());
           }
+          return a.getValue().compareTo(b.getValue());
         });
 
     int endOffset = offset + limit;

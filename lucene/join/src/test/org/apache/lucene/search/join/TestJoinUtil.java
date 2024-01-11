@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -195,7 +194,7 @@ public class TestJoinUtil extends LuceneTestCase {
   public void testSimpleOrdinalsJoin() throws Exception {
     final String idField = "id";
     final String productIdField = "productId";
-    // A field indicating to what type a document belongs, which is then used to distinques between
+    // A field indicating to what type a document belongs, which is then used to distinguish between
     // documents during joining.
     final String typeField = "type";
     // A single sorted doc values field that holds the join values for all document types.
@@ -310,7 +309,7 @@ public class TestJoinUtil extends LuceneTestCase {
   public void testOrdinalsJoinExplainNoMatches() throws Exception {
     final String idField = "id";
     final String productIdField = "productId";
-    // A field indicating to what type a document belongs, which is then used to distinques between
+    // A field indicating to what type a document belongs, which is then used to distinguish between
     // documents during joining.
     final String typeField = "type";
     // A single sorted doc values field that holds the join values for all document types.
@@ -1496,7 +1495,7 @@ public class TestJoinUtil extends LuceneTestCase {
         final Query joinQuery;
         {
           // single val can be handled by multiple-vals
-          final boolean muliValsQuery = multipleValuesPerDocument || random().nextBoolean();
+          final boolean multiValsQuery = multipleValuesPerDocument || random().nextBoolean();
           final String fromField = from ? "from" : "to";
           final String toField = from ? "to" : "from";
 
@@ -1521,7 +1520,7 @@ public class TestJoinUtil extends LuceneTestCase {
               joinQuery =
                   JoinUtil.createJoinQuery(
                       fromField + suffix,
-                      muliValsQuery,
+                      multiValsQuery,
                       toField + suffix,
                       numType,
                       actualQuery,
@@ -1531,7 +1530,7 @@ public class TestJoinUtil extends LuceneTestCase {
             case 1:
               joinQuery =
                   JoinUtil.createJoinQuery(
-                      fromField, muliValsQuery, toField, actualQuery, indexSearcher, scoreMode);
+                      fromField, multiValsQuery, toField, actualQuery, indexSearcher, scoreMode);
               break;
             default:
               throw new RuntimeException("unexpected value " + surpriseMe);
@@ -1568,24 +1567,22 @@ public class TestJoinUtil extends LuceneTestCase {
       for (int doc = iterator.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = iterator.nextDoc()) {
-        System.out.println(
-            String.format(
-                Locale.ROOT,
-                "Expected doc[%d] with id value %s",
-                doc,
-                indexSearcher.storedFields().document(doc).get("id")));
+        System.out.printf(
+            Locale.ROOT,
+            "Expected doc[%d] with id value %s%n",
+            doc,
+            indexSearcher.storedFields().document(doc).get("id"));
       }
       System.out.println("actual cardinality:" + actualResult.cardinality());
       iterator = new BitSetIterator(actualResult, actualResult.cardinality());
       for (int doc = iterator.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = iterator.nextDoc()) {
-        System.out.println(
-            String.format(
-                Locale.ROOT,
-                "Actual doc[%d] with id value %s",
-                doc,
-                indexSearcher.storedFields().document(doc).get("id")));
+        System.out.printf(
+            Locale.ROOT,
+            "Actual doc[%d] with id value %s%n",
+            doc,
+            indexSearcher.storedFields().document(doc).get("id"));
       }
     }
     assertEquals(expectedResult, actualResult);
@@ -1661,7 +1658,7 @@ public class TestJoinUtil extends LuceneTestCase {
         final int nextInt = random.nextInt(0xFFFFFF);
         uniqueRandomValue = String.format(Locale.ROOT, "%08x", nextInt);
         assert nextInt == Integer.parseUnsignedInt(uniqueRandomValue, 16);
-      } while ("".equals(uniqueRandomValue) || trackSet.contains(uniqueRandomValue));
+      } while (uniqueRandomValue.isEmpty() || trackSet.contains(uniqueRandomValue));
 
       // Generate unique values and empty strings aren't allowed.
       trackSet.add(uniqueRandomValue);
@@ -1867,8 +1864,7 @@ public class TestJoinUtil extends LuceneTestCase {
         Terms terms = MultiTerms.getTerms(topLevelReader, toField);
         if (terms != null) {
           PostingsEnum postingsEnum = null;
-          SortedSet<BytesRef> joinValues = new TreeSet<>();
-          joinValues.addAll(joinValueToJoinScores.keySet());
+          SortedSet<BytesRef> joinValues = new TreeSet<>(joinValueToJoinScores.keySet());
           for (BytesRef joinValue : joinValues) {
             TermsEnum termsEnum = terms.iterator();
             if (termsEnum.seekExact(joinValue)) {
@@ -1993,22 +1989,16 @@ public class TestJoinUtil extends LuceneTestCase {
       hitsToJoinScores = context.toHitsToJoinScore.get(queryValue);
     }
     List<Map.Entry<Integer, JoinScore>> hits = new ArrayList<>(hitsToJoinScores.entrySet());
-    Collections.sort(
-        hits,
-        new Comparator<Map.Entry<Integer, JoinScore>>() {
+    hits.sort(
+        (hit1, hit2) -> {
+          float score1 = hit1.getValue().score(scoreMode);
+          float score2 = hit2.getValue().score(scoreMode);
 
-          @Override
-          public int compare(
-              Map.Entry<Integer, JoinScore> hit1, Map.Entry<Integer, JoinScore> hit2) {
-            float score1 = hit1.getValue().score(scoreMode);
-            float score2 = hit2.getValue().score(scoreMode);
-
-            int cmp = Float.compare(score2, score1);
-            if (cmp != 0) {
-              return cmp;
-            }
-            return hit1.getKey() - hit2.getKey();
+          int cmp = Float.compare(score2, score1);
+          if (cmp != 0) {
+            return cmp;
           }
+          return hit1.getKey() - hit2.getKey();
         });
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(10, hits.size())];
     for (int i = 0; i < scoreDocs.length; i++) {

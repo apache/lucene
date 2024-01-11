@@ -63,7 +63,7 @@ public class TestIntervals extends LuceneTestCase {
   //   0         1         2         3         4         5         6         7         8         9
   //
   // 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-  private static String[] field1_docs = {
+  private static final String[] field1_docs = {
     "Nothing of interest to anyone here",
     "Pease porridge hot, pease porridge cold, pease porridge in the pot nine days old.  Some like it hot, some like it cold, some like it in the pot nine days old",
     "Pease porridge cold, pease porridge hot, pease porridge in the pot twelve days old.  Some like it cold, some like it hot, some like it in the fraggle",
@@ -76,7 +76,7 @@ public class TestIntervals extends LuceneTestCase {
   //   0         1         2         3         4         5         6         7         8         9
   //
   // 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-  private static String[] field2_docs = {
+  private static final String[] field2_docs = {
     "In Xanadu did Kubla Khan a stately pleasure dome decree",
     "Where Alph the sacred river ran through caverns measureless to man",
     "a b a c b a b c",
@@ -88,7 +88,7 @@ public class TestIntervals extends LuceneTestCase {
 
   private static Directory directory;
   private static IndexSearcher searcher;
-  private static Analyzer analyzer = new StandardAnalyzer(CharArraySet.EMPTY_SET);
+  private static final Analyzer analyzer = new StandardAnalyzer(CharArraySet.EMPTY_SET);
 
   private static final FieldType FIELD_TYPE = new FieldType(TextField.TYPE_STORED);
 
@@ -202,7 +202,7 @@ public class TestIntervals extends LuceneTestCase {
           @Override
           public void consumeTerms(Query query, Term... terms) {
             visitedSources[0]++;
-            actualTerms.addAll(Arrays.stream(terms).map(Term::text).collect(Collectors.toList()));
+            actualTerms.addAll(Arrays.stream(terms).map(Term::text).toList());
           }
 
           @Override
@@ -261,9 +261,9 @@ public class TestIntervals extends LuceneTestCase {
     IllegalArgumentException e =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              Intervals.term("wibble").intervals("id", searcher.getIndexReader().leaves().get(0));
-            });
+            () ->
+                Intervals.term("wibble")
+                    .intervals("id", searcher.getIndexReader().leaves().get(0)));
     assertEquals(
         "Cannot create an IntervalIterator over field id because it has no indexed positions",
         e.getMessage());
@@ -454,10 +454,7 @@ public class TestIntervals extends LuceneTestCase {
     Collections.shuffle(Arrays.asList(terms), random());
 
     IntervalsSource source =
-        Intervals.or(
-            Arrays.stream(terms)
-                .map((term) -> Intervals.term(term))
-                .toArray((sz) -> new IntervalsSource[sz]));
+        Intervals.or(Arrays.stream(terms).map(Intervals::term).toArray(IntervalsSource[]::new));
     assertEquals(expected, source.toString());
   }
 
