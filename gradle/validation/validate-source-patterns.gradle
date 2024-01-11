@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+
 import org.apache.rat.Defaults
 import org.apache.rat.document.impl.FileDocument
 import org.apache.rat.api.MetaData
@@ -144,8 +148,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
       (~$/\$$Id\b/$) : 'svn keyword',
       (~$/\$$Header\b/$) : 'svn keyword',
       (~$/\$$Source\b/$) : 'svn keyword',
-      (~$/^\uFEFF/$) : 'UTF-8 byte order mark',
-      (~$/import java\.lang\.\w+;/$) : 'java.lang import is unnecessary'
+      (~$/[\u200B\uFEFF]/$) : 'UTF-8 byte order mark or other zero-width codepoints',
+      (~$/import java\.lang\.\w+;/$) : 'java.lang import is unnecessary',
     ]
 
     // Python and others merrily use var declarations, this is a problem _only_ in Java at least for 8x where we're forbidding var declarations
@@ -198,15 +202,29 @@ class ValidateSourcePatternsTask extends DefaultTask {
     ProgressLogger progress = progressLoggerFactory.newOperation(this.class)
     progress.start(this.name, this.name)
 
+    def validatingDecoder = StandardCharsets.UTF_8.newDecoder()
+      .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+
     sourceFiles.each { f ->
       try {
         progress.progress("Scanning ${f.name}")
         logger.debug('Scanning source file: {}', f);
 
-        def text = f.getText('UTF-8');
+        String text
+        try {
+          validatingDecoder.reset()
+          text = f.withInputStream {
+            in -> new InputStreamReader(in, validatingDecoder).getText()
+          }
+        } catch (CharacterCodingException e) {
+          reportViolation(f, "incorrect UTF-8 encoding [${e}]")
+          return // we can't proceed for this file
+        }
+
         invalidPatterns.each { pattern, name ->
-          if (pattern.matcher(text).find()) {
-            reportViolation(f, name);
+          def matcher = pattern.matcher(text);
+          if (matcher.find()) {
+            reportViolation(f, String.format(Locale.ROOT, '%s [start=%d, end=%d]', name, matcher.start(), matcher.end()));
           }
         }
         def javadocsMatcher = javadocsPattern.matcher(text);
@@ -230,9 +248,10 @@ class ValidateSourcePatternsTask extends DefaultTask {
           }
           checkLicenseHeaderPrecedes(f, 'package', packagePattern, javaCommentPattern, text, ratDocument);
 
-          invalidJavaOnlyPatterns.each { pattern,name ->
-            if (pattern.matcher(text).find()) {
-              reportViolation(f, name);
+          invalidJavaOnlyPatterns.each { pattern, name ->
+            def matcher = pattern.matcher(text);
+            if (matcher.find()) {
+              reportViolation(f, String.format(Locale.ROOT, '%s [start=%d, end=%d]', name, matcher.start(), matcher.end()));
             }
           }
         }

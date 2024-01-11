@@ -148,7 +148,7 @@ public class TestScorerPerf extends LuceneTestCase {
 
       pos = answer.nextSetBit(pos + 1);
       if (pos != doc + docBase) {
-        throw new RuntimeException("Expected doc " + pos + " but got " + doc + docBase);
+        throw new RuntimeException("Expected doc " + pos + " but got " + (doc + docBase));
       }
       super.collect(doc);
     }

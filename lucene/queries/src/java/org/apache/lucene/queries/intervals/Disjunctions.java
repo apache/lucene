@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.lucene.search.IndexSearcher;
 
 final class Disjunctions {
@@ -59,7 +58,7 @@ final class Disjunctions {
     if (rewritten.size() == 1) {
       return Collections.singletonList(function.apply(rewritten.get(0)));
     }
-    return rewritten.stream().map(function).collect(Collectors.toList());
+    return rewritten.stream().map(function).toList();
   }
 
   // Given a source containing disjunctions, and a mapping function,
@@ -70,7 +69,7 @@ final class Disjunctions {
     if (disjuncts.size() == 1) {
       return Collections.singletonList(function.apply(disjuncts.get(0)));
     }
-    return disjuncts.stream().map(function).collect(Collectors.toList());
+    return disjuncts.stream().map(function).toList();
   }
 
   // Separate out disjunctions into individual sources

@@ -19,6 +19,11 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
+
+The API of interfaces for accepting highlights has changed to allow performance improvements. Look at the issue and the PR diff to get
+a sense of what's changed (changes are minor).
+
 ### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
 
 The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
@@ -128,6 +133,11 @@ The expressions module has changed the `Expression#evaluate()` method signature:
 It now declares that it may throw `IOException`. This was an oversight because
 compiled expressions call `DoubleValues#doubleValue` behind the scenes, which
 may throw `IOException` on index problems, bubbling up unexpectedly to the caller.
+
+### PathHierarchyTokenizer and ReversePathHierarchyTokenizer do not produce overlapping tokens
+
+`(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
+offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

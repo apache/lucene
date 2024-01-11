@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
-import org.apache.lucene.search.Matches;
 
 /** Query wrapper that forces its wrapped Query to use the default doc-by-doc BulkScorer. */
 class ForceNoBulkScoringQuery extends Query {

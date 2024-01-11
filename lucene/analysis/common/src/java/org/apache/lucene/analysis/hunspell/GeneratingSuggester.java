@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.IntPredicate;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
@@ -108,7 +107,7 @@ class GeneratingSuggester {
           }
         });
 
-    return roots.stream().sorted().collect(Collectors.toList());
+    return roots.stream().sorted().toList();
   }
 
   private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
@@ -141,7 +140,7 @@ class GeneratingSuggester {
         }
       }
     }
-    return expanded.stream().limit(MAX_GUESSES).collect(Collectors.toList());
+    return expanded.stream().limit(MAX_GUESSES).toList();
   }
 
   // find minimum threshold for a passable suggestion
@@ -223,7 +222,7 @@ class GeneratingSuggester {
           }
         });
 
-    return result.stream().limit(MAX_WORDS).collect(Collectors.toList());
+    return result.stream().limit(MAX_WORDS).toList();
   }
 
   private void processAffixes(boolean prefixes, String word, AffixProcessor processor) {

@@ -61,10 +61,6 @@ API Changes
 
 * GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
-* GITHUB#11041: Deprecate IndexSearch#search(Query, Collector) in favor of
-  IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
-  and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
-
 * GITHUB#11023: Adding -level param to CheckIndex, making the old -fast param the default behaviour. (Jakub Slowinski)
 
 * GITHUB#12873: Expressions module now uses MethodHandles to define custom functions. Support for
@@ -72,6 +68,17 @@ API Changes
 
 * GITHUB#12243: Remove TermInSetQuery ctors taking varargs param. SortedSetDocValuesField#newSlowSetQuery,
   SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery, KeywordField#newSetQuery now take a collection. (Jakub Slowinski)
+
+* GITHUB#12881: Performance improvements to MatchHighlighter and MatchRegionRetriever. MatchRegionRetriever can be
+  configured to not load matches (or content) of certain fields and to force-load other fields so that stored fields
+  of a document are accessed once. A configurable limit of field matches placed in the priority queue was added
+  (allows handling long fields with lots of hits more gracefully). MatchRegionRetriever utilizes IndexSearcher's
+  executor to extract hit offsets concurrently. (Dawid Weiss)
+
+* GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
+
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
 
 New Features
 ---------------------
@@ -159,26 +166,72 @@ API Changes
 * GITHUB#12243: Mark TermInSetQuery ctors with varargs terms as @Deprecated. SortedSetDocValuesField#newSlowSetQuery,
   SortedDocValuesField#newSlowSetQuery, KeywordField#newSetQuery now take a collection of terms as a param. (Jakub Slowinski)
 
+* GITHUB#11041: Deprecate IndexSearch#search(Query, Collector) in favor of
+  IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
+  and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
+
+* GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @Deprecated. (Greg Miller)
+
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
+  VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
+  better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
+  level. (Aditya Prakash, Kaival Parikh)
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12870: Tighten synchronized loop in DirectoryTaxonomyReader#getOrdinal. (Stefan Vodita)
+
+* GITHUB#12812: Avoid overflows and false negatives in int slice buffer filled-with-zeros assertion. (Stefan Vodita)
+
+* GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
+
+* GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
+  DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
+
+Bug Fixes
+---------------------
+* GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
+
+* GITHUB#12558: Ensure #finish is called on all drill-sideways FacetsCollectors even when no hits are scored.
+  (Greg Miller)
+
+* GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
+  fail with certain random seeds. (Greg Miller)
+
+Build
+---------------------
+
+* GITHUB#12931, GITHUB#12936, GITHUB#12937: Improve source file validation to detect incorrect
+  UTF-8 sequences and forbid U+200B; enable errorprone DisableUnicodeInCode check.  (Robert Muir, Uwe Schindler)
+
+Other
+---------------------
+
+* GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
+
+* GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
+
+* GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
+======================== Lucene 9.9.1 =======================
 
 Bug Fixes
 ---------------------
 
-* GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
+* GITHUB#12898: JVM SIGSEGV crash when compiling computeCommonPrefixLengthAndBuildHistogram (Chris Hegarty)
 
-Other
----------------------
-(No changes)
+* GITHUB#12900: Push and pop OutputAccumulator as IntersectTermsEnumFrames are pushed and popped (Guo Feng, Mike McCandless)
 
 ======================== Lucene 9.9.0 =======================
 
