@@ -18,6 +18,7 @@ package org.apache.lucene.tests.store;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -58,6 +59,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
 
 /** Base class for {@link Directory} implementations. */
@@ -1437,5 +1439,77 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       Arrays.sort(expected);
       assertArrayEquals(expected, actual);
     }
+  }
+
+  public void testDataTypes() throws IOException {
+    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeByte((byte) 43);
+      out.writeShort((short) 12345);
+      out.writeInt(1234567890);
+      out.writeGroupVInts(values, 4);
+      out.writeLong(1234567890123456789L);
+      out.close();
+
+      long[] restored = new long[4];
+      IndexInput in = dir.openInput("test", IOContext.DEFAULT);
+      assertEquals(43, in.readByte());
+      assertEquals(12345, in.readShort());
+      assertEquals(1234567890, in.readInt());
+      in.readGroupVInts(restored, 4);
+      assertArrayEquals(values, restored);
+      assertEquals(1234567890123456789L, in.readLong());
+      in.close();
+    }
+  }
+
+  public void testGroupVInt() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
+      // test fallback to default implementation of readGroupVInt
+      doTestGroupVInt(dir, 5, 1, 6, 8);
+
+      // use more iterations to covers all bpv
+      doTestGroupVInt(dir, atLeast(100), 1, 31, 128);
+
+      // we use BaseChunkedDirectoryTestCase#testGroupVIntMultiBlocks cover multiple blocks for
+      // ByteBuffersDataInput and MMapDirectory
+    }
+  }
+
+  protected void doTestGroupVInt(
+      Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
+    long[] values = new long[maxNumValues];
+    int[] numValuesArray = new int[iterations];
+    IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
+    IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
+
+    // encode
+    for (int iter = 0; iter < iterations; iter++) {
+      final int bpv = TestUtil.nextInt(random(), minBpv, maxBpv);
+      numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
+        values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
+        vIntOut.writeVInt((int) values[j]);
+      }
+      groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
+    }
+    groupVIntOut.close();
+    vIntOut.close();
+
+    // decode
+    IndexInput groupVIntIn = dir.openInput("group-varint", IOContext.DEFAULT);
+    IndexInput vIntIn = dir.openInput("vint", IOContext.DEFAULT);
+    for (int iter = 0; iter < iterations; iter++) {
+      groupVIntIn.readGroupVInts(values, numValuesArray[iter]);
+      for (int j = 0; j < numValuesArray[iter]; j++) {
+        assertEquals(vIntIn.readVInt(), values[j]);
+      }
+    }
+
+    groupVIntIn.close();
+    vIntIn.close();
+    dir.deleteFile("group-varint");
+    dir.deleteFile("vint");
   }
 }

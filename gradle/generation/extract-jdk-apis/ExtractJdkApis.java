@@ -82,7 +82,7 @@ public final class ExtractJdkApis {
     // Collect all files to process:
     final List<Path> filesToExtract;
     try (var stream = Files.walk(jrtPath)) {
-      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).collect(Collectors.toList());
+      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).toList();
     }
     
     // Process all class files:

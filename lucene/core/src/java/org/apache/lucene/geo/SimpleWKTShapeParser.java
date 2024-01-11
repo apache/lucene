@@ -53,7 +53,7 @@ public class SimpleWKTShapeParser {
   public static Object parseExpectedType(String wkt, final ShapeType shapeType)
       throws IOException, ParseException {
     try (StringReader reader = new StringReader(wkt)) {
-      // setup the tokenizer; configured to read words w/o numbers
+      // set up the tokenizer; configured to read words w/o numbers
       StreamTokenizer tokenizer = new StreamTokenizer(reader);
       tokenizer.resetSyntax();
       tokenizer.wordChars('a', 'z');
@@ -110,7 +110,7 @@ public class SimpleWKTShapeParser {
       return null;
     }
     double[] pt = new double[] {nextNumber(stream), nextNumber(stream)};
-    if (isNumberNext(stream) == true) {
+    if (isNumberNext(stream)) {
       nextNumber(stream);
     }
     nextCloser(stream);
@@ -195,7 +195,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       lines.add(parseLine(stream));
     }
-    return lines.toArray(new Line[lines.size()]);
+    return lines.toArray(new Line[0]);
   }
 
   /** parses the hole of a polygon */
@@ -226,7 +226,7 @@ public class SimpleWKTShapeParser {
       return new Polygon(
           lats.stream().mapToDouble(i -> i).toArray(),
           lons.stream().mapToDouble(i -> i).toArray(),
-          holes.toArray(new Polygon[holes.size()]));
+          holes.toArray(new Polygon[0]));
     }
     return new Polygon(
         lats.stream().mapToDouble(i -> i).toArray(), lons.stream().mapToDouble(i -> i).toArray());
@@ -244,7 +244,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       polygons.add(parsePolygon(stream));
     }
-    return polygons.toArray(new Polygon[polygons.size()]);
+    return polygons.toArray(new Polygon[0]);
   }
 
   /** parses an ENVELOPE */
@@ -274,7 +274,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       geometries.add(parseGeometry(stream, null));
     }
-    return geometries.toArray(new Object[geometries.size()]);
+    return geometries.toArray(new Object[0]);
   }
 
   /** next word in the stream */
@@ -355,7 +355,7 @@ public class SimpleWKTShapeParser {
 
   /** expects a comma as next token */
   private static String nextComma(StreamTokenizer stream) throws IOException, ParseException {
-    if (nextWord(stream).equals(COMMA) == true) {
+    if (nextWord(stream).equals(COMMA)) {
       return COMMA;
     }
     throw new ParseException(
@@ -404,7 +404,7 @@ public class SimpleWKTShapeParser {
     ENVELOPE("envelope"); // not part of the actual WKB spec
 
     private final String shapeName;
-    private static Map<String, ShapeType> shapeTypeMap = new HashMap<>();
+    private static final Map<String, ShapeType> shapeTypeMap = new HashMap<>();
     private static final String BBOX = "BBOX";
 
     static {
@@ -429,10 +429,9 @@ public class SimpleWKTShapeParser {
 
     public static ShapeType forName(String shapename) {
       String typename = shapename.toLowerCase(Locale.ROOT);
-      for (ShapeType type : values()) {
-        if (type.shapeName.equals(typename)) {
-          return type;
-        }
+      ShapeType type = shapeTypeMap.get(typename);
+      if (type != null) {
+        return type;
       }
       throw new IllegalArgumentException("unknown geo_shape [" + shapename + "]");
     }

@@ -383,8 +383,8 @@ public class IndexWriter
   private final Deque<MergePolicy.OneMerge> pendingMerges = new ArrayDeque<>();
   private final Set<MergePolicy.OneMerge> runningMerges = new HashSet<>();
   private final List<MergePolicy.OneMerge> mergeExceptions = new ArrayList<>();
+  private final Merges merges = new Merges();
   private long mergeGen;
-  private Merges merges = new Merges();
   private boolean didMessageState;
   private final AtomicInteger flushCount = new AtomicInteger();
   private final AtomicInteger flushDeletesCount = new AtomicInteger();
@@ -657,7 +657,7 @@ public class IndexWriter
                                               sr.close();
                                             }
                                           })
-                              .collect(Collectors.toList()));
+                              .toList());
                     }
                   };
             }
@@ -6616,7 +6616,7 @@ public class IndexWriter
           @Override
           public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
             return new FieldInfosBuilder() {
-              private FieldInfos.Builder builder =
+              private final FieldInfos.Builder builder =
                   new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
 
               @Override

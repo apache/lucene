@@ -134,6 +134,11 @@ It now declares that it may throw `IOException`. This was an oversight because
 compiled expressions call `DoubleValues#doubleValue` behind the scenes, which
 may throw `IOException` on index problems, bubbling up unexpectedly to the caller.
 
+### PathHierarchyTokenizer and ReversePathHierarchyTokenizer do not produce overlapping tokens
+
+`(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
+offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

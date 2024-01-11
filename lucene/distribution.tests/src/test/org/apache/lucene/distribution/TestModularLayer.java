@@ -218,7 +218,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               }
 
               final int runtimeVersion = Runtime.version().feature();
-              if (jarVersions.contains(Integer.valueOf(runtimeVersion))) {
+              if (jarVersions.contains(runtimeVersion)) {
                 Assertions.assertThat(
                         loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
                     .isNotNull();
@@ -231,11 +231,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   public void testAllCoreModulesAreNamedModules() {
     Assertions.assertThat(allLuceneModules)
         .allSatisfy(
-            module -> {
-              Assertions.assertThat(module.descriptor().isAutomatic())
-                  .as(module.descriptor().name())
-                  .isFalse();
-            });
+            module ->
+                Assertions.assertThat(module.descriptor().isAutomatic())
+                    .as(module.descriptor().name())
+                    .isFalse());
   }
 
   /** Ensure all modules have the same (expected) version. */
@@ -283,9 +282,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
     try (ModuleReader reader = module.open();
         Stream<String> entryStream = reader.list()) {
       List<String> serviceProviderEntryList =
-          entryStream
-              .filter(entry -> serviceEntryPattern.matcher(entry).find())
-              .collect(Collectors.toList());
+          entryStream.filter(entry -> serviceEntryPattern.matcher(entry).find()).toList();
 
       for (String entry : serviceProviderEntryList) {
         List<String> implementations;
@@ -294,7 +291,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               Arrays.stream(new String(is.readAllBytes(), StandardCharsets.UTF_8).split("\n"))
                   .map(String::trim)
                   .filter(line -> !line.isBlank() && !line.startsWith("#"))
-                  .collect(Collectors.toList());
+                  .toList();
         }
 
         Matcher matcher = serviceEntryPattern.matcher(entry);
@@ -344,10 +341,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
       if (module.descriptor().name().equals("org.apache.lucene.core")) {
         // Internal packages should not be exported to unqualified targets.
-        jarPackages.removeIf(
-            entry -> {
-              return entry.startsWith("org.apache.lucene.internal");
-            });
+        jarPackages.removeIf(entry -> entry.startsWith("org.apache.lucene.internal"));
 
         // Internal packages should use qualified exports.
         moduleExports.removeIf(
@@ -364,11 +358,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
       Assertions.assertThat(moduleExports)
           .as("Exported packages in module: " + module.descriptor().name())
           .allSatisfy(
-              export -> {
-                Assertions.assertThat(export.targets())
-                    .as("We only support unqualified exports for now?")
-                    .isEmpty();
-              })
+              export ->
+                  Assertions.assertThat(export.targets())
+                      .as("We only support unqualified exports for now?")
+                      .isEmpty())
           .map(ModuleDescriptor.Exports::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
     }
@@ -392,11 +385,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
       Assertions.assertThat(moduleOpens)
           .as("Open packages in module: " + module.descriptor().name())
           .allSatisfy(
-              export -> {
-                Assertions.assertThat(export.targets())
-                    .as("Opens should only be targeted to Lucene Core.")
-                    .containsExactly("org.apache.lucene.core");
-              })
+              export ->
+                  Assertions.assertThat(export.targets())
+                      .as("Opens should only be targeted to Lucene Core.")
+                      .containsExactly("org.apache.lucene.core"))
           .map(ModuleDescriptor.Opens::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
     }

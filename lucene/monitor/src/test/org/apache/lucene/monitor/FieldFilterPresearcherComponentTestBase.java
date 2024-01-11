@@ -17,13 +17,14 @@
 
 package org.apache.lucene.monitor;
 
-import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.containsString;
 
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.hamcrest.MatcherAssert;
 
 public abstract class FieldFilterPresearcherComponentTestBase extends PresearcherTestBase {
 
@@ -71,7 +72,7 @@ public abstract class FieldFilterPresearcherComponentTestBase extends Presearche
           expectThrows(
               IllegalArgumentException.class,
               () -> monitor.match(new Document[] {doc1, doc2}, QueryMatch.SIMPLE_MATCHER));
-      assertThat(e.getMessage(), containsString("language:"));
+      MatcherAssert.assertThat(e.getMessage(), containsString("language:"));
     }
   }
 

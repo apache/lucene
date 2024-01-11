@@ -73,6 +73,40 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     }
   }
 
+  public void testRandomAccessTransition() {
+    Automaton nfa = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
+    while (nfa.isDeterministic()) {
+      nfa = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
+    }
+    NFARunAutomaton runAutomaton1, runAutomaton2;
+    runAutomaton1 = new NFARunAutomaton(nfa);
+    runAutomaton2 = new NFARunAutomaton(nfa);
+    assertRandomAccessTransition(runAutomaton1, runAutomaton2, 0, new HashSet<>());
+  }
+
+  private void assertRandomAccessTransition(
+      NFARunAutomaton automaton1, NFARunAutomaton automaton2, int state, Set<Integer> visited) {
+    if (visited.contains(state)) {
+      return;
+    }
+    visited.add(state);
+
+    Transition t1 = new Transition();
+    Transition t2 = new Transition();
+    automaton1.initTransition(state, t1);
+    if (random().nextBoolean()) {
+      // init is not really necessary for t2
+      automaton2.initTransition(state, t2);
+    }
+    int numStates = automaton2.getNumTransitions(state);
+    for (int i = 0; i < numStates; i++) {
+      automaton1.getNextTransition(t1);
+      automaton2.getTransition(state, i, t2);
+      assertEquals(t1.toString(), t2.toString());
+      assertRandomAccessTransition(automaton1, automaton2, t1.dest, visited);
+    }
+  }
+
   public void testRandomAutomatonQuery() throws IOException {
     final int docNum = 50;
     final int automatonNum = 50;
