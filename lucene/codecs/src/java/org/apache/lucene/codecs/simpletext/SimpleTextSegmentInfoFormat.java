@@ -36,7 +36,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CollectionUtil;
@@ -164,7 +163,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
 
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_ID);
-      final byte[] id = ArrayUtil.copyOfSubArray(scratch.bytes(), SI_ID.length, scratch.length());
+      final byte[] id = SimpleTextUtil.fromBytesRefString(readString(SI_ID.length, scratch)).bytes;
 
       if (!Arrays.equals(segmentID, id)) {
         throw new CorruptIndexException(
@@ -307,7 +306,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       }
 
       SimpleTextUtil.write(output, SI_ID);
-      SimpleTextUtil.write(output, new BytesRef(si.getId()));
+      SimpleTextUtil.write(output, new BytesRef(si.getId()).toString(), scratch);
       SimpleTextUtil.writeNewline(output);
 
       Sort indexSort = si.getIndexSort();
