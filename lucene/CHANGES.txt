@@ -222,6 +222,8 @@ Bug Fixes
 * GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
   fail with certain random seeds. (Greg Miller)
 
+* GITHUB#12885: Fixed the bug that JapaneseReadingFormFilter cannot convert some hiragana to romaji. (Takuma Kuramitsu)
+
 Build
 ---------------------
 
