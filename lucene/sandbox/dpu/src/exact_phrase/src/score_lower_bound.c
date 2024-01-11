@@ -12,7 +12,6 @@ __host uint8_t nb_best_scores[DPU_MAX_BATCH_SIZE];
 // lower bound on score for each query, to be set by the host
 __host uint32_t score_lower_bound[DPU_MAX_BATCH_SIZE] = {0};
 
-uint8_t nb_docs_log2[DPU_MAX_BATCH_SIZE];
 uintptr_t doc_norms_addr[DPU_MAX_BATCH_SIZE];
 
 #define DEFAULT_NORM_VALUE 1
@@ -22,44 +21,17 @@ MUTEX_POOL_INIT(mut_pool, 8);
 
 static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
 
-    if(nb_docs_log2[query_id] == UINT8_MAX) {
+    if(doc_norms_addr[query_id] == UINTPTR_MAX) {
         // no norms for this field, default value
         return DEFAULT_NORM_VALUE;
     }
 
-    uint32_t nb_docs = 1 << nb_docs_log2[query_id];
-    uint32_t ind = doc_id & (nb_docs - 1);
     //printf("doc_id=%u nb_docs=%u ind=%u\n", doc_id, nb_docs, ind);
     uint64_t norm_buff;
     uint8_t *norm_vec = mram_read_unaligned(
-                            (__mram_ptr uint8_t*)doc_norms_addr[query_id] + ind, &norm_buff, 1);
+                            (__mram_ptr uint8_t*)doc_norms_addr[query_id] + doc_id, &norm_buff, 1);
     uint8_t norm = *norm_vec;
     //printf("norm=%u\n", norm);
-
-    // if the norm is not zero, this is a valid value
-    if(norm) return norm;
-
-    // the norm is zero, meaning there is a collision
-    // start linear scan from the end of the hash table
-    // the collision rate should be low
-    uintptr_t start_addr = doc_norms_addr[query_id] + nb_docs;
-    // get a decoder from the pool
-    decoder_t* decoder = decoder_pool_get_one();
-    initialize_decoder(decoder, start_addr);
-    uint32_t key = decode_vint_from(decoder);
-    uint32_t count = 0;
-    while (key != doc_id && count < nb_docs) {
-        skip_bytes_decoder(decoder, 1);
-        key = decode_vint_from(decoder);
-        count++;
-    }
-    //TODO error handling
-    assert(count < nb_docs);
-    if(count >= nb_docs) norm= 1;
-
-    norm = decode_byte_from(decoder);
-    decoder_pool_release_one(decoder);
-
     return norm;
 }
 
@@ -81,24 +53,19 @@ void reset_scores(uint32_t nb_queries) {
 
 void set_query_no_norms(uint32_t query_id) {
 
-    nb_docs_log2[query_id] = UINT8_MAX;
-    doc_norms_addr[query_id] = 0;
+    doc_norms_addr[query_id] = UINTPTR_MAX;
 }
 
 void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr) {
 
-    // read number of docs log2 and store it
-    uint64_t buff;
-    uint8_t *val = mram_read_unaligned((__mram_ptr uint64_t*)addr, &buff, 1);
-    nb_docs_log2[query_id] = *val;
     // store the address where to read the norms
     doc_norms_addr[query_id] =
-            addr + 1 /*nb docs*/ + 256 * sizeof(NORM_INV_TYPE) /*norm inverse cache*/;
+            addr + 256 * sizeof(NORM_INV_TYPE) /*norm inverse cache*/;
 }
 
 static uint32_t get_score_quant(uint8_t query_id, uint8_t norm, uint32_t freq) {
 
-     if(nb_docs_log2[query_id] == UINT8_MAX) {
+     if(doc_norms_addr[query_id] == UINTPTR_MAX) {
          // no norms for the field of this query
          // The default norm will apply, this is the same value for every doc.
          // Hence the norm inverse value has no effect in the DPU scoring

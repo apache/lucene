@@ -12,10 +12,10 @@
 #include "postings_util.h"
 
 /**
- * Lookup the address of a field in the index
- * Provides the address of the norms hash table and the address of the terms block table
+ * Lookup the addresses needed for a field in the index
+ * Provides the address of the norms table and the address of the terms block table
  */
-bool get_field_address(uintptr_t index, const term_t* field,
+bool get_field_addresses(uintptr_t index, const term_t* field,
                             uintptr_t* field_norms_address, uintptr_t* field_bt_address);
 
 /**

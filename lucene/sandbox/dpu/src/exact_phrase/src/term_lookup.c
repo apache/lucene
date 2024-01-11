@@ -211,13 +211,16 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
 }
 
 
-bool get_field_address(uintptr_t index, const term_t* field,
-                        uintptr_t* field_norms_address, uintptr_t* field_bt_address) {
+bool get_field_addresses(uintptr_t index, const term_t* field,
+                        uintptr_t* field_norms_address,
+                        uintptr_t* field_bt_address) {
 
     // get a decoder from the pool
     decoder_t* decoder = decoder_pool_get_one();
     initialize_decoder(decoder, index);
 
+    // skip number of dpus and dpu index
+    skip_bytes_decoder(decoder, sizeof(short) * 2);
     // read number of segments
     nr_segments = 1 << decode_byte_from(decoder);
     // bypass lucene segments info

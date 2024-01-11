@@ -254,7 +254,8 @@ public class PimIndexSearcher implements Closeable {
           DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings[i].byteSize);
           int doc = docIt.Next();
           while (doc >= 0) {
-            results.add(new PimMatch(doc, scorer.score(doc, docIt.getFreq())));
+            int absDoc = doc * pimIndexInfo.getNumDpus() + dpuId;
+            results.add(new PimMatch(absDoc, scorer.score(absDoc, docIt.getFreq())));
             doc = docIt.Next();
           }
         } catch (IOException e) {
@@ -389,7 +390,8 @@ public class PimIndexSearcher implements Closeable {
             // end looking for positions of the matching document
             // add the result if positions matches were found
             if (nbPositionsMatch > 0) {
-              results.add(new PimMatch(searchDoc, scorer.score(searchDoc, nbPositionsMatch)));
+              int absDoc = searchDoc * pimIndexInfo.getNumDpus() + dpuId;
+              results.add(new PimMatch(absDoc, scorer.score(absDoc, nbPositionsMatch)));
             }
           }
         } catch (IOException e) {

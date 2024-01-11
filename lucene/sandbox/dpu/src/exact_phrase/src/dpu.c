@@ -58,6 +58,13 @@ uint8_t queries_nb_terms[DPU_MAX_BATCH_SIZE];
 #define POSTINGS_CACHE_SIZE (MAX_NR_TERMS > MAX_NR_SEGMENTS ? MAX_NR_TERMS : MAX_NR_SEGMENTS)
 __dma_aligned postings_info_t postings_cache_wram[NR_TASKLETS][POSTINGS_CACHE_SIZE];
 
+/* number of DPUs in the index and dpu id.
+ * This info is used to retrieve the correct doc id from the relative doc id.
+ * On the DPU, doc ids are stored as relative doc ids 0,1,2 ... which correspond
+ * to other doc ids in Lucene's context. */
+uint16_t nr_dpus;
+uint16_t dpu_id;
+
 /* Lucene segments maxDoc */
 uint16_t nr_lucene_segments;
 uint32_t lucene_segment_maxdoc[DPU_MAX_NR_LUCENE_SEGMENTS];
@@ -88,6 +95,7 @@ static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz);
 static void sort_query_results();
 static void flush_query_buffer();
 static void get_segments_info(uintptr_t);
+static uint32_t get_abs_doc_id(int relDoc, int query_id);
 static void adder(int *i, void *args) { *i += (int)args; }
 static void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
 static void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
@@ -410,6 +418,9 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     // 3) the buffer has space available => insert the result in the current buffer
     assert(query_id == results_cache[me()][0].info.query_id);
 
+    // change did to its absolute value
+    did = get_abs_doc_id(did, query_id);
+
     uint16_t buffer_size = results_cache[me()][0].info.buffer_size;
     if(buffer_size > 0) {
         // the buffer contains a result, check if the did is the same
@@ -489,7 +500,7 @@ static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id) {
     term_t term;
     read_field(&query_parser, &term);
 
-    if(!get_field_address(index, &term, &field_norms_address, &field_bt_address))
+    if(!get_field_addresses(index, &term, &field_norms_address, &field_bt_address))
         goto end;
 
     //printf("query_id= %d norms_addr=%p block_addr=%p\n", query_id, field_norms_address, field_bt_address);
@@ -533,6 +544,10 @@ static void get_segments_info(uintptr_t index) {
     decoder_t* decoder = decoder_pool_get_one();
     initialize_decoder(decoder, index);
 
+    // read the total number of DPUs
+    nr_dpus = decode_short_from(decoder);
+    // read the dpu index
+    dpu_id = decode_short_from(decoder);
     // read the number of segments (log2 encoding)
     nr_segments_log2 = decode_byte_from(decoder);
     // read number of lucene segments
@@ -543,6 +558,12 @@ static void get_segments_info(uintptr_t index) {
         lucene_segment_maxdoc[i] = decode_vint_from(decoder);
 
     decoder_pool_release_one(decoder);
+}
+
+// returns the absolute doc id from the relative doc id
+static uint32_t get_abs_doc_id(int rel_doc, int query_id) {
+
+    return rel_doc * nr_dpus + dpu_id;
 }
 
 #define NB_ELEM_TRANSFER 8

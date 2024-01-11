@@ -331,6 +331,8 @@ public class PimIndexInfo {
   }
 
   private void skipSegmentInfo(IndexInput in) throws IOException {
+    in.readShort(); // number of DPUs
+    in.readShort(); // dpu Index
     in.readByte(); // nb DPU segments
     in.readByte(); // nb lucene segments
     int nbBytesMaxDoc = in.readVInt();

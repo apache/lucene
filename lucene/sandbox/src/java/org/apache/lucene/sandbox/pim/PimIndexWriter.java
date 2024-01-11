@@ -324,7 +324,6 @@ public class PimIndexWriter extends IndexWriter {
 
   private class DpuTermIndexes implements Closeable {
 
-    private HashMap<Integer, Integer> dpuForDoc;
     String commitName;
     private final DpuTermIndex[] termIndexes;
     private PostingsEnum postingsEnum;
@@ -342,7 +341,6 @@ public class PimIndexWriter extends IndexWriter {
       // 2- adapted to the doc size, but it would require to keep the doc size info
       //    at indexing time, in a new file. Then here we could target (sumDocSizes / numDpus)
       //    per DPU.
-      dpuForDoc = new HashMap<>();
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
       this.nbDocPerDpuSegment = nbDocPerDpuSegment;
 
@@ -493,12 +491,12 @@ public class PimIndexWriter extends IndexWriter {
     }
 
     int getDpuForDoc(int doc) {
-      if (!dpuForDoc.containsKey(doc)) {
-        int dpuIndex = getDpuWithSmallerIndex();
-        dpuForDoc.put(doc, dpuIndex);
-        addDpuIndexSize(dpuIndex, termIndexes[dpuIndex].getIndexSize());
-      }
-      return dpuForDoc.get(doc);
+
+      // use static assignment in round-robin fashion
+      int dpuIndex = doc % pimConfig.getNumDpus();
+      assert dpuIndex >= 0 && dpuIndex < pimConfig.getNumDpus();
+      //System.out.println("field=" + fieldInfo.name + " doc=" + doc + " dpuIndex=" + dpuIndex);
+      return dpuIndex;
     }
 
     //TODO since we go over fields sequentially, the load balancing will be based
@@ -559,6 +557,8 @@ public class PimIndexWriter extends IndexWriter {
                   + new ByteCountDataOutput(dpuIndexPostingsAddr[i]).getByteCount()
                   + new ByteCountDataOutput(numBytesLuceneSegmentInfo).getByteCount()
                   + numBytesLuceneSegmentInfo
+                  + 2 // number of DPUs
+                  + 2 // dpu Index
                   + 1 // byte specifying number of lucene segments
                   + 1; // byte specifiying the number of DPU segments
       }
@@ -574,6 +574,10 @@ public class PimIndexWriter extends IndexWriter {
       for (int i = 0; i < pimConfig.getNumDpus(); ++i) {
 
         assert compoundOutput.getFilePointer() == dpuIndexAddr[i] + offset;
+
+        // write number of DPUs and dpu Index
+        compoundOutput.writeShort((short) pimConfig.getNumDpus());
+        compoundOutput.writeShort((short) i);
 
         // write number of DPU segments (log2)
         compoundOutput.writeByte(
@@ -703,6 +707,7 @@ public class PimIndexWriter extends IndexWriter {
       ByteArrayOutputStream statsOut;
       IndexInfo info;
       HashMap<Integer, Integer> docNormsMap;
+      int nbDocs;
 
       DpuTermIndex(
           int dpuIndex,
@@ -732,6 +737,7 @@ public class PimIndexWriter extends IndexWriter {
         }
         this.info = null;
         this.docNormsMap = new HashMap<>();
+        this.nbDocs = 0;
       }
 
       void resetForNextField() {
@@ -739,6 +745,7 @@ public class PimIndexWriter extends IndexWriter {
         fieldWritten = false;
         lastTermPostingAddress = -1L;
         nbDpuSegmentsWritten = 0;
+        nbDocs = 0;
       }
 
       void resetForNextTerm() {
@@ -837,8 +844,10 @@ public class PimIndexWriter extends IndexWriter {
           // write the new doc without delta encoding
           this.doc = 0;
         }
-        int deltaDoc = doc - this.doc;
-        assert deltaDoc > 0 || doc == 0 && deltaDoc == 0;
+        int relDoc = getRelDoc(doc);
+        int prevRelDoc = getRelDoc(this.doc);
+        int deltaDoc = relDoc - prevRelDoc;
+        assert deltaDoc > 0 || relDoc == 0 && deltaDoc == 0;
         postingsOutput.writeVInt(deltaDoc);
         this.doc = doc;
         int freq = postingsEnum.freq();
@@ -879,7 +888,13 @@ public class PimIndexWriter extends IndexWriter {
         }
         posBuffer.copyTo(postingsOutput);
         posBuffer.reset();
+        nbDocs++;
         // System.out.println();
+      }
+
+      private int getRelDoc(int doc) {
+        assert doc == 0 || doc >= dpuIndex;
+        return doc / pimConfig.getNumDpus();
       }
 
       void finishDpuSegmentsInfo() throws IOException {
@@ -897,65 +912,23 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
 
-      private void writeNormsHashTable() throws IOException {
+      private void writeNormsTable() throws IOException {
 
         int nbDocs = docNormsMap.size();
 
-        // if this field has no norms, just write skipInfo which is zero
+        // if this field has no norms, just write skip of zero
         if(nbDocs == 0) {
           blocksTableOutput.writeVInt(0);
           return;
         }
 
-        // hashSize is the next power of 2 after nbDocs
-        // we need hashSize to be a power of 2 so that modulo is easily computable in DPU
-        int hashSize = 1 << (32 - Integer.numberOfLeadingZeros(nbDocs - 1));
-        short[] hashTable = new short[hashSize];
-        short[] hashCount = new short[hashSize];
+        // if norms are there, they should be present for each doc
+        assert docNormsMap.size() == nbDocs;
+        blocksTableOutput.writeVInt(docNormsMap.size() + 256);
 
-        // first loop, count the number of elements per hash to identify conflicts
-        for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
-          int hash = entry.getKey() & (hashSize - 1);
-          hashCount[hash]++;
-        }
-
-        // second loop, write norms in hash table or in conflict list
-        for(HashMap.Entry<Integer, Integer> entry : docNormsMap.entrySet()) {
-          //System.out.println("key=" + entry.getKey() + " hash=" + (entry.getKey() & (hashSize - 1))
-          //        + " hashSize=" + hashSize
-          //        + " nbDocs=" + nbDocs + " " + (Integer.numberOfLeadingZeros(0)));
-          //System.out.flush();
-          int hash = entry.getKey() & (hashSize - 1);
-          // Note: we encode a conflict with a value of 0
-          // There is also the case (is it possible ?) that the norm is effectively 0
-          // This will be handled as if there was a conflict
-          assert entry.getValue() < 256;
-          if(entry.getValue() == 0 || hashCount[hash] > 1) {
-            // conflict, store the norm value at the end
-            hashTable[hash] = 0;
-            posBuffer.writeVInt(entry.getKey());
-            posBuffer.writeByte((byte) (entry.getValue() & 0xFF));
-          }
-          else {
-              hashTable[hash] = entry.getValue().shortValue();
-              //System.out.println("doc=" + entry.getKey() + " norm=" + entry.getValue().byteValue());
-          }
-        }
-
-        // hashSize is a power of 2, the number of trailing zeros should be the log2
-        int hashSizeLog2 = Integer.numberOfTrailingZeros(hashSize);
-        assert hashSizeLog2 < 256;
-        int skipInfo = Math.toIntExact(1 + 256 + hashSize + posBuffer.size());
-        //System.out.println("skipInfo=" + skipInfo + " hashSize=" + hashSize + "posBuffer=" + posBuffer.size());
-        blocksTableOutput.writeVInt(skipInfo);
-        blocksTableOutput.writeByte((byte) (hashSizeLog2 & 0xFF));
-        // write norm inverse cache
         writeNormInverseCache();
-        for(int i = 0; i < hashSize; ++i)
-          blocksTableOutput.writeByte((byte) (hashTable[i] & 0xFF));
-        if(posBuffer.size() != 0)
-          posBuffer.copyTo(blocksTableOutput);
-        posBuffer.reset();
+        for(Integer n : docNormsMap.values())
+          blocksTableOutput.writeByte((byte) (n & 0xFF));
       }
 
       private void writeNormInverseCache() throws IOException {
@@ -1026,7 +999,7 @@ public class PimIndexWriter extends IndexWriter {
           // write byte size of the postings of the last term (if any) and write the segment skip
           // info
           finishDpuSegmentsInfo();
-          writeNormsHashTable();
+          writeNormsTable();
           writeBlockTable();
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -1056,7 +1029,7 @@ public class PimIndexWriter extends IndexWriter {
       }
 
       public void writeDocNorm(int doc, long norm) {
-        docNormsMap.put(doc, ((byte) norm) & 0xFF);
+        docNormsMap.put(getRelDoc(doc), ((byte) norm) & 0xFF);
       }
 
       public static class IndexInfo {
