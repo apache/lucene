@@ -1765,6 +1765,44 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testSingleDocsDoNotTriggerHasBlocks() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMaxBufferedDocs(Integer.MAX_VALUE)
+                  .setRAMBufferSizeMB(100))) {
+
+        int docs = 1 + random().nextInt(100);
+        for (int i = 0; i < docs; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("id", "" + i, Field.Store.NO));
+          w.addDocuments(Arrays.asList(doc));
+        }
+        w.commit();
+        SegmentInfos si = w.cloneSegmentInfos();
+        assertEquals(1, si.size());
+        assertFalse(si.asList().get(0).info.getHasBlocks());
+
+        Document doc = new Document();
+        doc.add(new StringField("id", "XXX", Field.Store.NO));
+        w.addDocuments(Arrays.asList(doc, doc));
+        w.commit();
+        si = w.cloneSegmentInfos();
+        assertEquals(2, si.size());
+        assertFalse(si.asList().get(0).info.getHasBlocks());
+        assertTrue(si.asList().get(1).info.getHasBlocks());
+        w.forceMerge(1);
+
+        w.commit();
+        si = w.cloneSegmentInfos();
+        assertEquals(1, si.size());
+        assertTrue(si.asList().get(0).info.getHasBlocks());
+      }
+    }
+  }
+
   public void testCarryOverHasBlocks() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
@@ -4889,5 +4927,90 @@ public class TestIndexWriter extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newField(field, "value", storedTextType));
     writer.addDocument(doc);
+  }
+
+  public void testParentAndSoftDeletesAreTheSame() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig indexWriterConfig = newIndexWriterConfig(new MockAnalyzer(random()));
+      indexWriterConfig.setSoftDeletesField("foo");
+      indexWriterConfig.setParentField("foo");
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class, () -> new IndexWriter(dir, indexWriterConfig));
+      assertEquals(
+          "parent document and soft-deletes field can't be the same field \"foo\"",
+          iae.getMessage());
+    }
+  }
+
+  public void testIndexWithParentFieldIsCongruent() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        if (random().nextBoolean()) {
+          Document child1 = new Document();
+          child1.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          Document child2 = new Document();
+          child2.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          Document parent = new Document();
+          parent.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+          writer.addDocuments(Arrays.asList(child1, child2, parent));
+          writer.flush();
+          if (random().nextBoolean()) {
+            writer.addDocuments(Arrays.asList(child1, child2, parent));
+          }
+        } else {
+          writer.addDocument(new Document());
+        }
+        writer.commit();
+      }
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                config.setParentField("someOtherField");
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "can't add field [parent] as parent document field; this IndexWriter is configured with [someOtherField] as parent document field",
+          ex.getMessage());
+      ex =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "can't add field [parent] as parent document field; this IndexWriter has no parent document field configured",
+          ex.getMessage());
+    }
+  }
+
+  public void testParentFieldIsAlreadyUsed() throws IOException {
+    try (Directory dir = newDirectory()) {
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document doc = new Document();
+        doc.add(new StringField("parent", Integer.toString(1), Field.Store.YES));
+        writer.addDocument(doc);
+        writer.commit();
+      }
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+                config.setParentField("parent");
+
+                new IndexWriter(dir, config);
+              });
+      assertEquals(
+          "can't add [parent] as non parent document field; this IndexWriter is configured with [parent] as parent document field",
+          iae.getMessage());
+    }
   }
 }

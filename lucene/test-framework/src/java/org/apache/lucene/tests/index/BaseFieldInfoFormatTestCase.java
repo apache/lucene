@@ -68,7 +68,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -96,7 +96,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     fi.putAttribute("foo", "bar");
     fi.putAttribute("bar", "baz");
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -136,7 +136,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -171,7 +171,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -206,7 +206,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -243,7 +243,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -276,7 +276,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     String softDeletesField =
         random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
 
-    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
+    String parentField = random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
+
+    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField, parentField);
 
     for (String field : fieldNames) {
       IndexableFieldType fieldType = randomFieldType(random(), field);
@@ -307,7 +309,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              field.equals(softDeletesField));
+              field.equals(softDeletesField),
+              field.equals(parentField));
       addAttributes(fi);
       builder.add(fi);
     }
@@ -431,6 +434,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        false,
         false);
   }
 }

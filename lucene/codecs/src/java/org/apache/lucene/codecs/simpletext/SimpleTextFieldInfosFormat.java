@@ -72,6 +72,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef VECTOR_ENCODING = new BytesRef("  vector encoding ");
   static final BytesRef VECTOR_SIMILARITY = new BytesRef("  vector similarity ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");
+  static final BytesRef PARENT = new BytesRef("  parent ");
 
   @Override
   public FieldInfos read(
@@ -170,6 +171,9 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SOFT_DELETES);
         boolean isSoftDeletesField = Boolean.parseBoolean(readString(SOFT_DELETES.length, scratch));
+        SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), PARENT);
+        boolean isParentField = Boolean.parseBoolean(readString(PARENT.length, scratch));
 
         infos[i] =
             new FieldInfo(
@@ -188,7 +192,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorNumDimensions,
                 vectorEncoding,
                 vectorDistFunc,
-                isSoftDeletesField);
+                isSoftDeletesField,
+                isParentField);
       }
 
       SimpleTextUtil.checkFooter(input);
@@ -319,6 +324,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, SOFT_DELETES);
         SimpleTextUtil.write(out, Boolean.toString(fi.isSoftDeletesField()), scratch);
+        SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, PARENT);
+        SimpleTextUtil.write(out, Boolean.toString(fi.isParentField()), scratch);
         SimpleTextUtil.writeNewline(out);
       }
       SimpleTextUtil.writeChecksum(out, scratch);

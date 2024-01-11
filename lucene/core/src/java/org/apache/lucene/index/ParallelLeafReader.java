@@ -111,6 +111,12 @@ public class ParallelLeafReader extends LeafReader {
             .filter(Objects::nonNull)
             .findAny()
             .orElse(null);
+    final String parentField =
+        completeReaderSet.stream()
+            .map(r -> r.getFieldInfos().getParentField())
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElse(null);
     // TODO: make this read-only in a cleaner way?
     final int indexCreatedVersionMajor =
         completeReaderSet.stream()
@@ -121,8 +127,7 @@ public class ParallelLeafReader extends LeafReader {
             .orElse(Version.LATEST.major);
     FieldInfos.Builder builder =
         new FieldInfos.Builder(
-            new FieldInfos.FieldNumbers(softDeletesField, indexCreatedVersionMajor));
-
+            new FieldInfos.FieldNumbers(softDeletesField, parentField, indexCreatedVersionMajor));
     Sort indexSort = null;
     int createdVersionMajor = -1;
 

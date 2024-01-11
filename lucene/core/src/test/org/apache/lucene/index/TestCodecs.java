@@ -114,6 +114,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
+                    false,
                     false));
       }
       this.terms = terms;
@@ -230,8 +231,7 @@ public class TestCodecs extends LuceneTestCase {
     }
 
     final FieldInfos.Builder builder =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, Version.LATEST.major));
-
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null, Version.LATEST.major));
     final FieldData field = new FieldData("field", builder, terms, true, false);
     final FieldData[] fields = new FieldData[] {field};
     final FieldInfos fieldInfos = builder.finish();
@@ -294,8 +294,7 @@ public class TestCodecs extends LuceneTestCase {
 
   public void testRandomPostings() throws Throwable {
     final FieldInfos.Builder builder =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, Version.LATEST.major));
-
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null, Version.LATEST.major));
     final FieldData[] fields = new FieldData[NUM_FIELDS];
     for (int i = 0; i < NUM_FIELDS; i++) {
       final boolean omitTF = 0 == (i % 3);

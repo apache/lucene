@@ -1262,8 +1262,10 @@ public class IndexWriter
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
     final FieldNumbers map =
-        new FieldNumbers(config.softDeletesField, segmentInfos.getIndexCreatedVersionMajor());
-
+        new FieldNumbers(
+            config.softDeletesField,
+            config.getParentField(),
+            segmentInfos.getIndexCreatedVersionMajor());
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
       for (FieldInfo fi : fis) {
@@ -6615,11 +6617,13 @@ public class IndexWriter
           }
 
           @Override
-          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+          public FieldInfosBuilder newFieldInfosBuilder(
+              String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
               private FieldInfos.Builder builder =
                   new FieldInfos.Builder(
-                      new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
+                      new FieldInfos.FieldNumbers(
+                          softDeletesFieldName, parentFieldName, Version.LATEST.major));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

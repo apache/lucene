@@ -224,6 +224,8 @@ public class TestFieldInfo extends LuceneTestCase {
     VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     boolean softDeletesField = false;
 
+    boolean isParentField = false;
+
     FieldInfo get() {
       return new FieldInfo(
           name,
@@ -241,7 +243,8 @@ public class TestFieldInfo extends LuceneTestCase {
           vectorDimension,
           vectorEncoding,
           vectorSimilarityFunction,
-          softDeletesField);
+          softDeletesField,
+          isParentField);
     }
 
     public FieldInfoTestBuilder setStoreTermVector(boolean storeTermVector) {
