@@ -100,7 +100,6 @@ public class TestCompetitiveFreqNormAccumulator extends LuceneTestCase {
         List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
 
     acc.add(10, 10000);
-    copiedAcc.clear();
     copiedAcc.copy(acc);
     assertEquals(
         List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
@@ -113,7 +112,6 @@ public class TestCompetitiveFreqNormAccumulator extends LuceneTestCase {
         List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
 
     acc.add(5, 200);
-    copiedAcc.clear();
     copiedAcc.copy(acc);
     assertEquals(
         List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
@@ -126,7 +124,6 @@ public class TestCompetitiveFreqNormAccumulator extends LuceneTestCase {
         List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
 
     acc.add(20, -100);
-    copiedAcc.clear();
     copiedAcc.copy(acc);
     assertEquals(
         List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
@@ -139,7 +136,6 @@ public class TestCompetitiveFreqNormAccumulator extends LuceneTestCase {
         List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
 
     acc.add(30, -3);
-    copiedAcc.clear();
     copiedAcc.copy(acc);
     assertEquals(
         List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
