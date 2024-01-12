@@ -29,6 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -47,7 +49,7 @@ import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
-final class DocumentsWriterPerThread implements Accountable {
+final class DocumentsWriterPerThread implements Accountable, Lock {
 
   private Throwable abortingException;
 
@@ -752,23 +754,24 @@ final class DocumentsWriterPerThread implements Accountable {
     return delta;
   }
 
-  /**
-   * Locks this DWPT for exclusive access.
-   *
-   * @see ReentrantLock#lock()
-   */
-  void lock() {
+  @Override
+  public void lock() {
     lock.lock();
   }
 
-  /**
-   * Acquires the DWPT's lock only if it is not held by another thread at the time of invocation.
-   *
-   * @return true if the lock was acquired.
-   * @see ReentrantLock#tryLock()
-   */
-  boolean tryLock() {
+  @Override
+  public void lockInterruptibly() throws InterruptedException {
+    lock.lockInterruptibly();
+  }
+
+  @Override
+  public boolean tryLock() {
     return lock.tryLock();
+  }
+
+  @Override
+  public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+    return lock.tryLock(time, unit);
   }
 
   /**
@@ -780,13 +783,14 @@ final class DocumentsWriterPerThread implements Accountable {
     return lock.isHeldByCurrentThread();
   }
 
-  /**
-   * Unlocks the DWPT's lock
-   *
-   * @see ReentrantLock#unlock()
-   */
-  void unlock() {
+  @Override
+  public void unlock() {
     lock.unlock();
+  }
+
+  @Override
+  public Condition newCondition() {
+    throw new UnsupportedOperationException();
   }
 
   /** Returns <code>true</code> iff this DWPT has been flushed */
