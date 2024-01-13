@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.IntStream;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -37,6 +38,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
+@LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
         V, F extends Field, Q extends AbstractVectorSimilarityQuery>
     extends LuceneTestCase {
