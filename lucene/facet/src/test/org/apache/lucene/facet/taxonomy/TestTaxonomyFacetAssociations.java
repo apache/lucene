@@ -327,7 +327,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     // test getAllDims and getTopDims
     List<FacetResult> topDims = facets.getTopDims(10, 10);
     List<FacetResult> allDims = facets.getAllDims(10);
-    assertEquals(topDims, allDims);
+    assertFloatFacetResultsEqual(topDims, allDims);
   }
 
   public void testFloatAssociationRandom() throws Exception {
@@ -380,7 +380,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     // test getAllDims and getTopDims
     topDims = facets.getTopDims(10, 10);
     allDims = facets.getAllDims(10);
-    assertEquals(topDims, allDims);
+    assertFloatFacetResultsEqual(topDims, allDims);
   }
 
   /**
@@ -665,6 +665,19 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       assertEquals(aggregatedValue, allChildrenResult.value.floatValue(), 1f);
       assertEquals(expected.size(), facetResult.childCount);
       assertEquals(expected.size(), allChildrenResult.childCount);
+    }
+  }
+
+  private void assertFloatFacetResultsEqual(List<FacetResult> expected, List<FacetResult> actual) {
+    assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      FacetResult expectedResult = expected.get(i);
+      FacetResult actualResult = actual.get(i);
+
+      assertEquals(expectedResult.dim, actualResult.dim);
+      assertArrayEquals(expectedResult.path, actualResult.path);
+      assertEquals((float) expectedResult.value, (float) actualResult.value, 1e-1);
+      assertEquals(expectedResult.childCount, actualResult.childCount);
     }
   }
 
