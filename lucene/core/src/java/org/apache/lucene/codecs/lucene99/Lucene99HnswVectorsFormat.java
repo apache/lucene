@@ -51,7 +51,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *             </ul>
  *       </ul>
  *   <li>After all levels are encoded memory offsets for each node's neighbor nodes encoded by
- *       {@link org.apache.lucene.util.packed.DirectMonotonicWriter} are appened to the end of the
+ *       {@link org.apache.lucene.util.packed.DirectMonotonicWriter} are appended to the end of the
  *       file.
  * </ul>
  *
@@ -71,7 +71,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
- *   <li><b>[vint]</b> the maximum number of connections (neigbours) that each node can have
+ *   <li><b>[vint]</b> the maximum number of connections (neighbours) that each node can have
  *   <li><b>[vint]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
  *       <ul>
@@ -129,8 +129,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
-   * HnswGraph} for details.
+   * node. Defaults to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
    */
   private final int beamWidth;
 
@@ -170,14 +170,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be positive and less than or equal to"
+          "maxConn must be positive and less than or equal to "
               + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
     }
     if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
       throw new IllegalArgumentException(
-          "beamWidth must be positive and less than or equal to"
+          "beamWidth must be positive and less than or equal to "
               + MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);

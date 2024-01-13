@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -28,7 +30,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.Test;
 
@@ -67,19 +68,15 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     IndexWriter writer;
     IndexWriterConfig c = new IndexWriterConfig(new ThrowingAnalyzer());
     final ByteArrayOutputStream infoBytes = new ByteArrayOutputStream();
-    PrintStream infoPrintStream = new PrintStream(infoBytes, true, IOUtils.UTF_8);
+    PrintStream infoPrintStream = new PrintStream(infoBytes, true, UTF_8);
     PrintStreamInfoStream printStreamInfoStream = new PrintStreamInfoStream(infoPrintStream);
     c.setInfoStream(printStreamInfoStream);
     writer = new IndexWriter(dir, c);
     Document doc = new Document();
     doc.add(newField("distinctiveFieldName", "aaa ", storedTextType));
-    expectThrows(
-        BadNews.class,
-        () -> {
-          writer.addDocument(doc);
-        });
+    expectThrows(BadNews.class, () -> writer.addDocument(doc));
     infoPrintStream.flush();
-    String infoStream = new String(infoBytes.toByteArray(), IOUtils.UTF_8);
+    String infoStream = infoBytes.toString(UTF_8);
     assertTrue(infoStream.contains("distinctiveFieldName"));
 
     writer.close();
@@ -92,7 +89,7 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     IndexWriter writer;
     IndexWriterConfig c = new IndexWriterConfig(new ThrowingAnalyzer());
     final ByteArrayOutputStream infoBytes = new ByteArrayOutputStream();
-    PrintStream infoPrintStream = new PrintStream(infoBytes, true, IOUtils.UTF_8);
+    PrintStream infoPrintStream = new PrintStream(infoBytes, true, UTF_8);
     PrintStreamInfoStream printStreamInfoStream = new PrintStreamInfoStream(infoPrintStream);
     c.setInfoStream(printStreamInfoStream);
     writer = new IndexWriter(dir, c);
@@ -101,7 +98,7 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     // should not throw BadNews
     writer.addDocument(doc);
     infoPrintStream.flush();
-    String infoStream = new String(infoBytes.toByteArray(), IOUtils.UTF_8);
+    String infoStream = infoBytes.toString(UTF_8);
     assertFalse(infoStream.contains("boringFieldName"));
 
     writer.close();

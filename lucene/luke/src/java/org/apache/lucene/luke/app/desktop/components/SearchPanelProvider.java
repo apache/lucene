@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -140,7 +139,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
 
   private final JButton searchBtn = new JButton();
 
-  private JCheckBox exactHitsCntCB = new JCheckBox();
+  private final JCheckBox exactHitsCntCB = new JCheckBox();
 
   private final JButton mltBtn = new JButton();
 
@@ -811,16 +810,10 @@ public final class SearchPanelProvider implements SearchTabOperator {
               });
       operatorRegistry
           .get(FieldValuesTabOperator.class)
-          .ifPresent(
-              operator -> {
-                operator.setFields(searchModel.getFieldNames());
-              });
+          .ifPresent(operator -> operator.setFields(searchModel.getFieldNames()));
       operatorRegistry
           .get(MLTTabOperator.class)
-          .ifPresent(
-              operator -> {
-                operator.setFields(searchModel.getFieldNames());
-              });
+          .ifPresent(operator -> operator.setFields(searchModel.getFieldNames()));
 
       queryStringTA.setText("*:*");
       parsedQueryTA.setText("");
@@ -864,7 +857,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
     VALUES(4),
     MLT(5);
 
-    private int tabIdx;
+    private final int tabIdx;
 
     Tab(int tabIdx) {
       this.tabIdx = tabIdx;
@@ -937,7 +930,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
                       String v = String.join(",", Arrays.asList(e.getValue()));
                       return e.getKey() + "=" + v + ";";
                     })
-                .collect(Collectors.toList());
+                .toList();
         data[i][Column.VALUE.getIndex()] = String.join(" ", concatValues);
       }
     }

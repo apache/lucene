@@ -34,8 +34,8 @@ import java.util.stream.Stream;
  * Title, Date, Dateline, Body
  */
 public class ExtractReuters {
-  private Path reutersDir;
-  private Path outputDir;
+  private final Path reutersDir;
+  private final Path outputDir;
 
   public ExtractReuters(Path reutersDir, Path outputDir) throws IOException {
     this.reutersDir = reutersDir;
@@ -45,8 +45,8 @@ public class ExtractReuters {
   public void extract() throws IOException {
     long count = 0;
     Files.createDirectories(outputDir);
-    try(Stream<Path> files = Files.list(outputDir)) {
-      if (files.count() > 0) {
+    try (Stream<Path> files = Files.list(outputDir)) {
+      if (files.findAny().isPresent()) {
         throw new IOException("The output directory must be empty: " + outputDir);
       }
     }
@@ -65,9 +65,9 @@ public class ExtractReuters {
   Pattern EXTRACTION_PATTERN =
       Pattern.compile("<TITLE>(.*?)</TITLE>|<DATE>(.*?)</DATE>|<BODY>(.*?)</BODY>");
 
-  private static String[] META_CHARS = {"&", "<", ">", "\"", "'"};
+  private static final String[] META_CHARS = {"&", "<", ">", "\"", "'"};
 
-  private static String[] META_CHARS_SERIALIZATIONS = {"&amp;", "&lt;", "&gt;", "&quot;", "&apos;"};
+  private static final String[] META_CHARS_SERIALIZATIONS = {"&amp;", "&lt;", "&gt;", "&quot;", "&apos;"};
 
   /** Override if you wish to change what is extracted */
   protected void extractFile(Path sgmFile) throws IOException {
@@ -80,7 +80,7 @@ public class ExtractReuters {
       while ((line = reader.readLine()) != null) {
         // when we see a closing reuters tag, flush the file
 
-        if (line.indexOf("</REUTERS") == -1) {
+        if (line.contains("</REUTERS") == false) {
           // Replace the SGM escape sequences
 
           buffer.append(line).append(' '); // accumulate the strings for now,

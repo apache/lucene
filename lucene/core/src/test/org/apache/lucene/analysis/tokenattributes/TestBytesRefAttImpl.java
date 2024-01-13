@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.tokenattributes;
 
-import java.util.stream.Stream;
+import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.BytesRef;
@@ -49,7 +49,7 @@ public class TestBytesRefAttImpl extends LuceneTestCase {
   public void testLucene9856() {
     assertTrue(
         "BytesTermAttributeImpl must explicitly declare to implement TermToBytesRefAttribute",
-        Stream.of(BytesTermAttributeImpl.class.getInterfaces())
-            .anyMatch(TermToBytesRefAttribute.class::equals));
+        Arrays.asList(BytesTermAttributeImpl.class.getInterfaces())
+            .contains(TermToBytesRefAttribute.class));
   }
 }
