@@ -183,9 +183,13 @@ public class TestTopFieldCollector extends LuceneTestCase {
             dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE).setIndexSort(sort));
     Document doc = new Document();
     doc.add(new NumericDocValuesField("foo", 3));
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+    for (Document d : Arrays.asList(doc, doc, doc, doc)) {
+      w.addDocument(d);
+    }
     w.flush();
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc, doc));
+    for (Document d : Arrays.asList(doc, doc, doc, doc, doc, doc)) {
+      w.addDocument(d);
+    }
     w.flush();
     IndexReader reader = DirectoryReader.open(w);
     assertEquals(2, reader.leaves().size());

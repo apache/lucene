@@ -1261,7 +1261,8 @@ public class IndexWriter
    * If this {@link SegmentInfos} has no global field number map the returned instance is empty
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
-    final FieldNumbers map = new FieldNumbers(config.softDeletesField);
+    final FieldNumbers map =
+        new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
 
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
@@ -6614,10 +6615,12 @@ public class IndexWriter
           }
 
           @Override
-          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+          public FieldInfosBuilder newFieldInfosBuilder(
+              String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
               private final FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, parentFieldName));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {
