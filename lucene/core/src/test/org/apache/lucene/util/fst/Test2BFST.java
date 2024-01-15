@@ -72,7 +72,6 @@ public class Test2BFST extends LuceneTestCase {
           fstCompiler.add(input2, NO_OUTPUT);
           count++;
           if (count % 100000 == 0) {
-            long endTime = System.nanoTime();
             System.out.println(
                 count
                     + ": "
