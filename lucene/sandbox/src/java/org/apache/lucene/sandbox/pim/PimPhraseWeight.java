@@ -17,7 +17,7 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import com.upmem.dpu.DpuException;
+import org.apache.lucene.sandbox.sdk.DpuException;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;

@@ -17,3 +17,4 @@ endif()
 
 add_subdirectory(exact_phrase)
 add_subdirectory(native_lib)
+add_subdirectory(sdk)

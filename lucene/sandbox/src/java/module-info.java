@@ -19,7 +19,6 @@
 module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
-  requires com.upmem.dpu;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
@@ -28,6 +27,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.search;
   exports org.apache.lucene.sandbox.index;
   exports org.apache.lucene.sandbox.pim;
+  exports org.apache.lucene.sandbox.sdk;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;

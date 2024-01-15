@@ -1,0 +1,41 @@
+// CONFIG
+FEATURE(reset_rank, struct dpu_rank_t *)
+FEATURE(reset_dpu, struct dpu_t *)
+FEATURE(disable_dpu, struct dpu_t *)
+
+// IRAM
+FEATURE(copy_to_irams_matrix, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+FEATURE(copy_to_irams_rank, struct dpu_rank_t *, iram_addr_t, const dpuinstruction_t *, iram_size_t)
+FEATURE(copy_to_irams_dpu, struct dpu_t *, iram_addr_t, const dpuinstruction_t *, iram_size_t)
+FEATURE(copy_from_irams_matrix, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+FEATURE(copy_from_irams_dpu, struct dpu_t *, dpuinstruction_t *, iram_addr_t, iram_size_t)
+
+// MRAM
+FEATURE(copy_to_mrams, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+FEATURE(copy_from_mrams, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+
+// WRAM
+FEATURE(copy_to_wrams_matrix, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+FEATURE(copy_to_wrams_rank, struct dpu_rank_t *, wram_addr_t, const dpuword_t *, wram_size_t)
+FEATURE(copy_to_wrams_dpu, struct dpu_t *, wram_addr_t wram_word_offset, const dpuword_t *, wram_size_t)
+FEATURE(copy_from_wrams_matrix, struct dpu_rank_t *, struct dpu_transfer_matrix *)
+FEATURE(copy_from_wrams_dpu, struct dpu_t *, dpuword_t *, wram_addr_t, wram_size_t)
+
+// RUN
+FEATURE(start_thread_rank, struct dpu_rank_t *, dpu_thread_t, bool, uint8_t *)
+FEATURE(start_thread_dpu, struct dpu_t *, dpu_thread_t, bool, uint8_t *)
+FEATURE(poll_rank, struct dpu_rank_t *, dpu_bitfield_t *, dpu_bitfield_t *)
+FEATURE(sample_pc_dpu, struct dpu_t *, iram_addr_t *)
+
+// DEBUG
+FEATURE(debug_init_dpu, struct dpu_t *, struct dpu_context_t *, mram_addr_t)
+FEATURE(debug_teardown_dpu, struct dpu_t *, struct dpu_context_t *)
+FEATURE(debug_step_dpu, struct dpu_t *, struct dpu_context_t *, dpu_thread_t)
+
+FEATURE(debug_extract_context_dpu, struct dpu_t *, struct dpu_context_t *)
+FEATURE(debug_restore_context_dpu, struct dpu_t *, struct dpu_context_t *)
+FEATURE(debug_read_pcs_dpu, struct dpu_t *, struct dpu_context_t *)
+
+FEATURE(debug_save_context_rank, struct dpu_rank_t *)
+FEATURE(debug_restore_mux_context_rank, struct dpu_rank_t *)
+FEATURE(debug_restore_context_rank, struct dpu_rank_t *)

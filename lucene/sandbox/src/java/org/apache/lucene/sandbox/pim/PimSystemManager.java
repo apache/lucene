@@ -17,7 +17,7 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import com.upmem.dpu.DpuException;
+import org.apache.lucene.sandbox.sdk.DpuException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;

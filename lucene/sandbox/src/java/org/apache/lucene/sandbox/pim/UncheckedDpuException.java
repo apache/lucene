@@ -17,7 +17,7 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import com.upmem.dpu.DpuException;
+import org.apache.lucene.sandbox.sdk.DpuException;
 
 /** {@link RuntimeException} wrapping a {@link DpuException}. */
 public class UncheckedDpuException extends RuntimeException {

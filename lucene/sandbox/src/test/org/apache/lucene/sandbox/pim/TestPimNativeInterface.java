@@ -17,8 +17,8 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import com.upmem.dpu.DpuException;
-import com.upmem.dpu.DpuSystem;
+import org.apache.lucene.sandbox.sdk.DpuException;
+import org.apache.lucene.sandbox.sdk.DpuSystem;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;

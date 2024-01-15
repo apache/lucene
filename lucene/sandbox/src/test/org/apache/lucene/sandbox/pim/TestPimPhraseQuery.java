@@ -271,7 +271,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
     try {
       PimSystemManager.get().unloadPimIndex();
       PimSystemManager.get().loadPimIndex(pimDirectory);
-    } catch (com.upmem.dpu.DpuException e) {
+    } catch (org.apache.lucene.sandbox.sdk.DpuException e) {
       throw new RuntimeException(e);
     }
   }

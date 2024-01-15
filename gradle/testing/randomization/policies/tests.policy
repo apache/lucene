@@ -131,7 +131,7 @@ grant {
 
 grant {
   // Allow DPU JNI library for PIM query execution
-  permission java.lang.RuntimePermission "loadLibrary.dpujni";
+  permission java.lang.RuntimePermission "loadLibrary.dpujnilucene";
   // Allow loading native library dpulecene
   permission java.lang.RuntimePermission "loadLibrary.dpuLucene";
 };

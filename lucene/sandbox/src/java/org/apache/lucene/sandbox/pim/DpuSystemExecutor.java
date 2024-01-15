@@ -17,11 +17,11 @@
 
 package org.apache.lucene.sandbox.pim;
 
-import com.upmem.dpu.DpuException;
-import com.upmem.dpu.DpuProgramInfo;
-import com.upmem.dpu.DpuSet;
-import com.upmem.dpu.DpuSymbol;
-import com.upmem.dpu.DpuSystem;
+import org.apache.lucene.sandbox.sdk.DpuException;
+import org.apache.lucene.sandbox.sdk.DpuProgramInfo;
+import org.apache.lucene.sandbox.sdk.DpuSet;
+import org.apache.lucene.sandbox.sdk.DpuSymbol;
+import org.apache.lucene.sandbox.sdk.DpuSystem;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;

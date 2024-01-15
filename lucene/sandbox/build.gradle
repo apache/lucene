@@ -43,7 +43,7 @@ task cmakeInstall (type: dev.welbyseely.CMakeBuildTask) {
   configureFromProject()
   buildTarget = 'install'
   inputs.files(fileTree('dpu/src'))
-  outputs.files('dpu/build/libdpuLucene.so', 'dpu/build/dpu_program_exact_phrase')
+  outputs.files('dpu/build/libdpuLucene.so', 'dpu/build/dpu_program_exact_phrase', 'dpu/build/libdpujnilucene.so')
 }
 
 task cmakeBuildTest (type: dev.welbyseely.CMakeBuildTask) {
@@ -59,9 +59,7 @@ clean.dependsOn cmakeClean
 cmakeClean.doFirst {
   delete file("$projectDir/dpu/build/libdpuLucene.so")
   delete file("$projectDir/dpu/build/dpu_program_exact_phrase")
-  if (file("$projectDir/dpu/build").list().length == 0) {
-    delete file("$projectDir/dpu/build")
-  }
+  delete file("$projectDir/dpu/build/libdpujnilucene.so")
 }
 
 test {
