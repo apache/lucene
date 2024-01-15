@@ -55,4 +55,11 @@ public interface PimQuery {
    * @return the field associated to this query
    */
   String getField();
+
+  /**
+   * @return the maximum number of hits that are needed from the DPU system
+   */
+  default int getMaxNumHitsFromPimSystem() {
+    return Integer.MAX_VALUE;
+  }
 }

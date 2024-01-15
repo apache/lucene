@@ -173,4 +173,23 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
     // a result for a phrase query is just a document id and a frequency as of now
     return scorer.score(docId, freq);
   }
+
+  /**
+   * We need the DPU system to be aware of the number of top docs so that
+   * it can leverage this information to save time while handling the query.
+   * This information is present at the level of the Collector, not in the Weight or Scorer.
+   * Hence it is not possible to retrieve this information without changing core level APIs of
+   * Lucene. Instead, storing this information in the query (although a query should not contain
+   * any search related information).
+   */
+  int maxNumHitsFromDpuSystem = Integer.MAX_VALUE;
+
+  public void setMaxNumHitsFromDpuSystem(int maxNumHitsFromDpuSystem) {
+    this.maxNumHitsFromDpuSystem = maxNumHitsFromDpuSystem;
+  }
+
+  @Override
+  public int getMaxNumHitsFromPimSystem() {
+    return maxNumHitsFromDpuSystem;
+  }
 }

@@ -145,6 +145,10 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     public DocIdSetIterator competitiveIterator() throws IOException {
       return comparator.competitiveIterator();
     }
+
+    public int getNumHits() {
+      return numHits;
+    }
   }
 
   static boolean canEarlyTerminate(Sort searchSort, Sort indexSort) {

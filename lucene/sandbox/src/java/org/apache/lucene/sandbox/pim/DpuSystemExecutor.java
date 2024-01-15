@@ -64,10 +64,15 @@ class DpuSystemExecutor implements PimQueriesExecutor {
    *
    * @param nr_queries the number of queries in the batch sent to the DPU
    * @param nr_segments the number of lucene segments
-   * @return an SGReturn object, containing the queries results ordered by query id and lucene
+   * @param numHits an array with the maximum number of hits needed for each query (can be
+   *                used by the DPU system to save computation)
+   * @param quantFactors the quantization factors to be used for each query
+   * @param scorers the scorers used to score each query
+   * @param results SGReturn object, containing the queries results ordered by query id and lucene
    *     segment id
    */
-  native int sgXferResults(int nr_queries, int nr_segments, SGReturnPool.SGReturn results);
+  native int sgXferResults(int nr_queries, int nr_segments, int[] numHits, int[] quantFactors,
+                           LeafSimScorer[] scorers, SGReturnPool.SGReturn results);
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[DpuConstants.dpuQueryBatchByteSize];
@@ -262,9 +267,9 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     copyIntToDpus("nb_max_doc_match", 1);
     copyIntToDpus("new_query", 1);
     dpuSystem.async().exec(null);
-    copyIntToDpus("nb_max_doc_match", Integer.MAX_VALUE);
+    /*copyIntToDpus("nb_max_doc_match", Integer.MAX_VALUE);
     copyIntToDpus("new_query", 0);
-    dpuSystem.async().exec(null);
+    dpuSystem.async().exec(null);*/
 
     if (DpuConstants.DEBUG_DPU) {
       try {
@@ -281,22 +286,25 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // create an array with the quantization factors used for the norm inverse of each field
     LeafSimScorer[] scorers = new LeafSimScorer[queryBuffers.size()];
     int[] quantFactors = new int[queryBuffers.size()];
+    int[] numHits = new int[queryBuffers.size()];
     for(int i = 0; i < queryBuffers.size(); ++i) {
       scorers[i] = queryBuffers.get(i).scorer;
+      numHits[i] = queryBuffers.get(i).query.getMaxNumHitsFromPimSystem();
       Integer qf = fieldNormInverseQuantFactor.get(queryBuffers.get(i).query.getField());
       if(qf != null) quantFactors[i] = qf;
     }
 
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer
-    SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), /*scorers, */ nbLuceneSegments);
-    int resSize = sgXferResults(queryBuffers.size(), nbLuceneSegments, results);
+    SGReturnPool.SGReturn results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments);
+    int resSize = sgXferResults(queryBuffers.size(), nbLuceneSegments, numHits,
+                                  quantFactors, scorers, results);
     if (resSize > 0) {
       // buffer passed to the JNI layer was too small, request a larger one from the pool and
       // call again
       results.endReading(queryBuffers.size() * nbLuceneSegments);
       results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);
-      if (sgXferResults(queryBuffers.size(), nbLuceneSegments, results) > 0)
+      if (sgXferResults(queryBuffers.size(), nbLuceneSegments, numHits, results) > 0)
         throw new DpuException("Error in sg transfer results buffer allocation");
     }
     results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
@@ -314,6 +322,15 @@ class DpuSystemExecutor implements PimQueriesExecutor {
           new DpuExecutorSGResultsReader(
               buffer.query, results, q, buffer.query.getResultByteSize(), nbLuceneSegments));
     }
+  }
+
+  private int[] getNumHits(List<PimSystemManager.QueryBuffer> queryBuffers) {
+
+    int[] numHits = new int[queryBuffers.size()];
+    for(int i = 0; i < numHits.length; ++i) {
+      numHits[i] = queryBuffers.get(i).query.getMaxNumHitsFromPimSystem();
+    }
+    return numHits;
   }
 
   private void sendQueriesToPIM(List<PimSystemManager.QueryBuffer> queryBuffers)

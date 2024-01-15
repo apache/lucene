@@ -341,8 +341,10 @@ JNIEXPORT jint JNICALL
  * @param sgReturn the structure to store the results.
  * @return The results of the queries.
  */
-Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, jobject this, jint nr_queries,
-                    jint nr_segments, jobject sgReturn)
+Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
+                    jobject this, jint nr_queries,
+                    jint nr_segments, jintArray nr_hits, jintArray quant_factors,
+                    jobjectArray scorers, jobject sgReturn)
 {
     jint res = 0;
     jobject dpuSystem = (*env)->GetObjectField(env, this, dpuSystemField);
@@ -354,7 +356,26 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env, 
     dpu_get_nr_ranks(set, &nr_ranks);
 
     // Perform the intermediate synchronizations for the topdocs lower bound
-    topdocs_lower_bound_sync(set, nr_dpus, nr_ranks, nr_topdocs, nr_queries);
+    //TODO release arrays
+    jint* nr_hits_arr = (*env)->GetIntArrayElements(env, nr_hits, 0);
+    jint* quant_factors_arr = (*env)->GetIntArrayElements(env, quant_factors, 0);
+    // TODO create norm inverse array using scorers => access scorers[i].scorer.cache (cast scorer to BM25Scorer)
+    // for loop over all scorers
+    // TODO release array
+    float* norm_inverse[nr_queries] = malloc(nr_queries * sizeof(float*));
+    for() {
+        jObject object;
+        jclass cls = (*env)->GetObjectClass(env, object);
+        jfieldID scorerID = (*env)->GetFieldID(env, cls, "scorer", "L");
+        jObject scorer = (*env)->GetObjectField(env, object, scorerID);
+        cls = (*env)->GetObjectClass(env, scorer);
+        jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "L");
+        jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
+        //TODO release arrays
+        jfloat* cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
+        norm_inverse[query_id] = cache_arr;
+    }
+    THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_hits_arr, quant_factors, norm_inverse, nr_queries));
 
     // Retrieve the metadata information
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);

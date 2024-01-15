@@ -12,6 +12,7 @@
 #include "dpu_error.h"
 #include "dpu_types.h"
 
+//TODO score in priority queue should be float
 #define score_t int
 
 #define i_val score_t
@@ -274,6 +275,8 @@ update_rank_status(struct dpu_set_t rank, bool *finished)
     return DPU_OK;
 }
 
+#define MAX_NB_SCORES 8
+
 nodiscard static dpu_error_t
 read_best_scores(struct dpu_set_t rank, int nr_queries, score_t *my_bounds_buf, uint32_t nr_dpus)
 {
@@ -285,7 +288,7 @@ read_best_scores(struct dpu_set_t rank, int nr_queries, score_t *my_bounds_buf, 
         DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_bounds)[each_dpu][nr_queries]));
     }
     // TODO(sbrocard): handle uneven nr_queries
-    DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "best_scores", 0, nr_queries * sizeof(score_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "best_scores", 0, nr_queries * sizeof(score_t) * MAX_NB_SCORES, DPU_XFER_DEFAULT));
 
     return DPU_OK;
 }
@@ -299,11 +302,17 @@ update_pques(score_t *my_bounds_buf, uint32_t nr_dpus, const struct update_bound
     pthread_mutex_t *mutexes = ctx->query_mutexes.mutexes;
     score_t(*my_bounds)[nr_dpus][nr_queries] = (void *)my_bounds_buf;
 
+    // FIXME there can be multiple scores for one query
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         PQue *score_pque = &score_pques[i_qry];
         pthread_mutex_lock(&mutexes[i_qry]);
         for (uint32_t i_dpu = 0; i_dpu < nr_dpus; i_dpu++) {
             score_t best_score = (*my_bounds)[i_dpu][i_qry];
+            // TODO need to compute the real score here, not use the score from the DPU
+            // Otherwise we do not compute an accurate bound, and may loose results
+            // 1) extract frequency and norm from score_t
+            // 2) compute real score as norm_inverse[norm] * freq (as floating point)
+            // 3) insert in priority queue
             if (PQue_size(score_pque) < nr_topdocs[i_qry]) {
                 PQue_push(score_pque, best_score);
             } else if (best_score > *PQue_top(score_pque)) {
@@ -340,6 +349,7 @@ broadcast_new_bounds(struct dpu_set_t set, pque_array score_pques, int nr_querie
 {
     // TOOD(sbrocard) : do the lower bound computation
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
+        // TODO compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
         updated_bounds[i_qry] = *PQue_top(&score_pques.pques[i_qry]);
     }
 
@@ -361,7 +371,8 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 }
 
 dpu_error_t
-topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int nr_queries)
+topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, const uint32_t *quant_factors,
+                            float[][] norm_inverse, int nr_queries)
 {
     pque_array score_pques = { NULL, nr_queries };
     DPU_PROPAGATE(init_pques(&score_pques, nr_topdocs));

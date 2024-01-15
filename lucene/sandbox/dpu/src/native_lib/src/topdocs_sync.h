@@ -24,10 +24,15 @@
  * topdocs for all the DPUs in the set.
  *
  * @param set The DPU set to perform the calculation on.
- * @param nr_dpus The number of DPUs in the set.
- * @param nr_ranks The number of ranks in the set.
+ * @param nr_topdocs The number of top docs for each query.
+ * @param quant_factor The quantization factor for the DPU score of each query.
+ * @param norm_inverse The norm_inverse array (256 elements) for each query.
+ * @param nr_queries The number of queries.
  */
-dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, int nr_queries) __attribute_warn_unused_result__;
+dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set,
+                    const uint32_t *nr_topdocs,
+                    const uint32_t *quant_factors,
+                    float[][] norm_inverse, int nr_queries) __attribute_warn_unused_result__;
 
 /**
  * Frees the resources allocated for the topdocs synchronization.
