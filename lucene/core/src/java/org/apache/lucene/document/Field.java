@@ -35,10 +35,10 @@ import org.apache.lucene.util.BytesRef;
  * <ul>
  *   <li>{@link TextField}: {@link Reader} or {@link String} indexed for full-text search
  *   <li>{@link StringField}: {@link String} indexed verbatim as a single token
- *   <li>{@link IntPoint}: {@code int} indexed for exact/range queries.
- *   <li>{@link LongPoint}: {@code long} indexed for exact/range queries.
- *   <li>{@link FloatPoint}: {@code float} indexed for exact/range queries.
- *   <li>{@link DoublePoint}: {@code double} indexed for exact/range queries.
+ *   <li>{@link IntField}: {@code int} indexed for exact/range queries.
+ *   <li>{@link LongField}: {@code long} indexed for exact/range queries.
+ *   <li>{@link FloatField}: {@code float} indexed for exact/range queries.
+ *   <li>{@link DoubleField}: {@code double} indexed for exact/range queries.
  *   <li>{@link SortedDocValuesField}: {@code byte[]} indexed column-wise for sorting/faceting
  *   <li>{@link SortedSetDocValuesField}: {@code SortedSet<byte[]>} indexed column-wise for
  *       sorting/faceting
