@@ -1268,6 +1268,19 @@ public class IndexWriter
             segmentInfos.getIndexCreatedVersionMajor());
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
+      if (config.getParentField() != null) {
+        // if a parent field is configured we need to make sure that the min version supports SI.hasBlocks()
+        // if the index doesn't have blocks we can safely add a parent field to an existing index.
+        if (info.info.getMinVersion() == null
+            || info.info.getMinVersion().onOrAfter(Version.LUCENE_9_9_0) == false) {
+          throw new IllegalArgumentException(
+              "can't add a parent field to an index that has segments form a lucene version older than 9.9.0");
+        }
+        if (fis.getParentField() == null && info.info.getHasBlocks()) {
+          throw new IllegalArgumentException(
+              "can't add a parent field to an index that has segments with document blocks but no parent document field");
+        }
+      }
       for (FieldInfo fi : fis) {
         map.addOrGet(fi);
       }

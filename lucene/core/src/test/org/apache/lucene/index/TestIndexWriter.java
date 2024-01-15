@@ -4943,6 +4943,72 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testAddParentFieldAfterCreation() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document parent = new Document();
+        parent.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        writer.addDocument(parent);
+      }
+      iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document child1 = new Document();
+        child1.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        Document child2 = new Document();
+        child2.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        Document parent = new Document();
+        parent.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        writer.addDocuments(Arrays.asList(child1, child2, parent));
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          if (ctx.reader().numDocs() == 1) {
+            assertFalse(ctx.reader().getMetaData().hasBlocks());
+            assertNull(ctx.reader().getFieldInfos().getParentField());
+
+          } else {
+            assertTrue(ctx.reader().getMetaData().hasBlocks());
+            assertEquals("parent", ctx.reader().getFieldInfos().getParentField());
+          }
+        }
+      }
+    }
+  }
+
+  public void testAddParentFieldAfterCreationFailsOnExistingBlocks() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document child1 = new Document();
+        child1.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        Document child2 = new Document();
+        child2.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        Document parent = new Document();
+        parent.add(new StringField("id", Integer.toString(1), Field.Store.YES));
+        writer.addDocuments(Arrays.asList(child1, child2, parent));
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          assertTrue(ctx.reader().getMetaData().hasBlocks());
+          assertNull(ctx.reader().getFieldInfos().getParentField());
+        }
+      }
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  new IndexWriter(
+                      dir,
+                      new IndexWriterConfig(new MockAnalyzer(random())).setParentField("parent")));
+      assertEquals(
+          "can't add a parent field to an index that has segments with document blocks but no parent document field",
+          iae.getMessage());
+    }
+  }
+
   public void testIndexWithParentFieldIsCongruent() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

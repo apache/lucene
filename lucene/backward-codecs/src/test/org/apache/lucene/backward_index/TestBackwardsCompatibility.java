@@ -75,6 +75,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.LogByteSizeMergePolicy;
@@ -2262,6 +2263,148 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         }
         // This will confirm the docs are really sorted
         TestUtil.checkIndex(dir);
+      }
+    }
+  }
+
+  public void testAddParentFieldToSortedIndex() throws IOException {
+    for (String name : oldSortedNames) {
+      Path path = createTempDir("sorted");
+      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
+      assertNotNull("Sorted index index " + name + " not found", resource);
+      TestUtil.unzip(resource, path);
+
+      try (Directory dir = newFSDirectory(path)) {
+        final Sort sort;
+        LeafMetaData metaData;
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          metaData = reader.leaves().get(0).reader().getMetaData();
+          assertFalse(
+              "expected no reader with blocks",
+              reader.leaves().stream()
+                  .filter(l -> l.reader().getMetaData().hasBlocks())
+                  .findAny()
+                  .isPresent());
+          sort = metaData.getSort();
+          assertNotNull(sort);
+          searchExampleIndex(reader);
+        }
+        if (metaData.getMinVersion().onOrAfter(Version.LUCENE_9_9_0) == false) {
+          continue; // not relevant here
+        }
+
+        try (IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setOpenMode(OpenMode.APPEND)
+                    .setIndexSort(sort)
+                    .setParentField("parent")
+                    .setMergePolicy(newLogMergePolicy()))) {
+          // add 10 docs
+          for (int i = 0; i < 10; i++) {
+            // children don't have the sort field here, we make sure it preserves blocks
+            Document child = new Document();
+            child.add(new StringField("relation", "child", Field.Store.NO));
+            child.add(new StringField("bid", "" + i, Field.Store.NO));
+            Document parent = new Document();
+            parent.add(new StringField("relation", "parent", Field.Store.NO));
+            parent.add(new StringField("bid", "" + i, Field.Store.NO));
+            parent.add(new NumericDocValuesField("dateDV", i));
+            writer.addDocuments(Arrays.asList(child, child, parent));
+            if (random().nextBoolean()) {
+              writer.flush();
+            }
+          }
+          if (random().nextBoolean()) {
+            writer.forceMerge(1);
+          }
+          writer.commit();
+          try (IndexReader reader = DirectoryReader.open(dir)) {
+            assertTrue(
+                "expected at least one reader with blocks",
+                reader.leaves().stream()
+                    .filter(l -> l.reader().getMetaData().hasBlocks())
+                    .findAny()
+                    .isPresent());
+            IndexSearcher searcher = new IndexSearcher(reader);
+            for (int i = 0; i < 10; i++) {
+              TopDocs children =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "child")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              TopDocs parents =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "parent")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              assertEquals(2, children.totalHits.value);
+              assertEquals(1, parents.totalHits.value);
+              // make sure it's sorted
+              assertEquals(children.scoreDocs[0].doc + 1, children.scoreDocs[1].doc);
+              assertEquals(children.scoreDocs[1].doc + 1, parents.scoreDocs[0].doc);
+            }
+          }
+        }
+        // This will confirm the docs are really sorted
+        TestUtil.checkIndex(dir);
+      }
+    }
+  }
+
+  public void testSortedIndexAddDocBlocksFailsOnParentField() throws Exception {
+
+    for (String name : oldSortedNames) {
+      Path path = createTempDir("sorted");
+      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
+      assertNotNull("Sorted index index " + name + " not found", resource);
+      TestUtil.unzip(resource, path);
+
+      try (Directory dir = newFSDirectory(path)) {
+        final Sort sort;
+        LeafMetaData metaData;
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          metaData = reader.leaves().get(0).reader().getMetaData();
+          sort = metaData.getSort();
+          assertNotNull(sort);
+          searchExampleIndex(reader);
+        }
+        if (metaData.getMinVersion().onOrAfter(Version.LUCENE_9_9_0)) {
+          new IndexWriter(
+                  dir,
+                  newIndexWriterConfig(new MockAnalyzer(random()))
+                      .setOpenMode(OpenMode.APPEND)
+                      .setIndexSort(sort)
+                      .setParentField("parent")
+                      .setMergePolicy(newLogMergePolicy()))
+              .close();
+        } else {
+          IllegalArgumentException iae =
+              expectThrows(
+                  IllegalArgumentException.class,
+                  () ->
+                      new IndexWriter(
+                          dir,
+                          newIndexWriterConfig(new MockAnalyzer(random()))
+                              .setOpenMode(OpenMode.APPEND)
+                              .setIndexSort(sort)
+                              .setParentField("parent")
+                              .setMergePolicy(newLogMergePolicy())));
+          assertEquals(
+              "can't add a parent field to an index that has segments form a lucene version older than 9.9.0",
+              iae.getMessage());
+        }
       }
     }
   }

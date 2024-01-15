@@ -24,6 +24,12 @@ New Features
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
 
+* GITHUB#12829: For indices newly created as of 9.10.0 onwards, IndexWriter preserves document blocks indexed via
+  IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
+  maintained alongside their parent documents during sort and merge. IndexWriterConfig accepts a parent field that is used
+  to maintain block orders if index sorting is used. Note, this is fully optional in Lucene 9.x while will be mandatory for
+  indices that use document blocks together with index sorting as of 10.0.0. (Simon Willnauer)
+
 Improvements
 ---------------------
 
