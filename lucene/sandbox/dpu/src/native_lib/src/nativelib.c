@@ -355,26 +355,28 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
     dpu_get_nr_dpus(set, &nr_dpus);
     dpu_get_nr_ranks(set, &nr_ranks);
 
-    // Perform the intermediate synchronizations for the topdocs lower bound
-    //TODO release arrays
     jint* nr_hits_arr = (*env)->GetIntArrayElements(env, nr_hits, 0);
     jint* quant_factors_arr = (*env)->GetIntArrayElements(env, quant_factors, 0);
-    // TODO create norm inverse array using scorers => access scorers[i].scorer.cache (cast scorer to BM25Scorer)
-    // for loop over all scorers
-    // TODO release array
+    jobject* scorers_arr = (*env)->GetObjectArrayElements(env, scorers, 0);
+
+    // create norm inverse array using scorers
     float* norm_inverse[nr_queries] = malloc(nr_queries * sizeof(float*));
-    for() {
-        jObject object;
+    jfloatArray norm_inverse_arr[nr_queries] = malloc(nr_queries * sizeof(jfloatArray));
+    for(int i = 0; i < nr_queries; ++i) {
+        // access scorers[i].scorer.cache (should be BM25Scorer)
+        jObject object = scorers_arr[i];
         jclass cls = (*env)->GetObjectClass(env, object);
         jfieldID scorerID = (*env)->GetFieldID(env, cls, "scorer", "L");
         jObject scorer = (*env)->GetObjectField(env, object, scorerID);
         cls = (*env)->GetObjectClass(env, scorer);
+        // TODO assert that the class is BM25Scorer
         jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "L");
-        jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
-        //TODO release arrays
-        jfloat* cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
+        norm_inverse_arr[i] = (*env)->GetObjectField(env, scorer, cacheID);
+        jfloat* cache_arr = (*env)->GetFloatArrayElements(env, norm_inverse_arr[i], 0);
         norm_inverse[query_id] = cache_arr;
     }
+
+     // Perform the intermediate synchronizations for the topdocs lower bound
     THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_hits_arr, quant_factors, norm_inverse, nr_queries));
 
     // Retrieve the metadata information
@@ -435,6 +437,13 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
 
     free(block_addresses);
 end:
+    (*env)->ReleaseIntArrayElements(env, nr_hits, nr_hits_arr, JNI_ABORT);
+    (*env)->ReleaseIntArrayElements(env, quant_factors, quant_factors_arr, JNI_ABORT);
+    (*env)->ReleaseObjectArrayElements(env, scorers, scorers_arr, JNI_ABORT);
+    for(int i = 0; i < nr_queries; ++i) {
+        (*env)->ReleaseFloatArrayElements(env, norm_inverse_arr[i], norm_inverse[i], JNI_ABORT);
+    }
+    free(norm_inverse);
     free(metadata.results_index);
     free(metadata.results_size_lucene_segments);
     return res;

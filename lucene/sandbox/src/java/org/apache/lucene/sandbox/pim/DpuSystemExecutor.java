@@ -304,7 +304,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       // call again
       results.endReading(queryBuffers.size() * nbLuceneSegments);
       results = sgReturnPool.get(queryBuffers.size(), nbLuceneSegments, resSize);
-      if (sgXferResults(queryBuffers.size(), nbLuceneSegments, numHits, results) > 0)
+      if (sgXferResults(queryBuffers.size(), nbLuceneSegments, numHits, quantFactors, scorers, results) > 0)
         throw new DpuException("Error in sg transfer results buffer allocation");
     }
     results.queriesIndices.order(ByteOrder.LITTLE_ENDIAN);
