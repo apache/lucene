@@ -1121,6 +1121,12 @@ public class IndexWriter
       // NOTE: this is correct even for an NRT reader because we'll pull FieldInfos even for the
       // un-committed segments:
       globalFieldNumberMap = getFieldNumberMap();
+      if (create == false
+          && conf.getParentField() != null
+          && globalFieldNumberMap.getFieldNames().contains(conf.getParentField()) == false) {
+        throw new IllegalArgumentException(
+            "can't add a parent field to an already existing index without a parent field");
+      }
 
       validateIndexSort();
 
@@ -1272,7 +1278,6 @@ public class IndexWriter
         map.addOrGet(fi);
       }
     }
-
     return map;
   }
 

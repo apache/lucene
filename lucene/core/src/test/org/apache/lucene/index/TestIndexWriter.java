@@ -4943,6 +4943,48 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testParentFieldExistingIndex() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        writer.addDocument(new Document());
+      }
+      IllegalArgumentException iae =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  new IndexWriter(
+                      dir,
+                      new IndexWriterConfig(new MockAnalyzer(random()))
+                          .setOpenMode(OpenMode.APPEND)
+                          .setParentField("foo")));
+      assertEquals(
+          "can't add a parent field to an already existing index without a parent field",
+          iae.getMessage());
+      iae =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  new IndexWriter(
+                      dir,
+                      new IndexWriterConfig(new MockAnalyzer(random()))
+                          .setOpenMode(OpenMode.CREATE_OR_APPEND)
+                          .setParentField("foo")));
+      assertEquals(
+          "can't add a parent field to an already existing index without a parent field",
+          iae.getMessage());
+
+      try (IndexWriter writer =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setOpenMode(OpenMode.CREATE)
+                  .setParentField("foo"))) {
+        writer.addDocument(new Document());
+      }
+    }
+  }
+
   public void testIndexWithParentFieldIsCongruent() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
