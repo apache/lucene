@@ -38,6 +38,8 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10366: Override readVInt() and readVLong() in ByteBufferDataInput to help Hotspot inline method. (Guo Feng)
+
 * GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
   DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
 
