@@ -26,7 +26,7 @@
     do {                                                                                                                         \
         dpu_error_t _status = (s);                                                                                               \
         if (_status != DPU_OK) {                                                                                                 \
-            return s;                                                                                                            \
+            return _status;                                                                                                            \
         }                                                                                                                        \
     } while (0)
 #define DPU_PROPERTY(t, f, set)                                                                                                  \
