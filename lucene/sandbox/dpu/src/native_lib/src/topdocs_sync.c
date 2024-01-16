@@ -371,8 +371,8 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 }
 
 dpu_error_t
-topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, const uint32_t *quant_factors,
-                            float[][] norm_inverse, int nr_queries)
+topdocs_lower_bound_sync(struct dpu_set_t set, const uint32_t *nr_topdocs, __attribute__((unused)) const uint32_t *quant_factors,
+                            __attribute__((unused)) float* norm_inverse, int nr_queries)
 {
     pque_array score_pques = { NULL, nr_queries };
     DPU_PROPAGATE(init_pques(&score_pques, nr_topdocs));
