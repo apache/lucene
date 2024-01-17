@@ -53,7 +53,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
@@ -263,7 +262,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testCreateSortedIndexInternal() throws Exception {
-    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and search the created index
+    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and
+    // search the created index
     try (Directory dir = newDirectory()) {
       createSortedIndex(dir);
     }
