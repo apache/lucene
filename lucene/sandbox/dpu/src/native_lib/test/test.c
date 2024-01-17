@@ -49,7 +49,7 @@ test_init_inbound_buffer(void)
     CU_ASSERT_EQUAL(result, DPU_OK);
 
     inbound_scores_array *inbound_scores = pthread_getspecific(key);
-    CU_ASSERT_PTR_NOT_NULL(inbound_scores);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores);
     CU_ASSERT_EQUAL(inbound_scores->size, nr_queries);
 
     result = dpu_free(rank);
