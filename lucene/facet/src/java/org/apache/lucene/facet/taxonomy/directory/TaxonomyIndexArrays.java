@@ -109,13 +109,19 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     if (size == 0) {
       return new int[0][];
     }
-    int chunkCount = size / CHUNK_SIZE + 1;
+    int chunkCount = size >> CHUNK_SIZE_BITS;
+    int fullChunkCount;
     int lastChunkSize = size & CHUNK_MASK;
+    if (lastChunkSize == 0) {
+      fullChunkCount = chunkCount; // Size is a multiple of CHUNK_SIZE, so all arrays are full-sized
+    } else {
+      fullChunkCount = chunkCount++;
+    }
     int[][] array = new int[chunkCount][];
-    if (array.length > 0) {
-      for (int i = startFrom; i < chunkCount - 1; i++) {
-        array[i] = new int[CHUNK_SIZE];
-      }
+    for (int i = startFrom; i < fullChunkCount; i++) {
+      array[i] = new int[CHUNK_SIZE];
+    }
+    if (lastChunkSize > 0) {
       array[chunkCount - 1] = new int[lastChunkSize];
     }
     return array;
@@ -208,7 +214,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
               "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
         int pos = doc + leafContext.docBase;
-        parentsArray[pos / CHUNK_SIZE][pos % CHUNK_SIZE] =
+        parentsArray[pos >> CHUNK_SIZE_BITS][pos & CHUNK_MASK] =
             Math.toIntExact(parentValues.longValue());
       }
     }
@@ -226,7 +232,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           allocateChunkedArray(
               ArrayUtil.oversize(ordinal + 1, Integer.BYTES), parents.values.length - 1);
       copyChunkedArray(parents.values, newParents);
-      newParents[ordinal / CHUNK_SIZE][ordinal % CHUNK_SIZE] = parentOrdinal;
+      newParents[ordinal >> CHUNK_SIZE_BITS][ordinal & CHUNK_MASK] = parentOrdinal;
       return new TaxonomyIndexArrays(newParents);
     }
     parents.set(ordinal, parentOrdinal);
