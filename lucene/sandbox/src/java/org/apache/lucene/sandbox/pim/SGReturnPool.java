@@ -49,14 +49,7 @@ public class SGReturnPool {
     return get(nr_queries, nr_segments, 0);
   }
 
-  /**
-   * Default get, returns buffer of smallest size larger than min size requested
-   *
-   * @param nr_queries
-   * @param nr_segments
-   * @param minResultsByteSize
-   * @return
-   */
+  /** Default get, returns buffer of smallest size larger than min size requested */
   public SGReturn get(int nr_queries, int nr_segments, int minResultsByteSize) {
 
     ByteBuffer buffer = null;
