@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.nio.ByteBuffer;
 
+/**
+ * class to hold a native DPU set
+ * This class contains all the native methods which call the C APIs under the hood
+ */
 final class NativeDpuSet {
     static {
         System.loadLibrary("dpujnilucene");

@@ -9,6 +9,9 @@ import java.io.PrintStream;
 import java.util.List;
 import java.nio.ByteBuffer;
 
+/**
+ * base abstract class for a DPU set
+ */
 abstract class DpuSetBase {
     protected final NativeDpuSet set;
     protected final PrintStream logStream;

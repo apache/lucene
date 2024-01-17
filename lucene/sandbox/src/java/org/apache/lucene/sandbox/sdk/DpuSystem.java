@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
+ * Main class for a user to manage a set of DPUs
  */
 public final class DpuSystem extends DpuSetBase implements DpuSet, AutoCloseable {
     /**

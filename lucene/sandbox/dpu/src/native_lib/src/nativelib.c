@@ -357,27 +357,27 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
 
     jint* nr_hits_arr = (*env)->GetIntArrayElements(env, nr_hits, 0);
     jint* quant_factors_arr = (*env)->GetIntArrayElements(env, quant_factors, 0);
-    jobject* scorers_arr = (*env)->GetObjectArrayElements(env, scorers, 0);
 
     // create norm inverse array using scorers
-    float* norm_inverse[nr_queries] = malloc(nr_queries * sizeof(float*));
-    jfloatArray norm_inverse_arr[nr_queries] = malloc(nr_queries * sizeof(jfloatArray));
+    float(*norm_inverse)[nr_queries][256] = malloc(sizeof(float[nr_queries][256]));
     for(int i = 0; i < nr_queries; ++i) {
         // access scorers[i].scorer.cache (should be BM25Scorer)
-        jObject object = scorers_arr[i];
+        jobject object =  (*env)->GetObjectArrayElement(env, scorers, i);
         jclass cls = (*env)->GetObjectClass(env, object);
         jfieldID scorerID = (*env)->GetFieldID(env, cls, "scorer", "L");
-        jObject scorer = (*env)->GetObjectField(env, object, scorerID);
+        jobject scorer = (*env)->GetObjectField(env, object, scorerID);
         cls = (*env)->GetObjectClass(env, scorer);
         // TODO assert that the class is BM25Scorer
         jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "L");
-        norm_inverse_arr[i] = (*env)->GetObjectField(env, scorer, cacheID);
-        jfloat* cache_arr = (*env)->GetFloatArrayElements(env, norm_inverse_arr[i], 0);
-        norm_inverse[query_id] = cache_arr;
+        jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
+        jfloat* cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
+        for(int j = 0; j < 256; ++j)
+            (*norm_inverse)[i][j] = cache_arr[j];
+        (*env)->ReleaseFloatArrayElements(env, cache, cache_arr, JNI_ABORT);
     }
 
      // Perform the intermediate synchronizations for the topdocs lower bound
-    THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_hits_arr, quant_factors, norm_inverse, nr_queries));
+    THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_hits_arr, quant_factors_arr, (float*)norm_inverse, nr_queries));
 
     // Retrieve the metadata information
     struct metadata_t metadata = get_metadata(env, set, nr_dpus, nr_queries, nr_segments);
@@ -439,10 +439,6 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
 end:
     (*env)->ReleaseIntArrayElements(env, nr_hits, nr_hits_arr, JNI_ABORT);
     (*env)->ReleaseIntArrayElements(env, quant_factors, quant_factors_arr, JNI_ABORT);
-    (*env)->ReleaseObjectArrayElements(env, scorers, scorers_arr, JNI_ABORT);
-    for(int i = 0; i < nr_queries; ++i) {
-        (*env)->ReleaseFloatArrayElements(env, norm_inverse_arr[i], norm_inverse[i], JNI_ABORT);
-    }
     free(norm_inverse);
     free(metadata.results_index);
     free(metadata.results_size_lucene_segments);

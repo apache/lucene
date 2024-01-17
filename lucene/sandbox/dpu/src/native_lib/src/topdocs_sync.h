@@ -32,7 +32,7 @@
 dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set,
                     const uint32_t *nr_topdocs,
                     const uint32_t *quant_factors,
-                    float** norm_inverse, int nr_queries) __attribute_warn_unused_result__;
+                    float* norm_inverse, int nr_queries) __attribute_warn_unused_result__;
 
 /**
  * Frees the resources allocated for the topdocs synchronization.

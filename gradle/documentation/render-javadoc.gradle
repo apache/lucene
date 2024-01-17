@@ -303,7 +303,7 @@ class RenderJavadocTask extends DefaultTask {
 
   // default is not to ignore any elements, should only be used to workaround split packages
   @Input
-  List<String> javadocMissingIgnore = []
+  List<String> javadocMissingIgnore = ["org.apache.lucene.sandbox.sdk"]
 
   @Input
   @Optional
