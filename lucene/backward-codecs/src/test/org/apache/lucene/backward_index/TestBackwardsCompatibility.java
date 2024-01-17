@@ -282,7 +282,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     conf.setUseCompoundFile(false);
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(random());
+    LineFileDocs docs = new LineFileDocs(new Random(0));
     SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
     parser.setTimeZone(TimeZone.getTimeZone("UTC"));
     ParsePosition position = new ParsePosition(0);
