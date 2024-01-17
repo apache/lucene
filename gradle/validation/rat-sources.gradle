@@ -116,6 +116,9 @@ allprojects {
                 case ":lucene:benchmark":
                     exclude "data/"
                     break
+
+                case ":lucene:sandbox":
+                    exclude "dpu/src/native_lib/STC/**"
             }
         })
         inputFileTrees.add(defaultScanFileTree)
@@ -203,10 +206,16 @@ class RatTask extends DefaultTask {
                 pattern(substring: "ANTLR GENERATED CODE")
             }
 
+            // UPMEM
+            substringMatcher(licenseFamilyCategory: "UPMEM", licenseFamilyName: "UPMEM") {
+                pattern(substring: "Copyright 2020 UPMEM. All rights reserved.")
+            }
+
             approvedLicense(familyName: "Apache")
             approvedLicense(familyName: "The MIT License")
             approvedLicense(familyName: "Modified BSD License")
             approvedLicense(familyName: "Generated")
+            approvedLicense(familyName: "UPMEM")
         }
     }
 

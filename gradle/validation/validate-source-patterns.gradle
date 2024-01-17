@@ -112,6 +112,17 @@ configure(project(':lucene:benchmark')) {
   }
 }
 
+configure(project(':lucene:sandbox')) {
+  project.tasks.withType(ValidateSourcePatternsTask) {
+    sourceFiles.exclude 'dpu/src/native_lib/STC/**'
+  }
+}
+
+configure(project(':lucene')) {
+  project.tasks.withType(ValidateSourcePatternsTask) {
+    sourceFiles.exclude 'pim-benchmarks/**/datasets/**/*.txt'
+  }
+}
 
 @CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
