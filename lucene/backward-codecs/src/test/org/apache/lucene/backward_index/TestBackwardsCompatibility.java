@@ -205,11 +205,20 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testCreateMoreTermsIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("moreterms");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createMoreTermsIndex(dir);
+    }
+  }
 
+  public void testCreateMoreTermsIndexInternal() throws Exception {
+    try (Directory dir = newDirectory()) {
+      createMoreTermsIndex(dir);
+    }
+  }
+
+  private void createMoreTermsIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -220,22 +229,48 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         new IndexWriterConfig(analyzer).setMergePolicy(mp).setUseCompoundFile(false);
     IndexWriter writer = new IndexWriter(dir, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
+    Field docIdDV = null;
+    Field titleDVField = null;
     for (int i = 0; i < 50; i++) {
-      writer.addDocument(docs.nextDoc());
+      Document doc = docs.nextDoc();
+      if (docIdDV == null) {
+        docIdDV = new NumericDocValuesField("docid_intDV", 0);
+        doc.add(docIdDV);
+      }
+      docIdDV.setLongValue(doc.getField("docid_int").numericValue().longValue());
+      if (titleDVField == null) {
+        titleDVField = new SortedDocValuesField("titleDV", new BytesRef());
+        doc.add(titleDVField);
+      }
+      titleDVField.setBytesValue(new BytesRef(doc.getField("title").stringValue()));
+      writer.addDocument(doc);
     }
     docs.close();
     writer.close();
-    dir.close();
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
   // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("sorted");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createSortedIndex(dir);
+    }
+  }
 
+  public void testCreateSortedIndexInternal() throws Exception {
+    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and
+    // search the created index
+    try (Directory dir = newDirectory()) {
+      createSortedIndex(dir);
+    }
+  }
+
+  public void createSortedIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -248,11 +283,14 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     conf.setUseCompoundFile(false);
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(random());
+    LineFileDocs docs = new LineFileDocs(new Random(0));
     SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
     parser.setTimeZone(TimeZone.getTimeZone("UTC"));
     ParsePosition position = new ParsePosition(0);
+    Field docIdDV = null;
     Field dateDVField = null;
+    Field titleDVField = null;
+
     for (int i = 0; i < 50; i++) {
       Document doc = docs.nextDoc();
       String dateString = doc.get("date");
@@ -270,6 +308,17 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         doc.add(dateDVField);
       }
       dateDVField.setLongValue(date.getTime());
+      if (docIdDV == null) {
+        docIdDV = new NumericDocValuesField("docid_intDV", 0);
+        doc.add(docIdDV);
+      }
+
+      docIdDV.setLongValue(doc.getField("docid_int").numericValue().longValue());
+      if (titleDVField == null) {
+        titleDVField = new SortedDocValuesField("titleDV", new BytesRef());
+        doc.add(titleDVField);
+      }
+      titleDVField.setBytesValue(new BytesRef(doc.getField("title").stringValue()));
       if (i == 250) {
         writer.commit();
       }
@@ -277,7 +326,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
     writer.forceMerge(1);
     writer.close();
-    dir.close();
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   private void updateNumeric(IndexWriter writer, String id, String f, String cf, long value)
