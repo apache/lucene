@@ -203,7 +203,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     return Paths.get(path);
   }
 
-  private void testCreateMoreTermsIndex() throws Exception {
+  public void testCreateMoreTermsIndex() throws Exception {
     Path indexDir = getIndexDir().resolve("moreterms");
     Files.deleteIfExists(indexDir);
     try (Directory dir = newFSDirectory(indexDir)) {
@@ -217,7 +217,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void createMoreTermsIndex(Directory dir) throws Exception {
+  private void createMoreTermsIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
