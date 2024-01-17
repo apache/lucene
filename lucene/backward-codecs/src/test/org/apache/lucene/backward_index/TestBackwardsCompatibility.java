@@ -203,7 +203,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     return Paths.get(path);
   }
 
-  public void testCreateMoreTermsIndex() throws Exception {
+  private void testCreateMoreTermsIndex() throws Exception {
     Path indexDir = getIndexDir().resolve("moreterms");
     Files.deleteIfExists(indexDir);
     try (Directory dir = newFSDirectory(indexDir)) {
