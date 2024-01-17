@@ -39,7 +39,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable {
   private static final int CHUNK_SIZE_BITS = 13;
-  private static final int CHUNK_SIZE = 1 << CHUNK_SIZE_BITS;
+  static final int CHUNK_SIZE = 1 << CHUNK_SIZE_BITS;
   private static final int CHUNK_MASK = CHUNK_SIZE - 1;
 
   private final ChunkedIntArray parents;
@@ -51,8 +51,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   private volatile boolean initializedChildren = false;
   private ChunkedIntArray children, siblings;
 
-  private static class ChunkedIntArray extends ParallelTaxonomyArrays.IntArray {
-    private final int[][] values;
+  static class ChunkedIntArray extends ParallelTaxonomyArrays.IntArray {
+    final int[][] values;
 
     private ChunkedIntArray(int[][] values) {
       this.values = values;
@@ -73,8 +73,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
   }
 
-  /** Used by {@link #add(int, int)} after the array grew. */
-  private TaxonomyIndexArrays(int[][] parents) {
+  /** Used by {@link #add(int, int)} after the array grew. Also, used for testing. */
+  TaxonomyIndexArrays(int[][] parents) {
     this.parents = new ChunkedIntArray(parents);
   }
 
@@ -244,7 +244,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * {@code i}.
    */
   @Override
-  public IntArray parents() {
+  public ChunkedIntArray parents() {
     return parents;
   }
 
@@ -254,7 +254,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * taxonomy as an immediate child of {@code i}.
    */
   @Override
-  public IntArray children() {
+  public ChunkedIntArray children() {
     if (!initializedChildren) {
       initChildrenSiblings(null);
     }
@@ -268,7 +268,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * {@code i}. The sibling is defined as the previous youngest child of {@code parents[i]}.
    */
   @Override
-  public IntArray siblings() {
+  public ChunkedIntArray siblings() {
     if (!initializedChildren) {
       initChildrenSiblings(null);
     }
