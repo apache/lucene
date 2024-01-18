@@ -1,4 +1,5 @@
 #include <CUnit/Basic.h>
+#include <CUnit/CUnit.h>
 
 // NOLINTNEXTLINE (bugprone-suspicious-include)
 #include "topdocs_sync.c"
@@ -94,30 +95,26 @@ test_update_pques(void)
 
     for (int i = 0; i < nr_queries; i++) {
         score_pques.pques[i] = PQue_with_capacity(nr_topdocs[i]);
-        for(int j = 0; j < 256; ++j)
+        for (int j = 0; j < 256; ++j)
             norm_inverse[i][j] = 1;
     }
 
     for (uint32_t i = 0; i < nr_dpus; i++) {
         for (int j = 0; j < nr_queries; j++) {
-            my_bounds_buf[i][j][0].freq_and_norm = i + j;
+            my_bounds_buf[i][j][0].freq = i + j;
+            my_bounds_buf[i][j][0].norm = 0;
             my_nb_scores[i][j] = 1;
         }
     }
 
-    inbound_scores_array inbound_scores = {
-        .nr_queries = nr_queries,
-        .nb_scores = (uint8_t *)my_nb_scores,
-        .buffer = (dpu_score_t *)my_bounds_buf
-    };
+    inbound_scores_array inbound_scores
+        = { .nr_queries = nr_queries, .nb_scores = (uint8_t *)my_nb_scores, .buffer = (dpu_score_t *)my_bounds_buf };
 
-    struct update_bounds_atomic_context ctx = {
-        .nr_queries = nr_queries,
+    struct update_bounds_atomic_context ctx = { .nr_queries = nr_queries,
         .nr_topdocs = nr_topdocs,
         .query_mutexes = query_mutexes,
         .score_pques = score_pques,
-        .norm_inverse = (float*)norm_inverse
-    };
+        .norm_inverse = (float *)norm_inverse };
 
     update_pques(&inbound_scores, nr_dpus, &ctx);
 
@@ -145,6 +142,33 @@ test_all_dpus_have_finished(void)
     CU_ASSERT_FALSE(result);
 }
 
+void
+test_bitfield_is_sound(void)
+{
+    // representation on DPU
+    typedef struct _score {
+        // quantized score
+        uint32_t score_quant;
+        // freq is stored in the 3 LSB and norm in the MSB
+        uint32_t freq_and_norm;
+    } kernel_score_t;
+
+    CU_ASSERT_EQUAL(sizeof(dpu_score_t), 8);
+    CU_ASSERT_EQUAL(sizeof(kernel_score_t), 8);
+
+    dpu_score_t score;
+    kernel_score_t kernel_score;
+
+    kernel_score.score_quant = 0xCAFED00DU;
+    kernel_score.freq_and_norm = 0xABCDEFU;
+    kernel_score.freq_and_norm |= 0xABU << 24;
+    memcpy(&score, &kernel_score, sizeof(dpu_score_t));
+
+    CU_ASSERT_EQUAL(score.score_quant, 0xCAFED00DU);
+    CU_ASSERT_EQUAL(score.norm, 0xABU);
+    CU_ASSERT_EQUAL(score.freq, 0xABCDEFU);
+}
+
 // NOLINTEND (*-avoid-magic-numbers)
 
 int
@@ -170,7 +194,8 @@ main()
         || (NULL == CU_add_test(p_suite, "test_init_inbound_buffer", test_init_inbound_buffer))
         || (NULL == CU_add_test(p_suite, "test_init_inbound_buffers", test_init_inbound_buffers))
         || (NULL == CU_add_test(p_suite, "test_update_pques", test_update_pques))
-        || (NULL == CU_add_test(p_suite, "test_all_dpus_have_finished", test_all_dpus_have_finished))) {
+        || (NULL == CU_add_test(p_suite, "test_all_dpus_have_finished", test_all_dpus_have_finished))
+        || (NULL == CU_add_test(p_suite, "test_bitfield_is_sound", test_bitfield_is_sound))) {
         CU_cleanup_registry();
         return CU_get_error();
     }

@@ -12,12 +12,12 @@
 #include "dpu_error.h"
 #include "dpu_types.h"
 
-// TODO(sbrocard): use bitfields instead of uint32_t
-typedef struct {
+typedef struct __attribute__((packed)) {
     // quantized score
-    uint32_t score_quant;
-    // freq is stored in the 3 LSB and norm in the MSB
-    uint32_t freq_and_norm;
+    uint32_t score_quant : 32;
+    // freq is stored in the 3 LSB and norm in the MSB on DPU
+    uint32_t freq : 24;
+    uint8_t norm : 8;
 } dpu_score_t;
 typedef uint32_t lower_bound_t;
 
@@ -265,7 +265,7 @@ destructor_inbound_buffers(void *args)
             free(inbound_scores->buffer);
         }
         if (inbound_scores->nb_scores != NULL) {
-                    free(inbound_scores->nb_scores);
+            free(inbound_scores->nb_scores);
         }
         free(inbound_scores);
     }
@@ -324,8 +324,8 @@ read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint8_t *nb_scores, u
     DPU_FOREACH (rank, dpu, each_dpu) {
         DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_nb_scores)[each_dpu][nr_queries]));
     }
-    DPU_PROPAGATE(
-        dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "nb_best_scores", 0, ALIGN8((uint32_t)nr_queries * sizeof(uint8_t)), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(dpu_push_xfer(
+        rank, DPU_XFER_FROM_DPU, "nb_best_scores", 0, ALIGN8((uint32_t)nr_queries * sizeof(uint8_t)), DPU_XFER_DEFAULT));
 
     return DPU_OK;
 }
@@ -346,15 +346,13 @@ update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const struc
         pthread_mutex_lock(&mutexes[i_qry]);
         for (uint32_t i_dpu = 0; i_dpu < nr_dpus; i_dpu++) {
             uint8_t nscores = (*nb_scores)[i_dpu][i_qry];
-            for(int i_sc = 0; i_sc < nscores; ++i_sc) {
+            for (int i_sc = 0; i_sc < nscores; ++i_sc) {
                 // 1) extract frequency and norm from dpu_score_t
                 // 2) compute real score as norm_inverse[norm] * freq (as floating point)
                 // 3) insert in priority queue
                 const dpu_score_t best_score = (*my_bounds)[i_dpu][i_qry][i_sc];
-                const uint32_t freq = (best_score.freq_and_norm) & 0xFFFFFFU;
-                uint8_t norm = (best_score.freq_and_norm >> 24U) & 0xFFU;
-                float norm_inverse = (*norm_inverse_cache)[i_qry][norm];
-                float score = norm_inverse * (float)freq;
+                float norm_inverse = (*norm_inverse_cache)[i_qry][best_score.norm];
+                float score = norm_inverse * (float)best_score.freq;
                 if (PQue_size(score_pque) < nr_topdocs[i_qry]) {
                     PQue_push(score_pque, score);
                 } else if (score > *PQue_top(score_pque)) {
@@ -388,16 +386,19 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
 }
 
 NODISCARD static dpu_error_t
-broadcast_new_bounds(struct dpu_set_t set, pque_array score_pques, int nr_queries,
-                        lower_bound_t *updated_bounds, const uint32_t *quant_factors)
+broadcast_new_bounds(struct dpu_set_t set,
+    pque_array score_pques,
+    int nr_queries,
+    lower_bound_t *updated_bounds,
+    const uint32_t *quant_factors)
 {
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         // compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
         updated_bounds[i_qry] = (uint32_t)(*PQue_top(&score_pques.pques[i_qry]) * (float)quant_factors[i_qry]);
     }
 
-    DPU_PROPAGATE(dpu_broadcast_to(set, "score_lower_bound", 0, updated_bounds,
-                                    nr_queries * sizeof(lower_bound_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(
+        dpu_broadcast_to(set, "score_lower_bound", 0, updated_bounds, nr_queries * sizeof(lower_bound_t), DPU_XFER_DEFAULT));
 
     return DPU_OK;
 }
@@ -433,8 +434,8 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     CLEANUP(cleanup_free) bool *finished_ranks = malloc(nr_ranks * sizeof(*finished_ranks));
     CHECK_MALLOC(finished_ranks);
 
-    struct update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes,
-                                                score_pques, norm_inverse, finished_ranks };
+    struct update_bounds_atomic_context ctx
+        = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
 
     bool first_run = true;
     do {
