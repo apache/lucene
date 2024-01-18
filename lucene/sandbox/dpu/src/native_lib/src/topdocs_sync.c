@@ -81,12 +81,13 @@ struct update_bounds_atomic_context {
     const uint32_t *nr_topdocs;
     mutex_array query_mutexes;
     pque_array score_pques;
-    float *norm_inverse;
+    const float *norm_inverse;
     bool *finished_ranks;
 };
 
 static const uint32_t MAX_NR_DPUS_PER_RANK = DPU_MAX_NR_CIS * DPU_MAX_NR_DPUS_PER_CI;
 static const uint32_t MAX_NB_SCORES = 8;
+static const size_t NORM_INVERSE_CACHE_SIZE = 256;
 // NOLINTBEGIN (*-avoid-non-const-global-variables)
 static pthread_key_t key;
 static pthread_once_t key_once = PTHREAD_ONCE_INIT;
@@ -339,7 +340,7 @@ update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const struc
     pthread_mutex_t *mutexes = ctx->query_mutexes.mutexes;
     dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = (void *)inbound_scores->buffer;
     uint8_t(*nb_scores)[nr_dpus][nr_queries] = (void *)inbound_scores->nb_scores;
-    float(*norm_inverse_cache)[nr_queries][256] = (void *)(ctx->norm_inverse);
+    float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE] = (void *)(ctx->norm_inverse);
 
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         PQue *score_pque = &score_pques[i_qry];
@@ -351,8 +352,8 @@ update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const struc
                 // 2) compute real score as norm_inverse[norm] * freq (as floating point)
                 // 3) insert in priority queue
                 const dpu_score_t best_score = (*my_bounds)[i_dpu][i_qry][i_sc];
-                float norm_inverse = (*norm_inverse_cache)[i_qry][best_score.norm];
-                float score = norm_inverse * (float)best_score.freq;
+                const float norm_inverse = (*norm_inverse_cache)[i_qry][best_score.norm];
+                const float score = norm_inverse * (float)best_score.freq;
                 if (PQue_size(score_pque) < nr_topdocs[i_qry]) {
                     PQue_push(score_pque, score);
                 } else if (score > *PQue_top(score_pque)) {
@@ -418,8 +419,8 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 dpu_error_t
 topdocs_lower_bound_sync(struct dpu_set_t set,
     const uint32_t *nr_topdocs,
-    __attribute((unused)) const uint32_t *quant_factors,
-    __attribute((unused)) float *norm_inverse,
+    const uint32_t *quant_factors,
+    const float *norm_inverse,
     int nr_queries)
 {
     pque_array score_pques = { NULL, nr_queries };

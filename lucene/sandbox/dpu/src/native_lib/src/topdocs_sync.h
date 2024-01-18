@@ -29,12 +29,15 @@
  * @param norm_inverse The norm_inverse array (256 elements) for each query.
  * @param nr_queries The number of queries.
  */
-dpu_error_t topdocs_lower_bound_sync(struct dpu_set_t set,
-                    const uint32_t *nr_topdocs,
-                    const uint32_t *quant_factors,
-                    float* norm_inverse, int nr_queries) __attribute_warn_unused_result__;
+dpu_error_t
+topdocs_lower_bound_sync(struct dpu_set_t set,
+    const uint32_t *nr_topdocs,
+    const uint32_t *quant_factors,
+    const float *norm_inverse,
+    int nr_queries) __attribute_warn_unused_result__;
 
 /**
  * Frees the resources allocated for the topdocs synchronization.
  */
-void free_topdocs_sync(void);
+void
+free_topdocs_sync(void);
