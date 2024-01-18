@@ -213,7 +213,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   public void testCreateIndexInternal() throws IOException {
     try (Directory dir = newDirectory()) {
-      createIndex(dir, random().nextBoolean(), random().nextBoolean());
+      createIndex(dir, random().nextBoolean(), false);
       searchIndex(dir, Version.LATEST.toString(), Version.MIN_SUPPORTED_MAJOR, Version.LATEST);
     }
   }
@@ -1210,14 +1210,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     TestUtil.checkIndex(dir);
 
     final Bits liveDocs = MultiBits.getLiveDocs(reader);
-    if (reader.leaves().size() > 1) {
-      assertNotNull(liveDocs);
-    }
+    assertNotNull(liveDocs);
+
     StoredFields storedFields = reader.storedFields();
     TermVectors termVectors = reader.termVectors();
 
     for (int i = 0; i < DOCS_COUNT; i++) {
-      if (liveDocs == null || liveDocs.get(i)) {
+      if (liveDocs.get(i)) {
         Document d = storedFields.document(i);
         List<IndexableField> fields = d.getFields();
         boolean isProxDoc = d.getField("content3") == null;
@@ -1582,7 +1581,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
-            .setMergePolicy(NoMergePolicy.INSTANCE);
+            .setMergePolicy(newLogMergePolicy());
     IndexWriter writer = new IndexWriter(dir, conf);
 
     for (int i = 0; i < DOCS_COUNT; i++) {
