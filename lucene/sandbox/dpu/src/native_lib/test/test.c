@@ -50,7 +50,7 @@ test_init_inbound_buffer(void)
 
     inbound_scores_array *inbound_scores = pthread_getspecific(key);
     CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores);
-    CU_ASSERT_EQUAL(inbound_scores->size, nr_queries);
+    CU_ASSERT_EQUAL(inbound_scores->nr_queries, nr_queries);
 
     result = dpu_free(rank);
     CU_ASSERT_EQUAL(result, DPU_OK);
@@ -78,7 +78,7 @@ test_update_pques(void)
     uint32_t nr_dpus = 25;
     int nr_queries = 5;
     uint32_t nr_topdocs[] = { 10, 20, 30, 40, 50 };
-    dpu_score_t my_bounds_buf[nr_dpus][nr_queries * MAX_NB_SCORES];
+    dpu_score_t my_bounds_buf[nr_dpus][nr_queries][MAX_NB_SCORES];
     uint8_t my_nb_scores[nr_dpus][nr_queries];
     float norm_inverse[nr_queries][256];
     PQue score_buf[nr_queries];
@@ -100,10 +100,16 @@ test_update_pques(void)
 
     for (uint32_t i = 0; i < nr_dpus; i++) {
         for (int j = 0; j < nr_queries; j++) {
-            my_bounds_buf[i][j * MAX_NB_SCORES] = ((dpu_score_t)i + j) << 32;
+            my_bounds_buf[i][j][0].freq_and_norm = i + j;
             my_nb_scores[i][j] = 1;
         }
     }
+
+    inbound_scores_array inbound_scores = {
+        .nr_queries = nr_queries,
+        .nb_scores = (uint8_t *)my_nb_scores,
+        .buffer = (dpu_score_t *)my_bounds_buf
+    };
 
     struct update_bounds_atomic_context ctx = {
         .nr_queries = nr_queries,
@@ -113,7 +119,7 @@ test_update_pques(void)
         .norm_inverse = (float*)norm_inverse
     };
 
-    update_pques((dpu_score_t *)my_bounds_buf, (uint8_t*)my_nb_scores, nr_dpus, &ctx);
+    update_pques(&inbound_scores, nr_dpus, &ctx);
 
     for (int i = 0; i < nr_queries; i++) {
         CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN(nr_dpus, nr_topdocs[i]));
