@@ -19,6 +19,10 @@
 #include <dpu.h>
 #include <stdint.h>
 
+static const size_t NORM_INVERSE_CACHE_SIZE = 256;
+static const uint32_t INITIAL_NB_SCORES = 1;
+static const uint32_t NB_SCORES_SCALING_FACTOR = 2;
+
 /**
  * Performs successive synchronization steps to update the lower bound of the
  * topdocs for all the DPUs in the set.
@@ -31,9 +35,9 @@
  */
 dpu_error_t
 topdocs_lower_bound_sync(struct dpu_set_t set,
-    const uint32_t *nr_topdocs,
-    const uint32_t *quant_factors,
+    const int *nr_topdocs,
     const float *norm_inverse,
+    const int *quant_factors,
     int nr_queries) __attribute_warn_unused_result__;
 
 /**

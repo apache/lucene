@@ -10,7 +10,7 @@ test_init_pques(void)
 {
     pque_array score_pques;
     score_pques.nr_pques = 5;
-    uint32_t nr_topdocs[] = { 10, 20, 30, 40, 50 };
+    int nr_topdocs[] = { 10, 20, 30, 40, 50 };
 
     dpu_error_t result = init_pques(&score_pques, nr_topdocs);
     CU_ASSERT_EQUAL(result, DPU_OK);
@@ -78,7 +78,7 @@ test_update_pques(void)
 {
     uint32_t nr_dpus = 25;
     int nr_queries = 5;
-    uint32_t nr_topdocs[] = { 10, 20, 30, 40, 50 };
+    int nr_topdocs[] = { 10, 20, 30, 40, 50 };
     dpu_score_t my_bounds_buf[nr_dpus][nr_queries][MAX_NB_SCORES];
     uint8_t my_nb_scores[nr_dpus][nr_queries];
     float norm_inverse[nr_queries][256];
@@ -110,7 +110,7 @@ test_update_pques(void)
     inbound_scores_array inbound_scores
         = { .nr_queries = nr_queries, .nb_scores = (uint8_t *)my_nb_scores, .buffer = (dpu_score_t *)my_bounds_buf };
 
-    struct update_bounds_atomic_context ctx = { .nr_queries = nr_queries,
+    update_bounds_atomic_context ctx = { .nr_queries = nr_queries,
         .nr_topdocs = nr_topdocs,
         .query_mutexes = query_mutexes,
         .score_pques = score_pques,
@@ -120,7 +120,7 @@ test_update_pques(void)
 
     for (int i = 0; i < nr_queries; i++) {
         CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN(nr_dpus, nr_topdocs[i]));
-        CU_ASSERT_EQUAL(*PQue_top(&score_pques.pques[i]), nr_dpus < nr_topdocs[i] ? i : (int)(nr_dpus + i - nr_topdocs[i]));
+        CU_ASSERT_EQUAL(*PQue_top(&score_pques.pques[i]), (int)nr_dpus < nr_topdocs[i] ? i : (int)(nr_dpus + i - nr_topdocs[i]));
     }
 
     for (int i = 0; i < nr_queries; i++) {
