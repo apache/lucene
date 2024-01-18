@@ -65,5 +65,5 @@ cmakeClean.doFirst {
 test {
   systemProperty 'lucene.pim.dir', "${rootProject.projectDir}"
   systemProperty 'java.library.path', "$projectDir/dpu/build:$projectDir/dpu/"
-  environment 'LD_LIBRARY_PATH', "$projectDir/dpu/"
+  environment 'LD_LIBRARY_PATH', "$projectDir/dpu/build/"
 }

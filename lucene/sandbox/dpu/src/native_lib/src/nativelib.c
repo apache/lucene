@@ -376,6 +376,7 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
         (*env)->ReleaseFloatArrayElements(env, cache, cache_arr, JNI_ABORT);
     }
 
+
      // Perform the intermediate synchronizations for the topdocs lower bound
     THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_hits_arr, quant_factors_arr, (float*)norm_inverse, nr_queries));
 
@@ -451,13 +452,12 @@ end:
 void
 cache_callback(JNIEnv *env)
 {
-    exClass = (*env)->FindClass(env, "com/upmem/dpu/DpuException");
-    nativeDpuSetClass = (*env)->FindClass(env, "com/upmem/dpu/NativeDpuSet");
-    dpuSystemClass = (*env)->FindClass(env, "com/upmem/dpu/DpuSystem");
+    exClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuException");
+    nativeDpuSetClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/NativeDpuSet");
+    dpuSystemClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuSystem");
     dpuSystemExecutorClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/pim/DpuSystemExecutor");
-
-    dpuSystemField = (*env)->GetFieldID(env, dpuSystemExecutorClass, "dpuSystem", "Lcom/upmem/dpu/DpuSystem;");
-    nativeDpuSetField = (*env)->GetFieldID(env, dpuSystemClass, "set", "Lcom/upmem/dpu/NativeDpuSet;");
+    dpuSystemField = (*env)->GetFieldID(env, dpuSystemExecutorClass, "dpuSystem", "Lorg/apache/lucene/sandbox/sdk/DpuSystem;");
+    nativeDpuSetField = (*env)->GetFieldID(env, dpuSystemClass, "set", "Lorg/apache/lucene/sandbox/sdk/NativeDpuSet;");
 
     byteBufferClass = (*env)->FindClass(env, "java/nio/ByteBuffer");
     allocateDirectMethod = (*env)->GetStaticMethodID(env, byteBufferClass, "allocateDirect", "(I)Ljava/nio/ByteBuffer;");

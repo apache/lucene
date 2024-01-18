@@ -95,7 +95,7 @@ build_java_set(JNIEnv *env, jclass cls, struct dpu_set_t set)
 static jint
 throw_dpu_exception(JNIEnv *env, const char *message)
 {
-    jclass exClass = (*env)->FindClass(env, "com/upmem/dpu/DpuException");
+    jclass exClass = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuException");
     return (*env)->ThrowNew(env, exClass, message);
 }
 
@@ -114,7 +114,7 @@ throw_dpu_exception(JNIEnv *env, const char *message)
 #define THROW_ON_ERROR_L(s, l) THROW_ON_ERROR_X(s, goto l)
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_allocate(JNIEnv *env, jclass cls, jint nr_dpus, jstring profile)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_allocate(JNIEnv *env, jclass cls, jint nr_dpus, jstring profile)
 {
     struct dpu_set_t set;
 
@@ -132,7 +132,7 @@ error:
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_allocateRanks(JNIEnv *env, jclass cls, jint nr_ranks, jstring profile)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_allocateRanks(JNIEnv *env, jclass cls, jint nr_ranks, jstring profile)
 {
     struct dpu_set_t set;
 
@@ -152,7 +152,7 @@ error:
 static jobject
 build_java_description(JNIEnv *env, dpu_description_t description)
 {
-    jclass cls = (*env)->FindClass(env, "com/upmem/dpu/DpuDescription");
+    jclass cls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuDescription");
 
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(IIIIIIIIIII)V");
 
@@ -185,7 +185,7 @@ build_java_description(JNIEnv *env, dpu_description_t description)
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_descriptionFor(JNIEnv *env, __attribute__((unused)) jclass cls, jstring profile)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_descriptionFor(JNIEnv *env, __attribute__((unused)) jclass cls, jstring profile)
 {
     const char *c_profile = (*env)->GetStringUTFChars(env, profile, 0);
     dpu_description_t description;
@@ -206,7 +206,7 @@ error:
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_description(JNIEnv *env, jobject this)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_description(JNIEnv *env, jobject this)
 {
     struct dpu_set_t set = build_native_set(env, this);
     struct dpu_rank_t *rank;
@@ -222,7 +222,7 @@ Java_com_upmem_dpu_NativeDpuSet_description(JNIEnv *env, jobject this)
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_reset(JNIEnv *env, jobject this)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_reset(JNIEnv *env, jobject this)
 {
     struct dpu_set_t set = build_native_set(env, this);
 
@@ -238,7 +238,7 @@ end:
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_load(JNIEnv *env, jobject this, jstring executable)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_load(JNIEnv *env, jobject this, jstring executable)
 {
     jobject jprogram, jsymbols;
     struct dpu_program_t *program;
@@ -254,7 +254,7 @@ Java_com_upmem_dpu_NativeDpuSet_load(JNIEnv *env, jobject this, jstring executab
     jmethodID mapPutId = (*env)->GetMethodID(env, mapCls, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
     jsymbols = (*env)->NewObject(env, mapCls, mapCtorId);
 
-    jclass symbolCls = (*env)->FindClass(env, "com/upmem/dpu/DpuSymbol");
+    jclass symbolCls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuSymbol");
     jmethodID symbolCtorId = (*env)->GetMethodID(env, symbolCls, "<init>", "(IILjava/lang/String;)V");
 
     for (uint32_t each_symbol = 0; each_symbol < program->symbols->nr_symbols; ++each_symbol) {
@@ -264,7 +264,7 @@ Java_com_upmem_dpu_NativeDpuSet_load(JNIEnv *env, jobject this, jstring executab
         (*env)->CallObjectMethod(env, jsymbols, mapPutId, jname, jsymbol);
     }
 
-    jclass cls = (*env)->FindClass(env, "com/upmem/dpu/DpuProgramInfo");
+    jclass cls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuProgramInfo");
     jmethodID ctorID = (*env)->GetMethodID(env, cls, "<init>", "(Ljava/util/Map;)V");
     jprogram = (*env)->NewObject(env, cls, ctorID, jsymbols);
 
@@ -280,7 +280,7 @@ build_native_symbol(JNIEnv *env, jobject object)
 {
     struct dpu_symbol_t symbol;
 
-    jclass symbolCls = (*env)->FindClass(env, "com/upmem/dpu/DpuSymbol");
+    jclass symbolCls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuSymbol");
     jfieldID symbolAddressID = (*env)->GetFieldID(env, symbolCls, "address", "I");
     jfieldID symbolSizeID = (*env)->GetFieldID(env, symbolCls, "size", "I");
 
@@ -376,7 +376,7 @@ end:
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_broadcast__Ljava_lang_String_2_3BZ(JNIEnv *env,
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_broadcast__Ljava_lang_String_2_3BZ(JNIEnv *env,
     jobject this,
     jstring jsymbol,
     jbyteArray jarray,
@@ -413,7 +413,7 @@ free_ctx:
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_broadcast__Lcom_upmem_dpu_DpuSymbol_2_3BZ(JNIEnv *env,
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_broadcast__Lorg_apache_lucene_sandbox_sdk_DpuSymbol_2_3BZ(JNIEnv *env,
     jobject this,
     jobject jsymbol,
     jbyteArray jarray,
@@ -447,7 +447,7 @@ free_ctx:
 }
 
 JNIEXPORT void JNICALL 
-Java_com_upmem_dpu_NativeDpuSet_broadcast__Ljava_lang_String_2_3BIIIZ (JNIEnv * env, 
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_broadcast__Ljava_lang_String_2_3BIIIZ (JNIEnv * env, 
     jobject this, 
     jstring jsymbol, 
     jbyteArray jarray, 
@@ -486,7 +486,7 @@ free_ctx:
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_copy__Ljava_lang_String_2_3_3BIZZ(JNIEnv *env,
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_copy__Ljava_lang_String_2_3_3BIZZ(JNIEnv *env,
     jobject this,
     jstring jsymbol,
     jobjectArray jarrays,
@@ -578,7 +578,7 @@ end:
     (*env)->ReleaseStringUTFChars(env, jsymbol, symbol);
 }
 
-JNIEXPORT void JNICALL Java_com_upmem_dpu_NativeDpuSet_copy__Ljava_lang_String_2_3Ljava_nio_ByteBuffer_2IZZ
+JNIEXPORT void JNICALL Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_copy__Ljava_lang_String_2_3Ljava_nio_ByteBuffer_2IZZ
   (JNIEnv * env, jobject this, jstring jsymbol, jobjectArray jarrays, jint size, jboolean to_dpu, jboolean async) {
 
     struct dpu_set_t set = build_native_set(env, this);
@@ -650,7 +650,7 @@ end:
   }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_copy__Lcom_upmem_dpu_DpuSymbol_2_3_3BIZZ(JNIEnv *env,
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_copy__Lorg_apache_lucene_sandbox_sdk_DpuSymbol_2_3_3BIZZ(JNIEnv *env,
     jobject this,
     jobject jsymbol,
     jobjectArray jarrays,
@@ -742,7 +742,7 @@ end:
     return;
 }
 
-JNIEXPORT void JNICALL Java_com_upmem_dpu_NativeDpuSet_copy__Lcom_upmem_dpu_DpuSymbol_2_3Ljava_nio_ByteBuffer_2IZZ
+JNIEXPORT void JNICALL Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_copy__Lorg_apache_lucene_sandbox_sdk_DpuSymbol_2_3Ljava_nio_ByteBuffer_2IZZ
   (JNIEnv *env, jobject this, jobject jsymbol, jobjectArray jarrays, jint size, jboolean to_dpu, jboolean async) {
 
     struct dpu_set_t set = build_native_set(env, this);
@@ -813,7 +813,7 @@ end:
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_launch(JNIEnv *env, jobject this, jboolean async)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_launch(JNIEnv *env, jobject this, jboolean async)
 {
     struct dpu_set_t set = build_native_set(env, this);
     dpu_launch_policy_t policy = async ? DPU_ASYNCHRONOUS : DPU_SYNCHRONOUS;
@@ -849,7 +849,7 @@ java_print_fct(void *arg, const char *fmt, ...)
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_log(JNIEnv *env, jobject this, jobject stream)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_log(JNIEnv *env, jobject this, jobject stream)
 {
     struct dpu_set_t set = build_native_set(env, this);
 
@@ -912,10 +912,10 @@ callback_wrapper(struct dpu_set_t set, uint32_t idx, void *args)
     }
 
     jclass cls = (*env)->GetObjectClass(env, ctxt->callback);
-    jmethodID callID = (*env)->GetMethodID(env, cls, "call", "(Lcom/upmem/dpu/DpuSet;I)V");
+    jmethodID callID = (*env)->GetMethodID(env, cls, "call", "(Lorg/apache/lucene/sandbox/sdk/DpuSet;I)V");
 
     jclass setCls = (*env)->GetObjectClass(env, jset);
-    jfieldID wrapperID = (*env)->GetFieldID(env, setCls, "wrapper", "Lcom/upmem/dpu/DpuSet;");
+    jfieldID wrapperID = (*env)->GetFieldID(env, setCls, "wrapper", "Lorg/apache/lucene/sandbox/sdk/DpuSet;");
     jobject wrapper = (*env)->GetObjectField(env, jset, wrapperID);
     (*env)->CallVoidMethod(env, ctxt->callback, callID, wrapper, idx);
 
@@ -933,7 +933,7 @@ callback_wrapper(struct dpu_set_t set, uint32_t idx, void *args)
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_call(JNIEnv *env, jobject this, jobject callback, jboolean blocking, jboolean single_call)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_call(JNIEnv *env, jobject this, jobject callback, jboolean blocking, jboolean single_call)
 {
     struct dpu_set_t set = build_native_set(env, this);
     dpu_callback_flags_t flags = DPU_CALLBACK_ASYNC;
@@ -960,14 +960,14 @@ Java_com_upmem_dpu_NativeDpuSet_call(JNIEnv *env, jobject this, jobject callback
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_sync(JNIEnv *env, jobject this)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_sync(JNIEnv *env, jobject this)
 {
     struct dpu_set_t set = build_native_set(env, this);
     THROW_ON_ERROR(dpu_sync(set));
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_debugInit(JNIEnv *env, jobject this)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_debugInit(JNIEnv *env, jobject this)
 {
     struct dpu_set_t set = build_native_set(env, this);
 
@@ -1020,7 +1020,7 @@ Java_com_upmem_dpu_NativeDpuSet_debugInit(JNIEnv *env, jobject this)
 
     jobject information;
 
-    jclass cls = (*env)->FindClass(env, "com/upmem/dpu/DpuFaultDump");
+    jclass cls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuFaultDump");
 
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "(JZZZIIII[B[S)V");
 
@@ -1071,7 +1071,7 @@ build_java_dump(JNIEnv *env,
     (*env)->SetBooleanArrayRegion(env, zeroFlags, 0, nr_of_dpu_threads, (const jboolean *)dpu_context->zero_flags);
     (*env)->SetBooleanArrayRegion(env, carryFlags, 0, nr_of_dpu_threads, (const jboolean *)dpu_context->carry_flags);
 
-    jclass cls = (*env)->FindClass(env, "com/upmem/dpu/DpuContextDump");
+    jclass cls = (*env)->FindClass(env, "org/apache/lucene/sandbox/sdk/DpuContextDump");
     jmethodID constructor = (*env)->GetMethodID(env, cls, "<init>", "([Z[I[S[Z[Z)V");
 
     return (*env)->NewObject(env, cls, constructor, atomicBits, registers, pcs, zeroFlags, carryFlags);
@@ -1127,7 +1127,7 @@ dump_debug_context(JNIEnv *env, struct dpu_t *dpu, jobject faultDump)
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_upmem_dpu_NativeDpuSet_dump(JNIEnv *env, jobject this, jobject faultDump)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_dump(JNIEnv *env, jobject this, jobject faultDump)
 {
     struct dpu_set_t set = build_native_set(env, this);
 
@@ -1146,7 +1146,7 @@ Java_com_upmem_dpu_NativeDpuSet_dump(JNIEnv *env, jobject this, jobject faultDum
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_systemReport(JNIEnv *env, jobject this, jstring output)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_systemReport(JNIEnv *env, jobject this, jstring output)
 {
     struct dpu_set_t set = build_native_set(env, this);
 
@@ -1161,7 +1161,7 @@ Java_com_upmem_dpu_NativeDpuSet_systemReport(JNIEnv *env, jobject this, jstring 
 }
 
 JNIEXPORT void JNICALL
-Java_com_upmem_dpu_NativeDpuSet_free(JNIEnv *env, jobject this)
+Java_org_apache_lucene_sandbox_sdk_NativeDpuSet_free(JNIEnv *env, jobject this)
 {
     struct dpu_set_t set = build_native_set(env, this);
     THROW_ON_ERROR(dpu_free(set));

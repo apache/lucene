@@ -78,7 +78,9 @@ test_update_pques(void)
     uint32_t nr_dpus = 25;
     int nr_queries = 5;
     uint32_t nr_topdocs[] = { 10, 20, 30, 40, 50 };
-    score_t my_bounds_buf[nr_dpus][nr_queries];
+    dpu_score_t my_bounds_buf[nr_dpus][nr_queries * MAX_NB_SCORES];
+    uint8_t my_nb_scores[nr_dpus][nr_queries];
+    float norm_inverse[nr_queries][256];
     PQue score_buf[nr_queries];
     pque_array score_pques = { .pques = score_buf, .nr_pques = nr_queries };
 
@@ -92,11 +94,14 @@ test_update_pques(void)
 
     for (int i = 0; i < nr_queries; i++) {
         score_pques.pques[i] = PQue_with_capacity(nr_topdocs[i]);
+        for(int j = 0; j < 256; ++j)
+            norm_inverse[i][j] = 1;
     }
 
     for (uint32_t i = 0; i < nr_dpus; i++) {
         for (int j = 0; j < nr_queries; j++) {
-            my_bounds_buf[i][j] = (score_t)i + j;
+            my_bounds_buf[i][j * MAX_NB_SCORES] = ((dpu_score_t)i + j) << 32;
+            my_nb_scores[i][j] = 1;
         }
     }
 
@@ -105,9 +110,10 @@ test_update_pques(void)
         .nr_topdocs = nr_topdocs,
         .query_mutexes = query_mutexes,
         .score_pques = score_pques,
+        .norm_inverse = (float*)norm_inverse
     };
 
-    update_pques((score_t *)my_bounds_buf, nr_dpus, &ctx);
+    update_pques((dpu_score_t *)my_bounds_buf, (uint8_t*)my_nb_scores, nr_dpus, &ctx);
 
     for (int i = 0; i < nr_queries; i++) {
         CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN(nr_dpus, nr_topdocs[i]));
