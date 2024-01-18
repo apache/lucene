@@ -1581,7 +1581,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
-            .setMergePolicy(newLogMergePolicy());
+            .setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, conf);
 
     for (int i = 0; i < DOCS_COUNT; i++) {
