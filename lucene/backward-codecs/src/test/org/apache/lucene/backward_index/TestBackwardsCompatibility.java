@@ -1217,7 +1217,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     TermVectors termVectors = reader.termVectors();
 
     for (int i = 0; i < DOCS_COUNT; i++) {
-      if (liveDocs.get(i) || liveDocs == null) {
+      if (liveDocs == null || liveDocs.get(i)) {
         Document d = storedFields.document(i);
         List<IndexableField> fields = d.getFields();
         boolean isProxDoc = d.getField("content3") == null;
