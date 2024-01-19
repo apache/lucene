@@ -85,6 +85,7 @@ public class TaxonomyFacetIntAssociations extends IntTaxonomyFacets {
           int currentValue = getValue(ord);
           int newValue = aggregationFunction.aggregate(currentValue, value);
           setValue(ord, newValue);
+          setCount(ord, getCount(ord) + 1);
         }
       }
     }

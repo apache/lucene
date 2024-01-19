@@ -16,23 +16,30 @@
  */
 package org.apache.lucene.facet;
 
-/** Keeps highest results, first by largest int value, then tie-break by smallest ord. */
-public class TopOrdAndIntQueue extends TopOrdAndNumberQueue {
+import org.apache.lucene.util.PriorityQueue;
+
+/** Keeps highest results, first by largest value, then tie-break by smallest ord. */
+public abstract class TopOrdAndNumberQueue extends PriorityQueue<TopOrdAndNumberQueue.OrdAndValue> {
+
+  /** Holds a single entry. */
+  public static final class OrdAndValue {
+
+    /** Ordinal of the entry. */
+    public int ord;
+
+    /** Value associated with the ordinal. */
+    public Number value;
+
+    /** Default constructor. */
+    public OrdAndValue() {}
+  }
 
   /** Sole constructor. */
-  public TopOrdAndIntQueue(int topN) {
+  public TopOrdAndNumberQueue(int topN) {
     super(topN);
   }
 
   @Override
-  public boolean lessThan(TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
-    int comparison = (int) a.value - (int) b.value;
-    if (comparison < 0) {
-      return true;
-    }
-    if (comparison > 0) {
-      return false;
-    }
-    return a.ord > b.ord;
-  }
+  public abstract boolean lessThan(
+      TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b);
 }

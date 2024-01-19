@@ -347,8 +347,8 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
           }
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
-            bottomCount = q.top().value;
-            bottomOrd = q.top().value;
+            bottomCount = (int) q.top().value;
+            bottomOrd = (int) q.top().value;
           }
         }
       }
