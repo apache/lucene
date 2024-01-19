@@ -738,7 +738,7 @@ public final class Util {
   public static IntsRef toUTF16(CharSequence s, IntsRefBuilder scratch) {
     final int charLimit = s.length();
     scratch.setLength(charLimit);
-    scratch.grow(charLimit);
+    scratch.growNoCopy(charLimit);
     for (int idx = 0; idx < charLimit; idx++) {
       scratch.setIntAt(idx, s.charAt(idx));
     }
