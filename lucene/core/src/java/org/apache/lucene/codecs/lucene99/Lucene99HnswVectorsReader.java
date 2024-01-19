@@ -169,7 +169,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
+  static VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
         || similarityFunctionId >= VectorSimilarityFunction.values().length) {
@@ -179,7 +179,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+  static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
       throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);

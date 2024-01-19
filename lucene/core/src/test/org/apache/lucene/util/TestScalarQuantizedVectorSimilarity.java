@@ -36,7 +36,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors2(floatVectorValues, VectorSimilarityFunction.EUCLIDEAN);
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.EUCLIDEAN);
@@ -66,7 +66,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloatsNormalized(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors2(floatVectorValues, VectorSimilarityFunction.COSINE);
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectorsNormalized(
@@ -100,7 +100,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors2(floatVectorValues, VectorSimilarityFunction.DOT_PRODUCT);
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.DOT_PRODUCT);
@@ -130,8 +130,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.5f, 0.5f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors2(
-              floatVectorValues, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(

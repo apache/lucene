@@ -30,7 +30,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
-    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1);
+    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1, 7);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];

@@ -524,7 +524,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     return null;
   }
 
-  @SuppressWarnings("unused")
   private static ScalarQuantizer getQuantizedState(
       KnnVectorsReader vectorsReader, String fieldName) {
     QuantizedVectorsReader reader = getQuantizedKnnVectorsReader(vectorsReader, fieldName);
@@ -536,10 +535,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static ScalarQuantizer mergeAndRecalculateQuantiles(
       MergeState mergeState, FieldInfo fieldInfo, float confidenceInterval) throws IOException {
-    FloatVectorValues vectorValues =
-        KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-    return ScalarQuantizer.fromVectors2(vectorValues, fieldInfo.getVectorSimilarityFunction());
-    /*List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
+    List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
     List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
@@ -563,9 +559,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     if (mergedQuantiles == null || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      mergedQuantiles = ScalarQuantizer.fromVectors2(vectorValues, fieldInfo.getVectorSimilarityFunction());
+      mergedQuantiles = ScalarQuantizer.fromVectors(vectorValues, confidenceInterval, 7);
     }
-    return mergedQuantiles;*/
+    return mergedQuantiles;
   }
 
   /**
@@ -649,11 +645,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         return;
       }
       ScalarQuantizer quantizer =
-          ScalarQuantizer.fromVectors2(
+          ScalarQuantizer.fromVectors(
               new FloatVectorWrapper(
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
-              fieldInfo.getVectorSimilarityFunction());
+              confidenceInterval,
+              7);
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
@@ -756,7 +753,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  private static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
+  static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
     private final QuantizedByteVectorValues values;
 
     QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
@@ -875,7 +872,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  private static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
+  static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
@@ -990,14 +987,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  private static final class OffsetCorrectedQuantizedByteVectorValues
-      extends QuantizedByteVectorValues {
+  static final class OffsetCorrectedQuantizedByteVectorValues extends QuantizedByteVectorValues {
 
     private final QuantizedByteVectorValues in;
     private final VectorSimilarityFunction vectorSimilarityFunction;
     private final ScalarQuantizer scalarQuantizer, oldScalarQuantizer;
 
-    private OffsetCorrectedQuantizedByteVectorValues(
+    OffsetCorrectedQuantizedByteVectorValues(
         QuantizedByteVectorValues in,
         VectorSimilarityFunction vectorSimilarityFunction,
         ScalarQuantizer scalarQuantizer,

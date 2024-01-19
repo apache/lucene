@@ -44,29 +44,29 @@ import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
- * Reads Scalar Quantized vectors from the index segments along with index data structures.
+ * Reads Int4 Scalar Quantized vectors from the index segments along with index data structures.
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReader
+public final class Lucene99ScalarInt4QuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsReader.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarInt4QuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
-      throws IOException {
+  Lucene99ScalarInt4QuantizedVectorsReader(
+      SegmentReadState state, FlatVectorsReader rawVectorsReader) throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene99ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene99ScalarInt4QuantizedVectorsFormat.META_EXTENSION);
     boolean success = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -74,9 +74,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene99ScalarInt4QuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene99ScalarInt4QuantizedVectorsFormat.VERSION_START,
+                Lucene99ScalarInt4QuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -89,8 +89,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
           openDataInput(
               state,
               versionMeta,
-              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene99ScalarInt4QuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene99ScalarInt4QuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -123,8 +123,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               + fieldEntry.dimension);
     }
 
-    // int8 quantized and calculated stored offset.
-    long quantizedVectorBytes = dimension + Float.BYTES;
+    // int4 quantized and calculated stored offset.
+
+    long quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
@@ -132,8 +133,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               + fieldEntry.vectorDataLength
               + " not matching size="
               + fieldEntry.size
-              + " * (dim="
-              + dimension
+              + " * (dim/2="
+              + ((dimension + 1) >> 1)
               + " + 4)"
               + " = "
               + numQuantizedVectorBytes);
@@ -168,8 +169,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene99ScalarInt4QuantizedVectorsFormat.VERSION_START,
+              Lucene99ScalarInt4QuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -201,8 +202,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     if (fieldEntry.scalarQuantizer == null) {
       return rawVectorsReader.getRandomVectorScorer(field, target);
     }
-    OffHeapQuantizedByteVectorValues vectorValues =
-        OffHeapQuantizedByteVectorValues.load(
+    OffHeapQuantizedHalfByteVectorValues vectorValues =
+        OffHeapQuantizedHalfByteVectorValues.load(
             fieldEntry.ordToDoc,
             fieldEntry.dimension,
             fieldEntry.size,
@@ -245,7 +246,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
     }
-    return OffHeapQuantizedByteVectorValues.load(
+    return OffHeapQuantizedHalfByteVectorValues.load(
         fieldEntry.ordToDoc,
         fieldEntry.dimension,
         fieldEntry.size,
@@ -287,10 +288,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       dimension = input.readVInt();
       size = input.readInt();
       if (size > 0) {
-        float confidenceInterval = Float.intBitsToFloat(input.readInt());
         float minQuantile = Float.intBitsToFloat(input.readInt());
         float maxQuantile = Float.intBitsToFloat(input.readInt());
-        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, confidenceInterval);
+        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, null, 4);
       } else {
         scalarQuantizer = null;
       }
