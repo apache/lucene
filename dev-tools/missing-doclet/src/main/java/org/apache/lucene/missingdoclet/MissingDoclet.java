@@ -21,12 +21,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -75,8 +73,7 @@ public class MissingDoclet extends StandardDoclet {
   
   @Override
   public Set<Doclet.Option> getSupportedOptions() {
-    Set<Doclet.Option> options = new HashSet<>();
-    options.addAll(super.getSupportedOptions());
+    Set<Doclet.Option> options = new HashSet<>(super.getSupportedOptions());
     options.add(new Doclet.Option() {
       @Override
       public int getArgumentCount() {
@@ -410,7 +407,7 @@ public class MissingDoclet extends StandardDoclet {
       case MODULE:
       case PACKAGE:
         // for modules/packages, we don't have filename + line number, fully qualify
-        fullMessage.append(element.toString());
+        fullMessage.append(element);
         break;
       case METHOD:
       case CONSTRUCTOR:

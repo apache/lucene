@@ -37,6 +37,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
+@LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
         V, F extends Field, Q extends AbstractVectorSimilarityQuery>
     extends LuceneTestCase {
@@ -433,8 +434,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testApproximate() throws IOException {
     // Non-restrictive filter, along with similarity to visit a small number of nodes
-    int numFiltered = random().nextInt((numDocs * 4) / 5, numDocs);
-    int targetVisited = random().nextInt(numFiltered / 10, numFiltered / 8);
+    int numFiltered = numDocs - 1;
+    int targetVisited = random().nextInt(1, numFiltered / 10);
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);

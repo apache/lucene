@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BytesRefIterator;
@@ -62,12 +61,11 @@ public final class MatchesUtils {
 
   /** Amalgamate a collection of {@link Matches} into a single object */
   public static Matches fromSubMatches(List<Matches> subMatches) {
-    if (subMatches == null || subMatches.size() == 0) {
+    if (subMatches == null || subMatches.isEmpty()) {
       return null;
     }
-    List<Matches> sm =
-        subMatches.stream().filter(m -> m != MATCH_WITH_NO_TERMS).collect(Collectors.toList());
-    if (sm.size() == 0) {
+    List<Matches> sm = subMatches.stream().filter(m -> m != MATCH_WITH_NO_TERMS).toList();
+    if (sm.isEmpty()) {
       return MATCH_WITH_NO_TERMS;
     }
     if (sm.size() == 1) {

@@ -19,6 +19,14 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
+
+For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
+IndexWriter#addDocuments or IndexWriter#updateDocuments when index sorting is configured. Document blocks are maintained
+alongside their parent documents during sort and merge. The internally used parent field must be configured in 
+IndexWriterConfig only if index sorting is used together with documents blocks. See `IndexWriterConfig#setParendField`
+for reference. 
+
 ### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
 
 The API of interfaces for accepting highlights has changed to allow performance improvements. Look at the issue and the PR diff to get
@@ -133,6 +141,11 @@ The expressions module has changed the `Expression#evaluate()` method signature:
 It now declares that it may throw `IOException`. This was an oversight because
 compiled expressions call `DoubleValues#doubleValue` behind the scenes, which
 may throw `IOException` on index problems, bubbling up unexpectedly to the caller.
+
+### PathHierarchyTokenizer and ReversePathHierarchyTokenizer do not produce overlapping tokens
+
+`(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
+offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

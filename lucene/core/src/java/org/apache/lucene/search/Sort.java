@@ -85,7 +85,6 @@ public final class Sort {
    */
   public Sort rewrite(IndexSearcher searcher) throws IOException {
     boolean changed = false;
-
     SortField[] rewrittenSortFields = new SortField[fields.length];
     for (int i = 0; i < fields.length; i++) {
       rewrittenSortFields[i] = fields[i].rewrite(searcher);
@@ -100,7 +99,6 @@ public final class Sort {
   @Override
   public String toString() {
     StringBuilder buffer = new StringBuilder();
-
     for (int i = 0; i < fields.length; i++) {
       buffer.append(fields[i].toString());
       if ((i + 1) < fields.length) buffer.append(',');

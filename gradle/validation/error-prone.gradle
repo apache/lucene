@@ -244,7 +244,7 @@ allprojects { prj ->
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
             '-Xep:UnicodeDirectionalityCharacters:ERROR',
-            // '-Xep:UnicodeInCode:OFF', // noisy (spatial3d)
+            '-Xep:UnicodeInCode:ERROR',
             '-Xep:UnnecessaryCheckNotNull:ERROR',
             '-Xep:UnnecessaryTypeArgument:ERROR',
             '-Xep:UnsafeWildcard:ERROR',

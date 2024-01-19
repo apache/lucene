@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
@@ -98,6 +99,8 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -123,12 +126,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 /*
   Verify we can read previous versions' indexes, do searches
@@ -183,7 +184,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   // These are only needed for the special upgrade test to verify
   // that also single-segment indexes are correctly upgraded by IndexUpgrader.
-  // You don't need them to be build for non-4.0 (the test is happy with just one
+  // You don't need them to be built for non-4.0 (the test is happy with just one
   // "old" segment format, version is unimportant:
 
   public void testCreateSingleSegmentCFS() throws IOException {
@@ -203,11 +204,20 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testCreateMoreTermsIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("moreterms");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createMoreTermsIndex(dir);
+    }
+  }
 
+  public void testCreateMoreTermsIndexInternal() throws Exception {
+    try (Directory dir = newDirectory()) {
+      createMoreTermsIndex(dir);
+    }
+  }
+
+  private void createMoreTermsIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -218,26 +228,48 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         new IndexWriterConfig(analyzer).setMergePolicy(mp).setUseCompoundFile(false);
     IndexWriter writer = new IndexWriter(dir, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
+    Field docIdDV = null;
+    Field titleDVField = null;
     for (int i = 0; i < 50; i++) {
-      writer.addDocument(docs.nextDoc());
+      Document doc = docs.nextDoc();
+      if (docIdDV == null) {
+        docIdDV = new NumericDocValuesField("docid_intDV", 0);
+        doc.add(docIdDV);
+      }
+      docIdDV.setLongValue(doc.getField("docid_int").numericValue().longValue());
+      if (titleDVField == null) {
+        titleDVField = new SortedDocValuesField("titleDV", new BytesRef());
+        doc.add(titleDVField);
+      }
+      titleDVField.setBytesValue(new BytesRef(doc.getField("title").stringValue()));
+      writer.addDocument(doc);
     }
     docs.close();
     writer.close();
-    dir.close();
-
-    // Gives you time to copy the index out!: (there is also
-    // a test option to not remove temp dir...):
-    Thread.sleep(100000);
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
   // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("sorted");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createSortedIndex(dir);
+    }
+  }
 
+  public void testCreateSortedIndexInternal() throws Exception {
+    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and
+    // search the created index
+    try (Directory dir = newDirectory()) {
+      createSortedIndex(dir);
+    }
+  }
+
+  public void createSortedIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -250,11 +282,14 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     conf.setUseCompoundFile(false);
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(random());
+    LineFileDocs docs = new LineFileDocs(new Random(0));
     SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
     parser.setTimeZone(TimeZone.getTimeZone("UTC"));
     ParsePosition position = new ParsePosition(0);
+    Field docIdDV = null;
     Field dateDVField = null;
+    Field titleDVField = null;
+
     for (int i = 0; i < 50; i++) {
       Document doc = docs.nextDoc();
       String dateString = doc.get("date");
@@ -268,10 +303,21 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         throw new AssertionError("failed to parse \"" + dateString + "\" as date");
       }
       if (dateDVField == null) {
-        dateDVField = new NumericDocValuesField("dateDV", 0l);
+        dateDVField = new NumericDocValuesField("dateDV", 0L);
         doc.add(dateDVField);
       }
       dateDVField.setLongValue(date.getTime());
+      if (docIdDV == null) {
+        docIdDV = new NumericDocValuesField("docid_intDV", 0);
+        doc.add(docIdDV);
+      }
+
+      docIdDV.setLongValue(doc.getField("docid_int").numericValue().longValue());
+      if (titleDVField == null) {
+        titleDVField = new SortedDocValuesField("titleDV", new BytesRef());
+        doc.add(titleDVField);
+      }
+      titleDVField.setBytesValue(new BytesRef(doc.getField("title").stringValue()));
       if (i == 250) {
         writer.commit();
       }
@@ -279,7 +325,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
     writer.forceMerge(1);
     writer.close();
-    dir.close();
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   private void updateNumeric(IndexWriter writer, String id, String f, String cf, long value)
@@ -376,7 +425,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.7.0-cfs",
     "9.7.0-nocfs",
     "9.8.0-cfs",
-    "9.8.0-nocfs"
+    "9.8.0-nocfs",
+    "9.9.0-cfs",
+    "9.9.0-nocfs",
+    "9.9.1-cfs",
+    "9.9.1-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -394,7 +447,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.5.0",
     "sorted.9.6.0",
     "sorted.9.7.0",
-    "sorted.9.8.0"
+    "sorted.9.8.0",
+    "sorted.9.9.0",
+    "sorted.9.9.1"
   };
 
   public static String[] getOldSortedNames() {
@@ -726,6 +781,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         String prefix = prevFile.replace("-cfs", "");
         assertEquals("Missing -nocfs for backcompat index " + prefix, prefix + "-nocfs", file);
       }
+      prevFile = file;
     }
   }
 
@@ -745,7 +801,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           continue;
         }
 
-        expectedVersions.add(v.toString() + "-cfs");
+        expectedVersions.add(v + "-cfs");
       }
     }
 
@@ -764,7 +820,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       }
     }
     assertNotNull(lastPrevMajorVersion);
-    expectedVersions.remove(lastPrevMajorVersion.toString() + "-cfs");
+    expectedVersions.remove(lastPrevMajorVersion + "-cfs");
     // END TRUNK ONLY BLOCK
 
     Collections.sort(expectedVersions);
@@ -813,17 +869,17 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       return;
     }
 
-    StringBuffer msg = new StringBuffer();
+    StringBuilder msg = new StringBuilder();
     if (missingFiles.size() > 1) {
       msg.append("Missing backcompat test files:\n");
       for (String missingFile : missingFiles) {
-        msg.append("  " + missingFile + "\n");
+        msg.append("  ").append(missingFile).append("\n");
       }
     }
     if (extraFiles.isEmpty() == false) {
       msg.append("Extra backcompat test files:\n");
       for (String extraFile : extraFiles) {
-        msg.append("  " + extraFile + "\n");
+        msg.append("  ").append(extraFile).append("\n");
       }
     }
     fail(msg.toString());
@@ -923,7 +979,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           e.printStackTrace(System.out);
         }
         // Make sure exc message includes a path=
-        assertTrue("got exc message: " + e.getMessage(), e.getMessage().indexOf("path=\"") != -1);
+        assertTrue("got exc message: " + e.getMessage(), e.getMessage().contains("path=\""));
       } finally {
         // we should fail to open IW, and so it should be null when we get here.
         // However, if the test fails (i.e., IW did not fail on open), we need
@@ -941,7 +997,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       CheckIndex checker = new CheckIndex(dir);
-      checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+      checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
       if (unsupportedNames[i].startsWith("8.")) {
         assertTrue(indexStatus.clean);
@@ -951,8 +1007,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         // IndexFormatTooOldException
         // or an IllegalArgumentException saying that the codec doesn't exist.
         boolean formatTooOld =
-            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName());
-        boolean missingCodec = bos.toString(IOUtils.UTF_8).contains("Could not load codec");
+            bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
+        boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
         assertTrue(formatTooOld || missingCodec);
       }
       checker.close();
@@ -1118,9 +1174,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals("wrong number of hits", expectedCount, hitCount);
     StoredFields storedFields = reader.storedFields();
     TermVectors termVectors = reader.termVectors();
-    for (int i = 0; i < hitCount; i++) {
-      storedFields.document(hits[i].doc);
-      termVectors.get(hits[i].doc);
+    for (ScoreDoc hit : hits) {
+      storedFields.document(hit.doc);
+      termVectors.get(hit.doc);
     }
   }
 
@@ -1225,7 +1281,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(expectedRef, term);
 
       assertEquals(i, dvDouble.nextDoc());
-      assertEquals((double) id, Double.longBitsToDouble(dvDouble.longValue()), 0D);
+      assertEquals(id, Double.longBitsToDouble(dvDouble.longValue()), 0D);
       assertEquals(i, dvFloat.nextDoc());
       assertEquals((float) id, Float.intBitsToFloat((int) dvFloat.longValue()), 0F);
       assertEquals(i, dvInt.nextDoc());
@@ -1248,8 +1304,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(id, dvSortedNumeric.nextValue());
     }
 
-    ScoreDoc[] hits =
-        searcher.search(new TermQuery(new Term(new String("content"), "aaa")), 1000).scoreDocs;
+    ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
 
     // First document should be #0
     Document d = storedFields.document(hits[0].doc);
@@ -1257,19 +1312,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     doTestHits(hits, 34, searcher.getIndexReader());
 
-    hits = searcher.search(new TermQuery(new Term(new String("content5"), "aaa")), 1000).scoreDocs;
+    hits = searcher.search(new TermQuery(new Term("content5", "aaa")), 1000).scoreDocs;
 
     doTestHits(hits, 34, searcher.getIndexReader());
 
-    hits = searcher.search(new TermQuery(new Term(new String("content6"), "aaa")), 1000).scoreDocs;
+    hits = searcher.search(new TermQuery(new Term("content6", "aaa")), 1000).scoreDocs;
 
     doTestHits(hits, 34, searcher.getIndexReader());
 
     hits = searcher.search(new TermQuery(new Term("utf8", "\u0000")), 1000).scoreDocs;
     assertEquals(34, hits.length);
     hits =
-        searcher.search(
-                new TermQuery(new Term(new String("utf8"), "lu\uD834\uDD1Ece\uD834\uDD60ne")), 1000)
+        searcher.search(new TermQuery(new Term("utf8", "lu\uD834\uDD1Ece\uD834\uDD60ne")), 1000)
             .scoreDocs;
     assertEquals(34, hits.length);
     hits = searcher.search(new TermQuery(new Term("utf8", "ab\ud917\udc17cd")), 1000).scoreDocs;
@@ -1577,7 +1631,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doc.add(new SortedDocValuesField("dvBytesSortedVar", ref));
     doc.add(new BinaryDocValuesField("dvBytesStraightFixed", ref));
     doc.add(new BinaryDocValuesField("dvBytesStraightVar", ref));
-    doc.add(new DoubleDocValuesField("dvDouble", (double) id));
+    doc.add(new DoubleDocValuesField("dvDouble", id));
     doc.add(new FloatDocValuesField("dvFloat", (float) id));
     doc.add(new NumericDocValuesField("dvInt", id));
     doc.add(new NumericDocValuesField("dvLong", id));
@@ -1592,8 +1646,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doc.add(new FloatPoint("floatPoint2d", (float) id, (float) 2 * id));
     doc.add(new LongPoint("longPoint1d", id));
     doc.add(new LongPoint("longPoint2d", id, 2 * id));
-    doc.add(new DoublePoint("doublePoint1d", (double) id));
-    doc.add(new DoublePoint("doublePoint2d", (double) id, (double) 2 * id));
+    doc.add(new DoublePoint("doublePoint1d", id));
+    doc.add(new DoublePoint("doublePoint2d", id, (double) 2 * id));
     doc.add(new BinaryPoint("binaryPoint1d", bytes));
     doc.add(new BinaryPoint("binaryPoint2d", bytes, bytes));
 
@@ -1802,7 +1856,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   public void testIndexUpgraderCommandLineArgs() throws Exception {
 
     PrintStream savedSystemOut = System.out;
-    System.setOut(new PrintStream(new ByteArrayOutputStream(), false, "UTF-8"));
+    System.setOut(new PrintStream(new ByteArrayOutputStream(), false, UTF_8));
     try {
       for (Map.Entry<String, Directory> entry : oldIndexDirs.entrySet()) {
         String name = entry.getKey();
@@ -1844,10 +1898,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         IndexUpgrader.main(args.toArray(new String[0]));
 
         Directory upgradedDir = newFSDirectory(dir);
-        try {
+        try (upgradedDir) {
           checkAllSegmentsUpgraded(upgradedDir, indexCreatedVersion);
-        } finally {
-          upgradedDir.close();
         }
       }
     } finally {
@@ -1891,10 +1943,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       IndexWriterConfig iwc = new IndexWriterConfig(null).setMergePolicy(mp);
       IndexWriter w = new IndexWriter(dir, iwc);
       w.addIndexes(ramDir);
-      try {
+      try (w) {
         w.commit();
-      } finally {
-        w.close();
       }
 
       // determine count of segments in modified index
@@ -2166,6 +2216,83 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
+  public void testSortedIndexAddDocBlocks() throws Exception {
+    for (String name : oldSortedNames) {
+      Path path = createTempDir("sorted");
+      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
+      assertNotNull("Sorted index index " + name + " not found", resource);
+      TestUtil.unzip(resource, path);
+
+      try (Directory dir = newFSDirectory(path)) {
+        final Sort sort;
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          sort = reader.leaves().get(0).reader().getMetaData().getSort();
+          assertNotNull(sort);
+          searchExampleIndex(reader);
+        }
+        // open writer
+        try (IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setOpenMode(OpenMode.APPEND)
+                    .setIndexSort(sort)
+                    .setMergePolicy(newLogMergePolicy()))) {
+          // add 10 docs
+          for (int i = 0; i < 10; i++) {
+            Document child = new Document();
+            child.add(new StringField("relation", "child", Field.Store.NO));
+            child.add(new StringField("bid", "" + i, Field.Store.NO));
+            child.add(new NumericDocValuesField("dateDV", i));
+            Document parent = new Document();
+            parent.add(new StringField("relation", "parent", Field.Store.NO));
+            parent.add(new StringField("bid", "" + i, Field.Store.NO));
+            parent.add(new NumericDocValuesField("dateDV", i));
+            writer.addDocuments(Arrays.asList(child, child, parent));
+            if (random().nextBoolean()) {
+              writer.flush();
+            }
+          }
+          if (random().nextBoolean()) {
+            writer.forceMerge(1);
+          }
+          writer.commit();
+          try (IndexReader reader = DirectoryReader.open(dir)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            for (int i = 0; i < 10; i++) {
+              TopDocs children =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "child")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              TopDocs parents =
+                  searcher.search(
+                      new BooleanQuery.Builder()
+                          .add(
+                              new TermQuery(new Term("relation", "parent")),
+                              BooleanClause.Occur.MUST)
+                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
+                          .build(),
+                      2);
+              assertEquals(2, children.totalHits.value);
+              assertEquals(1, parents.totalHits.value);
+              // make sure it's sorted
+              assertEquals(children.scoreDocs[0].doc + 1, children.scoreDocs[1].doc);
+              assertEquals(children.scoreDocs[1].doc + 1, parents.scoreDocs[0].doc);
+            }
+          }
+        }
+        // This will confirm the docs are really sorted
+        TestUtil.checkIndex(dir);
+      }
+    }
+  }
+
   private void searchExampleIndex(DirectoryReader reader) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
 
@@ -2245,7 +2372,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
   // IntersectTermsEnum (used by WildcardQuery)
-  @Ignore("re-enable once we merge #12900")
   public void testWildcardQueryExceptions990() throws IOException {
     Path path = createTempDir("12895");
 
@@ -2285,6 +2411,42 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
             () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
         SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
       }
+    }
+  }
+
+  public void testOpenModeAndCreatedVersion() throws IOException {
+    for (String name : oldNames) {
+      Directory dir = newDirectory(oldIndexDirs.get(name));
+      int majorVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
+      if (majorVersion != Version.MIN_SUPPORTED_MAJOR && majorVersion != Version.LATEST.major) {
+        fail(
+            "expected one of: ["
+                + Version.MIN_SUPPORTED_MAJOR
+                + ", "
+                + Version.LATEST.major
+                + "] but got: "
+                + majorVersion);
+      }
+      for (OpenMode openMode : OpenMode.values()) {
+        Directory tmpDir = newDirectory(dir);
+        IndexWriter w = new IndexWriter(tmpDir, newIndexWriterConfig().setOpenMode(openMode));
+        w.commit();
+        w.close();
+        switch (openMode) {
+          case CREATE:
+            assertEquals(
+                Version.LATEST.major,
+                SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+            break;
+          case APPEND:
+          case CREATE_OR_APPEND:
+          default:
+            assertEquals(
+                majorVersion, SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+        }
+        tmpDir.close();
+      }
+      dir.close();
     }
   }
 }
