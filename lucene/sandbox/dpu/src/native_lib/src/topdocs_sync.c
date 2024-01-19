@@ -38,7 +38,7 @@ typedef float score_t;
             return _status;                                                                                                      \
         }                                                                                                                        \
     } while (0)
-#define DPU_PROPERTY_OR_PROPAGATE(t, f, set)                                                                                         \
+#define DPU_PROPERTY_OR_PROPAGATE(t, f, set)                                                                                     \
     ({                                                                                                                           \
         t _val;                                                                                                                  \
         DPU_PROPAGATE(f(set, &_val));                                                                                            \
@@ -104,7 +104,7 @@ static mutex_array mutex_pool = { NULL, 0 };
 
 /* Initialization functions */
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 init_pques(pque_array *score_pques, const int *nr_topdocs)
 {
     int nr_pques = score_pques->nr_pques;
@@ -133,7 +133,7 @@ init_pques(pque_array *score_pques, const int *nr_topdocs)
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 init_mutex_array(mutex_array *query_mutexes)
 {
     int nr_mutexes = query_mutexes->nr_mutexes;
@@ -157,7 +157,7 @@ init_mutex_array(mutex_array *query_mutexes)
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 create_inbound_buffer(uint32_t rank_id, inbound_scores_array *inbound_scores, int nr_queries, uint32_t nr_dpus)
 {
     inbound_scores = malloc(sizeof(*inbound_scores));
@@ -179,7 +179,7 @@ create_inbound_buffer(uint32_t rank_id, inbound_scores_array *inbound_scores, in
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 resize_inbound_buffer(inbound_scores_array *inbound_scores, int nr_queries, uint32_t nr_dpus)
 {
     dpu_score_t *new_buffer = realloc(inbound_scores->buffer, (size_t)nr_dpus * nr_queries * MAX_NB_SCORES * sizeof(*new_buffer));
@@ -193,7 +193,7 @@ resize_inbound_buffer(inbound_scores_array *inbound_scores, int nr_queries, uint
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
     const int nr_queries = *(int *)args;
@@ -209,16 +209,16 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
     return DPU_OK;
 }
 
-static void
+static inline void
 destructor_inbound_buffers(void *args);
 
-static void
+static inline void
 make_key(void)
 {
     (void)pthread_key_create(&key, destructor_inbound_buffers);
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 init_inbound_buffers(struct dpu_set_t set, int nr_queries)
 {
     if (pthread_once(&key_once, make_key) != 0) {
@@ -230,15 +230,41 @@ init_inbound_buffers(struct dpu_set_t set, int nr_queries)
     return DPU_OK;
 }
 
+NODISCARD static inline dpu_error_t
+entry_init_topdocs_sync(struct dpu_set_t set,
+    const int *nr_topdocs,
+    int nr_queries,
+    pque_array *score_pques,
+    mutex_array *query_mutexes,
+    uint32_t *nr_ranks,
+    const lower_bound_t *updated_bounds,
+    const bool *finished_ranks)
+{
+    score_pques->nr_pques = nr_queries;
+    query_mutexes->nr_mutexes = nr_queries;
+    DPU_PROPAGATE(init_pques(score_pques, nr_topdocs));
+    DPU_PROPAGATE(init_mutex_array(query_mutexes));
+    DPU_PROPAGATE(init_inbound_buffers(set, nr_queries));
+
+    DPU_PROPAGATE(dpu_get_nr_ranks(set, nr_ranks));
+
+    updated_bounds = malloc(nr_queries * sizeof(*updated_bounds));
+    CHECK_MALLOC(updated_bounds);
+    finished_ranks = malloc(*nr_ranks * sizeof(*finished_ranks));
+    CHECK_MALLOC(finished_ranks);
+
+    return DPU_OK;
+}
+
 /* Cleanup functions */
 
-static void
+static inline void
 cleanup_free(void *ptr)
 {
     free(*(void **)ptr);
 }
 
-static void
+static inline void
 cleanup_pques(const pque_array *pque_array)
 {
     if (pque_array->pques == NULL) {
@@ -250,7 +276,7 @@ cleanup_pques(const pque_array *pque_array)
     free(pque_array->pques);
 }
 
-static void
+static inline void
 cleanup_mutex_array(const mutex_array *mutex_array)
 {
     if (mutex_array->mutexes == NULL) {
@@ -264,7 +290,7 @@ cleanup_mutex_array(const mutex_array *mutex_array)
     free(mutex_array->mutexes);
 }
 
-static void
+static inline void
 destructor_inbound_buffers(void *args)
 {
     inbound_scores_array *inbound_scores = args;
@@ -281,7 +307,7 @@ destructor_inbound_buffers(void *args)
 
 /* Other functions */
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 update_rank_status(struct dpu_set_t rank, bool *finished)
 {
     uint64_t finished_dpu[MAX_NR_DPUS_PER_RANK];
@@ -305,7 +331,7 @@ update_rank_status(struct dpu_set_t rank, bool *finished)
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 read_best_scores(struct dpu_set_t rank, int nr_queries, dpu_score_t *my_bounds_buf, uint32_t nr_dpus)
 {
     dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = (void *)my_bounds_buf;
@@ -321,7 +347,7 @@ read_best_scores(struct dpu_set_t rank, int nr_queries, dpu_score_t *my_bounds_b
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint8_t *nb_scores, uint32_t nr_dpus)
 {
     uint8_t(*my_nb_scores)[nr_dpus][nr_queries] = (void *)nb_scores;
@@ -337,7 +363,7 @@ read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint8_t *nb_scores, u
     return DPU_OK;
 }
 
-static void
+static inline void
 update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const update_bounds_atomic_context *ctx)
 {
     const int nr_queries = ctx->nr_queries;
@@ -372,7 +398,7 @@ update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const updat
     }
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
     const update_bounds_atomic_context *ctx = args;
@@ -392,7 +418,7 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
     return DPU_OK;
 }
 
-NODISCARD static dpu_error_t
+NODISCARD static inline dpu_error_t
 broadcast_new_bounds(struct dpu_set_t set, broadcast_params *args)
 {
     for (int i_qry = 0; i_qry < args->nr_queries; i_qry++) {
@@ -407,7 +433,7 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params *args)
     return DPU_OK;
 }
 
-static bool
+NODISCARD static inline bool
 all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 {
     for (uint32_t i = 0; i < nr_ranks; i++) {
@@ -419,7 +445,7 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
     return true;
 }
 
-dpu_error_t
+NODISCARD static inline dpu_error_t
 sync_loop_iteration(struct dpu_set_t set, update_bounds_atomic_context *ctx, broadcast_params *broadcast_args, bool first_run)
 {
     if (!first_run) {
@@ -439,7 +465,7 @@ sync_loop_iteration(struct dpu_set_t set, update_bounds_atomic_context *ctx, bro
     return DPU_OK;
 }
 
-dpu_error_t
+NODISCARD static inline dpu_error_t
 run_sync_loop(struct dpu_set_t set, update_bounds_atomic_context *ctx, broadcast_params *broadcast_args, uint32_t nr_ranks)
 {
     bool *finished_ranks = ctx->finished_ranks;
@@ -460,17 +486,14 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     const int *quant_factors,
     int nr_queries)
 {
-    pque_array score_pques = { NULL, nr_queries };
-    DPU_PROPAGATE(init_pques(&score_pques, nr_topdocs));
-    mutex_array query_mutexes = { NULL, nr_queries };
-    DPU_PROPAGATE(init_mutex_array(&query_mutexes));
-    DPU_PROPAGATE(init_inbound_buffers(set, nr_queries));
+    uint32_t nr_ranks = 0;
+    pque_array score_pques = {};
+    mutex_array query_mutexes = {};
+    CLEANUP(cleanup_free) lower_bound_t *updated_bounds = NULL;
+    CLEANUP(cleanup_free) bool *finished_ranks = NULL;
 
-    const uint32_t nr_ranks = DPU_PROPERTY_OR_PROPAGATE(uint32_t, dpu_get_nr_ranks, set);
-    CLEANUP(cleanup_free) lower_bound_t *updated_bounds = malloc(nr_queries * sizeof(*updated_bounds));
-    CHECK_MALLOC(updated_bounds);
-    CLEANUP(cleanup_free) bool *finished_ranks = malloc(nr_ranks * sizeof(*finished_ranks));
-    CHECK_MALLOC(finished_ranks);
+    DPU_PROPAGATE(entry_init_topdocs_sync(
+        set, nr_topdocs, nr_queries, &score_pques, &query_mutexes, &nr_ranks, updated_bounds, finished_ranks));
 
     update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
     broadcast_params broadcast_args = { score_pques, nr_queries, updated_bounds, quant_factors, INITIAL_NB_SCORES };
