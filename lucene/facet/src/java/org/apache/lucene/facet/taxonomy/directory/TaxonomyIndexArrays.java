@@ -106,24 +106,12 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   }
 
   private static int[][] allocateChunkedArray(int size, int startFrom) {
-    if (size == 0) {
-      return new int[0][];
-    }
-    int chunkCount = size >> CHUNK_SIZE_BITS;
-    int fullChunkCount;
-    int lastChunkSize = size & CHUNK_MASK;
-    if (lastChunkSize == 0) {
-      fullChunkCount = chunkCount; // Size is a multiple of CHUNK_SIZE, so all arrays are full-sized
-    } else {
-      fullChunkCount = chunkCount++;
-    }
+    int chunkCount = (size >> CHUNK_SIZE_BITS) + 1;
     int[][] array = new int[chunkCount][];
-    for (int i = startFrom; i < fullChunkCount; i++) {
+    for (int i = startFrom; i < chunkCount - 1; i++) {
       array[i] = new int[CHUNK_SIZE];
     }
-    if (lastChunkSize > 0) {
-      array[chunkCount - 1] = new int[lastChunkSize];
-    }
+    array[chunkCount - 1] = new int[size & CHUNK_MASK];
     return array;
   }
 

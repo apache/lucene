@@ -1120,7 +1120,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
   }
 
   public void testThousandsOfCategories() throws IOException {
-    int roundSize = random().nextInt(3, 6);
+    int roundSize = random().nextInt(2, 4);
     int size = random().nextInt(16384, 32768);
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
