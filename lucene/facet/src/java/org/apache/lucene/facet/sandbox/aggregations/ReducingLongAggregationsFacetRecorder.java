@@ -50,8 +50,9 @@ public class ReducingLongAggregationsFacetRecorder extends LongAggregationsFacet
     public void reduce(FacetRollup facetRollup) throws IOException {
         IntObjectHashMap<long[]> first = leafValues.get(0);
         int[] recordedOrds = first.keys;
-        long[] values = new long[longValuesSources.length];
+        long[] values;
         for (int ord: recordedOrds) {
+            values = new long[longValuesSources.length];
             long[] leafValuesForOrd;
             for (IntObjectHashMap<long[]> leafValue : leafValues) {
                 leafValuesForOrd = leafValue.get(ord);
