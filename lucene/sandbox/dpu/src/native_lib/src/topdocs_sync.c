@@ -167,7 +167,7 @@ create_inbound_buffer(inbound_scores_array *inbound_scores, int nr_queries, uint
     dpu_score_t *buffer = malloc((size_t)nr_dpus * nr_queries * MAX_NB_SCORES * sizeof(*buffer));
     CHECK_MALLOC(buffer);
     inbound_scores->buffer = buffer;
-    uint8_t *nb_scores = malloc((size_t)nr_dpus * nr_queries * sizeof(*nb_scores));
+    uint8_t *nb_scores = malloc((size_t)nr_dpus * ALIGN8(nr_queries) * sizeof(*nb_scores));
     CHECK_MALLOC(nb_scores);
     inbound_scores->nb_scores = nb_scores;
     if (pthread_setspecific(key, inbound_scores) != 0) {
@@ -186,7 +186,7 @@ resize_inbound_buffer(inbound_scores_array *inbound_scores, int nr_queries, uint
     dpu_score_t *new_buffer = realloc(inbound_scores->buffer, (size_t)nr_dpus * nr_queries * MAX_NB_SCORES * sizeof(*new_buffer));
     CHECK_REALLOC(new_buffer, inbound_scores->buffer);
     inbound_scores->buffer = new_buffer;
-    uint8_t *new_nr_scores = realloc(inbound_scores->nb_scores, (size_t)nr_dpus * nr_queries * sizeof(*new_nr_scores));
+    uint8_t *new_nr_scores = realloc(inbound_scores->nb_scores, (size_t)nr_dpus * ALIGN8(nr_queries) * sizeof(*new_nr_scores));
     CHECK_REALLOC(new_nr_scores, inbound_scores->nb_scores);
     inbound_scores->nb_scores = new_nr_scores;
     inbound_scores->nr_queries = nr_queries;
@@ -352,12 +352,12 @@ read_best_scores(struct dpu_set_t rank, int nr_queries, dpu_score_t *my_bounds_b
 NODISCARD static inline dpu_error_t
 read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint8_t *nb_scores, uint32_t nr_dpus)
 {
-    uint8_t(*my_nb_scores)[nr_dpus][nr_queries] = (void *)nb_scores;
+    uint8_t(*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)] = (void *)nb_scores;
 
     struct dpu_set_t dpu;
     uint32_t each_dpu = 0;
     DPU_FOREACH (rank, dpu, each_dpu) {
-        DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_nb_scores)[each_dpu][nr_queries]));
+        DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_nb_scores)[each_dpu][0]));
     }
     DPU_PROPAGATE(dpu_push_xfer(
         rank, DPU_XFER_FROM_DPU, "nb_best_scores", 0, ALIGN8((uint32_t)nr_queries * sizeof(uint8_t)), DPU_XFER_DEFAULT));
@@ -373,7 +373,7 @@ update_pques(inbound_scores_array *inbound_scores, uint32_t nr_dpus, const updat
     PQue *score_pques = ctx->score_pques.pques;
     pthread_mutex_t *mutexes = ctx->query_mutexes.mutexes;
     dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = (void *)inbound_scores->buffer;
-    uint8_t(*nb_scores)[nr_dpus][nr_queries] = (void *)inbound_scores->nb_scores;
+    uint8_t(*nb_scores)[nr_dpus][ALIGN8(nr_queries)] = (void *)inbound_scores->nb_scores;
     float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE] = (void *)(ctx->norm_inverse);
 
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
