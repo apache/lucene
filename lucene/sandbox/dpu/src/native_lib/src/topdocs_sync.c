@@ -237,8 +237,8 @@ entry_init_topdocs_sync(struct dpu_set_t set,
     pque_array *score_pques,
     mutex_array *query_mutexes,
     uint32_t *nr_ranks,
-    const lower_bound_t *updated_bounds,
-    const bool *finished_ranks)
+    lower_bound_t **updated_bounds,
+    bool **finished_ranks)
 {
     score_pques->nr_pques = nr_queries;
     query_mutexes->nr_mutexes = nr_queries;
@@ -248,9 +248,9 @@ entry_init_topdocs_sync(struct dpu_set_t set,
 
     DPU_PROPAGATE(dpu_get_nr_ranks(set, nr_ranks));
 
-    updated_bounds = malloc(nr_queries * sizeof(*updated_bounds));
+    *updated_bounds = malloc(nr_queries * sizeof(*updated_bounds));
     CHECK_MALLOC(updated_bounds);
-    finished_ranks = malloc(*nr_ranks * sizeof(*finished_ranks));
+    *finished_ranks = malloc(*nr_ranks * sizeof(*finished_ranks));
     CHECK_MALLOC(finished_ranks);
 
     return DPU_OK;
@@ -493,7 +493,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     CLEANUP(cleanup_free) bool *finished_ranks = NULL;
 
     DPU_PROPAGATE(entry_init_topdocs_sync(
-        set, nr_topdocs, nr_queries, &score_pques, &query_mutexes, &nr_ranks, updated_bounds, finished_ranks));
+        set, nr_topdocs, nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
     update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
     broadcast_params broadcast_args = { score_pques, nr_queries, updated_bounds, quant_factors, INITIAL_NB_SCORES };
