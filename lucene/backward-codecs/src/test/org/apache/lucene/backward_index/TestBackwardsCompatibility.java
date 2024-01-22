@@ -28,19 +28,14 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.codecs.Codec;
@@ -99,8 +94,6 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -273,141 +266,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
-  // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
-  public void testCreateSortedIndex() throws Exception {
-    Path indexDir = getIndexDir().resolve("sorted");
-    Files.deleteIfExists(indexDir);
-    try (Directory dir = newFSDirectory(indexDir)) {
-      createSortedIndex(dir);
-    }
-  }
-
-  public void testCreateSortedIndexInternal() throws Exception {
-    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and
-    // search the created index
-    try (Directory dir = newDirectory()) {
-      createSortedIndex(dir);
-    }
-  }
-
-  public void createSortedIndex(Directory dir) throws Exception {
-    LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-    MockAnalyzer analyzer = new MockAnalyzer(random());
-    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
-
-    // TODO: remove randomness
-    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-    conf.setMergePolicy(mp);
-    conf.setUseCompoundFile(false);
-    conf.setCodec(TestUtil.getDefaultCodec());
-    conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
-    IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(new Random(0));
-    SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
-    parser.setTimeZone(TimeZone.getTimeZone("UTC"));
-    ParsePosition position = new ParsePosition(0);
-    for (int i = 0; i < 50; i++) {
-      Document doc = TestUtil.cloneDocument(docs.nextDoc());
-      String dateString = doc.get("date");
-      position.setIndex(0);
-      Date date = parser.parse(dateString, position);
-      if (position.getErrorIndex() != -1) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
-      if (position.getIndex() != dateString.length()) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
-      doc.add(
-          new NumericDocValuesField(
-              "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
-      doc.add(
-          new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
-      doc.add(new NumericDocValuesField("dateDV", date.getTime()));
-      if (i % 10 == 0) { // commit every 10 documents
-        writer.commit();
-      }
-      writer.addDocument(doc);
-    }
-    writer.forceMerge(1);
-    writer.close();
-
-    try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      searchExampleIndex(reader); // make sure we can search it
-    }
-  }
-
-  private void updateNumeric(IndexWriter writer, String id, String f, String cf, long value)
-      throws IOException {
-    writer.updateNumericDocValue(new Term("id", id), f, value);
-    writer.updateNumericDocValue(new Term("id", id), cf, value * 2);
-  }
-
-  private void updateBinary(IndexWriter writer, String id, String f, String cf, long value)
-      throws IOException {
-    writer.updateBinaryDocValue(new Term("id", id), f, toBytes(value));
-    writer.updateBinaryDocValue(new Term("id", id), cf, toBytes(value * 2));
-  }
-
-  // Creates an index with DocValues updates
-  public void testCreateIndexWithDocValuesUpdates() throws IOException {
-    Path indexDir = getIndexDir().resolve("dvupdates");
-    Files.deleteIfExists(indexDir);
-    try (Directory dir = newFSDirectory(indexDir)) {
-      createIndexWithDocValuesUpdates(dir);
-      searchDocValuesUpdatesIndex(dir);
-    }
-  }
-
-  public void testCreateIndexWithDocValuesUpdatesInternal() throws IOException {
-    try (Directory dir = newDirectory()) {
-      createIndexWithDocValuesUpdates(dir);
-      searchDocValuesUpdatesIndex(dir);
-    }
-  }
-
-  private void createIndexWithDocValuesUpdates(Directory dir) throws IOException {
-    IndexWriterConfig conf =
-        new IndexWriterConfig(new MockAnalyzer(random()))
-            .setCodec(TestUtil.getDefaultCodec())
-            .setUseCompoundFile(false)
-            .setMergePolicy(NoMergePolicy.INSTANCE);
-    IndexWriter writer = new IndexWriter(dir, conf);
-    // create an index w/ few doc-values fields, some with updates and some without
-    for (int i = 0; i < 30; i++) {
-      Document doc = new Document();
-      doc.add(new StringField("id", "" + i, Field.Store.NO));
-      doc.add(new NumericDocValuesField("ndv1", i));
-      doc.add(new NumericDocValuesField("ndv1_c", i * 2));
-      doc.add(new NumericDocValuesField("ndv2", i * 3));
-      doc.add(new NumericDocValuesField("ndv2_c", i * 6));
-      doc.add(new BinaryDocValuesField("bdv1", toBytes(i)));
-      doc.add(new BinaryDocValuesField("bdv1_c", toBytes(i * 2)));
-      doc.add(new BinaryDocValuesField("bdv2", toBytes(i * 3)));
-      doc.add(new BinaryDocValuesField("bdv2_c", toBytes(i * 6)));
-      writer.addDocument(doc);
-      if ((i + 1) % 10 == 0) {
-        writer.commit(); // flush every 10 docs
-      }
-    }
-
-    // first segment: no updates
-
-    // second segment: update two fields, same gen
-    updateNumeric(writer, "10", "ndv1", "ndv1_c", 100L);
-    updateBinary(writer, "11", "bdv1", "bdv1_c", 100L);
-    writer.commit();
-
-    // third segment: update few fields, different gens, few docs
-    updateNumeric(writer, "20", "ndv1", "ndv1_c", 100L);
-    updateBinary(writer, "21", "bdv1", "bdv1_c", 100L);
-    writer.commit();
-    updateNumeric(writer, "22", "ndv1", "ndv1_c", 200L); // update the field again
-    writer.close();
-  }
-
   public void testCreateEmptyIndex() throws Exception {
     Path indexDir = getIndexDir().resolve("emptyIndex");
     Files.deleteIfExists(indexDir);
@@ -452,26 +310,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   public static String[] getOldNames() {
     return oldNames;
-  }
-
-  static final String[] oldSortedNames = {
-    "sorted.9.0.0", // Force on separate lines
-    "sorted.9.1.0",
-    "sorted.9.2.0",
-    "sorted.9.3.0",
-    "sorted.9.4.0",
-    "sorted.9.4.1",
-    "sorted.9.4.2",
-    "sorted.9.5.0",
-    "sorted.9.6.0",
-    "sorted.9.7.0",
-    "sorted.9.8.0",
-    "sorted.9.9.0",
-    "sorted.9.9.1"
-  };
-
-  public static String[] getOldSortedNames() {
-    return oldSortedNames;
   }
 
   static final String[] unsupportedNames = {
@@ -2008,8 +1846,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  public static final String dvUpdatesIndex = "dvupdates.9.0.0.zip";
-
   private void assertNumericDocValues(LeafReader r, String f, String cf) throws IOException {
     NumericDocValues ndvf = r.getNumericDocValues(f);
     NumericDocValues ndvcf = r.getNumericDocValues(cf);
@@ -2028,147 +1864,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, bdvcf.nextDoc());
       assertEquals(getValue(bdvcf), getValue(bdvf) * 2);
     }
-  }
-
-  private void verifyDocValues(Directory dir) throws IOException {
-    DirectoryReader reader = DirectoryReader.open(dir);
-    for (LeafReaderContext context : reader.leaves()) {
-      LeafReader r = context.reader();
-      assertNumericDocValues(r, "ndv1", "ndv1_c");
-      assertNumericDocValues(r, "ndv2", "ndv2_c");
-      assertBinaryDocValues(r, "bdv1", "bdv1_c");
-      assertBinaryDocValues(r, "bdv2", "bdv2_c");
-    }
-    reader.close();
-  }
-
-  public void testDocValuesUpdates() throws Exception {
-    Path oldIndexDir = createTempDir("dvupdates");
-    TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
-    try (Directory dir = newFSDirectory(oldIndexDir)) {
-      searchDocValuesUpdatesIndex(dir);
-    }
-  }
-
-  private void searchDocValuesUpdatesIndex(Directory dir) throws IOException {
-    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
-    verifyDocValues(dir);
-
-    // update fields and verify index
-    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter writer = new IndexWriter(dir, conf);
-    updateNumeric(writer, "1", "ndv1", "ndv1_c", 300L);
-    updateNumeric(writer, "1", "ndv2", "ndv2_c", 300L);
-    updateBinary(writer, "1", "bdv1", "bdv1_c", 300L);
-    updateBinary(writer, "1", "bdv2", "bdv2_c", 300L);
-
-    writer.commit();
-    verifyDocValues(dir);
-
-    // merge all segments
-    writer.forceMerge(1);
-    writer.commit();
-    verifyDocValues(dir);
-
-    writer.close();
-  }
-
-  public void testDeletes() throws Exception {
-    Path oldIndexDir = createTempDir("dvupdates");
-    TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
-
-    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter writer = new IndexWriter(dir, conf);
-
-    int maxDoc = writer.getDocStats().maxDoc;
-    writer.deleteDocuments(new Term("id", "1"));
-    if (random().nextBoolean()) {
-      writer.commit();
-    }
-
-    writer.forceMerge(1);
-    writer.commit();
-    assertEquals(maxDoc - 1, writer.getDocStats().maxDoc);
-
-    writer.close();
-    dir.close();
-  }
-
-  public void testSoftDeletes() throws Exception {
-    Path oldIndexDir = createTempDir("dvupdates");
-    TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
-    IndexWriterConfig conf =
-        new IndexWriterConfig(new MockAnalyzer(random())).setSoftDeletesField("__soft_delete");
-    IndexWriter writer = new IndexWriter(dir, conf);
-    int maxDoc = writer.getDocStats().maxDoc;
-    writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("__soft_delete", 1));
-
-    if (random().nextBoolean()) {
-      writer.commit();
-    }
-    writer.forceMerge(1);
-    writer.commit();
-    assertEquals(maxDoc - 1, writer.getDocStats().maxDoc);
-    writer.close();
-    dir.close();
-  }
-
-  public void testDocValuesUpdatesWithNewField() throws Exception {
-    Path oldIndexDir = createTempDir("dvupdates");
-    TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
-
-    // update fields and verify index
-    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter writer = new IndexWriter(dir, conf);
-    // introduce a new field that we later update
-    writer.addDocument(
-        Arrays.asList(
-            new StringField("id", "" + Integer.MAX_VALUE, Field.Store.NO),
-            new NumericDocValuesField("new_numeric", 1),
-            new BinaryDocValuesField("new_binary", toBytes(1))));
-    writer.updateNumericDocValue(new Term("id", "1"), "new_numeric", 1);
-    writer.updateBinaryDocValue(new Term("id", "1"), "new_binary", toBytes(1));
-
-    writer.commit();
-    Runnable assertDV =
-        () -> {
-          boolean found = false;
-          try (DirectoryReader reader = DirectoryReader.open(dir)) {
-            for (LeafReaderContext ctx : reader.leaves()) {
-              LeafReader leafReader = ctx.reader();
-              TermsEnum id = leafReader.terms("id").iterator();
-              if (id.seekExact(new BytesRef("1"))) {
-                PostingsEnum postings = id.postings(null, PostingsEnum.NONE);
-                NumericDocValues numericDocValues = leafReader.getNumericDocValues("new_numeric");
-                BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("new_binary");
-                int doc;
-                while ((doc = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                  found = true;
-                  assertTrue(binaryDocValues.advanceExact(doc));
-                  assertTrue(numericDocValues.advanceExact(doc));
-                  assertEquals(1, numericDocValues.longValue());
-                  assertEquals(toBytes(1), binaryDocValues.binaryValue());
-                }
-              }
-            }
-          } catch (IOException e) {
-            throw new AssertionError(e);
-          }
-          assertTrue(found);
-        };
-    assertDV.run();
-    // merge all segments
-    writer.forceMerge(1);
-    writer.commit();
-    assertDV.run();
-    writer.close();
-    dir.close();
   }
 
   // LUCENE-5907
@@ -2205,108 +1900,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       writer.commit();
       writer.close();
       dir.close();
-    }
-  }
-
-  public void testSortedIndex() throws Exception {
-    for (String name : oldSortedNames) {
-      Path path = createTempDir("sorted");
-      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
-      assertNotNull("Sorted index index " + name + " not found", resource);
-      TestUtil.unzip(resource, path);
-
-      Directory dir = newFSDirectory(path);
-      DirectoryReader reader = DirectoryReader.open(dir);
-
-      assertEquals(1, reader.leaves().size());
-      Sort sort = reader.leaves().get(0).reader().getMetaData().getSort();
-      assertNotNull(sort);
-      assertEquals("<long: \"dateDV\">!", sort.toString());
-
-      // This will confirm the docs are really sorted
-      TestUtil.checkIndex(dir);
-
-      searchExampleIndex(reader);
-
-      reader.close();
-      dir.close();
-    }
-  }
-
-  public void testSortedIndexAddDocBlocks() throws Exception {
-    for (String name : oldSortedNames) {
-      Path path = createTempDir("sorted");
-      InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name + ".zip");
-      assertNotNull("Sorted index index " + name + " not found", resource);
-      TestUtil.unzip(resource, path);
-
-      try (Directory dir = newFSDirectory(path)) {
-        final Sort sort;
-        try (DirectoryReader reader = DirectoryReader.open(dir)) {
-          assertEquals(1, reader.leaves().size());
-          sort = reader.leaves().get(0).reader().getMetaData().getSort();
-          assertNotNull(sort);
-          searchExampleIndex(reader);
-        }
-        // open writer
-        try (IndexWriter writer =
-            new IndexWriter(
-                dir,
-                newIndexWriterConfig(new MockAnalyzer(random()))
-                    .setOpenMode(OpenMode.APPEND)
-                    .setIndexSort(sort)
-                    .setMergePolicy(newLogMergePolicy()))) {
-          // add 10 docs
-          for (int i = 0; i < 10; i++) {
-            Document child = new Document();
-            child.add(new StringField("relation", "child", Field.Store.NO));
-            child.add(new StringField("bid", "" + i, Field.Store.NO));
-            child.add(new NumericDocValuesField("dateDV", i));
-            Document parent = new Document();
-            parent.add(new StringField("relation", "parent", Field.Store.NO));
-            parent.add(new StringField("bid", "" + i, Field.Store.NO));
-            parent.add(new NumericDocValuesField("dateDV", i));
-            writer.addDocuments(Arrays.asList(child, child, parent));
-            if (random().nextBoolean()) {
-              writer.flush();
-            }
-          }
-          if (random().nextBoolean()) {
-            writer.forceMerge(1);
-          }
-          writer.commit();
-          try (IndexReader reader = DirectoryReader.open(dir)) {
-            IndexSearcher searcher = new IndexSearcher(reader);
-            for (int i = 0; i < 10; i++) {
-              TopDocs children =
-                  searcher.search(
-                      new BooleanQuery.Builder()
-                          .add(
-                              new TermQuery(new Term("relation", "child")),
-                              BooleanClause.Occur.MUST)
-                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
-                          .build(),
-                      2);
-              TopDocs parents =
-                  searcher.search(
-                      new BooleanQuery.Builder()
-                          .add(
-                              new TermQuery(new Term("relation", "parent")),
-                              BooleanClause.Occur.MUST)
-                          .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
-                          .build(),
-                      2);
-              assertEquals(2, children.totalHits.value);
-              assertEquals(1, parents.totalHits.value);
-              // make sure it's sorted
-              assertEquals(children.scoreDocs[0].doc + 1, children.scoreDocs[1].doc);
-              assertEquals(children.scoreDocs[1].doc + 1, parents.scoreDocs[0].doc);
-            }
-          }
-        }
-        // This will confirm the docs are really sorted
-        TestUtil.checkIndex(dir);
-      }
     }
   }
 
