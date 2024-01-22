@@ -243,6 +243,13 @@ Other
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
+======================== Lucene 9.9.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#13027: Fix NPE when sampling for quantization in Lucene99HnswScalarQuantizedVectorsFormat (Ben Trent)
+
 ======================== Lucene 9.9.1 =======================
 
 Bug Fixes
