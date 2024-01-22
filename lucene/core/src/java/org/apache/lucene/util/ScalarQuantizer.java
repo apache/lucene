@@ -192,6 +192,38 @@ public class ScalarQuantizer {
 
   private static final Random random = new Random(42);
 
+  static int[] reservoirSampleIndices(int numFloatVecs, int sampleSize) {
+    int[] vectorsToTake = IntStream.range(0, sampleSize).toArray();
+    for (int i = sampleSize; i < numFloatVecs; i++) {
+      int j = random.nextInt(i + 1);
+      if (j < sampleSize) {
+        vectorsToTake[j] = i;
+      }
+    }
+    Arrays.sort(vectorsToTake);
+    return vectorsToTake;
+  }
+
+  static float[] sampleVectors(FloatVectorValues floatVectorValues, int[] vectorsToTake)
+      throws IOException {
+    int dim = floatVectorValues.dimension();
+    float[] values = new float[vectorsToTake.length * dim];
+    int copyOffset = 0;
+    int index = 0;
+    for (int i : vectorsToTake) {
+      while (index <= i) {
+        // We cannot use `advance(docId)` as MergedVectorValues does not support it
+        floatVectorValues.nextDoc();
+        index++;
+      }
+      assert floatVectorValues.docID() != NO_MORE_DOCS;
+      float[] floatVector = floatVectorValues.vectorValue();
+      System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
+      copyOffset += dim;
+    }
+    return values;
+  }
+
   /**
    * This will read the float vector values and calculate the quantiles. If the number of float
    * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
@@ -201,13 +233,26 @@ public class ScalarQuantizer {
    *
    * @param floatVectorValues the float vector values from which to calculate the quantiles
    * @param confidenceInterval the confidence interval used to calculate the quantiles
+   * @param totalVectorCount the total number of live float vectors in the index. This is vital for
+   *     accounting for deleted documents when calculating the quantiles.
    * @return A new {@link ScalarQuantizer} instance
    * @throws IOException if there is an error reading the float vector values
    */
   public static ScalarQuantizer fromVectors(
-      FloatVectorValues floatVectorValues, float confidenceInterval) throws IOException {
+      FloatVectorValues floatVectorValues, float confidenceInterval, int totalVectorCount)
+      throws IOException {
+    return fromVectors(
+        floatVectorValues, confidenceInterval, totalVectorCount, SCALAR_QUANTIZATION_SAMPLE_SIZE);
+  }
+
+  static ScalarQuantizer fromVectors(
+      FloatVectorValues floatVectorValues,
+      float confidenceInterval,
+      int totalVectorCount,
+      int quantizationSampleSize)
+      throws IOException {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
-    if (floatVectorValues.size() == 0) {
+    if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, confidenceInterval);
     }
     if (confidenceInterval == 1f) {
@@ -222,9 +267,9 @@ public class ScalarQuantizer {
       return new ScalarQuantizer(min, max, confidenceInterval);
     }
     int dim = floatVectorValues.dimension();
-    if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
+    if (totalVectorCount <= quantizationSampleSize) {
       int copyOffset = 0;
-      float[] values = new float[floatVectorValues.size() * dim];
+      float[] values = new float[totalVectorCount * dim];
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
         float[] floatVector = floatVectorValues.vectorValue();
         System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
@@ -233,30 +278,10 @@ public class ScalarQuantizer {
       float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
       return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
     }
-    int numFloatVecs = floatVectorValues.size();
+    int numFloatVecs = totalVectorCount;
     // Reservoir sample the vector ordinals we want to read
-    float[] values = new float[SCALAR_QUANTIZATION_SAMPLE_SIZE * dim];
-    int[] vectorsToTake = IntStream.range(0, SCALAR_QUANTIZATION_SAMPLE_SIZE).toArray();
-    for (int i = SCALAR_QUANTIZATION_SAMPLE_SIZE; i < numFloatVecs; i++) {
-      int j = random.nextInt(i + 1);
-      if (j < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
-        vectorsToTake[j] = i;
-      }
-    }
-    Arrays.sort(vectorsToTake);
-    int copyOffset = 0;
-    int index = 0;
-    for (int i : vectorsToTake) {
-      while (index <= i) {
-        // We cannot use `advance(docId)` as MergedVectorValues does not support it
-        floatVectorValues.nextDoc();
-        index++;
-      }
-      assert floatVectorValues.docID() != NO_MORE_DOCS;
-      float[] floatVector = floatVectorValues.vectorValue();
-      System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
-      copyOffset += dim;
-    }
+    int[] vectorsToTake = reservoirSampleIndices(numFloatVecs, quantizationSampleSize);
+    float[] values = sampleVectors(floatVectorValues, vectorsToTake);
     float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
     return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
   }
