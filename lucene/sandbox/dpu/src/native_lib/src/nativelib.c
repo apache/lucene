@@ -527,7 +527,7 @@ create_norm_inverse_array(JNIEnv *env, jint nr_queries, jobjectArray scorers)
         jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "[F");
         jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
         jfloat *cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
-        for (int j = 0; j < NORM_INVERSE_CACHE_SIZE; ++j) {
+        for (size_t j = 0; j < NORM_INVERSE_CACHE_SIZE; ++j) {
             (*norm_inverse)[i][j] = cache_arr[j];
         }
         (*env)->ReleaseFloatArrayElements(env, cache, cache_arr, JNI_ABORT);
@@ -552,7 +552,7 @@ retrieve_return_buffers(JNIEnv *env,
     // check that the byteBuffer received is large enough to hold all results
     // if not return the size needed
     jlong cap = (*env)->GetDirectBufferCapacity(env, byteBuffer);
-    if (cap < total_nr_results * sizeof(result_t)) {
+    if ((size_t)cap < total_nr_results * sizeof(result_t)) {
         return (jint)(total_nr_results * sizeof(result_t));
     }
 
