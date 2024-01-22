@@ -20,7 +20,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.SlowDirectory;
@@ -304,7 +305,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
     assertEquals(1, tr.getSize());
     assertEquals(0, tr.getPath(0).length);
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getParallelTaxonomyArrays().parents()[0]);
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getParallelTaxonomyArrays().parents().get(0));
     assertEquals(0, tr.getOrdinal(new FacetLabel()));
     tr.close();
     indexDir.close();
@@ -323,7 +324,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
     assertEquals(1, tr.getSize());
     assertEquals(0, tr.getPath(0).length);
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getParallelTaxonomyArrays().parents()[0]);
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getParallelTaxonomyArrays().parents().get(0));
     assertEquals(0, tr.getOrdinal(new FacetLabel()));
     tw.close();
     tr.close();
@@ -412,13 +413,13 @@ public class TestTaxonomyCombined extends FacetTestCase {
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
 
     // check that the parent of the root ordinal is the invalid ordinal:
-    int[] parents = tr.getParallelTaxonomyArrays().parents();
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, parents[0]);
+    ParallelTaxonomyArrays.IntArray parents = tr.getParallelTaxonomyArrays().parents();
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, parents.get(0));
 
     // check parent of non-root ordinals:
     for (int ordinal = 1; ordinal < tr.getSize(); ordinal++) {
       FacetLabel me = tr.getPath(ordinal);
-      int parentOrdinal = parents[ordinal];
+      int parentOrdinal = parents.get(ordinal);
       FacetLabel parent = tr.getPath(parentOrdinal);
       if (parent == null) {
         fail(
@@ -552,10 +553,10 @@ public class TestTaxonomyCombined extends FacetTestCase {
     tw.close();
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
     ParallelTaxonomyArrays ca = tr.getParallelTaxonomyArrays();
-    int[] youngestChildArray = ca.children();
-    assertEquals(tr.getSize(), youngestChildArray.length);
-    int[] olderSiblingArray = ca.siblings();
-    assertEquals(tr.getSize(), olderSiblingArray.length);
+    ParallelTaxonomyArrays.IntArray youngestChildArray = ca.children();
+    assertEquals(tr.getSize(), youngestChildArray.length());
+    ParallelTaxonomyArrays.IntArray olderSiblingArray = ca.siblings();
+    assertEquals(tr.getSize(), olderSiblingArray.length());
     for (int i = 0; i < expectedCategories.length; i++) {
       // find expected children by looking at all expectedCategories
       // for children
@@ -578,12 +579,12 @@ public class TestTaxonomyCombined extends FacetTestCase {
       // check that children and expectedChildren are the same, with the
       // correct reverse (youngest to oldest) order:
       if (expectedChildren.size() == 0) {
-        assertEquals(TaxonomyReader.INVALID_ORDINAL, youngestChildArray[i]);
+        assertEquals(TaxonomyReader.INVALID_ORDINAL, youngestChildArray.get(i));
       } else {
-        int child = youngestChildArray[i];
+        int child = youngestChildArray.get(i);
         assertEquals(expectedChildren.get(0).intValue(), child);
         for (int j = 1; j < expectedChildren.size(); j++) {
-          child = olderSiblingArray[child];
+          child = olderSiblingArray.get(child);
           assertEquals(expectedChildren.get(j).intValue(), child);
           // if child is INVALID_ORDINAL we should stop, but
           // assertEquals would fail in this case anyway.
@@ -591,7 +592,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
         // When we're done comparing, olderSiblingArray should now point
         // to INVALID_ORDINAL, saying there are no more children. If it
         // doesn't, we found too many children...
-        assertEquals(-1, olderSiblingArray[child]);
+        assertEquals(-1, olderSiblingArray.get(child));
       }
     }
     tr.close();
@@ -613,34 +614,34 @@ public class TestTaxonomyCombined extends FacetTestCase {
     tw.close();
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
     ParallelTaxonomyArrays ca = tr.getParallelTaxonomyArrays();
-    int[] children = ca.children();
-    assertEquals(tr.getSize(), children.length);
-    int[] olderSiblingArray = ca.siblings();
-    assertEquals(tr.getSize(), olderSiblingArray.length);
+    ParallelTaxonomyArrays.IntArray children = ca.children();
+    assertEquals(tr.getSize(), children.length());
+    ParallelTaxonomyArrays.IntArray olderSiblingArray = ca.siblings();
+    assertEquals(tr.getSize(), olderSiblingArray.length());
 
     // test that the "youngest child" of every category is indeed a child:
-    int[] parents = tr.getParallelTaxonomyArrays().parents();
+    ParallelTaxonomyArrays.IntArray parents = tr.getParallelTaxonomyArrays().parents();
     for (int i = 0; i < tr.getSize(); i++) {
-      int youngestChild = children[i];
+      int youngestChild = children.get(i);
       if (youngestChild != TaxonomyReader.INVALID_ORDINAL) {
-        assertEquals(i, parents[youngestChild]);
+        assertEquals(i, parents.get(youngestChild));
       }
     }
 
     // test that the "older sibling" of every category is indeed older (lower)
     // (it can also be INVALID_ORDINAL, which is lower than any ordinal)
     for (int i = 0; i < tr.getSize(); i++) {
-      assertTrue("olderSiblingArray[" + i + "] should be <" + i, olderSiblingArray[i] < i);
+      assertTrue("olderSiblingArray[" + i + "] should be <" + i, olderSiblingArray.get(i) < i);
     }
 
     // test that the "older sibling" of every category is indeed a sibling
     // (they share the same parent)
     for (int i = 0; i < tr.getSize(); i++) {
-      int sibling = olderSiblingArray[i];
+      int sibling = olderSiblingArray.get(i);
       if (sibling == TaxonomyReader.INVALID_ORDINAL) {
         continue;
       }
-      assertEquals(parents[i], parents[sibling]);
+      assertEquals(parents.get(i), parents.get(sibling));
     }
 
     // And now for slightly more complex (and less "invariant-like"...)
@@ -652,14 +653,14 @@ public class TestTaxonomyCombined extends FacetTestCase {
       // Find the really youngest child:
       int j;
       for (j = tr.getSize() - 1; j > i; j--) {
-        if (parents[j] == i) {
+        if (parents.get(j) == i) {
           break; // found youngest child
         }
       }
       if (j == i) { // no child found
         j = TaxonomyReader.INVALID_ORDINAL;
       }
-      assertEquals(j, children[i]);
+      assertEquals(j, children.get(i));
     }
 
     // test that the "older sibling" is indeed the least oldest one - and
@@ -669,18 +670,24 @@ public class TestTaxonomyCombined extends FacetTestCase {
       // Find the youngest older sibling:
       int j;
       for (j = i - 1; j >= 0; j--) {
-        if (parents[j] == parents[i]) {
+        if (parents.get(j) == parents.get(i)) {
           break; // found youngest older sibling
         }
       }
       if (j < 0) { // no sibling found
         j = TaxonomyReader.INVALID_ORDINAL;
       }
-      assertEquals(j, olderSiblingArray[i]);
+      assertEquals(j, olderSiblingArray.get(i));
     }
 
     tr.close();
     indexDir.close();
+  }
+
+  private static void assertArrayEquals(int[] expected, ParallelTaxonomyArrays.IntArray actual) {
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i], actual.get(i));
+    }
   }
 
   /** Test how getChildrenArrays() deals with the taxonomy's growth: */
@@ -693,10 +700,10 @@ public class TestTaxonomyCombined extends FacetTestCase {
     TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
     ParallelTaxonomyArrays ca = tr.getParallelTaxonomyArrays();
     assertEquals(3, tr.getSize());
-    assertEquals(3, ca.siblings().length);
-    assertEquals(3, ca.children().length);
-    assertTrue(Arrays.equals(new int[] {1, 2, -1}, ca.children()));
-    assertTrue(Arrays.equals(new int[] {-1, -1, -1}, ca.siblings()));
+    assertEquals(3, ca.siblings().length());
+    assertEquals(3, ca.children().length());
+    assertArrayEquals(new int[] {1, 2, -1}, ca.children());
+    assertArrayEquals(new int[] {-1, -1, -1}, ca.siblings());
     tw.addCategory(new FacetLabel("hi", "ho"));
     tw.addCategory(new FacetLabel("hello"));
     tw.commit();
@@ -704,8 +711,8 @@ public class TestTaxonomyCombined extends FacetTestCase {
     ParallelTaxonomyArrays newca = tr.getParallelTaxonomyArrays();
     assertSame(newca, ca); // we got exactly the same object
     assertEquals(3, tr.getSize());
-    assertEquals(3, ca.siblings().length);
-    assertEquals(3, ca.children().length);
+    assertEquals(3, ca.siblings().length());
+    assertEquals(3, ca.children().length());
     // After the refresh, things change:
     TaxonomyReader newtr = TaxonomyReader.openIfChanged(tr);
     assertNotNull(newtr);
@@ -713,10 +720,10 @@ public class TestTaxonomyCombined extends FacetTestCase {
     tr = newtr;
     ca = tr.getParallelTaxonomyArrays();
     assertEquals(5, tr.getSize());
-    assertEquals(5, ca.siblings().length);
-    assertEquals(5, ca.children().length);
-    assertTrue(Arrays.equals(new int[] {4, 3, -1, -1, -1}, ca.children()));
-    assertTrue(Arrays.equals(new int[] {-1, -1, -1, 2, 1}, ca.siblings()));
+    assertEquals(5, ca.siblings().length());
+    assertEquals(5, ca.children().length());
+    assertArrayEquals(new int[] {4, 3, -1, -1, -1}, ca.children());
+    assertArrayEquals(new int[] {-1, -1, -1, 2, 1}, ca.siblings());
     tw.close();
     tr.close();
     indexDir.close();
@@ -737,7 +744,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     final ParallelTaxonomyArrays ca1 = trBase.getParallelTaxonomyArrays();
 
     final int abOrd = trBase.getOrdinal(abPath);
-    final int abYoungChildBase1 = ca1.children()[abOrd];
+    final int abYoungChildBase1 = ca1.children().get(abOrd);
 
     final int numCategories = atLeast(200);
     for (int i = 0; i < numCategories; i++) {
@@ -751,7 +758,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     trBase = newTaxoReader;
 
     final ParallelTaxonomyArrays ca2 = trBase.getParallelTaxonomyArrays();
-    final int abYoungChildBase2 = ca2.children()[abOrd];
+    final int abYoungChildBase2 = ca2.children().get(abOrd);
 
     int numRetries = atLeast(10);
     for (int retry = 0; retry < numRetries; retry++) {
@@ -799,7 +806,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
             setPriority(1 + getPriority());
             try {
               while (!stop.get()) {
-                int lastOrd = tr.getParallelTaxonomyArrays().parents().length - 1;
+                int lastOrd = tr.getParallelTaxonomyArrays().parents().length() - 1;
                 assertNotNull(
                     "path of last-ord " + lastOrd + " is not found!", tr.getPath(lastOrd));
                 assertChildrenArrays(tr.getParallelTaxonomyArrays(), retry, retrieval[0]++);
@@ -812,7 +819,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
           }
 
           private void assertChildrenArrays(ParallelTaxonomyArrays ca, int retry, int retrieval) {
-            final int abYoungChild = ca.children()[abOrd];
+            final int abYoungChild = ca.children().get(abOrd);
             assertTrue(
                 "Retry "
                     + retry
@@ -828,7 +835,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
                     + abYoungChildBase2
                     + " but was: "
                     + abYoungChild,
-                abYoungChildBase1 == abYoungChild || abYoungChildBase2 == ca.children()[abOrd]);
+                abYoungChildBase1 == abYoungChild || abYoungChildBase2 == ca.children().get(abOrd));
           }
         };
     thread.start();
@@ -903,7 +910,8 @@ public class TestTaxonomyCombined extends FacetTestCase {
 
     int author = 1;
     try {
-      assertEquals(TaxonomyReader.ROOT_ORDINAL, tr.getParallelTaxonomyArrays().parents()[author]);
+      assertEquals(
+          TaxonomyReader.ROOT_ORDINAL, tr.getParallelTaxonomyArrays().parents().get(author));
       // ok
     } catch (
         @SuppressWarnings("unused")
@@ -926,10 +934,10 @@ public class TestTaxonomyCombined extends FacetTestCase {
     assertNotNull(newTaxoReader);
     tr.close();
     tr = newTaxoReader;
-    int[] parents = tr.getParallelTaxonomyArrays().parents();
-    assertEquals(author, parents[dawkins]);
-    assertEquals(TaxonomyReader.ROOT_ORDINAL, parents[author]);
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, parents[TaxonomyReader.ROOT_ORDINAL]);
+    ParallelTaxonomyArrays.IntArray parents = tr.getParallelTaxonomyArrays().parents();
+    assertEquals(author, parents.get(dawkins));
+    assertEquals(TaxonomyReader.ROOT_ORDINAL, parents.get(author));
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, parents.get(TaxonomyReader.ROOT_ORDINAL));
     assertEquals(3, tr.getSize());
     tw.close();
     tr.close();
@@ -1095,6 +1103,64 @@ public class TestTaxonomyCombined extends FacetTestCase {
     reader.close();
 
     dir.close();
+  }
+
+  private static String[][] manyCategories(int count, int roundSize) {
+    String[][] result = new String[count / roundSize + 1][];
+    int k = 0;
+    do {
+      k += roundSize;
+      List<String> round = new ArrayList<>();
+      for (int i = k - roundSize + 1; i <= k && i < count; i++) {
+        round.add(String.format(Locale.ROOT, "category %d of %d", i, k));
+      }
+      result[k / roundSize - 1] = round.toArray(new String[0]);
+    } while (k <= count);
+    return result;
+  }
+
+  public void testThousandsOfCategories() throws IOException {
+    int roundSize = random().nextInt(2) + 2;
+    int size = random().nextInt(16384) + 16384;
+    Directory indexDir = newDirectory();
+    TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
+    String[][] manyCategories = manyCategories(size, roundSize);
+    for (String[] elem : manyCategories) {
+      if (elem == null) {
+        throw new IllegalStateException(
+            "Got null array with size = " + size + " and roundSize = " + roundSize);
+      } else if (elem.length > 0) {
+        tw.addCategory(new FacetLabel(elem));
+      }
+    }
+    tw.close();
+    TaxonomyReader tr = new DirectoryTaxonomyReader(indexDir);
+    ParallelTaxonomyArrays ca = tr.getParallelTaxonomyArrays();
+    ParallelTaxonomyArrays.IntArray parents = ca.parents();
+    ParallelTaxonomyArrays.IntArray children = ca.children();
+    assertEquals(size, parents.length());
+    assertEquals(size, children.length());
+    for (int j = 1; j < size - roundSize; j += roundSize) {
+      // Top level categories all have root as their parent.
+      assertEquals(0, parents.get(j));
+      for (int i = j; i < j + roundSize - 1; i++) {
+        // Children extend in a chain from the top level category.
+        // The parent/child relationships are symmetric.
+        assertEquals(i + 1, children.get(i));
+        if (i > j) {
+          assertEquals(i - 1, parents.get(i));
+        }
+      }
+    }
+    ParallelTaxonomyArrays.IntArray siblings = ca.siblings();
+    assertEquals(size, siblings.length());
+    for (int i = 1; i < size - roundSize; i += roundSize) {
+      // Each top-level category (after the first) has the previous top-level category as their
+      // older sibling.
+      assertEquals(i, siblings.get(i + roundSize));
+    }
+    tr.close();
+    indexDir.close();
   }
 
   //  TODO (Facet): test multiple readers, one writer. Have the multiple readers
