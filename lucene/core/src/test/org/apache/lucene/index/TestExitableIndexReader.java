@@ -51,9 +51,8 @@ public class TestExitableIndexReader extends LuceneTestCase {
     expectThrows(
         TimeExceededException.class,
         () ->
-            new IndexSearcher(new ExitableIndexReader(directoryReader, countingQueryTimeout(1)))
+            new IndexSearcher(new ExitableIndexReader(directoryReader, countingQueryTimeout(4)))
                 .search(query, n));
-    // expectThrows(TimeExceededException.class, () -> searcher.search(query, n));
 
     directoryReader.close();
     directory.close();
