@@ -193,7 +193,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     }
   }
 
-  private void searchExampleIndex(DirectoryReader reader) throws IOException {
+  public static void searchExampleIndex(DirectoryReader reader) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
 
     TopDocs topDocs = searcher.search(new FieldExistsQuery("titleTokenized"), 10);

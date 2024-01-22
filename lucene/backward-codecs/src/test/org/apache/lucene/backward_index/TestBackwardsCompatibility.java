@@ -219,53 +219,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     return Paths.get(path);
   }
 
-  public void testCreateMoreTermsIndex() throws Exception {
-    Path indexDir = getIndexDir().resolve("moreterms");
-    Files.deleteIfExists(indexDir);
-    try (Directory dir = newFSDirectory(indexDir)) {
-      createMoreTermsIndex(dir);
-    }
-  }
-
-  public void testCreateMoreTermsIndexInternal() throws Exception {
-    try (Directory dir = newDirectory()) {
-      createMoreTermsIndex(dir);
-    }
-  }
-
-  private void createMoreTermsIndex(Directory dir) throws Exception {
-    LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-    MockAnalyzer analyzer = new MockAnalyzer(random());
-    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
-
-    IndexWriterConfig conf =
-        new IndexWriterConfig(analyzer)
-            .setMergePolicy(mp)
-            .setCodec(TestUtil.getDefaultCodec())
-            .setUseCompoundFile(false);
-    IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(new Random(0));
-    for (int i = 0; i < 50; i++) {
-      Document doc = TestUtil.cloneDocument(docs.nextDoc());
-      doc.add(
-          new NumericDocValuesField(
-              "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
-      doc.add(
-          new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
-      writer.addDocument(doc);
-      if (i % 10 == 0) { // commit every 10 documents
-        writer.commit();
-      }
-    }
-    docs.close();
-    writer.close();
-    try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      searchExampleIndex(reader); // make sure we can search it
-    }
-  }
-
   public void testCreateEmptyIndex() throws Exception {
     Path indexDir = getIndexDir().resolve("emptyIndex");
     Files.deleteIfExists(indexDir);
@@ -1830,41 +1783,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  public static final String moreTermsIndex = "moreterms.9.0.0.zip";
-
-  public void testMoreTerms() throws Exception {
-    Path oldIndexDir = createTempDir("moreterms");
-    TestUtil.unzip(getDataInputStream(moreTermsIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    DirectoryReader reader = DirectoryReader.open(dir);
-
-    verifyUsesDefaultCodec(dir, moreTermsIndex);
-    TestUtil.checkIndex(dir);
-    searchExampleIndex(reader);
-
-    reader.close();
-    dir.close();
-  }
-
-  private void assertNumericDocValues(LeafReader r, String f, String cf) throws IOException {
-    NumericDocValues ndvf = r.getNumericDocValues(f);
-    NumericDocValues ndvcf = r.getNumericDocValues(cf);
-    for (int i = 0; i < r.maxDoc(); i++) {
-      assertEquals(i, ndvcf.nextDoc());
-      assertEquals(i, ndvf.nextDoc());
-      assertEquals(ndvcf.longValue(), ndvf.longValue() * 2);
-    }
-  }
-
-  private void assertBinaryDocValues(LeafReader r, String f, String cf) throws IOException {
-    BinaryDocValues bdvf = r.getBinaryDocValues(f);
-    BinaryDocValues bdvcf = r.getBinaryDocValues(cf);
-    for (int i = 0; i < r.maxDoc(); i++) {
-      assertEquals(i, bdvf.nextDoc());
-      assertEquals(i, bdvcf.nextDoc());
-      assertEquals(getValue(bdvcf), getValue(bdvf) * 2);
-    }
-  }
 
   // LUCENE-5907
   public void testUpgradeWithNRTReader() throws Exception {
@@ -1901,65 +1819,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       writer.close();
       dir.close();
     }
-  }
-
-  private void searchExampleIndex(DirectoryReader reader) throws IOException {
-    IndexSearcher searcher = newSearcher(reader);
-
-    TopDocs topDocs = searcher.search(new FieldExistsQuery("titleTokenized"), 10);
-    assertEquals(50, topDocs.totalHits.value);
-
-    topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
-    assertEquals(50, topDocs.totalHits.value);
-
-    topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);
-    assertTrue(topDocs.totalHits.value > 0);
-
-    topDocs =
-        searcher.search(
-            IntPoint.newRangeQuery("docid_int", 42, 44),
-            10,
-            new Sort(new SortField("docid_intDV", SortField.Type.INT)));
-    assertEquals(3, topDocs.totalHits.value);
-    assertEquals(3, topDocs.scoreDocs.length);
-    assertEquals(42, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
-    assertEquals(43, ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
-    assertEquals(44, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
-
-    topDocs = searcher.search(new TermQuery(new Term("body", "the")), 5);
-    assertTrue(topDocs.totalHits.value > 0);
-
-    topDocs =
-        searcher.search(
-            new MatchAllDocsQuery(), 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
-    assertEquals(50, topDocs.totalHits.value);
-    assertEquals(5, topDocs.scoreDocs.length);
-    long firstDate = (Long) ((FieldDoc) topDocs.scoreDocs[0]).fields[0];
-    long lastDate = (Long) ((FieldDoc) topDocs.scoreDocs[4]).fields[0];
-    assertTrue(firstDate <= lastDate);
-  }
-
-  static long getValue(BinaryDocValues bdv) throws IOException {
-    BytesRef term = bdv.binaryValue();
-    int idx = term.offset;
-    byte b = term.bytes[idx++];
-    long value = b & 0x7FL;
-    for (int shift = 7; (b & 0x80L) != 0; shift += 7) {
-      b = term.bytes[idx++];
-      value |= (b & 0x7FL) << shift;
-    }
-    return value;
-  }
-
-  // encodes a long into a BytesRef as VLong so that we get varying number of bytes when we update
-  static BytesRef toBytes(long value) {
-    BytesRef bytes = new BytesRef(10); // negative longs may take 10 bytes
-    while ((value & ~0x7FL) != 0L) {
-      bytes.bytes[bytes.length++] = (byte) ((value & 0x7FL) | 0x80L);
-      value >>>= 7;
-    }
-    bytes.bytes[bytes.length++] = (byte) value;
-    return bytes;
   }
 
   public void testFailOpenOldIndex() throws IOException {
