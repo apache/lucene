@@ -237,7 +237,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public int mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     // Since we know we will not be searching for additional indexing, we can just write the
     // the vectors directly to the new segment.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
@@ -258,7 +258,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         vectorDataOffset,
         vectorDataLength,
         docsWithField);
-    return docsWithField.cardinality();
   }
 
   @Override

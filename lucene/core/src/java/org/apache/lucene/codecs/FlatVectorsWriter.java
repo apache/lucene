@@ -23,6 +23,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 
 /**
@@ -61,11 +62,8 @@ public abstract class FlatVectorsWriter implements Accountable, Closeable {
       FieldInfo fieldInfo, MergeState mergeState) throws IOException;
 
   /** Write field for merging */
-  public int mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    try (CloseableRandomVectorScorerSupplier closeable =
-        mergeOneFieldToIndex(fieldInfo, mergeState)) {
-      return closeable.totalVectorCount();
-    }
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    IOUtils.close(mergeOneFieldToIndex(fieldInfo, mergeState));
   }
 
   /** Called once at the end before close */
