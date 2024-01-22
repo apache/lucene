@@ -66,11 +66,58 @@ test_init_inbound_buffers(void)
     dpu_error_t result = dpu_alloc(DPU_ALLOCATE_ALL, NULL, &set);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
-    result = init_inbound_buffers(set, nr_queries);
+    result = init_inbound_buffers(set, &nr_queries);
     CU_ASSERT_EQUAL(result, DPU_OK);
+
+    dpu_sync(set);
 
     result = dpu_free(set);
     CU_ASSERT_EQUAL(result, DPU_OK);
+}
+
+void
+test_entry_init_topdocs_sync(void)
+{
+    struct dpu_set_t set;
+    int nr_queries = 5;
+    int nr_topdocs[] = { 10, 20, 30, 40, 50 };
+    pque_array score_pques = {};
+    mutex_array query_mutexes = {};
+    uint32_t nr_ranks = 0;
+    lower_bound_t *updated_bounds = NULL;
+    bool *finished_ranks = NULL;
+
+    dpu_error_t result = dpu_alloc(DPU_ALLOCATE_ALL, NULL, &set);
+    CU_ASSERT_EQUAL_FATAL(result, DPU_OK);
+
+    result = entry_init_topdocs_sync(
+        set,
+        nr_topdocs,
+        &nr_queries,
+        &score_pques,
+        &query_mutexes,
+        &nr_ranks,
+        &updated_bounds,
+        &finished_ranks);
+
+    dpu_sync(set);
+    
+    CU_ASSERT_EQUAL(result, DPU_OK);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(score_pques.pques);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(query_mutexes.mutexes);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(updated_bounds);
+    CU_ASSERT_PTR_NOT_NULL_FATAL(finished_ranks);
+
+    CU_ASSERT_EQUAL(score_pques.nr_pques, 5);
+    for (int i = 0; i < score_pques.nr_pques; i++) {
+        CU_ASSERT_EQUAL(PQue_capacity(&score_pques.pques[i]), nr_topdocs[i]);
+    }
+
+    free(updated_bounds);
+    free(finished_ranks);
+
+    result = dpu_free(set);
+    CU_ASSERT_EQUAL_FATAL(result, DPU_OK);
 }
 
 void
@@ -193,6 +240,7 @@ main()
         || (NULL == CU_add_test(p_suite, "test_init_mutex_array", test_init_mutex_array))
         || (NULL == CU_add_test(p_suite, "test_init_inbound_buffer", test_init_inbound_buffer))
         || (NULL == CU_add_test(p_suite, "test_init_inbound_buffers", test_init_inbound_buffers))
+        || (NULL == CU_add_test(p_suite, "test_entry_init_topdocs_sync", test_entry_init_topdocs_sync))
         || (NULL == CU_add_test(p_suite, "test_update_pques", test_update_pques))
         || (NULL == CU_add_test(p_suite, "test_all_dpus_have_finished", test_all_dpus_have_finished))
         || (NULL == CU_add_test(p_suite, "test_bitfield_is_sound", test_bitfield_is_sound))) {
