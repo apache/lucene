@@ -18,7 +18,9 @@
 package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
+import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -27,16 +29,24 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTaxonomyIndexArrays extends LuceneTestCase {
 
+  private void checkIntArraysEquals(
+      TaxonomyIndexArrays.ChunkedIntArray expected, TaxonomyIndexArrays.ChunkedIntArray actual) {
+    for (int i = 0; i < expected.values.length - 1; i++) {
+      assertSame(expected.values[i], actual.values[i]);
+    }
+    int lastOldChunk = expected.values.length - 1;
+    for (int i = 0; i < expected.values[lastOldChunk].length; i++) {
+      assertEquals(expected.values[lastOldChunk][i], actual.values[lastOldChunk][i]);
+    }
+  }
+
   private void checkInvariants(TaxonomyIndexArrays oldArray, TaxonomyIndexArrays newArray) {
     TaxonomyIndexArrays.ChunkedIntArray oldParents = oldArray.parents();
     TaxonomyIndexArrays.ChunkedIntArray newParents = newArray.parents();
-    for (int i = 0; i < oldParents.values.length - 1; i++) {
-      assertSame(oldParents.values[i], newParents.values[i]);
-    }
-    int lastOldChunk = oldParents.values.length - 1;
-    for (int i = 0; i < oldParents.values[lastOldChunk].length; i++) {
-      assertEquals(oldParents.values[lastOldChunk][i], newParents.values[lastOldChunk][i]);
-    }
+    checkIntArraysEquals(oldParents, newParents);
+    TaxonomyIndexArrays.ChunkedIntArray oldSiblings = oldArray.siblings();
+    TaxonomyIndexArrays.ChunkedIntArray newSiblings = newArray.siblings();
+    checkIntArraysEquals(oldSiblings, newSiblings);
   }
 
   public void testRandom() {
@@ -80,6 +90,72 @@ public class TestTaxonomyIndexArrays extends LuceneTestCase {
     assertEquals(0, tia.parents().length());
 
     reader.close();
+    dir.close();
+  }
+
+  public void testRefresh() throws IOException {
+    Directory dir = newDirectory();
+
+    // Write two chunks worth of ordinals whose parents are ordinals 1 or 2
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
+    taxoWriter.addCategory(new FacetLabel("a")); // ordinal 1
+    taxoWriter.addCategory(new FacetLabel("b")); // ordinal 2
+    for (int i = 0; i < 2 * TaxonomyIndexArrays.CHUNK_SIZE; i++) {
+      if (i % 2 == 0) {
+        taxoWriter.addCategory(new FacetLabel("a", Integer.toString(i)));
+      } else {
+        taxoWriter.addCategory(new FacetLabel("b", Integer.toString(i)));
+      }
+    }
+    taxoWriter.commit();
+
+    // Initialize old taxonomy arrays
+    IndexReader reader = DirectoryReader.open(dir);
+    TaxonomyIndexArrays oldTia = new TaxonomyIndexArrays(reader);
+    reader.close();
+    oldTia.children(); // Init the children
+
+    // Write one more batch of ordinals whose parents are ordinals 1 or 2 again.
+    for (int i = 2 * TaxonomyIndexArrays.CHUNK_SIZE; i < 3 * TaxonomyIndexArrays.CHUNK_SIZE; i++) {
+      if (i % 2 == 0) {
+        taxoWriter.addCategory(new FacetLabel("a", Integer.toString(i)));
+      } else {
+        taxoWriter.addCategory(new FacetLabel("b", Integer.toString(i)));
+      }
+    }
+    taxoWriter.close();
+
+    // Initialize new taxonomy arrays
+    reader = DirectoryReader.open(dir);
+    TaxonomyIndexArrays newTia = new TaxonomyIndexArrays(reader, oldTia);
+    reader.close();
+
+    // Parents and siblings are unchanged in the old range, children will have changed
+    checkInvariants(oldTia, newTia);
+
+    TaxonomyIndexArrays.ChunkedIntArray oldChildren = oldTia.children();
+    TaxonomyIndexArrays.ChunkedIntArray newChildren = newTia.children();
+
+    // The first chunk had to be reallocated to rewrite the value for ordinals 1 and 2
+    assertNotSame(oldChildren.values[0], newChildren.values[0]);
+    // The second chunk could stay the same, since none of these ordinals have children
+    assertSame(oldChildren.values[1], newChildren.values[1]);
+    // The third chunk had to be reallocated to grow
+    assertNotSame(oldChildren.values[2], newChildren.values[2]);
+
+    // Check contents of the first chunk
+    for (int i = 0; i < TaxonomyIndexArrays.CHUNK_SIZE; i++) {
+      if (i == 1 || i == 2) {
+        assertNotEquals(oldChildren.values[0][i], newChildren.values[0][i]);
+      } else {
+        assertEquals(oldChildren.values[0][i], newChildren.values[0][i]);
+      }
+    }
+    // Check contents of the third chunk
+    for (int i = 0; i < oldChildren.values[2].length; i++) {
+      assertEquals(oldChildren.values[2][i], newChildren.values[2][i]);
+    }
+
     dir.close();
   }
 }
