@@ -17,7 +17,12 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTaxonomyIndexArrays extends LuceneTestCase {
@@ -58,5 +63,23 @@ public class TestTaxonomyIndexArrays extends LuceneTestCase {
       checkInvariants(oldArray, newArray);
       ordinal = newOrdinal;
     }
+  }
+
+  public void testConstructFromEmptyIndex() throws IOException {
+    Directory dir = newDirectory();
+
+    // Produce empty index
+    new IndexWriter(dir, newIndexWriterConfig(null)).close();
+
+    IndexReader reader = DirectoryReader.open(dir);
+
+    TaxonomyIndexArrays tia = new TaxonomyIndexArrays(reader);
+    assertEquals(0, tia.parents().length());
+
+    tia = new TaxonomyIndexArrays(reader, tia);
+    assertEquals(0, tia.parents().length());
+
+    reader.close();
+    dir.close();
   }
 }
