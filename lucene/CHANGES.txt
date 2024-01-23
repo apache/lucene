@@ -9,6 +9,13 @@ Bug Fixes
 ---------------------
 (No changes)
 
+======================== Lucene 9.9.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#13027: Fix NPE when sampling for quantization in Lucene99HnswScalarQuantizedVectorsFormat (Ben Trent)
+
 ======================== Lucene 9.9.1 =======================
 
 Bug Fixes
