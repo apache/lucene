@@ -61,6 +61,9 @@ import java.util.Random;
 
 public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
+  static final String INDEX_NAME = "moreterms";
+
+  static final String SUFFIX = "";
   public TestMoreTermsBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
@@ -69,7 +72,7 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();
     // NOCOMMIT: why are we only testing one version here?
-    params.add(new Object[] {Version.LUCENE_9_0_0, "moreterms.%1$s.zip"});
+    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
     return params;
   }
 

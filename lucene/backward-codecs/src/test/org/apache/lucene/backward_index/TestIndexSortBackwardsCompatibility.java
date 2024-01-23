@@ -56,13 +56,16 @@ import org.apache.lucene.util.Version;
 
 public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
+  static final String INDEX_NAME = "sorted";
+  static final String SUFFIX = "";
+
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
-    return allVersion("sorted", "");
+    return allVersion(INDEX_NAME, SUFFIX);
   }
 
   public void testSortedIndexAddDocBlocks() throws Exception {

@@ -46,8 +46,10 @@ import org.apache.lucene.util.Version;
 
 public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
-  public TestDVUpdateBackwardsCompatibility(Version version, String pattern) {
+  static final String INDEX_NAME = "dvupdates";
+  static final String SUFFIX = "";
 
+  public TestDVUpdateBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
@@ -55,7 +57,7 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();
     // NOCOMMIT: why are we only testing one version here?
-    params.add(new Object[] {Version.LUCENE_9_0_0, "dvupdates.%1$s.zip"});
+    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
     return params;
   }
 

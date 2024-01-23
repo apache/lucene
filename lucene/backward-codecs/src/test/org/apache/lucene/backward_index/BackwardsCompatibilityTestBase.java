@@ -112,11 +112,15 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     return lastPrevMajorVersion;
   }
 
+  static String createPattern(String name, String suffix) {
+    return name + ".%1$s" + suffix + ".zip";
+  }
+
   public static Iterable<Object[]> allVersion(String name, String... suffixes)
       throws IllegalAccessException {
     List<Object> patterns = new ArrayList<>();
     for (String suffix : suffixes) {
-      patterns.add(name + ".%1$s" + suffix + ".zip");
+      patterns.add(createPattern(name, suffix));
     }
     Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
     List<Object[]> versions = new ArrayList<>();
@@ -155,7 +159,6 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
       createIndex(dir);
     }
   }
-
   private Path getIndexDir() {
     String path = System.getProperty("tests.bwcdir");
     assumeTrue(
