@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -30,7 +32,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
-    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1);
+    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1, numVecs);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
@@ -71,6 +73,87 @@ public class TestScalarQuantizer extends LuceneTestCase {
     assertEquals(1f, upperAndLower[1], 1e-7f);
   }
 
+  public void testSamplingEdgeCases() throws IOException {
+    int numVecs = 65;
+    int dims = 64;
+    float[][] floats = randomFloats(numVecs, dims);
+    FloatVectorValues floatVectorValues = fromFloats(floats);
+    int[] vectorsToTake = new int[] {0, floats.length - 1};
+    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
+    int i = 0;
+    for (; i < dims; i++) {
+      assertEquals(floats[vectorsToTake[0]][i], sampled[i], 0.0f);
+    }
+    for (; i < dims * 2; i++) {
+      assertEquals(floats[vectorsToTake[1]][i - dims], sampled[i], 0.0f);
+    }
+  }
+
+  public void testVectorSampling() throws IOException {
+    int numVecs = random().nextInt(123) + 5;
+    int dims = 4;
+    float[][] floats = randomFloats(numVecs, dims);
+    FloatVectorValues floatVectorValues = fromFloats(floats);
+    int[] vectorsToTake =
+        ScalarQuantizer.reservoirSampleIndices(numVecs, random().nextInt(numVecs - 1) + 1);
+    int prev = vectorsToTake[0];
+    // ensure sorted & unique
+    for (int i = 1; i < vectorsToTake.length; i++) {
+      assertTrue(vectorsToTake[i] > prev);
+      prev = vectorsToTake[i];
+    }
+    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
+    // ensure we got the right vectors
+    for (int i = 0; i < vectorsToTake.length; i++) {
+      for (int j = 0; j < dims; j++) {
+        assertEquals(floats[vectorsToTake[i]][j], sampled[i * dims + j], 0.0f);
+      }
+    }
+  }
+
+  public void testScalarWithSampling() throws IOException {
+    int numVecs = random().nextInt(128) + 5;
+    int dims = 64;
+    float[][] floats = randomFloats(numVecs, dims);
+    // Should not throw
+    {
+      TestSimpleFloatVectorValues floatVectorValues =
+          fromFloatsWithRandomDeletions(floats, random().nextInt(numVecs - 1) + 1);
+      ScalarQuantizer.fromVectors(
+          floatVectorValues,
+          0.99f,
+          floatVectorValues.numLiveVectors,
+          floatVectorValues.numLiveVectors - 1);
+    }
+    {
+      TestSimpleFloatVectorValues floatVectorValues =
+          fromFloatsWithRandomDeletions(floats, random().nextInt(numVecs - 1) + 1);
+      ScalarQuantizer.fromVectors(
+          floatVectorValues,
+          0.99f,
+          floatVectorValues.numLiveVectors,
+          floatVectorValues.numLiveVectors + 1);
+    }
+    {
+      TestSimpleFloatVectorValues floatVectorValues =
+          fromFloatsWithRandomDeletions(floats, random().nextInt(numVecs - 1) + 1);
+      ScalarQuantizer.fromVectors(
+          floatVectorValues,
+          0.99f,
+          floatVectorValues.numLiveVectors,
+          floatVectorValues.numLiveVectors);
+    }
+    {
+      TestSimpleFloatVectorValues floatVectorValues =
+          fromFloatsWithRandomDeletions(floats, random().nextInt(numVecs - 1) + 1);
+      ScalarQuantizer.fromVectors(
+          floatVectorValues,
+          0.99f,
+          floatVectorValues.numLiveVectors,
+          random().nextInt(floatVectorValues.floats.length - 1) + 1);
+    }
+  }
+
   static void shuffleArray(float[] ar) {
     for (int i = ar.length - 1; i > 0; i--) {
       int index = random().nextInt(i + 1);
@@ -97,15 +180,29 @@ public class TestScalarQuantizer extends LuceneTestCase {
   }
 
   static FloatVectorValues fromFloats(float[][] floats) {
-    return new TestSimpleFloatVectorValues(floats);
+    return new TestSimpleFloatVectorValues(floats, null);
+  }
+
+  static TestSimpleFloatVectorValues fromFloatsWithRandomDeletions(
+      float[][] floats, int numDeleted) {
+    Set<Integer> deletedVectors = new HashSet<>();
+    for (int i = 0; i < numDeleted; i++) {
+      deletedVectors.add(random().nextInt(floats.length));
+    }
+    return new TestSimpleFloatVectorValues(floats, deletedVectors);
   }
 
   static class TestSimpleFloatVectorValues extends FloatVectorValues {
     protected final float[][] floats;
+    protected final Set<Integer> deletedVectors;
+    protected final int numLiveVectors;
     protected int curDoc = -1;
 
-    TestSimpleFloatVectorValues(float[][] values) {
+    TestSimpleFloatVectorValues(float[][] values, Set<Integer> deletedVectors) {
       this.floats = values;
+      this.deletedVectors = deletedVectors;
+      this.numLiveVectors =
+          deletedVectors == null ? values.length : values.length - deletedVectors.size();
     }
 
     @Override
@@ -136,14 +233,18 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     @Override
     public int nextDoc() throws IOException {
-      curDoc++;
+      while (++curDoc < floats.length) {
+        if (deletedVectors == null || !deletedVectors.contains(curDoc)) {
+          return curDoc;
+        }
+      }
       return docID();
     }
 
     @Override
     public int advance(int target) throws IOException {
-      curDoc = target;
-      return docID();
+      curDoc = target - 1;
+      return nextDoc();
     }
   }
 }
