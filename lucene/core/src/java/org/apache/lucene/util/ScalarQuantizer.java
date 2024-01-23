@@ -225,6 +225,21 @@ public class ScalarQuantizer {
   }
 
   /**
+   * See {@link #fromVectors(FloatVectorValues, float, int)} for details on how the quantiles are
+   * calculated. NOTE: If there are deleted vectors in the index, do not use this method, but
+   * instead use {@link #fromVectors(FloatVectorValues, float, int)}. This is because the
+   * totalVectorCount is used to account for deleted documents when sampling.
+   */
+  public static ScalarQuantizer fromVectors(
+      FloatVectorValues floatVectorValues, float confidenceInterval) throws IOException {
+    return fromVectors(
+        floatVectorValues,
+        confidenceInterval,
+        floatVectorValues.size(),
+        SCALAR_QUANTIZATION_SAMPLE_SIZE);
+  }
+
+  /**
    * This will read the float vector values and calculate the quantiles. If the number of float
    * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
    * and the quantiles calculated. If the number of float vectors is greater than {@link
