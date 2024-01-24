@@ -43,15 +43,22 @@ test_init_inbound_buffer(void)
     CU_ASSERT_EQUAL(result, DPU_OK);
     uint32_t rank_id = 0;
 
-    result = pthread_once(&key_once, make_key);
-    CU_ASSERT_EQUAL(result, DPU_OK);
+    inbound_scores_for_rank.buffer = calloc(1, sizeof(dpu_score_t *));
+    CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores_for_rank.buffer);
+    inbound_scores_for_rank.nb_scores = calloc(1, sizeof(uint8_t *));
+    CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores_for_rank.nb_scores);
+    inbound_scores_for_rank.nr_ranks = 1;
 
     result = init_inbound_buffer(rank, rank_id, &nr_queries);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
-    inbound_scores_array *inbound_scores = pthread_getspecific(key);
+    dpu_score_t **inbound_scores = inbound_scores_for_rank.buffer;
     CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores);
-    CU_ASSERT_EQUAL(inbound_scores->nr_queries, nr_queries);
+    CU_ASSERT_PTR_NOT_NULL(inbound_scores[0]);
+
+    uint8_t **nb_scores = inbound_scores_for_rank.nb_scores;
+    CU_ASSERT_PTR_NOT_NULL_FATAL(nb_scores);
+    CU_ASSERT_PTR_NOT_NULL(nb_scores[0]);
 
     result = dpu_free(rank);
     CU_ASSERT_EQUAL(result, DPU_OK);
@@ -66,8 +73,14 @@ test_init_inbound_buffers(void)
     dpu_error_t result = dpu_alloc(DPU_ALLOCATE_ALL, NULL, &set);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
-    result = init_inbound_buffers(set, &nr_queries);
+    uint32_t nr_ranks = 0;
+    result = dpu_get_nr_ranks(set, &nr_ranks);
     CU_ASSERT_EQUAL(result, DPU_OK);
+
+    result = init_inbound_buffers(set, &nr_queries, nr_ranks);
+    CU_ASSERT_EQUAL(result, DPU_OK);
+
+    CU_ASSERT_EQUAL(inbound_scores_for_rank.nr_queries, nr_queries);
 
     dpu_sync(set);
 
@@ -154,16 +167,14 @@ test_update_pques(void)
         }
     }
 
-    inbound_scores_array inbound_scores
-        = { .nr_queries = nr_queries, .nb_scores = (uint8_t *)my_nb_scores, .buffer = (dpu_score_t *)my_bounds_buf };
-
     update_bounds_atomic_context ctx = { .nr_queries = nr_queries,
         .nr_topdocs = nr_topdocs,
         .query_mutexes = query_mutexes,
         .score_pques = score_pques,
         .norm_inverse = (float *)norm_inverse };
 
-    update_pques(&inbound_scores, nr_dpus, &ctx);
+    result = update_pques(nr_queries, nr_dpus, &my_bounds_buf, &my_nb_scores, &ctx);
+    CU_ASSERT_EQUAL(result, DPU_OK);
 
     for (int i = 0; i < nr_queries; i++) {
         CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN(nr_dpus, nr_topdocs[i]));
