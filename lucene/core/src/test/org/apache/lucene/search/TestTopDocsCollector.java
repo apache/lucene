@@ -26,6 +26,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.NoMergePolicy;
@@ -300,7 +301,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
   public void testSetMinCompetitiveScore() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
     w.addDocuments(Arrays.asList(doc, doc, doc, doc));
     w.flush();
@@ -362,7 +367,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
     Query q = new MatchAllDocsQuery();
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
     w.addDocuments(Arrays.asList(doc, doc, doc, doc));
     w.flush();
@@ -384,7 +393,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
   public void testTotalHits() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
     w.addDocuments(Arrays.asList(doc, doc, doc, doc));
     w.flush();
@@ -468,7 +481,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
   public void testConcurrentMinScore() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
     w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
     w.flush();
