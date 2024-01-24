@@ -182,7 +182,7 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
     dpu_score_t **inbound_scores = &inbound_scores_for_rank.buffer[rank_id];
     *inbound_scores = SAFE_REALLOC(*inbound_scores, sizeof(dpu_score_t[nr_dpus][nr_queries][MAX_NB_SCORES]));
     uint8_t **nb_scores = &inbound_scores_for_rank.nb_scores[rank_id];
-    *nb_scores = SAFE_REALLOC(*nb_scores, sizeof(uint8_t[nr_dpus][nr_queries]));
+    *nb_scores = SAFE_REALLOC(*nb_scores, sizeof(uint8_t[nr_dpus][ALIGN8(nr_queries)]));
 
     return DPU_OK;
 }
@@ -344,12 +344,12 @@ read_best_scores(struct dpu_set_t rank,
 }
 
 NODISCARD static inline dpu_error_t
-read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint32_t nr_dpus, uint8_t (*my_nb_scores)[nr_dpus][nr_queries])
+read_nb_best_scores(struct dpu_set_t rank, int nr_queries, uint32_t nr_dpus, uint8_t (*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)])
 {
     struct dpu_set_t dpu;
     uint32_t each_dpu = 0;
     DPU_FOREACH (rank, dpu, each_dpu) {
-        DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_nb_scores)[each_dpu][nr_queries]));
+        DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_nb_scores)[each_dpu][0]));
     }
     DPU_PROPAGATE(
         dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "nb_best_scores", 0, ALIGN8(sizeof(uint8_t[nr_queries])), DPU_XFER_DEFAULT));
@@ -361,7 +361,7 @@ NODISCARD static inline dpu_error_t
 update_pques(int nr_queries,
     uint32_t nr_dpus,
     const dpu_score_t (*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES],
-    const uint8_t (*my_nb_scores)[nr_dpus][nr_queries],
+    const uint8_t (*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)],
     const update_bounds_atomic_context *ctx)
 {
     const int *nr_topdocs = ctx->nr_topdocs;
@@ -413,7 +413,7 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
 
     const uint32_t nr_dpus = DPU_PROPERTY_OR_PROPAGATE(uint32_t, dpu_get_nr_dpus, rank);
     dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = (void *)inbound_scores_for_rank.buffer[rank_id];
-    uint8_t(*my_nb_scores)[nr_dpus][nr_queries] = (void *)inbound_scores_for_rank.nb_scores[rank_id];
+    uint8_t(*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)] = (void *)inbound_scores_for_rank.nb_scores[rank_id];
     DPU_PROPAGATE(read_best_scores(rank, nr_queries, nr_dpus, my_bounds));
     DPU_PROPAGATE(read_nb_best_scores(rank, nr_queries, nr_dpus, my_nb_scores));
 

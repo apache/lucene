@@ -140,7 +140,7 @@ test_update_pques(void)
     int nr_queries = 5;
     int nr_topdocs[] = { 10, 20, 30, 40, 50 };
     dpu_score_t my_bounds_buf[nr_dpus][nr_queries][MAX_NB_SCORES];
-    uint8_t my_nb_scores[nr_dpus][nr_queries];
+    uint8_t my_nb_scores[nr_dpus][ALIGN8(nr_queries)];
     float norm_inverse[nr_queries][256];
     PQue score_buf[nr_queries];
     pque_array score_pques = { .pques = score_buf, .nr_pques = nr_queries };
