@@ -228,6 +228,8 @@ Bug Fixes
 
 * GITHUB#12885: Fixed the bug that JapaneseReadingFormFilter cannot convert some hiragana to romaji. (Takuma Kuramitsu)
 
+* GITHUB#12287: Fix a bug in ShapeTestUtil. (Heemin Kim)
+
 Build
 ---------------------
 
