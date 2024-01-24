@@ -93,6 +93,90 @@ public class TestTaxonomyIndexArrays extends LuceneTestCase {
     dir.close();
   }
 
+  public void testConstructFromIndex() throws IOException {
+    Directory dir = newDirectory();
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
+    TaxonomyIndexArrays oldTia, newTia;
+    TaxonomyIndexArrays.ChunkedIntArray oldParents, newParents;
+
+    // Test 1
+    // Add one category. The first TIA will have a non-zero length incomplete chunk.
+    taxoWriter.addCategory(new FacetLabel("a"));
+    taxoWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      oldTia = new TaxonomyIndexArrays(reader);
+    }
+
+    oldParents = oldTia.parents();
+    assertEquals(2, oldParents.length());
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, oldParents.get(0));
+    assertEquals(TaxonomyReader.ROOT_ORDINAL, oldParents.get(1));
+
+    // Test 2
+    // Add enough categories to fill the first chunk.
+    for (int i = 2; i < TaxonomyIndexArrays.CHUNK_SIZE; i++) {
+      taxoWriter.addCategory(new FacetLabel("a", Integer.toString(i)));
+    }
+    taxoWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      oldTia = new TaxonomyIndexArrays(reader);
+    }
+
+    oldParents = oldTia.parents();
+    assertEquals(TaxonomyIndexArrays.CHUNK_SIZE, oldParents.length());
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, oldParents.get(0));
+    assertEquals(TaxonomyReader.ROOT_ORDINAL, oldParents.get(1));
+    for (int i = 2; i < oldParents.length(); i++) {
+      assertEquals(1, oldParents.get(i));
+    }
+
+    // Test 3
+    // Both TIAs have the same parents and siblings arrays.
+    oldTia.children(); // Initializes children
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      newTia = new TaxonomyIndexArrays(reader, oldTia);
+    }
+    checkInvariants(oldTia, newTia);
+
+    // Test 4
+    // Add one more category, which will start a new chunk on the new TIA.
+    taxoWriter.addCategory(new FacetLabel("a", Integer.toString(TaxonomyIndexArrays.CHUNK_SIZE)));
+    taxoWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      newTia = new TaxonomyIndexArrays(reader, oldTia);
+    }
+
+    newParents = newTia.parents();
+    assertEquals(1 + TaxonomyIndexArrays.CHUNK_SIZE, newParents.length());
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, newParents.get(0));
+    assertEquals(TaxonomyReader.ROOT_ORDINAL, newParents.get(1));
+    for (int i = 2; i < newParents.length(); i++) {
+      assertEquals(1, newParents.get(i));
+    }
+
+    // Test 5
+    // Fill the second chunk of the new TIA.
+    for (int i = 1; i < TaxonomyIndexArrays.CHUNK_SIZE; i++) {
+      taxoWriter.addCategory(
+          new FacetLabel("a", Integer.toString(i + TaxonomyIndexArrays.CHUNK_SIZE)));
+    }
+    taxoWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      newTia = new TaxonomyIndexArrays(reader, oldTia);
+    }
+
+    newParents = newTia.parents();
+    assertEquals(2 * TaxonomyIndexArrays.CHUNK_SIZE, newParents.length());
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, newParents.get(0));
+    assertEquals(TaxonomyReader.ROOT_ORDINAL, newParents.get(1));
+    for (int i = 2; i < newParents.length(); i++) {
+      assertEquals(1, newParents.get(i));
+    }
+
+    taxoWriter.close();
+    dir.close();
+  }
+
   public void testRefresh() throws IOException {
     Directory dir = newDirectory();
 

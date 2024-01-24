@@ -82,7 +82,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   public TaxonomyIndexArrays(IndexReader reader) throws IOException {
     int[][] parentArray = allocateChunkedArray(reader.maxDoc(), 0);
     assert parentArray.length > 0;
-    if (parentArray[parentArray.length - 1].length > 0) {
+    if (parentArray[0].length > 0) {
       initParents(parentArray, reader, 0);
       parentArray[0][0] = TaxonomyReader.INVALID_ORDINAL;
     }
@@ -98,10 +98,9 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     // to happen.
     int[][] parentArray = allocateChunkedArray(reader.maxDoc(), copyFrom.parents.values.length - 1);
     assert parentArray.length > 0;
-    if (parentArray[parentArray.length - 1].length > 0) {
-      copyChunkedArray(copyFrom.parents.values, parentArray);
-      initParents(parentArray, reader, copyFrom.parents.length());
-    }
+
+    copyChunkedArray(copyFrom.parents.values, parentArray);
+    initParents(parentArray, reader, copyFrom.parents.length());
     parents = new ChunkedIntArray(parentArray);
     if (copyFrom.initializedChildren) {
       initChildrenSiblings(copyFrom);
