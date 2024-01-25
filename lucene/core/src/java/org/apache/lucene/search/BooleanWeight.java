@@ -249,8 +249,72 @@ final class BooleanWeight extends Weight {
       return optional.get(0);
     }
 
+    // Calculate count(clause1 OR clause2) as count(clause1) + count(clause2) - count(clause1 AND
+    // clause2)
+    if (scoreMode == ScoreMode.COMPLETE_NO_SCORES
+        && context.reader().hasDeletions() == false
+        && query.isTwoClauseDisjunctionWithTerms()) {
+      return twoClauseTermDisjunctionOptimizedScorer(context);
+    }
+
     return new BooleanScorer(
         this, optional, Math.max(1, query.getMinimumNumberShouldMatch()), scoreMode.needsScores());
+  }
+
+  private BulkScorer twoClauseTermDisjunctionOptimizedScorer(LeafReaderContext context)
+      throws IOException {
+    List<Scorer> optionalScorers = new ArrayList<>();
+    final int[] clauseDocFreqSum = new int[1];
+    for (WeightedBooleanClause wc : weightedClauses) {
+      clauseDocFreqSum[0] += wc.weight.count(context);
+      ScorerSupplier scorerSupplier = wc.weight.scorerSupplier(context);
+      if (scorerSupplier != null) {
+        optionalScorers.add(scorerSupplier.get(Long.MAX_VALUE));
+      }
+    }
+
+    final ConjunctionBulkScorer conjunctionBulkScorer =
+        optionalScorers.size() == 2 ? new ConjunctionBulkScorer(List.of(), optionalScorers) : null;
+    return new BulkScorer() {
+      @Override
+      public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+          throws IOException {
+        final int[] intersectionScore = new int[1];
+        LeafCollector intersectionCollector =
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                intersectionScore[0]++;
+              }
+
+              @Override
+              public void collect(DocIdStream stream) throws IOException {
+                intersectionScore[0] += stream.count();
+              }
+            };
+
+        int leadDocId = 0;
+        if (conjunctionBulkScorer != null) {
+          leadDocId = conjunctionBulkScorer.score(intersectionCollector, acceptDocs, min, max);
+        }
+
+        for (int i = 1; i <= clauseDocFreqSum[0] - intersectionScore[0]; i++) {
+          collector.collect(i);
+        }
+        return leadDocId;
+      }
+
+      @Override
+      public long cost() {
+        if (conjunctionBulkScorer == null) {
+          return 0;
+        }
+        return conjunctionBulkScorer.cost();
+      }
+    };
   }
 
   // Return a BulkScorer for the required clauses only

@@ -179,6 +179,15 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return clauses.size() == getClauses(Occur.SHOULD).size() && minimumNumberShouldMatch <= 1;
   }
 
+  /** Whether this query is a two clause disjunction with two term query clauses. */
+  boolean isTwoClauseDisjunctionWithTerms() {
+    return clauses.size() == 2
+        && getClauses(Occur.SHOULD).size() == 2
+        && minimumNumberShouldMatch == 1
+        && clauses.get(0).getQuery() instanceof TermQuery
+        && clauses.get(1).getQuery() instanceof TermQuery;
+  }
+
   /**
    * Returns an iterator on the clauses in this query. It implements the {@link Iterable} interface
    * to make it possible to do:

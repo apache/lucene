@@ -962,6 +962,47 @@ public class TestBooleanQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // test twoClauseTermDisjunctionOptimizedScorer
+  public void testTwoClauseTermDisjunctionOptimizedScorer() throws Exception {
+    List<String[]> docContent =
+        Arrays.asList(
+            new String[] {"A", "B"},
+            new String[] {"A"},
+            new String[] {},
+            new String[] {"A", "B", "C"},
+            new String[] {"B"},
+            new String[] {"B", "C"});
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+
+        for (String[] values : docContent) {
+          Document doc = new Document();
+          for (String value : values) {
+            doc.add(new StringField("foo", value, Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query query =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("foo", "A")), BooleanClause.Occur.SHOULD)
+                .add(new TermQuery(new Term("foo", "B")), BooleanClause.Occur.SHOULD)
+                .setMinimumNumberShouldMatch(1)
+                .build();
+
+        int count = searcher.count(query);
+        assertEquals(5, count);
+      }
+    }
+  }
+
   // test BlockMaxMaxscoreScorer
   public void testDisjunctionTwoClausesMatchesCountAndScore() throws Exception {
     List<String[]> docContent =
