@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.hppc.IntHashSet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -80,7 +81,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
 
   public TaxonomyIndexArrays(IndexReader reader) throws IOException {
     int[][] parentArray = allocateChunkedArray(reader.maxDoc(), 0);
-    if (parentArray.length > 0) {
+    assert parentArray.length > 0;
+    if (parentArray[0].length > 0) {
       initParents(parentArray, reader, 0);
       parentArray[0][0] = TaxonomyReader.INVALID_ORDINAL;
     }
@@ -95,10 +97,10 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     // NRT reader was obtained, even though nothing was changed. this is not very likely
     // to happen.
     int[][] parentArray = allocateChunkedArray(reader.maxDoc(), copyFrom.parents.values.length - 1);
-    if (parentArray.length > 0) {
-      copyChunkedArray(copyFrom.parents.values, parentArray);
-      initParents(parentArray, reader, copyFrom.parents.length());
-    }
+    assert parentArray.length > 0;
+
+    copyChunkedArray(copyFrom.parents.values, parentArray);
+    initParents(parentArray, reader, copyFrom.parents.length());
     parents = new ChunkedIntArray(parentArray);
     if (copyFrom.initializedChildren) {
       initChildrenSiblings(copyFrom);
@@ -164,6 +166,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       siblings.set(0, TaxonomyReader.INVALID_ORDINAL);
     }
 
+    int firstChunkStart = first - (first & CHUNK_MASK);
+    IntHashSet reallocatedChildChunks = new IntHashSet();
     for (int i = first; i < length; i++) {
       int parent = parents.get(i);
       // The existing youngest child of the parent is the next older sibling of i.
@@ -171,6 +175,15 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       // the following line is already set when we get here
       siblings.set(i, children.get(parent));
       // The new youngest child of the parent is i.
+      if (parent < firstChunkStart) {
+        int chunkIdx = parent >> CHUNK_SIZE_BITS;
+        if (reallocatedChildChunks.contains(chunkIdx) == false) {
+          reallocatedChildChunks.add(chunkIdx);
+          int[] oldChildren = children.values[chunkIdx];
+          children.values[chunkIdx] = new int[CHUNK_SIZE];
+          System.arraycopy(oldChildren, 0, children.values[chunkIdx], 0, oldChildren.length);
+        }
+      }
       children.set(parent, i);
     }
   }
