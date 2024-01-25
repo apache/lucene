@@ -7,14 +7,10 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
-
-======================== Lucene 9.9.2 =======================
-
-Bug Fixes
----------------------
 
 * GITHUB#13027: Fix NPE when sampling for quantization in Lucene99HnswScalarQuantizedVectorsFormat (Ben Trent)
+
+* GITHUB#13014: Rollback the tmp storage of BytesRefHash to -1 after sort (Guo Feng)
 
 ======================== Lucene 9.9.1 =======================
 
