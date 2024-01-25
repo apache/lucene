@@ -16,18 +16,17 @@ include(CheckIPOSupported)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_STANDARD 11)
-
-set(CMAKE_C_FLGS_DEBUG
-  "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address -fno-omit-frame-pointer")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra")
-link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
-
 add_library(${PROJECT_NAME} src/nativelib.c src/topdocs_sync.c)
+
 target_include_directories(
   ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} PRIVATE STC/include)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES} Threads::Threads)
+target_compile_features(${PROJECT_NAME} PUBLIC c_std_11)
+target_compile_options(${PROJECT_NAME} PRIVATE
+  $<$<CONFIG:Debug>:-Wall -Wextra -Werror -g3 -fsanitize=address,undefined -fno-omit-frame-pointer>
+  $<$<CONFIG:Release>:-Wall -Wextra>)
+target_link_options(${PROJECT_NAME} PRIVATE
+  $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer>)
 
 check_ipo_supported(RESULT result OUTPUT output)
 
@@ -43,8 +42,11 @@ install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX})
 add_executable(run_test test/test.c)
 
 target_link_libraries(run_test PRIVATE ${CUNIT_LIBRARIES} ${DPU_HOST_LIBRARIES} Threads::Threads)
-target_include_directories(run_test PRIVATE ${CUNIT_INCLUDE_DIRS} $<TARGET_PROPERTY:dpuLucene,INCLUDE_DIRECTORIES> src)
-target_compile_options(run_test PRIVATE -Wall -Wextra -Werror -g3 -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer)
-target_link_options(run_test PRIVATE -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer)
+target_include_directories(run_test PRIVATE
+  ${CUNIT_INCLUDE_DIRS} $<TARGET_PROPERTY:dpuLucene,INCLUDE_DIRECTORIES> src)
+target_compile_features(run_test PUBLIC c_std_11)
+target_compile_options(run_test PRIVATE
+  -Wall -Wextra -Werror -g3 -fsanitize=undefined,address -fno-omit-frame-pointer)
+target_link_options(run_test PRIVATE -fsanitize=undefined,address -fno-omit-frame-pointer)
 
 add_test(NAME run_test COMMAND run_test)
