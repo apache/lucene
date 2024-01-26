@@ -435,9 +435,6 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params *args)
             args->updated_bounds[i_qry] = (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry]);
         else
             args->updated_bounds[i_qry] = 0;
-        printf("new lower bound for query %u = %u, queue size=%lu topdocs=%u\n",
-                        i_qry, args->updated_bounds[i_qry], PQue_size(&args->score_pques.pques[i_qry]),
-                        args->nr_topdocs[i_qry]);
     }
 
     DPU_PROPAGATE(dpu_broadcast_to(
