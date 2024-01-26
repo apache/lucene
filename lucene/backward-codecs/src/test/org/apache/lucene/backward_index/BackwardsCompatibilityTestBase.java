@@ -24,8 +24,11 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.codecs.Codec;
@@ -47,6 +50,74 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
   protected final String indexPattern;
 
+  private static final Set<Version> BINARY_SUPPORTED_VERSIONS;
+
+  static {
+    String[] oldVersions = new String[] {
+            "8.0.0",
+            "8.0.0",
+            "8.1.0",
+            "8.1.0",
+            "8.1.1",
+            "8.1.1",
+            "8.2.0",
+            "8.2.0",
+            "8.3.0",
+            "8.3.0",
+            "8.3.1",
+            "8.3.1",
+            "8.4.0",
+            "8.4.0",
+            "8.4.1",
+            "8.4.1",
+            "8.5.0",
+            "8.5.0",
+            "8.5.1",
+            "8.5.1",
+            "8.5.2",
+            "8.5.2",
+            "8.6.0",
+            "8.6.0",
+            "8.6.1",
+            "8.6.1",
+            "8.6.2",
+            "8.6.2",
+            "8.6.3",
+            "8.6.3",
+            "8.7.0",
+            "8.7.0",
+            "8.8.0",
+            "8.8.0",
+            "8.8.1",
+            "8.8.1",
+            "8.8.2",
+            "8.8.2",
+            "8.9.0",
+            "8.9.0",
+            "8.10.0",
+            "8.10.0",
+            "8.10.1",
+            "8.10.1",
+            "8.11.0",
+            "8.11.0",
+            "8.11.1",
+            "8.11.1",
+            "8.11.2",
+            "8.11.2"
+    };
+
+    Set<Version> binaryVersions = new HashSet<>();
+    for (String version : oldVersions) {
+      try {
+        binaryVersions.add(Version.parse(version));
+      } catch (ParseException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    BINARY_SUPPORTED_VERSIONS = binaryVersions;
+
+  }
 
   public BackwardsCompatibilityTestBase(
       @Name("version") Version version, @Name("pattern") String indexPattern) {

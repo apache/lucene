@@ -423,9 +423,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     binarySupportedNames = list.toArray(new String[0]);
   }
 
-  static Map<String, Directory> oldIndexDirs;
-
-
 
 
   /**
@@ -559,12 +556,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       dir.close();
     }
   }
-
-
-
-
-
-
 
 
   public void verifyUsesDefaultCodec(Directory dir, String name) throws IOException {
