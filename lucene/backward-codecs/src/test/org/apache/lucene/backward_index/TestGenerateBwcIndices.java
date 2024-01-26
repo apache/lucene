@@ -31,7 +31,6 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
         TestIndexSortBackwardsCompatibility sortedTest = new TestIndexSortBackwardsCompatibility(Version.LATEST,
                 createPattern(TestIndexSortBackwardsCompatibility.INDEX_NAME, TestIndexSortBackwardsCompatibility.SUFFIX));
         sortedTest.createBWCIndex();
-
         TestBasicBackwardsCompatibility basicTest = new TestBasicBackwardsCompatibility(Version.LATEST,
                 createPattern(TestBasicBackwardsCompatibility.INDEX_NAME, TestBasicBackwardsCompatibility.SUFFIX_CFS));
         basicTest.createBWCIndex();
@@ -45,9 +44,13 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
                     createPattern(TestDVUpdateBackwardsCompatibility.INDEX_NAME, TestDVUpdateBackwardsCompatibility.SUFFIX));
             dvUpdatesTest.createBWCIndex();
 
-            TestMoreTermsBackwardsCompatibility  moreTermsTest = new TestMoreTermsBackwardsCompatibility(Version.LATEST,
+            TestMoreTermsBackwardsCompatibility moreTermsTest = new TestMoreTermsBackwardsCompatibility(Version.LATEST,
                     createPattern(TestMoreTermsBackwardsCompatibility.INDEX_NAME, TestMoreTermsBackwardsCompatibility.SUFFIX));
             moreTermsTest.createBWCIndex();
+
+            TestEmptyIndexBackwardsCompatibility emptyIndex = new TestEmptyIndexBackwardsCompatibility(Version.LATEST,
+                    createPattern(TestEmptyIndexBackwardsCompatibility.INDEX_NAME, TestEmptyIndexBackwardsCompatibility.SUFFIX));
+            emptyIndex.createBWCIndex();
         }
 
     }

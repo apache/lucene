@@ -159,30 +159,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // to the oldNames array.
 
 
-
-  private Path getIndexDir() {
-    String path = System.getProperty("tests.bwcdir");
-    assumeTrue(
-        "backcompat creation tests must be run with -Dtests.bwcdir=/path/to/write/indexes",
-        path != null);
-    return Paths.get(path);
-  }
-
-  public void testCreateEmptyIndex() throws Exception {
-    Path indexDir = getIndexDir().resolve("emptyIndex");
-    Files.deleteIfExists(indexDir);
-    IndexWriterConfig conf =
-        new IndexWriterConfig(new MockAnalyzer(random()))
-            .setUseCompoundFile(false)
-            .setMergePolicy(NoMergePolicy.INSTANCE);
-    try (Directory dir = newFSDirectory(indexDir);
-        IndexWriter writer = new IndexWriter(dir, conf)) {
-      writer.flush();
-    }
-  }
-
-
-
   static final String[] unsupportedNames = {
     "1.9.0-cfs",
     "1.9.0-nocfs",
@@ -605,19 +581,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           codec.getName().startsWith("Lucene"));
     }
     r.close();
-  }
-
-  public static final String emptyIndex = "empty.9.0.0.zip";
-
-  public void testUpgradeEmptyOldIndex() throws Exception {
-    Path oldIndexDir = createTempDir("emptyIndex");
-    TestUtil.unzip(getDataInputStream(emptyIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    TestIndexUpgradeBackwardsCompatibility.newIndexUpgrader(dir).upgrade();
-
-    TestIndexUpgradeBackwardsCompatibility.checkAllSegmentsUpgraded(dir, 9);
-
-    dir.close();
   }
 
 
