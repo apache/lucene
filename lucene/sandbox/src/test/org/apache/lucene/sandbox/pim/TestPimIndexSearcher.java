@@ -27,6 +27,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.sandbox.sdk.DpuException;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -403,16 +404,16 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     System.out.println("\nTEST PIM PHRASE QUERY (PHRASE MORE TEXT)");
 
-    checkPhraseQuery(searcher, "title", "Apache", "Lucene");
-    checkPhraseQuery(searcher, "body", "recette", "secrète");
-    checkPhraseQuery(searcher, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
-    checkPhraseQuery(searcher, "body", "fuzzy", "search");
-    checkPhraseQuery(searcher, "body", "edit", "distance.");
-    checkPhraseQuery(searcher, "body", "fuzzy", "search", "based", "on", "edit", "distance.");
+    checkPhraseQuery(searcher, 10, "title", "Apache", "Lucene");
+    checkPhraseQuery(searcher, 10, "body", "recette", "secrète");
+    checkPhraseQuery(searcher, 10, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
+    checkPhraseQuery(searcher, 10, "body", "fuzzy", "search");
+    checkPhraseQuery(searcher, 10, "body", "edit", "distance.");
+    checkPhraseQuery(searcher, 10, "body", "fuzzy", "search", "based", "on", "edit", "distance.");
     checkPhraseQuery(
-        searcher, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
+        searcher, 10, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
     checkPhraseQuery(
-        searcher,
+        searcher, 10,
         "body",
         "Lucene",
         "is",
@@ -447,13 +448,48 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     System.out.println("\nTEST PIM PHRASE QUERY NO LOAD (PHRASE MORE TEXT)");
 
-    checkPhraseQuery(searcher, "title", "Apache", "Lucene");
-    checkPhraseQuery(searcher, "body", "recette", "secrète");
-    checkPhraseQuery(searcher, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
+    checkPhraseQuery(searcher, 10, "title", "Apache", "Lucene");
+    checkPhraseQuery(searcher, 10, "body", "recette", "secrète");
+    checkPhraseQuery(searcher, 10, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
     checkPhraseQuery(
-        searcher, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
+        searcher, 10, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
 
     System.out.println("");
+    reader.close();
+    closeDirectories();
+  }
+
+  public void testPimPhraseQueryLowerBound() throws Exception {
+    testPimPhraseQueryLowerBoundWithParams(1, 1, 1);
+    testPimPhraseQueryLowerBoundWithParams(2, 1, 1);
+    testPimPhraseQueryLowerBoundWithParams(4, 1, 1);
+    testPimPhraseQueryLowerBoundWithParams(1, 1, 2);
+    testPimPhraseQueryLowerBoundWithParams(2, 1, 2);
+    testPimPhraseQueryLowerBoundWithParams(4, 1, 2);
+    testPimPhraseQueryLowerBoundWithParams(4, 1, 20);
+    testPimPhraseQueryLowerBoundWithParams(4, 2, 1);
+    testPimPhraseQueryLowerBoundWithParams(4, 2, 2);
+  }
+
+  private void testPimPhraseQueryLowerBoundWithParams(int nbDpus, int nbSegments, int nbTopDocs)
+          throws Exception {
+
+    initDirectories();
+    PimConfig pimConfig = new PimConfig(nbDpus, nbSegments);
+    writeLowerBoundTestText(pimConfig);
+
+    // load the index to PIM system
+    PimSystemManager pimSystemManager = PimSystemManager.get();
+    pimSystemManager.loadPimIndex(pimDirectory);
+    IndexReader reader = DirectoryReader.open(directory);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    System.out.println("\nTEST PIM PHRASE QUERY (LOWER BOUND)");
+
+    checkPhraseQuery(searcher, nbTopDocs, "body", "Une", "phrase", "a", "trouver");
+
+    System.out.println("");
+    pimSystemManager.unloadPimIndex();
     reader.close();
     closeDirectories();
   }
@@ -582,20 +618,219 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     return writer.getPimIndexInfo();
   }
 
-  private void checkPhraseQuery(IndexSearcher searcher, String field, String... terms)
+  PimIndexInfo writeLowerBoundTestText(PimConfig pimConfig) throws IOException {
+
+    IndexWriterConfig indexWriterConfig =
+            new IndexWriterConfig(getAnalyzer()).setMergePolicy(NoMergePolicy.INSTANCE);
+    PimIndexWriter writer =
+            new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+
+    Document doc = new Document();
+    doc.add(newTextField("title", "doc0", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Il joue avec le vent, cause avec le nuage,\n" +
+                            "Et s’enivre en chantant du chemin de la croix ;\n" +
+                            "Et l’Esprit qui le suit dans son pèlerinage\n" +
+                            "Pleure de le voir gai comme un oiseau des bois." +
+                            "Une phrase a trouver . Tous ceux qu’il veut aimer l’observent avec crainte,\n" +
+                            "Ou bien, s’enhardissant de sa tranquillité,\n" +
+                            "Cherchent à qui saura lui tirer une plainte,\n" +
+                            "Et font sur lui l’essai de leur férocité.",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc1", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    " Voici venir les temps où vibrant sur sa tige\n" +
+                            "Chaque fleur s’évapore ainsi qu’un encensoir ;\n" +
+                            "Les sons et les parfums tournent dans l’air du soir ;\n" +
+                            "Valse mélancolique et langoureux vertige ! Une phrase a trouver . " +
+                            " Une phrase a trouver . Chaque fleur s’évapore ainsi qu’un encensoir ;\n" +
+                            "Le violon frémit comme un cœur qu’on afflige ;\n" +
+                            "Valse mélancolique et langoureux vertige !\n" +
+                            "Le ciel est triste et beau comme un grand reposoir. Une phrase a trouver . " +
+                            " Une phrase a trouver . Le violon frémit comme un cœur qu’on afflige,\n" +
+                            "Un cœur tendre, qui hait le néant vaste et noir ! Une phrase a trouver . " +
+                            "Le ciel est triste et beau comme un grand reposoir ;\n" +
+                            "Le soleil s’est noyé dans son sang qui se fige. Une phrase a trouver . " +
+                            " Un cœur tendre, qui hait le néant vaste et noir,\n" +
+                            "Du passé lumineux recueille tout vestige ! Une phrase a trouver . " +
+                            " Le soleil s’est noyé dans son sang qui se fige……\n" +
+                            "Ton souvenir en moi luit comme un ostensoir ! Une phrase a trouver . ",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc2", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "La Nature est un temple où de vivants piliers\n" +
+                            "Laissent parfois sortir de confuses paroles ;\n" +
+                            "L’homme y passe à travers des forêts de symboles\n" +
+                            "Qui l’observent avec des regards familiers. Une phrase a ne pas trouver .",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc3", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Rubens, fleuve d’oubli, jardin de la paresse,\n" +
+                            "Oreiller de chair fraîche où l’on ne peut aimer,\n" +
+                            "Mais où la vie afflue et s’agite sans cesse,\n" +
+                            "Comme l’air dans le ciel et la mer dans la mer ; Une phrase a ne pas trouver. " +
+                            "Léonard de Vinci, miroir profond et sombre,\n" +
+                            "Où des anges charmants, avec un doux souris\n" +
+                            "Tout chargé de mystère, apparaissent à l’ombre\n" +
+                            "Des glaciers et des pins qui ferment leur pays ;" +
+                            " Une phrase a trouver . " +
+                            " Rembrandt, triste hôpital tout rempli de murmures,\n" +
+                            "Et d’un grand crucifix décoré seulement,\n" +
+                            "Où la prière en pleurs s’exhale des ordures,\n" +
+                            "Et d’un rayon d’hiver traversé brusquement ; Une phrase a trouver" +
+                            " Michel-Ange, lieu vague où l’on voit des Hercules\n" +
+                            "Se mêler à des Christs, et se lever tout droits\n" +
+                            "Des fantômes puissants qui dans les crépuscules\n" +
+                            "Déchirent leur suaire en étirant leurs doigts ;",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc4", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Une phrase a trouver . La tribu prophétique aux prunelles ardentes\n" +
+                            "Hier s’est mise en route, emportant ses petits\n" +
+                            "Sur son dos, ou livrant à leurs fiers appétits\n" +
+                            "Le trésor toujours prêt des mamelles pendantes." +
+                            " Une phrase a trouver . " +
+                            "Les hommes vont à pied sous leurs armes luisantes\n" +
+                            "Le long des chariots où les leurs sont blottis,\n" +
+                            "Promenant sur le ciel des yeux appesantis\n" +
+                            "Par le morne regret des chimères absentes." +
+                            "Une phrase a trouver . Du fond de son réduit sablonneux, le grillon,\n" +
+                            "Les regardant passer, redouble sa chanson ;\n" +
+                            "Cybèle, qui les aime, augmente ses verdures,",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc5", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Quand Don Juan descendit vers l’onde souterraine\n" +
+                            "Et lorsqu’il eut donné son obole à Charon,\n" +
+                            "Un sombre mendiant, l’œil fier comme Antisthène,\n" +
+                            "D’un bras vengeur et fort saisit chaque aviron." +
+                            "Une phrase a ne pas trouver. Une phrase a trouver . Une phrase a ne pas trouver. " +
+                            "Montrant leurs seins pendants et leurs robes ouvertes,\n" +
+                            "Des femmes se tordaient sous le noir firmament,\n" +
+                            "Et, comme un grand troupeau de victimes offertes,\n" +
+                            "Derrière lui traînaient un long mugissement.",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    writer.commit();
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc6", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Dans les caveaux d’insondable tristesse\n" +
+                            "Où le Destin m’a déjà relégué ;\n" +
+                            "Où jamais n’entre un rayon rose et gai ;\n" +
+                            "Où, seul avec la Nuit, maussade hôtesse, Une phrase a trouver . " +
+                            " Une phrase a trouver . Je suis comme un peintre qu’un Dieu moqueur\n" +
+                            "Condamne à peindre, hélas ! sur les ténèbres ;\n" +
+                            "Où, cuisinier aux appétits funèbres,\n" +
+                            "Je fais bouillir et je mange mon cœur,\n " +
+                            " Une phrase a ne pas trouver. " +
+                            " Par instants brille, et s’allonge, et s’étale\n" +
+                            "Un spectre fait de grâce et de splendeur.\n" +
+                            "À sa rêveuse allure orientale, Une phrase a trouver . Quand il atteint sa totale grandeur,\n" +
+                            "Je reconnais ma belle visiteuse :\n" +
+                            "C’est Elle ! noire et pourtant lumineuse.\n" +
+                            "Une phrase a trouver . ",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc7", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Lecteur, as-tu quelquefois respiré\n" +
+                            "Avec ivresse et lente gourmandise\n" +
+                            "Ce grain d’encens qui remplit une église,\n" +
+                            "Ou d’un sachet le musc invétéré ?",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc8", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Une phrase a ne pas trouver. Une phrase a ne pas trouver. Une phrase a ne pas trouver. " +
+                            " Une phrase qu'il ne faut pas trouver. Une phrase. Une suite de mots a trouver . " +
+                            " Un mot a trouver . " +
+                            " Une belle phrase. ",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc9", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Je suis comme le roi d’un pays pluvieux,\n" +
+                            "Riche, mais impuissant, jeune et pourtant très-vieux,\n" +
+                            "Qui, de ses précepteurs méprisant les courbettes, " +
+                            "S’ennuie avec ses chiens comme avec d’autres bêtes. Une phrase.",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(newTextField("title", "doc10", Field.Store.YES));
+    doc.add(
+            newTextField(
+                    "body",
+                    "Quand le ciel bas et lourd pèse comme un couvercle\n" +
+                            "Sur l’esprit gémissant en proie aux longs ennuis,\n" +
+                            "Et que de l’horizon embrassant tout le cercle\n" +
+                            "Il nous verse un jour noir plus triste que les nuits ; a trouver . Une phrase",
+                    Field.Store.YES));
+    writer.addDocument(doc);
+
+    System.out.println("-- CLOSE -------------------------------");
+    writer.close();
+    return writer.getPimIndexInfo();
+  }
+
+  private void checkPhraseQuery(IndexSearcher searcher, int ntopdocs, String field, String... terms)
       throws IOException {
 
-    System.out.println("\nPIM Searching for " + field + ":" + Arrays.toString(terms));
-    var matchesPim = searcher.search(new PimPhraseQuery(field, terms), 10);
-    System.out.println("Found " + matchesPim.totalHits + " results:");
-    for (ScoreDoc m : matchesPim.scoreDocs) {
-      System.out.println("Doc:" + m.doc + " score:" + m.score);
-    }
-    ;
-    var matchesRef = searcher.search(new PhraseQuery(field, terms), 10);
+    var matchesRef = searcher.search(new PhraseQuery(field, terms), ntopdocs);
     System.out.println("\nRef Searching for " + field + ":" + Arrays.toString(terms));
     System.out.println("Found " + matchesRef.totalHits + " results:");
     for (ScoreDoc m : matchesRef.scoreDocs) {
+      System.out.println("Doc:" + m.doc + " score:" + m.score);
+    }
+    ;
+    System.out.println("\nPIM Searching for " + field + ":" + Arrays.toString(terms));
+    var matchesPim = searcher.search(new PimPhraseQuery(field, terms).setMaxNumHitsFromDpuSystem(ntopdocs), ntopdocs);
+    System.out.println("Found " + matchesPim.totalHits + " results:");
+    for (ScoreDoc m : matchesPim.scoreDocs) {
       System.out.println("Doc:" + m.doc + " score:" + m.score);
     }
     ;
