@@ -35,10 +35,10 @@ static const uint32_t NB_SCORES_SCALING_FACTOR = 2;
  */
 dpu_error_t
 topdocs_lower_bound_sync(struct dpu_set_t set,
-    const int *nr_topdocs,
-    const float *norm_inverse,
-    const int *quant_factors,
-    int nr_queries) __attribute_warn_unused_result__;
+    int nr_queries,
+    const int nr_topdocs[nr_queries],
+    const float norm_inverse[nr_queries][NORM_INVERSE_CACHE_SIZE],
+    const int quant_factors[nr_queries]) __attribute_warn_unused_result__;
 
 /**
  * Frees the resources allocated for the topdocs synchronization.

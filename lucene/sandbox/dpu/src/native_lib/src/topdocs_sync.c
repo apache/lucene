@@ -72,6 +72,12 @@ typedef float score_t;
         CHECK_REALLOC(_ptr, ptr);                                                                                                \
         _ptr;                                                                                                                    \
     })
+#define MIN(a, b)                                                                                                                \
+    ({                                                                                                                           \
+        __typeof__(a) _a = (a);                                                                                                  \
+        __typeof__(b) _b = (b);                                                                                                  \
+        _a > _b ? _b : _a;                                                                                                       \
+    })
 
 typedef struct {
     PQue *pques; // PQue[nr_pques]
@@ -84,8 +90,8 @@ typedef struct {
 } mutex_array;
 
 typedef struct {
-    dpu_score_t **buffer; // (dpu_score_t[nr_dpus][nr_queries][MAX_NB_SCORES])[nr_ranks]
-    uint8_t **nb_scores; // (uint8_t[nr_dpus][nr_queries])[nr_ranks]
+    void **buffer; // (dpu_score_t[nr_dpus][nr_queries][MAX_NB_SCORES])[nr_ranks]
+    void **nb_scores; // (uint8_t[nr_dpus][nr_queries])[nr_ranks]
     uint32_t nr_ranks;
     int nr_queries;
 } inbound_scores_arrays;
@@ -95,14 +101,13 @@ typedef struct {
     const int *nr_topdocs; // int[nr_queries]
     mutex_array query_mutexes;
     pque_array score_pques;
-    const float *norm_inverse; // float[nr_queries][NORM_INVERSE_CACHE_SIZE]
+    const void *norm_inverse; // float[nr_queries][NORM_INVERSE_CACHE_SIZE]
     bool *finished_ranks; // bool[nr_ranks]
 } update_bounds_atomic_context;
 
 typedef struct {
     pque_array score_pques;
     int nr_queries;
-    const int *nr_topdocs;
     lower_bound_t *updated_bounds; // lower_bound_t[nr_queries]
     const int *quant_factors; // int[nr_queries]
     uint32_t nb_dpu_scores;
@@ -119,28 +124,23 @@ static inbound_scores_arrays inbound_scores_for_rank = { NULL, NULL, 0, 0 };
 /* Initialization functions */
 
 NODISCARD static inline dpu_error_t
-init_pques(pque_array *score_pques, const int *nr_topdocs)
+init_pques(pque_array *score_pques, const int nr_topdocs[score_pques->nr_pques])
 {
     int nr_pques = score_pques->nr_pques;
 
-    // PQue *pques = malloc(nr_pques * sizeof(*pques));
     PQue *pques = pque_pool.pques;
+    int nr_pques_to_clear = MIN(pque_pool.nr_pques, nr_pques);
+    for (int i = 0; i < nr_pques_to_clear; i++) {
+        PQue_clear(&pques[i]);
+        PQue_reserve(&pques[i], nr_topdocs[i]);
+    }
     if (pque_pool.nr_pques < nr_pques) {
-        pques = realloc(pque_pool.pques, nr_pques * sizeof(*pques));
-        CHECK_REALLOC(pques, pque_pool.pques);
-        for (int i = 0; i < pque_pool.nr_pques; i++) {
-            PQue_reserve(&pques[i], nr_topdocs[i]);
-        }
+        pques = SAFE_REALLOC(pques, nr_pques * sizeof(*pques));
         for (int i = pque_pool.nr_pques; i < nr_pques; i++) {
             pques[i] = PQue_with_capacity(nr_topdocs[i]);
         }
-        pque_pool.pques = pques;
         pque_pool.nr_pques = nr_pques;
-    } else {
-        for (int i = 0; i < nr_pques; i++) {
-            PQue_reserve(&pques[i], nr_topdocs[i]);
-            PQue_clear(&pques[i]);
-        }
+        pque_pool.pques = pques;
     }
 
     score_pques->pques = pques;
@@ -181,10 +181,10 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
     /* Always realloc everything because the nr_dpus can change between two calls, not just the nr_queries.
        realloc on a NULL pointer is equivalent to malloc.
        Consider always allocating with max_nr_dpus. */
-    dpu_score_t **inbound_scores = &inbound_scores_for_rank.buffer[rank_id];
-    *inbound_scores = SAFE_REALLOC(*inbound_scores, sizeof(dpu_score_t[nr_dpus][nr_queries][MAX_NB_SCORES]));
-    uint8_t **nb_scores = &inbound_scores_for_rank.nb_scores[rank_id];
-    *nb_scores = SAFE_REALLOC(*nb_scores, sizeof(uint8_t[nr_dpus][ALIGN8(nr_queries)]));
+    dpu_score_t(*inbound_scores)[nr_dpus][nr_queries][MAX_NB_SCORES] = inbound_scores_for_rank.buffer[rank_id];
+    inbound_scores_for_rank.buffer[rank_id] = SAFE_REALLOC(inbound_scores, sizeof(*inbound_scores));
+    uint8_t(*nb_scores)[nr_dpus][ALIGN8(nr_queries)] = inbound_scores_for_rank.nb_scores[rank_id];
+    inbound_scores_for_rank.nb_scores[rank_id] = SAFE_REALLOC(nb_scores, sizeof(*nb_scores));
 
     return DPU_OK;
 }
@@ -225,10 +225,8 @@ entry_init_topdocs_sync(struct dpu_set_t set,
     DPU_PROPAGATE(dpu_get_nr_ranks(set, nr_ranks));
     DPU_PROPAGATE(init_inbound_buffers(set, nr_queries, *nr_ranks));
 
-    *updated_bounds = malloc(*nr_queries * sizeof(*updated_bounds));
-    CHECK_MALLOC(updated_bounds);
-    *finished_ranks = malloc(*nr_ranks * sizeof(*finished_ranks));
-    CHECK_MALLOC(finished_ranks);
+    *updated_bounds = SAFE_MALLOC(*nr_queries * sizeof(**updated_bounds));
+    *finished_ranks = SAFE_MALLOC(*nr_ranks * sizeof(**finished_ranks));
 
     return DPU_OK;
 }
@@ -252,6 +250,7 @@ cleanup_pques(pque_array *pque_array)
     }
     free(pque_array->pques);
     pque_array->pques = NULL;
+    pque_array->nr_pques = 0;
 }
 
 static inline void
@@ -369,7 +368,7 @@ update_pques(int nr_queries,
     const int *nr_topdocs = ctx->nr_topdocs;
     PQue *score_pques = ctx->score_pques.pques;
     pthread_mutex_t *mutexes = ctx->query_mutexes.mutexes;
-    float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE] = (void *)(ctx->norm_inverse);
+    const float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE] = ctx->norm_inverse;
 
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         PQue *score_pque = &score_pques[i_qry];
@@ -414,8 +413,8 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
     DPU_PROPAGATE(update_rank_status(rank, finished));
 
     const uint32_t nr_dpus = DPU_PROPERTY_OR_PROPAGATE(uint32_t, dpu_get_nr_dpus, rank);
-    dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = (void *)inbound_scores_for_rank.buffer[rank_id];
-    uint8_t(*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)] = (void *)inbound_scores_for_rank.nb_scores[rank_id];
+    dpu_score_t(*my_bounds)[nr_dpus][nr_queries][MAX_NB_SCORES] = inbound_scores_for_rank.buffer[rank_id];
+    uint8_t(*my_nb_scores)[nr_dpus][ALIGN8(nr_queries)] = inbound_scores_for_rank.nb_scores[rank_id];
     DPU_PROPAGATE(read_best_scores(rank, nr_queries, nr_dpus, my_bounds));
     DPU_PROPAGATE(read_nb_best_scores(rank, nr_queries, nr_dpus, my_nb_scores));
 
@@ -429,12 +428,7 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params *args)
 {
     for (int i_qry = 0; i_qry < args->nr_queries; i_qry++) {
         // compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
-        // update the lower bound only if there are enough results in
-        // the priority queue (equal to the number of top docs)
-        if(PQue_size(&args->score_pques.pques[i_qry]) == args->nr_topdocs[i_qry])
-            args->updated_bounds[i_qry] = (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry]);
-        else
-            args->updated_bounds[i_qry] = 0;
+        args->updated_bounds[i_qry] = (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry]);
     }
 
     DPU_PROPAGATE(dpu_broadcast_to(
@@ -452,6 +446,7 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
             return false;
         }
     }
+
     return true;
 }
 
@@ -491,10 +486,10 @@ run_sync_loop(struct dpu_set_t set, update_bounds_atomic_context *ctx, broadcast
 
 dpu_error_t
 topdocs_lower_bound_sync(struct dpu_set_t set,
-    const int *nr_topdocs,
-    const float *norm_inverse,
-    const int *quant_factors,
-    int nr_queries)
+    int nr_queries,
+    const int nr_topdocs[nr_queries],
+    const float norm_inverse[nr_queries][NORM_INVERSE_CACHE_SIZE],
+    const int quant_factors[nr_queries])
 {
     uint32_t nr_ranks = 0;
     pque_array score_pques = {};
@@ -506,7 +501,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
         set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
     update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
-    broadcast_params broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+    broadcast_params broadcast_args = { score_pques, nr_queries, updated_bounds, quant_factors, INITIAL_NB_SCORES };
 
     return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
 }

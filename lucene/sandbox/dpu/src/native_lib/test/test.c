@@ -52,11 +52,11 @@ test_init_inbound_buffer(void)
     result = init_inbound_buffer(rank, rank_id, &nr_queries);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
-    dpu_score_t **inbound_scores = inbound_scores_for_rank.buffer;
+    void **inbound_scores = inbound_scores_for_rank.buffer;
     CU_ASSERT_PTR_NOT_NULL_FATAL(inbound_scores);
     CU_ASSERT_PTR_NOT_NULL(inbound_scores[0]);
 
-    uint8_t **nb_scores = inbound_scores_for_rank.nb_scores;
+    void **nb_scores = inbound_scores_for_rank.nb_scores;
     CU_ASSERT_PTR_NOT_NULL_FATAL(nb_scores);
     CU_ASSERT_PTR_NOT_NULL(nb_scores[0]);
 
