@@ -216,6 +216,11 @@ Optimizations
 
 * GITHUB#12989: Split taxonomy facet arrays across reusable chunks of elements to reduce allocations. (Michael Froh, Stefan Vodita)
 
+* GITHUB#13033: PointRangeQuery now exits earlier on segments whose values
+  don't intersect with the query range. When a PointRangeQuery is a required
+  clause of a boolean query, this helps save work on other required clauses of
+  the same boolean query. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
