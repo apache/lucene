@@ -102,6 +102,7 @@ typedef struct {
 typedef struct {
     pque_array score_pques;
     int nr_queries;
+    const int *nr_topdocs;
     lower_bound_t *updated_bounds; // lower_bound_t[nr_queries]
     const int *quant_factors; // int[nr_queries]
     uint32_t nb_dpu_scores;
@@ -138,6 +139,7 @@ init_pques(pque_array *score_pques, const int *nr_topdocs)
     } else {
         for (int i = 0; i < nr_pques; i++) {
             PQue_reserve(&pques[i], nr_topdocs[i]);
+            PQue_clear(&pques[i]);
         }
     }
 
@@ -427,7 +429,15 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params *args)
 {
     for (int i_qry = 0; i_qry < args->nr_queries; i_qry++) {
         // compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
-        args->updated_bounds[i_qry] = (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry]);
+        // update the lower bound only if there are enough results in
+        // the priority queue (equal to the number of top docs)
+        if(PQue_size(&args->score_pques.pques[i_qry]) == args->nr_topdocs[i_qry])
+            args->updated_bounds[i_qry] = (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry]);
+        else
+            args->updated_bounds[i_qry] = 0;
+        printf("new lower bound for query %u = %u, queue size=%lu topdocs=%u\n",
+                        i_qry, args->updated_bounds[i_qry], PQue_size(&args->score_pques.pques[i_qry]),
+                        args->nr_topdocs[i_qry]);
     }
 
     DPU_PROPAGATE(dpu_broadcast_to(
@@ -445,7 +455,6 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
             return false;
         }
     }
-
     return true;
 }
 
@@ -500,7 +509,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
         set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
     update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
-    broadcast_params broadcast_args = { score_pques, nr_queries, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+    broadcast_params broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
 
     return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
 }
