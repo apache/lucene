@@ -43,6 +43,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 
+// the testNoStallMergeThreads method will create many files
+@LuceneTestCase.SuppressFileSystems("HandleLimitFS")
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   private class FailOnlyOnFlush extends MockDirectoryWrapper.Failure {
