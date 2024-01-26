@@ -32,6 +32,13 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
                 createPattern(TestIndexSortBackwardsCompatibility.INDEX_NAME, TestIndexSortBackwardsCompatibility.SUFFIX));
         sortedTest.createBWCIndex();
 
+        TestBasicBackwardsCompatibility basicTest = new TestBasicBackwardsCompatibility(Version.LATEST,
+                createPattern(TestBasicBackwardsCompatibility.INDEX_NAME, TestBasicBackwardsCompatibility.SUFFIX_CFS));
+        basicTest.createBWCIndex();
+        basicTest = new TestBasicBackwardsCompatibility(Version.LATEST,
+                createPattern(TestBasicBackwardsCompatibility.INDEX_NAME, TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
+        basicTest.createBWCIndex();
+
         if (Version.LATEST.equals(Version.LUCENE_10_0_0)) {
             // NOCOMMIT - WHY ONLY on the first major verison?
             TestDVUpdateBackwardsCompatibility dvUpdatesTest = new TestDVUpdateBackwardsCompatibility(Version.LATEST,
