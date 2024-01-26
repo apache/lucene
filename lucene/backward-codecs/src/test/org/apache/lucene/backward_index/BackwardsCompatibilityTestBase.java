@@ -45,7 +45,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   protected final Version version;
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
-  private final String indexPattern;
+  protected final String indexPattern;
+
 
   public BackwardsCompatibilityTestBase(
       @Name("version") Version version, @Name("pattern") String indexPattern) {
@@ -75,7 +76,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
       Path dir = createTempDir();
       InputStream resource =
           TestBackwardsCompatibility.class.getResourceAsStream(indexName(version));
-      assertNotNull("Index name " + version + " not found", resource);
+      assertNotNull("Index name " + version + " not found: " + indexName(version), resource);
       TestUtil.unzip(resource, dir);
       directory = newFSDirectory(dir);
     }
@@ -95,7 +96,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     Version lastPrevMajorVersion = null;
     for (java.lang.reflect.Field field : Version.class.getDeclaredFields()) {
       if (Modifier.isStatic(field.getModifiers()) && field.getType() == Version.class) {
-        Version v = null;
+        Version v;
         try {
           v = (Version) field.get(Version.class);
         } catch (IllegalAccessException e) {
