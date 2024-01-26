@@ -19,7 +19,7 @@ uintptr_t doc_norms_addr[DPU_MAX_BATCH_SIZE];
 
 MUTEX_POOL_INIT(mut_pool, 8);
 
-static uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
+uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id) {
 
     if(doc_norms_addr[query_id] == UINTPTR_MAX) {
         // no norms for this field, default value
@@ -49,6 +49,12 @@ void reset_scores(uint32_t nb_queries) {
 
     for(int i = 0; i < nb_queries; ++i)
         nb_best_scores[i] = 0;
+}
+
+void reset_score_lower_bounds(uint32_t nb_queries) {
+
+    for(int i = 0; i < nb_queries; ++i)
+        score_lower_bound[i] = 0;
 }
 
 void set_query_no_norms(uint32_t query_id) {

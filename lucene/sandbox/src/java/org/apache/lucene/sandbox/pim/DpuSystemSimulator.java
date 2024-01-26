@@ -62,7 +62,7 @@ class DpuSystemSimulator implements PimQueriesExecutor {
       }
 
       // use PimIndexSearcher to handle the query (software model)
-      List<PimMatch> matches = pimSearcher.searchPhrase(builder.build());
+      List<PimMatch> matches = pimSearcher.searchPhrase(builder.build(), queryBuffer.scorer);
       // sort the matches by docId, to ease the read on Lucene segment basis
       matches.sort(Comparator.comparingInt(m -> m.docId));
 

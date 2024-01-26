@@ -42,7 +42,6 @@ public class DpuSimulatorResultsReader extends DpuResultsReader {
     if (matches.get(currId).docId >= maxDoc) return false;
     match = matches.get(currId);
     match.docId -= baseDoc;
-    match.score = simScorer.score(match.docId, match().score);
     currId++;
     return true;
   }

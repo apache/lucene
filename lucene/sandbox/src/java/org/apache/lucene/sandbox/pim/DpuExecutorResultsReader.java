@@ -73,7 +73,10 @@ public class DpuExecutorResultsReader extends DpuResultsReader {
 
     // read the result for this doc ID
     // use method specific to the query
-    match.score = query.scorePimResult(input.readInt(), match.docId, simScorer);
+    int norm = input.readInt();
+    int freq = input.readShort();
+    freq |= input.readByte() << (Short.BYTES * 8);
+    match.score = simScorer.score(freq, norm);
     return true;
   }
 

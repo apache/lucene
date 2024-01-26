@@ -26,8 +26,12 @@ void set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr);
 
 void reset_scores(uint32_t);
 
+void reset_score_lower_bounds(uint32_t nb_queries);
+
 bool is_score_competitive(uint32_t query_id, uint32_t did, did_matcher_t *matchers, uint32_t nr_terms);
 
 void add_match_for_best_scores(uint8_t query_id, uint32_t doc_id, uint32_t freq);
+
+uint8_t get_doc_norm(uint32_t query_id, uint32_t doc_id);
 
 #endif /* SCORE_LOWER_BOUND_H_ */

@@ -26,6 +26,7 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.similarities.Similarity;
 
 /** Weight class for phrase search on PIM system */
 public class PimPhraseWeight extends Weight {
@@ -83,13 +84,9 @@ public class PimPhraseWeight extends Weight {
             + " for segment "
             + context.ord);*/
         PimPhraseQuery pimQuery = (PimPhraseQuery) getQuery();
-        LeafSimScorer simScorer =
-            new LeafSimScorer(
-                scoreStats.similarity.scorer(
-                    scoreStats.boost, scoreStats.collectionStats, scoreStats.termStats),
-                context.reader(),
-                pimQuery.getField(),
-                scoreStats.scoreMode.needsScores());
+        Similarity.SimScorer simScorer =
+            scoreStats.similarity.scorer(
+                    scoreStats.boost, scoreStats.collectionStats, scoreStats.termStats);
         try {
           return new PimScorer(this, PimSystemManager.get().search(context, pimQuery, simScorer));
         } catch (

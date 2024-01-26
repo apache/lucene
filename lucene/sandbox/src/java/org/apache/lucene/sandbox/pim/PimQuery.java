@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
 import org.apache.lucene.search.LeafSimScorer;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.DataOutput;
 
 /** Interface to be implemented by all PIM queries */
@@ -38,18 +39,6 @@ public interface PimQuery {
    * @return the number of bytes returned by the PIM system for a query result
    */
   int getResultByteSize();
-
-  /**
-   * Reads the PIM query result, performs the scoring and returns the score. This function specifies
-   * how results returned by the PIM system should be interpreted and scored.
-   *
-   * @param docId the document to be scored
-   * @param freq the frequency of the term in the document
-   * @param scorer the LeafSimScorer used to score results
-   * @return the score for this docID
-   * @throws IOException if failing to read results from the input
-   */
-  float scorePimResult(int docId, int freq, LeafSimScorer scorer) throws IOException;
 
   /**
    * @return the field associated to this query

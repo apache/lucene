@@ -213,6 +213,17 @@ uint32_t decode_short_from(decoder_t *decoder)
     return val;
 }
 
+uint32_t decode_int_from(decoder_t *decoder)
+{
+    uintptr_t prev_mram = decoder->reader.mram_addr;
+    uint32_t val = *(uint32_t*)(decoder->ptr);
+    decoder->ptr = seqread_get(decoder->ptr, sizeof(uint32_t), &(decoder->reader));
+    if (prev_mram != decoder->reader.mram_addr) {
+            READ_256_BYTES(decoder);
+    }
+    return val;
+}
+
 int decode_zigzag_from(decoder_t *decoder)
 {
     uint32_t i = decode_vint_from(decoder);

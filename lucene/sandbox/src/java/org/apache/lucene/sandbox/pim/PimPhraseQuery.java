@@ -31,6 +31,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -167,13 +168,6 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
     return Integer.BYTES * 2;
   }
 
-  @Override
-  public float scorePimResult(int docId, int freq, LeafSimScorer scorer) throws IOException {
-
-    // a result for a phrase query is just a document id and a frequency as of now
-    return scorer.score(docId, freq);
-  }
-
   /**
    * We need the DPU system to be aware of the number of top docs so that
    * it can leverage this information to save time while handling the query.
@@ -184,8 +178,9 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
    */
   int maxNumHitsFromDpuSystem = Integer.MAX_VALUE;
 
-  public void setMaxNumHitsFromDpuSystem(int maxNumHitsFromDpuSystem) {
+  public PimPhraseQuery setMaxNumHitsFromDpuSystem(int maxNumHitsFromDpuSystem) {
     this.maxNumHitsFromDpuSystem = maxNumHitsFromDpuSystem;
+    return this;
   }
 
   @Override

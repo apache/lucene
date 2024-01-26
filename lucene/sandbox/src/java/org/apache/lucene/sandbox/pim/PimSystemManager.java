@@ -29,8 +29,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SegmentReader;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
@@ -229,7 +229,7 @@ public class PimSystemManager {
    * @return A reader of matches
    */
   public <QueryType extends Query & PimQuery> DpuResultsReader search(
-      LeafReaderContext context, QueryType query, LeafSimScorer simScorer)
+      LeafReaderContext context, QueryType query, Similarity.SimScorer simScorer)
       throws PimQueryQueueFullException, InterruptedException, IOException {
 
     // first look if the results are in the cache
@@ -262,7 +262,7 @@ public class PimSystemManager {
     return cacheRes;
   }
 
-  private <QueryType extends Query & PimQuery> void runSearchQuery(QueryType query, LeafSimScorer simScorer)
+  private <QueryType extends Query & PimQuery> void runSearchQuery(QueryType query, Similarity.SimScorer simScorer)
       throws PimQueryQueueFullException {
 
     assert isQuerySupported(query);
@@ -298,9 +298,9 @@ public class PimSystemManager {
     byte[] bytes = new byte[128];
     int length;
     PimQuery query;
-    LeafSimScorer scorer;
+    Similarity.SimScorer scorer;
 
-    QueryBuffer reset(PimQuery query, LeafSimScorer scorer) {
+    QueryBuffer reset(PimQuery query, Similarity.SimScorer scorer) {
       length = 0;
       this.query = query;
       this.scorer = scorer;

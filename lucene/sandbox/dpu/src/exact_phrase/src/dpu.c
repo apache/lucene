@@ -43,7 +43,7 @@ __mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
 __host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
 __mram uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS] = {0};
 __mram_noinit uint32_t results_segment_offset[DPU_MAX_BATCH_SIZE * MAX_NR_SEGMENTS];
-__host uint64_t search_done = 1;
+__host uint64_t search_done;
 
 /* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
@@ -88,6 +88,10 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 #include <stdio.h>
 #endif
 
+#ifdef DEBUG
+uint16_t nb_did_skipped[DPU_MAX_BATCH_SIZE];
+#endif
+
 static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment_id, did_matcher_t *matchers, uint32_t nr_terms);
 static void init_results_cache(uint32_t query_id, uint32_t buffer_id, uint8_t segment_id);
 static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id);
@@ -95,7 +99,7 @@ static void prefix_sum_each_query(__mram_ptr uint32_t* array, uint32_t sz);
 static void sort_query_results();
 static void flush_query_buffer();
 static void get_segments_info(uintptr_t);
-static uint32_t get_abs_doc_id(int relDoc, int query_id);
+static uint32_t get_abs_doc_id(int relDoc);
 static void adder(int *i, void *args) { *i += (int)args; }
 static void early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
 static void normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
@@ -108,14 +112,21 @@ int main() {
 #ifdef DEBUG
         printf("No index loaded\n");
 #endif
+        // this DPU has no index loaded
+        // All information read by the host need
+        // to be reset (search done, flags, number of results to 0 etc.)
+        search_done = 1;
+        reset_scores(nb_queries_in_batch);
+        for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
+            results_index[i] = 0;
+        }
+        memset(results_index_lucene_segments, 0,
+                  nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1)) * sizeof(uint32_t));
         return 0;
     }
 #endif
     if(me() == 0) {
 
-        // TODO hack for test
-        //new_query = 1;
-        //nb_max_doc_match = UINT32_MAX;
         if(new_query) {
 
 #ifdef PERF_MESURE
@@ -140,6 +151,7 @@ int main() {
             assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
             memset(results_index_lucene_segments, 0,
                 nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1)) * sizeof(uint32_t));
+            reset_score_lower_bounds(nb_queries_in_batch);
         }
         batch_num = 0;
         search_done = 1;
@@ -154,6 +166,9 @@ int main() {
         for(uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
                 lookup_postings_info_for_query(dpu_index, i);
                 results_index[i] = 0;
+#ifdef DEBUG
+                nb_did_skipped[i] = 0;
+#endif
         }
         //TODO avoid a barrier here ? Load balancing of lookup postings operation is not very good
         barrier_wait(&barrier);
@@ -234,8 +249,9 @@ int main() {
 
     // if not all documents have been searched (early exit for lower bound on score)
     // return here
-    if(!search_done)
+    if(!search_done) {
         return 0;
+    }
 
     // prefix sum of the query index values
     if(me() == 0) {
@@ -255,18 +271,21 @@ int main() {
     if(me() == 0) {
        printf("\nQUERIES RESULTS:\n");
        for(int i = 0; i < nb_queries_in_batch; ++i) {
+        printf("nb did skipped: %u\n", nb_did_skipped[i]);
         printf("Query %d results:\n", i);
         int start = 0;
         if(i) start = results_index[i-1];
         for(int j=start; j < results_index[i]; j++) {
             uint64_t res;
             mram_read(&results_batch_sorted[j * 8], &res, 8);
-            printf("doc:%u freq:%u\n", *((uint32_t*)&res), *((uint32_t*)(&res) + 1));
+            printf("doc:%u freq:%u norm:%u\n", *((uint32_t*)&res), *((uint16_t*)(&res) + 3),
+                            *((uint16_t*)(&res) + 2));
         }
+        /*
         printf("\nnb results per lucene segments:\n");
         for(int j = 0; j < nr_lucene_segments; ++j) {
             printf("segment%d: %d\n", j, results_index_lucene_segments[i * nr_lucene_segments + j]);
-        }
+        }*/
        }
     }
 #endif
@@ -360,8 +379,14 @@ static uint32_t perform_did_and_pos_matching(uint32_t query_id, uint16_t segment
                     printf("nr_results after pos match did=%d %d\n", did, nr_results);
 #endif
                 }
-                else
+                else {
                     abort_did(matchers, nr_terms);
+#ifdef DEBUG
+                    mutex_lock(results_mutex);
+                    nb_did_skipped[query_id]++;
+                    mutex_unlock(results_mutex);
+#endif
+                }
             } break;
             case DID_NOT_FOUND:
                 break;
@@ -419,7 +444,8 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     assert(query_id == results_cache[me()][0].info.query_id);
 
     // change did to its absolute value
-    did = get_abs_doc_id(did, query_id);
+    uint32_t rel_did = did;
+    did = get_abs_doc_id(did);
 
     uint16_t buffer_size = results_cache[me()][0].info.buffer_size;
     if(buffer_size > 0) {
@@ -442,6 +468,7 @@ static void store_query_result(uint16_t query_id, uint32_t did, __attribute((unu
     // insert the new result in the WRAM cache
     buffer_size = ++results_cache[me()][0].info.buffer_size;
     results_cache[me()][buffer_size].result.doc_id = did;
+    results_cache[me()][buffer_size].result.norm = get_doc_norm(query_id, rel_did);
     results_cache[me()][buffer_size].result.freq = 1;
 
     // update lucene segment for the current did, then add 1 to the count of results per lucene segment
@@ -561,8 +588,7 @@ static void get_segments_info(uintptr_t index) {
 }
 
 // returns the absolute doc id from the relative doc id
-static uint32_t get_abs_doc_id(int rel_doc, int query_id) {
-
+static uint32_t get_abs_doc_id(int rel_doc) {
     return rel_doc * nr_dpus + dpu_id;
 }
 

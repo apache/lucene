@@ -22,7 +22,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
@@ -71,7 +70,7 @@ public class PimIndexSearcher implements Closeable {
    * @param scorer the scorer to be used for each match
    * @return the list of matches with document ID and score
    */
-  ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
+  ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term, Similarity.SimScorer scorer) {
 
     ArrayList<PimMatch> results = new ArrayList<>();
     searchers.forEach(
@@ -97,23 +96,15 @@ public class PimIndexSearcher implements Closeable {
    */
   ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term) {
 
-    try {
       return searchTerm(
           field,
           term,
-          new LeafSimScorer(
-              new Similarity.SimScorer() {
+          new Similarity.SimScorer() {
                 @Override
                 public float score(float freq, long norm) {
                   return freq;
                 }
-              },
-              null,
-              field.utf8ToString(),
-              false));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+              });
   }
 
   /**
@@ -130,7 +121,7 @@ public class PimIndexSearcher implements Closeable {
    * @param scorer the LeafSimScorer to be used to score each match
    * @return a list of matches with doc ID and score
    */
-  ArrayList<PimMatch> searchPhrase(PimPhraseQuery query, LeafSimScorer scorer) {
+  ArrayList<PimMatch> searchPhrase(PimPhraseQuery query, Similarity.SimScorer scorer) {
 
     ArrayList<PimMatch> results = new ArrayList<>();
     searchers.forEach(
@@ -155,22 +146,14 @@ public class PimIndexSearcher implements Closeable {
    */
   ArrayList<PimMatch> searchPhrase(PimPhraseQuery query) {
 
-    try {
       return searchPhrase(
           query,
-          new LeafSimScorer(
-              new Similarity.SimScorer() {
+          new Similarity.SimScorer() {
                 @Override
                 public float score(float freq, long norm) {
                   return freq;
                 }
-              },
-              null,
-              query.getField(),
-              false));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+              });
   }
 
   @Override
@@ -235,7 +218,7 @@ public class PimIndexSearcher implements Closeable {
       postingsInput = pimIndexInfo.getPostingsFileInput(indexInput, dpuId);
     }
 
-    ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
+    ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term, Similarity.SimScorer scorer) {
 
       // get the postings for this term
       BytesRefToDataBlockTreeMap.SearchResult[] termPostings = getTermPostings(field, term);
@@ -255,7 +238,7 @@ public class PimIndexSearcher implements Closeable {
           int doc = docIt.Next();
           while (doc >= 0) {
             int absDoc = doc * pimIndexInfo.getNumDpus() + dpuId;
-            results.add(new PimMatch(absDoc, scorer.score(absDoc, docIt.getFreq())));
+            results.add(new PimMatch(absDoc, scorer.score(docIt.getFreq(), getDocNorm(field, doc))));
             doc = docIt.Next();
           }
         } catch (IOException e) {
@@ -266,7 +249,7 @@ public class PimIndexSearcher implements Closeable {
       return results;
     }
 
-    ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query, LeafSimScorer scorer) {
+    ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query, Similarity.SimScorer scorer) {
 
       // get the postings address of each term in the phrase query
       BytesRefToDataBlockTreeMap.SearchResult[][] termPostingBlocks =
@@ -391,7 +374,9 @@ public class PimIndexSearcher implements Closeable {
             // add the result if positions matches were found
             if (nbPositionsMatch > 0) {
               int absDoc = searchDoc * pimIndexInfo.getNumDpus() + dpuId;
-              results.add(new PimMatch(absDoc, scorer.score(absDoc, nbPositionsMatch)));
+              results.add(new PimMatch(absDoc,
+                          scorer.score(nbPositionsMatch,
+                                  getDocNorm(new BytesRef(query.getField()), searchDoc))));
             }
           }
         } catch (IOException e) {
@@ -496,6 +481,36 @@ public class PimIndexSearcher implements Closeable {
       }
 
       return null;
+    }
+
+    /**
+     * Retrieve the norm associated to a document/field from the PIM index
+     * @param field the field as BytesRef
+     * @param doc the document id
+     * @return the document norm
+     */
+    private int getDocNorm(BytesRef field, int doc) {
+
+      // case of empty index for this DPU
+      if (this.fieldTableTree == null) return 1;
+
+      // first search for the field in the field table
+      BytesRefToDataBlockTreeMap.SearchResult fieldResult = fieldTableTree.SearchForBlock(field);
+
+      if (fieldResult == null) return 1;
+
+      // search for the block table for this field and extract the norm
+      try {
+        blockTableInput.seek(fieldResult.block.address);
+        // skip the skip norms info and reach to the norm of the doc
+        blockTableInput.readVInt();
+        blockTableInput.skipBytes(256 /*norm inverse cache*/ + doc);
+        int norm = blockTableInput.readByte();
+        System.out.println("doc=" + doc + " norm=" + norm);
+        return norm;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     /**

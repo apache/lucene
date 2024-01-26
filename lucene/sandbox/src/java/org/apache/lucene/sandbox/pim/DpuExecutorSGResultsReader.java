@@ -67,8 +67,12 @@ public class DpuExecutorSGResultsReader extends DpuResultsReader {
     // this is a valid result to return
     // score it
     match.docId = docId - baseDoc;
-    int freq = results.byteBuffer.getInt(this.index * this.queryResultByteSize + Integer.BYTES);
-    match.score = query.scorePimResult(match.docId, freq, simScorer);
+    int norm = results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES);
+    // the frequency is stored on 3 bytes
+    int freq = results.byteBuffer.getShort(this.index * this.queryResultByteSize + Integer.BYTES + Short.BYTES);
+    freq |= results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES + Short.BYTES + 1)
+            << (Short.BYTES * 8);
+    match.score = simScorer.score(freq, norm);
 
     this.index++;
     return true;

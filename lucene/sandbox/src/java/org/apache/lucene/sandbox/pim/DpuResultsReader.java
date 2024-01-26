@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
 import org.apache.lucene.search.LeafSimScorer;
+import org.apache.lucene.search.similarities.Similarity;
 
 /**
  * Abstract base class for reading DPU results. This is the object returned by the DpuSystemExecutor
@@ -31,7 +32,7 @@ public abstract class DpuResultsReader {
   protected final PimQuery query;
   protected PimMatch match;
   protected int baseDoc;
-  protected LeafSimScorer simScorer;
+  protected Similarity.SimScorer simScorer;
 
   DpuResultsReader(PimQuery query) {
     this.query = query;
@@ -40,7 +41,7 @@ public abstract class DpuResultsReader {
     this.simScorer = null;
   }
 
-  public void setSimScorer(LeafSimScorer scorer) {
+  public void setSimScorer(Similarity.SimScorer scorer) {
     this.simScorer = scorer;
   }
 

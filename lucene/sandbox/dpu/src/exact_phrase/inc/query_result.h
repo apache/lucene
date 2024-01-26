@@ -3,11 +3,12 @@
 
 /**
  * structure used to store the query results
- * A result is a pair of document id and frequency.
+ * A result contains the document id, the document norm and frequency.
  */
-typedef struct _query_result {
+typedef struct __attribute__((packed, aligned(8))) _query_result {
     uint32_t doc_id;
-    uint32_t freq;
+    uint32_t norm:8;
+    uint32_t freq:24;
 } query_result_t;
 
 /**

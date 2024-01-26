@@ -65,6 +65,10 @@ unsigned int decode_byte_from(decoder_t *decoder);
 */
 unsigned int decode_short_from(decoder_t *decoder);
 /**
+* decodes an int from the decoder.
+*/
+unsigned int decode_int_from(decoder_t *decoder);
+/**
 * decodes a zigzag-encoded integer from the decoder.
 */
 int decode_zigzag_from(decoder_t *decoder);

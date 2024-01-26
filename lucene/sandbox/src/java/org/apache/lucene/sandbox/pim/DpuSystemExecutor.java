@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.TreeMap;
 
 import org.apache.lucene.search.LeafSimScorer;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 
@@ -72,7 +73,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
    *     segment id
    */
   native int sgXferResults(int nr_queries, int nr_segments, int[] numHits, int[] quantFactors,
-                           LeafSimScorer[] scorers, SGReturnPool.SGReturn results);
+                           Similarity.SimScorer[] scorers, SGReturnPool.SGReturn results);
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[DpuConstants.dpuQueryBatchByteSize];
@@ -271,20 +272,9 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     copyIntToDpus("new_query", 0);
     dpuSystem.async().exec(null);*/
 
-    if (DpuConstants.DEBUG_DPU) {
-      try {
-        dpuSystem.async().sync();
-      }
-      finally {
-        for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
-          dpuSystem.ranks().get(i).log();
-        }
-      }
-    }
-
     // create an array with the LeafSimScorer objects for the JNI layer
     // create an array with the quantization factors used for the norm inverse of each field
-    LeafSimScorer[] scorers = new LeafSimScorer[queryBuffers.size()];
+    Similarity.SimScorer[] scorers = new Similarity.SimScorer[queryBuffers.size()];
     int[] quantFactors = new int[queryBuffers.size()];
     int[] numHits = new int[queryBuffers.size()];
     for(int i = 0; i < queryBuffers.size(); ++i) {
@@ -314,6 +304,18 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // 4) barrier to wait for transfers to be finished
     // TODO sg transfer in asynchronous mode ?
     dpuSystem.async().sync();
+
+    if (DpuConstants.DEBUG_DPU) {
+      try {
+        dpuSystem.async().sync();
+      }
+      finally {
+        for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
+          dpuSystem.ranks().get(i).log();
+        }
+        dumpDpuStream();
+      }
+    }
 
     // 5) Update the results map for the client threads to read their results
     for (int q = 0, size = queryBuffers.size(); q < size; ++q) {

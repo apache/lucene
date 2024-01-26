@@ -513,16 +513,12 @@ create_norm_inverse_array(JNIEnv *env, jint nr_queries, jobjectArray scorers)
 {
     float(*norm_inverse)[nr_queries][NORM_INVERSE_CACHE_SIZE] = SAFE_MALLOC(sizeof(float[nr_queries][NORM_INVERSE_CACHE_SIZE]));
     for (int i = 0; i < nr_queries; ++i) {
-        // access scorers[i].scorer.cache (should be BM25Scorer)
+        // access scorers[i].cache (should be BM25Scorer)
         jobject object = (*env)->GetObjectArrayElement(env, scorers, i);
         jclass cls = (*env)->GetObjectClass(env, object);
-        jfieldID scorerID
-            = (*env)->GetFieldID(env, cls, "scorer", "Lorg/apache/lucene/search/similarities/Similarity$SimScorer;");
-        jobject scorer = (*env)->GetObjectField(env, object, scorerID);
-        cls = (*env)->GetObjectClass(env, scorer);
         // TODO(jlegriel): assert that the class is BM25Scorer
         jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "[F");
-        jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
+        jfloatArray cache = (*env)->GetObjectField(env, object, cacheID);
         jfloat *cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
         for (size_t j = 0; j < NORM_INVERSE_CACHE_SIZE; ++j) {
             (*norm_inverse)[i][j] = cache_arr[j];
