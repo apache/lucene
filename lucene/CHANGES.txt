@@ -221,6 +221,11 @@ Optimizations
   clause of a boolean query, this helps save work on other required clauses of
   the same boolean query. (Adrien Grand)
 
+* GITHUB#13026: ReqOptSumScorer will now propagate minimum competitive scores
+  to the optional clause if the required clause doesn't score. In practice,
+  this will help boolean queries that consist of a mix OF FILTER clauses and
+  SHOULD clauses. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
