@@ -43,8 +43,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 
-// the testNoStallMergeThreads method will create many files
-@LuceneTestCase.SuppressFileSystems("HandleLimitFS")
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   private class FailOnlyOnFlush extends MockDirectoryWrapper.Failure {
@@ -154,7 +152,10 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     mp.setMinMergeDocs(1000);
     IndexWriter writer =
         new IndexWriter(
-            directory, newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp));
+            directory,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMaxBufferedDocs(50)
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
@@ -777,7 +778,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
     iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-    iwc.setMaxBufferedDocs(2);
+    iwc.setMaxBufferedDocs(20);
     IndexWriter w = new IndexWriter(dir, iwc);
     int numDocs = TEST_NIGHTLY ? 1000 : 100;
     for (int i = 0; i < numDocs; i++) {
