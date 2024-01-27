@@ -202,6 +202,9 @@ Improvements
 
 * GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
 
+* GITHUB#12964: Replacing Thread.sleep calls appearing in TestIndexWriter.testThreadInterruptDeadlock and
+  TestDirectoryReader.testStressTryIncRef (Sanjay Dutt)
+
 Optimizations
 ---------------------
 
