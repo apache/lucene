@@ -152,10 +152,8 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     mp.setMinMergeDocs(1000);
     IndexWriter writer =
         new IndexWriter(
-            directory,
-            newIndexWriterConfig(new MockAnalyzer(random()))
-                .setMaxBufferedDocs(50)
-                .setMergePolicy(mp));
+            directory, newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp));
+    TestUtil.reduceOpenFiles(writer);
 
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
@@ -778,7 +776,8 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
     iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-    iwc.setMaxBufferedDocs(20);
+    iwc.setMaxBufferedDocs(2);
+    iwc.setUseCompoundFile(true); // reduce open files
     IndexWriter w = new IndexWriter(dir, iwc);
     int numDocs = TEST_NIGHTLY ? 1000 : 100;
     for (int i = 0; i < numDocs; i++) {
