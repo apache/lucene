@@ -30,6 +30,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -48,6 +51,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -1018,11 +1022,20 @@ public class TestDirectoryReader extends LuceneTestCase {
       threads[i] = new IncThread(r, random());
       threads[i].start();
     }
-    Thread.sleep(100);
-
-    assertTrue(r.tryIncRef());
-    r.decRef();
-    r.close();
+    ScheduledExecutorService closeReaderBeforeJoiningThreads =
+        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("testStressTryIncRef"));
+    closeReaderBeforeJoiningThreads.schedule(
+        () -> {
+          try {
+            assertTrue(r.tryIncRef());
+            r.decRef();
+            r.close();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        },
+        100,
+        TimeUnit.MILLISECONDS);
 
     for (IncThread thread : threads) {
       thread.join();
@@ -1031,6 +1044,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertFalse(r.tryIncRef());
     writer.close();
     dir.close();
+    closeReaderBeforeJoiningThreads.shutdown();
   }
 
   static class IncThread extends Thread {
