@@ -16,42 +16,61 @@
  */
 package org.apache.lucene.backward_index;
 
-import org.apache.lucene.store.Directory;
+import static org.apache.lucene.backward_index.BackwardsCompatibilityTestBase.createPattern;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Version;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.apache.lucene.backward_index.BackwardsCompatibilityTestBase.createPattern;
-
 public class TestGenerateBwcIndices extends LuceneTestCase {
 
-    public void testGenerate() throws Exception {
-        TestIndexSortBackwardsCompatibility sortedTest = new TestIndexSortBackwardsCompatibility(Version.LATEST,
-                createPattern(TestIndexSortBackwardsCompatibility.INDEX_NAME, TestIndexSortBackwardsCompatibility.SUFFIX));
-        sortedTest.createBWCIndex();
-        TestBasicBackwardsCompatibility basicTest = new TestBasicBackwardsCompatibility(Version.LATEST,
-                createPattern(TestBasicBackwardsCompatibility.INDEX_NAME, TestBasicBackwardsCompatibility.SUFFIX_CFS));
-        basicTest.createBWCIndex();
-        basicTest = new TestBasicBackwardsCompatibility(Version.LATEST,
-                createPattern(TestBasicBackwardsCompatibility.INDEX_NAME, TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
-        basicTest.createBWCIndex();
+  public void testGenerate() throws Exception {
+    TestIndexSortBackwardsCompatibility sortedTest =
+        new TestIndexSortBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestIndexSortBackwardsCompatibility.INDEX_NAME,
+                TestIndexSortBackwardsCompatibility.SUFFIX));
+    sortedTest.createBWCIndex();
+    TestBasicBackwardsCompatibility basicTest =
+        new TestBasicBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestBasicBackwardsCompatibility.INDEX_NAME,
+                TestBasicBackwardsCompatibility.SUFFIX_CFS));
+    basicTest.createBWCIndex();
+    basicTest =
+        new TestBasicBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestBasicBackwardsCompatibility.INDEX_NAME,
+                TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
+    basicTest.createBWCIndex();
 
-        if (Version.LATEST.equals(Version.LUCENE_10_0_0)) {
-            // NOCOMMIT - WHY ONLY on the first major verison?
-            TestDVUpdateBackwardsCompatibility dvUpdatesTest = new TestDVUpdateBackwardsCompatibility(Version.LATEST,
-                    createPattern(TestDVUpdateBackwardsCompatibility.INDEX_NAME, TestDVUpdateBackwardsCompatibility.SUFFIX));
-            dvUpdatesTest.createBWCIndex();
+    if (Version.LATEST.equals(Version.LUCENE_10_0_0)) {
+      // NOCOMMIT - WHY ONLY on the first major verison?
+      TestDVUpdateBackwardsCompatibility dvUpdatesTest =
+          new TestDVUpdateBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestDVUpdateBackwardsCompatibility.INDEX_NAME,
+                  TestDVUpdateBackwardsCompatibility.SUFFIX));
+      dvUpdatesTest.createBWCIndex();
 
-            TestMoreTermsBackwardsCompatibility moreTermsTest = new TestMoreTermsBackwardsCompatibility(Version.LATEST,
-                    createPattern(TestMoreTermsBackwardsCompatibility.INDEX_NAME, TestMoreTermsBackwardsCompatibility.SUFFIX));
-            moreTermsTest.createBWCIndex();
+      TestMoreTermsBackwardsCompatibility moreTermsTest =
+          new TestMoreTermsBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestMoreTermsBackwardsCompatibility.INDEX_NAME,
+                  TestMoreTermsBackwardsCompatibility.SUFFIX));
+      moreTermsTest.createBWCIndex();
 
-            TestEmptyIndexBackwardsCompatibility emptyIndex = new TestEmptyIndexBackwardsCompatibility(Version.LATEST,
-                    createPattern(TestEmptyIndexBackwardsCompatibility.INDEX_NAME, TestEmptyIndexBackwardsCompatibility.SUFFIX));
-            emptyIndex.createBWCIndex();
-        }
-
+      TestEmptyIndexBackwardsCompatibility emptyIndex =
+          new TestEmptyIndexBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestEmptyIndexBackwardsCompatibility.INDEX_NAME,
+                  TestEmptyIndexBackwardsCompatibility.SUFFIX));
+      emptyIndex.createBWCIndex();
     }
+  }
 }

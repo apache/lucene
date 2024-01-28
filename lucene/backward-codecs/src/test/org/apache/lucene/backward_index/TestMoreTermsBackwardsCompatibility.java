@@ -17,34 +17,17 @@
 package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-import org.apache.lucene.document.BinaryDocValuesField;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.LogByteSizeMergePolicy;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LineFileDocs;
@@ -52,18 +35,12 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-
 public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
   static final String INDEX_NAME = "moreterms";
 
   static final String SUFFIX = "";
+
   public TestMoreTermsBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
@@ -85,19 +62,19 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
     analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
 
     IndexWriterConfig conf =
-            new IndexWriterConfig(analyzer)
-                    .setMergePolicy(mp)
-                    .setCodec(TestUtil.getDefaultCodec())
-                    .setUseCompoundFile(false);
+        new IndexWriterConfig(analyzer)
+            .setMergePolicy(mp)
+            .setCodec(TestUtil.getDefaultCodec())
+            .setUseCompoundFile(false);
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
     for (int i = 0; i < 50; i++) {
       Document doc = TestUtil.cloneDocument(docs.nextDoc());
       doc.add(
-              new NumericDocValuesField(
-                      "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
+          new NumericDocValuesField(
+              "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
       doc.add(
-              new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
+          new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
       writer.addDocument(doc);
       if (i % 10 == 0) { // commit every 10 documents
         writer.commit();
@@ -109,6 +86,7 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
       TestIndexSortBackwardsCompatibility.searchExampleIndex(reader); // make sure we can search it
     }
   }
+
   public void testMoreTerms() throws Exception {
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
 

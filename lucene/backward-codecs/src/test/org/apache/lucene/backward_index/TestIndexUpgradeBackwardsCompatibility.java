@@ -16,62 +16,33 @@
  */
 package org.apache.lucene.backward_index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexUpgrader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Path;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TimeZone;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
@@ -82,10 +53,13 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     Iterable<Object[]> allSupportedVersions =
-            allVersion(TestBasicBackwardsCompatibility.INDEX_NAME,
-                    TestBasicBackwardsCompatibility.SUFFIX_CFS, TestBasicBackwardsCompatibility.SUFFIX_NO_CFS);
+        allVersion(
+            TestBasicBackwardsCompatibility.INDEX_NAME,
+            TestBasicBackwardsCompatibility.SUFFIX_CFS,
+            TestBasicBackwardsCompatibility.SUFFIX_NO_CFS);
     return allSupportedVersions;
   }
+
   /** Randomizes the use of some of hte constructor variations */
   static IndexUpgrader newIndexUpgrader(Directory dir) {
     final boolean streamType = random().nextBoolean();
@@ -104,23 +78,24 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   }
 
   public void testUpgradeOldIndex() throws Exception {
-      Directory dir = newDirectory(directory);
-      int indexCreatedVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
-      newIndexUpgrader(dir).upgrade();
+    Directory dir = newDirectory(directory);
+    int indexCreatedVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
+    newIndexUpgrader(dir).upgrade();
 
-      checkAllSegmentsUpgraded(dir, indexCreatedVersion);
-      dir.close();
+    checkAllSegmentsUpgraded(dir, indexCreatedVersion);
+    dir.close();
   }
 
   @Override
   protected void createIndex(Directory directory) throws IOException {
-      if (indexPattern.equals(createPattern(TestBasicBackwardsCompatibility.INDEX_NAME,
-              TestBasicBackwardsCompatibility.SUFFIX_CFS))) {
-        TestBasicBackwardsCompatibility.createIndex(directory, true, false);
-      } else {
-        TestBasicBackwardsCompatibility.createIndex(directory, false, false);
-      }
-
+    if (indexPattern.equals(
+        createPattern(
+            TestBasicBackwardsCompatibility.INDEX_NAME,
+            TestBasicBackwardsCompatibility.SUFFIX_CFS))) {
+      TestBasicBackwardsCompatibility.createIndex(directory, true, false);
+    } else {
+      TestBasicBackwardsCompatibility.createIndex(directory, false, false);
+    }
   }
 
   public void testUpgradeOldSingleSegmentIndexWithAdditions() throws Exception {
@@ -137,8 +112,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
       // only use Log- or TieredMergePolicy, to make document addition predictable and not
       // suddenly merge:
       MergePolicy mp = random().nextBoolean() ? newLogMergePolicy() : newTieredMergePolicy();
-      IndexWriterConfig iwc =
-              new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp);
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp);
       IndexWriter w = new IndexWriter(ramDir, iwc);
       // add few more docs:
       for (int j = 0; j < RANDOM_MULTIPLIER * random().nextInt(30); j++) {
@@ -170,9 +144,9 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
 
     final int segCount = checkAllSegmentsUpgraded(dir, indexCreatedVersion);
     assertEquals(
-            "Index must still contain the same number of segments, as only one segment was upgraded and nothing else merged",
-            origSegCount,
-            segCount);
+        "Index must still contain the same number of segments, as only one segment was upgraded and nothing else merged",
+        origSegCount,
+        segCount);
 
     dir.close();
   }
@@ -182,8 +156,10 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     Directory dir = newDirectory(directory);
 
     IndexWriter writer =
-            new IndexWriter(
-                    dir, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(IndexWriterConfig.OpenMode.APPEND));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.addDocument(new Document());
     DirectoryReader r = DirectoryReader.open(writer);
     writer.commit();
@@ -193,15 +169,16 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     writer.rollback();
     SegmentInfos.readLatestCommit(dir);
     dir.close();
-
   }
 
   // LUCENE-5907
   public void testUpgradeThenMultipleCommits() throws Exception {
     Directory dir = newDirectory(directory);
     IndexWriter writer =
-            new IndexWriter(
-                    dir, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(IndexWriterConfig.OpenMode.APPEND));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.addDocument(new Document());
     writer.commit();
     writer.addDocument(new Document());
@@ -217,7 +194,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
       String name = indexName(this.version);
       Directory origDir = directory;
       int indexCreatedVersion =
-              SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
+          SegmentInfos.readLatestCommit(origDir).getIndexCreatedVersionMajor();
       Path dir = createTempDir(name);
       try (FSDirectory fsDir = FSDirectory.open(dir)) {
         // beware that ExtraFS might add extraXXX files
@@ -261,7 +238,6 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
       System.setOut(savedSystemOut);
     }
   }
-
 
   static int checkAllSegmentsUpgraded(Directory dir, int indexCreatedVersion) throws IOException {
     final SegmentInfos infos = SegmentInfos.readLatestCommit(dir);

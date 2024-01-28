@@ -17,47 +17,16 @@
 package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
-import java.util.TimeZone;
 
 public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibilityTestBase {
   static final String INDEX_NAME = "empty";
@@ -70,13 +39,13 @@ public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibility
   @Override
   protected void createIndex(Directory directory) throws IOException {
     IndexWriterConfig conf =
-            new IndexWriterConfig(new MockAnalyzer(random()))
-                    .setUseCompoundFile(false)
-                    .setCodec(TestUtil.getDefaultCodec())
-                    .setMergePolicy(NoMergePolicy.INSTANCE);
-     try(IndexWriter writer = new IndexWriter(directory, conf)) {
-       writer.flush();
-     }
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setUseCompoundFile(false)
+            .setCodec(TestUtil.getDefaultCodec())
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    try (IndexWriter writer = new IndexWriter(directory, conf)) {
+      writer.flush();
+    }
   }
 
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
@@ -88,7 +57,7 @@ public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibility
   }
 
   public void testUpgradeEmptyOldIndex() throws Exception {
-    try(Directory dir = newDirectory(directory)){
+    try (Directory dir = newDirectory(directory)) {
       TestIndexUpgradeBackwardsCompatibility.newIndexUpgrader(dir).upgrade();
       TestIndexUpgradeBackwardsCompatibility.checkAllSegmentsUpgraded(dir, 9);
     }

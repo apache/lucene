@@ -49,74 +49,36 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   protected final Version version;
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
   protected final String indexPattern;
-
-  private static final Set<Version> BINARY_SUPPORTED_VERSIONS;
+  protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
   static {
-    String[] oldVersions = new String[] {
-            "8.0.0",
-            "8.0.0",
-            "8.1.0",
-            "8.1.0",
-            "8.1.1",
-            "8.1.1",
-            "8.2.0",
-            "8.2.0",
-            "8.3.0",
-            "8.3.0",
-            "8.3.1",
-            "8.3.1",
-            "8.4.0",
-            "8.4.0",
-            "8.4.1",
-            "8.4.1",
-            "8.5.0",
-            "8.5.0",
-            "8.5.1",
-            "8.5.1",
-            "8.5.2",
-            "8.5.2",
-            "8.6.0",
-            "8.6.0",
-            "8.6.1",
-            "8.6.1",
-            "8.6.2",
-            "8.6.2",
-            "8.6.3",
-            "8.6.3",
-            "8.7.0",
-            "8.7.0",
-            "8.8.0",
-            "8.8.0",
-            "8.8.1",
-            "8.8.1",
-            "8.8.2",
-            "8.8.2",
-            "8.9.0",
-            "8.9.0",
-            "8.10.0",
-            "8.10.0",
-            "8.10.1",
-            "8.10.1",
-            "8.11.0",
-            "8.11.0",
-            "8.11.1",
-            "8.11.1",
-            "8.11.2",
-            "8.11.2"
-    };
+    String[] oldVersions =
+        new String[] {
+          "8.0.0", "8.0.0", "8.1.0", "8.1.0", "8.1.1", "8.1.1", "8.2.0", "8.2.0", "8.3.0", "8.3.0",
+          "8.3.1", "8.3.1", "8.4.0", "8.4.0", "8.4.1", "8.4.1", "8.5.0", "8.5.0", "8.5.1", "8.5.1",
+          "8.5.2", "8.5.2", "8.6.0", "8.6.0", "8.6.1", "8.6.1", "8.6.2", "8.6.2", "8.6.3", "8.6.3",
+          "8.7.0", "8.7.0", "8.8.0", "8.8.0", "8.8.1", "8.8.1", "8.8.2", "8.8.2", "8.9.0", "8.9.0",
+          "8.10.0", "8.10.0", "8.10.1", "8.10.1", "8.11.0", "8.11.0", "8.11.1", "8.11.1", "8.11.2",
+          "8.11.2", "9.0.0", "9.1.0", "9.2.0", "9.3.0", "9.4.0", "9.4.1", "9.4.2", "9.5.0", "9.6.0",
+          "9.7.0", "9.8.0", "9.9.0", "9.9.1", "9.10.0", "10.0.0",
+        };
 
     Set<Version> binaryVersions = new HashSet<>();
     for (String version : oldVersions) {
       try {
-        binaryVersions.add(Version.parse(version));
+        Version v = Version.parse(version);
+        assertTrue("Unsupported binary version: " + v, v.major >= Version.MIN_SUPPORTED_MAJOR - 1);
+        binaryVersions.add(v);
       } catch (ParseException ex) {
         throw new RuntimeException(ex);
       }
     }
-
+    List<Version> allCurrentVersions = getAllCurrentVersions();
+    for (Version version : allCurrentVersions) {
+      // make sure we never miss a version.
+      assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
+    }
     BINARY_SUPPORTED_VERSIONS = binaryVersions;
-
   }
 
   public BackwardsCompatibilityTestBase(
@@ -163,22 +125,11 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   }
 
   private static Version getLatestPreviousMajorVersion() {
-    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
     Version lastPrevMajorVersion = null;
-    for (java.lang.reflect.Field field : Version.class.getDeclaredFields()) {
-      if (Modifier.isStatic(field.getModifiers()) && field.getType() == Version.class) {
-        Version v;
-        try {
-          v = (Version) field.get(Version.class);
-        } catch (IllegalAccessException e) {
-          throw new RuntimeException(e);
-        }
-        Matcher constant = constantPattern.matcher(field.getName());
-        if (constant.matches() == false) continue;
-        if (v.major == Version.LATEST.major - 1
-            && (lastPrevMajorVersion == null || v.onOrAfter(lastPrevMajorVersion))) {
-          lastPrevMajorVersion = v;
-        }
+    for (Version v : getAllCurrentVersions()) {
+      if (v.major == Version.LATEST.major - 1
+          && (lastPrevMajorVersion == null || v.onOrAfter(lastPrevMajorVersion))) {
+        lastPrevMajorVersion = v;
       }
     }
     return lastPrevMajorVersion;
@@ -188,28 +139,40 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     return name + ".%1$s" + suffix + ".zip";
   }
 
-  public static Iterable<Object[]> allVersion(String name, String... suffixes)
-      throws IllegalAccessException {
+  public static List<Version> getAllCurrentVersions() {
+    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
+    List<Version> versions = new ArrayList<>();
+    for (Field field : Version.class.getDeclaredFields()) {
+      if (Modifier.isStatic(field.getModifiers()) && field.getType() == Version.class) {
+        Matcher constant = constantPattern.matcher(field.getName());
+        Version v;
+        try {
+          v = (Version) field.get(Version.class);
+        } catch (IllegalAccessException e) {
+          throw new RuntimeException(e);
+        }
+        if (constant.matches() == false) {
+          continue;
+        }
+        versions.add(v);
+      }
+    }
+    return versions;
+  }
+
+  public static Iterable<Object[]> allVersion(String name, String... suffixes) {
     List<Object> patterns = new ArrayList<>();
     for (String suffix : suffixes) {
       patterns.add(createPattern(name, suffix));
     }
-    Pattern constantPattern = Pattern.compile("LUCENE_(\\d+)_(\\d+)_(\\d+)(_ALPHA|_BETA)?");
-    List<Object[]> versions = new ArrayList<>();
-    for (Field field : Version.class.getDeclaredFields()) {
-      if (Modifier.isStatic(field.getModifiers()) && field.getType() == Version.class) {
-        Matcher constant = constantPattern.matcher(field.getName());
-        Version v = (Version) field.get(Version.class);
-        if (constant.matches() == false || LATEST_PREVIOUS_MAJOR.equals(v)) {
-          continue;
-        }
-
-        for (Object p : patterns) {
-          versions.add(new Object[] {v, p});
-        }
+    List<Object[]> versionAndPatterns = new ArrayList<>();
+    List<Version> versionList = getAllCurrentVersions();
+    for (Version v : versionList) {
+      for (Object p : patterns) {
+        versionAndPatterns.add(new Object[] {v, p});
       }
     }
-    return versions;
+    return versionAndPatterns;
   }
 
   public String indexName(Version version) {
@@ -231,6 +194,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
       createIndex(dir);
     }
   }
+
   private Path getIndexDir() {
     String path = System.getProperty("tests.bwcdir");
     assumeTrue(

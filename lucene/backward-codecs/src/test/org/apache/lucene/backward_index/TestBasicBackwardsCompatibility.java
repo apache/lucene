@@ -16,7 +16,13 @@
  */
 package org.apache.lucene.backward_index;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.Version.LUCENE_9_0_0;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.io.IOException;
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -67,43 +73,18 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
-import java.util.TimeZone;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
@@ -117,16 +98,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-          KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
 
-
   public TestBasicBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
-
 
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
@@ -148,10 +127,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     // TODO: remove randomness
     IndexWriterConfig conf =
-            new IndexWriterConfig(new MockAnalyzer(random()))
-                    .setMaxBufferedDocs(10)
-                    .setCodec(TestUtil.getDefaultCodec())
-                    .setMergePolicy(NoMergePolicy.INSTANCE);
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxBufferedDocs(10)
+            .setCodec(TestUtil.getDefaultCodec())
+            .setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, conf);
 
     for (int i = 0; i < DOCS_COUNT; i++) {
@@ -169,19 +148,19 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
       // TODO: remove randomness
       conf =
-              new IndexWriterConfig(new MockAnalyzer(random()))
-                      .setMaxBufferedDocs(10)
-                      .setCodec(TestUtil.getDefaultCodec())
-                      .setMergePolicy(NoMergePolicy.INSTANCE);
+          new IndexWriterConfig(new MockAnalyzer(random()))
+              .setMaxBufferedDocs(10)
+              .setCodec(TestUtil.getDefaultCodec())
+              .setMergePolicy(NoMergePolicy.INSTANCE);
       writer = new IndexWriter(dir, conf);
       addNoProxDoc(writer);
       writer.close();
 
       conf =
-              new IndexWriterConfig(new MockAnalyzer(random()))
-                      .setMaxBufferedDocs(10)
-                      .setCodec(TestUtil.getDefaultCodec())
-                      .setMergePolicy(NoMergePolicy.INSTANCE);
+          new IndexWriterConfig(new MockAnalyzer(random()))
+              .setMaxBufferedDocs(10)
+              .setCodec(TestUtil.getDefaultCodec())
+              .setMergePolicy(NoMergePolicy.INSTANCE);
       writer = new IndexWriter(dir, conf);
       Term searchTerm = new Term("id", String.valueOf(DELETED_ID));
       writer.deleteDocuments(searchTerm);
@@ -198,18 +177,18 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     customType2.setStoreTermVectorPositions(true);
     customType2.setStoreTermVectorOffsets(true);
     doc.add(
-            new Field(
-                    "autf8", "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", customType2));
+        new Field(
+            "autf8", "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", customType2));
     doc.add(
-            new Field(
-                    "utf8", "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", customType2));
+        new Field(
+            "utf8", "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", customType2));
     doc.add(new Field("content2", "here is more content with aaa aaa aaa", customType2));
     doc.add(new Field("fie\u2C77ld", "field with non-ascii name", customType2));
 
     // add docvalues fields
     doc.add(new NumericDocValuesField("dvByte", (byte) id));
     byte[] bytes =
-            new byte[]{(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
+        new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
     BytesRef ref = new BytesRef(bytes);
     doc.add(new BinaryDocValuesField("dvBytesDerefFixed", ref));
     doc.add(new BinaryDocValuesField("dvBytesDerefVar", ref));
@@ -276,8 +255,8 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   public void searchIndex(
-          Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
-          throws IOException {
+      Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
+      throws IOException {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
@@ -304,11 +283,11 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
           f = d.getField("utf8");
           assertEquals(
-                  "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", f.stringValue());
+              "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", f.stringValue());
 
           f = d.getField("autf8");
           assertEquals(
-                  "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", f.stringValue());
+              "Lu\uD834\uDD1Ece\uD834\uDD60ne \u0000 \u2620 ab\ud917\udc17cd", f.stringValue());
 
           f = d.getField("content2");
           assertEquals("here is more content with aaa aaa aaa", f.stringValue());
@@ -331,12 +310,12 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     BinaryDocValues dvBytesDerefFixed = MultiDocValues.getBinaryValues(reader, "dvBytesDerefFixed");
     BinaryDocValues dvBytesDerefVar = MultiDocValues.getBinaryValues(reader, "dvBytesDerefVar");
     SortedDocValues dvBytesSortedFixed =
-            MultiDocValues.getSortedValues(reader, "dvBytesSortedFixed");
+        MultiDocValues.getSortedValues(reader, "dvBytesSortedFixed");
     SortedDocValues dvBytesSortedVar = MultiDocValues.getSortedValues(reader, "dvBytesSortedVar");
     BinaryDocValues dvBytesStraightFixed =
-            MultiDocValues.getBinaryValues(reader, "dvBytesStraightFixed");
+        MultiDocValues.getBinaryValues(reader, "dvBytesStraightFixed");
     BinaryDocValues dvBytesStraightVar =
-            MultiDocValues.getBinaryValues(reader, "dvBytesStraightVar");
+        MultiDocValues.getBinaryValues(reader, "dvBytesStraightVar");
     NumericDocValues dvDouble = MultiDocValues.getNumericValues(reader, "dvDouble");
     NumericDocValues dvFloat = MultiDocValues.getNumericValues(reader, "dvFloat");
     NumericDocValues dvInt = MultiDocValues.getNumericValues(reader, "dvInt");
@@ -346,7 +325,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
     SortedSetDocValues dvSortedSet = MultiDocValues.getSortedSetValues(reader, "dvSortedSet");
     SortedNumericDocValues dvSortedNumeric =
-            MultiDocValues.getSortedNumericValues(reader, "dvSortedNumeric");
+        MultiDocValues.getSortedNumericValues(reader, "dvSortedNumeric");
 
     for (int i = 0; i < DOCS_COUNT; i++) {
       int id = Integer.parseInt(storedFields.document(i).get("id"));
@@ -354,7 +333,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       assertEquals(id, dvByte.longValue());
 
       byte[] bytes =
-              new byte[]{(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
+          new byte[] {(byte) (id >>> 24), (byte) (id >>> 16), (byte) (id >>> 8), (byte) id};
       BytesRef expectedRef = new BytesRef(bytes);
 
       assertEquals(i, dvBytesDerefFixed.nextDoc());
@@ -419,73 +398,73 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     hits = searcher.search(new TermQuery(new Term("utf8", "\u0000")), 1000).scoreDocs;
     assertEquals(34, hits.length);
     hits =
-            searcher.search(new TermQuery(new Term("utf8", "lu\uD834\uDD1Ece\uD834\uDD60ne")), 1000)
-                    .scoreDocs;
+        searcher.search(new TermQuery(new Term("utf8", "lu\uD834\uDD1Ece\uD834\uDD60ne")), 1000)
+            .scoreDocs;
     assertEquals(34, hits.length);
     hits = searcher.search(new TermQuery(new Term("utf8", "ab\ud917\udc17cd")), 1000).scoreDocs;
     assertEquals(34, hits.length);
 
     doTestHits(
-            searcher.search(IntPoint.newRangeQuery("intPoint1d", 0, 34), 1000).scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(IntPoint.newRangeQuery("intPoint1d", 0, 34), 1000).scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(
-                    IntPoint.newRangeQuery("intPoint2d", new int[]{0, 0}, new int[]{34, 68}), 1000)
-                    .scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(
+                IntPoint.newRangeQuery("intPoint2d", new int[] {0, 0}, new int[] {34, 68}), 1000)
+            .scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(FloatPoint.newRangeQuery("floatPoint1d", 0f, 34f), 1000).scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(FloatPoint.newRangeQuery("floatPoint1d", 0f, 34f), 1000).scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(
-                    FloatPoint.newRangeQuery(
-                            "floatPoint2d", new float[]{0f, 0f}, new float[]{34f, 68f}),
-                    1000)
-                    .scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(
+                FloatPoint.newRangeQuery(
+                    "floatPoint2d", new float[] {0f, 0f}, new float[] {34f, 68f}),
+                1000)
+            .scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(LongPoint.newRangeQuery("longPoint1d", 0, 34), 1000).scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(LongPoint.newRangeQuery("longPoint1d", 0, 34), 1000).scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(
-                    LongPoint.newRangeQuery("longPoint2d", new long[]{0, 0}, new long[]{34, 68}),
-                    1000)
-                    .scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(
+                LongPoint.newRangeQuery("longPoint2d", new long[] {0, 0}, new long[] {34, 68}),
+                1000)
+            .scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(DoublePoint.newRangeQuery("doublePoint1d", 0.0, 34.0), 1000).scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(DoublePoint.newRangeQuery("doublePoint1d", 0.0, 34.0), 1000).scoreDocs,
+        34,
+        searcher.getIndexReader());
     doTestHits(
-            searcher.search(
-                    DoublePoint.newRangeQuery(
-                            "doublePoint2d", new double[]{0.0, 0.0}, new double[]{34.0, 68.0}),
-                    1000)
-                    .scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(
+                DoublePoint.newRangeQuery(
+                    "doublePoint2d", new double[] {0.0, 0.0}, new double[] {34.0, 68.0}),
+                1000)
+            .scoreDocs,
+        34,
+        searcher.getIndexReader());
 
     byte[] bytes1 = new byte[4];
-    byte[] bytes2 = new byte[]{0, 0, 0, (byte) 34};
+    byte[] bytes2 = new byte[] {0, 0, 0, (byte) 34};
     doTestHits(
-            searcher.search(BinaryPoint.newRangeQuery("binaryPoint1d", bytes1, bytes2), 1000).scoreDocs,
-            34,
-            searcher.getIndexReader());
-    byte[] bytes3 = new byte[]{0, 0, 0, (byte) 68};
+        searcher.search(BinaryPoint.newRangeQuery("binaryPoint1d", bytes1, bytes2), 1000).scoreDocs,
+        34,
+        searcher.getIndexReader());
+    byte[] bytes3 = new byte[] {0, 0, 0, (byte) 68};
     doTestHits(
-            searcher.search(
-                    BinaryPoint.newRangeQuery(
-                            "binaryPoint2d", new byte[][]{bytes1, bytes1}, new byte[][]{bytes2, bytes3}),
-                    1000)
-                    .scoreDocs,
-            34,
-            searcher.getIndexReader());
+        searcher.search(
+                BinaryPoint.newRangeQuery(
+                    "binaryPoint2d", new byte[][] {bytes1, bytes1}, new byte[][] {bytes2, bytes3}),
+                1000)
+            .scoreDocs,
+        34,
+        searcher.getIndexReader());
 
     // test vector values and KNN search
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
@@ -498,7 +477,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                    "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
+                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
             cnt++;
           }
         }
@@ -517,9 +496,8 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     reader.close();
   }
 
-
   private void doTestHits(ScoreDoc[] hits, int expectedCount, IndexReader reader)
-          throws IOException {
+      throws IOException {
     final int hitCount = hits.length;
     assertEquals("wrong number of hits", expectedCount, hitCount);
     StoredFields storedFields = reader.storedFields();
@@ -531,14 +509,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   private static ScoreDoc[] assertKNNSearch(
-          IndexSearcher searcher,
-          float[] queryVector,
-          int k,
-          int expectedHitsCount,
-          String expectedFirstDocId)
-          throws IOException {
+      IndexSearcher searcher,
+      float[] queryVector,
+      int k,
+      int expectedHitsCount,
+      String expectedFirstDocId)
+      throws IOException {
     ScoreDoc[] hits =
-            searcher.search(new KnnFloatVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
+        searcher.search(new KnnFloatVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
     Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
@@ -546,18 +524,18 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   public void changeIndexWithAdds(Random random, Directory dir, Version nameVersion)
-          throws IOException {
+      throws IOException {
     SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
     assertEquals(nameVersion, infos.getCommitLuceneVersion());
     assertEquals(nameVersion, infos.getMinSegmentLuceneVersion());
 
     // open writer
     IndexWriter writer =
-            new IndexWriter(
-                    dir,
-                    newIndexWriterConfig(new MockAnalyzer(random))
-                            .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
-                            .setMergePolicy(newLogMergePolicy()));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
+                .setMergePolicy(newLogMergePolicy()));
     // add 10 docs
     for (int i = 0; i < 10; i++) {
       addDoc(writer, DOCS_COUNT + i);
@@ -581,21 +559,21 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       assertKNNSearch(searcher, KNN_VECTOR, 1000, 44, "0");
       // make sure KNN search using HNSW graph sees newly added docs
       assertKNNSearch(
-              searcher,
-              new float[]{KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
-              10,
-              10,
-              "44");
+          searcher,
+          new float[] {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
+          10,
+          10,
+          "44");
     }
     reader.close();
 
     // fully merge
     writer =
-            new IndexWriter(
-                    dir,
-                    newIndexWriterConfig(new MockAnalyzer(random))
-                            .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
-                            .setMergePolicy(newLogMergePolicy()));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
+                .setMergePolicy(newLogMergePolicy()));
     writer.forceMerge(1);
     writer.close();
 
@@ -613,17 +591,17 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       assertKNNSearch(searcher, KNN_VECTOR, 1000, 44, "0");
       // make sure KNN search using HNSW graph sees newly added docs
       assertKNNSearch(
-              searcher,
-              new float[]{KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
-              10,
-              10,
-              "44");
+          searcher,
+          new float[] {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
+          10,
+          10,
+          "44");
     }
     reader.close();
   }
 
   public void changeIndexNoAdds(Random random, Directory dir, Version nameVersion)
-          throws IOException {
+      throws IOException {
     // make sure searching sees right # hits for term search
     DirectoryReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
@@ -642,8 +620,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
     // fully merge
     IndexWriter writer =
-            new IndexWriter(
-                    dir, newIndexWriterConfig(new MockAnalyzer(random)).setOpenMode(IndexWriterConfig.OpenMode.APPEND));
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.forceMerge(1);
     writer.close();
 
@@ -696,7 +676,6 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     assertNull(terms.next());
 
     r.close();
-
   }
 
   /**
@@ -723,8 +702,8 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       Version oldVersion = air.getSegmentInfo().info.getVersion();
       assertNotNull(oldVersion); // only 3.0 segments can have a null version
       assertTrue(
-              "current Version.LATEST is <= an old index: did you forget to bump it?!",
-              currentVersion.onOrAfter(oldVersion));
+          "current Version.LATEST is <= an old index: did you forget to bump it?!",
+          currentVersion.onOrAfter(oldVersion));
     }
     r.close();
   }
@@ -747,7 +726,6 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       }
     }
   }
-
 
   private int countDocs(PostingsEnum docs) throws IOException {
     int count = 0;
@@ -773,161 +751,155 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     searchIndex(directory, indexPattern, Version.MIN_SUPPORTED_MAJOR, version);
 
     if (TEST_NIGHTLY) { // NOCOMMIT Add binary indices
-//      for (String name : binarySupportedNames) {
-//        Path oldIndexDir = createTempDir(name);
-//        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-//        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-//          Version version = Version.parse(name.substring(0, name.indexOf('-')));
-//          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR, version);
-//        }
-//      }
+      //      for (String name : binarySupportedNames) {
+      //        Path oldIndexDir = createTempDir(name);
+      //        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+      //        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+      //          Version version = Version.parse(name.substring(0, name.indexOf('-')));
+      //          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR, version);
+      //        }
+      //      }
     }
   }
 
   public void testFullyMergeOldIndex() throws Exception {
-      try(Directory dir = newDirectory(this.directory)) {
-        final SegmentInfos oldSegInfos = SegmentInfos.readLatestCommit(dir);
+    try (Directory dir = newDirectory(this.directory)) {
+      final SegmentInfos oldSegInfos = SegmentInfos.readLatestCommit(dir);
 
-        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-        w.forceMerge(1);
-        w.close();
+      IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+      w.forceMerge(1);
+      w.close();
 
-        final SegmentInfos segInfos = SegmentInfos.readLatestCommit(dir);
-        assertEquals(
-                oldSegInfos.getIndexCreatedVersionMajor(), segInfos.getIndexCreatedVersionMajor());
-        assertEquals(Version.LATEST, segInfos.asList().get(0).info.getVersion());
-        assertEquals(
-                oldSegInfos.asList().get(0).info.getMinVersion(),
-                segInfos.asList().get(0).info.getMinVersion());
-
-      }
+      final SegmentInfos segInfos = SegmentInfos.readLatestCommit(dir);
+      assertEquals(
+          oldSegInfos.getIndexCreatedVersionMajor(), segInfos.getIndexCreatedVersionMajor());
+      assertEquals(Version.LATEST, segInfos.asList().get(0).info.getVersion());
+      assertEquals(
+          oldSegInfos.asList().get(0).info.getMinVersion(),
+          segInfos.asList().get(0).info.getMinVersion());
+    }
   }
 
   public void testAddOldIndexes() throws IOException {
-      SegmentInfos infos = SegmentInfos.readLatestCommit(directory);
+    SegmentInfos infos = SegmentInfos.readLatestCommit(directory);
 
-      Directory targetDir = newDirectory();
-      if (infos.getCommitLuceneVersion().major != Version.LATEST.major) {
-        // both indexes are not compatible
-        Directory targetDir2 = newDirectory();
-        IndexWriter w =
-                new IndexWriter(targetDir2, newIndexWriterConfig(new MockAnalyzer(random())));
-        IllegalArgumentException e =
-                expectThrows(IllegalArgumentException.class, () -> w.addIndexes(directory));
-        assertTrue(
-                e.getMessage(),
-                e.getMessage()
-                        .startsWith(
-                                "Cannot use addIndexes(Directory) with indexes that have been created by a different Lucene version."));
-        w.close();
-        targetDir2.close();
-
-        // for the next test, we simulate writing to an index that was created on the same major
-        // version
-        new SegmentInfos(infos.getIndexCreatedVersionMajor()).commit(targetDir);
-      }
-
-      IndexWriter w = new IndexWriter(targetDir, newIndexWriterConfig(new MockAnalyzer(random())));
-      w.addIndexes(directory);
+    Directory targetDir = newDirectory();
+    if (infos.getCommitLuceneVersion().major != Version.LATEST.major) {
+      // both indexes are not compatible
+      Directory targetDir2 = newDirectory();
+      IndexWriter w = new IndexWriter(targetDir2, newIndexWriterConfig(new MockAnalyzer(random())));
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> w.addIndexes(directory));
+      assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .startsWith(
+                  "Cannot use addIndexes(Directory) with indexes that have been created by a different Lucene version."));
       w.close();
+      targetDir2.close();
 
-      SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
-      assertNull(
-              "none of the segments should have been upgraded",
-              si.asList().stream()
-                      .filter( // depending on the MergePolicy we might see these segments merged away
-                              sci ->
-                                      sci.getId() != null
-                                              && sci.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0)) == false)
-                      .findAny()
-                      .orElse(null));
-      if (VERBOSE) {
-        System.out.println("\nTEST: done adding indices; now close");
-      }
+      // for the next test, we simulate writing to an index that was created on the same major
+      // version
+      new SegmentInfos(infos.getIndexCreatedVersionMajor()).commit(targetDir);
+    }
 
-      targetDir.close();
+    IndexWriter w = new IndexWriter(targetDir, newIndexWriterConfig(new MockAnalyzer(random())));
+    w.addIndexes(directory);
+    w.close();
+
+    SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
+    assertNull(
+        "none of the segments should have been upgraded",
+        si.asList().stream()
+            .filter( // depending on the MergePolicy we might see these segments merged away
+                sci ->
+                    sci.getId() != null
+                        && sci.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0)) == false)
+            .findAny()
+            .orElse(null));
+    if (VERBOSE) {
+      System.out.println("\nTEST: done adding indices; now close");
+    }
+
+    targetDir.close();
   }
 
   public void testAddOldIndexesReader() throws IOException {
-      SegmentInfos infos = SegmentInfos.readLatestCommit(directory);
-      DirectoryReader reader = DirectoryReader.open(directory);
+    SegmentInfos infos = SegmentInfos.readLatestCommit(directory);
+    DirectoryReader reader = DirectoryReader.open(directory);
 
-      Directory targetDir = newDirectory();
-      if (infos.getCommitLuceneVersion().major != Version.LATEST.major) {
-        Directory targetDir2 = newDirectory();
-        IndexWriter w =
-                new IndexWriter(targetDir2, newIndexWriterConfig(new MockAnalyzer(random())));
-        IllegalArgumentException e =
-                expectThrows(
-                        IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
-        assertEquals(
-                e.getMessage(),
-                "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
-        w.close();
-        targetDir2.close();
-
-        // for the next test, we simulate writing to an index that was created on the same major
-        // version
-        new SegmentInfos(infos.getIndexCreatedVersionMajor()).commit(targetDir);
-      }
-      IndexWriter w = new IndexWriter(targetDir, newIndexWriterConfig(new MockAnalyzer(random())));
-      TestUtil.addIndexesSlowly(w, reader);
+    Directory targetDir = newDirectory();
+    if (infos.getCommitLuceneVersion().major != Version.LATEST.major) {
+      Directory targetDir2 = newDirectory();
+      IndexWriter w = new IndexWriter(targetDir2, newIndexWriterConfig(new MockAnalyzer(random())));
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
+      assertEquals(
+          e.getMessage(),
+          "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
       w.close();
-      reader.close();
-      SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
-      assertNull(
-              "all SCIs should have an id now",
-              si.asList().stream().filter(sci -> sci.getId() == null).findAny().orElse(null));
-      targetDir.close();
+      targetDir2.close();
+
+      // for the next test, we simulate writing to an index that was created on the same major
+      // version
+      new SegmentInfos(infos.getIndexCreatedVersionMajor()).commit(targetDir);
+    }
+    IndexWriter w = new IndexWriter(targetDir, newIndexWriterConfig(new MockAnalyzer(random())));
+    TestUtil.addIndexesSlowly(w, reader);
+    w.close();
+    reader.close();
+    SegmentInfos si = SegmentInfos.readLatestCommit(targetDir);
+    assertNull(
+        "all SCIs should have an id now",
+        si.asList().stream().filter(sci -> sci.getId() == null).findAny().orElse(null));
+    targetDir.close();
   }
 
   public void testFailOpenOldIndex() throws IOException {
     assumeFalse("doesn't work on current index", version.equals(Version.LATEST));
     IndexCommit commit = DirectoryReader.listCommits(directory).get(0);
     IndexFormatTooOldException ex =
-            expectThrows(
-                    IndexFormatTooOldException.class,
-                    () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
+        expectThrows(
+            IndexFormatTooOldException.class,
+            () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
     assertTrue(
-            ex.getMessage()
-                    .contains(
-                            "only supports reading from version " + Version.LATEST.major + " upwards."));
+        ex.getMessage()
+            .contains("only supports reading from version " + Version.LATEST.major + " upwards."));
     // now open with allowed min version
     StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
   }
 
   public void testOpenModeAndCreatedVersion() throws IOException {
-      Directory dir = newDirectory(directory);
-      int majorVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
-      if (majorVersion != Version.MIN_SUPPORTED_MAJOR && majorVersion != Version.LATEST.major) {
-        fail(
-                "expected one of: ["
-                        + Version.MIN_SUPPORTED_MAJOR
-                        + ", "
-                        + Version.LATEST.major
-                        + "] but got: "
-                        + majorVersion);
+    Directory dir = newDirectory(directory);
+    int majorVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
+    if (majorVersion != Version.MIN_SUPPORTED_MAJOR && majorVersion != Version.LATEST.major) {
+      fail(
+          "expected one of: ["
+              + Version.MIN_SUPPORTED_MAJOR
+              + ", "
+              + Version.LATEST.major
+              + "] but got: "
+              + majorVersion);
+    }
+    for (IndexWriterConfig.OpenMode openMode : IndexWriterConfig.OpenMode.values()) {
+      Directory tmpDir = newDirectory(dir);
+      IndexWriter w = new IndexWriter(tmpDir, newIndexWriterConfig().setOpenMode(openMode));
+      w.commit();
+      w.close();
+      switch (openMode) {
+        case CREATE:
+          assertEquals(
+              Version.LATEST.major,
+              SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
+          break;
+        case APPEND:
+        case CREATE_OR_APPEND:
+        default:
+          assertEquals(
+              majorVersion, SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
       }
-      for (IndexWriterConfig.OpenMode openMode : IndexWriterConfig.OpenMode.values()) {
-        Directory tmpDir = newDirectory(dir);
-        IndexWriter w = new IndexWriter(tmpDir, newIndexWriterConfig().setOpenMode(openMode));
-        w.commit();
-        w.close();
-        switch (openMode) {
-          case CREATE:
-            assertEquals(
-                    Version.LATEST.major,
-                    SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
-            break;
-          case APPEND:
-          case CREATE_OR_APPEND:
-          default:
-            assertEquals(
-                    majorVersion, SegmentInfos.readLatestCommit(tmpDir).getIndexCreatedVersionMajor());
-        }
-        tmpDir.close();
-      }
-      dir.close();
+      tmpDir.close();
+    }
+    dir.close();
   }
 }
-

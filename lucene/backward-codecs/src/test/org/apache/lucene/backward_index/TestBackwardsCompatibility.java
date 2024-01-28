@@ -17,112 +17,28 @@
 package org.apache.lucene.backward_index;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Modifier;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.BinaryPoint;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleDocValuesField;
-import org.apache.lucene.document.DoublePoint;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.FloatDocValuesField;
-import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexFormatTooOldException;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexUpgrader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SegmentReader;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StandardDirectoryReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermVectors;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
-import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.Version;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 /*
   Verify we can read previous versions' indexes, do searches
@@ -157,7 +73,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // Then move those 2 zip files to your trunk checkout and add them
   // to the oldNames array.
-
 
   static final String[] unsupportedNames = {
     "1.9.0-cfs",
@@ -409,22 +324,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.11.2-nocfs"
   };
 
-  static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
-
-  static final String[] binarySupportedNames;
-
-  static {
-    ArrayList<String> list = new ArrayList<>();
-    for (String name : unsupportedNames) {
-      if (name.startsWith(MIN_BINARY_SUPPORTED_MAJOR + ".")) {
-        list.add(name);
-      }
-    }
-    binarySupportedNames = list.toArray(new String[0]);
-  }
-
-
-
   /**
    * This test checks that *only* IndexFormatTooOldExceptions are thrown when you open and operate
    * on too old indexes!
@@ -557,7 +456,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-
   public void verifyUsesDefaultCodec(Directory dir, String name) throws IOException {
     DirectoryReader r = DirectoryReader.open(dir);
     for (LeafReaderContext context : r.leaves()) {
@@ -573,7 +471,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
     r.close();
   }
-
 
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
@@ -593,31 +490,4 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       searcher.count(new WildcardQuery(new Term("field", "*qx*")));
     }
   }
-
-  @Nightly
-  public void testReadNMinusTwoCommit() throws IOException {
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
-        StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();
-      }
-    }
-  }
-
-  @Nightly
-  public void testReadNMinusTwoSegmentInfos() throws IOException {
-    for (String name : binarySupportedNames) {
-      Path oldIndexDir = createTempDir(name);
-      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-        expectThrows(
-            IndexFormatTooOldException.class,
-            () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
-        SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
-      }
-    }
-  }
-
 }
