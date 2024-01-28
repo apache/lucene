@@ -456,22 +456,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void verifyUsesDefaultCodec(Directory dir, String name) throws IOException {
-    DirectoryReader r = DirectoryReader.open(dir);
-    for (LeafReaderContext context : r.leaves()) {
-      SegmentReader air = (SegmentReader) context.reader();
-      Codec codec = air.getSegmentInfo().info.getCodec();
-      assertTrue(
-          "codec used in "
-              + name
-              + " ("
-              + codec.getName()
-              + ") is not a default codec (does not begin with Lucene)",
-          codec.getName().startsWith("Lucene"));
-    }
-    r.close();
-  }
-
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
   // IntersectTermsEnum (used by WildcardQuery)

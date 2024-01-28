@@ -60,7 +60,7 @@ public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTest
     fail("not supported");
   }
 
-  // @Nightly
+  @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
 
     try (BaseDirectoryWrapper dir = newDirectory(directory)) {
@@ -69,7 +69,7 @@ public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTest
     }
   }
 
-  // @Nightly
+  @Nightly
   public void testReadNMinusTwoSegmentInfos() throws IOException {
     try (BaseDirectoryWrapper dir = newDirectory(directory)) {
       expectThrows(
