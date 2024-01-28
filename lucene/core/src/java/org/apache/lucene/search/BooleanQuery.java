@@ -189,6 +189,21 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   /**
+   * Rewrite a single two clause disjunction query with terms to two term queries and a conjunction
+   * query using the inclusion–exclusion principle.
+   */
+  Query[] rewriteTwoClauseDisjunctionWithTermsForCount() {
+    BooleanQuery.Builder newQuery = new BooleanQuery.Builder();
+    Query[] queries = new Query[3];
+    for (int i = 0; i < clauses.size(); i++) {
+      newQuery.add(clauses.get(i).getQuery(), Occur.MUST);
+      queries[i] = clauses.get(i).getQuery();
+    }
+    queries[2] = newQuery.build();
+    return queries;
+  }
+
+  /**
    * Returns an iterator on the clauses in this query. It implements the {@link Iterable} interface
    * to make it possible to do:
    *

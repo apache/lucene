@@ -962,8 +962,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     dir.close();
   }
 
-  // test twoClauseTermDisjunctionOptimizedScorer
-  public void testTwoClauseTermDisjunctionOptimizedScorer() throws Exception {
+  public void testTwoClauseTermDisjunctionCountOptimization() throws Exception {
     List<String[]> docContent =
         Arrays.asList(
             new String[] {"A", "B"},

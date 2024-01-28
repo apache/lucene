@@ -420,6 +420,12 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    if (query instanceof BooleanQuery booleanQuery
+        && this.reader.hasDeletions() == false
+        && booleanQuery.isTwoClauseDisjunctionWithTerms()) {
+      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount();
+      return count(queries[0]) + count(queries[1]) - count(queries[2]);
+    }
     return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
 
