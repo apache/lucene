@@ -52,7 +52,7 @@ public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTest
 
   @Override
   void verifyUsesDefaultCodec(Directory dir, String name) throws IOException {
-    // don't this will fail since the indices are not supportd
+    // don't this will fail since the indices are not supported
   }
 
   @Override
