@@ -106,7 +106,7 @@ public class UpgradeIndexMergePolicy extends FilterMergePolicy {
       // the resulting set contains all segments that are left over
       // and will be merged to one additional segment:
       for (final OneMerge om : spec.merges) {
-        oldSegments.keySet().removeAll(om.segments);
+        om.segments.forEach(oldSegments::remove);
       }
     }
 
