@@ -444,7 +444,7 @@ public class CheckHits {
           int k1 = descr.indexOf("max plus ");
           if (k1 >= 0) {
             k1 += "max plus ".length();
-            int k2 = descr.indexOf(" ", k1);
+            int k2 = descr.indexOf(' ', k1);
             try {
               x = Float.parseFloat(descr.substring(k1, k2).trim());
               if (descr.substring(k2).trim().equals("times others of:")) {
