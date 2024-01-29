@@ -150,9 +150,9 @@ public final class EditParamsDialogFactory implements DialogOpener.DialogFactory
                 (String) paramsTable.getValueAt(i, ParamsTableModel.Column.VALUE.getIndex());
             if (deleted
                 || Objects.isNull(name)
-                || name.equals("")
+                || name.isEmpty()
                 || Objects.isNull(value)
-                || value.equals("")) {
+                || value.isEmpty()) {
               continue;
             }
             params.put(name, value);
