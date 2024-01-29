@@ -439,7 +439,7 @@ public final class SynonymGraphFilter extends TokenFilter {
    * Expands the output graph into the necessary tokens, adding synonyms as side paths parallel to
    * the input tokens, and buffers them in the output token buffer.
    */
-  private void bufferOutputTokens(BytesRef bytes, int matchInputLength) {
+  private void bufferOutputTokens(BytesRef bytes, int matchInputLength) throws IOException {
     bytesReader.reset(bytes.bytes, bytes.offset, bytes.length);
 
     final int code = bytesReader.readVInt();
