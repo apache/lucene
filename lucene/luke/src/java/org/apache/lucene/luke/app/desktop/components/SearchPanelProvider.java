@@ -520,7 +520,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(SimilarityTabOperator.class)
             .map(SimilarityTabOperator::getConfig)
-            .orElse(new SimilarityConfig.Builder().build());
+            .orElseGet(() -> new SimilarityConfig.Builder().build());
     Sort sort =
         operatorRegistry.get(SortTabOperator.class).map(SortTabOperator::getSort).orElse(null);
     Set<String> fieldsToLoad =
@@ -563,12 +563,12 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(MLTTabOperator.class)
             .map(MLTTabOperator::getConfig)
-            .orElse(new MLTConfig.Builder().build());
+            .orElseGet(() -> new MLTConfig.Builder().build());
     Analyzer analyzer =
         operatorRegistry
             .get(AnalysisTabOperator.class)
             .map(AnalysisTabOperator::getCurrentAnalyzer)
-            .orElse(new StandardAnalyzer());
+            .orElseGet(StandardAnalyzer::new);
     Query query = searchModel.mltQuery(docNum, mltConfig, analyzer);
     Set<String> fieldsToLoad =
         operatorRegistry
@@ -603,12 +603,12 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(QueryParserTabOperator.class)
             .map(QueryParserTabOperator::getConfig)
-            .orElse(new QueryParserConfig.Builder().build());
+            .orElseGet(() -> new QueryParserConfig.Builder().build());
     Analyzer analyzer =
         operatorRegistry
             .get(AnalysisTabOperator.class)
             .map(AnalysisTabOperator::getCurrentAnalyzer)
-            .orElse(new StandardAnalyzer());
+            .orElseGet(StandardAnalyzer::new);
     return searchModel.parseQuery(expr, df, analyzer, config, rewrite);
   }
 
