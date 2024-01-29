@@ -957,12 +957,11 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   }
 
   private String[] getAnalyzerFactoryConfig(String name, String params) {
-    final String singleQuoteEscapedName = name.replaceAll("'", "\\\\'");
+    final String singleQuoteEscapedName = name.replace("'", "\\'");
     String[] algLines = {
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
-      "work.dir="
-          + getWorkDir().toAbsolutePath().toString().replaceAll("\\\\", "/"), // Fix Windows path
+      "work.dir=" + getWorkDir().toAbsolutePath().toString().replace('\\', '/'), // Fix Windows path
       "content.source.forever=false",
       "directory=ByteBuffersDirectory",
       "AnalyzerFactory(name:'" + singleQuoteEscapedName + "', " + params + ")",
