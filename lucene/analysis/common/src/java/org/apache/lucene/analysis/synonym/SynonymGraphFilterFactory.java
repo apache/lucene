@@ -22,6 +22,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -85,6 +86,7 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
   private final boolean expand;
   private final String analyzerName;
   private final Map<String, String> tokArgs = new HashMap<>();
+  private final Path compiledSynonymsPath;
 
   private SynonymMap map;
 
@@ -113,6 +115,8 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
         itr.remove();
       }
     }
+    String compiledSynonymsPathArg = get(args, "compiledSynonymsPath");
+    compiledSynonymsPath = compiledSynonymsPathArg == null ? null : Path.of(compiledSynonymsPathArg);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -168,29 +172,36 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
   protected SynonymMap loadSynonyms(
       ResourceLoader loader, String cname, boolean dedup, Analyzer analyzer)
       throws IOException, ParseException {
-    CharsetDecoder decoder =
-        StandardCharsets.UTF_8
-            .newDecoder()
-            .onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT);
-
-    SynonymMap.Parser parser;
-    Class<? extends SynonymMap.Parser> clazz = loader.findClass(cname, SynonymMap.Parser.class);
-    try {
-      parser =
-          clazz
-              .getConstructor(boolean.class, boolean.class, Analyzer.class)
-              .newInstance(dedup, expand, analyzer);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    SynonymMapDirectory compiledSynonymsDirectory = null;
+    if (compiledSynonymsPath != null) {
+      compiledSynonymsDirectory = new SynonymMapDirectory(compiledSynonymsPath);
     }
+    if (compiledSynonymsDirectory == null || compiledSynonymsDirectory.hasSynonyms() == false) {
+      CharsetDecoder decoder =
+              StandardCharsets.UTF_8
+                      .newDecoder()
+                      .onMalformedInput(CodingErrorAction.REPORT)
+                      .onUnmappableCharacter(CodingErrorAction.REPORT);
 
-    List<String> files = splitFileNames(synonyms);
-    for (String file : files) {
-      decoder.reset();
-      parser.parse(new InputStreamReader(loader.openResource(file), decoder));
+      SynonymMap.Parser parser;
+      Class<? extends SynonymMap.Parser> clazz = loader.findClass(cname, SynonymMap.Parser.class);
+      try {
+        parser =
+                clazz
+                        .getConstructor(boolean.class, boolean.class, Analyzer.class)
+                        .newInstance(dedup, expand, analyzer);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+
+      List<String> files = splitFileNames(synonyms);
+      for (String file : files) {
+        decoder.reset();
+        parser.parse(new InputStreamReader(loader.openResource(file), decoder));
+      }
+      return parser.build(compiledSynonymsDirectory);
     }
-    return parser.build();
+    return compiledSynonymsDirectory.readMap();
   }
 
   // (there are no tests for this functionality)
