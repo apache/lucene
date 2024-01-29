@@ -214,6 +214,7 @@ public final class BytesRefHash implements Accountable {
         pool.fillBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
+    Arrays.fill(compact, tmpOffset, compact.length, -1);
     return compact;
   }
 
