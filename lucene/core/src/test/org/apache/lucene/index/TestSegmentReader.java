@@ -99,12 +99,12 @@ public class TestSegmentReader extends LuceneTestCase {
 
     assertTrue(allFieldNames.size() == DocHelper.all.size());
     for (String s : allFieldNames) {
-      assertTrue(DocHelper.nameValues.containsKey(s) == true || s.equals(""));
+      assertTrue(DocHelper.nameValues.containsKey(s) == true || s.isEmpty());
     }
 
     assertTrue(indexedFieldNames.size() == DocHelper.indexed.size());
     for (String s : indexedFieldNames) {
-      assertTrue(DocHelper.indexed.containsKey(s) == true || s.equals(""));
+      assertTrue(DocHelper.indexed.containsKey(s) == true || s.isEmpty());
     }
 
     assertTrue(notIndexedFieldNames.size() == DocHelper.unindexed.size());
