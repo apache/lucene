@@ -18,10 +18,9 @@ package org.apache.lucene.backward_index;
 
 import static org.apache.lucene.backward_index.BackwardsCompatibilityTestBase.createPattern;
 
+import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
 
 public class TestGenerateBwcIndices extends LuceneTestCase {
 
@@ -53,31 +52,31 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
 
   public void testCreateCFS() throws IOException {
     TestBasicBackwardsCompatibility basicTest =
-            new TestBasicBackwardsCompatibility(
-                    Version.LATEST,
-                    createPattern(
-                            TestBasicBackwardsCompatibility.INDEX_NAME,
-                            TestBasicBackwardsCompatibility.SUFFIX_CFS));
+        new TestBasicBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestBasicBackwardsCompatibility.INDEX_NAME,
+                TestBasicBackwardsCompatibility.SUFFIX_CFS));
     basicTest.createBWCIndex();
   }
 
   public void testCreateNoCFS() throws IOException {
     TestBasicBackwardsCompatibility basicTest =
-            new TestBasicBackwardsCompatibility(
-                    Version.LATEST,
-                    createPattern(
-                            TestBasicBackwardsCompatibility.INDEX_NAME,
-                            TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
+        new TestBasicBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestBasicBackwardsCompatibility.INDEX_NAME,
+                TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
     basicTest.createBWCIndex();
   }
 
-  public void testCreateSortedIndex() throws IOException{
+  public void testCreateSortedIndex() throws IOException {
     TestIndexSortBackwardsCompatibility sortedTest =
-            new TestIndexSortBackwardsCompatibility(
-                    Version.LATEST,
-                    createPattern(
-                            TestIndexSortBackwardsCompatibility.INDEX_NAME,
-                            TestIndexSortBackwardsCompatibility.SUFFIX));
+        new TestIndexSortBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestIndexSortBackwardsCompatibility.INDEX_NAME,
+                TestIndexSortBackwardsCompatibility.SUFFIX));
     sortedTest.createBWCIndex();
   }
 
@@ -89,11 +88,11 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     if (isInitialMajorVersionRelease()) {
       // NOCOMMIT - WHY ONLY on the first major version?
       TestMoreTermsBackwardsCompatibility moreTermsTest =
-              new TestMoreTermsBackwardsCompatibility(
-                      Version.LATEST,
-                      createPattern(
-                              TestMoreTermsBackwardsCompatibility.INDEX_NAME,
-                              TestMoreTermsBackwardsCompatibility.SUFFIX));
+          new TestMoreTermsBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestMoreTermsBackwardsCompatibility.INDEX_NAME,
+                  TestMoreTermsBackwardsCompatibility.SUFFIX));
       moreTermsTest.createBWCIndex();
     }
   }
@@ -102,11 +101,11 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     if (isInitialMajorVersionRelease()) {
       // NOCOMMIT - WHY ONLY on the first major version?
       TestDVUpdateBackwardsCompatibility dvUpdatesTest =
-              new TestDVUpdateBackwardsCompatibility(
-                      Version.LATEST,
-                      createPattern(
-                              TestDVUpdateBackwardsCompatibility.INDEX_NAME,
-                              TestDVUpdateBackwardsCompatibility.SUFFIX));
+          new TestDVUpdateBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestDVUpdateBackwardsCompatibility.INDEX_NAME,
+                  TestDVUpdateBackwardsCompatibility.SUFFIX));
       dvUpdatesTest.createBWCIndex();
     }
   }
@@ -115,11 +114,11 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     if (isInitialMajorVersionRelease()) {
       // NOCOMMIT - WHY ONLY on the first major version?
       TestEmptyIndexBackwardsCompatibility emptyIndex =
-              new TestEmptyIndexBackwardsCompatibility(
-                      Version.LATEST,
-                      createPattern(
-                              TestEmptyIndexBackwardsCompatibility.INDEX_NAME,
-                              TestEmptyIndexBackwardsCompatibility.SUFFIX));
+          new TestEmptyIndexBackwardsCompatibility(
+              Version.LATEST,
+              createPattern(
+                  TestEmptyIndexBackwardsCompatibility.INDEX_NAME,
+                  TestEmptyIndexBackwardsCompatibility.SUFFIX));
       emptyIndex.createBWCIndex();
     }
   }

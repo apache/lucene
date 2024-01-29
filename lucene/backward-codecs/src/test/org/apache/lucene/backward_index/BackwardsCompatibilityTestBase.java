@@ -95,7 +95,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     super.setUp();
     assertNull(
         "Index name " + version + " should not exist found",
-        TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(LATEST_PREVIOUS_MAJOR)));
+        TestAncientIndicesCompatibility.class.getResourceAsStream(
+            indexName(LATEST_PREVIOUS_MAJOR)));
     if (supportsVersion(version) == false) {
       assertNull(
           "Index name " + version + " should not exist found",
