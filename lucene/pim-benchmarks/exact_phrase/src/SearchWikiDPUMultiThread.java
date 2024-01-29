@@ -71,6 +71,8 @@ public class SearchWikiDPUMultiThread {
     String field = "contents";
     String queries = null;
     long cpuTime = 0;
+    int nb_threads = 64;
+    int nb_topdocs = 100;
 
     for (int i = 0; i < args.length; i++) {
       if ("-index".equals(args[i])) {
@@ -82,10 +84,28 @@ public class SearchWikiDPUMultiThread {
       } else if ("-queries".equals(args[i])) {
         queries = args[i + 1];
         i++;
+      } else if ("-nthreads".equals(args[i])) {
+        try {
+          nb_threads = Integer.parseInt(args[i + 1]);
+        } catch (NumberFormatException e) {
+          System.out.println("Error: wrong number of threads.");
+          break;
+        }
+        i++;
+      } else if ("-ntopdocs".equals(args[i])) {
+        try {
+          nb_topdocs = Integer.parseInt(args[i + 1]);
+        } catch (NumberFormatException e) {
+          System.out.println("Error: wrong number of top docs.");
+          break;
+        }
+        i++;
       }
     }
 
     IndexReader reader = DirectoryReader.open(MMapDirectory.open(Paths.get(index)));
+    //ExecutorService executor = Executors.newFixedThreadPool(64);
+    //IndexSearcher searcher = new IndexSearcher(reader, executor);
     IndexSearcher searcher = new IndexSearcher(reader);
 
     // load PIM index from PIM directory
@@ -100,35 +120,45 @@ public class SearchWikiDPUMultiThread {
     while (in.readLine() != null) nb_queries++;
     in.close();
 
-    System.out.println("Starting " + NB_THREADS + " threads for index search");
-    BufferedReader[] readers = new BufferedReader[NB_THREADS];
-    SearchTask[] searchTasks = new SearchTask[NB_THREADS];
-    Thread[] threads = new Thread[NB_THREADS];
-    for(int i = 0; i < NB_THREADS; ++i) {
+    System.out.println("Starting " + nb_threads + " threads for index search");
+    BufferedReader[] readers = new BufferedReader[nb_threads];
+    SearchTask[] searchTasks = new SearchTask[nb_threads];
+    Thread[] threads = new Thread[nb_threads];
+    for(int i = 0; i < nb_threads; ++i) {
       readers[i] =  Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
       searchTasks[i] = new SearchTask(i, searcher, reader, field, readers[i],
-              i * (nb_queries / NB_THREADS),
-              i == (NB_THREADS - 1) ? nb_queries - (nb_queries / NB_THREADS * (NB_THREADS - 1)) : nb_queries / NB_THREADS);
+              i * (nb_queries / nb_threads),
+              i == (nb_threads - 1) ? nb_queries - (nb_queries / nb_threads * (nb_threads - 1)) : nb_queries / nb_threads,
+              nb_topdocs);
       threads[i] = new Thread(searchTasks[i]);
     }
 
     long start = System.nanoTime();
-    for(int i = 0; i < NB_THREADS; ++i) {
+    for(int i = 0; i < nb_threads; ++i) {
       threads[i].start();
     }
 
-    for(int i = 0; i < NB_THREADS; ++i) {
+    for(int i = 0; i < nb_threads; ++i) {
       threads[i].join();
     }
     long end = System.nanoTime();
-    for(int i = 0; i < NB_THREADS; ++i) {
+    long threadTime = 0, threadMaxTime = 0;
+    int nbReq = 0;
+    for(int i = 0; i < nb_threads; ++i) {
       System.out.println("THREAD " + i + ":");
       System.out.println(searchTasks[i].out.toString());
+      threadTime += searchTasks[i].totalTime;
+      if(threadMaxTime < searchTasks[i].totalTime)
+        threadMaxTime = searchTasks[i].totalTime;
+      nbReq += searchTasks[i].nbReq;
     }
 
     System.out.println("Cumulative time: " + String.format("%.2f", (end - start) * 1e-6) 
         + " ms, #queries=" + nb_queries + " throughput=" 
         + String.format("%.2f", ((double)nb_queries * 1e9 / (end - start))) + " (queries/sec)");
+    System.out.println("Thread cumulative time = " + String.format("%.2f", threadTime * 1e-6) + "ms, nbRreq=" + nbReq + " time/req=" +
+        String.format("%.2f", threadTime * 1e-6 / nbReq) +
+        " Thread max time = " + String.format("%.2f", threadMaxTime * 1e-6));
 
     reader.close();
     PimSystemManager.get().shutDown();
@@ -139,6 +169,7 @@ public class SearchWikiDPUMultiThread {
     private final int id;
     private BufferedReader in;
     private final int nbLines;
+    private final int nb_topdocs;
     private ByteArrayOutputStream out;
     private IndexSearcher searcher;
     private IndexReader reader;
@@ -148,7 +179,7 @@ public class SearchWikiDPUMultiThread {
     int nbReq = 0;
 
     SearchTask(int id, IndexSearcher searcher, IndexReader reader, String field,
-               BufferedReader in, int firstLine, int nbLines) {
+               BufferedReader in, int firstLine, int nbLines, int nb_topdocs) {
       this.id  = id;
       this.searcher = searcher;
       this.reader = reader;
@@ -156,6 +187,7 @@ public class SearchWikiDPUMultiThread {
       this.in = in;
       this.nbLines = nbLines;
       this.out = new ByteArrayOutputStream();
+      this.nb_topdocs = nb_topdocs;
 
       // skip the first lines
       try {
@@ -189,14 +221,14 @@ public class SearchWikiDPUMultiThread {
           for (String word : words) {
             builder.add(new Term("contents", word), wid++);
           }
-          PimPhraseQuery query = builder.build();
+          PimPhraseQuery query = builder.build();//.setMaxNumHitsFromDpuSystem(nb_topdocs);
           out.writeBytes(new String("Searching for: " + query.toString(field) + "\n").getBytes());
 
-          long start = System.nanoTime();
           //TODO Make a version without print and count total time
           long cpuStart = mbean.getProcessCpuTime();
           // TODO try 10/100/1000
-          TopDocs results = searcher.search(query, 100);
+          long start = System.nanoTime();
+          TopDocs results = searcher.search(query, nb_topdocs);
           long end = System.nanoTime();
           totalTime += (end - start);
           cpuTime += (mbean.getProcessCpuTime() - cpuStart);
@@ -208,7 +240,7 @@ public class SearchWikiDPUMultiThread {
 
           StoredFields storedFields = reader.storedFields();
           ScoreDoc[] hits = results.scoreDocs;
-          int nbRes = Math.min(numTotalHits, 5);
+          int nbRes = Math.min(numTotalHits, Math.min(nb_topdocs, 5));
           for (int i = 0; i < nbRes; i++) {
 
             out.writeBytes(new String("doc=" + hits[i].doc + " score=" + hits[i].score + "\n").getBytes());
