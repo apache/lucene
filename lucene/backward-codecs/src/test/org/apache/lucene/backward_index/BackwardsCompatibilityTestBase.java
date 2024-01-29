@@ -185,9 +185,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   protected abstract void createIndex(Directory directory) throws IOException;
 
-  // gradlew test -Ptestmethod=reateBWCIndex -Ptests.codec=default
-  // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests $TestName
-  public final void createBWCIndex() throws Exception {
+  public final void createBWCIndex() throws IOException {
     Path indexDir = getIndexDir().resolve(indexName(Version.LATEST));
     Files.deleteIfExists(indexDir);
     try (Directory dir = newFSDirectory(indexDir)) {

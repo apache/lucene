@@ -21,6 +21,8 @@ import static org.apache.lucene.backward_index.BackwardsCompatibilityTestBase.cr
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Version;
 
+import java.io.IOException;
+
 public class TestGenerateBwcIndices extends LuceneTestCase {
 
   // Backcompat index generation, described below, is mostly automated in:
@@ -37,6 +39,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
   // command:
   //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
   //               -Ptests.useSecurityManager=false --tests TestGenerateBwcIndices
+  //
   // Also add testmethod with one of the index creation methods below, for example:
   //    -Ptestmethod=testCreateCFS
   //
@@ -48,53 +51,75 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
   // Then move those 2 zip files to your trunk checkout and add them
   // to the oldNames array.
 
-  public void testGenerate() throws Exception {
-    TestIndexSortBackwardsCompatibility sortedTest =
-        new TestIndexSortBackwardsCompatibility(
-            Version.LATEST,
-            createPattern(
-                TestIndexSortBackwardsCompatibility.INDEX_NAME,
-                TestIndexSortBackwardsCompatibility.SUFFIX));
-    sortedTest.createBWCIndex();
+  public void testCreateCFS() throws IOException {
     TestBasicBackwardsCompatibility basicTest =
-        new TestBasicBackwardsCompatibility(
-            Version.LATEST,
-            createPattern(
-                TestBasicBackwardsCompatibility.INDEX_NAME,
-                TestBasicBackwardsCompatibility.SUFFIX_CFS));
+            new TestBasicBackwardsCompatibility(
+                    Version.LATEST,
+                    createPattern(
+                            TestBasicBackwardsCompatibility.INDEX_NAME,
+                            TestBasicBackwardsCompatibility.SUFFIX_CFS));
     basicTest.createBWCIndex();
-    basicTest =
-        new TestBasicBackwardsCompatibility(
-            Version.LATEST,
-            createPattern(
-                TestBasicBackwardsCompatibility.INDEX_NAME,
-                TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
-    basicTest.createBWCIndex();
+  }
 
-    if (Version.LATEST.equals(Version.LUCENE_10_0_0)) {
+  public void testCreateNoCFS() throws IOException {
+    TestBasicBackwardsCompatibility basicTest =
+            new TestBasicBackwardsCompatibility(
+                    Version.LATEST,
+                    createPattern(
+                            TestBasicBackwardsCompatibility.INDEX_NAME,
+                            TestBasicBackwardsCompatibility.SUFFIX_NO_CFS));
+    basicTest.createBWCIndex();
+  }
+
+  public void testCreateSortedIndex() throws IOException{
+    TestIndexSortBackwardsCompatibility sortedTest =
+            new TestIndexSortBackwardsCompatibility(
+                    Version.LATEST,
+                    createPattern(
+                            TestIndexSortBackwardsCompatibility.INDEX_NAME,
+                            TestIndexSortBackwardsCompatibility.SUFFIX));
+    sortedTest.createBWCIndex();
+  }
+
+  private boolean isInitialMajorVersionRelease() {
+    return Version.LATEST.equals(Version.fromBits(Version.LATEST.major, 0, 0));
+  }
+
+  public void testCreateMoreTermsIndex() throws IOException {
+    if (isInitialMajorVersionRelease()) {
+      // NOCOMMIT - WHY ONLY on the first major version?
+      TestMoreTermsBackwardsCompatibility moreTermsTest =
+              new TestMoreTermsBackwardsCompatibility(
+                      Version.LATEST,
+                      createPattern(
+                              TestMoreTermsBackwardsCompatibility.INDEX_NAME,
+                              TestMoreTermsBackwardsCompatibility.SUFFIX));
+      moreTermsTest.createBWCIndex();
+    }
+  }
+
+  public void testCreateIndexWithDocValuesUpdates() throws IOException {
+    if (isInitialMajorVersionRelease()) {
       // NOCOMMIT - WHY ONLY on the first major version?
       TestDVUpdateBackwardsCompatibility dvUpdatesTest =
-          new TestDVUpdateBackwardsCompatibility(
-              Version.LATEST,
-              createPattern(
-                  TestDVUpdateBackwardsCompatibility.INDEX_NAME,
-                  TestDVUpdateBackwardsCompatibility.SUFFIX));
+              new TestDVUpdateBackwardsCompatibility(
+                      Version.LATEST,
+                      createPattern(
+                              TestDVUpdateBackwardsCompatibility.INDEX_NAME,
+                              TestDVUpdateBackwardsCompatibility.SUFFIX));
       dvUpdatesTest.createBWCIndex();
+    }
+  }
 
-      TestMoreTermsBackwardsCompatibility moreTermsTest =
-          new TestMoreTermsBackwardsCompatibility(
-              Version.LATEST,
-              createPattern(
-                  TestMoreTermsBackwardsCompatibility.INDEX_NAME,
-                  TestMoreTermsBackwardsCompatibility.SUFFIX));
-      moreTermsTest.createBWCIndex();
-
+  public void testCreateEmptyIndex() throws IOException {
+    if (isInitialMajorVersionRelease()) {
+      // NOCOMMIT - WHY ONLY on the first major version?
       TestEmptyIndexBackwardsCompatibility emptyIndex =
-          new TestEmptyIndexBackwardsCompatibility(
-              Version.LATEST,
-              createPattern(
-                  TestEmptyIndexBackwardsCompatibility.INDEX_NAME,
-                  TestEmptyIndexBackwardsCompatibility.SUFFIX));
+              new TestEmptyIndexBackwardsCompatibility(
+                      Version.LATEST,
+                      createPattern(
+                              TestEmptyIndexBackwardsCompatibility.INDEX_NAME,
+                              TestEmptyIndexBackwardsCompatibility.SUFFIX));
       emptyIndex.createBWCIndex();
     }
   }
