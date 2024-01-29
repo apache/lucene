@@ -44,7 +44,7 @@ public class IndexRAMDPU {
     public static void main(String[] args) throws Exception {
 
         String usage =
-                "Usage:\tjava IndexRAMDPU.java [-index string] [-dataset dir] [-nbdpus num]\n\n.";
+                "Usage:\tjava IndexRAMDPU.java [-index string] [-dataset dir] [-nbdpus num] [-dpuonly]\n\n.";
         if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
             System.out.println(usage);
             System.exit(0);
@@ -53,6 +53,7 @@ public class IndexRAMDPU {
         String index = null;
         String dataset = null;
         int nbDpus = 0;
+        boolean dpuOnly = false;
 
         for (int i = 0; i < args.length; i++) {
             if ("-index".equals(args[i])) {
@@ -69,6 +70,9 @@ public class IndexRAMDPU {
                     break;
                 }
                 i++;
+            } else if ("-dpuonly".equals(args[i])) {
+              dpuOnly = true;
+              i++;
             }
         }
 
@@ -77,50 +81,59 @@ public class IndexRAMDPU {
             System.exit(0);
         }
 
-        createIndex(index, dataset, nbDpus);
+        createIndex(index, dataset, nbDpus, dpuOnly);
     }
 
-    public static void createIndex(String index, String dataset, int nbDpus) throws CorruptIndexException, LockObtainFailedException, IOException {
+    public static void createIndex(String index, String dataset, int nbDpus, boolean dpuOnly) 
+                                        throws CorruptIndexException, LockObtainFailedException, IOException {
+
         Analyzer analyzer = new StandardAnalyzer();
         Directory indexDirectory = new MMapDirectory(Paths.get(index));
         Directory pimIndexDirectory = new MMapDirectory(Paths.get(index + "/dpu"));
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         // provide a directory for pim index and a pim config to the PimIndexWriter constructor
-        IndexWriter writer = new PimIndexWriter(indexDirectory, pimIndexDirectory, iwc, new PimConfig(nbDpus, 16));
-        Path path = Paths.get(dataset);
-        final AtomicReference<Integer> fileCount = new AtomicReference<Integer>(0);
-        if (Files.isDirectory(path)) {
+        PimIndexWriter writer = new PimIndexWriter(indexDirectory, pimIndexDirectory, iwc, new PimConfig(nbDpus, 16));
+        if(dpuOnly)
+          writer.generatePimIndex();
+        else {
+        
+          Path path = Paths.get(dataset);
+          final AtomicReference<Integer> fileCount = new AtomicReference<Integer>(0);
+          if (Files.isDirectory(path)) {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    try {
-                        try (InputStream stream = Files.newInputStream(file)) {
-                            // make a new, empty document
-                            Document doc = new Document();
+              @Override
+              public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                try {
+                  try (InputStream stream = Files.newInputStream(file)) {
+                    // make a new, empty document
+                    Document doc = new Document();
 
-                            Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-                            doc.add(pathField);
+                    Field pathField = new StringField("path", file.toString(), Field.Store.YES);
+                    doc.add(pathField);
 
-                            doc.add(new TextField("contents", new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+                    doc.add(new TextField("contents", new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
 
-                            fileCount.set(fileCount.get() + 1);
-                            if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
-                                System.out.println("adding " + file);
-                                writer.addDocument(doc);
-                            } else {
-                                System.out.println("#" + fileCount + " updating " + file);
-                                writer.updateDocument(new Term("path", file.toString()), doc);
-                            }
-                        }
-                    } catch (IOException ignore) {
-                        // don't index files that can't be read.
+                    fileCount.set(fileCount.get() + 1);
+
+                    if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+                      System.out.println("adding " + file);
+                      writer.addDocument(doc);
+                    } else {
+                      System.out.println("#" + fileCount + " updating " + file);
+                      writer.updateDocument(new Term("path", file.toString()), doc);
                     }
-                    return FileVisitResult.CONTINUE;
+                  }
+                } catch (IOException ignore) {
+                  // don't index files that can't be read.
                 }
+                return FileVisitResult.CONTINUE;
+              }
             });
-        }
+          }
 
-        System.out.println("#" + fileCount + " finished");
+          //writer.forceMerge(1);
+          System.out.println("#" + fileCount + " finished");
+        }
         writer.close();
     }
 }
