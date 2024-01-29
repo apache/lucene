@@ -34,24 +34,24 @@ public final class KoreanPartOfSpeechStopFilter extends FilteringTokenFilter {
   /** Default list of tags to filter. */
   public static final Set<POS.Tag> DEFAULT_STOP_TAGS =
       EnumSet.of(
-              POS.Tag.E,
-              POS.Tag.IC,
-              POS.Tag.J,
-              POS.Tag.MAG,
-              POS.Tag.MAJ,
-              POS.Tag.MM,
-              POS.Tag.SP,
-              POS.Tag.SSC,
-              POS.Tag.SSO,
-              POS.Tag.SC,
-              POS.Tag.SE,
-              POS.Tag.XPN,
-              POS.Tag.XSA,
-              POS.Tag.XSN,
-              POS.Tag.XSV,
-              POS.Tag.UNA,
-              POS.Tag.NA,
-              POS.Tag.VSV);
+          POS.Tag.E,
+          POS.Tag.IC,
+          POS.Tag.J,
+          POS.Tag.MAG,
+          POS.Tag.MAJ,
+          POS.Tag.MM,
+          POS.Tag.SP,
+          POS.Tag.SSC,
+          POS.Tag.SSO,
+          POS.Tag.SC,
+          POS.Tag.SE,
+          POS.Tag.XPN,
+          POS.Tag.XSA,
+          POS.Tag.XSN,
+          POS.Tag.XSV,
+          POS.Tag.UNA,
+          POS.Tag.NA,
+          POS.Tag.VSV);
 
   /**
    * Create a new {@link KoreanPartOfSpeechStopFilter} with the default list of stop tags {@link
