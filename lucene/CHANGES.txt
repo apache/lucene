@@ -79,6 +79,8 @@ Bug Fixes
 
 * GITHUB#12287: Fix a bug in ShapeTestUtil. (Heemin Kim)
 
+* GITHUB#13031: ScorerSupplier created by QueryProfilerWeight will propagate topLevelScoringClause to the sub ScorerSupplier. (Shintaro Murakami)
+
 Build
 ---------------------
 
