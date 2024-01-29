@@ -41,6 +41,8 @@ Improvements
 
 * GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
 
+* GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
+
 Optimizations
 ---------------------
 
