@@ -420,6 +420,13 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    // Rewrite query before optimization check
+    query = rewrite(new ConstantScoreQuery(query));
+    if (query instanceof ConstantScoreQuery csq) {
+      query = csq.getQuery();
+    }
+
+    // Check if two clause disjunction optimization applies
     if (query instanceof BooleanQuery booleanQuery
         && this.reader.hasDeletions() == false
         && booleanQuery.isTwoClauseDisjunctionWithTerms()) {
