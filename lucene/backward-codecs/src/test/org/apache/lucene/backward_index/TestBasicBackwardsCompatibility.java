@@ -254,7 +254,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     writer.addDocument(doc);
   }
 
-  public void searchIndex(
+  public static void searchIndex(
       Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
       throws IOException {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
@@ -496,7 +496,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     reader.close();
   }
 
-  private void doTestHits(ScoreDoc[] hits, int expectedCount, IndexReader reader)
+  private static void doTestHits(ScoreDoc[] hits, int expectedCount, IndexReader reader)
       throws IOException {
     final int hitCount = hits.length;
     assertEquals("wrong number of hits", expectedCount, hitCount);
@@ -749,17 +749,6 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
   public void testSearchOldIndex() throws Exception {
     searchIndex(directory, indexPattern, Version.MIN_SUPPORTED_MAJOR, version);
-
-    if (TEST_NIGHTLY) { // NOCOMMIT Add binary indices
-      //      for (String name : binarySupportedNames) {
-      //        Path oldIndexDir = createTempDir(name);
-      //        TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
-      //        try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-      //          Version version = Version.parse(name.substring(0, name.indexOf('-')));
-      //          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR, version);
-      //        }
-      //      }
-    }
   }
 
   public void testFullyMergeOldIndex() throws Exception {

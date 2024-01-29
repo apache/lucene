@@ -27,6 +27,7 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.StandardDirectoryReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTestBase {
@@ -77,5 +78,10 @@ public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTest
           () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
       SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
     }
+  }
+
+  @Nightly
+  public void testSearchOldIndex() throws Exception {
+    TestBasicBackwardsCompatibility.searchIndex(directory, indexPattern, MIN_BINARY_SUPPORTED_MAJOR, version);
   }
 }

@@ -23,14 +23,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Path;
-import org.apache.lucene.codecs.Codec;
+
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.WildcardQuery;
@@ -40,39 +38,8 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-/*
-  Verify we can read previous versions' indexes, do searches
-  against them, and add documents to them.
-*/
-// See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
-// machines occasionally
 @SuppressWarnings("deprecation")
-public class TestBackwardsCompatibility extends LuceneTestCase {
-
-  // Backcompat index generation, described below, is mostly automated in:
-  //
-  //    dev-tools/scripts/addBackcompatIndexes.py
-  //
-  // For usage information, see:
-  //
-  //    http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
-  //
-  // -----
-  //
-  // To generate backcompat indexes with the current default codec, run the following gradle
-  // command:
-  //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
-  //               -Ptests.useSecurityManager=false --tests TestBackwardsCompatibility
-  // Also add testmethod with one of the index creation methods below, for example:
-  //    -Ptestmethod=testCreateCFS
-  //
-  // Zip up the generated indexes:
-  //
-  //    cd /path/to/store/indexes/index.cfs   ; zip index.<VERSION>-cfs.zip *
-  //    cd /path/to/store/indexes/index.nocfs ; zip index.<VERSION>-nocfs.zip *
-  //
-  // Then move those 2 zip files to your trunk checkout and add them
-  // to the oldNames array.
+public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
   static final String[] unsupportedNames = {
     "1.9.0-cfs",
@@ -463,7 +430,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Path path = createTempDir("12895");
 
     String name = "index.12895.9.8.0.zip";
-    InputStream resource = TestBackwardsCompatibility.class.getResourceAsStream(name);
+    InputStream resource = TestAncientIndicesCompatibility.class.getResourceAsStream(name);
     assertNotNull("missing zip file to reproduce #12895", resource);
     TestUtil.unzip(resource, path);
 

@@ -23,6 +23,31 @@ import org.apache.lucene.util.Version;
 
 public class TestGenerateBwcIndices extends LuceneTestCase {
 
+  // Backcompat index generation, described below, is mostly automated in:
+  //
+  //    dev-tools/scripts/addBackcompatIndexes.py
+  //
+  // For usage information, see:
+  //
+  //    http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
+  //
+  // -----
+  //
+  // To generate backcompat indexes with the current default codec, run the following gradle
+  // command:
+  //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
+  //               -Ptests.useSecurityManager=false --tests TestGenerateBwcIndices
+  // Also add testmethod with one of the index creation methods below, for example:
+  //    -Ptestmethod=testCreateCFS
+  //
+  // Zip up the generated indexes:
+  //
+  //    cd /path/to/store/indexes/index.cfs   ; zip index.<VERSION>-cfs.zip *
+  //    cd /path/to/store/indexes/index.nocfs ; zip index.<VERSION>-nocfs.zip *
+  //
+  // Then move those 2 zip files to your trunk checkout and add them
+  // to the oldNames array.
+
   public void testGenerate() throws Exception {
     TestIndexSortBackwardsCompatibility sortedTest =
         new TestIndexSortBackwardsCompatibility(
@@ -47,7 +72,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     basicTest.createBWCIndex();
 
     if (Version.LATEST.equals(Version.LUCENE_10_0_0)) {
-      // NOCOMMIT - WHY ONLY on the first major verison?
+      // NOCOMMIT - WHY ONLY on the first major version?
       TestDVUpdateBackwardsCompatibility dvUpdatesTest =
           new TestDVUpdateBackwardsCompatibility(
               Version.LATEST,

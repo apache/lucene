@@ -95,11 +95,11 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     super.setUp();
     assertNull(
         "Index name " + version + " should not exist found",
-        TestBackwardsCompatibility.class.getResourceAsStream(indexName(LATEST_PREVIOUS_MAJOR)));
+        TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(LATEST_PREVIOUS_MAJOR)));
     if (supportsVersion(version) == false) {
       assertNull(
           "Index name " + version + " should not exist found",
-          TestBackwardsCompatibility.class.getResourceAsStream(indexName(version)));
+          TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(version)));
     }
     assumeTrue("This test doesn't support version: " + version, supportsVersion(version));
     if (version.equals(Version.LATEST)) {
@@ -108,7 +108,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     } else {
       Path dir = createTempDir();
       InputStream resource =
-          TestBackwardsCompatibility.class.getResourceAsStream(indexName(version));
+          TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(version));
       assertNotNull("Index name " + version + " not found: " + indexName(version), resource);
       TestUtil.unzip(resource, dir);
       directory = newFSDirectory(dir);
