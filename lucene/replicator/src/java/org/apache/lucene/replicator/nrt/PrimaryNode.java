@@ -218,6 +218,7 @@ public abstract class PrimaryNode extends Node {
   @Override
   public void commit() throws IOException {
     Map<String, String> commitData = new HashMap<>();
+    setCommitData(commitData);
     commitData.put(PRIMARY_GEN_KEY, Long.toString(primaryGen));
     // TODO (opto): it's a bit wasteful that we put "last refresh" version here, not the actual
     // version we are committing, because it means
@@ -226,6 +227,10 @@ public abstract class PrimaryNode extends Node {
     message("top: commit commitData=" + commitData);
     writer.setLiveCommitData(commitData.entrySet(), false);
     writer.commit();
+  }
+
+  protected void setCommitData(Map<String, String> commitData) {
+  
   }
 
   /** IncRef the current CopyState and return it */
