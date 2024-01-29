@@ -185,7 +185,7 @@ public abstract class VectorizationProvider {
    */
   private static Optional<Module> lookupVectorModule() {
     return Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
-        .orElse(ModuleLayer.boot())
+        .orElseGet(ModuleLayer::boot)
         .findModule("jdk.incubator.vector");
   }
 
