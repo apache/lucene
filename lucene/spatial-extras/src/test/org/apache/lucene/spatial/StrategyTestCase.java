@@ -145,7 +145,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
         if (!ids.hasNext()) {
           fail(
               msg
-                  + " :: Did not get enough results.  Expect"
+                  + " :: Did not get enough results. Expected "
                   + q.ids
                   + ", got: "
                   + got.toDebugString());
@@ -165,7 +165,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
         }
         for (String s : q.ids) {
           if (!found.contains(s)) {
-            fail("Results are mising id: " + s + " :: " + found);
+            fail("Results are missing id: " + s + " :: " + found);
           }
         }
       } else {
@@ -224,7 +224,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
       for (int i = 0; i < count; i++) {
         assertTrue(v.advanceExact(i));
         int doc = i + ctx.docBase;
-        assertEquals("Not equal for doc " + doc, v.doubleValue(), (double) scores[doc], delta);
+        assertEquals("Not equal for doc " + doc, v.doubleValue(), scores[doc], delta);
       }
     }
   }

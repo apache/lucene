@@ -24,9 +24,9 @@ plugins {
   id "org.owasp.dependencycheck" version "7.2.0"
   id 'de.thetaphi.forbiddenapis' version '3.6' apply false
   id "de.undercouch.download" version "5.2.0" apply false
-  id "net.ltgt.errorprone" version "3.0.1" apply false
+  id "net.ltgt.errorprone" version "3.1.0" apply false
   id 'com.diffplug.spotless' version "6.5.2" apply false
-  id 'org.barfuin.gradle.jacocolog' version "3.0.0-RC2" apply false
+  id 'org.barfuin.gradle.jacocolog' version "3.1.0" apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -110,6 +110,9 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 // eagerly).
 
 apply from: file('gradle/generation/local-settings.gradle')
+
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')

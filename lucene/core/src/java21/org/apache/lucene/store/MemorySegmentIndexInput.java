@@ -25,6 +25,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -100,9 +101,22 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  // the unused parameter is just to silence javac about unused variables
-  AlreadyClosedException alreadyClosed(RuntimeException unused) {
-    return new AlreadyClosedException("Already closed: " + this);
+  AlreadyClosedException alreadyClosed(RuntimeException e) {
+    // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
+    // we check the "is closed" condition explicitly by checking that our "curSegment" is null.
+    // Care must be taken to not leak the NPE to code outside MemorySegmentIndexInput!
+    if (this.curSegment == null) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // ISE can be thrown by MemorySegment and contains "closed" in message:
+    if (e instanceof IllegalStateException
+        && e.getMessage() != null
+        && e.getMessage().contains("closed")) {
+      return new AlreadyClosedException("Already closed: " + this, e);
+    }
+    // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
+    // the IndexInput method):
+    throw e;
   }
 
   @Override
@@ -239,6 +253,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public final int readVInt() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVInt();
+  }
+
+  @Override
+  public final long readVLong() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVLong();
+  }
+
+  @Override
   public final long readLong() throws IOException {
     try {
       final long v = curSegment.get(LAYOUT_LE_LONG, curPosition);
@@ -285,6 +311,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    try {
+      final int len =
+          GroupVIntUtil.readGroupVInt(
+              this,
+              curSegment.byteSize() - curPosition,
+              p -> curSegment.get(LAYOUT_LE_INT, p),
+              curPosition,
+              dst,
+              offset);
+      curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -460,17 +503,26 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return;
     }
 
-    // make sure all accesses to this IndexInput instance throw NPE:
-    curSegment = null;
-    Arrays.fill(segments, null);
-
     // the master IndexInput has an Arena and is able
     // to release all resources (unmap segments) - a
     // side effect is that other threads still using clones
     // will throw IllegalStateException
     if (arena != null) {
-      arena.close();
+      while (arena.scope().isAlive()) {
+        try {
+          arena.close();
+          break;
+        } catch (
+            @SuppressWarnings("unused")
+            IllegalStateException e) {
+          Thread.onSpinWait();
+        }
+      }
     }
+
+    // make sure all accesses to this IndexInput instance throw NPE:
+    curSegment = null;
+    Arrays.fill(segments, null);
   }
 
   /** Optimization of MemorySegmentIndexInput for when there is only one segment. */

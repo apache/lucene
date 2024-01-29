@@ -17,6 +17,7 @@ jobs:
   # This runs all validation checks without tests.
   checks:
     name: gradle check -x test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -25,6 +26,9 @@ jobs:
         os: [ubuntu-latest]
         # Test JVMs.
         java: [ '17' ]
+
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3
@@ -45,6 +49,7 @@ jobs:
   # This runs all tests without any other validation checks.
   tests:
     name: gradle test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -55,6 +60,9 @@ jobs:
         os: [ubuntu-latest]
         # Test JVMs.
         java: [ '17' ]
+
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3

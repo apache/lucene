@@ -104,7 +104,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     // Rollup any necessary dims:
-    int[] children = null;
+    ParallelTaxonomyArrays.IntArray children = null;
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
       String dim = ent.getKey();
       DimConfig ft = ent.getValue();
@@ -118,7 +118,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             children = getChildren();
           }
           int currentValue = getValue(dimRootOrd);
-          int newValue = aggregationFunction.aggregate(currentValue, rollup(children[dimRootOrd]));
+          int newValue =
+              aggregationFunction.aggregate(currentValue, rollup(children.get(dimRootOrd)));
           setValue(dimRootOrd, newValue);
         }
       }
@@ -126,15 +127,15 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   private int rollup(int ord) throws IOException {
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
     int aggregatedValue = 0;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       int currentValue = getValue(ord);
-      int newValue = aggregationFunction.aggregate(currentValue, rollup(children[ord]));
+      int newValue = aggregationFunction.aggregate(currentValue, rollup(children.get(ord)));
       setValue(ord, newValue);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
     return aggregatedValue;
   }
@@ -204,16 +205,16 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       for (IntIntCursor c : sparseValues) {
         int value = c.value;
         int ord = c.key;
-        if (parents[ord] == dimOrd && value > 0) {
+        if (parents.get(ord) == dimOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           ordinals.add(ord);
           ordValues.add(value);
         }
       }
     } else {
-      int[] children = getChildren();
-      int[] siblings = getSiblings();
-      int ord = children[dimOrd];
+      ParallelTaxonomyArrays.IntArray children = getChildren();
+      ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+      int ord = children.get(dimOrd);
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int value = values[ord];
         if (value > 0) {
@@ -221,7 +222,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
           ordinals.add(ord);
           ordValues.add(value);
         }
-        ord = siblings[ord];
+        ord = siblings.get(ord);
       }
     }
 
@@ -289,7 +290,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       for (IntIntCursor c : sparseValues) {
         int value = c.value;
         int ord = c.key;
-        if (parents[ord] == pathOrd && value > 0) {
+        if (parents.get(ord) == pathOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
           if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
@@ -307,9 +308,9 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         }
       }
     } else {
-      int[] children = getChildren();
-      int[] siblings = getSiblings();
-      int ord = children[pathOrd];
+      ParallelTaxonomyArrays.IntArray children = getChildren();
+      ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+      int ord = children.get(pathOrd);
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int value = values[ord];
         if (value > 0) {
@@ -328,7 +329,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             }
           }
         }
-        ord = siblings[ord];
+        ord = siblings.get(ord);
       }
     }
 
@@ -355,8 +356,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     // get children and siblings ordinal array from TaxonomyFacets
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
 
     // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
@@ -378,7 +379,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     Map<String, TopChildrenForPath> intermediateResults = null;
 
     // iterate over children and siblings ordinals for all dims
-    int ord = children[TaxonomyReader.ROOT_ORDINAL];
+    int ord = children.get(TaxonomyReader.ROOT_ORDINAL);
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       String dim = taxoReader.getPath(ord).components[0];
       FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
@@ -425,7 +426,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
           }
         }
       }
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     FacetResult[] results = new FacetResult[pq.size()];

@@ -168,7 +168,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   private static final Map<Class<?>, Function<Random, Object>> argProducers =
       Collections.unmodifiableMap(
-          new IdentityHashMap<Class<?>, Function<Random, Object>>() {
+          new IdentityHashMap<>() {
             {
               put(
                   int.class,
@@ -176,7 +176,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     // TODO: could cause huge ram usage to use full int range for some filters
                     // (e.g. allocate enormous arrays)
                     // return Integer.valueOf(random.nextInt());
-                    return Integer.valueOf(TestUtil.nextInt(random, -50, 50));
+                    return TestUtil.nextInt(random, -50, 50);
                   });
               put(
                   char.class,
@@ -187,7 +187,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     while (true) {
                       char c = (char) random.nextInt(65536);
                       if (c < '\uD800' || c > '\uDFFF') {
-                        return Character.valueOf(c);
+                        return c;
                       }
                     }
                   });
@@ -382,7 +382,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   SynonymMap.class,
-                  new Function<Random, Object>() {
+                  new Function<>() {
                     @Override
                     public Object apply(Random random) {
                       SynonymMap.Builder b = new SynonymMap.Builder(random.nextBoolean());
@@ -448,12 +448,11 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   Automaton.class,
-                  random -> {
-                    return Operations.determinize(
-                        new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
-                            .toAutomaton(),
-                        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-                  });
+                  random ->
+                      Operations.determinize(
+                          new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
+                              .toAutomaton(),
+                          Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
               put(
                   PatternTypingFilter.PatternTypingRule[].class,
                   random -> {
@@ -625,9 +624,9 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     }
 
     final Comparator<Constructor<?>> ctorComp = Comparator.comparing(Constructor::toGenericString);
-    Collections.sort(tokenizers, ctorComp);
-    Collections.sort(tokenfilters, ctorComp);
-    Collections.sort(charfilters, ctorComp);
+    tokenizers.sort(ctorComp);
+    tokenfilters.sort(ctorComp);
+    charfilters.sort(ctorComp);
     if (VERBOSE) {
       System.out.println("tokenizers = " + tokenizers);
       System.out.println("tokenfilters = " + tokenfilters);
@@ -642,7 +641,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
             .filter(c -> c.getName().endsWith("Stemmer"))
             .map(stemmerCast)
             .sorted(Comparator.comparing(Class::getName))
-            .collect(Collectors.toList());
+            .toList();
     if (VERBOSE) {
       System.out.println("snowballStemmers = " + snowballStemmers);
     }
@@ -786,7 +785,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         if (cause instanceof IllegalArgumentException
             || (cause instanceof NullPointerException && Stream.of(args).anyMatch(Objects::isNull))
             || cause instanceof UnsupportedOperationException) {
-          // thats ok, ignore
+          // that's ok, ignore
           if (VERBOSE) {
             System.err.println("Ignoring IAE/UOE/NPE from ctor:");
             cause.printStackTrace(System.err);

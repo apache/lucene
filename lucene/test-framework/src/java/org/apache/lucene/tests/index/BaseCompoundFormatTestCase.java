@@ -51,9 +51,9 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for a compound format. NOTE: This test focuses on the compound
  * impl, nothing else. The [stretch] goal is for this test to be so thorough in testing a new
- * CompoundFormat that if this test passes, then all Lucene/Solr tests should also pass. Ie, if
- * there is some bug in a given CompoundFormat that this test fails to catch then this test needs to
- * be improved!
+ * CompoundFormat that if this test passes, then all Lucene tests should also pass. Ie, if there is
+ * some bug in a given CompoundFormat that this test fails to catch then this test needs to be
+ * improved!
  */
 public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -671,6 +671,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
         minVersion,
         name,
         10000,
+        false,
         false,
         Codec.getDefault(),
         Collections.emptyMap(),

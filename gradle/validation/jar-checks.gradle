@@ -59,6 +59,9 @@ allprojects {
 }
 
 subprojects {
+  // initialize empty, because no checks for benchmark-jmh module.
+  ext.jarInfos = []
+
   // Configure jarValidation configuration for all projects. Any dependency
   // declared on this configuration (or any configuration it extends from) will
   // be verified.

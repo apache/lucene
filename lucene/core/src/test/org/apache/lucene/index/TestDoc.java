@@ -223,6 +223,7 @@ public class TestDoc extends LuceneTestCase {
             merged,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -235,7 +236,7 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
+            new FieldInfos.FieldNumbers(null, null),
             context);
 
     merger.merge();

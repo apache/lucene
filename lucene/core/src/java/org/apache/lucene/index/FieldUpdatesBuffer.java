@@ -270,17 +270,22 @@ final class FieldUpdatesBuffer {
   static class BufferedUpdate {
 
     private BufferedUpdate() {}
-    ;
+
     /** the max document ID this update should be applied to */
     int docUpTo;
+
     /** a numeric value or 0 if this buffer holds binary updates */
     long numericValue;
+
     /** a binary value or null if this buffer holds numeric updates */
     BytesRef binaryValue;
+
     /** <code>true</code> if this update has a value */
     boolean hasValue;
+
     /** The update terms field. This will never be null. */
     String termField;
+
     /** The update terms value. This will never be null. */
     BytesRef termValue;
 

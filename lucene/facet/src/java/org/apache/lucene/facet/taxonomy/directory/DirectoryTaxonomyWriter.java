@@ -34,6 +34,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
@@ -678,10 +679,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // was allocated bigger than it really needs to be.
     Objects.checkIndex(ordinal, nextID.get());
 
-    int[] parents = getTaxoArrays().parents();
-    assert ordinal < parents.length
-        : "requested ordinal (" + ordinal + "); parents.length (" + parents.length + ") !";
-    return parents[ordinal];
+    ParallelTaxonomyArrays.IntArray parents = getTaxoArrays().parents();
+    assert ordinal < parents.length()
+        : "requested ordinal (" + ordinal + "); parents.length (" + parents.length() + ") !";
+    return parents.get(ordinal);
   }
 
   /**

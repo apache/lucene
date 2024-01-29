@@ -29,7 +29,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -90,7 +89,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testIndexWithNoVectorsNorParents() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         // Add some documents without a vector
         for (int i = 0; i < 5; i++) {
           Document doc = new Document();
@@ -123,7 +124,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testIndexWithNoParents() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         for (int i = 0; i < 3; ++i) {
           Document doc = new Document();
           doc.add(getKnnVectorField("field", new float[] {2, 2}));
@@ -175,7 +178,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testScoringWithMultipleChildren() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
@@ -195,6 +200,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         }
         toAdd.add(makeParent(new int[] {6, 7, 8, 9, 10}));
         w.addDocuments(toAdd);
+        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         assertEquals(1, reader.leaves().size());
@@ -227,7 +233,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
      * randomly fail to find one).
      */
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         int r = 0;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {
@@ -273,7 +281,11 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            indexStore,
+            newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int i = 0; i < contents.length; ++i) {
       List<Document> toAdd = new ArrayList<>();
       Document doc = new Document();

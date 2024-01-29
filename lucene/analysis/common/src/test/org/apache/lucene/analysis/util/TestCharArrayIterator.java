@@ -156,7 +156,6 @@ public class TestCharArrayIterator extends LuceneTestCase {
 
   private void consume(BreakIterator bi, CharacterIterator ci) {
     bi.setText(ci);
-    while (bi.next() != BreakIterator.DONE)
-      ;
+    while (bi.next() != BreakIterator.DONE) {}
   }
 }

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -394,14 +395,13 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
 
     DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy);
@@ -410,8 +410,8 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      assertEquals(6, reader.numDocs());
-      assertEquals(6, searcher.count(new MatchAllDocsQuery()));
+      assertEquals(5, reader.numDocs());
+      assertEquals(5, searcher.count(new MatchAllDocsQuery()));
     }
 
     writerWithMergePolicy.close();
@@ -445,16 +445,14 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setIndexWriterEventListener(eventListener);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-
     assertFalse(eventListener.isEventsRecorded());
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
     assertTrue(eventListener.isEventsRecorded());
 
@@ -892,5 +890,64 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
       }
       return null;
     }
+  }
+
+  public void testSetDiagnostics() throws IOException {
+    MergePolicy myMergePolicy =
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(super.findMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          @Override
+          public MergeSpecification findFullFlushMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(
+                super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          private MergeSpecification wrapSpecification(MergeSpecification spec) {
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir, newIndexWriterConfig().setMergePolicy(myMergePolicy).setMaxBufferedDocs(2));
+    Document doc = new Document();
+    for (int i = 0; i < 20; ++i) {
+      w.addDocument(doc);
+    }
+    w.close();
+    SegmentInfos si = SegmentInfos.readLatestCommit(dir);
+    boolean hasOneMergedSegment = false;
+    for (SegmentCommitInfo sci : si) {
+      if (IndexWriter.SOURCE_MERGE.equals(sci.info.getDiagnostics().get(IndexWriter.SOURCE))) {
+        assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
+        hasOneMergedSegment = true;
+      }
+    }
+    assertTrue(hasOneMergedSegment);
+    w.close();
+    dir.close();
   }
 }

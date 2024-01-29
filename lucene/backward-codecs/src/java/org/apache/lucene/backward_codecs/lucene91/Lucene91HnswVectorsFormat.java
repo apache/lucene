@@ -70,7 +70,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
  *   <li><b>array[int]</b> for sparse case, the docids of documents having vectors, in order
- *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
+ *   <li><b>[int]</b> the maximum number of connections (neighbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
  *       <ul>
@@ -96,6 +96,7 @@ public class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
@@ -109,8 +110,8 @@ public class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
-   * HnswGraph} for details.
+   * node. Defaults to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
    */
   final int beamWidth;
 

@@ -98,7 +98,8 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     bool.add(new TermQuery(new Term("field", "bar")), Occur.MUST);
 
     assertEquals(
-        bool.build(), parse("foo~" + LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE + 1 + " bar"));
+        bool.build(),
+        parse("foo~" + (LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE + 1) + " bar"));
   }
 
   /** test a simple phrase */

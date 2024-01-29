@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -75,7 +74,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private static final String CATEGORY_FIELD = "category";
   private static final String BODY_FIELD = "body";
   private static final String SUBJECT_FIELD = "subject";
-  private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
+  // private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
 
   private static boolean index = true;
   private static boolean split = true;
@@ -127,7 +126,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         long startIndex = System.nanoTime();
         IndexWriter indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
 
-        Path indexDir = Paths.get(INDEX_DIR);
+        Path indexDir = createTempDir("Test20NewsgroupsClassification");
         int docsIndexed = buildIndex(indexDir, indexWriter);
 
         long endIndex = System.nanoTime();

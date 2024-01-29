@@ -177,16 +177,13 @@ public class MergeState {
 
       final int docBase = totalDocs;
       docMaps[i] =
-          new DocMap() {
-            @Override
-            public int get(int docID) {
-              if (liveDocs == null) {
-                return docBase + docID;
-              } else if (liveDocs.get(docID)) {
-                return docBase + (int) delDocMap.get(docID);
-              } else {
-                return -1;
-              }
+          docID -> {
+            if (liveDocs == null) {
+              return docBase + docID;
+            } else if (liveDocs.get(docID)) {
+              return docBase + (int) delDocMap.get(docID);
+            } else {
+              return -1;
             }
           };
       totalDocs += reader.numDocs();
@@ -242,13 +239,10 @@ public class MergeState {
   }
 
   /** A map of doc IDs. */
-  public abstract static class DocMap {
-    /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-    // Explicitly declared so that we have non-empty javadoc
-    protected DocMap() {}
-
+  @FunctionalInterface
+  public interface DocMap {
     /** Return the mapped docID or -1 if the given doc is not mapped. */
-    public abstract int get(int docID);
+    int get(int docID);
   }
 
   static PackedLongValues removeDeletes(final int maxDoc, final Bits liveDocs) {

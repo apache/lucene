@@ -49,7 +49,9 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
 
   public void testScoreCosine() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();

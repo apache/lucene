@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -55,6 +56,8 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.index.MergePolicy.MergeReader;
+import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -230,10 +233,13 @@ public class IndexWriter
 
   /** Key for the source of a segment in the {@link SegmentInfo#getDiagnostics() diagnostics}. */
   public static final String SOURCE = "source";
+
   /** Source of a segment which results from a merge of other segments. */
   public static final String SOURCE_MERGE = "merge";
+
   /** Source of a segment which results from a flush. */
   public static final String SOURCE_FLUSH = "flush";
+
   /** Source of a segment which results from a call to {@link #addIndexes(CodecReader...)}. */
   public static final String SOURCE_ADDINDEXES_READERS = "addIndexes(CodecReader...)";
 
@@ -377,8 +383,8 @@ public class IndexWriter
   private final Deque<MergePolicy.OneMerge> pendingMerges = new ArrayDeque<>();
   private final Set<MergePolicy.OneMerge> runningMerges = new HashSet<>();
   private final List<MergePolicy.OneMerge> mergeExceptions = new ArrayList<>();
+  private final Merges merges = new Merges();
   private long mergeGen;
-  private Merges merges = new Merges();
   private boolean didMessageState;
   private final AtomicInteger flushCount = new AtomicInteger();
   private final AtomicInteger flushDeletesCount = new AtomicInteger();
@@ -651,7 +657,7 @@ public class IndexWriter
                                               sr.close();
                                             }
                                           })
-                              .collect(Collectors.toList()));
+                              .toList());
                     }
                   };
             }
@@ -1115,6 +1121,12 @@ public class IndexWriter
       // NOTE: this is correct even for an NRT reader because we'll pull FieldInfos even for the
       // un-committed segments:
       globalFieldNumberMap = getFieldNumberMap();
+      if (create == false
+          && conf.getParentField() != null
+          && globalFieldNumberMap.getFieldNames().contains(conf.getParentField()) == false) {
+        throw new IllegalArgumentException(
+            "can't add a parent field to an already existing index without a parent field");
+      }
 
       validateIndexSort();
 
@@ -1255,7 +1267,8 @@ public class IndexWriter
    * If this {@link SegmentInfos} has no global field number map the returned instance is empty
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
-    final FieldNumbers map = new FieldNumbers(config.softDeletesField);
+    final FieldNumbers map =
+        new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
 
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
@@ -1263,7 +1276,6 @@ public class IndexWriter
         map.addOrGet(fi);
       }
     }
-
     return map;
   }
 
@@ -2461,6 +2473,17 @@ public class IndexWriter
       infoStream.message("IW", "rollback");
     }
 
+    Closeable cleanupAndNotify =
+        () -> {
+          assert Thread.holdsLock(this);
+          writeLock = null;
+          closed = true;
+          closing = false;
+          // So any "concurrently closing" threads wake up and see that the close has now
+          // completed:
+          notifyAll();
+        };
+
     try {
       synchronized (this) {
         // must be synced otherwise register merge might throw and exception if merges
@@ -2529,42 +2552,35 @@ public class IndexWriter
         // below that sets closed:
         closed = true;
 
-        IOUtils.close(writeLock); // release write lock
-        writeLock = null;
-        closed = true;
-        closing = false;
-        // So any "concurrently closing" threads wake up and see that the close has now completed:
-        notifyAll();
+        IOUtils.close(writeLock, cleanupAndNotify);
       }
     } catch (Throwable throwable) {
       try {
         // Must not hold IW's lock while closing
         // mergeScheduler: this can lead to deadlock,
         // e.g. TestIW.testThreadInterruptDeadlock
-        IOUtils.closeWhileHandlingException(mergeScheduler);
-        synchronized (this) {
-          // we tried to be nice about it: do the minimum
-          // don't leak a segments_N file if there is a pending commit
-          if (pendingCommit != null) {
-            try {
-              pendingCommit.rollbackCommit(directory);
-              deleter.decRef(pendingCommit);
-            } catch (Throwable t) {
-              throwable.addSuppressed(t);
-            }
-            pendingCommit = null;
-          }
+        IOUtils.closeWhileHandlingException(
+            mergeScheduler,
+            () -> {
+              synchronized (this) {
+                // we tried to be nice about it: do the minimum
+                // don't leak a segments_N file if there is a pending commit
+                if (pendingCommit != null) {
+                  try {
+                    pendingCommit.rollbackCommit(directory);
+                    deleter.decRef(pendingCommit);
+                  } catch (Throwable t) {
+                    throwable.addSuppressed(t);
+                  }
+                  pendingCommit = null;
+                }
 
-          // close all the closeables we can (but important is readerPool and writeLock to prevent
-          // leaks)
-          IOUtils.closeWhileHandlingException(readerPool, deleter, writeLock);
-          writeLock = null;
-          closed = true;
-          closing = false;
-
-          // So any "concurrently closing" threads wake up and see that the close has now completed:
-          notifyAll();
-        }
+                // close all the closeables we can (but important is readerPool and writeLock to
+                // prevent leaks)
+                IOUtils.closeWhileHandlingException(
+                    readerPool, deleter, writeLock, cleanupAndNotify);
+              }
+            });
       } catch (Throwable t) {
         throwable.addSuppressed(t);
       } finally {
@@ -3365,9 +3381,13 @@ public class IndexWriter
     String mergedName = newSegmentName();
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     int numSoftDeleted = 0;
+    boolean hasBlocks = false;
     for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
       CodecReader leaf = reader.codecReader;
       numDocs += leaf.numDocs();
+      for (LeafReaderContext context : reader.codecReader.leaves()) {
+        hasBlocks |= context.reader().getMetaData().hasBlocks();
+      }
       if (softDeletesEnabled) {
         Bits liveDocs = reader.hardLiveDocs;
         numSoftDeleted +=
@@ -3395,14 +3415,27 @@ public class IndexWriter
             mergedName,
             -1,
             false,
+            hasBlocks,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
             Collections.emptyMap(),
             config.getIndexSort());
 
-    List<CodecReader> readers =
-        merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
+    List<CodecReader> readers = new ArrayList<>();
+    for (MergeReader mr : merge.getMergeReader()) {
+      CodecReader reader = merge.wrapForMerge(mr.codecReader);
+      readers.add(reader);
+    }
+
+    if (config.getIndexSort() == null && readers.isEmpty() == false) {
+      CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
+      DocMap docMap = merge.reorder(mergedReader, directory);
+      if (docMap != null) {
+        readers = Collections.singletonList(SortingCodecReader.wrap(mergedReader, docMap, null));
+      }
+    }
+
     SegmentMerger merger =
         new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
 
@@ -3452,6 +3485,8 @@ public class IndexWriter
       merge.getMergeInfo().info.setUseCompoundFile(true);
     }
 
+    merge.setMergeInfo(merge.info);
+
     // Have codec write SegmentInfo.  Must do this after
     // creating CFS so that 1) .si isn't slurped into CFS,
     // and 2) .si reflects useCompoundFile=true change
@@ -3476,6 +3511,7 @@ public class IndexWriter
             segName,
             info.info.maxDoc(),
             info.info.getUseCompoundFile(),
+            info.info.getHasBlocks(),
             info.info.getCodec(),
             info.info.getDiagnostics(),
             info.info.getId(),
@@ -3671,7 +3707,7 @@ public class IndexWriter
               // merge completes which would otherwise have
               // removed the files we are now syncing.
               deleter.incRef(toCommit.files(false));
-              if (anyChanges && maxCommitMergeWaitMillis > 0) {
+              if (maxCommitMergeWaitMillis > 0) {
                 // we can safely call preparePointInTimeMerge since writeReaderPool(true) above
                 // wrote all
                 // necessary files to disk and checkpointed them.
@@ -3778,7 +3814,7 @@ public class IndexWriter
             new OneMergeWrappingMergePolicy(
                 config.getMergePolicy(),
                 toWrap ->
-                    new MergePolicy.OneMerge(toWrap.segments) {
+                    new MergePolicy.OneMerge(toWrap) {
                       SegmentCommitInfo origInfo;
                       final AtomicBoolean onlyOnce = new AtomicBoolean(false);
 
@@ -3876,6 +3912,18 @@ public class IndexWriter
                       @Override
                       public CodecReader wrapForMerge(CodecReader reader) throws IOException {
                         return toWrap.wrapForMerge(reader); // must delegate
+                      }
+
+                      @Override
+                      public Sorter.DocMap reorder(CodecReader reader, Directory dir)
+                          throws IOException {
+                        return toWrap.reorder(reader, dir); // must delegate
+                      }
+
+                      @Override
+                      public void setMergeInfo(SegmentCommitInfo info) {
+                        super.setMergeInfo(info);
+                        toWrap.setMergeInfo(info);
                       }
                     }),
             trigger,
@@ -4223,7 +4271,6 @@ public class IndexWriter
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
-          ;
           docWriter.finishFullFlush(flushSuccess);
           processEvents(false);
         }
@@ -4300,7 +4347,7 @@ public class IndexWriter
    * merge.info). If no deletes were flushed, no new deletes file is saved.
    */
   private synchronized ReadersAndUpdates commitMergedDeletesAndUpdates(
-      MergePolicy.OneMerge merge, MergeState mergeState) throws IOException {
+      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps) throws IOException {
 
     mergeFinishedGen.incrementAndGet();
 
@@ -4324,7 +4371,7 @@ public class IndexWriter
 
     boolean anyDVUpdates = false;
 
-    assert sourceSegments.size() == mergeState.docMaps.length;
+    assert sourceSegments.size() == docMaps.length;
     for (int i = 0; i < sourceSegments.size(); i++) {
       SegmentCommitInfo info = sourceSegments.get(i);
       minGen = Math.min(info.getBufferedDeletesGen(), minGen);
@@ -4334,12 +4381,11 @@ public class IndexWriter
       // the pool:
       assert rld != null : "seg=" + info.info.name;
 
-      MergeState.DocMap segDocMap = mergeState.docMaps[i];
+      MergeState.DocMap segDocMap = docMaps[i];
 
       carryOverHardDeletes(
           mergedDeletesAndUpdates,
           maxDoc,
-          mergeState.liveDocs[i],
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
           segDocMap);
@@ -4442,26 +4488,21 @@ public class IndexWriter
   private static void carryOverHardDeletes(
       ReadersAndUpdates mergedReadersAndUpdates,
       int maxDoc,
-      Bits mergeLiveDocs, // the liveDocs used to build the segDocMaps
       Bits prevHardLiveDocs, // the hard deletes when the merge reader was pulled
       Bits currentHardLiveDocs, // the current hard deletes
       MergeState.DocMap segDocMap)
       throws IOException {
 
-    assert mergeLiveDocs == null || mergeLiveDocs.length() == maxDoc;
     // if we mix soft and hard deletes we need to make sure that we only carry over deletes
     // that were not deleted before. Otherwise the segDocMap doesn't contain a mapping.
     // yet this is also required if any MergePolicy modifies the liveDocs since this is
     // what the segDocMap is build on.
     final IntPredicate carryOverDelete =
-        mergeLiveDocs == null || mergeLiveDocs == prevHardLiveDocs
-            ? docId -> currentHardLiveDocs.get(docId) == false
-            : docId -> mergeLiveDocs.get(docId) && currentHardLiveDocs.get(docId) == false;
+        docId -> segDocMap.get(docId) != -1 && currentHardLiveDocs.get(docId) == false;
     if (prevHardLiveDocs != null) {
       // If we had deletions on starting the merge we must
       // still have deletions now:
       assert currentHardLiveDocs != null;
-      assert mergeLiveDocs != null;
       assert prevHardLiveDocs.length() == maxDoc;
       assert currentHardLiveDocs.length() == maxDoc;
 
@@ -4504,7 +4545,7 @@ public class IndexWriter
   }
 
   @SuppressWarnings("try")
-  private synchronized boolean commitMerge(MergePolicy.OneMerge merge, MergeState mergeState)
+  private synchronized boolean commitMerge(MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps)
       throws IOException {
     merge.onMergeComplete();
     testPoint("startCommitMerge");
@@ -4547,7 +4588,7 @@ public class IndexWriter
     }
 
     final ReadersAndUpdates mergedUpdates =
-        merge.info.info.maxDoc() == 0 ? null : commitMergedDeletesAndUpdates(merge, mergeState);
+        merge.info.info.maxDoc() == 0 ? null : commitMergedDeletesAndUpdates(merge, docMaps);
 
     // If the doc store we are using has been closed and
     // is in now compound format (but wasn't when we
@@ -4923,7 +4964,13 @@ public class IndexWriter
     if (readerPool.writeDocValuesUpdatesForMerge(merge.segments)) {
       checkpoint();
     }
-
+    boolean hasBlocks = false;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.getHasBlocks()) {
+        hasBlocks = true;
+        break;
+      }
+    }
     // Bind a new segment name here so even with
     // ConcurrentMergePolicy we keep deterministic segment
     // names.
@@ -4937,6 +4984,7 @@ public class IndexWriter
             mergeSegmentName,
             -1,
             false,
+            hasBlocks,
             config.getCodec(),
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -5144,11 +5192,56 @@ public class IndexWriter
         }
         mergeReaders.add(wrappedReader);
       }
+
+      MergeState.DocMap[] reorderDocMaps = null;
+      if (config.getIndexSort() == null) {
+        // Create a merged view of the input segments. This effectively does the merge.
+        CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
+        Sorter.DocMap docMap = merge.reorder(mergedView, directory);
+        if (docMap != null) {
+          reorderDocMaps = new MergeState.DocMap[mergeReaders.size()];
+          int docBase = 0;
+          int i = 0;
+          for (CodecReader reader : mergeReaders) {
+            final int currentDocBase = docBase;
+            reorderDocMaps[i] =
+                docID -> {
+                  Objects.checkIndex(docID, reader.maxDoc());
+                  return docMap.oldToNew(currentDocBase + docID);
+                };
+            i++;
+            docBase += reader.maxDoc();
+          }
+          // This makes merging more expensive as it disables some bulk merging optimizations, so
+          // only do this if a non-null DocMap is returned.
+          mergeReaders =
+              Collections.singletonList(SortingCodecReader.wrap(mergedView, docMap, null));
+        }
+      }
+
       final SegmentMerger merger =
           new SegmentMerger(
               mergeReaders, merge.info.info, infoStream, dirWrapper, globalFieldNumberMap, context);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
+
+      MergeState mergeState = merger.mergeState;
+      MergeState.DocMap[] docMaps;
+      if (reorderDocMaps == null) {
+        docMaps = mergeState.docMaps;
+      } else {
+        // Since the reader was reordered, we passed a merged view to MergeState and from its
+        // perspective there is a single input segment to the merge and the
+        // SlowCompositeCodecReaderWrapper is effectively doing the merge.
+        assert mergeState.docMaps.length == 1
+            : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
+        MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
+        docMaps = new MergeState.DocMap[reorderDocMaps.length];
+        for (int i = 0; i < docMaps.length; ++i) {
+          MergeState.DocMap reorderDocMap = reorderDocMaps[i];
+          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+        }
+      }
 
       merge.mergeStartNS = System.nanoTime();
 
@@ -5157,7 +5250,6 @@ public class IndexWriter
         merger.merge();
       }
 
-      MergeState mergeState = merger.mergeState;
       assert mergeState.segmentInfo == merge.info.info;
       merge.info.info.setFiles(new HashSet<>(dirWrapper.getCreatedFiles()));
       Codec codec = config.getCodec();
@@ -5210,7 +5302,7 @@ public class IndexWriter
         // Merge would produce a 0-doc segment, so we do nothing except commit the merge to remove
         // all the 0-doc segments that we "merged":
         assert merge.info.info.maxDoc() == 0;
-        success = commitMerge(merge, mergeState);
+        success = commitMerge(merge, docMaps);
         return 0;
       }
 
@@ -5290,6 +5382,8 @@ public class IndexWriter
         success = false;
       }
 
+      merge.setMergeInfo(merge.info);
+
       // Have codec write SegmentInfo.  Must do this after
       // creating CFS so that 1) .si isn't slurped into CFS,
       // and 2) .si reflects useCompoundFile=true change
@@ -5333,7 +5427,7 @@ public class IndexWriter
         }
       }
 
-      if (!commitMerge(merge, mergeState)) {
+      if (!commitMerge(merge, docMaps)) {
         // commitMerge will return false if this merge was
         // aborted
         return 0;
@@ -5362,11 +5456,6 @@ public class IndexWriter
   // For test purposes.
   final int getBufferedDeleteTermsSize() {
     return docWriter.getBufferedDeleteTermsSize();
-  }
-
-  // For test purposes.
-  final int getNumBufferedDeleteTerms() {
-    return docWriter.getNumBufferedDeleteTerms();
   }
 
   // utility routines for tests
@@ -5779,6 +5868,7 @@ public class IndexWriter
   private synchronized void deleteNewFiles(Collection<String> files) throws IOException {
     deleter.deleteNewFiles(files);
   }
+
   /** Cleans up residuals from a segment that could not be entirely flushed due to an error */
   private synchronized void flushFailed(SegmentInfo info) throws IOException {
     // TODO: this really should be a tragic
@@ -6530,10 +6620,12 @@ public class IndexWriter
           }
 
           @Override
-          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+          public FieldInfosBuilder newFieldInfosBuilder(
+              String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
-              private FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+              private final FieldInfos.Builder builder =
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, parentFieldName));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.IntToLongFunction;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -115,15 +114,15 @@ public class RandomPostingsTester {
 
     // Test w/ multiple threads
     THREADS
-  };
+  }
 
   private long totalPostings;
   private long totalPayloadBytes;
 
   // Holds all postings:
-  private Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
+  private final Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
 
-  private FieldInfos fieldInfos;
+  private final FieldInfos fieldInfos;
 
   List<FieldAndTerm> allTerms;
   private int maxDoc;
@@ -166,6 +165,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false);
       fieldUpto++;
 
@@ -696,6 +696,7 @@ public class RandomPostingsTester {
             "_0",
             maxDoc,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -738,6 +739,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false);
     }
 
@@ -955,7 +957,7 @@ public class RandomPostingsTester {
 
     assertNotNull("null DocsEnum", postingsEnum);
     int initialDocID = postingsEnum.docID();
-    assertEquals("inital docID should be -1" + postingsEnum, -1, initialDocID);
+    assertEquals("initial docID should be -1: " + postingsEnum, -1, initialDocID);
 
     if (LuceneTestCase.VERBOSE) {
       if (prevPostingsEnum == null) {
@@ -1251,9 +1253,7 @@ public class RandomPostingsTester {
           Impacts impacts = impactsEnum.getImpacts();
           INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
           impactsCopy =
-              impacts.getImpacts(0).stream()
-                  .map(i -> new Impact(i.freq, i.norm))
-                  .collect(Collectors.toList());
+              impacts.getImpacts(0).stream().map(i -> new Impact(i.freq, i.norm)).toList();
         }
         freq = impactsEnum.freq();
         long norm = docToNorm.applyAsLong(doc);
@@ -1300,9 +1300,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1341,9 +1339,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1369,12 +1365,12 @@ public class RandomPostingsTester {
 
   private static class TestThread extends Thread {
     private Fields fieldsSource;
-    private EnumSet<Option> options;
-    private IndexOptions maxIndexOptions;
-    private IndexOptions maxTestOptions;
-    private boolean alwaysTestMax;
+    private final EnumSet<Option> options;
+    private final IndexOptions maxIndexOptions;
+    private final IndexOptions maxTestOptions;
+    private final boolean alwaysTestMax;
     private RandomPostingsTester postingsTester;
-    private Random random;
+    private final Random random;
 
     public TestThread(
         Random random,
@@ -1630,7 +1626,7 @@ public class RandomPostingsTester {
         }
         TermsEnum intersected = fieldsSource.terms(field).intersect(ca, startTerm);
 
-        Set<BytesRef> intersectedTerms = new HashSet<BytesRef>();
+        Set<BytesRef> intersectedTerms = new HashSet<>();
         BytesRef term;
         while ((term = intersected.next()) != null) {
           if (startTerm != null) {
@@ -1683,11 +1679,7 @@ public class RandomPostingsTester {
       }
     }
     assertFalse(iterator.hasNext());
-    LuceneTestCase.expectThrows(
-        NoSuchElementException.class,
-        () -> {
-          iterator.next();
-        });
+    LuceneTestCase.expectThrows(NoSuchElementException.class, iterator::next);
   }
 
   /**
