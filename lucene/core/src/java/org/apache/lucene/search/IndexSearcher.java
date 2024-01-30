@@ -431,7 +431,12 @@ public class IndexSearcher {
         && this.reader.hasDeletions() == false
         && booleanQuery.isTwoClauseDisjunctionWithTerms()) {
       Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount();
-      return count(queries[0]) + count(queries[1]) - count(queries[2]);
+      int countTerm1 = count(queries[0]);
+      int countTerm2 = count(queries[1]);
+      // Only apply optimization if the intersection is significantly smaller than the union
+      if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2) < 0.1) {
+        return countTerm1 + countTerm2 - count(queries[2]);
+      }
     }
     return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
