@@ -175,11 +175,19 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {
-    createIndex("index.cfs", true, false);
+    Path indexDir = getIndexDir().resolve("index.cfs");
+    Files.deleteIfExists(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createIndex(dir, true, false);
+    }
   }
 
   public void testCreateNoCFS() throws IOException {
-    createIndex("index.nocfs", false, false);
+    Path indexDir = getIndexDir().resolve("index.nocfs");
+    Files.deleteIfExists(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createIndex(dir, false, false);
+    }
   }
 
   // These are only needed for the special upgrade test to verify
@@ -188,11 +196,26 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   // "old" segment format, version is unimportant:
 
   public void testCreateSingleSegmentCFS() throws IOException {
-    createIndex("index.singlesegment-cfs", true, true);
+    Path indexDir = getIndexDir().resolve("index.singlesegment-cfs");
+    Files.deleteIfExists(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createIndex(dir, true, true);
+    }
   }
 
   public void testCreateSingleSegmentNoCFS() throws IOException {
-    createIndex("index.singlesegment-nocfs", false, true);
+    Path indexDir = getIndexDir().resolve("index.singlesegment-nocfs");
+    Files.deleteIfExists(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createIndex(dir, false, true);
+    }
+  }
+
+  public void testCreateIndexInternal() throws IOException {
+    try (Directory dir = newDirectory()) {
+      createIndex(dir, random().nextBoolean(), false);
+      searchIndex(dir, Version.LATEST.toString(), Version.MIN_SUPPORTED_MAJOR, Version.LATEST);
+    }
   }
 
   private Path getIndexDir() {
@@ -204,11 +227,20 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   public void testCreateMoreTermsIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("moreterms");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createMoreTermsIndex(dir);
+    }
+  }
 
+  public void testCreateMoreTermsIndexInternal() throws Exception {
+    try (Directory dir = newDirectory()) {
+      createMoreTermsIndex(dir);
+    }
+  }
+
+  private void createMoreTermsIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -216,25 +248,50 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
 
     IndexWriterConfig conf =
-        new IndexWriterConfig(analyzer).setMergePolicy(mp).setUseCompoundFile(false);
+        new IndexWriterConfig(analyzer)
+            .setMergePolicy(mp)
+            .setCodec(TestUtil.getDefaultCodec())
+            .setUseCompoundFile(false);
     IndexWriter writer = new IndexWriter(dir, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
     for (int i = 0; i < 50; i++) {
-      writer.addDocument(docs.nextDoc());
+      Document doc = TestUtil.cloneDocument(docs.nextDoc());
+      doc.add(
+          new NumericDocValuesField(
+              "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
+      doc.add(
+          new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
+      writer.addDocument(doc);
+      if (i % 10 == 0) { // commit every 10 documents
+        writer.commit();
+      }
     }
     docs.close();
     writer.close();
-    dir.close();
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
   // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
-
     Path indexDir = getIndexDir().resolve("sorted");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createSortedIndex(dir);
+    }
+  }
 
+  public void testCreateSortedIndexInternal() throws Exception {
+    // this runs without the -Ptests.bwcdir=/tmp/sorted to make sure we can actually index and
+    // search the created index
+    try (Directory dir = newDirectory()) {
+      createSortedIndex(dir);
+    }
+  }
+
+  public void createSortedIndex(Directory dir) throws Exception {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -245,17 +302,16 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
     conf.setMergePolicy(mp);
     conf.setUseCompoundFile(false);
+    conf.setCodec(TestUtil.getDefaultCodec());
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(dir, conf);
-    LineFileDocs docs = new LineFileDocs(random());
+    LineFileDocs docs = new LineFileDocs(new Random(0));
     SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
     parser.setTimeZone(TimeZone.getTimeZone("UTC"));
     ParsePosition position = new ParsePosition(0);
-    Field dateDVField = null;
     for (int i = 0; i < 50; i++) {
-      Document doc = docs.nextDoc();
+      Document doc = TestUtil.cloneDocument(docs.nextDoc());
       String dateString = doc.get("date");
-
       position.setIndex(0);
       Date date = parser.parse(dateString, position);
       if (position.getErrorIndex() != -1) {
@@ -264,19 +320,23 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       if (position.getIndex() != dateString.length()) {
         throw new AssertionError("failed to parse \"" + dateString + "\" as date");
       }
-      if (dateDVField == null) {
-        dateDVField = new NumericDocValuesField("dateDV", 0L);
-        doc.add(dateDVField);
-      }
-      dateDVField.setLongValue(date.getTime());
-      if (i == 250) {
+      doc.add(
+          new NumericDocValuesField(
+              "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
+      doc.add(
+          new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
+      doc.add(new NumericDocValuesField("dateDV", date.getTime()));
+      if (i % 10 == 0) { // commit every 10 documents
         writer.commit();
       }
       writer.addDocument(doc);
     }
     writer.forceMerge(1);
     writer.close();
-    dir.close();
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      searchExampleIndex(reader); // make sure we can search it
+    }
   }
 
   private void updateNumeric(IndexWriter writer, String id, String f, String cf, long value)
@@ -292,13 +352,26 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   // Creates an index with DocValues updates
-  public void testCreateIndexWithDocValuesUpdates() throws Exception {
+  public void testCreateIndexWithDocValuesUpdates() throws IOException {
     Path indexDir = getIndexDir().resolve("dvupdates");
     Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+    try (Directory dir = newFSDirectory(indexDir)) {
+      createIndexWithDocValuesUpdates(dir);
+      searchDocValuesUpdatesIndex(dir);
+    }
+  }
 
+  public void testCreateIndexWithDocValuesUpdatesInternal() throws IOException {
+    try (Directory dir = newDirectory()) {
+      createIndexWithDocValuesUpdates(dir);
+      searchDocValuesUpdatesIndex(dir);
+    }
+  }
+
+  private void createIndexWithDocValuesUpdates(Directory dir) throws IOException {
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
+            .setCodec(TestUtil.getDefaultCodec())
             .setUseCompoundFile(false)
             .setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, conf);
@@ -332,10 +405,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     updateBinary(writer, "21", "bdv1", "bdv1_c", 100L);
     writer.commit();
     updateNumeric(writer, "22", "ndv1", "ndv1_c", 200L); // update the field again
-    writer.commit();
-
     writer.close();
-    dir.close();
   }
 
   public void testCreateEmptyIndex() throws Exception {
@@ -377,7 +447,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.9.0-cfs",
     "9.9.0-nocfs",
     "9.9.1-cfs",
-    "9.9.1-nocfs"
+    "9.9.1-nocfs",
+    "9.9.2-cfs",
+    "9.9.2-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -397,7 +469,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.7.0",
     "sorted.9.8.0",
     "sorted.9.9.0",
-    "sorted.9.9.1"
+    "sorted.9.9.1",
+    "sorted.9.9.2"
   };
 
   public static String[] getOldSortedNames() {
@@ -1141,6 +1214,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     final Bits liveDocs = MultiBits.getLiveDocs(reader);
     assertNotNull(liveDocs);
+
     StoredFields storedFields = reader.storedFields();
     TermVectors termVectors = reader.termVectors();
 
@@ -1502,10 +1576,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     reader.close();
   }
 
-  public void createIndex(String dirName, boolean doCFS, boolean fullyMerged) throws IOException {
-    Path indexDir = getIndexDir().resolve(dirName);
-    Files.deleteIfExists(indexDir);
-    Directory dir = newFSDirectory(indexDir);
+  public void createIndex(Directory dir, boolean doCFS, boolean fullyMerged) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
     mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
@@ -1547,8 +1618,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       writer.deleteDocuments(searchTerm);
       writer.close();
     }
-
-    dir.close();
   }
 
   private void addDoc(IndexWriter writer, int id) throws IOException {
@@ -1740,7 +1809,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void verifyUsesDefaultCodec(Directory dir, String name) throws Exception {
+  public void verifyUsesDefaultCodec(Directory dir, String name) throws IOException {
     DirectoryReader r = DirectoryReader.open(dir);
     for (LeafReaderContext context : r.leaves()) {
       SegmentReader air = (SegmentReader) context.reader();
@@ -1979,9 +2048,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   public void testDocValuesUpdates() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
-    Directory dir = newFSDirectory(oldIndexDir);
-    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
+    try (Directory dir = newFSDirectory(oldIndexDir)) {
+      searchDocValuesUpdatesIndex(dir);
+    }
+  }
 
+  private void searchDocValuesUpdatesIndex(Directory dir) throws IOException {
+    verifyUsesDefaultCodec(dir, dvUpdatesIndex);
     verifyDocValues(dir);
 
     // update fields and verify index
@@ -2001,7 +2074,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     verifyDocValues(dir);
 
     writer.close();
-    dir.close();
   }
 
   public void testDeletes() throws Exception {

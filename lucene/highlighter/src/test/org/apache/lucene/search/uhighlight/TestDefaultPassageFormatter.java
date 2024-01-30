@@ -27,10 +27,10 @@ public class TestDefaultPassageFormatter extends LuceneTestCase {
     Passage[] passages = new Passage[2];
     passages[0] = new Passage();
     passages[0].setStartOffset(0);
-    passages[0].setEndOffset(text.indexOf(".") + 1);
+    passages[0].setEndOffset(text.indexOf('.') + 1);
     passages[0].addMatch(text.indexOf("very"), text.indexOf("very") + 4, null, 2);
     passages[1] = new Passage();
-    passages[1].setStartOffset(text.indexOf(".", passages[0].getEndOffset() + 1) + 2);
+    passages[1].setStartOffset(text.indexOf('.', passages[0].getEndOffset() + 1) + 2);
     passages[1].setEndOffset(text.length());
     passages[1].addMatch(
         text.indexOf("very", passages[0].getEndOffset()),
