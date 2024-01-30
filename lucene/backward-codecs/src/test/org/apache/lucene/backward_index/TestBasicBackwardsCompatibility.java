@@ -104,16 +104,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
 
   /**
-   * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}.
-   * See {@link #testVersionsFactory()} for details on the values provided to the framework.
+   * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}. See
+   * {@link #testVersionsFactory()} for details on the values provided to the framework.
    */
   public TestBasicBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
-  /**
-   * Provides all current version to the test-framework for each of the index suffixes.
-   */
+  /** Provides all current version to the test-framework for each of the index suffixes. */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX_CFS, SUFFIX_NO_CFS);

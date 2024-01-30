@@ -83,11 +83,14 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   /**
    * This is a base constructor for parameterized BWC tests. The constructor arguments are provided
-   * by {@link com.carrotsearch.randomizedtesting.RandomizedRunner} during test execution. 
-   * A {@link com.carrotsearch.randomizedtesting.annotations.ParametersFactory} specified in a subclass provides a list
-   * lists of arguments for the tests and RandomizedRunner will execute the test for each of the argument list.
+   * by {@link com.carrotsearch.randomizedtesting.RandomizedRunner} during test execution. A {@link
+   * com.carrotsearch.randomizedtesting.annotations.ParametersFactory} specified in a subclass
+   * provides a list lists of arguments for the tests and RandomizedRunner will execute the test for
+   * each of the argument list.
+   *
    * @param version the version this test should run for
-   * @param indexPattern an index pattern in order to open an index of see {@link #createPattern(String, String)}
+   * @param indexPattern an index pattern in order to open an index of see {@link
+   *     #createPattern(String, String)}
    */
   protected BackwardsCompatibilityTestBase(
       @Name("version") Version version, @Name("pattern") String indexPattern) {
@@ -145,12 +148,11 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   }
 
   /**
-   * Creates an index pattern of the form '$name.$version$suffix.zip' where version is 
-   * filled in afterward via {@link String#formatted(Object...)} during the test runs.
-   * 
+   * Creates an index pattern of the form '$name.$version$suffix.zip' where version is filled in
+   * afterward via {@link String#formatted(Object...)} during the test runs.
+   *
    * @param name name of the index
    * @param suffix index suffix ie. '-cfs'
-   * @return
    */
   static String createPattern(String name, String suffix) {
     return name + ".%1$s" + suffix + ".zip";
@@ -185,9 +187,10 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     List<Object[]> versionAndPatterns = new ArrayList<>();
     List<Version> versionList = getAllCurrentVersions();
     for (Version v : versionList) {
-      if (v.equals(LATEST_PREVIOUS_MAJOR) == false) { // the latest prev-major has not yet been released
+      if (v.equals(LATEST_PREVIOUS_MAJOR)
+          == false) { // the latest prev-major has not yet been released
         for (Object p : patterns) {
-          versionAndPatterns.add(new Object[]{v, p});
+          versionAndPatterns.add(new Object[] {v, p});
         }
       }
     }

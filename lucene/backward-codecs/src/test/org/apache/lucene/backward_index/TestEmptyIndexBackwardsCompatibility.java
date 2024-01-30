@@ -48,9 +48,7 @@ public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibility
     }
   }
 
-  /**
-   * Provides the initial release of the previous major to the test-framework
-   */
+  /** Provides the initial release of the previous major to the test-framework */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();

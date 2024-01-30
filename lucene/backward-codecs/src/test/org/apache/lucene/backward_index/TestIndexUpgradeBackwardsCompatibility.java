@@ -47,16 +47,14 @@ import org.apache.lucene.util.Version;
 public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
   /**
-   * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}.
-   * See {@link #testVersionsFactory()} for details on the values provided to the framework.
+   * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}. See
+   * {@link #testVersionsFactory()} for details on the values provided to the framework.
    */
   public TestIndexUpgradeBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
-  /**
-   * Provides all current version to the test-framework for each of the index suffixes.
-   */
+  /** Provides all current version to the test-framework for each of the index suffixes. */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     Iterable<Object[]> allSupportedVersions =
@@ -85,7 +83,8 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   }
 
   public void testUpgradeOldIndex() throws Exception {
-    int indexCreatedVersion = SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
+    int indexCreatedVersion =
+        SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
     newIndexUpgrader(directory).upgrade();
     checkAllSegmentsUpgraded(directory, indexCreatedVersion);
   }
@@ -106,7 +105,8 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     // TODO we use to have single segment indices but we stopped creating them at some point
     // either delete the test or recreate the indices
     assumeTrue("Original index must be single segment", 1 == getNumberOfSegments(directory));
-    int indexCreatedVersion = SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
+    int indexCreatedVersion =
+        SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
 
     // create a bunch of dummy segments
     int id = 40;
@@ -171,16 +171,16 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
 
   // LUCENE-5907
   public void testUpgradeThenMultipleCommits() throws Exception {
-      IndexWriter writer =
-              new IndexWriter(
-                      directory,
-                      newIndexWriterConfig(new MockAnalyzer(random()))
-                              .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
-      writer.addDocument(new Document());
-      writer.commit();
-      writer.addDocument(new Document());
-      writer.commit();
-      writer.close();
+    IndexWriter writer =
+        new IndexWriter(
+            directory,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
+    writer.addDocument(new Document());
+    writer.commit();
+    writer.addDocument(new Document());
+    writer.commit();
+    writer.close();
   }
 
   public void testIndexUpgraderCommandLineArgs() throws Exception {
