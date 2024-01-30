@@ -67,6 +67,8 @@ Optimizations
   this will help boolean queries that consist of a mix OF FILTER clauses and
   SHOULD clauses. (Adrien Grand)
 
+* GITHUB#13052: Avoid set.removeAll(list) O(n^2) performance trap in the UpgradeIndexMergePolicy (Dmitry Cherniachenko)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
