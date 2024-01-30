@@ -127,8 +127,8 @@ public final class TeluguAnalyzer extends StopwordAnalyzerBase {
   @Override
   protected TokenStream normalize(String fieldName, TokenStream in) {
     TokenStream result = new DecimalDigitFilter(in);
-    result = new IndicNormalizationFilter(in);
-    result = new TeluguNormalizationFilter(in);
+    result = new IndicNormalizationFilter(result);
+    result = new TeluguNormalizationFilter(result);
     return result;
   }
 }
