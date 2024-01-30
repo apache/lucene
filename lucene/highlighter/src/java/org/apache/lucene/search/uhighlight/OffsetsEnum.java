@@ -123,7 +123,7 @@ public abstract class OffsetsEnum implements Comparable<OffsetsEnum>, Closeable 
     private final PostingsEnum postingsEnum; // with offsets
     private final int freq;
 
-    private int posCounter = -1;
+    private int posCounter;
 
     public OfPostings(BytesRef term, int freq, PostingsEnum postingsEnum) throws IOException {
       this.term = Objects.requireNonNull(term);

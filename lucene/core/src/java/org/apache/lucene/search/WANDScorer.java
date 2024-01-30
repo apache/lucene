@@ -120,7 +120,7 @@ final class WANDScorer extends Scorer {
 
   private final int scalingFactor;
   // scaled min competitive score
-  private long minCompetitiveScore = 0;
+  private long minCompetitiveScore;
 
   private final Scorer[] allScorers;
 

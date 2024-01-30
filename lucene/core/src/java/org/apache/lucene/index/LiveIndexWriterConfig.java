@@ -84,7 +84,7 @@ public class LiveIndexWriterConfig {
   protected volatile int perThreadHardLimitMB;
 
   /** True if segment flushes should use compound file format */
-  protected volatile boolean useCompoundFile = IndexWriterConfig.DEFAULT_USE_COMPOUND_FILE_SYSTEM;
+  protected volatile boolean useCompoundFile;
 
   /** True if calls to {@link IndexWriter#close()} should first do a commit. */
   protected boolean commitOnClose = IndexWriterConfig.DEFAULT_COMMIT_ON_CLOSE;

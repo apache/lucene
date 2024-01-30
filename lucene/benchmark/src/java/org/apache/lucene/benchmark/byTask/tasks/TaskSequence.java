@@ -41,7 +41,7 @@ public class TaskSequence extends PerfTask {
   private boolean resetExhausted = false;
   private PerfTask[] tasksArray;
   private boolean anyExhaustibleTasks;
-  private boolean collapsable = false; // to not collapse external sequence named in alg.
+  private final boolean collapsable; // to not collapse external sequence named in alg.
 
   private boolean fixedTime; // true if we run for fixed time
   private double runTimeSec; // how long to run for
