@@ -28,6 +28,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -198,7 +199,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   }
 
   public String indexName(Version version) {
-    return indexPattern.formatted(version);
+    return indexPattern.formatted(Locale.ROOT, version);
   }
 
   protected boolean supportsVersion(Version version) {
