@@ -96,7 +96,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     for (int i = 0; i < boundedNumSeed; i++) {
       int entryPoint = random.nextInt(size);
       if (visited.getAndSet(entryPoint) == false) {
-        if (numVisited >= visitedLimit) {
+        if (numVisited > visitedLimit) {
           results.markIncomplete();
           break;
         }
@@ -132,7 +132,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           continue;
         }
 
-        if (numVisited >= visitedLimit) {
+        if (numVisited > visitedLimit) {
           results.markIncomplete();
           break;
         }

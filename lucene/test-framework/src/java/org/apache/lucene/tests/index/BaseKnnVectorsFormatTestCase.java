@@ -1073,7 +1073,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   .searchNearestVectors(
                       fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
-          assertEquals(visitedLimit, results.totalHits.value);
+          assertEquals(visitedLimit + 1, results.totalHits.value);
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();

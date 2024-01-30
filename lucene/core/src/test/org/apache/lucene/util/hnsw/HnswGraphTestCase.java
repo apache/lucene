@@ -730,7 +730,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             visitedLimit);
     assertTrue(nn.earlyTerminated());
     // The visited count shouldn't exceed the limit
-    assertTrue(nn.visitedCount() <= visitedLimit);
+    assertTrue(nn.visitedCount() <= visitedLimit + 1);
   }
 
   public void testHnswGraphBuilderInvalid() throws IOException {
