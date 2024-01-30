@@ -429,8 +429,8 @@ public class IndexSearcher {
     // Check if two clause disjunction optimization applies
     if (query instanceof BooleanQuery booleanQuery
         && this.reader.hasDeletions() == false
-        && booleanQuery.isTwoClauseDisjunctionWithTerms()) {
-      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount();
+        && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
+      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
       int countTerm1 = count(queries[0]);
       int countTerm2 = count(queries[1]);
       // Only apply optimization if the intersection is significantly smaller than the union
