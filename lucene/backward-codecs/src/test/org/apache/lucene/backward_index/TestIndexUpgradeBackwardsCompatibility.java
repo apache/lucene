@@ -78,12 +78,9 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   }
 
   public void testUpgradeOldIndex() throws Exception {
-    Directory dir = newDirectory(directory);
-    int indexCreatedVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
-    newIndexUpgrader(dir).upgrade();
-
-    checkAllSegmentsUpgraded(dir, indexCreatedVersion);
-    dir.close();
+    int indexCreatedVersion = SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
+    newIndexUpgrader(directory).upgrade();
+    checkAllSegmentsUpgraded(directory, indexCreatedVersion);
   }
 
   @Override
@@ -101,9 +98,8 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   public void testUpgradeOldSingleSegmentIndexWithAdditions() throws Exception {
     // NOCOMMIT we use to have single segment indices but we stopped creating them at some point
     // either delete the test or recreate the indices
-    Directory dir = newDirectory(directory);
-    assumeTrue("Original index must be single segment", 1 == getNumberOfSegments(dir));
-    int indexCreatedVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
+    assumeTrue("Original index must be single segment", 1 == getNumberOfSegments(directory));
+    int indexCreatedVersion = SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();
 
     // create a bunch of dummy segments
     int id = 40;
@@ -129,35 +125,31 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     // version) to single segment index
     MergePolicy mp = random().nextBoolean() ? newLogMergePolicy() : newTieredMergePolicy();
     IndexWriterConfig iwc = new IndexWriterConfig(null).setMergePolicy(mp);
-    IndexWriter w = new IndexWriter(dir, iwc);
+    IndexWriter w = new IndexWriter(directory, iwc);
     w.addIndexes(ramDir);
     try (w) {
       w.commit();
     }
 
     // determine count of segments in modified index
-    final int origSegCount = getNumberOfSegments(dir);
+    final int origSegCount = getNumberOfSegments(directory);
 
     // ensure there is only one commit
-    assertEquals(1, DirectoryReader.listCommits(dir).size());
-    newIndexUpgrader(dir).upgrade();
+    assertEquals(1, DirectoryReader.listCommits(directory).size());
+    newIndexUpgrader(directory).upgrade();
 
-    final int segCount = checkAllSegmentsUpgraded(dir, indexCreatedVersion);
+    final int segCount = checkAllSegmentsUpgraded(directory, indexCreatedVersion);
     assertEquals(
         "Index must still contain the same number of segments, as only one segment was upgraded and nothing else merged",
         origSegCount,
         segCount);
-
-    dir.close();
   }
 
   // LUCENE-5907
   public void testUpgradeWithNRTReader() throws Exception {
-    Directory dir = newDirectory(directory);
-
     IndexWriter writer =
         new IndexWriter(
-            dir,
+            directory,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.addDocument(new Document());
@@ -167,24 +159,21 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     writer.forceMerge(1);
     writer.commit();
     writer.rollback();
-    SegmentInfos.readLatestCommit(dir);
-    dir.close();
+    SegmentInfos.readLatestCommit(directory);
   }
 
   // LUCENE-5907
   public void testUpgradeThenMultipleCommits() throws Exception {
-    Directory dir = newDirectory(directory);
-    IndexWriter writer =
-        new IndexWriter(
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random()))
-                .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
-    writer.addDocument(new Document());
-    writer.commit();
-    writer.addDocument(new Document());
-    writer.commit();
-    writer.close();
-    dir.close();
+      IndexWriter writer =
+              new IndexWriter(
+                      directory,
+                      newIndexWriterConfig(new MockAnalyzer(random()))
+                              .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
+      writer.addDocument(new Document());
+      writer.commit();
+      writer.addDocument(new Document());
+      writer.commit();
+      writer.close();
   }
 
   public void testIndexUpgraderCommandLineArgs() throws Exception {
@@ -229,8 +218,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
 
       IndexUpgrader.main(args.toArray(new String[0]));
 
-      Directory upgradedDir = newFSDirectory(dir);
-      try (upgradedDir) {
+      try (Directory upgradedDir = newFSDirectory(dir)) {
         checkAllSegmentsUpgraded(upgradedDir, indexCreatedVersion);
       }
 
