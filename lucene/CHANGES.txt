@@ -43,6 +43,8 @@ Improvements
 
 * GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
 
+* GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 
