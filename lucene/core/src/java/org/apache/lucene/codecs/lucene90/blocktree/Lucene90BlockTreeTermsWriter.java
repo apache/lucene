@@ -669,8 +669,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     private PendingTerm firstPendingTerm;
     private PendingTerm lastPendingTerm;
 
-    /** Writes the top count entries in pending, using prevTerm to compute the prefix. */
-    void writeBlocks(int prefixLength, int count) throws IOException {
+    /**
+     * Writes the top count entries in pending, using prevTerm to compute the prefix.
+     *
+     * <p>For root block, we will write the FST directly to the IndexOutput, for others they will
+     * use on-heap FST
+     */
+    void writeBlocks(int prefixLength, int count, boolean isRootBlock) throws IOException {
 
       assert count > 0;
 
@@ -783,7 +788,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      boolean isRootBlock = prefixLength == 0 && count == pending.size();
       // Create a proper DataOutput for the FST. For root block, we will write to the IndexOut
       // directly. For sub blocks, we will use the on-heap ReadWriteDataOutput
       DataOutput fstDataOutput = getFSTDataOutput(newBlocks, firstBlock.prefix.length, isRootBlock);
@@ -1157,7 +1161,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         if (prefixTopSize >= minItemsInBlock) {
           // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize + "
           // minItemsInBlock=" + minItemsInBlock);
-          writeBlocks(i + 1, prefixTopSize);
+          writeBlocks(i + 1, prefixTopSize, false);
           prefixStarts[i] -= prefixTopSize - 1;
         }
       }
@@ -1187,7 +1191,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
-        writeBlocks(0, pending.size());
+        writeBlocks(0, pending.size(), true);
 
         // We better have one final "root" block:
         assert pending.size() == 1 && !pending.get(0).isTerm
