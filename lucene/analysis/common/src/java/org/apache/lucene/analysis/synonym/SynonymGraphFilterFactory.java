@@ -116,7 +116,8 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
       }
     }
     String compiledSynonymsPathArg = get(args, "compiledSynonymsPath");
-    compiledSynonymsPath = compiledSynonymsPathArg == null ? null : Path.of(compiledSynonymsPathArg);
+    compiledSynonymsPath =
+        compiledSynonymsPathArg == null ? null : Path.of(compiledSynonymsPathArg);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -178,18 +179,18 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
     }
     if (compiledSynonymsDirectory == null || compiledSynonymsDirectory.hasSynonyms() == false) {
       CharsetDecoder decoder =
-              StandardCharsets.UTF_8
-                      .newDecoder()
-                      .onMalformedInput(CodingErrorAction.REPORT)
-                      .onUnmappableCharacter(CodingErrorAction.REPORT);
+          StandardCharsets.UTF_8
+              .newDecoder()
+              .onMalformedInput(CodingErrorAction.REPORT)
+              .onUnmappableCharacter(CodingErrorAction.REPORT);
 
       SynonymMap.Parser parser;
       Class<? extends SynonymMap.Parser> clazz = loader.findClass(cname, SynonymMap.Parser.class);
       try {
         parser =
-                clazz
-                        .getConstructor(boolean.class, boolean.class, Analyzer.class)
-                        .newInstance(dedup, expand, analyzer);
+            clazz
+                .getConstructor(boolean.class, boolean.class, Analyzer.class)
+                .newInstance(dedup, expand, analyzer);
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

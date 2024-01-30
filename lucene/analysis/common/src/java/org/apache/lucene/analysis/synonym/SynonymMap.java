@@ -224,12 +224,15 @@ public class SynonymMap {
       return build(null);
     }
 
-    /** Builds an {@link SynonymMap} and returns it.
-     * If directory is non-null, it will write the compiled SynonymMap to disk and return an off-heap version. */
+    /**
+     * Builds an {@link SynonymMap} and returns it. If directory is non-null, it will write the
+     * compiled SynonymMap to disk and return an off-heap version.
+     */
     public SynonymMap build(SynonymMapDirectory directory) throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       // TODO: are we using the best sharing options?
-      FSTCompiler.Builder<BytesRef> fstCompilerBuilder = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs);
+      FSTCompiler.Builder<BytesRef> fstCompilerBuilder =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs);
       IndexOutput fstOutput = null;
       if (directory != null) {
         fstOutput = directory.fstOutput();
@@ -315,17 +318,18 @@ public class SynonymMap {
         directory.writeMetadata(words.size(), maxHorizontalContext, fst);
         return directory.readMap();
       }
-      BytesRefHashLike wordsLike = new BytesRefHashLike() {
-        @Override
-        public void get(int id, BytesRef scratch) {
-          words.get(id, scratch);
-        }
-      };
+      BytesRefHashLike wordsLike =
+          new BytesRefHashLike() {
+            @Override
+            public void get(int id, BytesRef scratch) {
+              words.get(id, scratch);
+            }
+          };
       return new SynonymMap(fst, wordsLike, maxHorizontalContext);
     }
   }
 
-  static abstract class BytesRefHashLike {
+  abstract static class BytesRefHashLike {
     public abstract void get(int id, BytesRef scratch) throws IOException;
   }
 

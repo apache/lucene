@@ -448,7 +448,8 @@ public final class SynonymFilter extends TokenFilter {
   }
 
   // Interleaves all output tokens onto the futureOutputs:
-  private void addOutput(BytesRef bytes, int matchInputLength, int matchEndOffset) throws IOException {
+  private void addOutput(BytesRef bytes, int matchInputLength, int matchEndOffset)
+      throws IOException {
     bytesReader.reset(bytes.bytes, bytes.offset, bytes.length);
 
     final int code = bytesReader.readVInt();
