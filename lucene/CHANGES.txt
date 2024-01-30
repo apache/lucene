@@ -99,7 +99,7 @@ Other
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
-* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051:
+* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051, GITHUB#13039:
   Code cleanups and optimizations. (Dmitry Cherniachenko)
 
 ======================== Lucene 9.9.2 =======================
