@@ -199,8 +199,7 @@ public class TaskSequence extends PerfTask {
             if (countsByTime != null) {
               final int slot = (int) ((System.currentTimeMillis() - t0) / logByTimeMsec);
               if (slot >= countsByTime.length) {
-                countsByTime =
-                    ArrayUtil.growInRange(countsByTime, 1 + slot, repetitions * tasksArray.length);
+                countsByTime = ArrayUtil.grow(countsByTime, 1 + slot);
               }
               countsByTime[slot] += inc;
             }
@@ -268,8 +267,7 @@ public class TaskSequence extends PerfTask {
           if (countsByTime != null) {
             final int slot = (int) ((System.currentTimeMillis() - t0) / logByTimeMsec);
             if (slot >= countsByTime.length) {
-              countsByTime =
-                  ArrayUtil.growInRange(countsByTime, 1 + slot, repetitions * tasksArray.length);
+              countsByTime = ArrayUtil.grow(countsByTime, 1 + slot);
             }
             countsByTime[slot] += inc;
           }
@@ -390,7 +388,7 @@ public class TaskSequence extends PerfTask {
           if (countsByTime == null) {
             countsByTime = new int[sub.countsByTime.length];
           } else if (countsByTime.length < sub.countsByTime.length) {
-            countsByTime = ArrayUtil.growInRange(countsByTime, sub.countsByTime.length, t.length);
+            countsByTime = ArrayUtil.grow(countsByTime, sub.countsByTime.length);
           }
           for (int j = 0; j < sub.countsByTime.length; j++) {
             countsByTime[j] += sub.countsByTime[j];

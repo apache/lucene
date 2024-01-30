@@ -217,8 +217,7 @@ Other
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
-* GITHUB#12941: Don't overallocate in TaskSequence when growing arrays. Don't preserve auxiliary buffer in
-  LSBRadixSorter if it grows. (Stefan Vodita)
+* GITHUB#12941: Don't preserve auxiliary buffer in LSBRadixSorter if it grows. (Stefan Vodita)
 
 ======================== Lucene 9.9.1 =======================
 
