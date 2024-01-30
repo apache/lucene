@@ -259,6 +259,8 @@ Other
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
+* GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
+
 ======================== Lucene 9.9.2 =======================
 
 Bug Fixes
