@@ -46,10 +46,17 @@ import org.apache.lucene.util.Version;
 
 public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
+  /**
+   * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}.
+   * See {@link #testVersionsFactory()} for details on the values provided to the framework.
+   */
   public TestIndexUpgradeBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
+  /**
+   * Provides all current version to the test-framework for each of the index suffixes.
+   */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     Iterable<Object[]> allSupportedVersions =
@@ -60,7 +67,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     return allSupportedVersions;
   }
 
-  /** Randomizes the use of some of hte constructor variations */
+  /** Randomizes the use of some of the constructor variations */
   static IndexUpgrader newIndexUpgrader(Directory dir) {
     final boolean streamType = random().nextBoolean();
     final int choice = TestUtil.nextInt(random(), 0, 2);
@@ -96,7 +103,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
   }
 
   public void testUpgradeOldSingleSegmentIndexWithAdditions() throws Exception {
-    // NOCOMMIT we use to have single segment indices but we stopped creating them at some point
+    // TODO we use to have single segment indices but we stopped creating them at some point
     // either delete the test or recreate the indices
     assumeTrue("Original index must be single segment", 1 == getNumberOfSegments(directory));
     int indexCreatedVersion = SegmentInfos.readLatestCommit(directory).getIndexCreatedVersionMajor();

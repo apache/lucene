@@ -48,10 +48,13 @@ public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibility
     }
   }
 
+  /**
+   * Provides the initial release of the previous major to the test-framework
+   */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();
-    // NOCOMMIT: why are we only testing one version here?
+    // TODO - WHY ONLY on the first major version?
     params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
     return params;
   }

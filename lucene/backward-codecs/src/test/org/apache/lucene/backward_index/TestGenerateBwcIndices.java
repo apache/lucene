@@ -86,7 +86,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
 
   public void testCreateMoreTermsIndex() throws IOException {
     if (isInitialMajorVersionRelease()) {
-      // NOCOMMIT - WHY ONLY on the first major version?
+      // TODO - WHY ONLY on the first major version?
       TestMoreTermsBackwardsCompatibility moreTermsTest =
           new TestMoreTermsBackwardsCompatibility(
               Version.LATEST,
@@ -99,7 +99,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
 
   public void testCreateIndexWithDocValuesUpdates() throws IOException {
     if (isInitialMajorVersionRelease()) {
-      // NOCOMMIT - WHY ONLY on the first major version?
+      // TODO - WHY ONLY on the first major version?
       TestDVUpdateBackwardsCompatibility dvUpdatesTest =
           new TestDVUpdateBackwardsCompatibility(
               Version.LATEST,
@@ -112,7 +112,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
 
   public void testCreateEmptyIndex() throws IOException {
     if (isInitialMajorVersionRelease()) {
-      // NOCOMMIT - WHY ONLY on the first major version?
+      // TODO - WHY ONLY on the first major version?
       TestEmptyIndexBackwardsCompatibility emptyIndex =
           new TestEmptyIndexBackwardsCompatibility(
               Version.LATEST,
