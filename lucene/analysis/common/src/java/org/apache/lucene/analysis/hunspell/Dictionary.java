@@ -585,7 +585,7 @@ public class Dictionary {
   }
 
   static String extractLanguageCode(String isoCode) {
-    int underscore = isoCode.indexOf("_");
+    int underscore = isoCode.indexOf('_');
     return underscore < 0 ? isoCode : isoCode.substring(0, underscore);
   }
 

@@ -60,7 +60,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
           "8.7.0", "8.7.0", "8.8.0", "8.8.0", "8.8.1", "8.8.1", "8.8.2", "8.8.2", "8.9.0", "8.9.0",
           "8.10.0", "8.10.0", "8.10.1", "8.10.1", "8.11.0", "8.11.0", "8.11.1", "8.11.1", "8.11.2",
           "8.11.2", "9.0.0", "9.1.0", "9.2.0", "9.3.0", "9.4.0", "9.4.1", "9.4.2", "9.5.0", "9.6.0",
-          "9.7.0", "9.8.0", "9.9.0", "9.9.1", "9.10.0", "10.0.0",
+          "9.7.0", "9.8.0", "9.9.0", "9.9.1", "9.9.2", "9.10.0", "10.0.0",
         };
 
     Set<Version> binaryVersions = new HashSet<>();
@@ -81,7 +81,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     BINARY_SUPPORTED_VERSIONS = binaryVersions;
   }
 
-  public BackwardsCompatibilityTestBase(
+  protected BackwardsCompatibilityTestBase(
       @Name("version") Version version, @Name("pattern") String indexPattern) {
     this.version = version;
     this.indexPattern = indexPattern;
@@ -169,8 +169,10 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     List<Object[]> versionAndPatterns = new ArrayList<>();
     List<Version> versionList = getAllCurrentVersions();
     for (Version v : versionList) {
-      for (Object p : patterns) {
-        versionAndPatterns.add(new Object[] {v, p});
+      if (v.equals(LATEST_PREVIOUS_MAJOR) == false) { // the latest prev-major has not yet been released
+        for (Object p : patterns) {
+          versionAndPatterns.add(new Object[]{v, p});
+        }
       }
     }
     return versionAndPatterns;

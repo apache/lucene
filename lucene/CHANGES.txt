@@ -202,6 +202,8 @@ Improvements
 
 * GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
 
+* GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
+
 Optimizations
 ---------------------
 
@@ -214,6 +216,18 @@ Optimizations
 
 * GITHUB#:12997 Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
 
+* GITHUB#12989: Split taxonomy facet arrays across reusable chunks of elements to reduce allocations. (Michael Froh, Stefan Vodita)
+
+* GITHUB#13033: PointRangeQuery now exits earlier on segments whose values
+  don't intersect with the query range. When a PointRangeQuery is a required
+  clause of a boolean query, this helps save work on other required clauses of
+  the same boolean query. (Adrien Grand)
+
+* GITHUB#13026: ReqOptSumScorer will now propagate minimum competitive scores
+  to the optional clause if the required clause doesn't score. In practice,
+  this will help boolean queries that consist of a mix OF FILTER clauses and
+  SHOULD clauses. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
@@ -225,6 +239,10 @@ Bug Fixes
   fail with certain random seeds. (Greg Miller)
 
 * GITHUB#12885: Fixed the bug that JapaneseReadingFormFilter cannot convert some hiragana to romaji. (Takuma Kuramitsu)
+
+* GITHUB#12287: Fix a bug in ShapeTestUtil. (Heemin Kim)
+
+* GITHUB#13031: ScorerSupplier created by QueryProfilerWeight will propagate topLevelScoringClause to the sub ScorerSupplier. (Shintaro Murakami)
 
 Build
 ---------------------
@@ -240,6 +258,18 @@ Other
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
+* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051:
+  Code cleanups and optimizations. (Dmitry Cherniachenko)
+
+======================== Lucene 9.9.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#13027: Fix NPE when sampling for quantization in Lucene99HnswScalarQuantizedVectorsFormat (Ben Trent)
+
+* GITHUB#13014: Rollback the tmp storage of BytesRefHash to -1 after sort (Guo Feng)
 
 ======================== Lucene 9.9.1 =======================
 
