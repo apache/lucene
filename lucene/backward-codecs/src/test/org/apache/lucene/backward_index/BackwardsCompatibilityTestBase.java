@@ -199,7 +199,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   }
 
   public String indexName(Version version) {
-    return indexPattern.formatted(Locale.ROOT, version);
+    return String.format(Locale.ROOT, indexPattern, version);
   }
 
   protected boolean supportsVersion(Version version) {
