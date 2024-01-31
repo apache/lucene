@@ -426,7 +426,7 @@ compute_block_addresses(__attribute__((unused)) struct dpu_set_t set, uint32_t r
     uint32_t nr_queries_for_call = nr_queries / nr_ranks;
     uint32_t remaining = nr_queries - nr_queries_for_call * nr_ranks;
     uint32_t query_id_start = (rank_id < remaining)
-        ? rank_id * (++nr_queries_for_call + 1)
+        ? rank_id * ++nr_queries_for_call
         : remaining * (nr_queries_for_call + 1) + (rank_id - remaining) * nr_queries_for_call;
     uint32_t query_id_end = query_id_start + nr_queries_for_call;
 
