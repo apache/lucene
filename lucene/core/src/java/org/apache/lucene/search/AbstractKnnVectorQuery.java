@@ -119,7 +119,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    int cost = acceptDocs.cardinality();
+    final int cost = acceptDocs.cardinality() + 1;
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW

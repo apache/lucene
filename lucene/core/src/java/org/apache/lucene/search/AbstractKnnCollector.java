@@ -34,7 +34,7 @@ public abstract class AbstractKnnCollector implements KnnCollector {
 
   @Override
   public final boolean earlyTerminated() {
-    return visitedCount > visitLimit;
+    return visitedCount >= visitLimit;
   }
 
   @Override
