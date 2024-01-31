@@ -326,10 +326,6 @@ public class TestDrillSideways extends FacetTestCase {
         // termination occurs (i.e., #finish is properly called in that scenario):
         assertEquals(1, baseFC.getMatchingDocs().size());
         assertEquals(1, dimFC.getMatchingDocs().size());
-        FacetsCollector.MatchingDocs baseMD = baseFC.getMatchingDocs().get(0);
-        FacetsCollector.MatchingDocs dimMD = dimFC.getMatchingDocs().get(0);
-        assertEquals(1, baseMD.totalHits);
-        assertEquals(1, dimMD.totalHits);
       }
     }
   }

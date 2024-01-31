@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
@@ -1608,6 +1610,31 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       for (int j = 0; j < numFields; ++j) {
         doc.add(new Field("f_" + opts, TestUtil.randomSimpleString(random(), 2), ft));
       }
+    }
+  }
+
+  /** Test realistic data, which is often better at uncovering real bugs. */
+  @Nightly // this test takes a few seconds
+  public void testLineFileDocs() throws IOException {
+    // Use a FS dir and a non-randomized IWC to not slow down indexing
+    try (Directory dir = newFSDirectory(createTempDir())) {
+      try (LineFileDocs docs = new LineFileDocs(random());
+          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+        final int numDocs = atLeast(10_000);
+        for (int i = 0; i < numDocs; ++i) {
+          // Only keep the body field, and don't index term vectors on it, we only care about
+          // postings
+          Document doc = docs.nextDoc();
+          IndexableField body = doc.getField("body");
+          assertNotNull(body);
+          assertNotNull(body.stringValue());
+          assertNotEquals(IndexOptions.NONE, body.fieldType().indexOptions());
+          body = new TextField("body", body.stringValue(), Store.NO);
+          w.addDocument(Collections.singletonList(body));
+        }
+        w.forceMerge(1);
+      }
+      TestUtil.checkIndex(dir);
     }
   }
 }

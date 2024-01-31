@@ -83,6 +83,11 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.automaton.Automata;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -1149,11 +1154,7 @@ public final class CheckIndex implements Closeable {
     return segInfoStat;
   }
 
-  /**
-   * Tests index sort order.
-   *
-   * @lucene.experimental
-   */
+  /** Tests index sort order. */
   public static Status.IndexSortStatus testSort(
       CodecReader reader, Sort sort, PrintStream infoStream, boolean failFast) throws IOException {
     // This segment claims its documents are sorted according to the incoming sort ... let's make
@@ -1226,11 +1227,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test live docs.
-   *
-   * @lucene.experimental
-   */
+  /** Test live docs. */
   public static Status.LiveDocStatus testLiveDocs(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -1295,11 +1292,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test field infos.
-   *
-   * @lucene.experimental
-   */
+  /** Test field infos. */
   public static Status.FieldInfoStatus testFieldInfos(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -1336,11 +1329,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test field norms.
-   *
-   * @lucene.experimental
-   */
+  /** Test field norms. */
   public static Status.FieldNormStatus testFieldNorms(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -2314,6 +2303,33 @@ public final class CheckIndex implements Closeable {
             }
           }
         }
+
+        // Test Terms#intersect
+        TermsEnum allTerms = terms.iterator();
+        // An automaton that should match a good number of terms
+        Automaton a =
+            Operations.concatenate(
+                Arrays.asList(
+                    Automata.makeAnyBinary(),
+                    Automata.makeCharRange('a', 'e'),
+                    Automata.makeAnyBinary()));
+        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        CompiledAutomaton ca = new CompiledAutomaton(a);
+        ByteRunAutomaton runAutomaton = new ByteRunAutomaton(a);
+        TermsEnum filteredTerms = terms.intersect(ca, null);
+        for (BytesRef term = allTerms.next(); term != null; term = allTerms.next()) {
+          if (runAutomaton.run(term.bytes, term.offset, term.length)) {
+            BytesRef filteredTerm = filteredTerms.next();
+            if (Objects.equals(term, filteredTerm) == false) {
+              throw new CheckIndexException(
+                  "Expected next filtered term: " + term + ", but got " + filteredTerm);
+            }
+          }
+        }
+        BytesRef filteredTerm = filteredTerms.next();
+        if (filteredTerm != null) {
+          throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
+        }
       }
     }
 
@@ -2443,21 +2459,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test the term index.
-   *
-   * @lucene.experimental
-   */
+  /** Test the term index. */
   public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
       throws IOException {
     return testPostings(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
   }
 
-  /**
-   * Test the term index.
-   *
-   * @lucene.experimental
-   */
+  /** Test the term index. */
   public static Status.TermIndexStatus testPostings(
       CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
@@ -2510,11 +2518,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test the points index
-   *
-   * @lucene.experimental
-   */
+  /** Test the points index. */
   public static Status.PointsStatus testPoints(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
@@ -2617,11 +2621,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test the vectors index
-   *
-   * @lucene.experimental
-   */
+  /** Test the vectors index. */
   public static Status.VectorValuesStatus testVectors(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
@@ -3104,11 +3104,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test stored fields.
-   *
-   * @lucene.experimental
-   */
+  /** Test stored fields. */
   public static Status.StoredFieldStatus testStoredFields(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -3162,11 +3158,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test docvalues.
-   *
-   * @lucene.experimental
-   */
+  /** Test docvalues. */
   public static Status.DocValuesStatus testDocValues(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -3623,21 +3615,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test term vectors.
-   *
-   * @lucene.experimental
-   */
+  /** Test term vectors. */
   public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
     return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, false);
   }
 
-  /**
-   * Test term vectors.
-   *
-   * @lucene.experimental
-   */
+  /** Test term vectors. */
   public static Status.TermVectorStatus testTermVectors(
       CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
