@@ -34,9 +34,9 @@ public class AnyQueryNode extends AndQueryNode {
 
     if (clauses != null) {
       for (QueryNode clause : clauses) {
-        if (clause instanceof FieldQueryNode qn) {
-          qn.toQueryStringIgnoreFields = true;
-          qn.setField(field);
+        if (clause instanceof FieldQueryNode) {
+          ((FieldQueryNode) clause).toQueryStringIgnoreFields = true;
+          ((FieldQueryNode) clause).setField(field);
         }
       }
     }
