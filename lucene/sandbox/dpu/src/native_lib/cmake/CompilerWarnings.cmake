@@ -43,12 +43,12 @@ function(
         -Wall
         -Wextra # reasonable and standard
         -Wshadow # warn the user if a variable declaration shadows one from a parent context
-        -Wnon-virtual-dtor # warn the user if a class with virtual functions has a non-virtual destructor. This helps
+        # -Wnon-virtual-dtor # warn the user if a class with virtual functions has a non-virtual destructor. This helps
         # catch hard to track down memory errors
-        -Wold-style-cast # warn for c-style casts
+        # -Wold-style-cast # warn for c-style casts
         -Wcast-align # warn for potential performance problem casts
         -Wunused # warn on anything being unused
-        -Woverloaded-virtual # warn if you overload (not override) a virtual function
+        # -Woverloaded-virtual # warn if you overload (not override) a virtual function
         # -Wpedantic # warn if non-standard C++ is used
         -Wconversion # warn on type conversions that may lose data
         -Wsign-conversion # warn on sign conversions
@@ -66,7 +66,7 @@ function(
         -Wduplicated-cond # warn if if / else chain has duplicated conditions
         -Wduplicated-branches # warn if if / else branches have duplicated code
         -Wlogical-op # warn about logical operations being used where bitwise were probably wanted
-        -Wuseless-cast # warn if you perform a cast to the same type
+        # -Wuseless-cast # warn if you perform a cast to the same type
     )
   endif()
 
@@ -106,10 +106,10 @@ function(
 
   target_compile_options(
     ${project_name}
-    INTERFACE # C++ warnings
-              $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>
-              # C warnings
-              $<$<COMPILE_LANGUAGE:C>:${PROJECT_WARNINGS_C}>
-              # Cuda warnings
-              $<$<COMPILE_LANGUAGE:CUDA>:${PROJECT_WARNINGS_CUDA}>)
+    PRIVATE # C++ warnings
+            $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>
+            # C warnings
+            $<$<COMPILE_LANGUAGE:C>:${PROJECT_WARNINGS_C}>
+            # Cuda warnings
+            $<$<COMPILE_LANGUAGE:CUDA>:${PROJECT_WARNINGS_CUDA}>)
 endfunction()
