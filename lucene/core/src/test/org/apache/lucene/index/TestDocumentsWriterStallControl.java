@@ -187,7 +187,6 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
             }
           }
         }
-        break;
       } else {
         break;
       }
