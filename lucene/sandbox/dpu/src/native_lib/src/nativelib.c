@@ -45,7 +45,6 @@ typedef struct {
     void *queries_indices; // jint[nr_queries]
     jint nr_queries;
     jint nr_segments;
-    uint32_t nr_dpus;
 } sg_xfer_context;
 
 typedef struct {
@@ -425,9 +424,7 @@ compute_block_addresses(__attribute__((unused)) struct dpu_set_t set, uint32_t r
     uint32_t nr_ranks = ctx->nr_ranks;
     uint32_t nr_queries_for_call = nr_queries / nr_ranks;
     uint32_t remaining = nr_queries - nr_queries_for_call * nr_ranks;
-    uint32_t query_id_start = (rank_id < remaining)
-        ? rank_id * ++nr_queries_for_call
-        : remaining * (nr_queries_for_call + 1) + (rank_id - remaining) * nr_queries_for_call;
+    uint32_t query_id_start = (rank_id < remaining) ? rank_id * ++nr_queries_for_call : remaining + rank_id * nr_queries_for_call;
     uint32_t query_id_end = query_id_start + nr_queries_for_call;
 
     /* Compute the block addresses, queries indices and segments indices */
@@ -484,21 +481,21 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
     const uint32_t nr_queries = sc_args->nr_queries;
     const uint32_t nr_queries_ub = UB(nr_queries);
     const uint32_t nr_segments = sc_args->nr_segments;
-    const uint32_t nr_dpus = sc_args->nr_dpus;
 
     if (i_block >= nr_queries * nr_segments) {
         return false;
     }
 
-    index_t(*results_size_lucene_segments)[nr_dpus][nr_queries_ub][nr_segments] = sc_args->results_size_lucene_segments;
-    result_t *(*block_addresses)[nr_dpus][nr_queries][nr_segments] = sc_args->block_addresses;
+    index_t(*results_size_lucene_segments)[/*nr_dpus*/][nr_queries_ub][nr_segments] = sc_args->results_size_lucene_segments;
+    result_t *(*block_addresses)[/*nr_dpus*/][nr_queries][nr_segments] = sc_args->block_addresses;
     jint(*queries_indices_table)[nr_queries] = sc_args->queries_indices;
 
     /* Set the output block */
     uint32_t i_qu = i_block / nr_segments;
-    out->length = (*results_size_lucene_segments)[i_dpu][i_qu][i_block] * sizeof(result_t);
-    uint32_t index = (i_qu) ? (*queries_indices_table)[i_qu - 1] : 0;
-    out->addr = (uint8_t *)(*block_addresses)[i_dpu][i_block][index];
+    uint32_t i_seg = i_block % nr_segments;
+    out->length = (*results_size_lucene_segments)[i_dpu][i_qu][i_seg] * sizeof(result_t);
+    uint32_t offset = (i_qu) ? (*queries_indices_table)[i_qu - 1] : 0;
+    out->addr = (uint8_t *)((*block_addresses)[i_dpu][i_qu][i_seg] + offset);
 
     return true;
 }
@@ -508,16 +505,12 @@ create_norm_inverse_array(JNIEnv *env, jint nr_queries, jobjectArray scorers)
 {
     float(*norm_inverse)[nr_queries][NORM_INVERSE_CACHE_SIZE] = SAFE_MALLOC(sizeof(*norm_inverse));
     for (int i = 0; i < nr_queries; ++i) {
-        // access scorers[i].scorer.cache (should be BM25Scorer)
+        // access scorers[i].cache (should be BM25Scorer)
         jobject object = (*env)->GetObjectArrayElement(env, scorers, i);
         jclass cls = (*env)->GetObjectClass(env, object);
-        jfieldID scorerID
-            = (*env)->GetFieldID(env, cls, "scorer", "Lorg/apache/lucene/search/similarities/Similarity$SimScorer;");
-        jobject scorer = (*env)->GetObjectField(env, object, scorerID);
-        cls = (*env)->GetObjectClass(env, scorer);
         // TODO(jlegriel): assert that the class is BM25Scorer
         jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "[F");
-        jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
+        jfloatArray cache = (*env)->GetObjectField(env, object, cacheID);
         jfloat *cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
         for (size_t j = 0; j < NORM_INVERSE_CACHE_SIZE; ++j) {
             (*norm_inverse)[i][j] = cache_arr[j];
@@ -605,8 +598,7 @@ build_block_info(JNIEnv *env,
         .nr_segments = nr_segments,
         .results_size_lucene_segments = metadata->results_size_lucene_segments,
         .block_addresses = block_addresses,
-        .queries_indices = queries_indices,
-        .nr_dpus = nr_dpus };
+        .queries_indices = queries_indices };
 
     *addr_ctx = (compute_block_addresses_context) { .sc_args = sc_args,
         .dpu_results = dpu_results,
