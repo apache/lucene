@@ -47,10 +47,8 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.*;
+import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
@@ -605,6 +603,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       w.deleteDocuments(new Term("id", "0"));
       w.forceMerge(1);
       try (DirectoryReader r = DirectoryReader.open(w)) {
+        TopKnnCollectorManager topKnnCollectorManager = new TopKnnCollectorManager(1, false);
         LeafReader leafReader = getOnlyLeafReader(r);
         FloatVectorValues values = leafReader.getFloatVectorValues("v");
         assertNotNull(values);
@@ -615,10 +614,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             leafReader.searchNearestVectors(
                 "v",
                 randomNormalizedVector(3),
-                1,
                 leafReader.getLiveDocs(),
-                Integer.MAX_VALUE,
-                null);
+                topKnnCollectorManager.newCollector(Integer.MAX_VALUE, null));
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -1078,10 +1075,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   .searchNearestVectors(
                       fieldName,
                       randomNormalizedVector(dimension),
-                      k,
                       liveDocs,
-                      visitedLimit,
-                      null);
+                      new TopKnnCollector(k, visitedLimit, null));
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
           assertEquals(visitedLimit, results.totalHits.value);
 
@@ -1093,10 +1088,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   .searchNearestVectors(
                       fieldName,
                       randomNormalizedVector(dimension),
-                      k,
                       liveDocs,
-                      visitedLimit,
-                      null);
+                      new TopKnnCollector(k, visitedLimit, null));
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
           assertTrue(results.totalHits.value <= visitedLimit);
         }
@@ -1174,10 +1167,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   .searchNearestVectors(
                       fieldName,
                       randomNormalizedVector(dimension),
-                      k,
                       liveDocs,
-                      Integer.MAX_VALUE,
-                      null);
+                      new TopKnnCollector(k, Integer.MAX_VALUE, null));
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);

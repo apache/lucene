@@ -48,6 +48,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
@@ -112,12 +113,18 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, null);
+                "field1",
+                new float[] {1, 2, 3},
+                reader.getLiveDocs(),
+                new TopKnnCollector(10, Integer.MAX_VALUE, null));
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, null);
+                "field2",
+                new float[] {1, 2, 3},
+                reader.getLiveDocs(),
+                new TopKnnCollector(10, Integer.MAX_VALUE, null));
         assertEquals(1, hits2.scoreDocs.length);
       }
     }

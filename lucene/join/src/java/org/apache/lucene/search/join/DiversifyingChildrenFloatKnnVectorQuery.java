@@ -33,9 +33,9 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
@@ -124,18 +124,22 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   }
 
   @Override
+  protected KnnCollectorManager<?> getKnnCollectorManager(int k, boolean supportsConcurrency) {
+    return new DiversifyingNearestChildrenKnnCollectorManager(k);
+  }
+
+  @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
       int visitedLimit,
-      BlockingFloatHeap globalScoreQueue)
+      KnnCollectorManager<?> knnCollectorManager)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
-    KnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
+    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }
