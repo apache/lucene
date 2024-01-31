@@ -546,9 +546,20 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // merged
     // segment view
     if (mergedQuantiles == null || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
+      int numVectors = 0;
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      mergedQuantiles = ScalarQuantizer.fromVectors(vectorValues, confidenceInterval);
+      // iterate vectorValues and increment numVectors
+      for (int doc = vectorValues.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = vectorValues.nextDoc()) {
+        numVectors++;
+      }
+      mergedQuantiles =
+          ScalarQuantizer.fromVectors(
+              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+              confidenceInterval,
+              numVectors);
     }
     return mergedQuantiles;
   }
@@ -638,7 +649,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
               new FloatVectorWrapper(
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
-              confidenceInterval);
+              confidenceInterval,
+              floatVectors.size());
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {

@@ -17,13 +17,13 @@
 package org.apache.lucene.geo;
 
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
 import java.util.List;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {
@@ -828,7 +828,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon50() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    assertThat("Only one polygon", polygons.length, equalTo(1));
+    assertEquals("Only one polygon", 1, polygons.length);
     Polygon polygon = polygons[0];
     List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
     // calculate the area of big polygons have numerical error
@@ -841,20 +841,19 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon50_WithMonitor() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    assertThat("Only one polygon", polygons.length, equalTo(1));
+    assertEquals("Only one polygon", 1, polygons.length);
     Polygon polygon = polygons[0];
     TestCountingMonitor monitor = new TestCountingMonitor();
     Tessellator.tessellate(polygon, true, monitor);
-    assertThat("Expected many monitor calls", monitor.count, greaterThan(390));
-    assertThat("Expected specific number of splits", monitor.splitsStarted, equalTo(3));
-    assertThat(
-        "Expected splits to start and end", monitor.splitsStarted, equalTo(monitor.splitsEnded));
+    MatcherAssert.assertThat("Expected many monitor calls", monitor.count, greaterThan(390));
+    assertEquals("Expected specific number of splits", 3, monitor.splitsStarted);
+    assertEquals("Expected splits to start and end", monitor.splitsEnded, monitor.splitsStarted);
   }
 
   public void testComplexPolygon51() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-2.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    assertThat("Only one polygon", polygons.length, equalTo(1));
+    assertEquals("Only one polygon", 1, polygons.length);
     Polygon polygon = polygons[0];
     boolean checkSelfIntersections = random().nextBoolean();
     IllegalArgumentException ex =
@@ -874,7 +873,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon52() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-3.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    assertThat("Only one polygon", polygons.length, equalTo(1));
+    assertEquals("Only one polygon", 1, polygons.length);
     Polygon polygon = polygons[0];
     boolean checkSelfIntersections = random().nextBoolean();
     IllegalArgumentException ex =
@@ -1056,7 +1055,7 @@ public class TestTessellator extends LuceneTestCase {
         }
       }
     }
-    if (p.getHoles() != null && p.getHoles().length > 0) {
+    if (p.getHoles() != null) {
       for (Polygon hole : p.getHoles()) {
         if (isEdgeFromPolygon(hole, aLon, aLat, bLon, bLat)) {
           return true;

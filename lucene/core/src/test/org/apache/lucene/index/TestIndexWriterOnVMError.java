@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -57,7 +59,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
   private void doTest(MockDirectoryWrapper.Failure failOn) throws Exception {
     // log all exceptions we hit, in case we fail (for debugging)
     ByteArrayOutputStream exceptionLog = new ByteArrayOutputStream();
-    PrintStream exceptionStream = new PrintStream(exceptionLog, true, "UTF-8");
+    PrintStream exceptionStream = new PrintStream(exceptionLog, true, UTF_8);
     // PrintStream exceptionStream = System.out;
 
     final long analyzerSeed = random().nextLong();
@@ -66,7 +68,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            tokenizer.setEnableChecks(false); // we are gonna make it angry
+            tokenizer.setEnableChecks(false); // we are going to make it angry
             TokenStream stream = tokenizer;
             // emit some payloads
             if (fieldName.contains("payloads")) {
@@ -211,7 +213,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
       } catch (Throwable t) {
         System.out.println("Unexpected exception: dumping fake-exception-log:...");
         exceptionStream.flush();
-        System.out.println(exceptionLog.toString("UTF-8"));
+        System.out.println(exceptionLog.toString(UTF_8));
         System.out.flush();
         Rethrow.rethrow(t);
       }
@@ -219,7 +221,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
     dir.close();
     if (VERBOSE) {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
     }
   }
 

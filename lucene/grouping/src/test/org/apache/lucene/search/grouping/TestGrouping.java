@@ -611,7 +611,11 @@ public class TestGrouping extends LuceneTestCase {
     }
 
     RandomIndexWriter w =
-        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     final List<List<Document>> updateDocs = new ArrayList<>();
 
@@ -708,7 +712,7 @@ public class TestGrouping extends LuceneTestCase {
           // groups.
           randomValue = TestUtil.randomRealisticUnicodeString(random());
           // randomValue = TestUtil.randomSimpleString(random());
-        } while ("".equals(randomValue));
+        } while (randomValue.isEmpty());
 
         groups.add(new BytesRef(randomValue));
       }
@@ -731,7 +735,11 @@ public class TestGrouping extends LuceneTestCase {
 
       Directory dir = newDirectory();
       RandomIndexWriter w =
-          new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+          new RandomIndexWriter(
+              random(),
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(newMergePolicy(random(), false)));
       Document doc = new Document();
       Document docNoGroup = new Document();
       Field idvGroupField = new SortedDocValuesField("group", new BytesRef());

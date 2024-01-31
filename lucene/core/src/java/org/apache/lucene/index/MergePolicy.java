@@ -83,7 +83,7 @@ public abstract class MergePolicy {
       PAUSED,
       /** Other reason. */
       OTHER
-    };
+    }
 
     private final ReentrantLock pauseLock = new ReentrantLock();
     private final Condition pausing = pauseLock.newCondition();
@@ -103,7 +103,7 @@ public abstract class MergePolicy {
     /** Creates a new merge progress info. */
     public OneMergeProgress() {
       // Place all the pause reasons in there immediately so that we can simply update values.
-      pauseTimesNS = new EnumMap<PauseReason, AtomicLong>(PauseReason.class);
+      pauseTimesNS = new EnumMap<>(PauseReason.class);
       for (PauseReason p : PauseReason.values()) {
         pauseTimesNS.put(p, new AtomicLong());
       }
@@ -170,8 +170,7 @@ public abstract class MergePolicy {
     /** Returns pause reasons and associated times in nanoseconds. */
     public Map<PauseReason, Long> getPauseTimes() {
       Set<Entry<PauseReason, AtomicLong>> entries = pauseTimesNS.entrySet();
-      return entries.stream()
-          .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue().get()));
+      return entries.stream().collect(Collectors.toMap(Entry::getKey, (e) -> e.getValue().get()));
     }
 
     final void setMergeThread(Thread owner) {
@@ -223,7 +222,7 @@ public abstract class MergePolicy {
      * @param segments List of {@link SegmentCommitInfo}s to be merged.
      */
     public OneMerge(List<SegmentCommitInfo> segments) {
-      if (0 == segments.size()) {
+      if (segments.isEmpty()) {
         throw new RuntimeException("segments must include at least one segment");
       }
       // clone the list, as the in list may be based off original SegmentInfos and may be modified
@@ -275,7 +274,7 @@ public abstract class MergePolicy {
     /**
      * Called by {@link IndexWriter} after the merge is done and all readers have been closed.
      *
-     * @param success true iff the merge finished successfully ie. was committed
+     * @param success true iff the merge finished successfully i.e. was committed
      * @param segmentDropped true iff the merged segment was dropped since it was fully deleted
      */
     public void mergeFinished(boolean success, boolean segmentDropped) throws IOException {}
@@ -284,7 +283,7 @@ public abstract class MergePolicy {
     final void close(
         boolean success, boolean segmentDropped, IOConsumer<MergeReader> readerConsumer)
         throws IOException {
-      // this method is final to ensure we never miss a super call to cleanup and finish the merge
+      // this method is final to ensure we never miss a super call to clean up and finish the merge
       if (mergeCompleted.complete(success) == false) {
         throw new IllegalStateException("merge has already finished");
       }
@@ -524,10 +523,7 @@ public abstract class MergePolicy {
 
     CompletableFuture<Void> getMergeCompletedFutures() {
       return CompletableFuture.allOf(
-          merges.stream()
-              .map(m -> m.mergeCompleted)
-              .collect(Collectors.toList())
-              .toArray(CompletableFuture<?>[]::new));
+          merges.stream().map(m -> m.mergeCompleted).toArray(CompletableFuture<?>[]::new));
     }
 
     /** Waits, until interrupted, for all merges to complete. */
@@ -763,7 +759,7 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Return the byte size of the provided {@link SegmentCommitInfo}, pro-rated by percentage of
+   * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
    * non-deleted documents is set.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {

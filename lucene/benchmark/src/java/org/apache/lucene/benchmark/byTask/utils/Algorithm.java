@@ -21,6 +21,7 @@ import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.tasks.PerfTask;
@@ -77,8 +78,8 @@ public class Algorithm implements AutoCloseable {
           if (task instanceof RepSumByPrefTask) {
             stok.nextToken();
             String prefix = stok.sval;
-            if (prefix == null || prefix.length() == 0) {
-              throw new Exception("named report prefix problem - " + stok.toString());
+            if (prefix == null || prefix.isEmpty()) {
+              throw new Exception("named report prefix problem - " + stok);
             }
             ((RepSumByPrefTask) task).setPrefix(prefix);
           }
@@ -108,7 +109,7 @@ public class Algorithm implements AutoCloseable {
                     }
                   case StreamTokenizer.TT_EOF:
                     {
-                      throw new RuntimeException("Unexpexted EOF: - " + stok.toString());
+                      throw new RuntimeException("Unexpected EOF: - " + stok);
                     }
                   case '"':
                   case '\'':
@@ -160,7 +161,7 @@ public class Algorithm implements AutoCloseable {
 
           switch (c) {
             case ':':
-              if (!colonOk) throw new Exception("colon unexpexted: - " + stok.toString());
+              if (!colonOk) throw new Exception("colon unexpected: - " + stok);
               colonOk = false;
               // get repetitions number
               stok.nextToken();
@@ -168,7 +169,7 @@ public class Algorithm implements AutoCloseable {
                 ((TaskSequence) prevTask).setRepetitions(TaskSequence.REPEAT_EXHAUST);
               } else {
                 if (stok.ttype != StreamTokenizer.TT_NUMBER) {
-                  throw new Exception("expected repetitions number or XXXs: - " + stok.toString());
+                  throw new Exception("expected repetitions number or XXXs: - " + stok);
                 } else {
                   double num = stok.nval;
                   stok.nextToken();
@@ -188,7 +189,7 @@ public class Algorithm implements AutoCloseable {
                 // get rate number
                 stok.nextToken();
                 if (stok.ttype != StreamTokenizer.TT_NUMBER)
-                  throw new Exception("expected rate number: - " + stok.toString());
+                  throw new Exception("expected rate number: - " + stok);
                 // check for unit - min or sec, sec is default
                 stok.nextToken();
                 if (stok.ttype != '/') {
@@ -197,14 +198,14 @@ public class Algorithm implements AutoCloseable {
                 } else {
                   stok.nextToken();
                   if (stok.ttype != StreamTokenizer.TT_WORD)
-                    throw new Exception("expected rate unit: 'min' or 'sec' - " + stok.toString());
+                    throw new Exception("expected rate unit: 'min' or 'sec' - " + stok);
                   String unit = stok.sval.toLowerCase(Locale.ROOT);
                   if ("min".equals(unit)) {
                     ((TaskSequence) prevTask).setRate((int) stok.nval, true); // set rate per min
                   } else if ("sec".equals(unit)) {
                     ((TaskSequence) prevTask).setRate((int) stok.nval, false); // set rate per sec
                   } else {
-                    throw new Exception("expected rate unit: 'min' or 'sec' - " + stok.toString());
+                    throw new Exception("expected rate unit: 'min' or 'sec' - " + stok);
                   }
                 }
               }
@@ -221,8 +222,8 @@ public class Algorithm implements AutoCloseable {
                 stok.pushBack();
               } else {
                 name = stok.sval;
-                if (stok.ttype != '"' || name == null || name.length() == 0) {
-                  throw new Exception("sequence name problem - " + stok.toString());
+                if (stok.ttype != '"' || name == null || name.isEmpty()) {
+                  throw new Exception("sequence name problem - " + stok);
                 }
               }
               // start the sequence
@@ -299,9 +300,7 @@ public class Algorithm implements AutoCloseable {
     }
     ArrayList<String> pkgs = new ArrayList<>();
     pkgs.add(dfltPkg);
-    for (String alt : alts.split(",")) {
-      pkgs.add(alt);
-    }
+    Collections.addAll(pkgs, alts.split(","));
     return pkgs.toArray(new String[0]);
   }
 
@@ -322,11 +321,7 @@ public class Algorithm implements AutoCloseable {
 
   @Override
   public String toString() {
-    String newline = System.getProperty("line.separator");
-    StringBuilder sb = new StringBuilder();
-    sb.append(sequence.toString());
-    sb.append(newline);
-    return sb.toString();
+    return sequence.toString() + System.lineSeparator();
   }
 
   /** Execute this algorithm */

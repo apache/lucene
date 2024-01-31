@@ -59,13 +59,13 @@ abstract class TaxonomyFacets extends Facets {
   final FacetsCollector fc;
 
   /** Maps parent ordinal to its child, or -1 if the parent is childless. */
-  private int[] children;
+  private ParallelTaxonomyArrays.IntArray children;
 
   /** Maps an ordinal to its sibling, or -1 if there is no sibling. */
-  private int[] siblings;
+  private ParallelTaxonomyArrays.IntArray siblings;
 
   /** Maps an ordinal to its parent, or -1 if there is no parent (root node). */
-  final int[] parents;
+  final ParallelTaxonomyArrays.IntArray parents;
 
   /** Sole constructor. */
   TaxonomyFacets(
@@ -82,7 +82,7 @@ abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its first child; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  int[] getChildren() throws IOException {
+  ParallelTaxonomyArrays.IntArray getChildren() throws IOException {
     if (children == null) {
       children = taxoReader.getParallelTaxonomyArrays().children();
     }
@@ -93,7 +93,7 @@ abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its next sibling; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  int[] getSiblings() throws IOException {
+  ParallelTaxonomyArrays.IntArray getSiblings() throws IOException {
     if (siblings == null) {
       siblings = taxoReader.getParallelTaxonomyArrays().siblings();
     }
@@ -150,9 +150,9 @@ abstract class TaxonomyFacets extends Facets {
       return Collections.emptyList();
     }
 
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-    int ord = children[TaxonomyReader.ROOT_ORDINAL];
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+    int ord = children.get(TaxonomyReader.ROOT_ORDINAL);
     List<FacetResult> results = new ArrayList<>();
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       String dim = taxoReader.getPath(ord).components[0];
@@ -163,7 +163,7 @@ abstract class TaxonomyFacets extends Facets {
           results.add(result);
         }
       }
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     // Sort by highest value, tie break by dim:
