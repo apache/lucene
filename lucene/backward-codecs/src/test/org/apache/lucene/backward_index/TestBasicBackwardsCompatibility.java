@@ -850,7 +850,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   public void testFailOpenOldIndex() throws IOException {
-    assumeFalse("doesn't work on current index", version.equals(Version.LATEST));
+    assumeFalse("doesn't work on current index", version.major == Version.LATEST.major);
     IndexCommit commit = DirectoryReader.listCommits(directory).get(0);
     IndexFormatTooOldException ex =
         expectThrows(
