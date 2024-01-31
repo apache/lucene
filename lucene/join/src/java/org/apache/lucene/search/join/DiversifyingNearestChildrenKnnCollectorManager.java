@@ -30,6 +30,11 @@ public class DiversifyingNearestChildrenKnnCollectorManager
   // the number of docs to collect
   private final int k;
 
+  /**
+   * Constructor
+   *
+   * @param k - the number of top k vectors to collect
+   */
   public DiversifyingNearestChildrenKnnCollectorManager(int k) {
     this.k = k;
   }
