@@ -89,7 +89,7 @@ public class SearchWikiDPUMultiThread {
           nb_threads = Integer.parseInt(args[i + 1]);
         } catch (NumberFormatException e) {
           System.out.println("Error: wrong number of threads.");
-          break;
+          System.exit(1);
         }
         i++;
       } else if ("-ntopdocs".equals(args[i])) {
@@ -97,7 +97,7 @@ public class SearchWikiDPUMultiThread {
           nb_topdocs = Integer.parseInt(args[i + 1]);
         } catch (NumberFormatException e) {
           System.out.println("Error: wrong number of top docs.");
-          break;
+          System.exit(1);
         }
         i++;
       }
@@ -112,8 +112,10 @@ public class SearchWikiDPUMultiThread {
     PimSystemManager.setNumAllocDpus(2048);
     if(PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu"))))
       System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
-    else
+    else {
       System.out.println("WARNING: failed to load PIM Index");
+      System.exit(1);
+    }
 
     BufferedReader in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
     int nb_queries = 0;
