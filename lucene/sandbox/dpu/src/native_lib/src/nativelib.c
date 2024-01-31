@@ -145,7 +145,7 @@ throw_dpu_exception(JNIEnv *env, const char *message)
         _a > _b ? _a : _b;                                                                                                       \
     })
 
-#define UB(x) ((((x) + 1U) & ~0x1U))
+#define UB(x) ((((size_t)(x) + 1U) & ~0x1U))
 
 /* Init functions */
 
@@ -204,7 +204,7 @@ build_native_set(JNIEnv *env, jobject object)
         jint nrRanks = (*env)->GetIntField(env, object, nrRanksID);
 
         set.kind = DPU_SET_RANKS;
-        set.list.nr_ranks = nrRanks;
+        set.list.nr_ranks = (uint32_t)nrRanks;
         set.list.ranks = (struct dpu_rank_t **)nativePointer;
     }
 
@@ -296,7 +296,7 @@ Java_org_apache_lucene_sandbox_pim_TestPimNativeInterface_getNrOfDpus(JNIEnv *en
 /* Main functions */
 
 static inline size_t
-compute_max_nr_results(uint32_t nr_dpus, uint32_t nr_queries, index_t results_index[nr_dpus][UB(nr_queries)])
+compute_max_nr_results(uint32_t nr_dpus, jint nr_queries, index_t results_index[nr_dpus][UB(nr_queries)])
 {
     size_t max_nr_results = 0;
     for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
@@ -308,7 +308,7 @@ compute_max_nr_results(uint32_t nr_dpus, uint32_t nr_queries, index_t results_in
 }
 
 static inline size_t
-compute_total_nr_results(uint32_t nr_dpus, uint32_t nr_queries, index_t results_index[nr_dpus][UB(nr_queries)])
+compute_total_nr_results(uint32_t nr_dpus, jint nr_queries, index_t results_index[nr_dpus][UB(nr_queries)])
 {
     size_t total_nr_results = 0;
     for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
@@ -409,7 +409,7 @@ compute_block_addresses(__attribute__((unused)) struct dpu_set_t set, uint32_t r
     sg_xfer_context *sc_args = ctx->sc_args;
 
     /* Unpack the arguments */
-    const jint nr_queries = sc_args->nr_queries;
+    const uint32_t nr_queries = (uint32_t)sc_args->nr_queries;
     const uint32_t nr_queries_ub = UB(nr_queries);
     const jint nr_segments = sc_args->nr_segments;
     const uint32_t nr_dpus = ctx->nr_dpus;
@@ -478,9 +478,9 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
 {
     /* Unpack the arguments */
     sg_xfer_context *sc_args = (sg_xfer_context *)args;
-    const uint32_t nr_queries = sc_args->nr_queries;
+    const uint32_t nr_queries = (uint32_t)sc_args->nr_queries;
     const uint32_t nr_queries_ub = UB(nr_queries);
-    const uint32_t nr_segments = sc_args->nr_segments;
+    const uint32_t nr_segments = (uint32_t)sc_args->nr_segments;
 
     if (i_block >= nr_queries * nr_segments) {
         return false;
@@ -493,14 +493,14 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
     /* Set the output block */
     uint32_t i_qu = i_block / nr_segments;
     uint32_t i_seg = i_block % nr_segments;
-    out->length = (*results_size_lucene_segments)[i_dpu][i_qu][i_seg] * sizeof(result_t);
-    uint32_t offset = (i_qu) ? (*queries_indices_table)[i_qu - 1] : 0;
+    out->length = (uint32_t)((*results_size_lucene_segments)[i_dpu][i_qu][i_seg] * sizeof(result_t));
+    jint offset = (i_qu) ? (*queries_indices_table)[i_qu - 1] : 0;
     out->addr = (uint8_t *)((*block_addresses)[i_dpu][i_qu][i_seg] + offset);
 
 #ifndef NDEBUG
     if (out->addr == NULL) {
         (void)fprintf(
-            stderr, "Block address is NULL, i_dpu=%u, i_block=%u, i_qu=%u, i_seg=%u\n", i_dpu, i_block, query_id, offset);
+            stderr, "Block address is NULL, i_dpu=%u, i_block=%u, i_qu=%u, i_seg=%u, offset=%i\n", i_dpu, i_block, i_qu, i_seg, offset);
         (void)fprintf(stderr, "nr_queries=%u, nr_segments=%u\n", nr_queries, nr_segments);
         exit(1);
     }

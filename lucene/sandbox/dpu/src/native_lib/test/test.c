@@ -8,7 +8,7 @@
 void
 test_init_pques(void)
 {
-    pque_array score_pques;
+    pque_array_t score_pques;
     score_pques.nr_pques = 5;
     int nr_topdocs[] = { 10, 20, 30, 40, 50 };
 
@@ -24,7 +24,7 @@ test_init_pques(void)
 void
 test_init_mutex_array(void)
 {
-    mutex_array query_mutexes;
+    mutex_array_t query_mutexes;
     query_mutexes.nr_mutexes = 5;
 
     dpu_error_t result = init_mutex_array(&query_mutexes);
@@ -94,8 +94,8 @@ test_entry_init_topdocs_sync(void)
     struct dpu_set_t set;
     int nr_queries = 5;
     int nr_topdocs[] = { 10, 20, 30, 40, 50 };
-    pque_array score_pques = {};
-    mutex_array query_mutexes = {};
+    pque_array_t score_pques = {};
+    mutex_array_t query_mutexes = {};
     uint32_t nr_ranks = 0;
     lower_bound_t *updated_bounds = NULL;
     bool *finished_ranks = NULL;
@@ -104,17 +104,10 @@ test_entry_init_topdocs_sync(void)
     CU_ASSERT_EQUAL_FATAL(result, DPU_OK);
 
     result = entry_init_topdocs_sync(
-        set,
-        nr_topdocs,
-        &nr_queries,
-        &score_pques,
-        &query_mutexes,
-        &nr_ranks,
-        &updated_bounds,
-        &finished_ranks);
+        set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks);
 
     dpu_sync(set);
-    
+
     CU_ASSERT_EQUAL(result, DPU_OK);
     CU_ASSERT_PTR_NOT_NULL_FATAL(score_pques.pques);
     CU_ASSERT_PTR_NOT_NULL_FATAL(query_mutexes.mutexes);
@@ -143,14 +136,14 @@ test_update_pques(void)
     uint8_t my_nb_scores[nr_dpus][ALIGN8(nr_queries)];
     float norm_inverse[nr_queries][256];
     PQue score_buf[nr_queries];
-    pque_array score_pques = { .pques = score_buf, .nr_pques = nr_queries };
+    pque_array_t score_pques = { .pques = score_buf, .nr_pques = nr_queries };
 
     /* Note: we initialize the mutexes with init_mutex_array() instead of
      * just creating a local array of pthread_mutex_t because the latter
      * does not work. Mutexes NEED to be global, even if they are only
      * used locally. */
-    mutex_array query_mutexes = { NULL, nr_queries };
-    int result = init_mutex_array(&query_mutexes);
+    mutex_array_t query_mutexes = { NULL, nr_queries };
+    dpu_error_t result = init_mutex_array(&query_mutexes);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
     for (int i = 0; i < nr_queries; i++) {
@@ -160,25 +153,26 @@ test_update_pques(void)
     }
 
     for (uint32_t i = 0; i < nr_dpus; i++) {
-        for (int j = 0; j < nr_queries; j++) {
-            my_bounds_buf[i][j][0].freq = i + j;
+        for (uint32_t j = 0; j < (uint32_t)nr_queries; j++) {
+            my_bounds_buf[i][j][0].freq = (i + j) & 0xFFFFFF;
             my_bounds_buf[i][j][0].norm = 0;
             my_nb_scores[i][j] = 1;
         }
     }
 
-    update_bounds_atomic_context ctx = { .nr_queries = nr_queries,
+    update_bounds_atomic_context_t ctx = { .nr_queries = nr_queries,
         .nr_topdocs = nr_topdocs,
         .query_mutexes = query_mutexes,
         .score_pques = score_pques,
         .norm_inverse = (float *)norm_inverse };
 
-    result = update_pques(nr_queries, nr_dpus, &my_bounds_buf, &my_nb_scores, &ctx);
+    result = update_pques(nr_queries, nr_dpus, my_bounds_buf, my_nb_scores, &ctx);
     CU_ASSERT_EQUAL(result, DPU_OK);
 
     for (int i = 0; i < nr_queries; i++) {
-        CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN(nr_dpus, nr_topdocs[i]));
-        CU_ASSERT_EQUAL(*PQue_top(&score_pques.pques[i]), (int)nr_dpus < nr_topdocs[i] ? i : (int)(nr_dpus + i - nr_topdocs[i]));
+        CU_ASSERT_EQUAL(PQue_size(&score_pques.pques[i]), CU_MIN((int)nr_dpus, nr_topdocs[i]));
+        CU_ASSERT_EQUAL(*PQue_top(&score_pques.pques[i]),
+            (int)nr_dpus < nr_topdocs[i] ? (score_t)i : (score_t)((int)nr_dpus + i - nr_topdocs[i]));
     }
 
     for (int i = 0; i < nr_queries; i++) {
@@ -236,14 +230,14 @@ main()
 
     /* initialize the CUnit test registry */
     if (CUE_SUCCESS != CU_initialize_registry()) {
-        return CU_get_error();
+        return (int)CU_get_error();
     }
 
     /* add a suite to the registry */
     p_suite = CU_add_suite("topdoc_sync_test_suite", 0, 0);
     if (NULL == p_suite) {
         CU_cleanup_registry();
-        return CU_get_error();
+        return (int)CU_get_error();
     }
 
     /* add the tests to the suite */
@@ -256,7 +250,7 @@ main()
         || (NULL == CU_add_test(p_suite, "test_all_dpus_have_finished", test_all_dpus_have_finished))
         || (NULL == CU_add_test(p_suite, "test_bitfield_is_sound", test_bitfield_is_sound))) {
         CU_cleanup_registry();
-        return CU_get_error();
+        return (int)CU_get_error();
     }
 
     /* Run all tests using the CUnit Basic interface */
@@ -269,5 +263,5 @@ main()
     }
 
     CU_cleanup_registry();
-    return CU_get_error();
+    return (int)CU_get_error();
 }

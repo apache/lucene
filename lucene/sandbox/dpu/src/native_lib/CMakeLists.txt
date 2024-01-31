@@ -16,6 +16,7 @@ include(CheckIPOSupported)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
+# Host code
 add_library(${PROJECT_NAME} src/nativelib.c src/topdocs_sync.c)
 
 target_include_directories(
@@ -28,6 +29,15 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_link_options(${PROJECT_NAME} PRIVATE
   $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer>)
 
+include(cmake/CompilerWarnings.cmake)
+myproject_set_project_warnings(
+  ${PROJECT_NAME}
+  TRUE
+  ""
+  ""
+  ""
+  "")
+
 check_ipo_supported(RESULT result OUTPUT output)
 
 if(result)
@@ -39,6 +49,7 @@ endif()
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX})
 
+# Tests
 add_executable(run_test test/test.c)
 
 target_link_libraries(run_test PRIVATE ${CUNIT_LIBRARIES} ${DPU_HOST_LIBRARIES} Threads::Threads)
@@ -48,5 +59,13 @@ target_compile_features(run_test PUBLIC c_std_11)
 target_compile_options(run_test PRIVATE
   -Wall -Wextra -Werror -g3 -fsanitize=undefined,address -fno-omit-frame-pointer)
 target_link_options(run_test PRIVATE -fsanitize=undefined,address -fno-omit-frame-pointer)
+
+myproject_set_project_warnings(
+  run_test
+  TRUE
+  ""
+  ""
+  ""
+  "")
 
 add_test(NAME run_test COMMAND run_test)
