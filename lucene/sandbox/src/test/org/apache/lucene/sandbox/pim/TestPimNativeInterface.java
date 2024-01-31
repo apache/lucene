@@ -23,9 +23,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.BeforeClass;
 
 public class TestPimNativeInterface extends LuceneTestCase {
-  static {
+  @BeforeClass
+  public static void beforeClass() {
     System.loadLibrary("dpuLucene");
   }
 
@@ -42,5 +44,12 @@ public class TestPimNativeInterface extends LuceneTestCase {
 
     int nrOfDpus = getNrOfDpus(dpuSystem);
     assertEquals(4, nrOfDpus);
+
+    try{
+      dpuSystem.close();
+    }
+    catch (DpuException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
