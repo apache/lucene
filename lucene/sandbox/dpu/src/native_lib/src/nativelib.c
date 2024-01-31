@@ -497,6 +497,15 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
     uint32_t offset = (i_qu) ? (*queries_indices_table)[i_qu - 1] : 0;
     out->addr = (uint8_t *)((*block_addresses)[i_dpu][i_qu][i_seg] + offset);
 
+#ifndef NDEBUG
+    if (out->addr == NULL) {
+        (void)fprintf(
+            stderr, "Block address is NULL, i_dpu=%u, i_block=%u, i_qu=%u, i_seg=%u\n", i_dpu, i_block, query_id, offset);
+        (void)fprintf(stderr, "nr_queries=%u, nr_segments=%u\n", nr_queries, nr_segments);
+        exit(1);
+    }
+#endif
+
     return true;
 }
 
@@ -570,6 +579,28 @@ perform_topdocs_lower_bound_sync(JNIEnv *env,
     THROW_ON_ERROR(topdocs_lower_bound_sync(set, nr_queries, nr_hits_arr, *norm_inverse, quant_factors_arr));
 }
 
+#ifndef NDEBUG
+static inline void
+check_block_addresses(JNIEnv *env,
+    uint32_t nr_dpus,
+    uint32_t nr_queries,
+    uint32_t nr_segments,
+    result_t *block_addresses[nr_dpus][nr_queries][nr_segments])
+{
+    for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
+        for (uint32_t i_qu = 0; i_qu < nr_queries; ++i_qu) {
+            for (uint32_t i_seg = 0; i_seg < nr_segments; ++i_seg) {
+                if (block_addresses[i_dpu][i_qu][i_seg] == NULL) {
+                    (void)fprintf(stderr, "Block address is NULL, i_dpu=%u, i_qu=%u, i_seg=%u\n", i_dpu, i_qu, i_seg);
+                    (void)fprintf(stderr, "nr_queries=%u, nr_segments=%u\n", nr_queries, nr_segments);
+                    THROW_ON_ERROR(DPU_ERR_SYSTEM);
+                }
+            }
+        }
+    }
+}
+#endif
+
 static inline jint
 build_block_info(JNIEnv *env,
     struct dpu_set_t set,
@@ -608,6 +639,10 @@ build_block_info(JNIEnv *env,
 
     THROW_ON_ERROR(dpu_callback(set, compute_block_addresses, addr_ctx, DPU_CALLBACK_DEFAULT));
     prefix_sum_indices(addr_ctx);
+
+#ifndef NDEBUG
+    check_block_addresses(env, nr_dpus, nr_queries, nr_segments, block_addresses);
+#endif
 
     *get_block_info = (get_block_t) { .f = &get_block, .args = sc_args, .args_size = sizeof(*sc_args) };
 
