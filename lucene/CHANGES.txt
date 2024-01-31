@@ -204,6 +204,8 @@ Improvements
 
 * GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
 
+* GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 
@@ -227,6 +229,8 @@ Optimizations
   to the optional clause if the required clause doesn't score. In practice,
   this will help boolean queries that consist of a mix OF FILTER clauses and
   SHOULD clauses. (Adrien Grand)
+
+* GITHUB#13052: Avoid set.removeAll(list) O(n^2) performance trap in the UpgradeIndexMergePolicy (Dmitry Cherniachenko)
 
 Bug Fixes
 ---------------------
@@ -258,6 +262,9 @@ Other
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
+* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051, GITHUB#13039:
+  Code cleanups and optimizations. (Dmitry Cherniachenko)
 
 * GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
 

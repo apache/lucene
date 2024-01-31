@@ -142,11 +142,11 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 3:
         // Star-replace all ab sequences.
-        result.append(replacementPart.replaceAll("ab", ".*"));
+        result.append(replacementPart.replace("ab", ".*"));
         break;
       case 4:
         // .-replace all b chars
-        result.append(replacementPart.replaceAll("b", "."));
+        result.append(replacementPart.replace("b", "."));
         break;
       case 5:
         // length-limited stars {1,2}
@@ -165,7 +165,7 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 8:
         // NOT a character - replace all b's with "not a"
-        result.append(replacementPart.replaceAll("b", "[^a]"));
+        result.append(replacementPart.replace("b", "[^a]"));
         break;
       case 9:
         // Make whole part repeatable 1 or more times

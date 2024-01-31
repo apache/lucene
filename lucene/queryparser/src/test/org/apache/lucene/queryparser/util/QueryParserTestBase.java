@@ -654,7 +654,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   private String escapeDateString(String s) {
-    if (s.indexOf(" ") > -1) {
+    if (s.indexOf(' ') > -1) {
       return "\"" + s + "\"";
     } else {
       return s;
