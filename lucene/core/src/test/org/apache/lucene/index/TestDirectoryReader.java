@@ -1013,7 +1013,7 @@ public class TestDirectoryReader extends LuceneTestCase {
   public void testStressTryIncRef() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
-    ScheduledExecutorService closeReaderBeforeJoiningThreads =
+    final ScheduledExecutorService closeReaderBeforeJoiningThreads =
         Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("testStressTryIncRef"));
 
     try (dir;
