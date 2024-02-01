@@ -174,22 +174,17 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
       DocumentsWriterStallControl ctrl)
       throws InterruptedException {
     int millisToSleep = 100;
-    while (true) {
-      if (ctrl.hasBlocked() && ctrl.isHealthy()) {
-        for (int n = numReleasers + numStallers; n < numReleasers + numStallers + numWaiters; n++) {
-          if (ctrl.isThreadQueued(threads[n])) {
-            if (millisToSleep < 60000) {
-              Thread.sleep(millisToSleep);
-              millisToSleep *= 2;
-              break;
-            } else {
-              fail("control claims no stalled threads but waiter seems to be blocked ");
-            }
+    while (ctrl.hasBlocked() && ctrl.isHealthy()) {
+      for (int n = numReleasers + numStallers; n < numReleasers + numStallers + numWaiters; n++) {
+        if (ctrl.isThreadQueued(threads[n])) {
+          if (millisToSleep < 60000) {
+            Thread.sleep(millisToSleep);
+            millisToSleep *= 2;
+            break;
+          } else {
+            fail("control claims no stalled threads but waiter seems to be blocked ");
           }
         }
-        break;
-      } else {
-        break;
       }
     }
   }
