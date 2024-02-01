@@ -202,6 +202,10 @@ Improvements
 
 * GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
 
+* GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
+
+* GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
+
 * GITHUB#12964: Replacing Thread.sleep calls appearing in TestIndexWriter.testThreadInterruptDeadlock and
   TestDirectoryReader.testStressTryIncRef (Sanjay Dutt)
 
@@ -229,6 +233,8 @@ Optimizations
   this will help boolean queries that consist of a mix OF FILTER clauses and
   SHOULD clauses. (Adrien Grand)
 
+* GITHUB#13052: Avoid set.removeAll(list) O(n^2) performance trap in the UpgradeIndexMergePolicy (Dmitry Cherniachenko)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
@@ -242,6 +248,8 @@ Bug Fixes
 * GITHUB#12885: Fixed the bug that JapaneseReadingFormFilter cannot convert some hiragana to romaji. (Takuma Kuramitsu)
 
 * GITHUB#12287: Fix a bug in ShapeTestUtil. (Heemin Kim)
+
+* GITHUB#13031: ScorerSupplier created by QueryProfilerWeight will propagate topLevelScoringClause to the sub ScorerSupplier. (Shintaro Murakami)
 
 Build
 ---------------------
@@ -257,6 +265,11 @@ Other
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
+
+* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051, GITHUB#13039:
+  Code cleanups and optimizations. (Dmitry Cherniachenko)
+
+* GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
 
 ======================== Lucene 9.9.2 =======================
 

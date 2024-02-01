@@ -69,7 +69,7 @@ public class TestSearchWithThreads extends LuceneTestCase {
               try {
                 long totHits = 0;
                 long totSearch = 0;
-                for (; totSearch < numSearches & !failed.get(); totSearch++) {
+                for (; totSearch < numSearches && !failed.get(); totSearch++) {
                   totHits += s.search(new TermQuery(new Term("body", "aaa")), collectorManager);
                   totHits += s.search(new TermQuery(new Term("body", "bbb")), collectorManager);
                 }

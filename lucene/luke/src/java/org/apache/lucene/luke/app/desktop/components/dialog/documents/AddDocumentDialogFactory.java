@@ -457,7 +457,7 @@ public final class AddDocumentDialogFactory
             operatorRegistry
                 .get(AnalysisTabOperator.class)
                 .map(AnalysisTabOperator::getCurrentAnalyzer)
-                .orElse(new StandardAnalyzer());
+                .orElseGet(StandardAnalyzer::new);
         toolsModel.addDocument(doc, analyzer);
         indexHandler.reOpen();
         operatorRegistry
