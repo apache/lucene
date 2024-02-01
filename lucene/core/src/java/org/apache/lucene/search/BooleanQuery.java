@@ -201,7 +201,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (termQuery.getTermStates() == null) {
         termQuery =
             new TermQuery(
-                termQuery.getTerm(), TermStates.build(indexSearcher, termQuery.getTerm(), true));
+                termQuery.getTerm(), TermStates.build(indexSearcher, termQuery.getTerm(), false));
       }
       newQuery.add(termQuery, Occur.MUST);
       queries[i] = termQuery;
