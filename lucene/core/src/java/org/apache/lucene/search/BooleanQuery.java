@@ -198,6 +198,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     Query[] queries = new Query[3];
     for (int i = 0; i < clauses.size(); i++) {
       TermQuery termQuery = (TermQuery) clauses.get(i).getQuery();
+      // Optimization will count term query several times so use cache to avoid multiple terms
+      // dictionary lookups
       if (termQuery.getTermStates() == null) {
         termQuery =
             new TermQuery(
