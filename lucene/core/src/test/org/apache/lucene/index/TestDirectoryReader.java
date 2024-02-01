@@ -34,6 +34,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -1017,7 +1019,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     IndexReader indexReader = DirectoryReader.open(dir);
 
-    final AtomicBoolean failed = new AtomicBoolean(false);
+    final AtomicReference<Throwable> failed = new AtomicReference<>(null);
     final Runnable stressIncAndDecRefCount =
         () -> {
           try {
@@ -1027,7 +1029,7 @@ public class TestDirectoryReader extends LuceneTestCase {
             }
             assertFalse(indexReader.tryIncRef());
           } catch (Throwable e) {
-            failed.set(true);
+            failed.set(e);
           }
         };
     final int delay = 100;
@@ -1056,7 +1058,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     for (Thread thread : threads) {
       thread.join();
     }
-    assertFalse(failed.get());
+    assertNotNull(failed.get());
     assertFalse(indexReader.tryIncRef());
     writer.close();
     dir.close();
