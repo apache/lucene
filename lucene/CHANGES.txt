@@ -89,6 +89,8 @@ Bug Fixes
 
 * GITHUB#13031: ScorerSupplier created by QueryProfilerWeight will propagate topLevelScoringClause to the sub ScorerSupplier. (Shintaro Murakami)
 
+* GITHUB#13059: Fixed missing IndicNormalization and DecimalDigit filters in TeluguAnalyzer normalization (Dmitry Cherniachenko)
+
 Build
 ---------------------
 
