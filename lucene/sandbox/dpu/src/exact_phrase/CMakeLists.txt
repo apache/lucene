@@ -24,4 +24,13 @@ target_link_options(${PROJECT_NAME} PUBLIC -DNR_TASKLETS=16
                     -DSTACK_SIZE_DEFAULT=512)
 target_include_directories(${PROJECT_NAME} PUBLIC inc/)
 
+include(cmake/CompilerWarnings.cmake)
+myproject_set_project_warnings(
+  ${PROJECT_NAME}
+  TRUE
+  ""
+  ""
+  ""
+  "")
+
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX})

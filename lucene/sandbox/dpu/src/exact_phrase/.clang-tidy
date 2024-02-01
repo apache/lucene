@@ -1,9 +1,11 @@
 Checks: >
   *,
-  -cppcoreguidelines-avoid-non-const-global-variables,
   -llvmlibc*,
   -fuchsia*,
-  -cert-dcl50-cpp,
+  -cert-*-cpp,
+  -altera*,
+  -*avoid-non-const-global-variables,
+  -hicpp-no-assembler,
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
