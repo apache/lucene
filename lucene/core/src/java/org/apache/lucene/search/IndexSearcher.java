@@ -433,8 +433,11 @@ public class IndexSearcher {
       Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
       int countTerm1 = count(queries[0]);
       int countTerm2 = count(queries[1]);
-      // Only apply optimization if the intersection is significantly smaller than the union
-      if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2) < 0.1) {
+      if (countTerm1 == 0 || countTerm2 == 0) {
+        return Math.max(countTerm1, countTerm2);
+        // Only apply optimization if the intersection is significantly smaller than the union
+      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+          < 0.1) {
         return countTerm1 + countTerm2 - count(queries[2]);
       }
     }
