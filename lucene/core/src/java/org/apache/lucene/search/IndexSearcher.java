@@ -458,6 +458,27 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    // Rewrite query before optimization check
+    query = rewrite(new ConstantScoreQuery(query));
+    if (query instanceof ConstantScoreQuery) {
+      query = ((ConstantScoreQuery) query).getQuery();
+    }
+
+    // Check if two clause disjunction optimization applies
+    if (query instanceof BooleanQuery
+        && this.reader.hasDeletions() == false
+        && ((BooleanQuery) query).isTwoClausePureDisjunctionWithTerms()) {
+      Query[] queries = ((BooleanQuery) query).rewriteTwoClauseDisjunctionWithTermsForCount(this);
+      int countTerm1 = count(queries[0]);
+      int countTerm2 = count(queries[1]);
+      if (countTerm1 == 0 || countTerm2 == 0) {
+        return Math.max(countTerm1, countTerm2);
+        // Only apply optimization if the intersection is significantly smaller than the union
+      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+          < 0.1) {
+        return countTerm1 + countTerm2 - count(queries[2]);
+      }
+    }
     return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
 
