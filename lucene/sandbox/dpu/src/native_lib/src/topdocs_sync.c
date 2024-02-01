@@ -452,6 +452,14 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
     return true;
 }
 
+NODISCARD static inline bool
+nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries]) {
+    for(int i = 0; i < nr_queries; ++i)
+        if(nr_topdocs[i] < NB_TOPDOCS_LIMIT)
+            return false;
+    return true;
+}
+
 NODISCARD static inline dpu_error_t
 sync_loop_iteration(struct dpu_set_t set, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, bool first_run)
 {
@@ -493,17 +501,27 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     const float norm_inverse[nr_queries][NORM_INVERSE_CACHE_SIZE],
     const int quant_factors[nr_queries])
 {
-    uint32_t nr_ranks = 0;
-    pque_array_t score_pques = {};
-    mutex_array_t query_mutexes = {};
-    CLEANUP(cleanup_free) lower_bound_t *updated_bounds = NULL;
-    CLEANUP(cleanup_free) bool *finished_ranks = NULL;
+    uint32_t new_query = 1;
+    DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    bool use_lower_bound_flow = !nb_topdocs_above_limit(nr_queries, nr_topdocs);
+    uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
+    DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
 
-    DPU_PROPAGATE(entry_init_topdocs_sync(
-        set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
+    if(use_lower_bound_flow) {
+        uint32_t nr_ranks = 0;
+        pque_array score_pques = {};
+        mutex_array query_mutexes = {};
+        CLEANUP(cleanup_free) lower_bound_t *updated_bounds = NULL;
+        CLEANUP(cleanup_free) bool *finished_ranks = NULL;
 
-    update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
-    broadcast_params_t broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+        DPU_PROPAGATE(entry_init_topdocs_sync(
+            set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
-    return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
+        update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
+        broadcast_params broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+
+        return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
+    }
+    return DPU_OK;
 }

@@ -466,7 +466,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     testPimPhraseQueryLowerBoundWithParams(1, 1, 2);
     testPimPhraseQueryLowerBoundWithParams(2, 1, 2);
     testPimPhraseQueryLowerBoundWithParams(4, 1, 2);
-    testPimPhraseQueryLowerBoundWithParams(4, 1, 20);
+    testPimPhraseQueryLowerBoundWithParams(4, 1, 10000);
     testPimPhraseQueryLowerBoundWithParams(4, 2, 1);
     testPimPhraseQueryLowerBoundWithParams(4, 2, 2);
   }

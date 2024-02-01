@@ -143,7 +143,7 @@ public class PimIndexWriter extends IndexWriter {
   @Override
   protected void doAfterCommit() throws IOException {
 
-    if (DEBUG_INDEX) System.out.println("Creating PIM index...");
+    System.out.println("#### Creating PIM index ####");
     long start = System.nanoTime();
     SegmentInfos segmentInfos =
         SegmentInfos.readCommit(
@@ -198,10 +198,12 @@ public class PimIndexWriter extends IndexWriter {
 
           // Send the term enum to DpuTermIndexes.
           // DpuTermIndexes separates the term docs according to the docId range split per DPU.
+          System.out.println("# Write postings for field=" + fieldInfo.name);
           dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos),
                   (float) (sumTotalTermFreq / (double) docCount));
 
           // write the norms to be stored in PIM index
+          System.out.println("# Write norms for field=" + fieldInfo.name);
           int startDoc = 0;
           for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
             LeafReaderContext leafReaderContext = leaves.get(leafIdx);

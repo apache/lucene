@@ -22,6 +22,7 @@
 static const size_t NORM_INVERSE_CACHE_SIZE = 256;
 static const uint32_t INITIAL_NB_SCORES = 1;
 static const uint32_t NB_SCORES_SCALING_FACTOR = 2;
+static const int NB_TOPDOCS_LIMIT = 1000;
 
 /**
  * Performs successive synchronization steps to update the lower bound of the
