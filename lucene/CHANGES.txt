@@ -232,6 +232,8 @@ Optimizations
 
 * GITHUB#13052: Avoid set.removeAll(list) O(n^2) performance trap in the UpgradeIndexMergePolicy (Dmitry Cherniachenko)
 
+* GITHUB#:13036 Optimize counts on two clause term disjunctions. (Adrien Grand, Johannes Fredén)
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
