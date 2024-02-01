@@ -62,6 +62,8 @@ module org.apache.lucene.core {
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
 
+  exports org.apache.lucene.util.quantization;
+
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
