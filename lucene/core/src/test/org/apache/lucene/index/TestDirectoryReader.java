@@ -33,6 +33,7 @@ import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -1014,61 +1015,52 @@ public class TestDirectoryReader extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     writer.addDocument(new Document());
     writer.commit();
-    DirectoryReader r = DirectoryReader.open(dir);
-    int numThreads = atLeast(2);
+    IndexReader indexReader = DirectoryReader.open(dir);
 
-    IncThread[] threads = new IncThread[numThreads];
-    for (int i = 0; i < threads.length; i++) {
-      threads[i] = new IncThread(r, random());
-      threads[i].start();
-    }
-    ScheduledExecutorService closeReaderBeforeJoiningThreads =
-        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("testStressTryIncRef"));
-    closeReaderBeforeJoiningThreads.schedule(
+    final AtomicBoolean failed = new AtomicBoolean(false);
+    final Runnable stressIncAndDecRefCount =
         () -> {
           try {
-            assertTrue(r.tryIncRef());
-            r.decRef();
-            r.close();
+            while (indexReader.tryIncRef()) {
+              assertFalse(indexReader.hasDeletions());
+              indexReader.decRef();
+            }
+            assertFalse(indexReader.tryIncRef());
+          } catch (Throwable e) {
+            failed.set(true);
+          }
+        };
+    final int delay = 100;
+    final Runnable closeDirectoryReader =
+        () -> {
+          try {
+            assertTrue(indexReader.tryIncRef());
+            indexReader.decRef();
+            indexReader.close();
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
-        },
-        100,
-        TimeUnit.MILLISECONDS);
-
-    for (IncThread thread : threads) {
-      thread.join();
-      assertNull(thread.failed);
+        };
+    // Start the stressIncAndDecRefCount runnable
+    int numThreads = atLeast(2);
+    Thread[] threads = new Thread[numThreads];
+    for (int i = 0; i < threads.length; i++) {
+      threads[i] = new Thread(stressIncAndDecRefCount);
+      threads[i].start();
     }
-    assertFalse(r.tryIncRef());
+    // Start the closeDirectoryReader runnable after some delay
+    ScheduledExecutorService closeReaderBeforeJoiningThreads =
+        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("testStressTryIncRef"));
+    closeReaderBeforeJoiningThreads.schedule(closeDirectoryReader, delay, TimeUnit.MILLISECONDS);
+
+    for (Thread thread : threads) {
+      thread.join();
+    }
+    assertFalse(failed.get());
+    assertFalse(indexReader.tryIncRef());
     writer.close();
     dir.close();
     closeReaderBeforeJoiningThreads.shutdown();
-  }
-
-  static class IncThread extends Thread {
-    final IndexReader toInc;
-    final Random random;
-    Throwable failed;
-
-    IncThread(IndexReader toInc, Random random) {
-      this.toInc = toInc;
-      this.random = random;
-    }
-
-    @Override
-    public void run() {
-      try {
-        while (toInc.tryIncRef()) {
-          assertFalse(toInc.hasDeletions());
-          toInc.decRef();
-        }
-        assertFalse(toInc.tryIncRef());
-      } catch (Throwable e) {
-        failed = e;
-      }
-    }
   }
 
   public void testLoadCertainFields() throws Exception {
