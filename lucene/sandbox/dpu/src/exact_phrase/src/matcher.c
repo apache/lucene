@@ -17,33 +17,36 @@ static did_matcher_t matchers[NR_TASKLETS][MAX_NR_TERMS];
 // =============================================================================
 // INIT MATCHERS FUNCTIONS
 // =============================================================================
-did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_did)
+did_matcher_t *
+setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_did)
 {
     allocate_parsers(nr_terms);
-    did_matcher_t* tasklet_matchers = matchers[me()];
+    did_matcher_t *tasklet_matchers = matchers[me()];
     for (int each_term = 0; each_term < nr_terms; each_term++) {
         did_matcher_t *matcher = &tasklet_matchers[each_term];
-        if(postings[each_term].size == 0) {
+        if (postings[each_term].size == 0) {
             // this means there are no postings for this term for this segment
             release_parsers(nr_terms);
             return 0;
         }
-        matcher->parser = setup_parser(each_term, postings[each_term].addr,
-                                        postings[each_term].size, start_did);
+        matcher->parser = setup_parser(each_term, postings[each_term].addr, postings[each_term].size, start_did);
     }
     return tasklet_matchers;
 }
 
-void release_matchers(did_matcher_t *matchers, uint32_t nr_terms)
+void
+release_matchers(did_matcher_t *matchers, uint32_t nr_terms)
 {
-   if(matchers == 0) return;
-   release_parsers(nr_terms);
+    if (matchers == 0)
+        return;
+    release_parsers(nr_terms);
 }
 
 // =============================================================================
 // DID MATCHING FUNCTIONS
 // =============================================================================
-static bool matcher_has_next_did(did_matcher_t *matcher)
+static bool
+matcher_has_next_did(did_matcher_t *matcher)
 {
     uint32_t did;
     uint32_t freq;
@@ -59,7 +62,8 @@ static bool matcher_has_next_did(did_matcher_t *matcher)
     return true;
 }
 
-bool matchers_has_next_did(did_matcher_t *matchers, uint32_t nr_terms)
+bool
+matchers_has_next_did(did_matcher_t *matchers, uint32_t nr_terms)
 {
     for (uint32_t i = 0; i < nr_terms; i++) {
         if (!matcher_has_next_did(&matchers[i]))
@@ -68,7 +72,8 @@ bool matchers_has_next_did(did_matcher_t *matchers, uint32_t nr_terms)
     return true;
 }
 
-seek_did_t seek_did(did_matcher_t *matchers, uint32_t nr_terms, uint32_t pivot)
+seek_did_t
+seek_did(did_matcher_t *matchers, uint32_t nr_terms, uint32_t pivot)
 {
     uint32_t nb_matches = 0;
     for (uint32_t i = 0; i < nr_terms; i++) {
@@ -91,7 +96,8 @@ seek_did_t seek_did(did_matcher_t *matchers, uint32_t nr_terms, uint32_t pivot)
     return DID_NOT_FOUND;
 }
 
-uint32_t get_max_did(did_matcher_t *matchers, uint32_t nr_terms)
+uint32_t
+get_max_did(did_matcher_t *matchers, uint32_t nr_terms)
 {
     uint32_t max = 0;
     for (uint32_t i = 0; i < nr_terms; i++) {
@@ -102,18 +108,20 @@ uint32_t get_max_did(did_matcher_t *matchers, uint32_t nr_terms)
     return max;
 }
 
-void abort_did(did_matcher_t *matchers, uint32_t nr_terms) {
+void
+abort_did(did_matcher_t *matchers, uint32_t nr_terms)
+{
 
     for (uint32_t i = 0; i < nr_terms; i++) {
-      abort_parse_did(matchers[i].parser, matchers[i].current_pos_len);
+        abort_parse_did(matchers[i].parser, matchers[i].current_pos_len);
     }
 }
-
 
 // ============================================================================
 // POS MATCHING FUNCTIONS
 // ============================================================================
-bool matchers_has_next_pos(did_matcher_t *matchers, uint32_t nr_terms)
+bool
+matchers_has_next_pos(did_matcher_t *matchers, uint32_t nr_terms)
 {
     bool parsers_has_next = true;
     for (uint32_t i = 0; i < nr_terms; i++) {
@@ -122,7 +130,8 @@ bool matchers_has_next_pos(did_matcher_t *matchers, uint32_t nr_terms)
     return parsers_has_next;
 }
 
-seek_pos_t seek_pos(did_matcher_t *matchers, uint32_t nr_terms, uint32_t max_pos, uint32_t ref_index)
+seek_pos_t
+seek_pos(did_matcher_t *matchers, uint32_t nr_terms, uint32_t max_pos, uint32_t ref_index)
 {
     uint32_t nb_matches = 0;
     bool no_pos_inc = true;
@@ -154,7 +163,8 @@ seek_pos_t seek_pos(did_matcher_t *matchers, uint32_t nr_terms, uint32_t max_pos
     return POSITIONS_NOT_FOUND;
 }
 
-void get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t *index, uint32_t *max_pos)
+void
+get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t *index, uint32_t *max_pos)
 {
     uint32_t _max_pos = 0;
     uint32_t _index;
@@ -169,31 +179,39 @@ void get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t 
     *index = _index;
 }
 
-void start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
+void
+start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
 {
     for (uint32_t i = 0; i < nr_terms; i++) {
         prepare_to_parse_pos_list(matchers[i].parser, matchers[i].current_pos_freq, matchers[i].current_pos_len);
     }
 }
 
-void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
+void
+stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
 {
     for (uint32_t i = 0; i < nr_terms; i++) {
         abort_parse_pos(matchers[i].parser);
     }
 }
 
-uintptr_t matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id) {
+uintptr_t
+matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id)
+{
 
     return parser_get_curr_address(matchers[term_id].parser);
 }
 
-uint32_t matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id) {
+uint32_t
+matcher_get_curr_freq(did_matcher_t *matchers, uint32_t term_id)
+{
 
     return matchers[term_id].current_pos_freq;
 }
 
-uint32_t matcher_get_curr_did(did_matcher_t *matchers, uint32_t term_id) {
+uint32_t
+matcher_get_curr_did(did_matcher_t *matchers, uint32_t term_id)
+{
 
     return matchers[term_id].current_did;
 }

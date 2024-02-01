@@ -22,8 +22,9 @@ static uint32_t postings_offset = 0;
 static uint32_t nr_segments = 0;
 
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
-static int compare_terms(decoder_t* decoder_term1, int32_t term1_length,
-                            decoder_t* decoder_term2, int32_t term2_length) {
+static int
+compare_terms(decoder_t *decoder_term1, int32_t term1_length, decoder_t *decoder_term2, int32_t term2_length)
+{
     int term1_w, term2_w;
     int offset = 0;
     /* TODO implement this optim if valuable
@@ -49,18 +50,19 @@ static int compare_terms(decoder_t* decoder_term1, int32_t term1_length,
         }
     }
     */
-    for(; offset < term1_length && offset < term2_length; offset++) {
+    for (; offset < term1_length && offset < term2_length; offset++) {
         uint8_t term1 = decode_byte_from(decoder_term1);
         uint8_t term2 = decode_byte_from(decoder_term2);
-        if(term1 != term2) {
+        if (term1 != term2) {
             return term1 - term2;
         }
     }
     return term1_length - term2_length;
 }
 
-static int compare_with_next_term(decoder_t* decoder_term1, uint32_t term1_length,
-                                   decoder_t* decoder_term2, uint32_t term2_length) {
+static int
+compare_with_next_term(decoder_t *decoder_term1, uint32_t term1_length, decoder_t *decoder_term2, uint32_t term2_length)
+{
 
     uintptr_t curr_term = get_absolute_address_from(decoder_term2);
     uintptr_t searched_term = get_absolute_address_from(decoder_term1);
@@ -77,13 +79,17 @@ static int compare_with_next_term(decoder_t* decoder_term1, uint32_t term1_lengt
     return cmp;
 }
 
-static void skip_term(decoder_t* decoder) {
+static void
+skip_term(decoder_t *decoder)
+{
 
     uint32_t term_length = decode_vint_from(decoder);
     seek_decoder(decoder, get_absolute_address_from(decoder) + term_length);
 }
 
-static void reset_block(block_t* block) {
+static void
+reset_block(block_t *block)
+{
     block->term = 0;
     block->term_size = 0;
     block->block_address = 0;
@@ -91,7 +97,9 @@ static void reset_block(block_t* block) {
 }
 
 // search for a particular block in the block table in MRAM (floor operation in BST)
-static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* block) {
+static int
+lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
+{
 
     reset_block(block);
 
@@ -113,7 +121,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
         uint32_t child_info = decode_vint_from(decoder);
         uint32_t address = decode_vint_from(decoder);
 
-        if(cmp == 0) {
+        if (cmp == 0) {
             // term found in the block table
             block->term = curr_term;
             block->term_size = block_term_length;
@@ -124,28 +132,25 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             // if there is a right child the successor is its left-most child
             // Otherwise this is the first ancestor for which the searched term is in the left subtree
             int right_child_offset = child_info >> 2;
-            if(right_child_offset) {
+            if (right_child_offset) {
                 succ_node = get_absolute_address_from(decoder) + right_child_offset;
                 succ_left_most = 1;
-            }
-            else {
+            } else {
                 succ_node = succ_node_ancestor;
                 succ_left_most = 0;
             }
             break;
-        }
-        else if(cmp < 0) {
+        } else if (cmp < 0) {
             // searched term is smaller than current term, go to left child
             // the left child is simply the next node in the block table
             uint8_t has_left_child = (child_info & 1) != 0;
-            if(!has_left_child) {
+            if (!has_left_child) {
                 // the left child is the next node in the byte array
                 // If no left child, we are done
                 break;
             }
             succ_node_ancestor = curr_block;
-        }
-        else {
+        } else {
             // searched term is larger than current term, this is the new floor element
             // then go to right child if any
             block->term = curr_term;
@@ -154,13 +159,11 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             found_cmp = cmp;
 
             int right_child_offset = child_info >> 2;
-            if(right_child_offset) {
-                succ_node =
-                    get_absolute_address_from(decoder) + right_child_offset;
+            if (right_child_offset) {
+                succ_node = get_absolute_address_from(decoder) + right_child_offset;
                 seek_decoder(decoder, succ_node);
                 succ_left_most = 1;
-            }
-            else {
+            } else {
                 succ_node = succ_node_ancestor;
                 succ_left_most = 0;
                 // no right child, we are done
@@ -169,11 +172,11 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
         }
     }
 
-    if(block->term) {
+    if (block->term) {
         // a term has been found, set the block size as the difference
         // between the next address and the block address
         int addr;
-        if(succ_node == 0) {
+        if (succ_node == 0) {
             // special case when this node is the last
             // read the last address from the block table
             // As this node has no successor and the tree is written in pre-order,
@@ -182,27 +185,26 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             seek_decoder(decoder, succ_node);
             uint32_t child_info = decode_vint_from(decoder);
             decode_vint_from(decoder);
-            while((child_info & 1) != 0) {
+            while ((child_info & 1) != 0) {
                 skip_term(decoder);
                 child_info = decode_vint_from(decoder);
                 decode_vint_from(decoder);
             }
             addr = decode_vint_from(decoder);
-        }
-        else {
+        } else {
             seek_decoder(decoder, succ_node);
             skip_term(decoder);
             uint32_t child_info = decode_vint_from(decoder);
             addr = decode_vint_from(decoder);
             // when the stored successor is not an ancestor but a right child
-            // of the found node, traverse the tree towards the left-most child 
+            // of the found node, traverse the tree towards the left-most child
             // to find the true successor
-            if(succ_left_most != 0) {
-              while(child_info & 1) {
-                skip_term(decoder);
-                child_info = decode_vint_from(decoder);
-                addr = decode_vint_from(decoder);
-              }
+            if (succ_left_most != 0) {
+                while (child_info & 1) {
+                    skip_term(decoder);
+                    child_info = decode_vint_from(decoder);
+                    addr = decode_vint_from(decoder);
+                }
             }
         }
         block->block_size = addr - block->block_address;
@@ -210,13 +212,12 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
     return found_cmp;
 }
 
-
-bool get_field_addresses(uintptr_t index, const term_t* field,
-                        uintptr_t* field_norms_address,
-                        uintptr_t* field_bt_address) {
+bool
+get_field_addresses(uintptr_t index, const term_t *field, uintptr_t *field_norms_address, uintptr_t *field_bt_address)
+{
 
     // get a decoder from the pool
-    decoder_t* decoder = decoder_pool_get_one();
+    decoder_t *decoder = decoder_pool_get_one();
     initialize_decoder(decoder, index);
 
     // skip number of dpus and dpu index
@@ -237,7 +238,7 @@ bool get_field_addresses(uintptr_t index, const term_t* field,
     // lookup the field in the field table
     lookup_term_block(decoder, field, &term_blocks[me()]);
 
-    if(term_blocks[me()].term == 0) {
+    if (term_blocks[me()].term == 0) {
         *field_norms_address = 0;
         *field_bt_address = 0;
         // field not found
@@ -254,30 +255,30 @@ bool get_field_addresses(uintptr_t index, const term_t* field,
     return true;
 }
 
-static void decode_postings_address_foreach_segment(decoder_t* decoder,
-                                                    uint32_t offset,
-                                                    postings_info_t* postings_for_segments) {
+static void
+decode_postings_address_foreach_segment(decoder_t *decoder, uint32_t offset, postings_info_t *postings_for_segments)
+{
     int addr = offset + decode_vint_from(decoder);
     decode_vint_from(decoder); // ignore skip info
-    for(int i = 0; i < nr_segments; ++i) {
+    for (int i = 0; i < nr_segments; ++i) {
         postings_for_segments[i].addr = addr;
         postings_for_segments[i].size = decode_vint_from(decoder);
         addr += postings_for_segments[i].size;
     }
 }
 
-bool get_term_postings(uintptr_t field_address,
-                        const term_t* term,
-                        postings_info_t* postings_for_segments) {
+bool
+get_term_postings(uintptr_t field_address, const term_t *term, postings_info_t *postings_for_segments)
+{
 
     // get a decoder from the pool
-    decoder_t* decoder = decoder_pool_get_one();
+    decoder_t *decoder = decoder_pool_get_one();
     initialize_decoder(decoder, field_address);
     bool res = false;
 
     // search for the term in the block table
     int cmp = lookup_term_block(decoder, term, &term_blocks[me()]);
-    if(term_blocks[me()].term == 0) {
+    if (term_blocks[me()].term == 0) {
         // term not found
         goto end;
     }
@@ -286,10 +287,9 @@ bool get_term_postings(uintptr_t field_address,
     seek_decoder(decoder, index_begin_addr + block_list_offset + term_blocks[me()].block_address);
 
     // first check if the term seeked is the same as the first in the block
-    if(cmp == 0) {
+    if (cmp == 0) {
         // the term is the first in the block, decode the mram address to postings for each segment
-        decode_postings_address_foreach_segment(decoder,
-                                    index_begin_addr + postings_offset, postings_for_segments);
+        decode_postings_address_foreach_segment(decoder, index_begin_addr + postings_offset, postings_for_segments);
         res = true;
         goto end;
     }
@@ -301,29 +301,26 @@ bool get_term_postings(uintptr_t field_address,
 
     // loop over remaining terms and compare the bytes to find the seeked term
     uintptr_t curr_addr = get_absolute_address_from(decoder);
-    uintptr_t last_addr = index_begin_addr + block_list_offset + term_blocks[me()].block_address
-                            + term_blocks[me()].block_size;
+    uintptr_t last_addr = index_begin_addr + block_list_offset + term_blocks[me()].block_address + term_blocks[me()].block_size;
 
-    while(curr_addr < last_addr) {
+    while (curr_addr < last_addr) {
 
         uint32_t term_length = decode_vint_from(decoder);
 
         // compare the searched term with the current term of the block list
         int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
 
-        if(cmp == 0) {
+        if (cmp == 0) {
             // term found, decode the mram address to postings for each segment
-            decode_postings_address_foreach_segment(decoder,
-                                               index_begin_addr + postings_offset, postings_for_segments);
+            decode_postings_address_foreach_segment(decoder, index_begin_addr + postings_offset, postings_for_segments);
             res = true;
             goto end;
-        }
-        else if(cmp < 0) {
+        } else if (cmp < 0) {
             // term is larger than the seeked term, term not found
             goto end;
         }
 
-        //skip postings address
+        // skip postings address
         decode_vint_from(decoder);
         // where to jump for the next term (skip segment info for this term)
         uint32_t skip = decode_vint_from(decoder);
@@ -335,4 +332,3 @@ end:
     decoder_pool_release_one(decoder);
     return res;
 }
-

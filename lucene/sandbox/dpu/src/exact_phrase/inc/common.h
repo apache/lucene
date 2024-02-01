@@ -59,4 +59,3 @@
 #define NORM_INV_TYPE uint8_t
 
 #endif
-

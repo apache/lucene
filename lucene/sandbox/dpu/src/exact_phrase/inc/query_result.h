@@ -7,8 +7,8 @@
  */
 typedef struct __attribute__((packed, aligned(8))) _query_result {
     uint32_t doc_id;
-    uint32_t norm:8;
-    uint32_t freq:24;
+    uint32_t norm : 8;
+    uint32_t freq : 24;
 } query_result_t;
 
 /**
