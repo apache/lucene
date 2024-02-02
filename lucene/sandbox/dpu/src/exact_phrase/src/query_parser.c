@@ -3,12 +3,12 @@
 #include "query_parser.h"
 
 void
-init_query_parser(query_parser_t *parser, __mram_ptr const uint8_t *query)
+init_query_parser(query_parser_t *parser, mram_ptr_t query)
 {
     parser->nr_terms = 0;
     parser->decoder = decoder_pool_get_one();
-    initialize_decoder(parser->decoder, (uintptr_t)query);
-    parser->curr_ptr = (uintptr_t)query;
+    initialize_decoder(parser->decoder, query);
+    parser->curr_ptr = query;
 }
 
 void

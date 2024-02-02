@@ -8,8 +8,8 @@
 /**
  * structure to hold information on postings : address and byte size
  */
-typedef struct _postings_info {
-    uint32_t addr;
+typedef struct {
+    mram_ptr_t addr;
     uint32_t size;
 } postings_info_t;
 

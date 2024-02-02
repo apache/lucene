@@ -14,7 +14,7 @@
  * this will be retrieved by the host to compute a lower bound
  * to be sent back to all DPUs.
  */
-typedef struct _score {
+typedef struct {
     // quantized score
     uint32_t score_quant;
     // freq is stored in the 3 LSB and norm in the MSB
@@ -25,7 +25,7 @@ void
 set_query_no_norms(uint32_t query_id);
 
 void
-set_query_doc_norms_addr(uint32_t query_id, uintptr_t addr);
+set_query_doc_norms_addr(uint32_t query_id, __mram_ptr NORM_INV_TYPE *addr);
 
 void reset_scores(uint32_t);
 

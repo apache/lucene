@@ -17,7 +17,7 @@ typedef struct _did_matcher did_matcher_t;
  * initialize one decoder per term at the posting address
  */
 did_matcher_t *
-setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_id);
+setup_matchers(uint32_t nr_terms, postings_info_t *postings, uint32_t start_did);
 /**
  * Releases the matchers. Internally releases the decoders used by the matchers
  */
@@ -76,7 +76,7 @@ get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t *inde
 /**
  * Returns the current address of the matcher for the given term, where the next did or position would be searched
  */
-uintptr_t
+mram_ptr_t
 matcher_get_curr_address(did_matcher_t *matchers, uint32_t term_id);
 /**
  * Returns the current frequency for the given term and for the doc at which the matcher is positioned

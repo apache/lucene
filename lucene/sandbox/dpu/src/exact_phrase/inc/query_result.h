@@ -7,7 +7,7 @@
  * structure used to store the query results
  * A result contains the document id, the document norm and frequency.
  */
-typedef struct __attribute__((packed, aligned(8))) _query_result {
+typedef struct __attribute__((packed, aligned(8))) {
     uint32_t doc_id;
     uint32_t norm : 8;
     uint32_t freq : 24;
@@ -22,7 +22,7 @@ typedef struct __attribute__((packed, aligned(8))) _query_result {
  * Optionally stores a mram_id if this buffer is already partially written
  * in MRAM and has already an id where to be written in MRAM (UINT16_MAX if not defined)
  */
-typedef struct _query_buffer_info {
+typedef struct {
     uint16_t buffer_id;
     uint8_t buffer_size;
     uint8_t segment_id;
@@ -36,7 +36,7 @@ typedef struct _query_buffer_info {
  * of buffer information (first element of the buffer)
  * and query result (rest of the elements)
  */
-typedef union _query_buffer_elem {
+typedef union {
     query_result_t result;
     query_buffer_info_t info;
 } query_buffer_elem_t;

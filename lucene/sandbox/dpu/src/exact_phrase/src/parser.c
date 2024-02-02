@@ -13,25 +13,25 @@ typedef struct _parser {
     struct {
         int32_t nr_pos_left; // How many positions still to be read
         uint32_t current_pos; // Last position recorded during the parsing
-        uint32_t pos_end_addr;
+        mram_ptr_t pos_end_addr;
     } pos_parser;
     struct {
         uint32_t current_did; // Either the first DID of a new segment, or the last DID read in the current segment.
-        uintptr_t did_end_addr;
+        mram_ptr_t did_end_addr;
     } did_parser;
 } parser_t;
 
 #include "parser.h"
 
-static parser_t parsers[NR_TASKLETS][MAX_NR_TERMS];
+static parser_t global_parsers[NR_TASKLETS][MAX_NR_TERMS];
 
 // ============================================================================
 // INIT PARSERS FUNCTIONS
 // ============================================================================
 static parser_t *
-initialize_parser(uintptr_t mram_addr, uint32_t byte_size, uint32_t start_did, uint32_t term_id)
+initialize_parser(mram_ptr_t mram_addr, uint32_t byte_size, uint32_t start_did, uint32_t term_id)
 {
-    parser_t *parser = &parsers[me()][term_id];
+    parser_t *parser = &global_parsers[me()][term_id];
     initialize_decoder(parser->decoder, mram_addr);
     parser->did_parser.current_did = start_did;
     parser->did_parser.did_end_addr = mram_addr + byte_size;
@@ -39,7 +39,7 @@ initialize_parser(uintptr_t mram_addr, uint32_t byte_size, uint32_t start_did, u
 }
 
 parser_t *
-setup_parser(uint32_t term_id, uintptr_t postings_address, uint32_t byte_size, uint32_t start_did)
+setup_parser(uint32_t term_id, mram_ptr_t postings_address, uint32_t byte_size, uint32_t start_did)
 {
     return initialize_parser(postings_address, byte_size, start_did, term_id);
 }
@@ -54,7 +54,7 @@ next_decoder(decoder_t *decoder, uint32_t id, void *ctx)
 void
 allocate_parsers(uint32_t nr_terms)
 {
-    decoder_pool_get(nr_terms, next_decoder, parsers[me()]);
+    decoder_pool_get(nr_terms, next_decoder, global_parsers[me()]);
 }
 
 static decoder_t *
@@ -67,7 +67,7 @@ next_decoder_release(uint32_t id, void *ctx)
 void
 release_parsers(uint32_t nr_terms)
 {
-    decoder_pool_release(nr_terms, next_decoder_release, parsers[me()]);
+    decoder_pool_release(nr_terms, next_decoder_release, global_parsers[me()]);
 }
 
 // ============================================================================
@@ -79,13 +79,13 @@ parse_length_and_freq(parser_t *parser, uint32_t *freq, unsigned int *len)
 {
     int f = decode_zigzag_from(parser->decoder);
     if (f > 0) {
-        *freq = f;
+        *freq = (uint32_t)f;
         *len = decode_byte_from(parser->decoder);
     } else if (f == 0) {
         *freq = decode_vint_from(parser->decoder);
         *len = decode_vint_from(parser->decoder);
     } else {
-        *freq = -f;
+        *freq = (uint32_t)-f;
         *len = decode_short_from(parser->decoder);
     }
 }
@@ -93,9 +93,10 @@ parse_length_and_freq(parser_t *parser, uint32_t *freq, unsigned int *len)
 parse_did_t
 parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t *len)
 {
-    uintptr_t decoder_addr = get_absolute_address_from(parser->decoder);
-    if (decoder_addr >= parser->did_parser.did_end_addr)
+    mram_ptr_t decoder_addr = get_absolute_address_from(parser->decoder);
+    if (decoder_addr >= parser->did_parser.did_end_addr) {
         return END_OF_FRAGMENT;
+    }
 
     uint32_t delta_did = decode_vint_from(parser->decoder);
     parse_length_and_freq(parser, freq, len);
@@ -130,8 +131,9 @@ prepare_to_parse_pos_list(parser_t *parser, uint32_t freq, uint32_t len)
 bool
 parse_pos(parser_t *parser, uint32_t *pos)
 {
-    if (parser->pos_parser.nr_pos_left <= 0)
+    if (parser->pos_parser.nr_pos_left <= 0) {
         return false;
+    }
 
     uint32_t this_pos = decode_vint_from(parser->decoder);
 
@@ -150,7 +152,7 @@ abort_parse_pos(parser_t *parser)
     seek_decoder(parser->decoder, parser->pos_parser.pos_end_addr);
 }
 
-uintptr_t
+mram_ptr_t
 parser_get_curr_address(parser_t *parser)
 {
     return get_absolute_address_from(parser->decoder);

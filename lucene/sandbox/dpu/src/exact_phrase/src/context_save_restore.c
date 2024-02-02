@@ -36,7 +36,7 @@ save_context(uint16_t query_id, uint8_t segment_id, query_buffer_elem_t *results
     }
     binfo.start_did = curr_did;
     assert(query_id == results_cache[0].info.query_id);
-    mram_write(&binfo, &results_buffer_info[query_id][segment_id], 8);
+    mram_write(&binfo, &results_buffer_info[query_id][segment_id], sizeof(binfo));
 }
 
 void
@@ -44,11 +44,11 @@ restore_context(uint16_t query_id,
     uint8_t segment_id,
     uint32_t *start_did,
     query_buffer_elem_t *results_cache,
-    __mram_ptr uint8_t *results_batch)
+    mram_ptr_t results_batch)
 {
 
     struct results_mram_buffer_info binfo;
-    mram_read(&results_buffer_info[query_id][segment_id], &binfo, 8);
+    mram_read(&results_buffer_info[query_id][segment_id], &binfo, sizeof(binfo));
     if (binfo.nb_results) {
         mram_read(&results_batch[binfo.buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t)],
             results_cache,

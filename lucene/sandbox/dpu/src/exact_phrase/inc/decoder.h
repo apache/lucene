@@ -58,7 +58,7 @@ decoder_pool_release(uint32_t nb_decoders, decoder_t *(*next_decoder)(uint32_t, 
  * Initialize a decoder to start decoding at a given MRAM address.
  */
 void
-initialize_decoder(decoder_t *decoder, uintptr_t mram_addr);
+initialize_decoder(decoder_t *decoder, mram_ptr_t mram_addr);
 
 /**
  * decodes a variable-length integer from the decoder.
@@ -68,7 +68,7 @@ decode_vint_from(decoder_t *decoder);
 /**
  * decodes a single byte from the decoder.
  */
-unsigned int
+uint8_t
 decode_byte_from(decoder_t *decoder);
 /**
  * decodes a short from the decoder.
@@ -90,7 +90,7 @@ decode_zigzag_from(decoder_t *decoder);
  * Jump to the target address in the decoder.
  */
 void
-seek_decoder(decoder_t *decoder, uint32_t target_address);
+seek_decoder(decoder_t *decoder, mram_ptr_t target_address);
 
 /**
  * Skip nb_bytes from the decoder.
@@ -101,7 +101,7 @@ skip_bytes_decoder(decoder_t *decoder, uint32_t nb_bytes);
 /**
  * Get the absolute address of the current position in the decoder.
  */
-unsigned int
+mram_ptr_t
 get_absolute_address_from(decoder_t *decoder);
 
 #endif /* DECODER_H_ */

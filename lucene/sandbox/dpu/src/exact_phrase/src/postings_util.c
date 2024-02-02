@@ -9,8 +9,8 @@ void
 set_postings_in_cache(uint32_t query_id, uint8_t term_id, uint8_t nr_segments, const postings_info_t *elem)
 {
 
-    for (int i = 0; i < nr_segments; ++i) {
-        mram_write(elem + i, postings_cache[query_id] + i * MAX_NR_TERMS + term_id, 8);
+    for (uint8_t i = 0; i < nr_segments; ++i) {
+        mram_write(elem + i, postings_cache[query_id] + i * MAX_NR_TERMS + term_id, sizeof(postings_info_t));
     }
 }
 

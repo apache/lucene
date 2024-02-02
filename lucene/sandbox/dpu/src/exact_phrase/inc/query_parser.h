@@ -12,14 +12,14 @@
 /**
  * Structure used to parse the query
  */
-typedef struct _query_parser {
+typedef struct {
     decoder_t *decoder;
     uint32_t nr_terms;
-    uintptr_t curr_ptr;
+    mram_ptr_t curr_ptr;
 } query_parser_t;
 
 void
-init_query_parser(query_parser_t *parser, __mram_ptr const uint8_t *query);
+init_query_parser(query_parser_t *parser, mram_ptr_t query);
 void
 read_query_type(query_parser_t *parser, uint8_t *query_type);
 void

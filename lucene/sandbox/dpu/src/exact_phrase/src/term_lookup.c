@@ -8,8 +8,8 @@
  * structure to hold the information for a block
  * in the block table (field or query term)
  */
-typedef struct _block {
-    uintptr_t term;
+typedef struct {
+    mram_ptr_t term;
     uint32_t term_size;
     uint32_t block_address;
     uint32_t block_size;
@@ -18,7 +18,7 @@ typedef struct _block {
 static block_t term_blocks[NR_TASKLETS];
 
 /* offsets to different sections in the index */
-static uintptr_t index_begin_addr = 0;
+static mram_ptr_t index_begin_addr = 0;
 static uint32_t block_table_offset = 0;
 static uint32_t block_list_offset = 0;
 static uint32_t postings_offset = 0;
@@ -28,7 +28,8 @@ static uint32_t nr_segments = 0;
 static int
 compare_terms(decoder_t *decoder_term1, int32_t term1_length, decoder_t *decoder_term2, int32_t term2_length)
 {
-    int term1_w, term2_w;
+    // int term1_w;
+    // int term2_w;
     int offset = 0;
     /* TODO implement this optim if valuable
     // terms are encoded as UTF-8, so we can compare the bytes directly
@@ -67,11 +68,11 @@ static int
 compare_with_next_term(decoder_t *decoder_term1, uint32_t term1_length, decoder_t *decoder_term2, uint32_t term2_length)
 {
 
-    uintptr_t curr_term = get_absolute_address_from(decoder_term2);
-    uintptr_t searched_term = get_absolute_address_from(decoder_term1);
+    mram_ptr_t curr_term = get_absolute_address_from(decoder_term2);
+    mram_ptr_t searched_term = get_absolute_address_from(decoder_term1);
 
     // compare the searched term with the next term the decoder points to
-    int cmp = compare_terms(decoder_term1, term1_length, decoder_term2, term2_length);
+    int cmp = compare_terms(decoder_term1, (int32_t)term1_length, decoder_term2, (int32_t)term2_length);
 
     // jump to the end of the term for further processing
     seek_decoder(decoder_term2, curr_term + term2_length);
@@ -106,16 +107,16 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
 
     reset_block(block);
 
-    uintptr_t succ_node = 0;
-    uintptr_t succ_node_ancestor = 0;
+    mram_ptr_t succ_node = 0;
+    mram_ptr_t succ_node_ancestor = 0;
     int found_cmp = 0;
     uint8_t succ_left_most = 0;
 
     while (1) {
 
-        uintptr_t curr_block = get_absolute_address_from(decoder);
+        mram_ptr_t curr_block = get_absolute_address_from(decoder);
         uint32_t block_term_length = decode_vint_from(decoder);
-        uintptr_t curr_term = get_absolute_address_from(decoder);
+        mram_ptr_t curr_term = get_absolute_address_from(decoder);
 
         // compare the searched term with the current term of the block table
         int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, block_term_length);
@@ -134,19 +135,20 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
             // update successor node
             // if there is a right child the successor is its left-most child
             // Otherwise this is the first ancestor for which the searched term is in the left subtree
-            int right_child_offset = child_info >> 2;
+            int right_child_offset = (int)(child_info >> 2U);
             if (right_child_offset) {
-                succ_node = get_absolute_address_from(decoder) + right_child_offset;
+                succ_node = get_absolute_address_from(decoder) + (unsigned int)right_child_offset;
                 succ_left_most = 1;
             } else {
                 succ_node = succ_node_ancestor;
                 succ_left_most = 0;
             }
             break;
-        } else if (cmp < 0) {
+        }
+        if (cmp < 0) {
             // searched term is smaller than current term, go to left child
             // the left child is simply the next node in the block table
-            uint8_t has_left_child = (child_info & 1) != 0;
+            uint8_t has_left_child = (child_info & 1U) != 0;
             if (!has_left_child) {
                 // the left child is the next node in the byte array
                 // If no left child, we are done
@@ -161,9 +163,9 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
             block->block_address = address;
             found_cmp = cmp;
 
-            int right_child_offset = child_info >> 2;
+            int right_child_offset = (int)(child_info >> 2U);
             if (right_child_offset) {
-                succ_node = get_absolute_address_from(decoder) + right_child_offset;
+                succ_node = get_absolute_address_from(decoder) + (unsigned int)right_child_offset;
                 seek_decoder(decoder, succ_node);
                 succ_left_most = 1;
             } else {
@@ -178,7 +180,7 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
     if (block->term) {
         // a term has been found, set the block size as the difference
         // between the next address and the block address
-        int addr;
+        uint32_t addr = 0;
         if (succ_node == 0) {
             // special case when this node is the last
             // read the last address from the block table
@@ -188,7 +190,7 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
             seek_decoder(decoder, succ_node);
             uint32_t child_info = decode_vint_from(decoder);
             decode_vint_from(decoder);
-            while ((child_info & 1) != 0) {
+            while ((child_info & 1U) != 0) {
                 skip_term(decoder);
                 child_info = decode_vint_from(decoder);
                 decode_vint_from(decoder);
@@ -203,7 +205,7 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
             // of the found node, traverse the tree towards the left-most child
             // to find the true successor
             if (succ_left_most != 0) {
-                while (child_info & 1) {
+                while (child_info & 1U) {
                     skip_term(decoder);
                     child_info = decode_vint_from(decoder);
                     addr = decode_vint_from(decoder);
@@ -216,7 +218,7 @@ lookup_term_block(decoder_t *decoder, const term_t *term, block_t *block)
 }
 
 bool
-get_field_addresses(uintptr_t index, const term_t *field, uintptr_t *field_norms_address, uintptr_t *field_bt_address)
+get_field_addresses(mram_ptr_t index, const term_t *field, mram_ptr_t *field_norms_address, mram_ptr_t *field_bt_address)
 {
 
     // get a decoder from the pool
@@ -226,10 +228,11 @@ get_field_addresses(uintptr_t index, const term_t *field, uintptr_t *field_norms
     // skip number of dpus and dpu index
     skip_bytes_decoder(decoder, sizeof(short) * 2);
     // read number of segments
-    nr_segments = 1 << decode_byte_from(decoder);
+    nr_segments = 1U << decode_byte_from(decoder);
     // bypass lucene segments info
     int nr_lucene_segments = decode_byte_from(decoder);
-    int nr_bytes_lucene_segments = decode_vint_from(decoder);
+    (void)nr_lucene_segments;
+    uint32_t nr_bytes_lucene_segments = decode_vint_from(decoder);
     skip_bytes_decoder(decoder, nr_bytes_lucene_segments);
     // read index offsets
     block_table_offset = decode_vint_from(decoder);
@@ -259,11 +262,11 @@ get_field_addresses(uintptr_t index, const term_t *field, uintptr_t *field_norms
 }
 
 static void
-decode_postings_address_foreach_segment(decoder_t *decoder, uint32_t offset, postings_info_t *postings_for_segments)
+decode_postings_address_foreach_segment(decoder_t *decoder, mram_ptr_t offset, postings_info_t *postings_for_segments)
 {
-    int addr = offset + decode_vint_from(decoder);
+    mram_ptr_t addr = offset + decode_vint_from(decoder);
     decode_vint_from(decoder); // ignore skip info
-    for (int i = 0; i < nr_segments; ++i) {
+    for (uint32_t i = 0; i < nr_segments; ++i) {
         postings_for_segments[i].addr = addr;
         postings_for_segments[i].size = decode_vint_from(decoder);
         addr += postings_for_segments[i].size;
@@ -271,7 +274,7 @@ decode_postings_address_foreach_segment(decoder_t *decoder, uint32_t offset, pos
 }
 
 bool
-get_term_postings(uintptr_t field_address, const term_t *term, postings_info_t *postings_for_segments)
+get_term_postings(mram_ptr_t field_address, const term_t *term, postings_info_t *postings_for_segments)
 {
 
     // get a decoder from the pool
@@ -299,26 +302,27 @@ get_term_postings(uintptr_t field_address, const term_t *term, postings_info_t *
 
     // ignore first term postings address and segment info
     uint32_t addr = decode_vint_from(decoder);
+    (void)addr;
     uint32_t skip = decode_vint_from(decoder);
     skip_bytes_decoder(decoder, skip);
 
     // loop over remaining terms and compare the bytes to find the seeked term
-    uintptr_t curr_addr = get_absolute_address_from(decoder);
-    uintptr_t last_addr = index_begin_addr + block_list_offset + term_blocks[me()].block_address + term_blocks[me()].block_size;
+    mram_ptr_t curr_addr = get_absolute_address_from(decoder);
+    mram_ptr_t last_addr = index_begin_addr + block_list_offset + term_blocks[me()].block_address + term_blocks[me()].block_size;
 
     while (curr_addr < last_addr) {
 
         uint32_t term_length = decode_vint_from(decoder);
 
         // compare the searched term with the current term of the block list
-        int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
+        int cmp_local = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
 
-        if (cmp == 0) {
+        if (cmp_local == 0) {
             // term found, decode the mram address to postings for each segment
             decode_postings_address_foreach_segment(decoder, index_begin_addr + postings_offset, postings_for_segments);
             res = true;
             goto end;
-        } else if (cmp < 0) {
+        } else if (cmp_local < 0) {
             // term is larger than the seeked term, term not found
             goto end;
         }
@@ -326,8 +330,8 @@ get_term_postings(uintptr_t field_address, const term_t *term, postings_info_t *
         // skip postings address
         decode_vint_from(decoder);
         // where to jump for the next term (skip segment info for this term)
-        uint32_t skip = decode_vint_from(decoder);
-        skip_bytes_decoder(decoder, skip);
+        uint32_t skip_local = decode_vint_from(decoder);
+        skip_bytes_decoder(decoder, skip_local);
         curr_addr = get_absolute_address_from(decoder);
     }
 

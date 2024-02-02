@@ -37,6 +37,7 @@ typedef struct _decoder {
 /**
  * Decoder pool variables
  */
+// NOLINTNEXTLINE(misc-misplaced-const)
 MUTEX_INIT(decoder_mutex);
 static uint32_t decoder_pool_index = 0;
 static uint32_t tasklets_sleeping = 0;
@@ -77,10 +78,10 @@ get_bytes_read_useful(__attribute__((unused)) decoder_t *decoder)
 #endif
 
 void
-seek_decoder(decoder_t *decoder, uint32_t target_address)
+seek_decoder(decoder_t *decoder, mram_ptr_t target_address)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
-    decoder->ptr = seqread_seek((__mram_ptr void *)target_address, &(decoder->reader));
+    decoder->ptr = seqread_seek(target_address, &(decoder->reader));
     if (prev_mram != decoder->reader.mram_addr) {
         READ_256_BYTES(decoder);
     }
@@ -90,7 +91,7 @@ void
 initialize_decoder_pool()
 {
     // create the pool of decoders
-    for (int i = 0; i < NB_DECODERS; ++i) {
+    for (uint32_t i = 0; i < NB_DECODERS; ++i) {
         decoders[i].ptr = seqread_init(seqread_alloc(), DPU_MRAM_HEAP_POINTER, &(decoders[i].reader));
         decoders_pool[i] = &decoders[i];
     }
@@ -99,7 +100,7 @@ initialize_decoder_pool()
 }
 
 void
-initialize_decoder(decoder_t *decoder, uintptr_t mram_addr)
+initialize_decoder(decoder_t *decoder, mram_ptr_t mram_addr)
 {
     seek_decoder(decoder, mram_addr);
 }
@@ -108,19 +109,20 @@ void
 decoder_pool_get(uint32_t nb_decoders, void (*next_decoder)(decoder_t *, uint32_t, void *), void *ctx)
 {
     int dec_id = -1;
-    if (nb_decoders == 0)
+    if (nb_decoders == 0) {
         return;
+    }
     while (dec_id < 0) {
         mutex_lock(decoder_mutex);
         if (decoder_pool_index + nb_decoders - 1 < NB_DECODERS) {
-            dec_id = decoder_pool_index;
+            dec_id = (int)decoder_pool_index;
             for (uint32_t i = 0; i < nb_decoders; ++i) {
                 next_decoder(decoders_pool[decoder_pool_index], i, ctx);
                 decoders_pool[decoder_pool_index++] = 0;
             }
             mutex_unlock(decoder_mutex);
         } else {
-            tasklets_sleeping |= (1 << me());
+            tasklets_sleeping |= (1U << me());
             // Note: if the stop() is executed between the mutex unlock
             // and the time another tasklet has already tried to wake it up through a resume,
             // this tasklet would never wake up. But this is prevented by the fact that the resume instruction
@@ -132,7 +134,7 @@ decoder_pool_get(uint32_t nb_decoders, void (*next_decoder)(decoder_t *, uint32_
 }
 
 static void
-next_decoder_get_one(decoder_t *decoder, uint32_t id, void *ctx)
+next_decoder_get_one(decoder_t *decoder, __attribute__((unused)) uint32_t id, void *ctx)
 {
     *(decoder_t **)ctx = decoder;
 }
@@ -140,8 +142,7 @@ next_decoder_get_one(decoder_t *decoder, uint32_t id, void *ctx)
 decoder_t *
 decoder_pool_get_one()
 {
-
-    decoder_t *res;
+    decoder_t *res = NULL;
     decoder_pool_get(1, next_decoder_get_one, &res);
     return res;
 }
@@ -151,7 +152,7 @@ decoder_pool_release(uint32_t nb_decoders, decoder_t *(*next_decoder)(uint32_t, 
 {
     mutex_lock(decoder_mutex);
     assert(decoder_pool_index >= nb_decoders);
-    for (int i = 0; i < nb_decoders; ++i) {
+    for (uint32_t i = 0; i < nb_decoders; ++i) {
         assert(decoders_pool[decoder_pool_index - i - 1] == 0);
         decoders_pool[decoder_pool_index - i - 1] = next_decoder(i, ctx);
     }
@@ -159,10 +160,11 @@ decoder_pool_release(uint32_t nb_decoders, decoder_t *(*next_decoder)(uint32_t, 
     if (tasklets_sleeping) {
         uint8_t tasklet_id = 0;
         while (tasklets_sleeping) {
-            if (tasklets_sleeping & 1)
+            if (tasklets_sleeping & 1U) {
                 __resume(tasklet_id, "0");
+            }
             tasklet_id++;
-            tasklets_sleeping >>= 1;
+            tasklets_sleeping >>= 1U;
         }
     }
     mutex_unlock(decoder_mutex);
@@ -182,16 +184,16 @@ decoder_pool_release_one(decoder_t *decoder)
 
 // Computes an absolute address from the current position of this decoder in
 // memory.
-unsigned int
+mram_ptr_t
 get_absolute_address_from(decoder_t *decoder)
 {
-    return (unsigned int)seqread_tell(decoder->ptr, &(decoder->reader));
+    return seqread_tell(decoder->ptr, &(decoder->reader));
 }
 
 void
 skip_bytes_decoder(decoder_t *decoder, uint32_t nb_bytes)
 {
-    uint32_t curr_addr = get_absolute_address_from(decoder);
+    mram_ptr_t curr_addr = get_absolute_address_from(decoder);
     seek_decoder(decoder, curr_addr + nb_bytes);
 }
 
@@ -201,19 +203,23 @@ uint32_t
 decode_vint_from(decoder_t *decoder)
 {
     uint32_t value = 0;
-    uint8_t byte;
+    uint8_t byte = 0;
     uint32_t byte_shift = 0;
     uint8_t *ptr = decoder->ptr;
     uintptr_t prev_mram = decoder->reader.mram_addr;
+    const uint32_t nr_bits = 7;
+    const uint32_t lsb_mask = (1U << nr_bits) - 1U;
+    const uint32_t msb_mask = 1U << nr_bits;
 
     do {
         byte = *ptr;
-        value = value | ((byte & 127) << byte_shift);
-        byte_shift += 7;
+        value = value | ((byte & lsb_mask) << byte_shift);
+        // value = value | ((byte & (unsigned)INT8_MAX) << byte_shift);
+        byte_shift += nr_bits;
 
         ptr = seqread_get(ptr, sizeof(uint8_t), &(decoder->reader));
         READ_BYTE(decoder);
-    } while (byte & 128);
+    } while (byte & msb_mask);
 
     if (prev_mram != decoder->reader.mram_addr) {
         READ_256_BYTES(decoder);
@@ -222,11 +228,11 @@ decode_vint_from(decoder_t *decoder)
     return value;
 }
 
-uint32_t
+uint8_t
 decode_byte_from(decoder_t *decoder)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
-    uint32_t byte = *(decoder->ptr);
+    uint8_t byte = *(decoder->ptr);
     decoder->ptr = seqread_get(decoder->ptr, sizeof(uint8_t), &(decoder->reader));
     if (prev_mram != decoder->reader.mram_addr) {
         READ_256_BYTES(decoder);
@@ -238,7 +244,7 @@ uint32_t
 decode_short_from(decoder_t *decoder)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
-    uint32_t val = *(uint8_t *)(decoder->ptr) + (*((uint8_t *)(decoder->ptr) + 1) << 8);
+    uint32_t val = (uint32_t)(decoder->ptr[0] + (decoder->ptr[1] << (sizeof(uint8_t) * CHAR_BIT)));
     decoder->ptr = seqread_get(decoder->ptr, sizeof(uint16_t), &(decoder->reader));
     if (prev_mram != decoder->reader.mram_addr) {
         READ_256_BYTES(decoder);
@@ -250,7 +256,8 @@ uint32_t
 decode_int_from(decoder_t *decoder)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
-    uint32_t val = *(uint32_t *)(decoder->ptr);
+    uint32_t val = 0;
+    memcpy(&val, decoder->ptr, sizeof(uint32_t));
     decoder->ptr = seqread_get(decoder->ptr, sizeof(uint32_t), &(decoder->reader));
     if (prev_mram != decoder->reader.mram_addr) {
         READ_256_BYTES(decoder);
@@ -262,5 +269,5 @@ int
 decode_zigzag_from(decoder_t *decoder)
 {
     uint32_t i = decode_vint_from(decoder);
-    return ((i >> 1) ^ -((int)i & 1));
+    return (int)((i >> 1U) ^ -(i & 1U));
 }

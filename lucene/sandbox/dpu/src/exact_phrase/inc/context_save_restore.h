@@ -15,6 +15,6 @@ restore_context(uint16_t query_id,
     uint8_t segment_id,
     uint32_t *start_did,
     query_buffer_elem_t *results_cache,
-    __mram_ptr uint8_t *results_batch);
+    mram_ptr_t results_batch);
 
 #endif
