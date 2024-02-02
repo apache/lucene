@@ -206,6 +206,8 @@ Improvements
 
 * GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
 
+* GITHUB#13066: Support getMaxScore of DisjunctionSumScorer for non top level scoring clause (Shintaro Murakami)
+
 Optimizations
 ---------------------
 
