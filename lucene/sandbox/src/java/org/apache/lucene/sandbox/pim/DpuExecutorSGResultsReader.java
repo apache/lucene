@@ -64,14 +64,10 @@ public class DpuExecutorSGResultsReader extends DpuResultsReader {
     // check if the doc id is less than the max doc ID
     int docId = results.byteBuffer.getInt(this.index * this.queryResultByteSize);
 
-    // this is a valid result to return
-    // score it
-    match.docId = docId - baseDoc;
-    int norm = results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES);
     // the frequency is stored on 3 bytes
-    int freq = results.byteBuffer.getShort(this.index * this.queryResultByteSize + Integer.BYTES + Short.BYTES);
-    freq |= results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES + Short.BYTES + 1)
-            << (Short.BYTES * 8);
+    int freq = Byte.toUnsignedInt(results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES + 1))
+        | (Byte.toUnsignedInt(results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES + 2)) << 8)
+        | (Byte.toUnsignedInt(results.byteBuffer.get(this.index * this.queryResultByteSize + Integer.BYTES + 3)) << 16);
     match.score = simScorer.score(freq, norm);
 
     this.index++;
