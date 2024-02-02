@@ -18,8 +18,9 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
 /**
@@ -27,26 +28,32 @@ import org.apache.lucene.util.hnsw.BlockingFloatHeap;
  * concurrency is supported, the {@link BlockingFloatHeap} is used to track the global top scores
  * collected across all leaves.
  */
-public class TopKnnCollectorManager extends KnnCollectorManager<TopKnnCollector> {
+public class TopKnnCollectorManager implements KnnCollectorManager {
 
   // the number of docs to collect
   private final int k;
   // the global score queue used to track the top scores collected across all leaves
   private final BlockingFloatHeap globalScoreQueue;
 
-  public TopKnnCollectorManager(int k, boolean supportsConcurrency) {
+  public TopKnnCollectorManager(int k, IndexSearcher indexSearcher) {
+    boolean isMultiSegments = indexSearcher.getIndexReader().leaves().size() > 1;
     this.k = k;
-    this.globalScoreQueue = supportsConcurrency ? new BlockingFloatHeap(k) : null;
+    this.globalScoreQueue = isMultiSegments ? new BlockingFloatHeap(k) : null;
   }
 
   /**
    * Return a new {@link TopKnnCollector} instance.
    *
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @param parentBitSet the parent bitset, not used for this collector manager
+   * @param context the leaf reader context
    */
   @Override
-  public TopKnnCollector newCollector(int visitedLimit, BitSet parentBitSet) throws IOException {
-    return new TopKnnCollector(k, visitedLimit, globalScoreQueue);
+  public TopKnnCollector newCollector(int visitedLimit, LeafReaderContext context)
+      throws IOException {
+    if (globalScoreQueue == null) {
+      return new TopKnnCollector(k, visitedLimit);
+    } else {
+      return new MultiLeafTopKnnCollector(k, visitedLimit, globalScoreQueue);
+    }
   }
 }

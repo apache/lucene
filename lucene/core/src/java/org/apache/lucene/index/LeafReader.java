@@ -21,6 +21,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 
@@ -235,24 +236,27 @@ public abstract non-sealed class LeafReader extends IndexReader {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
+   * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param knnCollector collector with settings for gathering the vector results.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, float[] target, Bits acceptDocs, KnnCollector knnCollector) throws IOException {
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    if (Math.min(knnCollector.k(), getFloatVectorValues(fi.name).size()) == 0) {
+    k = Math.min(k, getFloatVectorValues(fi.name).size());
+    if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    searchNearestVectors(field, target, knnCollector, acceptDocs);
-    return knnCollector.topDocs();
+    KnnCollector collector = new TopKnnCollector(k, visitedLimit);
+    searchNearestVectors(field, target, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   /**
@@ -273,24 +277,27 @@ public abstract non-sealed class LeafReader extends IndexReader {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
+   * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param knnCollector collector with settings for gathering the vector results.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, byte[] target, Bits acceptDocs, KnnCollector knnCollector) throws IOException {
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    if (Math.min(knnCollector.k(), getByteVectorValues(fi.name).size()) == 0) {
+    k = Math.min(k, getByteVectorValues(fi.name).size());
+    if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    searchNearestVectors(field, target, knnCollector, acceptDocs);
-    return knnCollector.topDocs();
+    KnnCollector collector = new TopKnnCollector(k, visitedLimit);
+    searchNearestVectors(field, target, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   /**

@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.join;
 
+import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 
@@ -24,30 +26,37 @@ import org.apache.lucene.util.BitSet;
  * DiversifyingNearestChildrenKnnCollectorManager responsible for creating {@link
  * DiversifyingNearestChildrenKnnCollector} instances.
  */
-public class DiversifyingNearestChildrenKnnCollectorManager
-    extends KnnCollectorManager<DiversifyingNearestChildrenKnnCollector> {
+public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollectorManager {
 
   // the number of docs to collect
   private final int k;
+  // filter identifying the parent documents.
+  private final BitSetProducer parentsFilter;
 
   /**
    * Constructor
    *
    * @param k - the number of top k vectors to collect
+   * @param parentsFilter Filter identifying the parent documents.
    */
-  public DiversifyingNearestChildrenKnnCollectorManager(int k) {
+  public DiversifyingNearestChildrenKnnCollectorManager(int k, BitSetProducer parentsFilter) {
     this.k = k;
+    this.parentsFilter = parentsFilter;
   }
 
   /**
    * Return a new {@link DiversifyingNearestChildrenKnnCollector} instance.
    *
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @param parentBitSet the parent bitset
+   * @param context the leaf reader context
    */
   @Override
   public DiversifyingNearestChildrenKnnCollector newCollector(
-      int visitedLimit, BitSet parentBitSet) {
+      int visitedLimit, LeafReaderContext context) throws IOException {
+    BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return null;
+    }
     return new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
   }
 }

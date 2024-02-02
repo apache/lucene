@@ -34,7 +34,6 @@ import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.InfoStream;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -55,7 +54,6 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final String field;
   protected final int k;
   private final Query filter;
-  private InfoStream infoStream = InfoStream.getDefault();
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
@@ -83,9 +81,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    final boolean supportsConcurrency = indexSearcher.getSlices().length > 1;
-    KnnCollectorManager<?> knnCollectorManager = getKnnCollectorManager(k, supportsConcurrency);
-
+    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
@@ -96,9 +92,6 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     // Merge sort the results
     TopDocs topK = mergeLeafResults(perLeafResults);
-    if (infoStream.isEnabled("KnnVectorQuery")) {
-      infoStream.message("KnnVectorQuery", "visited:" + topK.totalHits.value);
-    }
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
@@ -106,7 +99,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs searchLeaf(
-      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager<?> knnCollectorManager)
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
       throws IOException {
     TopDocs results = getLeafResults(ctx, filterWeight, knnCollectorManager);
     if (ctx.docBase > 0) {
@@ -118,7 +111,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs getLeafResults(
-      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager<?> knnCollectorManager)
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
       throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
@@ -169,16 +162,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
-  protected KnnCollectorManager<?> getKnnCollectorManager(int k, boolean supportsConcurrency) {
-    return new TopKnnCollectorManager(k, supportsConcurrency);
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new TopKnnCollectorManager(k, searcher);
   }
 
-  // make KnnCollectorProvider
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
       int visitedLimit,
-      KnnCollectorManager<?> knnCollectorManager)
+      KnnCollectorManager knnCollectorManager)
       throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)

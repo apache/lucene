@@ -81,11 +81,19 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       LeafReaderContext context,
       Bits acceptDocs,
       int visitedLimit,
-      KnnCollectorManager<?> knnCollectorManager)
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, null);
-    TopDocs results =
-        context.reader().searchNearestVectors(field, target, acceptDocs, knnCollector);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // The field does not exist or does not index vectors
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    if (Math.min(knnCollector.k(), context.reader().getFloatVectorValues(fi.name).size()) == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 

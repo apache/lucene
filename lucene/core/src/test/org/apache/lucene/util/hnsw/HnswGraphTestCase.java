@@ -1051,7 +1051,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> queryVectors = vectorValues(1, dim);
     RandomVectorScorer queryScorer = buildScorer(docVectors, queryVectors.vectorValue(0));
 
-    KnnCollector collector = new TopKnnCollector(topK, Integer.MAX_VALUE, null);
+    KnnCollector collector = new TopKnnCollector(topK, Integer.MAX_VALUE);
     HnswGraphSearcher.search(queryScorer, collector, singleLevelGraph, null);
 
     // Check that we visit all nodes

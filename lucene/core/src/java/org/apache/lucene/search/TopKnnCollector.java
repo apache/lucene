@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search;
 
-import org.apache.lucene.util.hnsw.BlockingFloatHeap;
-import org.apache.lucene.util.hnsw.FloatHeap;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -27,80 +25,27 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class TopKnnCollector extends AbstractKnnCollector {
+public class TopKnnCollector extends AbstractKnnCollector {
 
-  // greediness of globally non-competitive search: (0,1]
-  private static final float DEFAULT_GREEDINESS = 0.9f;
-  // the local queue of the results with the highest similarities collected so far in the current
-  // segment
-  private final NeighborQueue queue;
-  // the global queue of the highest similarities collected so far across all segments
-  private final BlockingFloatHeap globalSimilarityQueue;
-  // the local queue of the highest similarities if we are not competitive globally
-  // the size of this queue is defined by greediness
-  private final FloatHeap nonCompetitiveQueue;
-  private final float greediness;
-  // the queue of the local similarities to periodically update with the global queue
-  private final FloatHeap updatesQueue;
-  // interval to synchronize the local and global queues, as a number of visited vectors
-  private final int interval = 0xff; // 255
-  private boolean kResultsCollected = false;
-  private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
+  protected final NeighborQueue queue;
 
   /**
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
-  public TopKnnCollector(int k, int visitLimit, BlockingFloatHeap globalSimilarityQueue) {
+  public TopKnnCollector(int k, int visitLimit) {
     super(k, visitLimit);
-    this.greediness = DEFAULT_GREEDINESS;
     this.queue = new NeighborQueue(k, false);
-    this.globalSimilarityQueue = globalSimilarityQueue;
-
-    if (globalSimilarityQueue == null) {
-      this.nonCompetitiveQueue = null;
-      this.updatesQueue = null;
-    } else {
-      this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
-      this.updatesQueue = new FloatHeap(k);
-    }
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    boolean localSimUpdated = queue.insertWithOverflow(docId, similarity);
-    boolean firstKResultsCollected = (kResultsCollected == false && queue.size() == k());
-    if (firstKResultsCollected) {
-      kResultsCollected = true;
-    }
-    boolean globalSimUpdated = false;
-    if (globalSimilarityQueue != null) {
-      updatesQueue.offer(similarity);
-      globalSimUpdated = nonCompetitiveQueue.offer(similarity);
-
-      if (kResultsCollected) {
-        // as we've collected k results, we can start do periodic updates with the global queue
-        if (firstKResultsCollected || (visitedCount & interval) == 0) {
-          cachedGlobalMinSim = globalSimilarityQueue.offer(updatesQueue.getHeap());
-          updatesQueue.clear();
-          globalSimUpdated = true;
-        }
-      }
-    }
-    return localSimUpdated || globalSimUpdated;
+    return queue.insertWithOverflow(docId, similarity);
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    if (kResultsCollected == false) {
-      return Float.NEGATIVE_INFINITY;
-    }
-    float minSim = queue.topScore();
-    if (globalSimilarityQueue == null) {
-      return minSim;
-    } else {
-      return Math.max(minSim, Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
-    }
+    return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override

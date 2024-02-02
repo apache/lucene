@@ -18,21 +18,21 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.BitSet;
 
 /**
  * KnnCollectorManager responsible for creating {@link KnnCollector} instances. Useful to create
  * {@link KnnCollector} instances that share global state across leaves, such a global queue of
  * results collected so far.
  */
-public abstract class KnnCollectorManager<C extends KnnCollector> {
+public interface KnnCollectorManager {
 
   /**
    * Return a new {@link KnnCollector} instance.
    *
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @param parentBitSet the parent bitset, {@code null} if not applicable
+   * @param context the leaf reader context
    */
-  public abstract C newCollector(int visitedLimit, BitSet parentBitSet) throws IOException;
+  KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException;
 }

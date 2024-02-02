@@ -85,7 +85,7 @@ public class HnswGraphSearcher {
   public static KnnCollector search(
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
-    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
+    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));

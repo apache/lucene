@@ -48,7 +48,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -356,16 +355,11 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static TopDocs doKnnSearch(IndexReader reader, float[] vector, int k) throws IOException {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
-    TopKnnCollectorManager topKnnCollectorManager = new TopKnnCollectorManager(k, false);
     for (LeafReaderContext ctx : reader.leaves()) {
       Bits liveDocs = ctx.reader().getLiveDocs();
       results[ctx.ord] =
           ctx.reader()
-              .searchNearestVectors(
-                  KNN_GRAPH_FIELD,
-                  vector,
-                  liveDocs,
-                  topKnnCollectorManager.newCollector(Integer.MAX_VALUE, null));
+              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;

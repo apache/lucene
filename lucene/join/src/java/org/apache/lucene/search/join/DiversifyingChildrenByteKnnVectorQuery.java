@@ -24,15 +24,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
-import org.apache.lucene.search.KnnByteVectorQuery;
-import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -124,8 +116,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected KnnCollectorManager<?> getKnnCollectorManager(int k, boolean supportsConcurrency) {
-    return new DiversifyingNearestChildrenKnnCollectorManager(k);
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter);
   }
 
   @Override
@@ -133,7 +125,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       LeafReaderContext context,
       Bits acceptDocs,
       int visitedLimit,
-      KnnCollectorManager<?> knnCollectorManager)
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {

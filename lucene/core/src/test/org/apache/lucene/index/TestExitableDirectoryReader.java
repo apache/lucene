@@ -33,7 +33,10 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -464,8 +467,9 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
               leaf.searchNearestVectors(
                   "vector",
                   TestVectorUtil.randomVector(dimension),
+                  5,
                   leaf.getLiveDocs(),
-                  new TopKnnCollector(5, Integer.MAX_VALUE, null)));
+                  Integer.MAX_VALUE));
     } else {
       DocIdSetIterator iter = leaf.getFloatVectorValues("vector");
       scanAndRetrieve(leaf, iter);
@@ -473,8 +477,9 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       leaf.searchNearestVectors(
           "vector",
           TestVectorUtil.randomVector(dimension),
+          5,
           leaf.getLiveDocs(),
-          new TopKnnCollector(5, Integer.MAX_VALUE, null));
+          Integer.MAX_VALUE);
     }
 
     reader.close();
@@ -537,8 +542,10 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
               leaf.searchNearestVectors(
                   "vector",
                   TestVectorUtil.randomVectorBytes(dimension),
+                  5,
                   leaf.getLiveDocs(),
-                  new TopKnnCollector(5, Integer.MAX_VALUE, null)));
+                  Integer.MAX_VALUE));
+
     } else {
       DocIdSetIterator iter = leaf.getByteVectorValues("vector");
       scanAndRetrieve(leaf, iter);
@@ -546,8 +553,9 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       leaf.searchNearestVectors(
           "vector",
           TestVectorUtil.randomVectorBytes(dimension),
+          5,
           leaf.getLiveDocs(),
-          new TopKnnCollector(5, Integer.MAX_VALUE, null));
+          Integer.MAX_VALUE);
     }
 
     reader.close();
