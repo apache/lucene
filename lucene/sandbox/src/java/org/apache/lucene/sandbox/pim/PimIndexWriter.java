@@ -163,8 +163,8 @@ public class PimIndexWriter extends IndexWriter {
           // Iterate on segments.
           // There will be a different term index sub-part per segment and per DPU.
           TermsEnum[] termsEnums = new TermsEnum[leaves.size()];
-          int docCount = 0;
-          int sumTotalTermFreq = 0;
+          long docCount = 0;
+          long sumTotalTermFreq = 0;
           for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
             LeafReaderContext leafReaderContext = leaves.get(leafIdx);
             LeafReader reader = leafReaderContext.reader();
@@ -190,7 +190,9 @@ public class PimIndexWriter extends IndexWriter {
               int leafDocCount = terms.getDocCount();
               docCount += leafDocCount;
               sumTotalTermFreq += terms.getSumTotalTermFreq();
-              if (DEBUG_INDEX) System.out.println("  " + leafDocCount + " docs");
+              if (DEBUG_INDEX)
+                System.out.println("Leaf=" + leafIdx + " docCount=" + leafDocCount
+                        + " sumFreq=" + terms.getSumTotalTermFreq());
               TermsEnum termsEnum = terms.iterator();
               termsEnums[leafIdx] = termsEnum;
             }
@@ -198,12 +200,12 @@ public class PimIndexWriter extends IndexWriter {
 
           // Send the term enum to DpuTermIndexes.
           // DpuTermIndexes separates the term docs according to the docId range split per DPU.
-          System.out.println("# Write postings for field=" + fieldInfo.name);
+          if (DEBUG_INDEX) System.out.println("# Write postings for field=" + fieldInfo.name);
           dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos),
                   (float) (sumTotalTermFreq / (double) docCount));
 
           // write the norms to be stored in PIM index
-          System.out.println("# Write norms for field=" + fieldInfo.name);
+          if(DEBUG_INDEX) System.out.println("# Write norms for field=" + fieldInfo.name);
           int startDoc = 0;
           for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
             LeafReaderContext leafReaderContext = leaves.get(leafIdx);
@@ -474,6 +476,8 @@ public class PimIndexWriter extends IndexWriter {
           max = cache[i];
       }
       normInverseQuantFactor = (int) (256.0f / max);
+      if(DEBUG_INDEX)
+        System.out.println("Field=" + fieldInfo.name + " qf=" + normInverseQuantFactor + " avgFieldLength=" + avgFieldLength);
       for (int i = 0; i < 256; i++) {
         normInverseCache[i] = (byte) ((int)(Math.ceil(cache[i] * normInverseQuantFactor)) & 0xFF);
       }
