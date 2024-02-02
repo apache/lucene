@@ -57,9 +57,19 @@
 #define MAX_NB_SCORES_LOG2 3
 
 /*
+ * Number of elements in the norm inverse cache
+ */
+#define NORM_INV_CACHE_SIZE 256
+
+/*
  * type for storing the quantized values of norm inverse in the index
  */
 #define NORM_INV_TYPE uint8_t
+
+/*
+ * type for accessing chars in MRAM
+ */
+typedef __mram_ptr uint8_t *mram_ptr_t;
 
 #undef mram_write_int_atomic
 /**
