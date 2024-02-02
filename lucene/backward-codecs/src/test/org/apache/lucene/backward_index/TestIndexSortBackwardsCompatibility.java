@@ -94,7 +94,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
         Document child = new Document();
         child.add(new StringField("relation", "child", Field.Store.NO));
         child.add(new StringField("bid", "" + i, Field.Store.NO));
-        if (version.onOrAfter(FIRST_PARENT_DOC_VERSION) == false) { // only add this to earlier versions
+        if (version.onOrAfter(FIRST_PARENT_DOC_VERSION)
+            == false) { // only add this to earlier versions
           child.add(new NumericDocValuesField("dateDV", i));
         }
         Document parent = new Document();
