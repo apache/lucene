@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "common.h"
+
 /**
  * structure used to read and decode the index
  */

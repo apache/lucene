@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
 #include "query_parser.h"
 #include "postings_util.h"
 

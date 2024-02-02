@@ -1,8 +1,9 @@
 #ifndef SCORE_LOWER_BOUND_H_
 #define SCORE_LOWER_BOUND_H_
 
-#include <stdint.h>
 #include <mram.h>
+#include <stdint.h>
+
 #include "common.h"
 #include "matcher.h"
 

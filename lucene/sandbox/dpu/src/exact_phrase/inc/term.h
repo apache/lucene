@@ -1,6 +1,8 @@
 #ifndef TERM_H_
 #define TERM_H_
 
+#include <stdint.h>
+
 /**
  * Forward declaration of the decoder
  */

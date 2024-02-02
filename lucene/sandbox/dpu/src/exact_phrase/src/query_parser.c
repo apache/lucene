@@ -1,4 +1,5 @@
 #include <assert.h>
+
 #include "query_parser.h"
 
 void

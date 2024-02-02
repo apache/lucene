@@ -1,20 +1,27 @@
-#include <stdint.h>
-#include <defs.h>
-#include <mram.h>
-#include <barrier.h>
-#include <mutex.h>
-#include <assert.h>
 #include <alloc.h>
-#include <string.h>
+#include <assert.h>
+#include <attributes.h>
+#include <barrier.h>
+#include <defs.h>
+#include <dpuruntime.h>
+#include <mram.h>
 #include <mram_unaligned.h>
+#include <mutex.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef DBG_print
+#include <stdio.h>
+#endif
+
 #include "common.h"
-#include "matcher.h"
-#include "decoder.h"
-#include "term_lookup.h"
-#include "query_result.h"
-#include "postings_util.h"
-#include "score_lower_bound.h"
 #include "context_save_restore.h"
+#include "decoder.h"
+#include "matcher.h"
+#include "postings_util.h"
+#include "query_result.h"
+#include "score_lower_bound.h"
+#include "term_lookup.h"
 
 //#define PERF_MESURE
 #ifdef PERF_MESURE

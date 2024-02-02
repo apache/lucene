@@ -1,6 +1,8 @@
 #ifndef QUERY_RESULT_H_
 #define QUERY_RESULT_H_
 
+#include <stdint.h>
+
 /**
  * structure used to store the query results
  * A result contains the document id, the document norm and frequency.

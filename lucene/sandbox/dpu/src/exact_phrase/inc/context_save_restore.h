@@ -1,8 +1,10 @@
 #ifndef CONTEXT_SAVE_RESTORE_H_
 #define CONTEXT_SAVE_RESTORE_H_
 
-#include <stdint.h>
 #include <mram.h>
+#include <stdint.h>
+
+#include "common.h"
 #include "query_result.h"
 
 void

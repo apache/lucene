@@ -1,5 +1,8 @@
-#include "term_lookup.h"
+#include <stdint.h>
+
+#include "common.h"
 #include "decoder.h"
+#include "term_lookup.h"
 
 /**
  * structure to hold the information for a block

@@ -2,6 +2,7 @@
 #define POSTINGS_CACHE_H_
 
 #include <stdint.h>
+
 #include "common.h"
 
 /**

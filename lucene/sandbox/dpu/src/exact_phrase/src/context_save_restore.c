@@ -1,6 +1,7 @@
+#include <assert.h>
+
 #include "context_save_restore.h"
 #include "common.h"
-#include <assert.h>
 
 struct results_mram_buffer_info {
     uint16_t buffer_id;

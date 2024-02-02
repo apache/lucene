@@ -1,8 +1,11 @@
-#include <score_lower_bound.h>
-#include <mutex_pool.h>
 #include <defs.h>
 #include <mram_unaligned.h>
+#include <mutex_pool.h>
+#include <score_lower_bound.h>
+#include <stdint.h>
+
 #include "decoder.h"
+#include "common.h"
 
 // store all scores found so far
 __mram_noinit score_t best_scores[DPU_MAX_BATCH_SIZE][MAX_NB_SCORES];

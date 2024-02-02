@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "common.h"
 #include "term.h"
 
 /**

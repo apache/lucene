@@ -1,12 +1,13 @@
 #ifndef QUERY_PARSER_H_
 #define QUERY_PARSER_H_
 
+#include <mram.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <mram.h>
+
 #include "common.h"
-#include "term.h"
 #include "decoder.h"
+#include "term.h"
 
 /**
  * Structure used to parse the query

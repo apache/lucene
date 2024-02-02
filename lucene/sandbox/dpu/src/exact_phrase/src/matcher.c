@@ -1,4 +1,5 @@
 #include <defs.h>
+#include <stdint.h>
 
 #include "parser.h"
 

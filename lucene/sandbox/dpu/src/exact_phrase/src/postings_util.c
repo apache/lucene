@@ -1,4 +1,6 @@
 #include <mram.h>
+#include <stdint.h>
+
 #include "postings_util.h"
 
 __mram_noinit postings_info_t postings_cache[DPU_MAX_BATCH_SIZE][MAX_NR_SEGMENTS * MAX_NR_TERMS];

@@ -1,15 +1,16 @@
 #ifndef _TERM_LOOKUP_H_
 #define _TERM_LOOKUP_H_
 
-#include <stdint.h>
+#include <built_ins.h>
 #include <defs.h>
 #include <mram.h>
+#include <stdint.h>
 #define SEQREAD_CACHE_SIZE 256
 #include <seqread.h>
-#include <built_ins.h>
+
 #include "parser.h"
-#include "term.h"
 #include "postings_util.h"
+#include "term.h"
 
 /**
  * Lookup the addresses needed for a field in the index

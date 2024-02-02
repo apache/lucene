@@ -1,6 +1,9 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include <attributes.h>
+#include <stdint.h>
+
 /**
  * Maximum number of queries in a batch
  * TODO enforce it on the host
