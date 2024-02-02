@@ -5,7 +5,7 @@ Checks: >
   -cert-*-cpp,
   -altera*,
   -*avoid-non-const-global-variables,
-  -hicpp-no-assembler,
+  -hicpp-*,
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
