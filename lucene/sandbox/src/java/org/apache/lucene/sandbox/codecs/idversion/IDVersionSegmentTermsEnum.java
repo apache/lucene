@@ -26,7 +26,11 @@ import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 import org.apache.lucene.util.fst.Util;
@@ -243,9 +247,8 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
     //  if (DEBUG) {
     //    System.out.println("\nBTTR.seekExact seg=" + fr.parent.segment + " target=" +
     // fr.fieldInfo.name + ":" + ToStringUtils.brToString(target) + " minIDVersion=" + minIDVersion
-    // + " current="
-    // + ToStringUtils.brToString(term) + " (exists?=" + termExists + ") validIndexPrefix=" +
-    // validIndexPrefix);
+    // + " current=" + ToStringUtils.brToString(term) + " (exists?=" + termExists +
+    // ") validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
     //  }
 
@@ -507,11 +510,10 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
           // }
           // if (DEBUG) {
           //   System.out.println("    FAST version NOT_FOUND term=" +
-          // ToStringUtils.brToString(term) +
-          // " targetUpto=" + targetUpto + " currentFrame.maxIDVersion=" + currentFrame.maxIDVersion
-          // +
-          // " validIndexPrefix=" + validIndexPrefix + " startFrameFP=" + startFrameFP + " vs " +
-          // currentFrame.fp + " termExists=" + termExists);
+          // ToStringUtils.brToString(term) + " targetUpto=" + targetUpto +
+          // " currentFrame.maxIDVersion=" + currentFrame.maxIDVersion + " validIndexPrefix=" +
+          // validIndexPrefix + " startFrameFP=" + startFrameFP + " vs " + currentFrame.fp +
+          // " termExists=" + termExists);
           // }
           return false;
         }
@@ -690,8 +692,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit +
         // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
         // " vs termLabel=" + (char) (term.bytes[targetUpto]) + ")"   + " arc.output=" + arc.output
-        // +
-        // " output=" + output);
+        // + " output=" + output);
         // }
         if (cmp != 0) {
           break;

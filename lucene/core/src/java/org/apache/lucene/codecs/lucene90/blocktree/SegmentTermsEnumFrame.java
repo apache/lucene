@@ -537,8 +537,7 @@ final class SegmentTermsEnumFrame {
 
     // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
     // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + ToStringUtils.brToString(target) +
-    // " term=" +
-    // ToStringUtils.brToString(term));
+    // " term=" + ToStringUtils.brToString(term));
 
     assert nextEnt != -1;
 
@@ -634,8 +633,7 @@ final class SegmentTermsEnumFrame {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
     // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + ToStringUtils.brToString(target) +
-    // " term=" +
-    // ToStringUtils.brToString(target));
+    // " term=" + ToStringUtils.brToString(target));
 
     assert nextEnt != -1;
 

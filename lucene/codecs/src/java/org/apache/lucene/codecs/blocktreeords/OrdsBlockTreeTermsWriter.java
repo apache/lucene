@@ -36,7 +36,14 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -434,8 +441,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
                 output.bytes, termOrdOffset + output.startOrd, output.endOrd - termOrdOffset);
         // System.out.println("  append sub=" + indexEnt.input + " output=" + indexEnt.output +
         // " termOrdOffset=" + termOrdOffset + " blockTermCount=" + blockTermCount  + " newOutput="
-        // +
-        // newOutput  + " endOrd=" + (termOrdOffset+Long.MAX_VALUE-output.endOrd));
+        // + newOutput  + " endOrd=" + (termOrdOffset+Long.MAX_VALUE-output.endOrd));
         fstCompiler.add(Util.toIntsRef(indexEnt.input, scratchIntsRef), newOutput);
       }
     }

@@ -328,10 +328,9 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // if (DEBUG) {
     //   System.out.println("\nintEnum.next seg=" + segment);
     //   System.out.println("  frame ord=" + currentFrame.ord + " prefix=" +
-    // ToStringUtils.brToString(new
-    // BytesRef(term.bytes, term.offset, currentFrame.prefix)) + " state=" + currentFrame.state +
-    // " lastInFloor?=" + currentFrame.isLastInFloor + " fp=" + currentFrame.fp + " trans=" +
-    // (currentFrame.transitions.length == 0 ? "n/a" :
+    // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
+    // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
+    // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
     // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
     // currentFrame.outputPrefix);
     // }
@@ -345,9 +344,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           currentFrame.loadNextFloorBlock();
           // if (DEBUG) System.out.println("\n  frame ord=" + currentFrame.ord + " prefix=" +
           // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
-          // " state=" +
-          // currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor + " fp=" +
-          // currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
+          // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
+          // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
           // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
           // currentFrame.outputPrefix);
         } else {
@@ -360,9 +358,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           assert currentFrame.lastSubFP == lastFP;
           // if (DEBUG) System.out.println("\n  frame ord=" + currentFrame.ord + " prefix=" +
           // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
-          // " state=" +
-          // currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor + " fp=" +
-          // currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
+          // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
+          // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
           // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
           // currentFrame.outputPrefix);
         }

@@ -40,7 +40,14 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.compress.LZ4;
 import org.apache.lucene.util.compress.LowercaseAsciiCompression;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
@@ -661,8 +668,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       //  BytesRef br = new BytesRef(lastTerm.bytes());
       //  br.length = prefixLength;
       //  System.out.println("writeBlocks: seg=" + segment + " prefix=" +
-      // ToStringUtils.brToString(br) + " count="
-      // + count);
+      // ToStringUtils.brToString(br) + " count=" + count);
       // }
 
       // Root block better write all remaining pending entries:
@@ -945,9 +951,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             //  System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0, suffix);
             //  suffixBytes.length = suffix;
             //  System.out.println("      write sub-block suffix=" +
-            // ToStringUtils.brToString(suffixBytes) +
-            //  " subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" +
-            // block.isFloor);
+            // ToStringUtils.brToString(suffixBytes) + " subFP=" + block.fp + " subCode=" +
+            // (startFP-block.fp) + " floor=" + block.isFloor);
             // }
 
             assert floorLeadLabel == -1

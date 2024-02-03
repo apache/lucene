@@ -35,7 +35,14 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -607,10 +614,9 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       // if (DEBUG) {
       //   System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment +
       // " pending.size()=" + pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" +
-      // ToStringUtils.brToString(prefix) + " entCount=" + length + " startFP=" + startFP + (isFloor
-      // ? ("
-      // floorLeadByte=" + Integer.toHexString(floorLeadByte&0xff)) : "") + " isLastInFloor=" +
-      // isLastInFloor);
+      // ToStringUtils.brToString(prefix) + " entCount=" + length + " startFP=" + startFP +
+      // (isFloor ? (" floorLeadByte=" + Integer.toHexString(floorLeadByte&0xff)) : "") +
+      // " isLastInFloor=" + isLastInFloor);
       // }
 
       // 1st pass: pack term suffix bytes into byte[] blob

@@ -646,8 +646,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit +
         // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
         // " vs termLabel=" + (char) (term.byteAt(targetUpto)) + ")"   + " arc.output=" + arc.output
-        // +
-        // " output=" + output);
+        // + " output=" + output);
         // }
         if (cmp != 0) {
           break;
@@ -998,9 +997,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     assert !eof;
     // if (DEBUG) {
     //   System.out.println("\nBTTR.next seg=" + fr.parent.segment + " term=" +
-    // ToStringUtils.brToString(term) +
-    // " termExists?=" + termExists + " field=" + fr.fieldInfo.name + " termBlockOrd=" +
-    // currentFrame.state.termBlockOrd + " validIndexPrefix=" + validIndexPrefix);
+    // ToStringUtils.brToString(term) + " termExists?=" + termExists + " field=" +
+    // fr.fieldInfo.name + " termBlockOrd=" + currentFrame.state.termBlockOrd +
+    // " validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
     // }
 
