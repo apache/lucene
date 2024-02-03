@@ -32,11 +32,32 @@ public final class ToStringUtils {
 
   private static final char[] HEX = "0123456789abcdef".toCharArray();
 
+  /**
+   * Unlike {@link Long#toHexString(long)} returns a String with a "0x" prefix and all the leading
+   * zeros.
+   */
   public static String longHex(long x) {
     char[] asHex = new char[16];
     for (int i = 16; --i >= 0; x >>>= 4) {
       asHex[i] = HEX[(int) x & 0x0F];
     }
     return "0x" + new String(asHex);
+  }
+
+  public static String brToString(BytesRef b) {
+    if (b == null) {
+      return "null";
+    }
+    try {
+      return b.utf8ToString() + " " + b;
+    } catch (Throwable t) {
+      // If BytesRef isn't actually UTF8, or it's e.g. a prefix of UTF8
+      // that ends mid-unicode-char, we fall back to hex:
+      return b.toString();
+    }
+  }
+
+  public static String brToString(BytesRefBuilder b) {
+    return brToString(b.get());
   }
 }
