@@ -60,4 +60,8 @@ public final class ToStringUtils {
   public static String brToString(BytesRefBuilder b) {
     return brToString(b.get());
   }
+
+  public static String brToString(byte[] b) {
+    return brToString(new BytesRef(b));
+  }
 }

@@ -39,13 +39,7 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.compress.LZ4;
 import org.apache.lucene.util.compress.LowercaseAsciiCompression;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
@@ -349,7 +343,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
         }
 
         // if (DEBUG) System.out.println("write field=" + fieldInfo.name + " term=" +
-        // brToString(term));
+        // ToStringUtils.brToString(term));
         termsWriter.write(term, termsEnum, norms);
       }
 
@@ -388,31 +382,8 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return "TERM: " + brToString(termBytes);
+      return "TERM: " + ToStringUtils.brToString(termBytes);
     }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    if (b == null) {
-      return "(null)";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(byte[] b) {
-    return brToString(new BytesRef(b));
   }
 
   private static final class PendingBlock extends PendingEntry {
@@ -442,7 +413,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return "BLOCK: prefix=" + brToString(prefix);
+      return "BLOCK: prefix=" + ToStringUtils.brToString(prefix);
     }
 
     public void compileIndex(
@@ -600,7 +571,8 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
       // if (DEBUG2) {
       //  BytesRef br = new BytesRef(lastTerm.bytes());
       //  br.length = prefixLength;
-      //  System.out.println("writeBlocks: seg=" + segment + " prefix=" + brToString(br) + " count="
+      //  System.out.println("writeBlocks: seg=" + segment + " prefix=" +
+      // ToStringUtils.brToString(br) + " count="
       // + count);
       // }
 
@@ -754,9 +726,10 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
       prefix.length = prefixLength;
 
       // if (DEBUG2) System.out.println("    writeBlock field=" + fieldInfo.name + " prefix=" +
-      // brToString(prefix) + " fp=" + startFP + " isFloor=" + isFloor + " isLastInFloor=" + (end ==
-      // pending.size()) + " floorLeadLabel=" + floorLeadLabel + " start=" + start + " end=" + end +
-      // " hasTerms=" + hasTerms + " hasSubBlocks=" + hasSubBlocks);
+      // ToStringUtils.brToString(prefix) + " fp=" + startFP + " isFloor=" + isFloor +
+      // " isLastInFloor=" + (end == pending.size()) + " floorLeadLabel=" + floorLeadLabel +
+      // " start=" + start + " end=" + end + " hasTerms=" + hasTerms + " hasSubBlocks=" +
+      // hasSubBlocks);
 
       // Write block header:
       int numEntries = end - start;
@@ -769,7 +742,9 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
 
       /*
       if (DEBUG) {
-        System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment + " pending.size()=" + pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" + brToString(prefix) + " entCount=" + (end-start+1) + " startFP=" + startFP + (isFloor ? (" floorLeadLabel=" + Integer.toHexString(floorLeadLabel)) : ""));
+        System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment + " pending.size()=" +
+        pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" + ToStringUtils.brToString(prefix) +
+        " entCount=" + (end-start+1) + " startFP=" + startFP + (isFloor ? (" floorLeadLabel=" + Integer.toHexString(floorLeadLabel)) : ""));
       }
       */
 
@@ -804,7 +779,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
           //  BytesRef suffixBytes = new BytesRef(suffix);
           //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffix);
           //  suffixBytes.length = suffix;
-          //  System.out.println("    write term suffix=" + brToString(suffixBytes));
+          //  System.out.println("    write term suffix=" + ToStringUtils.brToString(suffixBytes));
           // }
 
           // For leaf block we write suffix straight
@@ -837,7 +812,8 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
             //  BytesRef suffixBytes = new BytesRef(suffix);
             //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffix);
             //  suffixBytes.length = suffix;
-            //  System.out.println("      write term suffix=" + brToString(suffixBytes));
+            //  System.out.println("      write term suffix=" +
+            // ToStringUtils.brToString(suffixBytes));
             // }
 
             // For non-leaf block we borrow 1 bit to record
@@ -879,8 +855,9 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
             //  BytesRef suffixBytes = new BytesRef(suffix);
             //  System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0, suffix);
             //  suffixBytes.length = suffix;
-            //  System.out.println("      write sub-block suffix=" + brToString(suffixBytes) + "
-            // subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" + block.isFloor);
+            //  System.out.println("      write sub-block suffix=" +
+            // ToStringUtils.brToString(suffixBytes) +
+            // " subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" + block.isFloor);
             // }
 
             assert floorLeadLabel == -1
@@ -998,7 +975,8 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
       if (DEBUG) {
         int[] tmp = new int[lastTerm.length];
         System.arraycopy(prefixStarts, 0, tmp, 0, tmp.length);
-        System.out.println("BTTW: write term=" + brToString(text) + " prefixStarts=" + Arrays.toString(tmp) + " pending.size()=" + pending.size());
+        System.out.println("BTTW: write term=" + ToStringUtils.brToString(text) + " prefixStarts=" + Arrays.toString(tmp) +
+        " pending.size()=" + pending.size());
       }
       */
 
@@ -1051,8 +1029,8 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
         // we are closing:
         int prefixTopSize = pending.size() - prefixStarts[i];
         if (prefixTopSize >= minItemsInBlock) {
-          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize + "
-          // minItemsInBlock=" + minItemsInBlock);
+          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize +
+          // " minItemsInBlock=" + minItemsInBlock);
           writeBlocks(i + 1, prefixTopSize);
           prefixStarts[i] -= prefixTopSize - 1;
         }
