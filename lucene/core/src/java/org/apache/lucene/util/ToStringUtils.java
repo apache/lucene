@@ -44,6 +44,7 @@ public final class ToStringUtils {
     return "0x" + new String(asHex);
   }
 
+  @SuppressWarnings("unused")
   public static String brToString(BytesRef b) {
     if (b == null) {
       return "null";
