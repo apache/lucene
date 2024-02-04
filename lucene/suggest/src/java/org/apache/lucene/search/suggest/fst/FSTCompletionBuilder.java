@@ -176,7 +176,7 @@ public class FSTCompletionBuilder {
           "Bucket outside of the allowed range [0, " + buckets + "): " + bucket);
     }
 
-    scratch.grow(utf8.length + 10);
+    scratch.growNoCopy(utf8.length + 10);
     scratch.clear();
     scratch.append((byte) bucket);
     scratch.append(utf8);

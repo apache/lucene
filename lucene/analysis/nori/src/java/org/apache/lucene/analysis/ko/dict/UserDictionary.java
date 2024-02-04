@@ -121,7 +121,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       }
 
       // add mapping to FST
-      scratch.grow(token.length());
+      scratch.growNoCopy(token.length());
       scratch.setLength(token.length());
       for (int i = 0; i < token.length(); i++) {
         scratch.setIntAt(i, token.charAt(i));
