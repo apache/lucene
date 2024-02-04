@@ -51,8 +51,8 @@ public final class ToStringUtils {
     }
     try {
       return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's e.g. a prefix of UTF8
+    } catch (AssertionError | RuntimeException t) {
+      // If BytesRef isn't actually UTF-8, or it's e.g. a prefix of UTF-8
       // that ends mid-unicode-char, we fall back to hex:
       return b.toString();
     }
