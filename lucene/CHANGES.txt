@@ -268,6 +268,8 @@ Other
 
 * GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
 
+* GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
+
 ======================== Lucene 9.9.2 =======================
 
 Bug Fixes
