@@ -594,7 +594,7 @@ public class OfflineSorter {
       }
 
       short length = in.readShort();
-      ref.grow(length);
+      ref.growNoCopy(length);
       ref.setLength(length);
       in.readBytes(ref.bytes(), 0, length);
       return ref.get();

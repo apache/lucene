@@ -121,7 +121,7 @@ class TokenInfoDictionaryBuilder {
         // new word to add to fst
         ord++;
         lastValue = token;
-        scratch.grow(token.length());
+        scratch.growNoCopy(token.length());
         scratch.setLength(token.length());
         for (int i = 0; i < token.length(); i++) {
           scratch.setIntAt(i, (int) token.charAt(i));

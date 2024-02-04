@@ -155,7 +155,7 @@ public class FSTTester<T> {
   }
 
   static IntsRef toIntsRef(BytesRef br, IntsRefBuilder ir) {
-    ir.grow(br.length);
+    ir.growNoCopy(br.length);
     ir.clear();
     for (int i = 0; i < br.length; i++) {
       ir.append(br.bytes[br.offset + i] & 0xFF);
