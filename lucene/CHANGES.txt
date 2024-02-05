@@ -272,6 +272,8 @@ Other
 
 * GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
 
+* GITHUB#13001: Forbidden Thread#sleep API. (Shubham Chaudhary)
+
 ======================== Lucene 9.9.2 =======================
 
 Bug Fixes
