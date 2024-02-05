@@ -738,7 +738,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         }
       }
       docCount = visitedDocs.cardinality();
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       /*
       PrintStream ps = new PrintStream("out.dot");
       fst.toDot(ps);

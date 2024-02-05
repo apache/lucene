@@ -130,7 +130,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       lastToken = token;
       ord++;
     }
-    this.fst = new TokenInfoFST(fstCompiler.compile());
+    this.fst =
+        new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
     short[] rightIds = new short[_rightIds.size()];
     for (int i = 0; i < _rightIds.size(); i++) {

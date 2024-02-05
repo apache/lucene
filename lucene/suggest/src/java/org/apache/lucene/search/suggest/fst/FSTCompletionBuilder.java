@@ -220,6 +220,6 @@ public class FSTCompletionBuilder {
       }
     }
 
-    return count == 0 ? null : fstCompiler.compile();
+    return count == 0 ? null : FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 }
