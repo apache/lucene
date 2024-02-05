@@ -22,12 +22,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.store.RateLimiter.SimpleRateLimiter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Simple testcase for RateLimiter.SimpleRateLimiter */
 public final class TestRateLimiter extends LuceneTestCase {
 
   // LUCENE-6075
+  @SuppressForbidden(reason = "Thread sleep")
   public void testOverflowInt() throws Exception {
     Thread t =
         new Thread() {

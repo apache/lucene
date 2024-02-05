@@ -34,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 /*
@@ -222,6 +223,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
    */
   // TODO: this wall-clock-dependent test doesn't seem to actually test any deletionpolicy logic?
   @Nightly
+  @SuppressForbidden(reason = "Thread sleep")
   public void testExpirationTimeDeletionPolicy() throws IOException, InterruptedException {
 
     final double SECONDS = 2.0;

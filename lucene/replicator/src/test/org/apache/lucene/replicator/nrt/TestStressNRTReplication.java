@@ -188,6 +188,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
   final Set<Integer> crashingNodes = Collections.synchronizedSet(new HashSet<>());
 
   @Nightly
+  @SuppressForbidden(reason = "Thread sleep")
   public void test() throws Exception {
 
     Node.globalStartNS = System.nanoTime();
@@ -852,6 +853,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
   }
 
   // Periodically wakes up and starts up any down nodes:
+  @SuppressForbidden(reason = "Thread sleep")
   private class RestartThread extends Thread {
     @Override
     public void run() {
@@ -978,6 +980,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
   }
 
   /** Randomly picks a node and runs a search against it */
+  @SuppressForbidden(reason = "Thread sleep")
   private class SearchThread extends Thread {
 
     @Override
@@ -1177,6 +1180,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private class IndexThread extends Thread {
 
     @Override

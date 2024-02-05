@@ -42,6 +42,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
@@ -283,6 +284,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-4544
+  @SuppressForbidden(reason = "Thread sleep")
   public void testMaxMergeCount() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc =
@@ -301,7 +303,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     ConcurrentMergeScheduler cms =
         new ConcurrentMergeScheduler() {
-
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
               throws IOException {
@@ -551,6 +553,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-6094
+  @SuppressForbidden(reason = "Thread sleep")
   public void testHangDuringRollback() throws Throwable {
     Directory dir = newMockDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
