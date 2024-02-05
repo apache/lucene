@@ -61,6 +61,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.binaryHammingDistance(a, b));
   }
 
   public void testBinaryVectorsBoundaries() {
@@ -72,24 +73,28 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.binaryHammingDistance(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.binaryHammingDistance(a, b));
 
     Arrays.fill(a, Byte.MIN_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.binaryHammingDistance(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MIN_VALUE);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.binaryHammingDistance(a, b));
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {

@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -69,13 +70,13 @@ import org.junit.Before;
  */
 public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTestCase {
 
-  private VectorEncoding vectorEncoding;
-  private VectorSimilarityFunction similarityFunction;
+  protected VectorEncoding vectorEncoding;
+  protected VectorSimilarityFunction similarityFunction;
 
   @Before
   public void init() {
     vectorEncoding = randomVectorEncoding();
-    similarityFunction = randomSimilarity();
+    similarityFunction = randomSimilarityForEncoding(vectorEncoding);
   }
 
   @Override
@@ -649,8 +650,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     VectorEncoding[] fieldVectorEncodings = new VectorEncoding[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
-      fieldSimilarityFunctions[i] = randomSimilarity();
       fieldVectorEncodings[i] = randomVectorEncoding();
+      fieldSimilarityFunctions[i] = randomSimilarityForEncoding(fieldVectorEncodings[i]);
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -714,9 +715,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  protected VectorSimilarityFunction randomSimilarity() {
-    return VectorSimilarityFunction.values()[
-        random().nextInt(VectorSimilarityFunction.values().length)];
+  /**
+   * Pick a random similarity function for the provided encoding. This is to make sure that we test
+   * only supported similarities and avoid raising exceptions (e.g. {@link
+   * VectorSimilarityFunction#BINARY_HAMMING_DISTANCE} and {@link VectorEncoding#FLOAT32})
+   */
+  protected VectorSimilarityFunction randomSimilarityForEncoding(VectorEncoding encoding) {
+    List<VectorSimilarityFunction> supportedVectorSimilarities =
+        Arrays.stream(VectorSimilarityFunction.values())
+            .filter(x -> x.supportedVectorEncodings().contains(encoding))
+            .toList();
+    return supportedVectorSimilarities.get(random().nextInt(supportedVectorSimilarities.size()));
   }
 
   /**
@@ -901,9 +910,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, similarityFunction);
+          if (vectorEncoding == VectorEncoding.BYTE) {
+            add(iw, fieldName, i, floatToByte(scratch), similarityFunction);
+          } else {
+            add(iw, fieldName, i, scratch, similarityFunction);
+          }
         } else {
-          add(iw, fieldName, i, values[i], similarityFunction);
+          if (vectorEncoding == VectorEncoding.BYTE) {
+            add(iw, fieldName, i, floatToByte(values[i]), similarityFunction);
+          } else {
+            add(iw, fieldName, i, values[i], similarityFunction);
+          }
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -919,35 +936,76 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           iw.commit();
         }
       }
-      int numDeletes = 0;
       try (IndexReader reader = DirectoryReader.open(iw)) {
-        int valueCount = 0, totalSize = 0;
-        for (LeafReaderContext ctx : reader.leaves()) {
-          FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
-          if (vectorValues == null) {
-            continue;
-          }
-          totalSize += vectorValues.size();
-          StoredFields storedFields = ctx.reader().storedFields();
-          int docId;
-          while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
-            float[] v = vectorValues.vectorValue();
-            assertEquals(dimension, v.length);
-            String idString = storedFields.document(docId).getField("id").stringValue();
-            int id = Integer.parseInt(idString);
-            if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
-              assertArrayEquals(idString, values[id], v, 0);
-              ++valueCount;
-            } else {
-              ++numDeletes;
-              assertNull(values[id]);
-            }
-          }
+        if (vectorEncoding == VectorEncoding.BYTE) {
+          verifyBytes(reader, fieldName, dimension, values, numValues);
+        } else {
+          verifyFloats(reader, fieldName, dimension, values, numValues);
         }
-        assertEquals(numValues, valueCount);
-        assertEquals(numValues, totalSize - numDeletes);
       }
     }
+  }
+
+  private void verifyBytes(
+      IndexReader reader, String fieldName, int dimension, float[][] values, int numValues)
+      throws IOException {
+    int valueCount = 0, totalSize = 0;
+    int numDeletes = 0;
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ByteVectorValues vectorValues = ctx.reader().getByteVectorValues(fieldName);
+      if (vectorValues == null) {
+        continue;
+      }
+      totalSize += vectorValues.size();
+      StoredFields storedFields = ctx.reader().storedFields();
+      int docId;
+      while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
+        byte[] v = vectorValues.vectorValue();
+        assertEquals(dimension, v.length);
+        String idString = storedFields.document(docId).getField("id").stringValue();
+        int id = Integer.parseInt(idString);
+        if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
+          assertArrayEquals(idString, floatToByte(values[id]), v);
+          ++valueCount;
+        } else {
+          ++numDeletes;
+          assertNull(values[id]);
+        }
+      }
+    }
+    assertEquals(numValues, valueCount);
+    assertEquals(numValues, totalSize - numDeletes);
+  }
+
+  private void verifyFloats(
+      IndexReader reader, String fieldName, int dimension, float[][] values, int numValues)
+      throws IOException {
+    int valueCount = 0, totalSize = 0;
+    int numDeletes = 0;
+    for (LeafReaderContext ctx : reader.leaves()) {
+      FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+      if (vectorValues == null) {
+        continue;
+      }
+      totalSize += vectorValues.size();
+      StoredFields storedFields = ctx.reader().storedFields();
+      int docId;
+      while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
+        float[] v = vectorValues.vectorValue();
+        assertEquals(dimension, v.length);
+        String idString = storedFields.document(docId).getField("id").stringValue();
+        int id = Integer.parseInt(idString);
+        if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
+          assertArrayEquals(idString, values[id], v, 0);
+          ++valueCount;
+        } else {
+          ++numDeletes;
+          assertNull(values[id]);
+        }
+      }
+    }
+    assertEquals(numValues, valueCount);
+    assertEquals(numValues, totalSize - numDeletes);
   }
 
   /**
@@ -1262,6 +1320,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return b;
   }
 
+  private byte[] floatToByte(float[] v) {
+    if (v == null) return null;
+    int dim = v.length;
+    assert dim > 0;
+    byte[] vec = new byte[dim];
+    for (int i = 0; i < dim; i++) {
+      vec[i] = (byte) (v[i] * 127);
+    }
+    return vec;
+  }
+
   public void testCheckIndexIncludesVectors() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -1300,7 +1369,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
     assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
     assertEquals(3, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.ordinal());
-    assertEquals(4, VectorSimilarityFunction.values().length);
+    assertEquals(4, VectorSimilarityFunction.BINARY_HAMMING_DISTANCE.ordinal());
+    assertEquals(5, VectorSimilarityFunction.values().length);
   }
 
   public void testVectorEncodingOrdinals() {

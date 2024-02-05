@@ -16,13 +16,23 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Random;
+import java.util.stream.Collectors;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestVectorUtil extends LuceneTestCase {
 
+  private static final Collection<VectorSimilarityFunction> VECTOR_SIMILARITY_FUNCTIONS_FLOAT32 =
+      Collections.unmodifiableCollection(
+          Arrays.stream(VectorSimilarityFunction.values())
+              .filter(x -> x.supportedVectorEncodings().contains(VectorEncoding.FLOAT32))
+              .collect(Collectors.toList()));
   public static final double DELTA = 1e-4;
 
   public void testBasicDotProduct() {
@@ -123,7 +133,7 @@ public class TestVectorUtil extends LuceneTestCase {
       v1[i] = 0.888888f;
       v2[i] = -0.777777f;
     }
-    for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
+    for (VectorSimilarityFunction vectorSimilarityFunction : VECTOR_SIMILARITY_FUNCTIONS_FLOAT32) {
       float v = vectorSimilarityFunction.compare(v1, v2);
       assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
     }
@@ -275,5 +285,12 @@ public class TestVectorUtil extends LuceneTestCase {
     u[0] = v[1];
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  public void testBasicHammingBytes() {
+    assertEquals(
+        0.08333,
+        VectorUtil.binaryHammingDistance(new byte[] {1, 2, 8}, new byte[] {-10, 0, 5}),
+        DELTA);
   }
 }

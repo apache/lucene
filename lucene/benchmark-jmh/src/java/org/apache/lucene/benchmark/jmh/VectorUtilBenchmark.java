@@ -95,6 +95,17 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public float binaryHammingDistanceScalar() {
+    return VectorUtil.binaryHammingDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float binaryHammingDistanceVector() {
+    return VectorUtil.binaryHammingDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
   public float floatCosineScalar() {
     return VectorUtil.cosine(floatsA, floatsB);
   }

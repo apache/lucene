@@ -40,6 +40,8 @@ public interface ScalarQuantizedVectorSimilarity {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
       case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
+      case BINARY_HAMMING_DISTANCE -> throw new IllegalArgumentException(
+          "Cannot use Hamming distance with scalar quantization");
     };
   }
 

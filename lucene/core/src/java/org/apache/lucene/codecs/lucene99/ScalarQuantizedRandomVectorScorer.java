@@ -41,6 +41,8 @@ final class ScalarQuantizedRandomVectorScorer
             VectorUtil.l2normalize(queryCopy);
             yield queryCopy;
           }
+          case BINARY_HAMMING_DISTANCE -> throw new IllegalArgumentException(
+              "Query quantization is not supported for Hamming distance");
         };
     return scalarQuantizer.quantize(processedQuery, quantizedQuery, similarityFunction);
   }

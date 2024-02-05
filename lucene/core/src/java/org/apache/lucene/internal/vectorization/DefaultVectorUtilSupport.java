@@ -178,4 +178,13 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return squareSum;
   }
+
+  @Override
+  public int binaryHammingDistance(byte[] a, byte[] b) {
+    int distance = 0;
+    for (int i = 0; i < a.length; i++) {
+      distance += HAMMING_DISTANCE_LOOKUP_TABLE[(a[i] ^ b[i]) & 0xFF];
+    }
+    return distance;
+  }
 }

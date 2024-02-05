@@ -214,4 +214,11 @@ public final class VectorUtil {
     }
     return v;
   }
+
+  public static float binaryHammingDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return 1f / (1 + IMPL.binaryHammingDistance(a, b));
+  }
 }

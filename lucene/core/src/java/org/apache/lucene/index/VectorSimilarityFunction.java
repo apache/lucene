@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.util.VectorUtil.binaryHammingDistance;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
+
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -94,6 +98,29 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
+  },
+  /**
+   * Binary Hamming distance; Computes how many bits are different in two bytes.
+   *
+   * <p>Only supported for bytes. To convert the distance to a similarity score we normalize using 1
+   * / (1 + hammingDistance)
+   */
+  BINARY_HAMMING_DISTANCE {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      throw new UnsupportedOperationException(
+          BINARY_HAMMING_DISTANCE.name() + " is only supported for byte vectors");
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return binaryHammingDistance(v1, v2);
+    }
+
+    @Override
+    public Set<VectorEncoding> supportedVectorEncodings() {
+      return EnumSet.of(VectorEncoding.BYTE);
+    }
   };
 
   /**
@@ -116,4 +143,14 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /**
+   * Defines which encodings are supported by the similarity function - used in tests to control
+   * randomization
+   *
+   * @return a list of all supported VectorEncodings for the given similarity
+   */
+  public Set<VectorEncoding> supportedVectorEncodings() {
+    return EnumSet.of(VectorEncoding.BYTE, VectorEncoding.FLOAT32);
+  }
 }

@@ -80,6 +80,11 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             "knnByteField4",
             new byte[] {-127, 127, 127},
             VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT));
+    document.add(
+        new KnnByteVectorField(
+            "knnByteField6",
+            new byte[] {-127, 127, 127},
+            VectorSimilarityFunction.BINARY_HAMMING_DISTANCE));
     iw.addDocument(document);
 
     Document document2 = new Document();
@@ -107,6 +112,11 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             "knnByteField4",
             new byte[] {14, 29, 31},
             VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT));
+    document2.add(
+        new KnnByteVectorField(
+            "knnByteField6",
+            new byte[] {1, -1, 13},
+            VectorSimilarityFunction.BINARY_HAMMING_DISTANCE));
     iw.addDocument(document2);
 
     Document document3 = new Document();
@@ -347,6 +357,26 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             new byte[] {-4, -2, -128}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
+  }
+
+  public void testHammingDistanceValuesSource() throws Exception {
+    byte[] byteQueryVector = new byte[] {1, 2, 9};
+    DoubleValues dv =
+        DoubleValuesSource.similarityToQueryVector(
+            searcher.reader.leaves().get(0), byteQueryVector, "knnByteField6");
+    assertTrue(dv.advanceExact(0));
+    assertEquals(
+        VectorSimilarityFunction.BINARY_HAMMING_DISTANCE.compare(
+            new byte[] {-127, 127, 127}, byteQueryVector),
+        dv.doubleValue(),
+        0.0001);
+    assertTrue(dv.advanceExact(1));
+    assertEquals(
+        VectorSimilarityFunction.BINARY_HAMMING_DISTANCE.compare(
+            new byte[] {1, -1, 13}, byteQueryVector),
+        dv.doubleValue(),
+        0.0001);
+    assertFalse(dv.advanceExact(2));
   }
 
   public void testFailuresWithSimilarityValuesSource() throws Exception {

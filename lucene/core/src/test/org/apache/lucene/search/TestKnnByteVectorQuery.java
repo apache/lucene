@@ -59,6 +59,31 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
+  public void testScoreHammingDistance() throws IOException {
+    // this seems a bit weird as Hamming distance is only supported for byte vectors,
+    // but the following floats will be converted at a later step through `floatToBytes`
+    try (Directory indexStore =
+            getIndexStore(
+                "field",
+                VectorSimilarityFunction.BINARY_HAMMING_DISTANCE,
+                new float[] {0, 1, 8},
+                new float[] {-1, -127, 9},
+                new float[] {1, 2, 8});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, 1, 8}, 10);
+      assertMatches(searcher, kvq, 3);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id0", scoreDocs[0]);
+      assertIdMatches(reader, "id2", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
+
+      assertEquals(1.0, scoreDocs[0].score, 1e-7);
+      assertEquals(1 / 4f, scoreDocs[1].score, 1e-7);
+      assertEquals(1 / 11f, scoreDocs[2].score, 1e-7);
+    }
+  }
+
   private static byte[] floatToBytes(float[] query) {
     byte[] bytes = new byte[query.length];
     for (int i = 0; i < query.length; i++) {

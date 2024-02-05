@@ -98,6 +98,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract AbstractMockVectorValues<T> vectorValues(float[][] values);
 
+  List<VectorSimilarityFunction> supportedVectorSimilarityFunctions() {
+    return Arrays.stream(VectorSimilarityFunction.values())
+        .filter(x -> x.supportedVectorEncodings().contains(getVectorEncoding()))
+        .toList();
+  }
+
   abstract AbstractMockVectorValues<T> vectorValues(LeafReader reader, String fieldName)
       throws IOException;
 
@@ -288,7 +294,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int M = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 5;
     VectorSimilarityFunction similarityFunction =
-        RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+        RandomizedTest.randomFrom(supportedVectorSimilarityFunctions());
     long seed = random().nextLong();
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
@@ -748,7 +754,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int dim = randomIntBetween(100, 1024);
     int M = randomIntBetween(4, 96);
 
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    similarityFunction = RandomizedTest.randomFrom(supportedVectorSimilarityFunctions());
     RandomAccessVectorValues<T> vectors = vectorValues(size, dim);
 
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
@@ -1200,7 +1206,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  private static float[] unitVector2d(double piRadians) {
+  protected static float[] unitVector2d(double piRadians) {
     return unitVector2d(piRadians, new float[2]);
   }
 
