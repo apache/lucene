@@ -68,12 +68,14 @@ public class TestKnnByteGraph extends KnnGraphTestCase<byte[]> {
 
   @Override
   protected byte[] vector(float[] values) {
+    boolean normalized = false;
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      normalized = true;
       VectorUtil.l2normalize(values);
     }
     byte[] vector = new byte[values.length];
     for (int i = 0; i < values.length; i++) {
-      vector[i] = (byte) (values[i] * 127);
+      vector[i] = normalized ? (byte) (values[i] * 127) : (byte) (values[i]);
     }
     return vector;
   }
