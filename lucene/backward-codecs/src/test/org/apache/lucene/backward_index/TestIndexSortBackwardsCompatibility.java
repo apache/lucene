@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -154,7 +153,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
    * Converts date formats for europarl ("2023-02-23") and enwiki ("12-JAN-2010 12:32:45.000") into
    * {@link LocalDateTime}.
    */
-  static Function<String, LocalDateTime> DATE_STRING_TO_LOCALDATETIME =
+  private static final Function<String, LocalDateTime> DATE_STRING_TO_LOCALDATETIME =
       new Function<>() {
         final DateTimeFormatter euroParl =
             new DateTimeFormatterBuilder()
@@ -173,7 +172,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
         @Override
         public LocalDateTime apply(String s) {
           if (s.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) {
-            return euroParl.parse(s, LocalDate::from).atTime(LocalTime.MIDNIGHT);
+            return euroParl.parse(s, LocalDate::from).atStartOfDay();
           } else {
             return enwiki.parse(s, LocalDateTime::from);
           }
