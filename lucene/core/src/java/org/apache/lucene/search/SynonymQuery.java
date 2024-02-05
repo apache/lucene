@@ -119,6 +119,10 @@ public final class SynonymQuery extends Query {
     return Arrays.stream(terms).map(t -> new Term(field, t.term)).toList();
   }
 
+  public String getField() {
+    return field;
+  }
+
   @Override
   public String toString(String field) {
     StringBuilder builder = new StringBuilder("Synonym(");
