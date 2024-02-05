@@ -36,15 +36,20 @@ public final class BitUtil {
    * during testing we randomize it. If you need to communicate with native APIs (e.g., Java's
    * Panama API), use {@link ByteOrder#nativeOrder()}.
    */
-  public static final ByteOrder NATIVE_ORDER;
+  public static final ByteOrder NATIVE_BYTE_ORDER = getNativeByteOrder();
 
-  static {
-    var prop = System.getProperty("tests.seed");
-    if (prop != null) {
-      NATIVE_ORDER = (prop.hashCode() % 2 == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
-    } else {
-      NATIVE_ORDER = ByteOrder.nativeOrder();
+  private static ByteOrder getNativeByteOrder() {
+    try {
+      var prop = System.getProperty("tests.seed");
+      if (prop != null) {
+        return (prop.hashCode() % 2 == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // fall-through
     }
+    return ByteOrder.nativeOrder();
   }
 
   /**
@@ -93,7 +98,7 @@ public final class BitUtil {
    * ByteOrder#nativeOrder()}.
    */
   public static final VarHandle VH_NATIVE_SHORT =
-      MethodHandles.byteArrayViewVarHandle(short[].class, NATIVE_ORDER);
+      MethodHandles.byteArrayViewVarHandle(short[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write native endian {@code int} from a byte array. Shape: {@code
@@ -104,7 +109,7 @@ public final class BitUtil {
    * ByteOrder#nativeOrder()}.
    */
   public static final VarHandle VH_NATIVE_INT =
-      MethodHandles.byteArrayViewVarHandle(int[].class, NATIVE_ORDER);
+      MethodHandles.byteArrayViewVarHandle(int[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write native endian {@code long} from a byte array. Shape: {@code
@@ -115,7 +120,7 @@ public final class BitUtil {
    * ByteOrder#nativeOrder()}.
    */
   public static final VarHandle VH_NATIVE_LONG =
-      MethodHandles.byteArrayViewVarHandle(long[].class, NATIVE_ORDER);
+      MethodHandles.byteArrayViewVarHandle(long[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write native endian {@code float} from a byte array. Shape: {@code
@@ -126,7 +131,7 @@ public final class BitUtil {
    * ByteOrder#nativeOrder()}.
    */
   public static final VarHandle VH_NATIVE_FLOAT =
-      MethodHandles.byteArrayViewVarHandle(float[].class, NATIVE_ORDER);
+      MethodHandles.byteArrayViewVarHandle(float[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write native endian {@code double} from a byte array. Shape: {@code
@@ -137,7 +142,7 @@ public final class BitUtil {
    * ByteOrder#nativeOrder()}.
    */
   public static final VarHandle VH_NATIVE_DOUBLE =
-      MethodHandles.byteArrayViewVarHandle(double[].class, NATIVE_ORDER);
+      MethodHandles.byteArrayViewVarHandle(double[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write big endian {@code short} from a byte array. Shape: {@code
