@@ -242,11 +242,9 @@ class SimplePrimaryNode extends PrimaryNode {
           message(
               String.format(
                   Locale.ROOT,
-                  "top: warning: still warming merge "
-                      + info
-                      + " to "
-                      + preCopy.connections.size()
-                      + " replicas for %.1f sec...",
+                  "top: warning: still warming merge %s to %d replicas for %.1f sec...",
+                  info,
+                  preCopy.connections.size(),
                   (ns - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
           lastWarnNS = ns;
         }

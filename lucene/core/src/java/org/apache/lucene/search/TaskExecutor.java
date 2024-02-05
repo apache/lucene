@@ -53,7 +53,12 @@ public final class TaskExecutor {
 
   private final Executor executor;
 
-  TaskExecutor(Executor executor) {
+  /**
+   * Creates a TaskExecutor instance
+   *
+   * @param executor the executor to be used for running tasks concurrently
+   */
+  public TaskExecutor(Executor executor) {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 
@@ -102,7 +107,6 @@ public final class TaskExecutor {
     }
 
     RunnableFuture<T> createTask(Callable<T> callable) {
-      // -1: cancelled; 0: not yet started; 1: started
       AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
       return new FutureTask<>(
           () -> {

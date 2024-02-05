@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,7 +67,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       entries.add(new BytesRef(b));
     }
-    long size = buildFST(entries).ramBytesUsed();
+    long size = buildFST(entries).numBytes();
     // Size is 1648 when we use only list-encoding. We were previously failing to ever de-dup
     // direct addressing, which led this case to blow up.
     // This test will fail if there is more than 1% size increase with direct addressing.
@@ -137,7 +139,9 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 directAddressingMemoryIncreasePercent));
     System.out.println("num nodes = " + fstCompiler.nodeCount);
     long fixedLengthArcNodeCount =
-        fstCompiler.directAddressingNodeCount + fstCompiler.binarySearchNodeCount;
+        fstCompiler.directAddressingNodeCount
+            + fstCompiler.binarySearchNodeCount
+            + fstCompiler.continuousNodeCount;
     System.out.println(
         "num fixed-length-arc nodes = "
             + fixedLengthArcNodeCount
@@ -161,9 +165,17 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
                 ((double) (fstCompiler.directAddressingNodeCount)
                     / fixedLengthArcNodeCount
                     * 100)));
+    System.out.println(
+        "num continuous-arcs nodes = "
+            + (fstCompiler.continuousNodeCount)
+            + String.format(
+                Locale.ENGLISH,
+                " (%.2f %% of fixed-length-arc nodes)",
+                ((double) (fstCompiler.continuousNodeCount) / fixedLengthArcNodeCount * 100)));
   }
 
-  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor) {
+  private static FSTCompiler<Object> createFSTCompiler(float directAddressingMaxOversizingFactor)
+      throws IOException {
     return new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, NoOutputs.getSingleton())
         .directAddressingMaxOversizingFactor(directAddressingMaxOversizingFactor)
         .build();
@@ -184,7 +196,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       last = entry;
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   public static void main(String... args) throws Exception {
@@ -209,20 +221,27 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
   private static void countFSTArcs(String fstFilePath) throws IOException {
     byte[] buf = Files.readAllBytes(Paths.get(fstFilePath));
     DataInput in = new ByteArrayDataInput(buf);
-    FST<BytesRef> fst = new FST<>(in, in, ByteSequenceOutputs.getSingleton());
+    FST<BytesRef> fst = new FST<>(readMetadata(in, ByteSequenceOutputs.getSingleton()), in);
     BytesRefFSTEnum<BytesRef> fstEnum = new BytesRefFSTEnum<>(fst);
-    int binarySearchArcCount = 0, directAddressingArcCount = 0, listArcCount = 0;
+    int binarySearchArcCount = 0,
+        directAddressingArcCount = 0,
+        listArcCount = 0,
+        continuousArcCount = 0;
     while (fstEnum.next() != null) {
       if (fstEnum.arcs[fstEnum.upto].bytesPerArc() == 0) {
         listArcCount++;
       } else if (fstEnum.arcs[fstEnum.upto].nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING) {
         directAddressingArcCount++;
+      } else if (fstEnum.arcs[fstEnum.upto].nodeFlags() == FST.ARCS_FOR_CONTINUOUS) {
+        continuousArcCount++;
       } else {
         binarySearchArcCount++;
       }
     }
     System.out.println(
-        "direct addressing arcs = "
+        "continuous arcs = "
+            + continuousArcCount
+            + ", direct addressing arcs = "
             + directAddressingArcCount
             + ", binary search arcs = "
             + binarySearchArcCount
@@ -269,7 +288,8 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
 
       System.out.println("Reading FST");
       long startTimeMs = System.nanoTime();
-      FST<CharsRef> originalFst = new FST<>(in, in, CharSequenceOutputs.getSingleton());
+      FST<CharsRef> originalFst =
+          new FST<>(readMetadata(in, CharSequenceOutputs.getSingleton()), in);
       long endTimeMs = System.nanoTime();
       System.out.println(
           "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");
@@ -313,7 +333,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
     while ((inputOutput = fstEnum.next()) != null) {
       fstCompiler.add(inputOutput.input, CharsRef.deepCopyOf(inputOutput.output));
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   private static int walk(FST<CharsRef> read) throws IOException {

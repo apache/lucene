@@ -97,7 +97,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     for (Iterator<String> it = map.keyIterator(); it.hasNext(); ) {
       assertTrue(it.hasNext()); // try again, should return same result!
       final String k = it.next();
-      assertTrue(k == key1 || k == key2 | k == key3);
+      assertTrue(k == key1 || k == key2 || k == key3);
       keysAssigned += (k == key1) ? 1 : ((k == key2) ? 2 : 4);
       c++;
     }
@@ -119,7 +119,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -219,8 +219,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
       }
     } finally {
       exec.shutdown();
-      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS))
-        ;
+      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS)) {}
     }
 
     // clear strong refs
@@ -232,7 +231,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -251,5 +250,11 @@ public class TestWeakIdentityMap extends LuceneTestCase {
           @SuppressWarnings("unused")
           InterruptedException ie) {
       }
+  }
+
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "requires to run finalization")
+  private static void runFinalization() {
+    System.runFinalization();
   }
 }

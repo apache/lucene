@@ -24,7 +24,6 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -40,16 +39,14 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
-public class TestUnifiedHighlighterRanking extends LuceneTestCase {
+public class TestUnifiedHighlighterRanking extends UnifiedHighlighterTestBase {
 
-  Analyzer indexAnalyzer;
-
-  // note: all offset sources, by default, use term freq, so it shouldn't matter which we choose.
-  final FieldType fieldType = UHTestHelper.randomFieldType(random());
+  public TestUnifiedHighlighterRanking() {
+    super(randomFieldType(random()));
+  }
 
   /**
    * indexes a bunch of gibberish, and then highlights top(n). asserts that top(n) highlights is a
@@ -66,9 +63,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     // maximum number of sentences in a document
     final int maxNumSentences = 20;
 
-    Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Document document = new Document();
     Field id = new StringField("id", "", Field.Store.NO);
     Field body = new Field("body", "", fieldType);
@@ -255,8 +250,6 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
   /** sets b=0 to disable passage length normalization */
   public void testCustomB() throws Exception {
-    Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     IndexWriterConfig iwc = newIndexWriterConfig(indexAnalyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -308,7 +301,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
   /** sets k1=0 for simple coordinate-level match (# of query terms present) */
   public void testCustomK1() throws Exception {
     Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
+    Analyzer indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     IndexWriterConfig iwc = newIndexWriterConfig(indexAnalyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);

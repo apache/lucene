@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.queries.mlt;
 
-import static org.hamcrest.core.Is.is;
-
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -165,21 +163,21 @@ public class TestMoreLikeThis extends LuceneTestCase {
 
     BooleanQuery query =
         (BooleanQuery) mlt.like("one_percent", new StringReader("tenth tenth all"));
-    Collection<BooleanClause> clauses = query.clauses();
+    List<BooleanClause> clauses = query.clauses();
 
     assertTrue(clauses.size() == 2);
-    Term term = ((TermQuery) ((List<BooleanClause>) clauses).get(0).getQuery()).getTerm();
+    Term term = ((TermQuery) clauses.get(0).getQuery()).getTerm();
     assertTrue(term.text().equals("all"));
-    term = ((TermQuery) ((List<BooleanClause>) clauses).get(1).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(1).getQuery()).getTerm();
     assertTrue(term.text().equals("tenth"));
 
     query = (BooleanQuery) mlt.like("one_percent", new StringReader("tenth all all"));
     clauses = query.clauses();
 
     assertTrue(clauses.size() == 2);
-    term = ((TermQuery) ((List<BooleanClause>) clauses).get(0).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(0).getQuery()).getTerm();
     assertTrue(term.text().equals("all"));
-    term = ((TermQuery) ((List<BooleanClause>) clauses).get(1).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(1).getQuery()).getTerm();
     assertTrue(term.text().equals("tenth"));
 
     // clean up
@@ -287,7 +285,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     assertEquals("Expected 1 clauses only!", 1, clauses.size());
     for (BooleanClause clause : clauses) {
       Term term = ((TermQuery) clause.getQuery()).getTerm();
-      assertThat(term, is(new Term(mltField1, "lucene")));
+      assertEquals(new Term(mltField1, "lucene"), term);
     }
     analyzer.close();
   }
@@ -416,7 +414,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
 
     // check best terms are topN of highest idf
     Collection<BooleanClause> clauses = query.clauses();
-    assertEquals("Expected" + topN + "clauses only!", topN, clauses.size());
+    assertEquals("Expected " + topN + " clauses only!", topN, clauses.size());
 
     Term[] expectedTerms = new Term[topN];
     int idx = 0;
@@ -517,7 +515,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
       BooleanQuery query = (BooleanQuery) mlt.like(inputDocId);
       Collection<BooleanClause> clauses = query.clauses();
 
-      Collection<BooleanClause> expectedClothesShopClauses = new ArrayList<BooleanClause>();
+      Collection<BooleanClause> expectedClothesShopClauses = new ArrayList<>();
       for (String itemForSale : clothesShopItemForSale) {
         BooleanClause booleanClause =
             new BooleanClause(
@@ -544,7 +542,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     }
   }
 
-  public void testCustomFrequecy() throws IOException {
+  public void testCustomFrequency() throws IOException {
     // define an analyzer with delimited term frequency, e.g. "foo|2 bar|3"
     Analyzer analyzer =
         new Analyzer() {
@@ -552,8 +550,8 @@ public class TestMoreLikeThis extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false, 100);
-            MockTokenFilter filt = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
-            return new TokenStreamComponents(tokenizer, addCustomTokenFilter(filt));
+            MockTokenFilter filter = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
+            return new TokenStreamComponents(tokenizer, addCustomTokenFilter(filter));
           }
 
           TokenStream addCustomTokenFilter(TokenStream input) {

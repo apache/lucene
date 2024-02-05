@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.uhighlight;
 
+import com.carrotsearch.randomizedtesting.annotations.Name;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.util.Collection;
@@ -53,23 +54,15 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.QueryBuilder;
 import org.junit.After;
 import org.junit.Before;
 
 // TODO rename to reflect position sensitivity
-public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
+public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestBase {
 
-  final FieldType fieldType;
-
-  Directory dir;
-  MockAnalyzer indexAnalyzer;
   RandomIndexWriter indexWriter;
   IndexSearcher searcher;
   UnifiedHighlighter highlighter;
@@ -81,26 +74,26 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
   @ParametersFactory
   public static Iterable<Object[]> parameters() {
-    return UHTestHelper.parametersFactoryList();
+    return parametersFactoryList();
   }
 
-  public TestUnifiedHighlighterStrictPhrases(FieldType fieldType) {
-    this.fieldType = fieldType;
+  public TestUnifiedHighlighterStrictPhrases(@Name("fieldType") FieldType fieldType) {
+    super(fieldType);
   }
 
   @Before
-  public void doBefore() throws IOException {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
     indexAnalyzer.setPositionIncrementGap(3); // more than default
-    dir = newDirectory();
-    indexWriter = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    indexWriter = newIndexOrderPreservingWriter();
   }
 
   @After
-  public void doAfter() throws IOException {
-    IOUtils.close(indexReader, indexWriter, dir);
+  @Override
+  public void tearDown() throws Exception {
+    IOUtils.close(indexReader, indexWriter);
+    super.tearDown();
   }
 
   private Document newDoc(String... bodyVals) {
@@ -502,7 +495,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     final boolean weightMatches =
         highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES);
-    if (fieldType == UHTestHelper.reanalysisType || weightMatches) {
+    if (fieldType == reanalysisType || weightMatches) {
       if (weightMatches) {
         assertArrayEquals(new String[] {"<b>alpha bravo</b> charlie -"}, snippets);
       } else {

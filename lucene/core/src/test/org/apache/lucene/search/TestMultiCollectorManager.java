@@ -25,7 +25,6 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -53,10 +52,8 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     for (int iter = 0; iter < 100; iter++) {
       int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
       SortedSet<Integer> expected = generateDocIds(docs, random());
-      List<Integer> expectedEven =
-          expected.stream().filter(evenPredicate).collect(Collectors.toList());
-      List<Integer> expectedOdd =
-          expected.stream().filter(oddPredicate).collect(Collectors.toList());
+      List<Integer> expectedEven = expected.stream().filter(evenPredicate).toList();
+      List<Integer> expectedOdd = expected.stream().filter(oddPredicate).toList();
 
       // Test only wrapping one of the collector managers:
       MultiCollectorManager mcm = new MultiCollectorManager(cm1);
@@ -291,7 +288,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
 
   private static CollectorManager<?, ?> collectorManager(
       ScoreMode scoreMode, Class<?> expectedScorer) {
-    return new CollectorManager<Collector, Object>() {
+    return new CollectorManager<>() {
 
       @Override
       public Collector newCollector() throws IOException {

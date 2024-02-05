@@ -523,6 +523,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             return null;
           }
         });
+
     assertTrue(matched.get());
   }
 
@@ -959,6 +960,143 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testTwoClauseTermDisjunctionCountOptimization() throws Exception {
+    int largerTermCount = RandomNumbers.randomIntBetween(random(), 11, 100);
+    int smallerTermCount = RandomNumbers.randomIntBetween(random(), 1, (largerTermCount - 1) / 10);
+
+    List<String[]> docContent = new ArrayList<>(largerTermCount + smallerTermCount);
+
+    for (int i = 0; i < largerTermCount; i++) {
+      docContent.add(new String[] {"large"});
+    }
+
+    for (int i = 0; i < smallerTermCount; i++) {
+      docContent.add(new String[] {"small", "also small"});
+    }
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+
+        for (String[] values : docContent) {
+          Document doc = new Document();
+          for (String value : values) {
+            doc.add(new StringField("foo", value, Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final int[] countInvocations = new int[] {0};
+        IndexSearcher countingIndexSearcher =
+            new IndexSearcher(reader) {
+              @Override
+              public int count(Query query) throws IOException {
+                countInvocations[0]++;
+                return super.count(query);
+              }
+            };
+
+        {
+          // Test no matches in either term
+          countInvocations[0] = 0;
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "no match")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "also no match")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          assertEquals(0, countingIndexSearcher.count(query));
+          assertEquals(3, countInvocations[0]);
+        }
+        {
+          // Test match no match in first term
+          countInvocations[0] = 0;
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "no match")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          assertEquals(smallerTermCount, countingIndexSearcher.count(query));
+          assertEquals(3, countInvocations[0]);
+        }
+        {
+          // Test match no match in second term
+          countInvocations[0] = 0;
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "no match")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          assertEquals(smallerTermCount, countingIndexSearcher.count(query));
+          assertEquals(3, countInvocations[0]);
+        }
+        {
+          // Test match in both terms that hits optimization threshold with small term first
+          countInvocations[0] = 0;
+
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "large")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          int count = countingIndexSearcher.count(query);
+
+          assertEquals(largerTermCount + smallerTermCount, count);
+          assertEquals(4, countInvocations[0]);
+
+          assertTrue(query.isTwoClausePureDisjunctionWithTerms());
+          Query[] queries =
+              query.rewriteTwoClauseDisjunctionWithTermsForCount(countingIndexSearcher);
+          assertEquals(queries.length, 3);
+          assertEquals(smallerTermCount, countingIndexSearcher.count(queries[0]));
+          assertEquals(largerTermCount, countingIndexSearcher.count(queries[1]));
+        }
+        {
+          // Test match in both terms that hits optimization threshold with large term first
+          countInvocations[0] = 0;
+
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "large")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          int count = countingIndexSearcher.count(query);
+
+          assertEquals(largerTermCount + smallerTermCount, count);
+          assertEquals(4, countInvocations[0]);
+
+          assertTrue(query.isTwoClausePureDisjunctionWithTerms());
+          Query[] queries =
+              query.rewriteTwoClauseDisjunctionWithTermsForCount(countingIndexSearcher);
+          assertEquals(queries.length, 3);
+          assertEquals(largerTermCount, countingIndexSearcher.count(queries[0]));
+          assertEquals(smallerTermCount, countingIndexSearcher.count(queries[1]));
+        }
+        {
+          // Test match in both terms that doesn't hit optimization threshold
+          countInvocations[0] = 0;
+          BooleanQuery query =
+              new BooleanQuery.Builder()
+                  .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
+                  .add(new TermQuery(new Term("foo", "also small")), BooleanClause.Occur.SHOULD)
+                  .build();
+
+          int count = countingIndexSearcher.count(query);
+
+          assertEquals(smallerTermCount, count);
+          assertEquals(3, countInvocations[0]);
+        }
+      }
+    }
   }
 
   // test BlockMaxMaxscoreScorer

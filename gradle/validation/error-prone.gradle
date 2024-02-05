@@ -17,8 +17,8 @@
 
 def skipReason
 
-if (rootProject.usesAltJvm && rootProject.runtimeJavaVersion > JavaVersion.VERSION_15) {
-  skipReason = "won't work with JDK ${rootProject.runtimeJavaVersion} if used as alternative java toolchain"
+if (rootProject.usesAltJvm) {
+  skipReason = "won't work with alternative java toolchain"
 }
 
 if (!propertyOrDefault("validation.errorprone", isCIBuild).asBoolean()) {
@@ -37,7 +37,7 @@ if (skipReason) {
 
 allprojects { prj ->
   plugins.withType(JavaPlugin) {
-    // LUCENE-9650: Errorprone on master/gradle does not work with JDK-16+ when running as plugin
+    // LUCENE-9650: Errorprone on master/gradle does not work when running as plugin
     // inside a forked Javac process. Javac running inside Gradle works, because we have
     // additional module system opens in place.
     // This is a hack to keep the dependency (so that palantir's version check doesn't complain)
@@ -244,7 +244,7 @@ allprojects { prj ->
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
             '-Xep:UnicodeDirectionalityCharacters:ERROR',
-            // '-Xep:UnicodeInCode:OFF', // noisy (spatial3d)
+            '-Xep:UnicodeInCode:ERROR',
             '-Xep:UnnecessaryCheckNotNull:ERROR',
             '-Xep:UnnecessaryTypeArgument:ERROR',
             '-Xep:UnsafeWildcard:ERROR',

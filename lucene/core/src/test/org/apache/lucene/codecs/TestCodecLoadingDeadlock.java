@@ -43,7 +43,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(RandomizedRunner.class)
 public class TestCodecLoadingDeadlock extends Assert {
-  private static int MAX_TIME_SECONDS = 30;
+  private static final int MAX_TIME_SECONDS = 30;
 
   @Test
   public void testDeadlock() throws Exception {
@@ -59,8 +59,7 @@ public class TestCodecLoadingDeadlock extends Assert {
         new ArrayList<>(avail = DocValuesFormat.availableDocValuesFormats())
             .get(rnd.nextInt(avail.size()));
 
-    System.out.println(
-        String.format(Locale.ROOT, "codec: %s, pf: %s, dvf: %s", codecName, pfName, dvfName));
+    System.out.printf(Locale.ROOT, "codec: %s, pf: %s, dvf: %s%n", codecName, pfName, dvfName);
 
     List<String> args = new ArrayList<>();
     args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());

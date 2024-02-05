@@ -20,7 +20,7 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -257,21 +257,19 @@ public class TestTermsHashPerField extends LuceneTestCase {
           RandomStrings.randomRealisticUnicodeOfCodepointLengthBetween(random(), 1, 10);
       postingMap.putIfAbsent(newBytesRef(randomString), new Posting());
     }
-    List<BytesRef> bytesRefs = Arrays.asList(postingMap.keySet().toArray(new BytesRef[0]));
+    List<BytesRef> bytesRefs = new ArrayList<>(postingMap.keySet());
     Collections.sort(bytesRefs);
     int numDocs = 1 + random().nextInt(200);
     int termOrd = 0;
-    for (int i = 0; i < numDocs; i++) {
+    for (int doc = 0; doc < numDocs; doc++) {
       int numTerms = 1 + random().nextInt(200);
-      int doc = i;
       for (int j = 0; j < numTerms; j++) {
         BytesRef ref = RandomPicks.randomFrom(random(), bytesRefs);
         Posting posting = postingMap.get(ref);
         if (posting.termId == -1) {
           posting.termId = termOrd++;
         }
-        posting.docAndFreq.putIfAbsent(doc, 0);
-        posting.docAndFreq.compute(doc, (key, oldVal) -> oldVal + 1);
+        posting.docAndFreq.merge(doc, 1, Integer::sum);
         hash.add(ref, doc);
       }
       hash.finish();
@@ -320,40 +318,6 @@ public class TestTermsHashPerField extends LuceneTestCase {
       reader.init(hash.bytePool, 0, hash.bytePool.byteOffset + hash.bytePool.byteUpto);
       for (byte expected : randomData) {
         assertEquals(expected, reader.readByte());
-      }
-    }
-  }
-
-  public void testAllocKnowSizeSlice() {
-    Counter bytesUsed = Counter.newCounter();
-    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
-    pool.nextBuffer();
-    for (int i = 0; i < 100; i++) {
-      int size;
-      if (random().nextBoolean()) {
-        size = TestUtil.nextInt(random(), 100, 1000);
-      } else {
-        size = TestUtil.nextInt(random(), 50000, 100000);
-      }
-      byte[] randomData = new byte[size];
-      random().nextBytes(randomData);
-
-      int upto = TermsHashPerField.newSlice(pool, TermsHashPerField.FIRST_LEVEL_SIZE, 0);
-
-      for (int offset = 0; offset < size; ) {
-        if ((pool.buffer[upto] & 16) == 0) {
-          pool.buffer[upto++] = randomData[offset++];
-        } else {
-          int offsetAndLength = TermsHashPerField.allocKnownSizeSlice(pool, pool.buffer, upto);
-          int sliceLength = offsetAndLength & 0xff;
-          upto = offsetAndLength >> 8;
-          assertNotEquals(0, pool.buffer[upto + sliceLength - 1]);
-          assertEquals(0, pool.buffer[upto]);
-          int writeLength = Math.min(sliceLength - 1, size - offset);
-          System.arraycopy(randomData, offset, pool.buffer, upto, writeLength);
-          offset += writeLength;
-          upto += writeLength;
-        }
       }
     }
   }

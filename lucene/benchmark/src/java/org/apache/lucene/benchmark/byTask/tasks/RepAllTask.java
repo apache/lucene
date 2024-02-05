@@ -64,7 +64,7 @@ public class RepAllTask extends ReportTask {
         String line = taskReportLine(longestOp, stat);
         reported++;
         if (taskStats.size() > 2 && reported % 2 == 0) {
-          line = line.replaceAll("   ", " - ");
+          line = line.replace("   ", " - ");
         }
         sb.append(line);
       }

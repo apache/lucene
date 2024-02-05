@@ -222,7 +222,8 @@ public class SynonymMap {
     public SynonymMap build() throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       // TODO: are we using the best sharing options?
-      FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+      FSTCompiler<BytesRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
 
       BytesRefBuilder scratch = new BytesRefBuilder();
       ByteArrayDataOutput scratchOutput = new ByteArrayDataOutput();
@@ -290,7 +291,7 @@ public class SynonymMap {
         fstCompiler.add(Util.toUTF32(input, scratchIntsRef), scratch.toBytesRef());
       }
 
-      FST<BytesRef> fst = fstCompiler.compile();
+      FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       return new SynonymMap(fst, words, maxHorizontalContext);
     }
   }

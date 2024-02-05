@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.util;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
@@ -54,15 +56,17 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.CheckIndex;
@@ -101,12 +105,9 @@ import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.tests.mockfile.FilterFileSystem;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.mockfile.WindowsFS;
-import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeImpl;
-import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.UnicodeUtil;
 import org.junit.Assert;
 
@@ -247,8 +248,7 @@ public final class TestUtil {
    */
   public static <T> void checkReadOnly(Collection<T> coll) {
     int size = 0;
-    for (Iterator<?> it = coll.iterator(); it.hasNext(); ) {
-      it.next();
+    for (@SuppressWarnings("unused") T t : coll) {
       size += 1;
     }
     if (size != coll.size()) {
@@ -306,12 +306,11 @@ public final class TestUtil {
    * thrown; else, true is returned.
    */
   public static CheckIndex.Status checkIndex(Directory dir) throws IOException {
-    return checkIndex(dir, true);
+    return checkIndex(dir, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
   }
 
-  public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
-      throws IOException {
-    return checkIndex(dir, doSlowChecks, false, true, null);
+  public static CheckIndex.Status checkIndex(Directory dir, int level) throws IOException {
+    return checkIndex(dir, level, false, true, null);
   }
 
   /**
@@ -319,11 +318,7 @@ public final class TestUtil {
    * moving on to other fields/segments to look for any other corruption.
    */
   public static CheckIndex.Status checkIndex(
-      Directory dir,
-      boolean doSlowChecks,
-      boolean failFast,
-      boolean concurrent,
-      ByteArrayOutputStream output)
+      Directory dir, int level, boolean failFast, boolean concurrent, ByteArrayOutputStream output)
       throws IOException {
     if (output == null) {
       output = new ByteArrayOutputStream(1024);
@@ -332,9 +327,9 @@ public final class TestUtil {
     // some tests e.g. exception tests become much more complicated if they have to close the writer
     try (CheckIndex checker =
         new CheckIndex(dir, NoLockFactory.INSTANCE.obtainLock(dir, "bogus"))) {
-      checker.setDoSlowChecks(doSlowChecks);
+      checker.setLevel(level);
       checker.setFailFast(failFast);
-      checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
+      checker.setInfoStream(new PrintStream(output, false, UTF_8), false);
       if (concurrent) {
         checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
       } else {
@@ -344,11 +339,11 @@ public final class TestUtil {
 
       if (indexStatus == null || indexStatus.clean == false) {
         System.out.println("CheckIndex failed");
-        System.out.println(output.toString(IOUtils.UTF_8));
+        System.out.println(output.toString(UTF_8));
         throw new RuntimeException("CheckIndex failed");
       } else {
         if (LuceneTestCase.INFOSTREAM) {
-          System.out.println(output.toString(IOUtils.UTF_8));
+          System.out.println(output.toString(UTF_8));
         }
         return indexStatus;
       }
@@ -361,13 +356,13 @@ public final class TestUtil {
    */
   public static void checkReader(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      checkReader(context.reader(), true);
+      checkReader(context.reader(), CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
     }
   }
 
-  public static void checkReader(LeafReader reader, boolean doSlowChecks) throws IOException {
+  public static void checkReader(LeafReader reader, int level) throws IOException {
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
-    PrintStream infoStream = new PrintStream(bos, false, IOUtils.UTF_8);
+    PrintStream infoStream = new PrintStream(bos, false, UTF_8);
 
     final CodecReader codecReader;
     if (reader instanceof CodecReader) {
@@ -379,9 +374,9 @@ public final class TestUtil {
     CheckIndex.testLiveDocs(codecReader, infoStream, true);
     CheckIndex.testFieldInfos(codecReader, infoStream, true);
     CheckIndex.testFieldNorms(codecReader, infoStream, true);
-    CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testPostings(codecReader, infoStream, false, level, true);
     CheckIndex.testStoredFields(codecReader, infoStream, true);
-    CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testTermVectors(codecReader, infoStream, false, level, true);
     CheckIndex.testDocValues(codecReader, infoStream, true);
     CheckIndex.testPoints(codecReader, infoStream, true);
 
@@ -389,7 +384,7 @@ public final class TestUtil {
     checkReaderSanity(reader);
 
     if (LuceneTestCase.INFOSTREAM) {
-      System.out.println(bos.toString(IOUtils.UTF_8));
+      System.out.println(bos.toString(UTF_8));
     }
 
     // FieldInfos should be cached at the reader and always return the same instance
@@ -578,7 +573,7 @@ public final class TestUtil {
   }
 
   /**
-   * Returns a String thats "regexpish" (contains lots of operators typically found in regular
+   * Returns a String that's "regexpish" (contains lots of operators typically found in regular
    * expressions) If you call this enough times, you might get a valid regex!
    */
   public static String randomRegexpishString(Random r) {
@@ -606,7 +601,7 @@ public final class TestUtil {
           "|");
 
   /**
-   * Returns a String thats "regexpish" (contains lots of operators typically found in regular
+   * Returns a String that's "regexpish" (contains lots of operators typically found in regular
    * expressions) If you call this enough times, you might get a valid regex!
    *
    * <p>Note: to avoid practically endless backtracking patterns we replace asterisk and plus
@@ -1149,9 +1144,9 @@ public final class TestUtil {
       int t;
       if (bytes >= 4) {
         t = r.nextInt(5);
-      } else if (bytes >= 3) {
+      } else if (bytes == 3) {
         t = r.nextInt(4);
-      } else if (bytes >= 2) {
+      } else if (bytes == 2) {
         t = r.nextInt(2);
       } else {
         t = 0;
@@ -1233,29 +1228,29 @@ public final class TestUtil {
 
   /**
    * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
-   * different than {@link Codec#getDefault()} because that is randomized.
+   * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
     return new Lucene99Codec();
   }
 
   /**
-   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat for this version of
+   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene90PostingsFormat();
+    return new Lucene99PostingsFormat();
   }
 
   /**
-   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat for this version of
+   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    *
    * @lucene.internal this may disappear at any time
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene90PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene99PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
@@ -1273,7 +1268,7 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default docvalues format (e.g. LuceneMNDocValuesFormat for this version of
+   * Returns the actual default docvalues format (e.g. LuceneMNDocValuesFormat) for this version of
    * Lucene.
    */
   public static DocValuesFormat getDefaultDocValuesFormat() {
@@ -1318,7 +1313,7 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat for this version of
+   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat) for this version of
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
@@ -1342,7 +1337,7 @@ public final class TestUtil {
         leaves.add(SlowCodecReaderWrapper.wrap(context.reader()));
       }
     }
-    writer.addIndexes(leaves.toArray(new CodecReader[leaves.size()]));
+    writer.addIndexes(leaves.toArray(new CodecReader[0]));
   }
 
   /** just tries to configure things to keep the open file count lowish */
@@ -1360,7 +1355,7 @@ public final class TestUtil {
     }
     MergeScheduler ms = w.getConfig().getMergeScheduler();
     if (ms instanceof ConcurrentMergeScheduler) {
-      // wtf... shouldnt it be even lower since it's 1 by default?!?!
+      // wtf... shouldn't it be even lower since it's 1 by default?!?!
       ((ConcurrentMergeScheduler) ms).setMaxMergesAndThreads(3, 2);
     }
   }
@@ -1373,13 +1368,7 @@ public final class TestUtil {
   public static <T> void assertAttributeReflection(
       final AttributeImpl att, Map<String, T> reflectedValues) {
     final Map<String, Object> map = new HashMap<>();
-    att.reflectWith(
-        new AttributeReflector() {
-          @Override
-          public void reflect(Class<? extends Attribute> attClass, String key, Object value) {
-            map.put(attClass.getName() + '#' + key, value);
-          }
-        });
+    att.reflectWith((attClass, key, value) -> map.put(attClass.getName() + '#' + key, value));
     Assert.assertEquals("Reflection does not produce same map", reflectedValues, map);
   }
 
@@ -1425,7 +1414,19 @@ public final class TestUtil {
       final Field field2;
       final DocValuesType dvType = field1.fieldType().docValuesType();
       final int dimCount = field1.fieldType().pointDimensionCount();
-      if (dvType != DocValuesType.NONE) {
+      if (f instanceof KeywordField) {
+        field2 =
+            new KeywordField(
+                f.name(),
+                f.stringValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (f instanceof IntField) {
+        field2 =
+            new IntField(
+                f.name(),
+                f.numericValue().intValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (dvType != DocValuesType.NONE) {
         switch (dvType) {
           case NUMERIC:
             field2 = new NumericDocValuesField(field1.name(), field1.numericValue().longValue());
@@ -1615,7 +1616,7 @@ public final class TestUtil {
         if (evilness < 10) {
           sb.append(TestUtil.randomSimpleString(random, wordLength));
         } else if (evilness < 15) {
-          assert sb.length() == 0; // we should always get wordLength back!
+          assert sb.isEmpty(); // we should always get wordLength back!
           sb.append(TestUtil.randomRealisticUnicodeString(random, wordLength, wordLength));
         } else if (evilness == 16) {
           sb.append(TestUtil.randomHtmlishString(random, wordLength));
@@ -1653,11 +1654,11 @@ public final class TestUtil {
       return "(null)";
     } else {
       try {
-        return br.utf8ToString() + " " + br.toString();
+        return br.utf8ToString() + " " + br;
       } catch (@SuppressWarnings("unused") AssertionError | IllegalArgumentException t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
+        // If BytesRef isn't actually UTF8, or it's e.g. a
         // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
+        // fall back to hex:
         return br.toString();
       }
     }

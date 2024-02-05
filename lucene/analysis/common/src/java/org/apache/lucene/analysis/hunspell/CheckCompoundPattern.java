@@ -34,11 +34,11 @@ class CheckCompoundPattern {
       throw new IllegalArgumentException("Invalid pattern: " + unparsed);
     }
 
-    int flagSep = parts[1].indexOf("/");
+    int flagSep = parts[1].indexOf('/');
     endChars = flagSep < 0 ? parts[1] : parts[1].substring(0, flagSep);
     endFlags = flagSep < 0 ? new char[0] : strategy.parseFlags(parts[1].substring(flagSep + 1));
 
-    flagSep = parts[2].indexOf("/");
+    flagSep = parts[2].indexOf('/');
     beginChars = flagSep < 0 ? parts[2] : parts[2].substring(0, flagSep);
     beginFlags = flagSep < 0 ? new char[0] : strategy.parseFlags(parts[2].substring(flagSep + 1));
 

@@ -526,7 +526,6 @@ final class ReadersAndUpdates {
       return docIDOut;
     }
   }
-  ;
 
   private synchronized Set<String> writeFieldInfosGen(
       FieldInfos fieldInfos, Directory dir, FieldInfosFormat infosFormat) throws IOException {
@@ -721,7 +720,8 @@ final class ReadersAndUpdates {
         fi.getVectorDimension(),
         fi.getVectorEncoding(),
         fi.getVectorSimilarityFunction(),
-        fi.isSoftDeletesField());
+        fi.isSoftDeletesField(),
+        fi.isParentField());
   }
 
   private SegmentReader createNewReaderWithLatestLiveDocs(SegmentReader reader) throws IOException {
