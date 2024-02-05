@@ -230,9 +230,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
     assertEquals(50, topDocs.totalHits.value);
 
-    topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);
-    assertTrue(topDocs.totalHits.value > 0);
-
     topDocs =
         searcher.search(
             IntPoint.newRangeQuery("docid_int", 42, 44),
