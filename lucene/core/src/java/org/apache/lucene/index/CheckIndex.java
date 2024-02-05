@@ -4264,6 +4264,7 @@ public final class CheckIndex implements Closeable {
    * @param opts The options to use for this check
    * @return 0 iff the index is clean, 1 otherwise
    */
+  @SuppressForbidden(reason = "Thread sleep")
   public int doCheck(Options opts) throws IOException, InterruptedException {
     setLevel(opts.level);
     setInfoStream(opts.out, opts.verbose);

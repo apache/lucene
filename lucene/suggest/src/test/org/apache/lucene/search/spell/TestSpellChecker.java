@@ -39,6 +39,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Spell checker test case */
 public class TestSpellChecker extends LuceneTestCase {
@@ -430,6 +431,7 @@ public class TestSpellChecker extends LuceneTestCase {
    * tests if the internally shared indexsearcher is correctly closed
    * when the spellchecker is concurrently accessed and closed.
    */
+  @SuppressForbidden(reason = "Thread sleep")
   public void testConcurrentAccess() throws IOException, InterruptedException {
     assertEquals(1, searchers.size());
     final IndexReader r = DirectoryReader.open(userindex);

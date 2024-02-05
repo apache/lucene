@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -262,6 +263,7 @@ public class TimeLimitingCollector implements Collector {
       this(DEFAULT_RESOLUTION, counter);
     }
 
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void run() {
       while (!stop) {
