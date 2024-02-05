@@ -98,7 +98,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     for (Iterator<String> it = map.keyIterator(); it.hasNext(); ) {
       assertTrue(it.hasNext()); // try again, should return same result!
       final String k = it.next();
-      assertTrue(k == key1 || k == key2 | k == key3);
+      assertTrue(k == key1 || k == key2 || k == key3);
       keysAssigned += (k == key1) ? 1 : ((k == key2) ? 2 : 4);
       c++;
     }

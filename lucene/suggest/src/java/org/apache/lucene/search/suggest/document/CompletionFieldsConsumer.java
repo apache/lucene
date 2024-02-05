@@ -223,7 +223,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
           ByteArrayDataInput input =
               new ByteArrayDataInput(payload.bytes, payload.offset, payload.length);
           int len = input.readVInt();
-          scratch.grow(len);
+          scratch.growNoCopy(len);
           scratch.setLength(len);
           input.readBytes(scratch.bytes(), 0, scratch.length());
           long weight = input.readVInt() - 1;

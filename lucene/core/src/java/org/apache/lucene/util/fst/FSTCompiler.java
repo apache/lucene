@@ -106,6 +106,9 @@ public class FSTCompiler<T> {
 
   private final IntsRefBuilder lastInput = new IntsRefBuilder();
 
+  // indicates whether we are not yet to write the padding byte
+  private boolean paddingBytePending;
+
   // NOTE: cutting this over to ArrayList instead loses ~6%
   // in build performance on 9.8M Wikipedia terms; so we
   // left this as an array:
@@ -160,15 +163,14 @@ public class FSTCompiler<T> {
       boolean allowFixedLengthArcs,
       DataOutput dataOutput,
       float directAddressingMaxOversizingFactor,
-      int version)
-      throws IOException {
+      int version) {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     this.version = version;
     // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    dataOutput.writeByte((byte) 0);
+    // the stop state w/ no arcs. the actual byte will be written lazily
     numBytesWritten++;
+    paddingBytePending = true;
     this.dataOutput = dataOutput;
     fst =
         new FST<>(
@@ -340,7 +342,7 @@ public class FSTCompiler<T> {
     }
 
     /** Creates a new {@link FSTCompiler}. */
-    public FSTCompiler<T> build() throws IOException {
+    public FSTCompiler<T> build() {
       // create a default DataOutput if not specified
       if (dataOutput == null) {
         dataOutput = getOnHeapReaderWriter(15);
@@ -548,11 +550,25 @@ public class FSTCompiler<T> {
     }
 
     reverseScratchBytes();
+    // write the padding byte if needed
+    if (paddingBytePending) {
+      writePaddingByte();
+    }
     scratchBytes.writeTo(dataOutput);
     numBytesWritten += scratchBytes.getPosition();
 
     nodeCount++;
     return numBytesWritten - 1;
+  }
+
+  /**
+   * Write the padding byte, ensure no node gets address 0 which is reserved to mean the stop state
+   * w/ no arcs
+   */
+  private void writePaddingByte() throws IOException {
+    assert paddingBytePending;
+    dataOutput.writeByte((byte) 0);
+    paddingBytePending = false;
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
@@ -892,17 +908,16 @@ public class FSTCompiler<T> {
       assert validOutput(lastOutput);
 
       final T commonOutputPrefix;
-      final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
         commonOutputPrefix = fst.outputs.common(output, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        T wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
         assert validOutput(wordSuffix);
         parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
         node.prependOutput(wordSuffix);
       } else {
-        commonOutputPrefix = wordSuffix = NO_OUTPUT;
+        commonOutputPrefix = NO_OUTPUT;
       }
 
       output = fst.outputs.subtract(output, commonOutputPrefix);
@@ -963,7 +978,11 @@ public class FSTCompiler<T> {
     freezeTail(0);
     if (root.numArcs == 0) {
       if (fst.metadata.emptyOutput == null) {
+        // return null for completely empty FST which accepts nothing
         return null;
+      } else {
+        // we haven't written the padding byte so far, but the FST is still valid
+        writePaddingByte();
       }
     }
 
@@ -1091,13 +1110,6 @@ public class FSTCompiler<T> {
       // assert target.node != -2;
       arc.nextFinalOutput = nextFinalOutput;
       arc.isFinal = isFinal;
-    }
-
-    void deleteLast(int label, Node target) {
-      assert numArcs > 0;
-      assert label == arcs[numArcs - 1].label;
-      assert target == arcs[numArcs - 1].target;
-      numArcs--;
     }
 
     void setLastOutput(int labelToMatch, T newOutput) {

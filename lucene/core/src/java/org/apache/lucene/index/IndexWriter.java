@@ -1121,6 +1121,12 @@ public class IndexWriter
       // NOTE: this is correct even for an NRT reader because we'll pull FieldInfos even for the
       // un-committed segments:
       globalFieldNumberMap = getFieldNumberMap();
+      if (create == false
+          && conf.getParentField() != null
+          && globalFieldNumberMap.getFieldNames().contains(conf.getParentField()) == false) {
+        throw new IllegalArgumentException(
+            "can't add a parent field to an already existing index without a parent field");
+      }
 
       validateIndexSort();
 
@@ -1261,7 +1267,8 @@ public class IndexWriter
    * If this {@link SegmentInfos} has no global field number map the returned instance is empty
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
-    final FieldNumbers map = new FieldNumbers(config.softDeletesField);
+    final FieldNumbers map =
+        new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
 
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
@@ -1269,7 +1276,6 @@ public class IndexWriter
         map.addOrGet(fi);
       }
     }
-
     return map;
   }
 
@@ -6614,10 +6620,12 @@ public class IndexWriter
           }
 
           @Override
-          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+          public FieldInfosBuilder newFieldInfosBuilder(
+              String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
               private final FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, parentFieldName));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

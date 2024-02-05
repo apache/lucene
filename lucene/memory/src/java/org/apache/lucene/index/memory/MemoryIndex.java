@@ -736,6 +736,7 @@ public class MemoryIndex {
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
+        false,
         false);
   }
 
@@ -789,7 +790,8 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
-              info.fieldInfo.isSoftDeletesField());
+              info.fieldInfo.isSoftDeletesField(),
+              info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {
       throw new IllegalArgumentException(
           "Can't add ["

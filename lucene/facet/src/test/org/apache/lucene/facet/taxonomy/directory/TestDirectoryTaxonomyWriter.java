@@ -29,6 +29,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.MemoryOrdinalMap;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
@@ -366,7 +367,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       fail("mismatch number of categories");
     }
 
-    int[] parents = dtr.getParallelTaxonomyArrays().parents();
+    ParallelTaxonomyArrays.IntArray parents = dtr.getParallelTaxonomyArrays().parents();
     for (String cat : values.keySet()) {
       FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(cat));
       assertTrue("category not found " + cp, dtr.getOrdinal(cp) > 0);
@@ -376,7 +377,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       for (int i = 0; i < level; i++) {
         path = cp.subpath(i + 1);
         int ord = dtr.getOrdinal(path);
-        assertEquals("invalid parent for cp=" + path, parentOrd, parents[ord]);
+        assertEquals("invalid parent for cp=" + path, parentOrd, parents.get(ord));
         parentOrd = ord; // next level should have this parent
       }
     }

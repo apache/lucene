@@ -17,8 +17,6 @@
 
 package org.apache.lucene.monitor;
 
-import static org.hamcrest.core.Is.is;
-
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -51,24 +49,24 @@ public class TestCachePurging extends MonitorTestBase {
           };
       monitor.addQueryIndexUpdateListener(listener);
       monitor.register(queries);
-      assertThat(monitor.getQueryCount(), is(3));
-      assertThat(monitor.getDisjunctCount(), is(4));
-      assertThat(monitor.getQueryCacheStats().cachedQueries, is(4));
+      assertEquals(3, monitor.getQueryCount());
+      assertEquals(4, monitor.getDisjunctCount());
+      assertEquals(4, monitor.getQueryCacheStats().cachedQueries);
 
       Document doc = new Document();
       doc.add(newTextField("field", "test1 test2 test3", Field.Store.NO));
-      assertThat(monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount(), is(3));
+      assertEquals(3, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
 
       monitor.deleteById("1");
-      assertThat(monitor.getQueryCount(), is(2));
-      assertThat(monitor.getQueryCacheStats().cachedQueries, is(4));
-      assertThat(monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount(), is(2));
+      assertEquals(2, monitor.getQueryCount());
+      assertEquals(4, monitor.getQueryCacheStats().cachedQueries);
+      assertEquals(2, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
 
       monitor.purgeCache();
-      assertThat(monitor.getQueryCacheStats().cachedQueries, is(2));
+      assertEquals(2, monitor.getQueryCacheStats().cachedQueries);
 
       MatchingQueries<QueryMatch> result = monitor.match(doc, QueryMatch.SIMPLE_MATCHER);
-      assertThat(result.getMatchCount(), is(2));
+      assertEquals(2, result.getMatchCount());
       assertTrue(purgeCount.get() > 0);
     }
   }

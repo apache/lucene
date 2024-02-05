@@ -112,7 +112,7 @@ class TokenInfoDictionaryBuilder {
         // new word to add to fst
         ord++;
         lastValue = surfaceForm;
-        scratch.grow(surfaceForm.length());
+        scratch.growNoCopy(surfaceForm.length());
         scratch.setLength(surfaceForm.length());
         for (int i = 0; i < surfaceForm.length(); i++) {
           scratch.setIntAt(i, surfaceForm.charAt(i));

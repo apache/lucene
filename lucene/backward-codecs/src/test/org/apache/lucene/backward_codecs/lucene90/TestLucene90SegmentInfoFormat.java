@@ -32,4 +32,9 @@ public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase
   protected Codec getCodec() {
     return new Lucene90RWCodec();
   }
+
+  @Override
+  protected boolean supportsHasBlocks() {
+    return false;
+  }
 }
