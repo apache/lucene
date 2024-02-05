@@ -86,10 +86,11 @@ typedef __mram_ptr uint8_t *mram_ptr_t;
         uintptr_t __mram_write_int_atomic_dest_low = (((uintptr_t)(dest) >> 3U) << 3U);                                          \
         vmutex_lock(&__mram_unaligned_access_virtual_locks, __mram_write_int_atomic_hash);                                       \
         mram_read(((__mram_ptr void *)(__mram_write_int_atomic_dest_low)), &__mram_unaligned_access_buffer[me() << 3U], 8U);     \
-        *((int *)__builtin_assume_aligned(&__mram_unaligned_access_buffer[me() << 3U]                                            \
+        int __mram_write_int_atomic_val = (val);                                                                                 \
+        memcpy(&__mram_unaligned_access_buffer[me() << 3U]                                                                       \
                 + ((uintptr_t)(__mram_write_int_atomic_dest_low != (uintptr_t)(dest)) << 2U),                                    \
-            4U))                                                                                                                 \
-            = val;                                                                                                               \
+            &__mram_write_int_atomic_val,                                                                                        \
+            4U);                                                                                                                 \
         mram_write(&__mram_unaligned_access_buffer[me() << 3U], ((__mram_ptr void *)(__mram_write_int_atomic_dest_low)), 8U);    \
         vmutex_unlock(&__mram_unaligned_access_virtual_locks, __mram_write_int_atomic_hash);                                     \
     } while (0)
@@ -110,10 +111,12 @@ typedef __mram_ptr uint8_t *mram_ptr_t;
         uintptr_t __mram_update_int_atomic_dest_low = (((uintptr_t)(dest) >> 3U) << 3U);                                         \
         vmutex_lock(&__mram_unaligned_access_virtual_locks, __mram_update_int_atomic_hash);                                      \
         mram_read(((__mram_ptr void *)(__mram_update_int_atomic_dest_low)), &__mram_unaligned_access_buffer[me() << 3U], 8U);    \
-        update_func((int *)__builtin_assume_aligned(&__mram_unaligned_access_buffer[me() << 3U]                                  \
-                            + ((uintptr_t)(__mram_update_int_atomic_dest_low != (uintptr_t)(dest)) << 2U),                       \
-                        4U),                                                                                                     \
-            args);                                                                                                               \
+        int __mram_update_int_atomic_val;                                                                                        \
+        void *_buffer_ptr = &__mram_unaligned_access_buffer[me() << 3U]                                                          \
+            + ((uintptr_t)(__mram_update_int_atomic_dest_low != (uintptr_t)(dest)) << 2U);                                       \
+        memcpy(&__mram_update_int_atomic_val, _buffer_ptr, 4U);                                                                  \
+        update_func(&__mram_update_int_atomic_val, args);                                                                        \
+        memcpy(_buffer_ptr, &__mram_update_int_atomic_val, 4U);                                                                  \
         mram_write(&__mram_unaligned_access_buffer[me() << 3U], ((__mram_ptr void *)(__mram_update_int_atomic_dest_low)), 8U);   \
         vmutex_unlock(&__mram_unaligned_access_virtual_locks, __mram_update_int_atomic_hash);                                    \
     } while (0)
