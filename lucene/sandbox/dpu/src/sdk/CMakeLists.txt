@@ -11,9 +11,9 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLGS_DEBUG
-    "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address -fno-omit-frame-pointer")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra")
+set(CMAKE_C_FLAGS_DEBUG
+    "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address,undefined -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wextra")
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
 add_library(${PROJECT_NAME} src/dpu_jni.c)
