@@ -18,15 +18,10 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Random;
-import java.util.function.Function;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -149,36 +144,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     }
   }
 
-  /**
-   * Converts date formats for europarl ("2023-02-23") and enwiki ("12-JAN-2010 12:32:45.000") into
-   * {@link LocalDateTime}.
-   */
-  private static final Function<String, LocalDateTime> DATE_STRING_TO_LOCALDATETIME =
-      new Function<>() {
-        final DateTimeFormatter euroParl =
-            new DateTimeFormatterBuilder()
-                .parseStrict()
-                .parseCaseInsensitive()
-                .appendPattern("uuuu-MM-dd")
-                .toFormatter(Locale.ROOT);
-
-        final DateTimeFormatter enwiki =
-            new DateTimeFormatterBuilder()
-                .parseStrict()
-                .parseCaseInsensitive()
-                .appendPattern("dd-MMM-uuuu HH:mm:ss['.'SSS]")
-                .toFormatter(Locale.ROOT);
-
-        @Override
-        public LocalDateTime apply(String s) {
-          if (s.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) {
-            return euroParl.parse(s, LocalDate::from).atStartOfDay();
-          } else {
-            return enwiki.parse(s, LocalDateTime::from);
-          }
-        }
-      };
-
   @Override
   protected void createIndex(Directory directory) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
@@ -200,7 +165,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     for (int i = 0; i < 50; i++) {
       Document doc = TestUtil.cloneDocument(docs.nextDoc());
       String dateString = doc.get("date");
-      LocalDateTime date = DATE_STRING_TO_LOCALDATETIME.apply(dateString);
+      LocalDateTime date = LineFileDocs.DATE_FIELD_VALUE_TO_LOCALDATETIME.apply(dateString);
       doc.add(
           new NumericDocValuesField(
               "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
