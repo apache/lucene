@@ -150,7 +150,9 @@ public final class UserDictionary implements Dictionary {
       segmentations.add(wordIdAndLength);
       ord++;
     }
-    this.fst = new TokenInfoFST(fstCompiler.compile(), false);
+    this.fst =
+        new TokenInfoFST(
+            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()), false);
     this.data = data.toArray(new String[data.size()]);
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
   }

@@ -587,7 +587,7 @@ public class AnalyzingSuggester extends Lookup {
           fstCompiler.add(scratchInts.get(), outputs.newPair(cost, br));
         }
       }
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       count = newCount;
 
       // Util.dotToFile(fst, "/tmp/suggest.dot");

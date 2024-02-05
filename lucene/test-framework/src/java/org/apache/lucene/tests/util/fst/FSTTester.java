@@ -282,28 +282,33 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = fstCompiler.compile();
+
+    FST<T> fst = null;
+    FST.FSTMetadata<T> fstMetadata = fstCompiler.compile();
 
     if (useOffHeap) {
       indexOutput.close();
-      if (fst == null) {
+      if (fstMetadata == null) {
         dir.deleteFile("fstOffHeap.bin");
       } else {
         try (IndexInput in = dir.openInput("fstOffHeap.bin", IOContext.DEFAULT)) {
-          fst = new FST<>(fst.getMetadata(), in);
+          fst = new FST<>(fstMetadata, in);
         } finally {
           dir.deleteFile("fstOffHeap.bin");
         }
       }
-    } else if (random.nextBoolean() && fst != null) {
-      IOContext context = LuceneTestCase.newIOContext(random);
-      try (IndexOutput out = dir.createOutput("fst.bin", context)) {
-        fst.save(out, out);
-      }
-      try (IndexInput in = dir.openInput("fst.bin", context)) {
-        fst = new FST<>(FST.readMetadata(in, outputs), in);
-      } finally {
-        dir.deleteFile("fst.bin");
+    } else if (fstMetadata != null) {
+      fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+      if (random.nextBoolean()) {
+        IOContext context = LuceneTestCase.newIOContext(random);
+        try (IndexOutput out = dir.createOutput("fst.bin", context)) {
+          fst.save(out, out);
+        }
+        try (IndexInput in = dir.openInput("fst.bin", context)) {
+          fst = new FST<>(FST.readMetadata(in, outputs), in);
+        } finally {
+          dir.deleteFile("fst.bin");
+        }
       }
     }
 
