@@ -210,7 +210,7 @@ Improvements
 
 * GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
 
-* LUCENE-10572, GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
+* GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
   Tests are running with random byte order to ensure that the order does not affect correctness
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
 
