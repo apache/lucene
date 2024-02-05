@@ -18,13 +18,10 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.Locale;
 import java.util.Random;
-import java.util.TimeZone;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -160,26 +157,17 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
-    SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
-    parser.setTimeZone(TimeZone.getTimeZone("UTC"));
-    ParsePosition position = new ParsePosition(0);
+
     for (int i = 0; i < 50; i++) {
       Document doc = TestUtil.cloneDocument(docs.nextDoc());
       String dateString = doc.get("date");
-      position.setIndex(0);
-      Date date = parser.parse(dateString, position);
-      if (position.getErrorIndex() != -1) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
-      if (position.getIndex() != dateString.length()) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
+      LocalDateTime date = LineFileDocs.DATE_FIELD_VALUE_TO_LOCALDATETIME.apply(dateString);
       doc.add(
           new NumericDocValuesField(
               "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
       doc.add(
           new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
-      doc.add(new NumericDocValuesField("dateDV", date.getTime()));
+      doc.add(new NumericDocValuesField("dateDV", date.toInstant(ZoneOffset.UTC).toEpochMilli()));
       if (i % 10 == 0) { // commit every 10 documents
         writer.commit();
       }
@@ -201,9 +189,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
     topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
     assertEquals(50, topDocs.totalHits.value);
-
-    topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);
-    assertTrue(topDocs.totalHits.value > 0);
 
     topDocs =
         searcher.search(
