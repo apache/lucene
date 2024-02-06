@@ -723,7 +723,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected VectorSimilarityFunction randomSimilarityForEncoding(VectorEncoding encoding) {
     List<VectorSimilarityFunction> supportedVectorSimilarities =
         Arrays.stream(VectorSimilarityFunction.values())
-            .filter(x -> x.supportedVectorEncodings().contains(encoding))
+            .filter(x -> x.supportsVectorEncoding(encoding))
             .toList();
     return supportedVectorSimilarities.get(random().nextInt(supportedVectorSimilarities.size()));
   }

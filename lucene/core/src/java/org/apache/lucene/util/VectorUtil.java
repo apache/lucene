@@ -215,10 +215,18 @@ public final class VectorUtil {
     return v;
   }
 
-  public static float binaryHammingDistance(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static int binaryHammingDistance(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              ((long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i))
+                  & 0xFFFFFFFFFFFFFFFFL);
     }
-    return 1f / (1 + IMPL.binaryHammingDistance(a, b));
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
   }
 }

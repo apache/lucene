@@ -46,7 +46,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     similarityFunction =
         RandomizedTest.randomFrom(
             Arrays.stream(VectorSimilarityFunction.values())
-                .filter(x -> x.supportedVectorEncodings().contains(VectorEncoding.FLOAT32))
+                .filter(x -> x.supportsVectorEncoding(VectorEncoding.FLOAT32))
                 .collect(Collectors.toList()));
   }
 

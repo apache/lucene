@@ -23,9 +23,6 @@ import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
-import java.util.EnumSet;
-import java.util.Set;
-
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
@@ -114,12 +111,12 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
-      return binaryHammingDistance(v1, v2);
+      return (1f / (1 + binaryHammingDistance(v1, v2)));
     }
 
     @Override
-    public Set<VectorEncoding> supportedVectorEncodings() {
-      return EnumSet.of(VectorEncoding.BYTE);
+    public boolean supportsVectorEncoding(VectorEncoding encoding) {
+      return encoding == VectorEncoding.BYTE;
     }
   };
 
@@ -145,12 +142,10 @@ public enum VectorSimilarityFunction {
   public abstract float compare(byte[] v1, byte[] v2);
 
   /**
-   * Defines which encodings are supported by the similarity function - used in tests to control
-   * randomization
-   *
-   * @return a list of all supported VectorEncodings for the given similarity
+   * Specify whether the encoding provided is supported by the similarity function. Defaults to
+   * true.
    */
-  public Set<VectorEncoding> supportedVectorEncodings() {
-    return EnumSet.of(VectorEncoding.BYTE, VectorEncoding.FLOAT32);
+  public boolean supportsVectorEncoding(VectorEncoding encoding) {
+    return true;
   }
 }

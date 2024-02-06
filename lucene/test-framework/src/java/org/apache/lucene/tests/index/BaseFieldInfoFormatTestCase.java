@@ -366,7 +366,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           RandomPicks.randomFrom(
               r,
               Arrays.stream(VectorSimilarityFunction.values())
-                  .filter(x -> x.supportedVectorEncodings().contains(encoding))
+                  .filter(x -> x.supportsVectorEncoding(encoding))
                   .collect(Collectors.toList()));
       type.setVectorAttributes(dimension, encoding, similarityFunction);
     }

@@ -100,7 +100,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   List<VectorSimilarityFunction> supportedVectorSimilarityFunctions() {
     return Arrays.stream(VectorSimilarityFunction.values())
-        .filter(x -> x.supportedVectorEncodings().contains(getVectorEncoding()))
+        .filter(x -> x.supportsVectorEncoding(getVectorEncoding()))
         .toList();
   }
 

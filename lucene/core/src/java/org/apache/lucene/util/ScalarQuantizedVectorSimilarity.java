@@ -41,7 +41,9 @@ public interface ScalarQuantizedVectorSimilarity {
       case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
       case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
       case BINARY_HAMMING_DISTANCE -> throw new IllegalArgumentException(
-          "Cannot use Hamming distance with scalar quantization");
+          "Cannot use '"
+              + VectorSimilarityFunction.BINARY_HAMMING_DISTANCE.name()
+              + "'with scalar quantization");
     };
   }
 

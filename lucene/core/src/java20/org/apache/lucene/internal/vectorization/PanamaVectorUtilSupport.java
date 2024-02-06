@@ -19,9 +19,7 @@ package org.apache.lucene.internal.vectorization;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
-import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
-import static jdk.incubator.vector.VectorOperators.XOR;
 
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -577,115 +575,5 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
-  }
-
-  private static final ByteVector lookup128 =
-      ByteVector.fromArray(
-          ByteVector.SPECIES_128,
-          new byte[] {
-            0, 1, 1, 2, 1, 2, 2, 3,
-            1, 2, 2, 3, 2, 3, 3, 4,
-          },
-          0);
-
-  private static final ByteVector lookup256 =
-      (ByteVector) lookup128.castShape(ByteVector.SPECIES_256, 0);
-  private static final ByteVector lookup512 =
-      (ByteVector) lookup128.castShape(ByteVector.SPECIES_512, 0);
-
-  @Override
-  public int binaryHammingDistance(byte[] a, byte[] b) {
-    int res = 0;
-    int i = 0;
-    if (a.length >= 16) {
-      if (VECTOR_BITSIZE >= 512) {
-        i += ByteVector.SPECIES_512.loopBound(a.length);
-        res += binaryHammingDistanceBody512(a, b, i);
-      } else if (VECTOR_BITSIZE == 256) {
-        i += ByteVector.SPECIES_256.loopBound(a.length);
-        res += binaryHammingDistanceBody256(a, b, i);
-      } else {
-        i += ByteVector.SPECIES_128.loopBound(a.length);
-        res += binaryHammingDistanceBody128(a, b, i);
-      }
-    }
-
-    // scalar tail
-    for (; i < a.length; i++) {
-      res += HAMMING_DISTANCE_LOOKUP_TABLE[(a[i] ^ b[i]) & 0xFF];
-    }
-    return res;
-  }
-
-  private int binaryHammingDistanceBody512(byte[] a, byte[] b, int limit) {
-    int res = 0;
-    for (int i = 0; i < limit; i += ByteVector.SPECIES_512.length()) {
-      ByteVector bva64 = ByteVector.fromArray(ByteVector.SPECIES_512, a, i);
-      ByteVector bvb64 = ByteVector.fromArray(ByteVector.SPECIES_512, b, i);
-      ByteVector xor64 = bva64.lanewise(XOR, bvb64);
-
-      ByteVector low_mask = ByteVector.broadcast(ByteVector.SPECIES_512, 0x0f);
-      ByteVector low_bits = xor64.and(low_mask);
-      ByteVector high_bits = xor64.lanewise(LSHR, 4).and(low_mask);
-
-      var popcnt1 = lookup512.rearrange(low_bits.toShuffle());
-      var popcnt2 = lookup512.rearrange(high_bits.toShuffle());
-
-      var total = popcnt1.add(popcnt2);
-
-      // Need to break up the total ByteVector as the result might not
-      // fit in a byte
-      var acc1 = total.castShape(ShortVector.SPECIES_512, 0);
-      var acc2 = total.castShape(ShortVector.SPECIES_512, 1);
-
-      res += (int) (acc1.reduceLanesToLong(ADD) + acc2.reduceLanesToLong(ADD));
-    }
-    return res;
-  }
-
-  private int binaryHammingDistanceBody256(byte[] a, byte[] b, int limit) {
-    int res = 0;
-    for (int i = 0; i < limit; i += ByteVector.SPECIES_256.length()) {
-      ByteVector bva32 = ByteVector.fromArray(ByteVector.SPECIES_256, a, i);
-      ByteVector bvb32 = ByteVector.fromArray(ByteVector.SPECIES_256, b, i);
-      ByteVector xor32 = bva32.lanewise(XOR, bvb32);
-
-      ByteVector low_mask = ByteVector.broadcast(ByteVector.SPECIES_256, 0x0f);
-      ByteVector low_bits = xor32.and(low_mask);
-      ByteVector high_bits = xor32.lanewise(LSHR, 4).and(low_mask);
-
-      var popcnt1 = lookup256.rearrange(low_bits.toShuffle());
-      var popcnt2 = lookup256.rearrange(high_bits.toShuffle());
-
-      var total = popcnt1.add(popcnt2);
-
-      // Need to break up the total ByteVector as the result might not
-      // fit in an unsigned byte (in the worst case scenario)
-      var acc1 = total.castShape(ShortVector.SPECIES_256, 0);
-      var acc2 = total.castShape(ShortVector.SPECIES_256, 1);
-
-      res += (int) (acc1.reduceLanesToLong(ADD) + acc2.reduceLanesToLong(ADD));
-    }
-    return res;
-  }
-
-  private int binaryHammingDistanceBody128(byte[] a, byte[] b, int limit) {
-    int res = 0;
-    for (int i = 0; i < limit; i += ByteVector.SPECIES_128.length()) {
-      ByteVector bva16 = ByteVector.fromArray(ByteVector.SPECIES_128, a, i);
-      ByteVector bvb16 = ByteVector.fromArray(ByteVector.SPECIES_128, b, i);
-      ByteVector xor16 = bva16.lanewise(XOR, bvb16);
-
-      ByteVector low_mask = ByteVector.broadcast(ByteVector.SPECIES_128, 0x0f);
-      ByteVector low_bits = xor16.and(low_mask);
-      ByteVector high_bits = xor16.lanewise(LSHR, 4).and(low_mask);
-
-      var popcnt1 = lookup128.rearrange(low_bits.toShuffle());
-      var popcnt2 = lookup128.rearrange(high_bits.toShuffle());
-
-      var total = popcnt1.add(popcnt2);
-      res += total.reduceLanes(ADD) & 0xff;
-    }
-    return res;
   }
 }

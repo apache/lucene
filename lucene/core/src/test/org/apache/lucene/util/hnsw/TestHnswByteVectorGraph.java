@@ -46,7 +46,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
     similarityFunction =
         RandomizedTest.randomFrom(
             Arrays.stream(VectorSimilarityFunction.values())
-                .filter(x -> x.supportedVectorEncodings().contains(VectorEncoding.BYTE))
+                .filter(x -> x.supportsVectorEncoding(VectorEncoding.BYTE))
                 .collect(Collectors.toList()));
   }
 

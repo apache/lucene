@@ -94,7 +94,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
         RandomPicks.randomFrom(
             random,
             Arrays.stream(VectorSimilarityFunction.values())
-                .filter(x -> x.supportedVectorEncodings().contains(VectorEncoding.FLOAT32))
+                .filter(x -> x.supportsVectorEncoding(VectorEncoding.FLOAT32))
                 .toList());
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {

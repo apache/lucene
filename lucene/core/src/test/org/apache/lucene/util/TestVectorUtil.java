@@ -31,7 +31,7 @@ public class TestVectorUtil extends LuceneTestCase {
   private static final Collection<VectorSimilarityFunction> VECTOR_SIMILARITY_FUNCTIONS_FLOAT32 =
       Collections.unmodifiableCollection(
           Arrays.stream(VectorSimilarityFunction.values())
-              .filter(x -> x.supportedVectorEncodings().contains(VectorEncoding.FLOAT32))
+              .filter(x -> x.supportsVectorEncoding(VectorEncoding.FLOAT32))
               .collect(Collectors.toList()));
   public static final double DELTA = 1e-4;
 
@@ -287,10 +287,84 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
   }
 
-  public void testBasicHammingBytes() {
+  public void testBinaryHammingBytes() {
     assertEquals(
-        0.08333,
-        VectorUtil.binaryHammingDistance(new byte[] {1, 2, 8}, new byte[] {-10, 0, 5}),
-        DELTA);
+        0,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b01010101}, new byte[] {(byte) 0b01010101}));
+    assertEquals(
+        8,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b10101010}, new byte[] {(byte) 0b01010101}));
+    assertEquals(
+        8,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11111111}, new byte[] {(byte) 0b00000000}));
+    assertEquals(
+        1,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11111111}, new byte[] {(byte) 0b11111110}));
+    assertEquals(
+        4,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11110000}, new byte[] {(byte) 0b00111100}));
+    assertEquals(
+        3,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11100000}, new byte[] {(byte) 0b11000011}));
+    assertEquals(
+        4,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11011011}, new byte[] {(byte) 0b01010101}));
+    assertEquals(
+        8,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11111110}, new byte[] {(byte) 0b00000001}));
+    assertEquals(
+        7,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b10101010}, new byte[] {(byte) 0b01010100}));
+    assertEquals(
+        8,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b11110000}, new byte[] {(byte) 0b00001111}));
+    assertEquals(
+        11,
+        VectorUtil.binaryHammingDistance(
+            new byte[] {(byte) 0b10101010, (byte) 0b11011011, (byte) 0b01010101},
+            new byte[] {(byte) 0b01010100, (byte) 0b01010101, (byte) 0b01010101}));
+  }
+
+  private static int hammingDistanceScalar(byte[] a, byte[] b) {
+    int distance = 0;
+    for (int i = 0; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  public void testHammingDistanceVariableSize() {
+    int dim = random().nextInt(1024);
+    int expectedDistance = 0;
+    byte[] aVector = randomVectorBytes(dim);
+    byte[] bVector = new byte[dim];
+    for (int i = 0; i < dim; i++) {
+      if (random().nextBoolean()) {
+        int popCount = Integer.bitCount(aVector[i] & 0XFF);
+        if (random().nextBoolean()) {
+          expectedDistance += popCount;
+          bVector[i] = (byte) 0;
+        } else {
+          expectedDistance += (Byte.SIZE - popCount);
+          bVector[i] = (byte) -1;
+        }
+      } else {
+        bVector[i] = aVector[i];
+      }
+    }
+    assertEquals(
+        VectorUtil.binaryHammingDistance(aVector, bVector),
+        hammingDistanceScalar(aVector, bVector));
+    assertEquals(VectorUtil.binaryHammingDistance(aVector, bVector), expectedDistance);
   }
 }

@@ -95,14 +95,17 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
-  public float binaryHammingDistanceScalar() {
+  public int binaryHammingDistanceVarHandle() {
     return VectorUtil.binaryHammingDistance(bytesA, bytesB);
   }
 
   @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float binaryHammingDistanceVector() {
-    return VectorUtil.binaryHammingDistance(bytesA, bytesB);
+  public int binaryHammingDistanceScalar() {
+    int distance = 0;
+    for (int i = 0; i < bytesA.length; i++) {
+      distance += Integer.bitCount((bytesA[i] ^ bytesB[i]) & 0xFF);
+    }
+    return distance;
   }
 
   @Benchmark
