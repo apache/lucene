@@ -21,6 +21,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween
 
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestBlockingFloatHeap extends LuceneTestCase {
 
@@ -60,6 +61,7 @@ public class TestBlockingFloatHeap extends LuceneTestCase {
     assertEquals(sum, sum2, 0.01);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testMultipleThreads() throws Exception {
     Thread[] threads = new Thread[randomIntBetween(3, 20)];
     final CountDownLatch latch = new CountDownLatch(1);
