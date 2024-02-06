@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause.Occur;
 
 /**
@@ -177,6 +178,38 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    */
   boolean isPureDisjunction() {
     return clauses.size() == getClauses(Occur.SHOULD).size() && minimumNumberShouldMatch <= 1;
+  }
+
+  /** Whether this query is a two clause disjunction with two term query clauses. */
+  boolean isTwoClausePureDisjunctionWithTerms() {
+    return clauses.size() == 2
+        && isPureDisjunction()
+        && clauses.get(0).getQuery() instanceof TermQuery
+        && clauses.get(1).getQuery() instanceof TermQuery;
+  }
+
+  /**
+   * Rewrite a single two clause disjunction query with terms to two term queries and a conjunction
+   * query using the inclusion–exclusion principle.
+   */
+  Query[] rewriteTwoClauseDisjunctionWithTermsForCount(IndexSearcher indexSearcher)
+      throws IOException {
+    BooleanQuery.Builder newQuery = new BooleanQuery.Builder();
+    Query[] queries = new Query[3];
+    for (int i = 0; i < clauses.size(); i++) {
+      TermQuery termQuery = (TermQuery) clauses.get(i).getQuery();
+      // Optimization will count term query several times so use cache to avoid multiple terms
+      // dictionary lookups
+      if (termQuery.getTermStates() == null) {
+        termQuery =
+            new TermQuery(
+                termQuery.getTerm(), TermStates.build(indexSearcher, termQuery.getTerm(), false));
+      }
+      newQuery.add(termQuery, Occur.MUST);
+      queries[i] = termQuery;
+    }
+    queries[2] = newQuery.build();
+    return queries;
   }
 
   /**

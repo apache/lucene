@@ -21,8 +21,8 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 
 /** A {@link AnyQueryNode} represents an ANY operator performed on a list of nodes. */
 public class AnyQueryNode extends AndQueryNode {
-  private CharSequence field = null;
-  private int minimumMatchingmElements = 0;
+  private CharSequence field;
+  private int minimumMatchingElements;
 
   /**
    * @param clauses - the query nodes to be or'ed
@@ -30,28 +30,20 @@ public class AnyQueryNode extends AndQueryNode {
   public AnyQueryNode(List<QueryNode> clauses, CharSequence field, int minimumMatchingElements) {
     super(clauses);
     this.field = field;
-    this.minimumMatchingmElements = minimumMatchingElements;
+    this.minimumMatchingElements = minimumMatchingElements;
 
     if (clauses != null) {
-
       for (QueryNode clause : clauses) {
-
         if (clause instanceof FieldQueryNode) {
-
-          if (clause instanceof QueryNodeImpl) {
-            ((QueryNodeImpl) clause).toQueryStringIgnoreFields = true;
-          }
-
-          if (clause instanceof FieldableNode) {
-            ((FieldableNode) clause).setField(field);
-          }
+          ((FieldQueryNode) clause).toQueryStringIgnoreFields = true;
+          ((FieldQueryNode) clause).setField(field);
         }
       }
     }
   }
 
   public int getMinimumMatchingElements() {
-    return this.minimumMatchingmElements;
+    return this.minimumMatchingElements;
   }
 
   /**
@@ -85,24 +77,24 @@ public class AnyQueryNode extends AndQueryNode {
     AnyQueryNode clone = (AnyQueryNode) super.cloneTree();
 
     clone.field = this.field;
-    clone.minimumMatchingmElements = this.minimumMatchingmElements;
+    clone.minimumMatchingElements = this.minimumMatchingElements;
 
     return clone;
   }
 
   @Override
   public String toString() {
-    if (getChildren() == null || getChildren().size() == 0)
+    if (getChildren() == null || getChildren().isEmpty())
       return "<any field='"
           + this.field
           + "'  matchelements="
-          + this.minimumMatchingmElements
+          + this.minimumMatchingElements
           + "/>";
     StringBuilder sb = new StringBuilder();
     sb.append("<any field='")
         .append(this.field)
         .append("'  matchelements=")
-        .append(this.minimumMatchingmElements)
+        .append(this.minimumMatchingElements)
         .append('>');
     for (QueryNode clause : getChildren()) {
       sb.append("\n");
@@ -114,11 +106,11 @@ public class AnyQueryNode extends AndQueryNode {
 
   @Override
   public CharSequence toQueryString(EscapeQuerySyntax escapeSyntaxParser) {
-    String anySTR = "ANY " + this.minimumMatchingmElements;
+    String anySTR = "ANY " + this.minimumMatchingElements;
 
     StringBuilder sb = new StringBuilder();
-    if (getChildren() == null || getChildren().size() == 0) {
-      // no childs case
+    if (getChildren() == null || getChildren().isEmpty()) {
+      // no children case
     } else {
       String filler = "";
       for (QueryNode clause : getChildren()) {
@@ -128,9 +120,9 @@ public class AnyQueryNode extends AndQueryNode {
     }
 
     if (isDefaultField(this.field)) {
-      return "( " + sb.toString() + " ) " + anySTR;
+      return "( " + sb + " ) " + anySTR;
     } else {
-      return this.field + ":(( " + sb.toString() + " ) " + anySTR + ")";
+      return this.field + ":(( " + sb + " ) " + anySTR + ")";
     }
   }
 }

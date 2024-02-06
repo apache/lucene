@@ -26,6 +26,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -33,6 +34,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
@@ -123,14 +125,21 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter);
+  }
+
+  @Override
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    BitSet parentBitSet = parentsFilter.getBitSet(context);
-    if (parentBitSet == null) {
+    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
+    if (collector == null) {
       return NO_RESULTS;
     }
-    KnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }
