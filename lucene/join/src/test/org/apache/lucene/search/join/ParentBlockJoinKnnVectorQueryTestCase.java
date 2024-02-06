@@ -29,6 +29,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -233,9 +234,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
      * randomly fail to find one).
      */
     try (Directory d = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(
-              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         int r = 0;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {
