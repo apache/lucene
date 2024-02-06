@@ -117,6 +117,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automata;
@@ -1090,6 +1091,7 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testThreadInterruptDeadlock() throws Exception {
     IndexerThreadInterrupt t = new IndexerThreadInterrupt(1);
     t.setDaemon(true);
@@ -2626,6 +2628,7 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   /** Make sure that close waits for any still-running commits. */
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCloseDuringCommit() throws Exception {
 
     final CountDownLatch startCommit = new CountDownLatch(1);

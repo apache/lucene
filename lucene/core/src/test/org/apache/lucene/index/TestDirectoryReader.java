@@ -1010,7 +1010,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStressTryIncRef() throws Exception {
+  public void testStressTryIncRef() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     final ScheduledExecutorService closeReaderBeforeJoiningThreads =
