@@ -135,6 +135,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
+    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, knnCollectorManager);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
