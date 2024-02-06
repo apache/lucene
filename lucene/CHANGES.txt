@@ -80,6 +80,10 @@ API Changes
 * GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
   and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
 
+* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
+  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
+  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -170,6 +174,8 @@ Other
 
 * GITHUB#9049: Fixing bug in UnescapedCharSequence#toStringEscaped() (Jakub Slowinski)
 
+* GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
@@ -205,6 +211,10 @@ Improvements
 * GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
 
 * GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
+
+* GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
+  Tests are running with random byte order to ensure that the order does not affect correctness
+  of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
 
 Optimizations
 ---------------------
