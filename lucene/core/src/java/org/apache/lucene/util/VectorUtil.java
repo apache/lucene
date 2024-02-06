@@ -220,8 +220,7 @@ public final class VectorUtil {
     for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
       distance +=
           Long.bitCount(
-              ((long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i))
-                  & 0xFFFFFFFFFFFFFFFFL);
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
     }
     // tail:
     for (; i < a.length; i++) {
