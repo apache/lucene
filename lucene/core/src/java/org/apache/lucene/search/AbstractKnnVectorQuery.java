@@ -126,7 +126,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    int cost = acceptDocs.cardinality();
+    final int cost = acceptDocs.cardinality();
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
@@ -135,7 +135,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost, knnCollectorManager);
+    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, knnCollectorManager);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
