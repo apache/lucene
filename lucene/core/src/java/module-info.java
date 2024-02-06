@@ -42,6 +42,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.search;
   exports org.apache.lucene.search.comparators;
   exports org.apache.lucene.search.similarities;
+  exports org.apache.lucene.search.knn;
   exports org.apache.lucene.store;
   exports org.apache.lucene.util;
   exports org.apache.lucene.util.automaton;
