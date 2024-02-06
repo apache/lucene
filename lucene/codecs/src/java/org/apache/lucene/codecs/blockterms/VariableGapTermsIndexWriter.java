@@ -283,7 +283,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
     @Override
     public void finish(long termsFilePointer) throws IOException {
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (fst != null) {
         fst.save(out, out);
       }

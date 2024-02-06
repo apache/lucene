@@ -104,7 +104,8 @@ final class NRTSuggesterBuilder {
    * CompletionPostingsFormat.FSTLoadMode)})}
    */
   public boolean store(DataOutput output) throws IOException {
-    final FST<PairOutputs.Pair<Long, BytesRef>> fst = fstCompiler.compile();
+    final FST<PairOutputs.Pair<Long, BytesRef>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     if (fst == null) {
       return false;
     }

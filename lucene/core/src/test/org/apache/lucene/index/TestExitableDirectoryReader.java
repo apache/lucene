@@ -41,6 +41,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
 
 /**
@@ -67,6 +68,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       }
 
       /** Sleep between iterations to timeout things. */
+      @SuppressForbidden(reason = "Thread sleep")
       @Override
       public BytesRef next() throws IOException {
         try {

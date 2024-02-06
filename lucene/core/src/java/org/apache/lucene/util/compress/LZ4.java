@@ -68,10 +68,8 @@ public final class LZ4 {
   }
 
   private static int readInt(byte[] buf, int i) {
-    // we hardcode LITTLE ENDIAN here as this is most performant on most platforms.
-    // According to LZ4's alogrithm the endianness does not matter at all, but we
-    // want to prevent indexes to differ just because of platform endianness!
-    return (int) BitUtil.VH_LE_INT.get(buf, i);
+    // According to LZ4's algorithm the endianness does not matter at all:
+    return (int) BitUtil.VH_NATIVE_INT.get(buf, i);
   }
 
   private static int commonBytes(byte[] b, int o1, int o2, int limit) {

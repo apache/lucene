@@ -150,7 +150,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   /**
    * Creates an index pattern of the form '$name.$version$suffix.zip' where version is filled in
-   * afterward via {@link String#formatted(Object...)} during the test runs.
+   * afterward via {@link String#format(Locale, String, Object...)} during the test runs.
    *
    * @param name name of the index
    * @param suffix index suffix ie. '-cfs'
