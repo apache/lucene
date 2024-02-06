@@ -287,7 +287,7 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
   }
 
-  public void testBinaryHammingBytes() {
+  public void testBinaryHammingDistance() {
     assertEquals(
         0,
         VectorUtil.binaryHammingDistance(
@@ -335,7 +335,7 @@ public class TestVectorUtil extends LuceneTestCase {
             new byte[] {(byte) 0b01010100, (byte) 0b01010101, (byte) 0b01010101}));
   }
 
-  private static int hammingDistanceScalar(byte[] a, byte[] b) {
+  private static int binaryHammingDistanceScalar(byte[] a, byte[] b) {
     int distance = 0;
     for (int i = 0; i < a.length; i++) {
       distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
@@ -343,8 +343,8 @@ public class TestVectorUtil extends LuceneTestCase {
     return distance;
   }
 
-  public void testHammingDistanceVariableSize() {
-    int dim = random().nextInt(1024);
+  public void testBinaryHammingDistanceVariableSize() {
+    int dim = random().nextInt(0, 1024) + 1;
     int expectedDistance = 0;
     byte[] aVector = randomVectorBytes(dim);
     byte[] bVector = new byte[dim];
@@ -362,9 +362,10 @@ public class TestVectorUtil extends LuceneTestCase {
         bVector[i] = aVector[i];
       }
     }
-    assertEquals(
-        VectorUtil.binaryHammingDistance(aVector, bVector),
-        hammingDistanceScalar(aVector, bVector));
-    assertEquals(VectorUtil.binaryHammingDistance(aVector, bVector), expectedDistance);
+
+    int scalarResult = binaryHammingDistanceScalar(aVector, bVector);
+    int hammingDistance = VectorUtil.binaryHammingDistance(aVector, bVector);
+    assertEquals(hammingDistance, scalarResult);
+    assertEquals(hammingDistance, expectedDistance);
   }
 }
