@@ -8,18 +8,16 @@ include(CheckIPOSupported)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_STANDARD 11)
-
-set(CMAKE_C_FLAGS_DEBUG
-    "-O0 -Wall -Wextra -Werror -g3 -fsanitize=address,undefined -fno-omit-frame-pointer")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wextra")
-link_directories("${CMAKE_CURRENT_SOURCE_DIR}/../..")
-
 add_library(${PROJECT_NAME} src/dpu_jni.c)
 target_include_directories(
   ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} commons/include commons/src/properties verbose/src)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES})
+target_compile_features(${PROJECT_NAME} PUBLIC c_std_11)
+target_compile_options(${PROJECT_NAME} PRIVATE
+  $<$<CONFIG:Debug>:-Wall -Wextra -Werror -g3 -Og -fsanitize=address,undefined -fno-omit-frame-pointer>
+  $<$<CONFIG:Release>:-Wall -Wextra -Werror>)
+target_link_options(${PROJECT_NAME} PRIVATE
+  $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer>)
 
 check_ipo_supported(RESULT result OUTPUT output)
 if(result)

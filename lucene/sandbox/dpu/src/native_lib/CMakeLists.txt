@@ -24,8 +24,7 @@ target_include_directories(
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES} Threads::Threads)
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_11)
 target_compile_options(${PROJECT_NAME} PRIVATE
-  $<$<CONFIG:Debug>:-Wall -Wextra -Werror -g3 -fsanitize=address,undefined -fno-omit-frame-pointer>
-  $<$<CONFIG:Release>:-Wall -Wextra>)
+  $<$<CONFIG:Debug>:-g3 -Og -fsanitize=address,undefined -fno-omit-frame-pointer -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2>)
 target_link_options(${PROJECT_NAME} PRIVATE
   $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer>)
 

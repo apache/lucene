@@ -34,7 +34,6 @@ cmake {
   installPrefix = "$projectDir/dpu/build"
   generator = 'Ninja'
 
-  buildConfig='Release'
   buildTarget='all'
   buildClean=true
 }
@@ -52,6 +51,7 @@ task cmakeBuildTest (type: dev.welbyseely.CMakeBuildTask) {
   inputs.files(fileTree('dpu/src'))
 }
 
+cmakeBuild.dependsOn cmakeConfigure
 cmakeInstall.dependsOn cmakeBuild
 assemble.dependsOn cmakeInstall
 clean.dependsOn cmakeClean
@@ -66,4 +66,7 @@ test {
   systemProperty 'lucene.pim.dir', "${rootProject.projectDir}"
   systemProperty 'java.library.path', "$projectDir/dpu/build:$projectDir/dpu/"
   environment 'LD_LIBRARY_PATH', "$projectDir/dpu/build/"
+  environment 'LD_PRELOAD', '/usr/lib/x86_64-linux-gnu/libasan.so.5'
+  // We need to disable leak detection because the entire JVM is considered a leak
+  environment 'ASAN_OPTIONS', 'detect_leaks=0'
 }
