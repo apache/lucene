@@ -163,7 +163,6 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
 
-    // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(values.length);
     acceptOrds.set(0);
     acceptOrds.set(2);
@@ -172,8 +171,15 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
             buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
 
     TopDocs nodes = nn.topDocs();
-    assertEquals("Number of found results is not equal to [2].", 2, nodes.scoreDocs.length);
     int[] expectedDocs = new int[] {2, 0};
+    assertEquals(
+        "Expected '"
+            + expectedDocs.length
+            + "' results but found '"
+            + nodes.scoreDocs.length
+            + "' instead.",
+        expectedDocs.length,
+        nodes.scoreDocs.length);
     for (int i = 0; i < nodes.scoreDocs.length; i++) {
       ScoreDoc node = nodes.scoreDocs[i];
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
