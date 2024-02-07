@@ -244,6 +244,9 @@ Optimizations
 
 * GITHUB#13036 Optimize counts on two clause term disjunctions. (Adrien Grand, Johannes Fredén)
 
+* GITHUB#12962: Speedup concurrent multi-segment HNWS graph search (Mayya Sharipova, Tom Veasey)
+
+
 Bug Fixes
 ---------------------
 * GITHUB#12866: Prevent extra similarity computation for single-level HNSW graphs. (Kaival Parikh)
