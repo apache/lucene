@@ -113,13 +113,13 @@ public class EnwikiContentSource extends ContentSource {
     String time(String original) {
       StringBuilder buffer = new StringBuilder();
 
-      buffer.append(original.substring(8, 10));
+      buffer.append(original, 8, 10);
       buffer.append('-');
       buffer.append(months[Integer.parseInt(original.substring(5, 7)) - 1]);
       buffer.append('-');
-      buffer.append(original.substring(0, 4));
+      buffer.append(original, 0, 4);
       buffer.append(' ');
-      buffer.append(original.substring(11, 19));
+      buffer.append(original, 11, 19);
       buffer.append(".000");
 
       return buffer.toString();

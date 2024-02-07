@@ -669,7 +669,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         builder.append((char) ch);
       }
     } catch (Exception e) {
-      if (gold.equals(builder.toString())) {
+      if (gold.contentEquals(builder)) {
         throw e;
       }
       throw new Exception(
