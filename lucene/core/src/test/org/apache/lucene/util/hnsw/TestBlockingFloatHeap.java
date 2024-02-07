@@ -98,4 +98,3 @@ public class TestBlockingFloatHeap extends LuceneTestCase {
     }
   }
 }
-
