@@ -281,12 +281,29 @@ public class ScalarQuantizer {
       }
       return new ScalarQuantizer(min, max, confidenceInterval);
     }
+    float[] quantileGatheringScratch = new float[floatVectorValues.dimension() * 10];
     if (totalVectorCount <= quantizationSampleSize) {
       double upperSum = 0;
       double lowerSum = 0;
+      int i = 0;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
+        if (i == 10) {
+          float[] upperAndLower =
+              getUpperAndLowerQuantile(
+                  quantileGatheringScratch, confidenceInterval, i * floatVectorValues.dimension());
+          upperSum += upperAndLower[1];
+          lowerSum += upperAndLower[0];
+          i = 0;
+        }
+        float[] vectorValue = floatVectorValues.vectorValue();
+        System.arraycopy(
+            vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
+        i++;
+      }
+      if (i > 0) {
         float[] upperAndLower =
-            getUpperAndLowerQuantile(floatVectorValues.vectorValue(), confidenceInterval);
+            getUpperAndLowerQuantile(
+                quantileGatheringScratch, confidenceInterval, i * floatVectorValues.dimension());
         upperSum += upperAndLower[1];
         lowerSum += upperAndLower[0];
       }
@@ -300,6 +317,7 @@ public class ScalarQuantizer {
     int index = 0;
     double upperSum = 0;
     double lowerSum = 0;
+    int idx = 0;
     for (int i : vectorsToTake) {
       while (index <= i) {
         // We cannot use `advance(docId)` as MergedVectorValues does not support it
@@ -307,8 +325,23 @@ public class ScalarQuantizer {
         index++;
       }
       assert floatVectorValues.docID() != NO_MORE_DOCS;
+      if (idx == 10) {
+        float[] upperAndLower =
+            getUpperAndLowerQuantile(
+                quantileGatheringScratch, confidenceInterval, idx * floatVectorValues.dimension());
+        upperSum += upperAndLower[1];
+        lowerSum += upperAndLower[0];
+        idx = 0;
+      }
+      float[] vectorValue = floatVectorValues.vectorValue();
+      System.arraycopy(
+          vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
+      idx++;
+    }
+    if (idx > 0) {
       float[] upperAndLower =
-          getUpperAndLowerQuantile(floatVectorValues.vectorValue(), confidenceInterval);
+          getUpperAndLowerQuantile(
+              quantileGatheringScratch, confidenceInterval, idx * floatVectorValues.dimension());
       upperSum += upperAndLower[1];
       lowerSum += upperAndLower[0];
     }
@@ -328,17 +361,17 @@ public class ScalarQuantizer {
    * @param confidenceInterval the configured confidence interval
    * @return lower and upper quantile values
    */
-  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval) {
+  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval, int length) {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
-    int selectorIndex = (int) (arr.length * (1f - confidenceInterval) / 2f + 0.5f);
+    int selectorIndex = (int) (length * (1f - confidenceInterval) / 2f + 0.5f);
     if (selectorIndex > 0) {
       Selector selector = new FloatSelector(arr);
-      selector.select(0, arr.length, arr.length - selectorIndex);
-      selector.select(0, arr.length - selectorIndex, selectorIndex);
+      selector.select(0, length, length - selectorIndex);
+      selector.select(0, length - selectorIndex, selectorIndex);
     }
     float min = Float.POSITIVE_INFINITY;
     float max = Float.NEGATIVE_INFINITY;
-    for (int i = selectorIndex; i < arr.length - selectorIndex; i++) {
+    for (int i = selectorIndex; i < length - selectorIndex; i++) {
       min = Math.min(arr[i], min);
       max = Math.max(arr[i], max);
     }
