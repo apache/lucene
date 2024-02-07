@@ -216,6 +216,8 @@ Improvements
   Tests are running with random byte order to ensure that the order does not affect correctness
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
 
+* GITHUB#13087: Some `static final Set` constants were mutable - rectified. (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 
