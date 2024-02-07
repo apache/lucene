@@ -13,7 +13,8 @@ add_executable(
   src/term_lookup.c
   src/postings_util.c
   src/score_lower_bound.c
-  src/context_save_restore.c)
+  src/context_save_restore.c
+  src/mram_unaligned.c)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC -DNR_TASKLETS=16
   -DSTACK_SIZE_DEFAULT=512)
