@@ -281,24 +281,41 @@ public class ScalarQuantizer {
       }
       return new ScalarQuantizer(min, max, confidenceInterval);
     }
-    int dim = floatVectorValues.dimension();
     if (totalVectorCount <= quantizationSampleSize) {
-      int copyOffset = 0;
-      float[] values = new float[totalVectorCount * dim];
+      double upperSum = 0;
+      double lowerSum = 0;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        float[] floatVector = floatVectorValues.vectorValue();
-        System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
-        copyOffset += dim;
+        float[] upperAndLower =
+            getUpperAndLowerQuantile(floatVectorValues.vectorValue(), confidenceInterval);
+        upperSum += upperAndLower[1];
+        lowerSum += upperAndLower[0];
       }
-      float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
-      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
+      return new ScalarQuantizer(
+          (float) lowerSum / totalVectorCount,
+          (float) upperSum / totalVectorCount,
+          confidenceInterval);
     }
-    int numFloatVecs = totalVectorCount;
     // Reservoir sample the vector ordinals we want to read
-    int[] vectorsToTake = reservoirSampleIndices(numFloatVecs, quantizationSampleSize);
-    float[] values = sampleVectors(floatVectorValues, vectorsToTake);
-    float[] upperAndLower = getUpperAndLowerQuantile(values, confidenceInterval);
-    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], confidenceInterval);
+    int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, quantizationSampleSize);
+    int index = 0;
+    double upperSum = 0;
+    double lowerSum = 0;
+    for (int i : vectorsToTake) {
+      while (index <= i) {
+        // We cannot use `advance(docId)` as MergedVectorValues does not support it
+        floatVectorValues.nextDoc();
+        index++;
+      }
+      assert floatVectorValues.docID() != NO_MORE_DOCS;
+      float[] upperAndLower =
+          getUpperAndLowerQuantile(floatVectorValues.vectorValue(), confidenceInterval);
+      upperSum += upperAndLower[1];
+      lowerSum += upperAndLower[0];
+    }
+    return new ScalarQuantizer(
+        (float) lowerSum / quantizationSampleSize,
+        (float) upperSum / quantizationSampleSize,
+        confidenceInterval);
   }
 
   /**
