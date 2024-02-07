@@ -246,6 +246,7 @@ Optimizations
 
 * GITHUB#12962: Speedup concurrent multi-segment HNWS graph search (Mayya Sharipova, Tom Veasey)
 
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
 Bug Fixes
 ---------------------
