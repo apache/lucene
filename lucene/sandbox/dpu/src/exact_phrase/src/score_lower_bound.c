@@ -1,11 +1,16 @@
-#include <defs.h>
-#include <mram_unaligned.h>
-#include <mutex_pool.h>
-#include <score_lower_bound.h>
-#include <stdint.h>
+#include <assert.h>             // for assert
+#include <attributes.h>         // for __mram_ptr, __host, __dma_aligned
+#include <defs.h>               // for me
+#include <limits.h>             // for UINTPTR_MAX, UINT32_MAX, UINT8_MAX
+#include <mram.h>               // for mram_write, mram_read
+#include <mram_unaligned.h>     // for mram_read_unaligned
+#include <mutex_pool.h>         // for mutex_pool_lock, mutex_pool_unlock
+#include <stdbool.h>            // for bool, true
+#include <stdint.h>             // for uint32_t, uint8_t, uint64_t, uintptr_t
 
-#include "decoder.h"
-#include "common.h"
+#include "common.h"             // for NORM_INV_TYPE, DPU_MAX_BATCH_SIZE
+#include "matcher.h"            // for matcher_get_curr_freq, did_matcher_t
+#include "score_lower_bound.h"  // for score_t, MAX_NB_SCORES, (anonymous)
 
 // store all scores found so far
 __mram_noinit score_t best_scores[DPU_MAX_BATCH_SIZE][MAX_NB_SCORES];

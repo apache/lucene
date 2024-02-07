@@ -2,22 +2,19 @@
  * Implementation of exact phrase search algorithm on DPUs.
  */
 
-#include <assert.h>
-#include <attributes.h>
-#include <built_ins.h>
-#include <defs.h>
-#include <dpuruntime.h>
-#include <limits.h>
-#include <mram.h>
-#include <mutex.h>
+#include <assert.h>      // for assert
+#include <defs.h>        // for me
+#include <dpuruntime.h>  // for __resume, __stop
+#include <limits.h>      // for CHAR_BIT
+#include <mram.h>        // for DPU_MRAM_HEAP_POINTER
+#include <mutex.h>       // for mutex_unlock, mutex_lock, MUTEX_INIT
 #define SEQREAD_CACHE_SIZE 64
-#include <seqread.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
+#include <seqread.h>     // for seqread64_get, seqreader_t, seqread_get, seq...
+#include <stddef.h>      // for NULL
+#include <stdint.h>      // for uint32_t, uint8_t, uintptr_t, uint16_t
+#include <string.h>      // for memcpy
 
-#include "common.h"
+#include "common.h"      // for NB_DECODERS, mram_ptr_t
 
 // counting the number of bytes read will make the measure of time to match not accurate
 /* #define COUNT_BYTES_READ */

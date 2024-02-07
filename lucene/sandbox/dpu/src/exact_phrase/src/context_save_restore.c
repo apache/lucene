@@ -1,7 +1,11 @@
-#include <assert.h>
+#include <assert.h>                // for assert
+#include <attributes.h>            // for __mram_noinit
+#include <mram.h>                  // for mram_read, mram_write
+#include <stdint.h>                // for uint16_t, uint32_t, uint8_t
 
-#include "context_save_restore.h"
-#include "common.h"
+#include "common.h"                // for DPU_RESULTS_CACHE_SIZE, DPU_MAX_BA...
+#include "context_save_restore.h"  // for restore_context, save_context
+#include "query_result.h"          // for query_buffer_elem_t, query_buffer_...
 
 struct results_mram_buffer_info {
     uint16_t buffer_id;

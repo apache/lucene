@@ -1,7 +1,10 @@
-#include <defs.h>
-#include <stdint.h>
+#include <defs.h>           // for me
+#include <stdbool.h>        // for true, bool, false
+#include <stdint.h>         // for uint32_t
 
-#include "parser.h"
+#include "common.h"         // for MAX_NR_TERMS, mram_ptr_t
+#include "parser.h"         // for parse_pos, abort_parse_did, release_parsers
+#include "postings_util.h"  // for postings_info_t
 
 typedef struct _did_matcher {
     parser_t *parser;
@@ -11,7 +14,7 @@ typedef struct _did_matcher {
     uint32_t current_pos;
 } did_matcher_t;
 
-#include "matcher.h"
+#include "matcher.h"        // for END_OF_POSITIONS, DID_FOUND, DID_NOT_FOUND
 
 static did_matcher_t global_matchers[NR_TASKLETS][MAX_NR_TERMS];
 

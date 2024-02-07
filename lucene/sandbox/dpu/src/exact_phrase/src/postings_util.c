@@ -1,7 +1,9 @@
-#include <mram.h>
-#include <stdint.h>
+#include <attributes.h>     // for __mram_noinit
+#include <mram.h>           // for mram_write, mram_read
+#include <stdint.h>         // for uint8_t, uint32_t
 
-#include "postings_util.h"
+#include "common.h"         // for MAX_NR_TERMS, DPU_MAX_BATCH_SIZE, MAX_NR_...
+#include "postings_util.h"  // for postings_info_t, (anonymous), get_posting...
 
 __mram_noinit postings_info_t postings_cache[DPU_MAX_BATCH_SIZE][MAX_NR_SEGMENTS * MAX_NR_TERMS];
 

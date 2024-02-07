@@ -1,16 +1,13 @@
 #include "topdocs_sync.h"
 
-#include <dpu.h>
-#include <errno.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "dpu_error.h"
-#include "dpu_types.h"
+#include <dpu.h>          // for dpu_broadcast_to, dpu_get_nr_dpus, dpu_prep...
+#include <errno.h>        // for errno
+#include <pthread.h>      // for pthread_mutex_t, pthread_mutex_destroy, pth...
+#include <stdbool.h>      // for bool, false, true
+#include <stddef.h>       // for NULL, size_t
+#include <stdint.h>       // for uint32_t, uint8_t, uint64_t
+#include <stdio.h>        // for fprintf, stderr
+#include <stdlib.h>       // for free, realloc, malloc
 
 typedef float score_t;
 
@@ -18,7 +15,9 @@ typedef float score_t;
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define i_cmp -c_default_cmp
 #define i_type PQue
-#include <stc/cpque.h>
+#include <stc/cpque.h>    // for PQue_push, PQue_size, PQue_top, PQue_clear
+// IWYU pragma: no_include "stc/ccommon.h"
+// IWYU pragma: no_forward_declare PQue
 
 #define ALIGN8(x) ((((uint32_t)(x) + 7U) >> 3U) << 3U)
 #define CLEANUP(f) __attribute__((cleanup(f)))

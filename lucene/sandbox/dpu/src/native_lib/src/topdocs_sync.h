@@ -16,8 +16,10 @@
  */
 
 #pragma once
-#include <dpu.h>
-#include <stdint.h>
+#include <dpu.h>  // for dpu_error_t
+#include <features.h>   // for __attribute_warn_unused_result__
+#include <stddef.h>     // for size_t
+#include <stdint.h>     // for uint32_t
 
 static const size_t NORM_INVERSE_CACHE_SIZE = 256;
 static const uint32_t INITIAL_NB_SCORES = 1;

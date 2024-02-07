@@ -4,22 +4,26 @@
  */
 
 #define _GNU_SOURCE
-#include "dpu_custom.h"
-#include "dpu_rank.h"
-#include "dpu_target.h"
-#include "dpu_config.h"
-#include "dpu_description.h"
-#include "dpu_log_internals.h"
-#include "dpu_management.h"
-#include <dpu_error.h>
-#include <dpu_program.h>
-#include <dpu_types.h>
-#include <dpu_elf.h>
-#include <dpu.h>
-#include <jni.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <dpu.h>                 // for dpu_error_to_string, dpu_set_t, DPU_OK
+#include <dpu_elf.h>             // for dpu_elf_symbol_t, dpu_elf_symbols_t
+#include <dpu_program.h>         // for dpu_program_t
+#include <jni.h>                 // for JNINativeInterface_, _jobject, jobject
+#include <stdarg.h>              // for va_end, va_list, va_start
+#include <stdbool.h>             // for bool, false, true
+#include <stdint.h>              // for uint32_t, uint8_t
+#include <stdio.h>               // for NULL, vasprintf
+#include <stdlib.h>              // for free, malloc, calloc
+#include <string.h>              // for memset
+
+#include "dpu_config.h"          // for dpu_reset_dpu, dpu_reset_rank
+#include "dpu_custom.h"          // for dpu_custom_for_dpu, DPU_COMMAND_SYST...
+#include "dpu_debug.h"           // for dpu_extract_context_for_dpu, dpu_fre...
+#include "dpu_description.h"     // for _dpu_description_t, dpu_description_t
+#include "dpu_hw_description.h"  // for dpu_hw_description_t, dpu_hw_descrip...
+#include "dpu_log_internals.h"   // for dpulog_read_for_dpu_, DPU_LOG_FORMAT...
+#include "dpu_management.h"      // for dpu_get_description, dpu_from_set
+#include "dpu_rank.h"            // for dpu_t, dpu_rank_t (ptr only)
+#include "jni_md.h"              // for jint, jbyte, JNICALL, JNIEXPORT, jlong
 
 static struct dpu_set_t
 build_native_set(JNIEnv *env, jobject object)

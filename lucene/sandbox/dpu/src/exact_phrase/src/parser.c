@@ -1,12 +1,10 @@
-#include <defs.h>
-#include <mram.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <defs.h>     // for me
+#include <stdbool.h>  // for bool, false, true
+#include <stdint.h>   // for uint32_t, int32_t
 
-#include "common.h"
-#include "decoder.h"
-#include "term_lookup.h"
+#include "common.h"   // for mram_ptr_t, MAX_NR_TERMS
+#include "decoder.h"  // for decode_vint_from, get_absolute_address_from
+#include "term.h"     // for decoder_t
 
 typedef struct _parser {
     decoder_t *decoder;
@@ -21,7 +19,7 @@ typedef struct _parser {
     } did_parser;
 } parser_t;
 
-#include "parser.h"
+#include "parser.h"   // for DOC_INFO, END_OF_FRAGMENT, abort_parse_did, abo...
 
 static parser_t global_parsers[NR_TASKLETS][MAX_NR_TERMS];
 

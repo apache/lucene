@@ -1,34 +1,37 @@
-#include <alloc.h>
-#include <assert.h>
-#include <attributes.h>
-#include <barrier.h>
-#include <defs.h>
-#include <dpuruntime.h>
-#include <mram.h>
-#include <mram_unaligned.h>
-#include <mutex.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include <alloc.h>                 // for mem_reset
+#include <assert.h>                // for assert
+#include <attributes.h>            // for __host, __mram_noinit, __dma_aligned
+#include <barrier.h>               // for barrier_wait, BARRIER_INIT
+#include <defs.h>                  // for me
+#include <dpuruntime.h>            // for unreachable
+#include <limits.h>                // for UINT16_MAX, UINT8_MAX, INT32_MAX
+#include <mram.h>                  // for mram_write, mram_read, DPU_MRAM_HE...
+#include <mram_unaligned.h>        // for mram_read_unaligned, mram_write_un...
+#include <mutex.h>                 // for mutex_lock, mutex_unlock, MUTEX_INIT
+#include <stdbool.h>               // for true
+#include <stdint.h>                // for uint32_t, uint16_t, uint8_t, uint64_t
+#include <stdlib.h>                // for abort
+#include <string.h>                // for memset
 #ifdef DBG_print
 #include <stdio.h>
 #endif
-
-#include "common.h"
-#include "context_save_restore.h"
-#include "decoder.h"
-#include "matcher.h"
-#include "postings_util.h"
-#include "query_result.h"
-#include "score_lower_bound.h"
-#include "term_lookup.h"
-
 //#define PERF_MESURE
 #ifdef PERF_MESURE
 #include <perfcounter.h>
 #include <stdio.h>
 uint64_t total_cycles = 0;
 #endif
+
+#include "common.h"                // for DPU_RESULTS_CACHE_SIZE, mram_ptr_t
+#include "context_save_restore.h"  // for restore_context, save_context
+#include "decoder.h"               // for decode_byte_from, decode_short_from
+#include "matcher.h"               // for did_matcher_t, matcher_get_curr_did
+#include "postings_util.h"         // for postings_info_t, update_postings_i...
+#include "query_parser.h"          // for init_query_parser, read_field, rea...
+#include "query_result.h"          // for query_buffer_elem_t, query_buffer_...
+#include "score_lower_bound.h"     // for reset_scores, add_match_for_best_s...
+#include "term.h"                  // for decoder_t, term_t
+#include "term_lookup.h"           // for get_field_addresses, get_term_post...
 
 __host uint32_t index_loaded = 0;
 
@@ -93,9 +96,6 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 #endif
 
 //#define DEBUG
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
 
 #ifndef NDEBUG
 uint16_t nb_did_skipped[DPU_MAX_BATCH_SIZE];

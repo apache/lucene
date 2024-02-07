@@ -1,6 +1,9 @@
-#include <assert.h>
+#include <stdint.h>        // for uint32_t, uint8_t
 
-#include "query_parser.h"
+#include "common.h"        // for mram_ptr_t
+#include "decoder.h"       // for get_absolute_address_from, decode_vint_from
+#include "query_parser.h"  // for query_parser_t, init_query_parser, read_field
+#include "term.h"          // for term_t
 
 void
 init_query_parser(query_parser_t *parser, mram_ptr_t query)

@@ -1,8 +1,12 @@
-#include <stdint.h>
+#include <defs.h>           // for me
+#include <stdbool.h>        // for bool, true, false
+#include <stdint.h>         // for uint32_t, int32_t, uint8_t
 
-#include "common.h"
-#include "decoder.h"
-#include "term_lookup.h"
+#include "common.h"         // for mram_ptr_t
+#include "decoder.h"        // for decode_vint_from, get_absolute_address_from
+#include "postings_util.h"  // for postings_info_t
+#include "term.h"           // for decoder_t, term_t
+#include "term_lookup.h"    // for get_field_addresses, get_term_postings
 
 /**
  * structure to hold the information for a block

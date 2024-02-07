@@ -21,16 +21,19 @@
  * C objects are named using snake_case
  */
 
-#include <stddef.h>
 #define _GNU_SOURCE
-#include <dpu.h>
-#include <errno.h>
-#include <jni.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include <dpu.h>           // for dpu_get_nr_dpus, dpu_prepare_xfer, dpu_pus...
+#include <errno.h>         // for errno
+#include <jni.h>           // for JNINativeInterface_, _jobject, JNIEnv, job...
+#include <stdbool.h>       // for bool, false, true
+#include <stddef.h>        // for NULL, size_t
+#include <stdint.h>        // for uint32_t, uint64_t, uint8_t
+#include <stdio.h>         // for asprintf, fprintf, stderr
+#include <stdlib.h>        // for free, malloc, exit
+#include <string.h>        // for strerror_r, memset
 
-#include "topdocs_sync.h"
+#include "topdocs_sync.h"  // for NORM_INVERSE_CACHE_SIZE, free_topdocs_sync
+// IWYU pragma: no_include "jni_md.h"
 
 // TODO(sbrocard): increase version if needed
 #define JNI_VERSION JNI_VERSION_1_1
