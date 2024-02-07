@@ -18,11 +18,11 @@ package org.apache.lucene.tests.index;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -76,7 +76,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   @Before
   public void init() {
     vectorEncoding = randomVectorEncoding();
-    similarityFunction = randomSimilarityForEncoding(vectorEncoding);
+    similarityFunction = randomSimilarityForEncoding(random(), vectorEncoding);
   }
 
   @Override
@@ -651,7 +651,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
       fieldVectorEncodings[i] = randomVectorEncoding();
-      fieldSimilarityFunctions[i] = randomSimilarityForEncoding(fieldVectorEncodings[i]);
+      fieldSimilarityFunctions[i] = randomSimilarityForEncoding(random(), fieldVectorEncodings[i]);
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -713,19 +713,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         }
       }
     }
-  }
-
-  /**
-   * Pick a random similarity function for the provided encoding. This is to make sure that we test
-   * only supported similarities and avoid raising exceptions (e.g. {@link
-   * VectorSimilarityFunction#BINARY_HAMMING_DISTANCE} and {@link VectorEncoding#FLOAT32})
-   */
-  protected VectorSimilarityFunction randomSimilarityForEncoding(VectorEncoding encoding) {
-    List<VectorSimilarityFunction> supportedVectorSimilarities =
-        Arrays.stream(VectorSimilarityFunction.values())
-            .filter(x -> x.supportsVectorEncoding(encoding))
-            .toList();
-    return supportedVectorSimilarities.get(random().nextInt(supportedVectorSimilarities.size()));
   }
 
   /**

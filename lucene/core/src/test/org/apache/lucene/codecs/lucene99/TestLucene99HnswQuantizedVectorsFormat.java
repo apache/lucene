@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +66,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction =
-        randomSimilarityForEncoding(VectorEncoding.FLOAT32);
+        randomSimilarityForEncoding(random(), VectorEncoding.FLOAT32);
     boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);

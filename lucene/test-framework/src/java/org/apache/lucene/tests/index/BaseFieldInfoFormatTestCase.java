@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.tests.index;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
+import static org.apache.lucene.tests.util.TestUtil.randomVectorEncoding;
+
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -361,13 +361,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
       int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
-      VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
-      VectorSimilarityFunction similarityFunction =
-          RandomPicks.randomFrom(
-              r,
-              Arrays.stream(VectorSimilarityFunction.values())
-                  .filter(x -> x.supportsVectorEncoding(encoding))
-                  .collect(Collectors.toList()));
+      VectorEncoding encoding = randomVectorEncoding(r);
+      VectorSimilarityFunction similarityFunction = randomSimilarityForEncoding(r, encoding);
       type.setVectorAttributes(dimension, encoding, similarityFunction);
     }
 

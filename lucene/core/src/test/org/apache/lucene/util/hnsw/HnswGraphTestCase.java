@@ -98,7 +98,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract AbstractMockVectorValues<T> vectorValues(float[][] values);
 
-  List<VectorSimilarityFunction> supportedVectorSimilarityFunctions() {
+  private List<VectorSimilarityFunction> supportedVectorSimilarityFunctions() {
     return Arrays.stream(VectorSimilarityFunction.values())
         .filter(x -> x.supportsVectorEncoding(getVectorEncoding()))
         .toList();

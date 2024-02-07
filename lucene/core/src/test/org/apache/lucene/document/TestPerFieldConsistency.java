@@ -22,10 +22,10 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLong;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
@@ -91,11 +91,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   private static Field randomKnnVectorField(Random random, String fieldName) {
     VectorSimilarityFunction similarityFunction =
-        RandomPicks.randomFrom(
-            random,
-            Arrays.stream(VectorSimilarityFunction.values())
-                .filter(x -> x.supportsVectorEncoding(VectorEncoding.FLOAT32))
-                .toList());
+        randomSimilarityForEncoding(random, VectorEncoding.FLOAT32);
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();

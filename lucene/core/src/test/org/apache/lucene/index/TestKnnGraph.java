@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
+import static org.apache.lucene.tests.util.TestUtil.randomVectorEncoding;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.randSeed;
 
 import java.io.IOException;
@@ -84,8 +86,8 @@ public class TestKnnGraph extends LuceneTestCase {
     // even though vector encoding could be BYTE, we make explicit use of KnnFloatField in multiple
     // tests
     // so similarity not working with floats (e.g. BINARY_HAMMING_DISTANCE) will fail
-    similarityFunction = randomSimilarityForFloatEncoding();
-    vectorEncoding = randomVectorEncoding();
+    similarityFunction = randomSimilarityForEncoding(random(), VectorEncoding.FLOAT32);
+    vectorEncoding = randomVectorEncoding(random());
 
     boolean quantized = randomBoolean();
     codec =
@@ -116,18 +118,6 @@ public class TestKnnGraph extends LuceneTestCase {
             };
           }
         };
-  }
-
-  private VectorEncoding randomVectorEncoding() {
-    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
-  }
-
-  private VectorSimilarityFunction randomSimilarityForFloatEncoding() {
-    List<VectorSimilarityFunction> supportedVectorSimilarities =
-        Arrays.stream(VectorSimilarityFunction.values())
-            .filter(x -> x.supportsVectorEncoding(VectorEncoding.FLOAT32))
-            .toList();
-    return supportedVectorSimilarities.get(random().nextInt(supportedVectorSimilarities.size()));
   }
 
   @After
