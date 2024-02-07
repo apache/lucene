@@ -509,16 +509,16 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
 
     if(use_lower_bound_flow) {
         uint32_t nr_ranks = 0;
-        pque_array score_pques = {};
-        mutex_array query_mutexes = {};
+        pque_array_t score_pques = {};
+        mutex_array_t query_mutexes = {};
         CLEANUP(cleanup_free) lower_bound_t *updated_bounds = NULL;
         CLEANUP(cleanup_free) bool *finished_ranks = NULL;
 
         DPU_PROPAGATE(entry_init_topdocs_sync(
             set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
-        update_bounds_atomic_context ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
-        broadcast_params broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+        update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
+        broadcast_params_t broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
 
         return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
     }

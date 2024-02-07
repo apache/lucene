@@ -7,6 +7,7 @@
 #include <mutex_pool.h>         // for mutex_pool_lock, mutex_pool_unlock
 #include <stdbool.h>            // for bool, true
 #include <stdint.h>             // for uint32_t, uint8_t, uint64_t, uintptr_t
+#include <stdlib.h>
 
 #include "common.h"             // for NORM_INV_TYPE, DPU_MAX_BATCH_SIZE
 #include "matcher.h"            // for matcher_get_curr_freq, did_matcher_t
@@ -133,6 +134,7 @@ add_match_for_best_scores(uint8_t query_id, uint32_t doc_id, uint32_t freq)
     } else {
         // error, frequence is too large, should not happen
         // TODO(jlegriel):
+        abort();
     }
 
     uint32_t score_id = MAX_NB_SCORES;

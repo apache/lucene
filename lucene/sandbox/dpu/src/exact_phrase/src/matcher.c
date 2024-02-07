@@ -6,7 +6,7 @@
 #include "parser.h"         // for parse_pos, abort_parse_did, release_parsers
 #include "postings_util.h"  // for postings_info_t
 
-typedef struct _did_matcher {
+typedef struct did_matcher_s {
     parser_t *parser;
     uint32_t current_did;
     uint32_t current_pos_freq;

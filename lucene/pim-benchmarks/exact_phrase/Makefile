@@ -28,6 +28,9 @@ help:
 	@echo 'index_dpu:	create lucene index for files in the dataset for DPUs'
 	@echo 'run_dpu:	run lucene search with phrase queries using DPUs'
 	@echo 'run_dpu_parallel: same as run_dpu but using multiple searcher threads'
+	@echo 
+	@echo 'If you need to run in debug mode on DPU, prefix your make run command with'
+	@echo 'ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5'
 	@echo '-------------------------------------------------------------------------------'
 
 index: ${DATASET_PATH}

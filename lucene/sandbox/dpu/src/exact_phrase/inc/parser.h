@@ -10,7 +10,7 @@
 /**
  * Structure used to parse document ids and positions from the index
  */
-typedef struct _parser parser_t;
+typedef struct parser_s parser_t;
 
 /**
  * Type returned by the function that parses the document id

@@ -59,6 +59,7 @@ __host uint64_t search_done;
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
 #define NB_ELEM_TRANSFER 8
 __dma_aligned uint32_t segment_offset_cache[NR_TASKLETS][NB_ELEM_TRANSFER];
+// NOLINTNEXTLINE(misc-misplaced-const)
 MUTEX_INIT(results_mutex);
 uint32_t results_buffer_index = 0;
 
@@ -86,6 +87,7 @@ uint8_t nr_segments_log2 = 0;
 mram_ptr_t dpu_index = 0;
 
 uint32_t batch_num = 0;
+// NOLINTNEXTLINE(misc-misplaced-const)
 MUTEX_INIT(batch_mutex);
 BARRIER_INIT(barrier, NR_TASKLETS);
 

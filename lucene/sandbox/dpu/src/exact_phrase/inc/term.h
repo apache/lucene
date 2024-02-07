@@ -6,7 +6,7 @@
 /**
  * Forward declaration of the decoder
  */
-typedef struct _decoder decoder_t;
+typedef struct decoder_s decoder_t;
 
 /**
  * Structure to hold a term to be read using a decoder

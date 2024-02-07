@@ -22,7 +22,7 @@
 /**
  * Decoder structure: holds a sequential reader to read the index
  */
-typedef struct _decoder {
+typedef struct decoder_s {
     seqreader_t reader;
     uint8_t *ptr;
 #if defined(STATS_ON) & defined(COUNT_BYTES_READ)

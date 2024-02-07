@@ -8,7 +8,7 @@
 /**
  * structure used to read and decode the index
  */
-typedef struct _decoder decoder_t;
+typedef struct decoder_s decoder_t;
 
 /**
  * The decoders are allocated from a pool.

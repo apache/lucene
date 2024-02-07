@@ -6,7 +6,7 @@
 #include "decoder.h"  // for decode_vint_from, get_absolute_address_from
 #include "term.h"     // for decoder_t
 
-typedef struct _parser {
+typedef struct parser_s {
     decoder_t *decoder;
     struct {
         int32_t nr_pos_left; // How many positions still to be read

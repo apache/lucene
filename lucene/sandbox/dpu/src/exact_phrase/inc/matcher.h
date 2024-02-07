@@ -10,7 +10,7 @@
 /**
  * structure used to match document id and positions of different terms in the phrase
  */
-typedef struct _did_matcher did_matcher_t;
+typedef struct did_matcher_s did_matcher_t;
 
 /**
  * Setup matchers to decode the posting addresses and sizes passed as input for each term
