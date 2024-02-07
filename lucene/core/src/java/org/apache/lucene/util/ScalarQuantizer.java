@@ -66,6 +66,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 public class ScalarQuantizer {
 
   public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 25_000;
+  private static final int SCRATCH_SIZE = 20;
 
   private final float alpha;
   private final float scale;
@@ -225,21 +226,6 @@ public class ScalarQuantizer {
   }
 
   /**
-   * See {@link #fromVectors(FloatVectorValues, float, int)} for details on how the quantiles are
-   * calculated. NOTE: If there are deleted vectors in the index, do not use this method, but
-   * instead use {@link #fromVectors(FloatVectorValues, float, int)}. This is because the
-   * totalVectorCount is used to account for deleted documents when sampling.
-   */
-  public static ScalarQuantizer fromVectors(
-      FloatVectorValues floatVectorValues, float confidenceInterval) throws IOException {
-    return fromVectors(
-        floatVectorValues,
-        confidenceInterval,
-        floatVectorValues.size(),
-        SCALAR_QUANTIZATION_SAMPLE_SIZE);
-  }
-
-  /**
    * This will read the float vector values and calculate the quantiles. If the number of float
    * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
    * and the quantiles calculated. If the number of float vectors is greater than {@link
@@ -281,42 +267,33 @@ public class ScalarQuantizer {
       }
       return new ScalarQuantizer(min, max, confidenceInterval);
     }
-    float[] quantileGatheringScratch = new float[floatVectorValues.dimension() * 10];
+    final float[] quantileGatheringScratch = new float[floatVectorValues.dimension() * SCRATCH_SIZE];
+    int count = 0;
+    double upperSum = 0;
+    double lowerSum = 0;
     if (totalVectorCount <= quantizationSampleSize) {
-      double upperSum = 0;
-      double lowerSum = 0;
       int i = 0;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        if (i == 10) {
-          float[] upperAndLower =
-              getUpperAndLowerQuantile(
-                  quantileGatheringScratch, confidenceInterval, i * floatVectorValues.dimension());
+        if (i == SCRATCH_SIZE) {
+          float[] upperAndLower = getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
           upperSum += upperAndLower[1];
           lowerSum += upperAndLower[0];
           i = 0;
+          count++;
         }
         float[] vectorValue = floatVectorValues.vectorValue();
         System.arraycopy(
             vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
       }
-      if (i > 0) {
-        float[] upperAndLower =
-            getUpperAndLowerQuantile(
-                quantileGatheringScratch, confidenceInterval, i * floatVectorValues.dimension());
-        upperSum += upperAndLower[1];
-        lowerSum += upperAndLower[0];
-      }
       return new ScalarQuantizer(
-          (float) lowerSum / totalVectorCount,
-          (float) upperSum / totalVectorCount,
+          (float) lowerSum / count,
+          (float) upperSum / count,
           confidenceInterval);
     }
     // Reservoir sample the vector ordinals we want to read
     int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, quantizationSampleSize);
     int index = 0;
-    double upperSum = 0;
-    double lowerSum = 0;
     int idx = 0;
     for (int i : vectorsToTake) {
       while (index <= i) {
@@ -325,12 +302,11 @@ public class ScalarQuantizer {
         index++;
       }
       assert floatVectorValues.docID() != NO_MORE_DOCS;
-      if (idx == 10) {
-        float[] upperAndLower =
-            getUpperAndLowerQuantile(
-                quantileGatheringScratch, confidenceInterval, idx * floatVectorValues.dimension());
+      if (idx == SCRATCH_SIZE) {
+        float[] upperAndLower = getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
         upperSum += upperAndLower[1];
         lowerSum += upperAndLower[0];
+        count++;
         idx = 0;
       }
       float[] vectorValue = floatVectorValues.vectorValue();
@@ -338,16 +314,9 @@ public class ScalarQuantizer {
           vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
     }
-    if (idx > 0) {
-      float[] upperAndLower =
-          getUpperAndLowerQuantile(
-              quantileGatheringScratch, confidenceInterval, idx * floatVectorValues.dimension());
-      upperSum += upperAndLower[1];
-      lowerSum += upperAndLower[0];
-    }
     return new ScalarQuantizer(
-        (float) lowerSum / quantizationSampleSize,
-        (float) upperSum / quantizationSampleSize,
+        (float) lowerSum / count,
+        (float) upperSum / count,
         confidenceInterval);
   }
 
@@ -361,17 +330,17 @@ public class ScalarQuantizer {
    * @param confidenceInterval the configured confidence interval
    * @return lower and upper quantile values
    */
-  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval, int length) {
+  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval) {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
-    int selectorIndex = (int) (length * (1f - confidenceInterval) / 2f + 0.5f);
+    int selectorIndex = (int) (arr.length * (1f - confidenceInterval) / 2f + 0.5f);
     if (selectorIndex > 0) {
       Selector selector = new FloatSelector(arr);
-      selector.select(0, length, length - selectorIndex);
-      selector.select(0, length - selectorIndex, selectorIndex);
+      selector.select(0, arr.length, arr.length - selectorIndex);
+      selector.select(0, arr.length - selectorIndex, selectorIndex);
     }
     float min = Float.POSITIVE_INFINITY;
     float max = Float.NEGATIVE_INFINITY;
-    for (int i = selectorIndex; i < length - selectorIndex; i++) {
+    for (int i = selectorIndex; i < arr.length - selectorIndex; i++) {
       min = Math.min(arr[i], min);
       max = Math.max(arr[i], max);
     }
