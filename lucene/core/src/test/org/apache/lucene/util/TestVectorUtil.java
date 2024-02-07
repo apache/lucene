@@ -368,4 +368,9 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(hammingDistance, scalarResult);
     assertEquals(hammingDistance, expectedDistance);
   }
+
+  public void testBinaryHammingDistanceThrowsForDimensionMismatch() {
+    byte[] v = {1, 0, 0}, u = {0, 1};
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.binaryHammingDistance(u, v));
+  }
 }

@@ -96,6 +96,7 @@ public enum VectorSimilarityFunction {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
   },
+
   /**
    * Binary Hamming distance; Computes how many bits are different in two bytes.
    *
