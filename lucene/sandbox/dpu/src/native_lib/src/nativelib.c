@@ -126,7 +126,8 @@ throw_dpu_exception(JNIEnv *env, const char *message)
             char msg_buff[MSG_LEN];                                                                                              \
             char *error_str = strerror_r(errno, msg_buff, MSG_LEN);                                                              \
             const char *_msg;                                                                                                    \
-            asprintf((char **)&_msg, "malloc failed: %s\n", error_str);                                                          \
+            int dummy __attribute__((unused));                                                                                   \
+            dummy = asprintf((char **)&_msg, "malloc failed: %s\n", error_str);                                                    \
             throw_dpu_exception(env, _msg);                                                                                      \
             free((void *)_msg);                                                                                                  \
         }                                                                                                                        \
