@@ -24,9 +24,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -65,7 +64,7 @@ public final class NativeFSLockFactory extends FSLockFactory {
   /** Singleton instance */
   public static final NativeFSLockFactory INSTANCE = new NativeFSLockFactory();
 
-  private static final Set<String> LOCK_HELD = Collections.synchronizedSet(new HashSet<String>());
+  private static final Set<String> LOCK_HELD = ConcurrentHashMap.newKeySet();
 
   private NativeFSLockFactory() {}
 
@@ -127,7 +126,7 @@ public final class NativeFSLockFactory extends FSLockFactory {
     }
   }
 
-  private static final void clearLockHeld(Path path) throws IOException {
+  private static void clearLockHeld(Path path) throws IOException {
     boolean remove = LOCK_HELD.remove(path.toString());
     if (remove == false) {
       throw new AlreadyClosedException("Lock path was cleared but never marked as held: " + path);

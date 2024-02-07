@@ -19,15 +19,14 @@ package org.apache.lucene.util;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A utility for keeping backwards compatibility on previously abstract methods (or similar
  * replacements).
  *
- * <p>Before the replacement method can be made abstract, the old method must kept deprecated. If
+ * <p>Before the replacement method can be made abstract, the old method must be kept deprecated. If
  * somebody still overrides the deprecated method in a non-final class, you must keep track, of this
  * and maybe delegate to the old method in the subclass. The cost of reflection is minimized by the
  * following usage of this class:
@@ -74,14 +73,13 @@ import java.util.Set;
  */
 public final class VirtualMethod<C> {
 
-  private static final Set<Method> singletonSet =
-      Collections.synchronizedSet(new HashSet<Method>());
+  private static final Set<Method> singletonSet = ConcurrentHashMap.newKeySet();
 
   private final Class<C> baseClass;
   private final String method;
   private final Class<?>[] parameters;
   private final ClassValue<Integer> distanceOfClass =
-      new ClassValue<Integer>() {
+      new ClassValue<>() {
         @Override
         protected Integer computeValue(Class<?> subclazz) {
           return Integer.valueOf(reflectImplementationDistance(subclazz));
