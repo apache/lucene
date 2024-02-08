@@ -18,6 +18,8 @@ package org.apache.lucene.util;
 
 import static org.apache.lucene.util.ArrayUtil.copyOfSubArray;
 import static org.apache.lucene.util.ArrayUtil.growExact;
+import static org.apache.lucene.util.ArrayUtil.growInRange;
+import static org.apache.lucene.util.ArrayUtil.oversize;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -369,6 +371,36 @@ public class TestArrayUtil extends LuceneTestCase {
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> growExact(new String[] {"a", "b", "c"}, random().nextInt(3)));
+  }
+
+  public void testGrowInRange() {
+    int[] array = new int[] {1, 2, 3};
+
+    // If minLength is negative, maxLength does not matter
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+
+    // If minLength > maxLength, we throw an exception
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 1, 0));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 4, 3));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 5, 4));
+
+    // If minLength is sufficient, we return the array
+    assertSame(array, growInRange(array, 1, 4));
+    assertSame(array, growInRange(array, 1, 2));
+    assertSame(array, growInRange(array, 1, 1));
+
+    int minLength = 4;
+    int maxLength = Integer.MAX_VALUE;
+
+    // The array grows normally if maxLength permits
+    assertEquals(
+        oversize(minLength, Integer.BYTES),
+        growInRange(new int[] {1, 2, 3}, minLength, maxLength).length);
+
+    // The array grows to maxLength if maxLength is limiting
+    assertEquals(minLength, growInRange(new int[] {1, 2, 3}, minLength, minLength).length);
   }
 
   public void testCopyOfSubArray() {

@@ -66,6 +66,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** A primary node that uses simple TCP connections to send commands and copy files */
@@ -175,6 +176,7 @@ class SimplePrimaryNode extends PrimaryNode {
     return writer;
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   protected void preCopyMergedSegmentFiles(SegmentCommitInfo info, Map<String, FileMetaData> files)
       throws IOException {
@@ -242,11 +244,9 @@ class SimplePrimaryNode extends PrimaryNode {
           message(
               String.format(
                   Locale.ROOT,
-                  "top: warning: still warming merge "
-                      + info
-                      + " to "
-                      + preCopy.connections.size()
-                      + " replicas for %.1f sec...",
+                  "top: warning: still warming merge %s to %d replicas for %.1f sec...",
+                  info,
+                  preCopy.connections.size(),
                   (ns - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
           lastWarnNS = ns;
         }
@@ -512,6 +512,7 @@ class SimplePrimaryNode extends PrimaryNode {
     tokenizedWithTermVectors.setStoreTermVectorPositions(true);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void handleIndexing(
       Socket socket,
       AtomicBoolean stop,
@@ -657,6 +658,7 @@ class SimplePrimaryNode extends PrimaryNode {
   static final byte CMD_SET_CLOSE_WAIT_MS = 25;
 
   /** Handles incoming request to the naive TCP server wrapping this node */
+  @SuppressForbidden(reason = "Thread sleep")
   void handleOneConnection(
       Random random,
       ServerSocket ss,

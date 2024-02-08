@@ -328,6 +328,7 @@ public class TestSimpleServer extends LuceneTestCase {
 
         Thread t =
             new Thread() {
+              @SuppressForbidden(reason = "Thread sleep")
               @Override
               public void run() {
                 long endTime = System.nanoTime() + waitForMS * 1000000L;

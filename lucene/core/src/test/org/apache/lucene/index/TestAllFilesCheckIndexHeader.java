@@ -64,7 +64,7 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
       }
       if (random().nextInt(15) == 0) {
         riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
+            new Term("docid", Integer.toString(i)), "page_views", Long.valueOf(i));
       }
     }
 

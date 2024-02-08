@@ -106,9 +106,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
   public void finish() throws IOException {
     if (seenSurfaceForms != null) {
       // NOTE: this also clears the priorityQueue:
-      for (SuggestScoreDoc hit : priorityQueue.getResults()) {
-        pendingResults.add(hit);
-      }
+      Collections.addAll(pendingResults, priorityQueue.getResults());
 
       // Deduplicate all hits: we already dedup'd efficiently within each segment by
       // truncating the FST top paths search, but across segments there may still be dups:
@@ -149,13 +147,12 @@ public class TopSuggestDocsCollector extends SimpleCollector {
       // numSegments), but typically numSegments is smallish and num is smallish so this won't
       // matter much in practice:
 
-      Collections.sort(
-          pendingResults,
+      pendingResults.sort(
           (a, b) -> {
             // sort by higher score
             int cmp = Float.compare(b.score, a.score);
             if (cmp == 0) {
-              // tie break by completion key
+              // tie-break by completion key
               cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.key, b.key);
               if (cmp == 0) {
                 // prefer smaller doc id, in case of a tie

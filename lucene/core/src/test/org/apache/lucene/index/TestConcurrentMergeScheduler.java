@@ -28,7 +28,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -43,6 +42,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
@@ -284,6 +284,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-4544
+  @SuppressForbidden(reason = "Thread sleep")
   public void testMaxMergeCount() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc =
@@ -302,7 +303,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     ConcurrentMergeScheduler cms =
         new ConcurrentMergeScheduler() {
-
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
               throws IOException {
@@ -412,14 +413,12 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 3);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 3));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(3, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(3, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS));
   }
 
   public void testLiveMaxMergeCount() throws Exception {
@@ -554,6 +553,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-6094
+  @SuppressForbidden(reason = "Thread sleep")
   public void testHangDuringRollback() throws Throwable {
     Directory dir = newMockDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -653,8 +653,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
           @Override
           public boolean isEnabled(String component) {
-            if (component.equals("MS")) return true;
-            return false;
+            return component.equals("MS");
           }
         });
     iwc.setMaxBufferedDocs(2);
@@ -681,9 +680,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     for (Thread t : mergeThreadSet) {
       String name = t.getName();
       List<String> threadMsgs =
-          messages.stream()
-              .filter(line -> line.startsWith("merge thread " + name))
-              .collect(Collectors.toList());
+          messages.stream().filter(line -> line.startsWith("merge thread " + name)).toList();
       assertTrue(
           "Expected:·a·value·equal·to·or·greater·than·3,·got:"
               + threadMsgs.size()
@@ -736,15 +733,13 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 4);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 4));
 
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(4, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(4, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS));
 
     cms.setMaxMergesAndThreads(
         ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS,

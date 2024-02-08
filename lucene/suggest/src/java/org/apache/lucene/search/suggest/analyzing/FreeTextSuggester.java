@@ -323,7 +323,7 @@ public class FreeTextSuggester extends Lookup {
         fstCompiler.add(Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
       }
 
-      final FST<Long> newFst = fstCompiler.compile();
+      final FST<Long> newFst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (newFst == null) {
         throw new IllegalArgumentException("need at least one suggestion");
       }

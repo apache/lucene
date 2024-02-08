@@ -31,9 +31,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
-// TODO: soon we will be able to run this test with small heaps!  Once #12633 and #12543
-// are done
-//
 // Run something like this:
 //    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
 
@@ -93,7 +90,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints2);
         }
 
-        FST<Object> fst = fstCompiler.compile();
+        FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -186,7 +183,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<BytesRef> fst = fstCompiler.compile();
+        FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -276,7 +273,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<Long> fst = fstCompiler.compile();
+        FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
 

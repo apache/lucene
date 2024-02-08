@@ -54,7 +54,7 @@ public class SearchWithSortTask extends ReadTask {
       } else if (field.equals("score")) {
         sortField0 = SortField.FIELD_SCORE;
       } else {
-        int index = field.lastIndexOf(":");
+        int index = field.lastIndexOf(':');
         String fieldName;
         String typeString;
         if (index != -1) {
