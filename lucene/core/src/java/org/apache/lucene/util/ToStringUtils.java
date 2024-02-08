@@ -44,6 +44,11 @@ public final class ToStringUtils {
     return "0x" + new String(asHex);
   }
 
+  /**
+   * Builds a String with both textual representation of the {@link BytesRef} data and the bytes hex
+   * values. For example: {@code "hello [68 65 6c 6c 6f]"}. If the content is not a valid UTF-8
+   * sequence, only the bytes hex values are returned, as per {@link BytesRef#toString()}.
+   */
   @SuppressWarnings("unused")
   public static String brToString(BytesRef b) {
     if (b == null) {
