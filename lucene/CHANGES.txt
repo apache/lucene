@@ -249,6 +249,7 @@ Optimizations
 
 * GITHUB#12962: Speedup concurrent multi-segment HNWS graph search (Mayya Sharipova, Tom Veasey)
 
+* GITHUB#13090: Prevent humongous allocations in ScalarQuantizer when building quantiles. (Ben Trent)
 
 Bug Fixes
 ---------------------
