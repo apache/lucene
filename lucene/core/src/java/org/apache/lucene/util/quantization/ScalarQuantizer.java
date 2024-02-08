@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.util.quantization;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -24,6 +24,8 @@ import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.IntroSelector;
+import org.apache.lucene.util.Selector;
 
 /**
  * Will scalar quantize float vectors into `int8` byte values. This is a lossy transformation.

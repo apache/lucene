@@ -197,6 +197,9 @@ New Features
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
 
+* GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
+  Stefan Vodita)
+
 Improvements
 ---------------------
 
