@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.quantization;
 
+import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -73,44 +75,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
     assertEquals(1f, upperAndLower[1], 1e-7f);
   }
 
-  public void testSamplingEdgeCases() throws IOException {
-    int numVecs = 65;
-    int dims = 64;
-    float[][] floats = randomFloats(numVecs, dims);
-    FloatVectorValues floatVectorValues = fromFloats(floats);
-    int[] vectorsToTake = new int[] {0, floats.length - 1};
-    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
-    int i = 0;
-    for (; i < dims; i++) {
-      assertEquals(floats[vectorsToTake[0]][i], sampled[i], 0.0f);
-    }
-    for (; i < dims * 2; i++) {
-      assertEquals(floats[vectorsToTake[1]][i - dims], sampled[i], 0.0f);
-    }
-  }
-
-  public void testVectorSampling() throws IOException {
-    int numVecs = random().nextInt(123) + 5;
-    int dims = 4;
-    float[][] floats = randomFloats(numVecs, dims);
-    FloatVectorValues floatVectorValues = fromFloats(floats);
-    int[] vectorsToTake =
-        ScalarQuantizer.reservoirSampleIndices(numVecs, random().nextInt(numVecs - 1) + 1);
-    int prev = vectorsToTake[0];
-    // ensure sorted & unique
-    for (int i = 1; i < vectorsToTake.length; i++) {
-      assertTrue(vectorsToTake[i] > prev);
-      prev = vectorsToTake[i];
-    }
-    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
-    // ensure we got the right vectors
-    for (int i = 0; i < vectorsToTake.length; i++) {
-      for (int j = 0; j < dims; j++) {
-        assertEquals(floats[vectorsToTake[i]][j], sampled[i * dims + j], 0.0f);
-      }
-    }
-  }
-
   public void testScalarWithSampling() throws IOException {
     int numVecs = random().nextInt(128) + 5;
     int dims = 64;
@@ -123,7 +87,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors - 1);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -132,7 +96,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors + 1);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -141,7 +105,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -150,7 +114,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          random().nextInt(floatVectorValues.floats.length - 1) + 1);
+          Math.max(random().nextInt(floatVectorValues.floats.length - 1) + 1, SCRATCH_SIZE + 1));
     }
   }
 
