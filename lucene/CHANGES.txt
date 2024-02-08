@@ -34,6 +34,9 @@ New Features
   to maintain block orders if index sorting is used. Note, this is fully optional in Lucene 9.x while will be mandatory for
   indices that use document blocks together with index sorting as of 10.0.0. (Simon Willnauer)
 
+* GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
+  Stefan Vodita)
+
 Improvements
 ---------------------
 
