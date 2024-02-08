@@ -95,6 +95,20 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public int binaryHammingDistanceVarHandle() {
+    return VectorUtil.binaryHammingDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binaryHammingDistanceScalar() {
+    int distance = 0;
+    for (int i = 0; i < bytesA.length; i++) {
+      distance += Integer.bitCount((bytesA[i] ^ bytesB[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  @Benchmark
   public float floatCosineScalar() {
     return VectorUtil.cosine(floatsA, floatsB);
   }

@@ -90,6 +90,8 @@ import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -1318,6 +1320,25 @@ public final class TestUtil {
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
     return new Lucene99HnswVectorsFormat();
+  }
+
+  /** Picks a random {@link VectorEncoding} */
+  public static VectorEncoding randomVectorEncoding(Random random) {
+    return RandomPicks.randomFrom(random, VectorEncoding.values());
+  }
+
+  /**
+   * Pick a random similarity function for the provided encoding. This is to make sure that we test
+   * only supported similarities and avoid raising exceptions (e.g. {@link
+   * VectorSimilarityFunction#BINARY_HAMMING_DISTANCE} and {@link VectorEncoding#FLOAT32})
+   */
+  public static VectorSimilarityFunction randomSimilarityForEncoding(
+      Random random, VectorEncoding encoding) {
+    List<VectorSimilarityFunction> supportedVectorSimilarities =
+        Arrays.stream(VectorSimilarityFunction.values())
+            .filter(x -> x.supportsVectorEncoding(encoding))
+            .toList();
+    return RandomPicks.randomFrom(random, supportedVectorSimilarities);
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

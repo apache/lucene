@@ -18,8 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -28,8 +28,12 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
@@ -37,7 +41,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
 
   @Before
   public void setup() {
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    similarityFunction = randomSimilarityForEncoding(random(), VectorEncoding.BYTE);
   }
 
   @Override
@@ -139,5 +143,44 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   @Override
   byte[] getTargetVector() {
     return new byte[] {1, 0};
+  }
+
+  public void testHammingDistanceForByte() throws Exception {
+    similarityFunction = VectorSimilarityFunction.BINARY_HAMMING_DISTANCE;
+    float[][] values = {
+      new float[] {-10, 3},
+      new float[] {1, 0},
+      new float[] {0, 1}
+    };
+    RandomAccessVectorValues<byte[]> vectors = vectorValues(values);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+
+    FixedBitSet acceptOrds = new FixedBitSet(values.length);
+    acceptOrds.set(0);
+    acceptOrds.set(2);
+    KnnCollector nn =
+        HnswGraphSearcher.search(
+            buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
+
+    TopDocs nodes = nn.topDocs();
+    int[] expectedDocs = new int[] {2, 0};
+    assertEquals(
+        "Expected '"
+            + expectedDocs.length
+            + "' results but found '"
+            + nodes.scoreDocs.length
+            + "' instead.",
+        expectedDocs.length,
+        nodes.scoreDocs.length);
+    for (int i = 0; i < nodes.scoreDocs.length; i++) {
+      ScoreDoc node = nodes.scoreDocs[i];
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertEquals(
+          "The order of the element at position " + i + " is incorrect.",
+          expectedDocs[i],
+          node.doc);
+    }
   }
 }

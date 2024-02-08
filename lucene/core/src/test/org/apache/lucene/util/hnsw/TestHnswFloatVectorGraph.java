@@ -18,8 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -41,7 +41,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    similarityFunction = randomSimilarityForEncoding(random(), VectorEncoding.FLOAT32);
   }
 
   @Override
@@ -153,5 +153,22 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     // We still expect to get reasonable recall. The lowest non-skipped docIds
     // are closest to the query vector: sum(500,509) = 5045
     assertTrue("sum(result docs)=" + sum, sum < 5100);
+  }
+
+  public void testHammingDistanceForFloat() throws Exception {
+    similarityFunction = VectorSimilarityFunction.BINARY_HAMMING_DISTANCE;
+    float[][] values = {
+      unitVector2d(0.5),
+      unitVector2d(0.75),
+      unitVector2d(0.2),
+      unitVector2d(0.9),
+      unitVector2d(0.8),
+      unitVector2d(0.77),
+      unitVector2d(0.6)
+    };
+    RandomAccessVectorValues<float[]> vectors = vectorValues(values);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    expectThrows(UnsupportedOperationException.class, () -> builder.build(vectors.size()));
   }
 }

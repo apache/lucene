@@ -825,8 +825,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     return indexStore;
   }
 
-  private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)
-      throws IOException {
+  void assertMatches(IndexSearcher searcher, Query q, int expectedMatches) throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
     assertEquals(expectedMatches, result.length);
   }

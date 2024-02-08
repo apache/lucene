@@ -1248,6 +1248,9 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case MAXIMUM_INNER_PRODUCT:
             sb.append("mip");
             break;
+          case BINARY_HAMMING_DISTANCE:
+            sb.append("hmd");
+            break;
           default:
             sb.append("???");
         }

@@ -40,6 +40,10 @@ public interface ScalarQuantizedVectorSimilarity {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
       case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
+      case BINARY_HAMMING_DISTANCE -> throw new IllegalArgumentException(
+          "Cannot use '"
+              + VectorSimilarityFunction.BINARY_HAMMING_DISTANCE.name()
+              + "'with scalar quantization");
     };
   }
 

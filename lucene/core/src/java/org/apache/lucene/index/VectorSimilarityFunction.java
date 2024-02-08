@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.util.VectorUtil.binaryHammingDistance;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
@@ -94,6 +95,30 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
+  },
+
+  /**
+   * Binary Hamming distance; Computes how many bits are different in two bytes.
+   *
+   * <p>Only supported for bytes. To convert the distance to a similarity score we normalize using 1
+   * / (1 + hammingDistance)
+   */
+  BINARY_HAMMING_DISTANCE {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      throw new UnsupportedOperationException(
+          BINARY_HAMMING_DISTANCE.name() + " is only supported for byte vectors");
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return (1f / (1 + binaryHammingDistance(v1, v2)));
+    }
+
+    @Override
+    public boolean supportsVectorEncoding(VectorEncoding encoding) {
+      return encoding == VectorEncoding.BYTE;
+    }
   };
 
   /**
@@ -116,4 +141,12 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /**
+   * Specify whether the encoding provided is supported by the similarity function. Defaults to
+   * true.
+   */
+  public boolean supportsVectorEncoding(VectorEncoding encoding) {
+    return true;
+  }
 }

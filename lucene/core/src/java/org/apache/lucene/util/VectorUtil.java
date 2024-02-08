@@ -58,9 +58,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     float r = IMPL.dotProduct(a, b);
     assert Float.isFinite(r);
     return r;
@@ -72,9 +70,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float cosine(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     float r = IMPL.cosine(a, b);
     assert Float.isFinite(r);
     return r;
@@ -82,9 +78,7 @@ public final class VectorUtil {
 
   /** Returns the cosine similarity between the two vectors. */
   public static float cosine(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     return IMPL.cosine(a, b);
   }
 
@@ -94,9 +88,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float squareDistance(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
     return r;
@@ -104,9 +96,7 @@ public final class VectorUtil {
 
   /** Returns the sum of squared differences of the two vectors. */
   public static int squareDistance(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     return IMPL.squareDistance(a, b);
   }
 
@@ -169,9 +159,7 @@ public final class VectorUtil {
    * @return the value of the dot product of the two vectors
    */
   public static int dotProduct(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
+    checkDimensions(a, b);
     return IMPL.dotProduct(a, b);
   }
 
@@ -213,5 +201,37 @@ public final class VectorUtil {
       }
     }
     return v;
+  }
+
+  /**
+   * Compute the binary Hamming distance between two byte vectors. Binary Hamming distance is
+   * defined as the total number of differences found in the binary representations of two bytes,
+   * i.e. the population count of a XOR b
+   */
+  public static int binaryHammingDistance(byte[] a, byte[] b) {
+    checkDimensions(a, b);
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  private static void checkDimensions(float[] a, float[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+  }
+
+  private static void checkDimensions(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
   }
 }

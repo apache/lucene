@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.TestUtil.randomSimilarityForEncoding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
@@ -42,6 +44,11 @@ import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 
 public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.FLOAT32;
+  }
 
   @Override
   protected Codec getCodec() {
@@ -58,7 +65,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
-    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    VectorSimilarityFunction similarityFunction =
+        randomSimilarityForEncoding(random(), VectorEncoding.FLOAT32);
     boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
