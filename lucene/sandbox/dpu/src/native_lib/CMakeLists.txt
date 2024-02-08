@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME} src/nativelib.c src/topdocs_sync.c)
 target_include_directories(
   ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} PRIVATE STC/include)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES} Threads::Threads)
+target_link_directories(${PROJECT_NAME} PUBLIC ${DPU_HOST_LINK_DIRECTORIES})
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_11)
 target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<CONFIG:Debug>:-g3 -Og -fsanitize=address,undefined -fno-omit-frame-pointer -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2>)
@@ -52,6 +53,7 @@ install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX})
 add_executable(run_test test/test.c)
 
 target_link_libraries(run_test PRIVATE ${CUNIT_LIBRARIES} ${DPU_HOST_LIBRARIES} Threads::Threads)
+target_link_directories(run_test PUBLIC ${DPU_HOST_LINK_DIRECTORIES})
 target_include_directories(run_test PRIVATE
   ${CUNIT_INCLUDE_DIRS} $<TARGET_PROPERTY:dpuLucene,INCLUDE_DIRECTORIES> src)
 target_compile_features(run_test PUBLIC c_std_11)

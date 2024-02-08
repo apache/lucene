@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} src/dpu_jni.c)
 target_include_directories(
   ${PROJECT_NAME} PUBLIC ${DPU_HOST_INCLUDE_DIRECTORIES} ${JNI_INCLUDE_DIRS} commons/include commons/src/properties verbose/src)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DPU_HOST_LIBRARIES})
+target_link_directories(${PROJECT_NAME} PUBLIC ${DPU_HOST_LINK_DIRECTORIES})
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_11)
 target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<CONFIG:Debug>:-Wall -Wextra -Werror -g3 -Og -fsanitize=address,undefined -fno-omit-frame-pointer>
