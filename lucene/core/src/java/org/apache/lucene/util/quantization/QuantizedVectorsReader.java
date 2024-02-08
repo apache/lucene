@@ -14,15 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.util.quantization;
 
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ScalarQuantizer;
 
-/** Quantized vector reader */
-interface QuantizedVectorsReader extends Closeable, Accountable {
+/**
+ * Quantized vector reader
+ *
+ * @lucene.experimental
+ */
+public interface QuantizedVectorsReader extends Closeable, Accountable {
 
   QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
 

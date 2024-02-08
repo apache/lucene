@@ -14,17 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.util.TestScalarQuantizer.fromFloats;
-import static org.apache.lucene.util.TestScalarQuantizer.randomFloatArray;
-import static org.apache.lucene.util.TestScalarQuantizer.randomFloats;
+import static org.apache.lucene.util.quantization.TestScalarQuantizer.fromFloats;
+import static org.apache.lucene.util.quantization.TestScalarQuantizer.randomFloatArray;
+import static org.apache.lucene.util.quantization.TestScalarQuantizer.randomFloats;
 
 import java.io.IOException;
 import java.util.Set;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
 

@@ -17,6 +17,9 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,13 +36,15 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads Scalar Quantized vectors from the index segments along with index data structures.
@@ -56,8 +61,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
-      throws IOException {
+  public Lucene99ScalarQuantizedVectorsReader(
+      SegmentReadState state, FlatVectorsReader rawVectorsReader) throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
@@ -235,24 +240,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     return new FieldEntry(input, vectorEncoding, similarityFunction);
-  }
-
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
-    }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
-  }
-
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
-    int encodingId = input.readInt();
-    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
-      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
-    }
-    return VectorEncoding.values()[encodingId];
   }
 
   @Override
