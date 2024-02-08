@@ -66,7 +66,9 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 public class ScalarQuantizer {
 
   public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 25_000;
-  private static final int SCRATCH_SIZE = 20;
+  // 20*dimension provides protection from extreme confidence intervals
+  // and also prevents humongous allocations
+  static final int SCRATCH_SIZE = 20;
 
   private final float alpha;
   private final float scale;
@@ -253,6 +255,7 @@ public class ScalarQuantizer {
       int quantizationSampleSize)
       throws IOException {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
+    assert quantizationSampleSize > SCRATCH_SIZE;
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, confidenceInterval);
     }
@@ -267,29 +270,30 @@ public class ScalarQuantizer {
       }
       return new ScalarQuantizer(min, max, confidenceInterval);
     }
-    final float[] quantileGatheringScratch = new float[floatVectorValues.dimension() * SCRATCH_SIZE];
+    final float[] quantileGatheringScratch =
+        new float[floatVectorValues.dimension() * Math.min(SCRATCH_SIZE, totalVectorCount)];
     int count = 0;
     double upperSum = 0;
     double lowerSum = 0;
     if (totalVectorCount <= quantizationSampleSize) {
+      int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        if (i == SCRATCH_SIZE) {
-          float[] upperAndLower = getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
+        float[] vectorValue = floatVectorValues.vectorValue();
+        System.arraycopy(
+            vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
+        i++;
+        if (i == scratchSize) {
+          float[] upperAndLower =
+              getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
           upperSum += upperAndLower[1];
           lowerSum += upperAndLower[0];
           i = 0;
           count++;
         }
-        float[] vectorValue = floatVectorValues.vectorValue();
-        System.arraycopy(
-            vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
-        i++;
       }
       return new ScalarQuantizer(
-          (float) lowerSum / count,
-          (float) upperSum / count,
-          confidenceInterval);
+          (float) lowerSum / count, (float) upperSum / count, confidenceInterval);
     }
     // Reservoir sample the vector ordinals we want to read
     int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, quantizationSampleSize);
@@ -302,22 +306,21 @@ public class ScalarQuantizer {
         index++;
       }
       assert floatVectorValues.docID() != NO_MORE_DOCS;
+      float[] vectorValue = floatVectorValues.vectorValue();
+      System.arraycopy(
+          vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
+      idx++;
       if (idx == SCRATCH_SIZE) {
-        float[] upperAndLower = getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
+        float[] upperAndLower =
+            getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
         upperSum += upperAndLower[1];
         lowerSum += upperAndLower[0];
         count++;
         idx = 0;
       }
-      float[] vectorValue = floatVectorValues.vectorValue();
-      System.arraycopy(
-          vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
-      idx++;
     }
     return new ScalarQuantizer(
-        (float) lowerSum / count,
-        (float) upperSum / count,
-        confidenceInterval);
+        (float) lowerSum / count, (float) upperSum / count, confidenceInterval);
   }
 
   /**

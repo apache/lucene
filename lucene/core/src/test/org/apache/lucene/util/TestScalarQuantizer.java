@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.apache.lucene.util.ScalarQuantizer.SCRATCH_SIZE;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -68,8 +70,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
   public void testEdgeCase() {
     float[] upperAndLower =
-        ScalarQuantizer.getUpperAndLowerQuantile(
-            new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
+        ScalarQuantizer.getUpperAndLowerQuantile(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
     assertEquals(1f, upperAndLower[0], 1e-7f);
     assertEquals(1f, upperAndLower[1], 1e-7f);
   }
@@ -124,7 +125,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors - 1);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -133,7 +134,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors + 1);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -142,7 +143,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          floatVectorValues.numLiveVectors);
+          Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
       TestSimpleFloatVectorValues floatVectorValues =
@@ -151,7 +152,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
-          random().nextInt(floatVectorValues.floats.length - 1) + 1);
+          Math.max(random().nextInt(floatVectorValues.floats.length - 1) + 1, SCRATCH_SIZE + 1));
     }
   }
 
