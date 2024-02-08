@@ -209,26 +209,6 @@ public class ScalarQuantizer {
     return vectorsToTake;
   }
 
-  static float[] sampleVectors(FloatVectorValues floatVectorValues, int[] vectorsToTake)
-      throws IOException {
-    int dim = floatVectorValues.dimension();
-    float[] values = new float[vectorsToTake.length * dim];
-    int copyOffset = 0;
-    int index = 0;
-    for (int i : vectorsToTake) {
-      while (index <= i) {
-        // We cannot use `advance(docId)` as MergedVectorValues does not support it
-        floatVectorValues.nextDoc();
-        index++;
-      }
-      assert floatVectorValues.docID() != NO_MORE_DOCS;
-      float[] floatVector = floatVectorValues.vectorValue();
-      System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
-      copyOffset += dim;
-    }
-    return values;
-  }
-
   /**
    * This will read the float vector values and calculate the quantiles. If the number of float
    * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
@@ -294,6 +274,9 @@ public class ScalarQuantizer {
           count++;
         }
       }
+      // Note, we purposefully don't use the rest of the scratch state if we have fewer than
+      // `SCRATCH_SIZE` vectors, mainly because if we are sampling so few vectors then we don't
+      // want to be adversely affected by the extreme confidence intervals over small sample sizes
       return new ScalarQuantizer(
           (float) lowerSum / count, (float) upperSum / count, confidenceInterval);
     }

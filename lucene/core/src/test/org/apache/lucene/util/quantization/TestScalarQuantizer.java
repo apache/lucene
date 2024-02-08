@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.util.ScalarQuantizer.SCRATCH_SIZE;
+import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -73,44 +73,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
         ScalarQuantizer.getUpperAndLowerQuantile(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
     assertEquals(1f, upperAndLower[0], 1e-7f);
     assertEquals(1f, upperAndLower[1], 1e-7f);
-  }
-
-  public void testSamplingEdgeCases() throws IOException {
-    int numVecs = 65;
-    int dims = 64;
-    float[][] floats = randomFloats(numVecs, dims);
-    FloatVectorValues floatVectorValues = fromFloats(floats);
-    int[] vectorsToTake = new int[] {0, floats.length - 1};
-    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
-    int i = 0;
-    for (; i < dims; i++) {
-      assertEquals(floats[vectorsToTake[0]][i], sampled[i], 0.0f);
-    }
-    for (; i < dims * 2; i++) {
-      assertEquals(floats[vectorsToTake[1]][i - dims], sampled[i], 0.0f);
-    }
-  }
-
-  public void testVectorSampling() throws IOException {
-    int numVecs = random().nextInt(123) + 5;
-    int dims = 4;
-    float[][] floats = randomFloats(numVecs, dims);
-    FloatVectorValues floatVectorValues = fromFloats(floats);
-    int[] vectorsToTake =
-        ScalarQuantizer.reservoirSampleIndices(numVecs, random().nextInt(numVecs - 1) + 1);
-    int prev = vectorsToTake[0];
-    // ensure sorted & unique
-    for (int i = 1; i < vectorsToTake.length; i++) {
-      assertTrue(vectorsToTake[i] > prev);
-      prev = vectorsToTake[i];
-    }
-    float[] sampled = ScalarQuantizer.sampleVectors(floatVectorValues, vectorsToTake);
-    // ensure we got the right vectors
-    for (int i = 0; i < vectorsToTake.length; i++) {
-      for (int j = 0; j < dims; j++) {
-        assertEquals(floats[vectorsToTake[i]][j], sampled[i * dims + j], 0.0f);
-      }
-    }
   }
 
   public void testScalarWithSampling() throws IOException {
