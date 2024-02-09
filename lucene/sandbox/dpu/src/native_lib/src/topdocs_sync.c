@@ -368,7 +368,8 @@ update_pques(int nr_queries,
     const int *nr_topdocs = ctx->nr_topdocs;
     PQue *score_pques = ctx->score_pques.pques;
     pthread_mutex_t *mutexes = ctx->query_mutexes.mutexes;
-    const float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE] = (const float (*)[nr_queries][NORM_INVERSE_CACHE_SIZE])ctx->norm_inverse;
+    const float(*norm_inverse_cache)[nr_queries][NORM_INVERSE_CACHE_SIZE]
+        = (const float(*)[nr_queries][NORM_INVERSE_CACHE_SIZE])ctx->norm_inverse;
 
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         PQue *score_pque = &score_pques[i_qry];
@@ -452,10 +453,13 @@ all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
 }
 
 NODISCARD static inline bool
-nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries]) {
-    for(int i = 0; i < nr_queries; ++i)
-        if(nr_topdocs[i] < NB_TOPDOCS_LIMIT)
+nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries])
+{
+    for (int i = 0; i < nr_queries; ++i) {
+        if (nr_topdocs[i] < NB_TOPDOCS_LIMIT) {
             return false;
+        }
+    }
     return true;
 }
 
@@ -507,7 +511,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
     DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
 
-    if(use_lower_bound_flow) {
+    if (use_lower_bound_flow) {
         uint32_t nr_ranks = 0;
         pque_array_t score_pques = {};
         mutex_array_t query_mutexes = {};
@@ -518,7 +522,8 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
             set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
 
         update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
-        broadcast_params_t broadcast_args = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+        broadcast_params_t broadcast_args
+            = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
 
         return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
     }
