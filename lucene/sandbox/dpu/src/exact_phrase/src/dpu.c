@@ -539,6 +539,7 @@ sort_query_results()
 {
     for (uint32_t b_id = me(); b_id < results_buffer_index; b_id += NR_TASKLETS) {
 
+        assert(b_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t) < DPU_RESULTS_MAX_BYTE_SIZE);
         mram_read(&results_batch[b_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t)],
             results_cache[me()],
             DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t));
@@ -558,7 +559,8 @@ sort_query_results()
         uint32_t mram_index = (offset + segment_offset + buffer_id * (DPU_RESULTS_CACHE_SIZE - 1)) * sizeof(query_buffer_elem_t);
 
         assert(buffer_size > 0);
-
+        assert(buffer_size * sizeof(query_buffer_elem_t) <= 2048);
+        assert(mram_index + buffer_size * sizeof(query_buffer_elem_t) <= DPU_RESULTS_MAX_BYTE_SIZE);
         mram_write(&results_cache[me()][1], &results_batch_sorted[mram_index], buffer_size * sizeof(query_buffer_elem_t));
     }
 }
