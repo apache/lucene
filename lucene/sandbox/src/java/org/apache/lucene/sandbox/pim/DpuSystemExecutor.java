@@ -261,17 +261,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // 1) send queries to PIM
     sendQueriesToPIM(queryBuffers);
 
-    // System.out.println(">> Launching DPUs");
-    // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
-
-    // TEST: make two launches, one with max number of matches to 1, the second with UINT_MAX
-    copyIntToDpus("nb_max_doc_match", 1);
-    copyIntToDpus("new_query", 1);
-    dpuSystem.async().exec(null);
-    /*copyIntToDpus("nb_max_doc_match", Integer.MAX_VALUE);
-    copyIntToDpus("new_query", 0);
-    dpuSystem.async().exec(null);*/
-
     // create an array with the LeafSimScorer objects for the JNI layer
     // create an array with the quantization factors used for the norm inverse of each field
     Similarity.SimScorer[] scorers = new Similarity.SimScorer[queryBuffers.size()];
@@ -283,6 +272,25 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       Integer qf = fieldNormInverseQuantFactor.get(queryBuffers.get(i).query.getField());
       if(qf != null) quantFactors[i] = qf;
     }
+
+    final int NB_TOPDOCS_LIMIT = 1000;
+    int nb_max_doc_match = Integer.MAX_VALUE;
+    for(int i = 0; i < queryBuffers.size(); ++i) {
+      if (numHits[i] <= NB_TOPDOCS_LIMIT) {
+        nb_max_doc_match = 1;
+      }
+    }
+
+    // System.out.println(">> Launching DPUs");
+    // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
+
+    // TEST: make two launches, one with max number of matches to 1, the second with UINT_MAX
+    copyIntToDpus("nb_max_doc_match", nb_max_doc_match);
+    copyIntToDpus("new_query", 1);
+    dpuSystem.async().exec(null);
+    /*copyIntToDpus("nb_max_doc_match", Integer.MAX_VALUE);
+    copyIntToDpus("new_query", 0);
+    dpuSystem.async().exec(null);*/
 
     // 3) results transfer from DPUs to CPU
     //    Call native API which performs scatter/gather transfer

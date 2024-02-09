@@ -504,12 +504,12 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     const float norm_inverse[nr_queries][NORM_INVERSE_CACHE_SIZE],
     const int quant_factors[nr_queries])
 {
-    uint32_t new_query = 1;
-    DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    // uint32_t new_query = 1;
+    // DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
     bool use_lower_bound_flow = !nb_topdocs_above_limit(nr_queries, nr_topdocs);
-    uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
-    DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
-    DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
+    // uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
+    // DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    // DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
 
     if (use_lower_bound_flow) {
         uint32_t nr_ranks = 0;
