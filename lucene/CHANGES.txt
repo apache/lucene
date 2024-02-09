@@ -219,6 +219,8 @@ Improvements
   Tests are running with random byte order to ensure that the order does not affect correctness
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
 
+* GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
+
 Optimizations
 ---------------------
 

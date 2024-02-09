@@ -147,6 +147,12 @@ may throw `IOException` on index problems, bubbling up unexpectedly to the calle
 `(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
 offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
+## Migration from Lucene 9.9 to Lucene 9.10
+
+### OpenNLP dependency upgrade
+
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using and be running on Java 17.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
