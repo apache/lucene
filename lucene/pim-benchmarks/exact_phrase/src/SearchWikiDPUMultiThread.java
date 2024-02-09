@@ -223,7 +223,7 @@ public class SearchWikiDPUMultiThread {
           for (String word : words) {
             builder.add(new Term("contents", word), wid++);
           }
-          PimPhraseQuery query = builder.build();//.setMaxNumHitsFromDpuSystem(nb_topdocs);
+          PimPhraseQuery query = builder.build().setMaxNumHitsFromDpuSystem(nb_topdocs);
           out.writeBytes(new String("Searching for: " + query.toString(field) + "\n").getBytes());
 
           //TODO Make a version without print and count total time

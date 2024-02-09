@@ -153,7 +153,7 @@ public class SearchWikiMultiThread {
         " Thread max time = " + String.format("%.2f", threadMaxTime * 1e-6));
 
     reader.close();
-    executor.close();
+    // executor.close();
   }
 
   private static class SearchTask implements Runnable {

@@ -91,6 +91,7 @@ public class IndexRAMDPU {
         Directory indexDirectory = new MMapDirectory(Paths.get(index));
         Directory pimIndexDirectory = new MMapDirectory(Paths.get(index + "/dpu"));
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        iwc.setOpenMode(OpenMode.CREATE);
         // provide a directory for pim index and a pim config to the PimIndexWriter constructor
         PimIndexWriter writer = new PimIndexWriter(indexDirectory, pimIndexDirectory, iwc, new PimConfig(nbDpus, 16));
         if(dpuOnly)
