@@ -23,7 +23,7 @@ package org.apache.lucene.search;
  */
 public abstract class AbstractKnnCollector implements KnnCollector {
 
-  private long visitedCount;
+  protected long visitedCount;
   private final long visitLimit;
   private final int k;
 

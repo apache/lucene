@@ -29,6 +29,7 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Test;
 
 @SuppressCodecs("SimpleText")
@@ -770,6 +771,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     indexDirBase.close();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void assertConsistentYoungestChild(
       final FacetLabel abPath,
       final int abOrd,
@@ -801,6 +803,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
 
     Thread thread =
         new Thread("Child Arrays Verifier") {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             setPriority(1 + getPriority());
