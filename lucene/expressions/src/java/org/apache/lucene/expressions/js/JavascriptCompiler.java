@@ -820,7 +820,7 @@ public final class JavascriptCompiler {
    */
   public static final Map<String, MethodHandle> DEFAULT_FUNCTIONS = loadDefaultFunctions();
 
-  private static final Map<String, MethodHandle> loadDefaultFunctions() {
+  private static Map<String, MethodHandle> loadDefaultFunctions() {
     final Map<String, MethodHandle> map = new HashMap<>();
     final Lookup publicLookup = MethodHandles.publicLookup();
     try {
@@ -852,7 +852,7 @@ public final class JavascriptCompiler {
     } catch (ReflectiveOperationException | IOException e) {
       throw new Error("Cannot resolve function", e);
     }
-    return Map.copyOf(map);
+    return Collections.unmodifiableMap(map);
   }
 
   /** Check Method signature for compatibility. */
