@@ -33,7 +33,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   public MemorySegmentIndexInputProvider() {
     var log = Logger.getLogger(getClass().getName());
     log.info(
-        "Using MemorySegmentIndexInput with Java 21; to disable start with -D"
+        "Using MemorySegmentIndexInput with Java 21 or later; to disable start with -D"
             + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
             + "=false");
   }
