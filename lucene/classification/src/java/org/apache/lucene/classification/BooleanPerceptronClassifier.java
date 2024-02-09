@@ -216,7 +216,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       fstCompiler.add(
           Util.toIntsRef(scratchBytes.get(), scratchInts), entry.getValue().longValue());
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   @Override

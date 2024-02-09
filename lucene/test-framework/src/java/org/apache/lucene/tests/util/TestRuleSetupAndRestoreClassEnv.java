@@ -105,13 +105,6 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
 
   @Override
   protected void before() throws Exception {
-    // enable this by default, for IDE consistency with ant tests (as it's the default from ant)
-    // TODO: really should be in solr base classes, but some extend LTC directly.
-    // we do this in beforeClass, because some tests currently disable it
-    if (System.getProperty("solr.directoryFactory") == null) {
-      System.setProperty("solr.directoryFactory", "org.apache.solr.core.MockDirectoryFactory");
-    }
-
     // if verbose: print some debugging stuff about which codecs are loaded.
     if (VERBOSE) {
       System.out.println("Loaded codecs: " + Codec.availableCodecs());

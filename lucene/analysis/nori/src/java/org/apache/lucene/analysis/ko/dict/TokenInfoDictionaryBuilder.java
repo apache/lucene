@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -42,8 +41,8 @@ class TokenInfoDictionaryBuilder {
    */
   private int offset = 0;
 
-  private String encoding;
-  private Normalizer.Form normalForm;
+  private final String encoding;
+  private final Normalizer.Form normalForm;
 
   TokenInfoDictionaryBuilder(String encoding, boolean normalizeEntries) {
     this.encoding = encoding;
@@ -53,10 +52,7 @@ class TokenInfoDictionaryBuilder {
   public TokenInfoDictionaryWriter build(Path dir) throws IOException {
     try (Stream<Path> files = Files.list(dir)) {
       List<Path> csvFiles =
-          files
-              .filter(path -> path.getFileName().toString().endsWith(".csv"))
-              .sorted()
-              .collect(Collectors.toList());
+          files.filter(path -> path.getFileName().toString().endsWith(".csv")).sorted().toList();
       return buildDictionary(csvFiles);
     }
   }
@@ -116,7 +112,7 @@ class TokenInfoDictionaryBuilder {
         // new word to add to fst
         ord++;
         lastValue = surfaceForm;
-        scratch.grow(surfaceForm.length());
+        scratch.growNoCopy(surfaceForm.length());
         scratch.setLength(surfaceForm.length());
         for (int i = 0; i < surfaceForm.length(); i++) {
           scratch.setIntAt(i, surfaceForm.charAt(i));
@@ -126,7 +122,7 @@ class TokenInfoDictionaryBuilder {
       dictionary.addMapping((int) ord, offset);
       offset = next;
     }
-    dictionary.setFST(fstCompiler.compile());
+    dictionary.setFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     return dictionary;
   }
 }

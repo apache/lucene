@@ -72,7 +72,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene99HnswVectorsWriter(
+  public Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
       int beamWidth,
@@ -319,7 +319,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     vectorIndex.writeVInt(size);
 
     // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.node();
+    int[] nnodes = neighbors.nodes();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -408,7 +408,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         long offsetStart = vectorIndex.getFilePointer();
         vectorIndex.writeVInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information

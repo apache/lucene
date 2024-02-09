@@ -219,7 +219,7 @@ final class DocIdsWriter {
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
     }
-    assert pos == count : "pos: " + pos + "count: " + count;
+    assert pos == count : "pos: " + pos + ", count: " + count;
   }
 
   private static void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {

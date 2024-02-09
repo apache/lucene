@@ -25,6 +25,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -254,6 +255,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public final int readVInt() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVInt();
+  }
+
+  @Override
+  public final long readVLong() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVLong();
+  }
+
+  @Override
   public final long readLong() throws IOException {
     try {
       final long v = curSegment.get(LAYOUT_LE_LONG, curPosition);
@@ -300,6 +313,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    try {
+      final int len =
+          GroupVIntUtil.readGroupVInt(
+              this,
+              curSegment.byteSize() - curPosition,
+              p -> curSegment.get(LAYOUT_LE_INT, p),
+              curPosition,
+              dst,
+              offset);
+      curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }

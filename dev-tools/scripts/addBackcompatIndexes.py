@@ -71,7 +71,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     '-Ptests.useSecurityManager=false',
     '-p lucene/%s' % module,
     'test',
-    '--tests TestBackwardsCompatibility.%s' % test,
+    '--tests TestGenerateBwcIndices.%s' % test,
     '-Dtests.bwcdir=%s' % temp_dir,
     '-Dtests.codec=default'
   ])
@@ -99,7 +99,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
 def update_backcompat_tests(types, index_version, current_version):
   print('  adding new indexes %s to backcompat tests...' % types, end='', flush=True)
   module = 'lucene/backward-codecs'
-  filename = '%s/src/test/org/apache/lucene/backward_index/TestBackwardsCompatibility.java' % module
+  filename = '%s/src/test/org/apache/lucene/backward_index/TestGenerateBwcIndices.java' % module
   if not current_version.is_back_compat_with(index_version):
     matcher = re.compile(r'final String\[\] unsupportedNames = {|};')
   elif 'sorted' in types:
@@ -165,7 +165,7 @@ def update_backcompat_tests(types, index_version, current_version):
 
 def check_backcompat_tests():
   print('  checking backcompat tests...', end='', flush=True)
-  scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestBackwardsCompatibility')
+  scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestGenerateBwcIndices')
   print('ok')
 
 def download_from_cdn(version, remotename, localname):
@@ -248,7 +248,7 @@ def main():
     create_and_add_index(source, 'moreterms', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)
-    print ('\nMANUAL UPDATE REQUIRED: edit TestBackwardsCompatibility to enable moreterms, dvupdates, and empty index testing')
+    print ('\nMANUAL UPDATE REQUIRED: edit TestGenerateBwcIndices to enable moreterms, dvupdates, and empty index testing')
     
   print('\nAdding backwards compatibility tests')
   update_backcompat_tests(['cfs', 'nocfs'], c.version, current_version)

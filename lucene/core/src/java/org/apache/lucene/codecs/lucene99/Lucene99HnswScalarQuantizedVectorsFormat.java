@@ -52,8 +52,8 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
-   * HnswGraph} for details.
+   * node. Defaults to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
    */
   private final int beamWidth;
 
@@ -99,14 +99,14 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
     super("Lucene99HnswScalarQuantizedVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be positive and less than or equal to"
+          "maxConn must be positive and less than or equal to "
               + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
     }
     if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
       throw new IllegalArgumentException(
-          "beamWidth must be positive and less than or equal to"
+          "beamWidth must be positive and less than or equal to "
               + MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);
