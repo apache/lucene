@@ -474,8 +474,9 @@ final class IDVersionSegmentTermsEnumFrame {
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
-    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + ToStringUtils.brToString(target) +
-    // " term=" + ToStringUtils.brToString(ste.term));
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(ste.term));
 
     assert nextEnt != -1;
 
@@ -505,7 +506,7 @@ final class IDVersionSegmentTermsEnumFrame {
       //    suffixBytesRef.offset = suffixesReader.getPosition();
       //    suffixBytesRef.length = suffix;
       //    System.out.println("      cycle: term " + (nextEnt-1) + " (of " + entCount + ") suffix="
-      // + ToStringUtils.brToString(suffixBytesRef));
+      // + ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       final int termLen = prefix + suffix;
@@ -605,8 +606,8 @@ final class IDVersionSegmentTermsEnumFrame {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
     // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
-    // ToStringUtils.brToString(target) + " term=" +
-    // ToStringUtils.brToString(ste.term));
+    // ToStringUtils.bytesRefToString(target) + " term=" +
+    // ToStringUtils.bytesRefToString(ste.term));
 
     assert nextEnt != -1;
 
@@ -634,7 +635,8 @@ final class IDVersionSegmentTermsEnumFrame {
       //   suffixBytesRef.offset = suffixesReader.getPosition();
       //   suffixBytesRef.length = suffix;
       //   System.out.println("      cycle: " + ((code&1)==1 ? "sub-block" : "term") + " " +
-      // (nextEnt-1) + " (of " + entCount + ") suffix=" + ToStringUtils.brToString(suffixBytesRef));
+      // (nextEnt-1) + " (of " + entCount + ") suffix=" +
+      // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       ste.termExists = (code & 1) == 0;

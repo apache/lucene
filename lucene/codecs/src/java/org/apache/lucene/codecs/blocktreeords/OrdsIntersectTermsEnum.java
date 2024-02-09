@@ -61,7 +61,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       throws IOException {
     // if (DEBUG) {
     //   System.out.println("\nintEnum.init seg=" + segment + " commonSuffix=" +
-    // ToStringUtils.brToString(compiled.commonSuffixRef));
+    // ToStringUtils.bytesRefToString(compiled.commonSuffixRef));
     // }
     this.fr = fr;
     this.byteRunnable = compiled.getByteRunnable();
@@ -283,13 +283,15 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
                 currentFrame.loadNextFloorBlock();
                 continue;
               } else {
-                // if (DEBUG) System.out.println("  return term=" + ToStringUtils.brToString(term));
+                // if (DEBUG) System.out.println("  return term=" +
+                // ToStringUtils.bytesRefToString(term));
                 return;
               }
             }
             continue;
           } else if (cmp == 0) {
-            // if (DEBUG) System.out.println("  return term=" + ToStringUtils.brToString(term));
+            // if (DEBUG) System.out.println("  return term=" +
+            // ToStringUtils.bytesRefToString(term));
             return;
           } else {
             // Fallback to prior entry: the semantics of
@@ -328,7 +330,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // if (DEBUG) {
     //   System.out.println("\nintEnum.next seg=" + segment);
     //   System.out.println("  frame ord=" + currentFrame.ord + " prefix=" +
-    // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
+    // ToStringUtils.bytesRefToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
     // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
     // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
     // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
@@ -343,7 +345,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    next-floor-block");
           currentFrame.loadNextFloorBlock();
           // if (DEBUG) System.out.println("\n  frame ord=" + currentFrame.ord + " prefix=" +
-          // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
+          // ToStringUtils.bytesRefToString(new BytesRef(term.bytes, term.offset,
+          // currentFrame.prefix)) +
           // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
           // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
           // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
@@ -357,7 +360,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           currentFrame = stack[currentFrame.ord - 1];
           assert currentFrame.lastSubFP == lastFP;
           // if (DEBUG) System.out.println("\n  frame ord=" + currentFrame.ord + " prefix=" +
-          // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
+          // ToStringUtils.bytesRefToString(new BytesRef(term.bytes, term.offset,
+          // currentFrame.prefix)) +
           // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor +
           // " fp=" + currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
           // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
@@ -373,7 +377,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       //   suffixRef.length = currentFrame.suffix;
       //   System.out.println("    " + (isSubBlock ? "sub-block" : "term") + " " +
       // currentFrame.nextEnt + " (of " + currentFrame.entCount + ") suffix=" +
-      // ToStringUtils.brToString(suffixRef));
+      // ToStringUtils.bytesRefToString(suffixRef));
       // }
 
       if (currentFrame.suffix != 0) {
@@ -480,7 +484,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
         copyTerm();
         currentFrame = pushFrame(state);
         // if (DEBUG) System.out.println("\n  frame ord=" + currentFrame.ord + " prefix=" +
-        // ToStringUtils.brToString(new BytesRef(term.bytes, term.offset, currentFrame.prefix)) +
+        // ToStringUtils.bytesRefToString(new BytesRef(term.bytes, term.offset,
+        // currentFrame.prefix)) +
         // " state=" + currentFrame.state + " lastInFloor?=" + currentFrame.isLastInFloor + " fp=" +
         // currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
         // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
@@ -488,7 +493,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       } else if (byteRunnable.isAccept(state)) {
         copyTerm();
         // if (DEBUG) System.out.println("      term match to state=" + state + "; return term=" +
-        // ToStringUtils.brToString(term));
+        // ToStringUtils.bytesRefToString(term));
         assert savedStartTerm == null || term.compareTo(savedStartTerm) > 0
             : "saveStartTerm=" + savedStartTerm.utf8ToString() + " term=" + term.utf8ToString();
         return term;

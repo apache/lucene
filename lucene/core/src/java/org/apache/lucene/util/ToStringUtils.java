@@ -50,7 +50,7 @@ public final class ToStringUtils {
    * sequence, only the bytes hex values are returned, as per {@link BytesRef#toString()}.
    */
   @SuppressWarnings("unused")
-  public static String brToString(BytesRef b) {
+  public static String bytesRefToString(BytesRef b) {
     if (b == null) {
       return "null";
     }
@@ -63,11 +63,11 @@ public final class ToStringUtils {
     }
   }
 
-  public static String brToString(BytesRefBuilder b) {
-    return brToString(b.get());
+  public static String bytesRefToString(BytesRefBuilder b) {
+    return bytesRefToString(b.get());
   }
 
-  public static String brToString(byte[] b) {
-    return brToString(new BytesRef(b));
+  public static String bytesRefToString(byte[] b) {
+    return bytesRefToString(new BytesRef(b));
   }
 }

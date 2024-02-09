@@ -536,8 +536,9 @@ final class SegmentTermsEnumFrame {
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
-    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + ToStringUtils.brToString(target) +
-    // " term=" + ToStringUtils.brToString(term));
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -567,7 +568,7 @@ final class SegmentTermsEnumFrame {
       //   suffixBytesRef.offset = suffixesReader.getPosition();
       //   suffixBytesRef.length = suffix;
       //   System.out.println("      cycle: term " + (nextEnt-1) + " (of " + entCount + ") suffix="
-      // + ToStringUtils.brToString(suffixBytesRef));
+      // + ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       startBytePos = suffixesReader.getPosition();
@@ -632,8 +633,9 @@ final class SegmentTermsEnumFrame {
   public SeekStatus scanToTermNonLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
-    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + ToStringUtils.brToString(target) +
-    // " term=" + ToStringUtils.brToString(target));
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -661,7 +663,8 @@ final class SegmentTermsEnumFrame {
       //  suffixBytesRef.offset = suffixesReader.getPosition();
       //  suffixBytesRef.length = suffix;
       //  System.out.println("      cycle: " + ((code&1)==1 ? "sub-block" : "term") + " " +
-      // (nextEnt-1) + " (of " + entCount + ") suffix=" + ToStringUtils.brToString(suffixBytesRef));
+      // (nextEnt-1) + " (of " + entCount + ") suffix=" +
+      // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       final int termLen = prefix + suffix;

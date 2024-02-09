@@ -205,7 +205,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
       //   final int sav = term.length;
       //   term.length = length;
       //   System.out.println("      push new frame ord=" + f.ord + " fp=" + f.fp + " hasTerms=" +
-      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + ToStringUtils.brToString(term));
+      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + ToStringUtils.bytesRefToString(term));
       //   term.length = sav;
       // }
     }
@@ -239,7 +239,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
     /*
     if (DEBUG) {
       System.out.println("\nBTTR.seekExact seg=" + fr.parent.segment + " target=" + fr.fieldInfo.name + ":" +
-      ToStringUtils.brToString(target) + " current=" + ToStringUtils.brToString(term) + " (exists?=" + termExists +
+      ToStringUtils.bytesRefToString(target) + " current=" + ToStringUtils.bytesRefToString(term) + " (exists?=" + termExists +
       ") validIndexPrefix=" + validIndexPrefix);
       printSeekState(System.out);
     }
@@ -433,7 +433,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
           term.setByteAt(targetUpto, (byte) targetLabel);
           term.setLength(1 + targetUpto);
           // if (DEBUG) {
-          //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.brToString(term));
+          //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -449,7 +449,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
         } else {
           // if (DEBUG) {
           //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-          // ToStringUtils.brToString(term));
+          // ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -492,7 +492,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
       termExists = false;
       term.setLength(targetUpto);
       // if (DEBUG) {
-      //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.brToString(term));
+      //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
       // }
       return false;
     }
@@ -527,7 +527,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
 
     // if (DEBUG) {
     // System.out.println("\nBTTR.seekCeil seg=" + segment + " target=" + fieldInfo.name + ":" +
-    // target.utf8ToString() + " " + target + " current=" + ToStringUtils.brToString(term) +
+    // target.utf8ToString() + " " + target + " current=" + ToStringUtils.bytesRefToString(term) +
     // " (exists?=" + termExists + ") validIndexPrefix=  " + validIndexPrefix);
     // printSeekState();
     // }
@@ -723,8 +723,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
 
           if (next() != null) {
             // if (DEBUG) {
-            // System.out.println("  return NOT_FOUND term=" + ToStringUtils.brToString(term) + " "
-            // + term);
+            // System.out.println("  return NOT_FOUND term=" +
+            // ToStringUtils.bytesRefToString(term));
             // }
             return SeekStatus.NOT_FOUND;
           } else {
@@ -735,8 +735,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
           }
         } else {
           // if (DEBUG) {
-          // System.out.println("  return " + result + " term=" + ToStringUtils.brToString(term) +
-          // " " + term);
+          // System.out.println("  return " + result + " term=" +
+          // ToStringUtils.bytesRefToString(term));
           // }
           return result;
         }
@@ -821,7 +821,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
                   + " prefixLen="
                   + f.prefix
                   + " prefix="
-                  + ToStringUtils.brToString(prefix)
+                  + ToStringUtils.bytesRefToString(prefix)
                   + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
                   + " hasTerms="
                   + f.hasTerms
@@ -851,7 +851,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
                   + " prefixLen="
                   + f.prefix
                   + " prefix="
-                  + ToStringUtils.brToString(prefix)
+                  + ToStringUtils.bytesRefToString(prefix)
                   + " nextEnt="
                   + f.nextEnt
                   + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
@@ -943,7 +943,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
 
     assert !eof;
     // if (DEBUG) {
-    // System.out.println("\nBTTR.next seg=" + segment + " term=" + ToStringUtils.brToString(term) +
+    // System.out.println("\nBTTR.next seg=" + segment + " term=" +
+    // ToStringUtils.bytesRefToString(term) +
     // " termExists?=" + termExists + " field=" + fieldInfo.name + " termBlockOrd=" +
     // currentFrame.state.termBlockOrd + " validIndexPrefix=" + validIndexPrefix);
     // printSeekState();

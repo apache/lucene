@@ -286,7 +286,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   final int sav = term.length;
       //   term.length = length;
       //   System.out.println("      push new frame ord=" + f.ord + " fp=" + f.fp + " hasTerms=" +
-      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + ToStringUtils.brToString(term));
+      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + ToStringUtils.bytesRefToString(term));
       //   term.length = sav;
       // }
     }
@@ -323,8 +323,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     // if (DEBUG) {
     //   System.out.println("\nBTTR.seekExact seg=" + fr.parent.segment + " target=" +
-    // fr.fieldInfo.name + ":" + ToStringUtils.brToString(target) + " current=" +
-    // ToStringUtils.brToString(term) +
+    // fr.fieldInfo.name + ":" + ToStringUtils.bytesRefToString(target) + " current=" +
+    // ToStringUtils.bytesRefToString(term) +
     // " (exists?=" + termExists + ") validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
     // }
@@ -511,7 +511,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           term.setByteAt(targetUpto, (byte) targetLabel);
           term.setLength(1 + targetUpto);
           // if (DEBUG) {
-          //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.brToString(term));
+          //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -527,7 +527,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         } else {
           // if (DEBUG) {
           //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-          // ToStringUtils.brToString(term));
+          // ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -566,7 +566,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       termExists = false;
       term.setLength(targetUpto);
       // if (DEBUG) {
-      //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.brToString(term));
+      //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
       // }
       return false;
     }
@@ -602,9 +602,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     // if (DEBUG) {
     //   System.out.println("\nBTTR.seekCeil seg=" + fr.parent.segment + " target=" +
-    // fr.fieldInfo.name + ":" + ToStringUtils.brToString(target) + " " + target + " current=" +
-    // ToStringUtils.brToString(term) + " (exists?=" + termExists + ") validIndexPrefix=  " +
-    // validIndexPrefix);
+    // fr.fieldInfo.name + ":" + ToStringUtils.bytesRefToString(target) + " current=" +
+    // ToStringUtils.bytesRefToString(term) + " (exists?=" + termExists +
+    // ") validIndexPrefix=  " + validIndexPrefix);
     //   printSeekState(System.out);
     // }
 
@@ -789,7 +789,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
           if (next() != null) {
             // if (DEBUG) {
-            // System.out.println("  return NOT_FOUND term=" + ToStringUtils.brToString(term));
+            // System.out.println("  return NOT_FOUND term=" +
+            // ToStringUtils.bytesRefToString(term));
             // }
             return SeekStatus.NOT_FOUND;
           } else {
@@ -800,7 +801,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           }
         } else {
           // if (DEBUG) {
-          // System.out.println("  return " + result + " term=" + ToStringUtils.brToString(term));
+          // System.out.println("  return " + result + " term=" +
+          // ToStringUtils.bytesRefToString(term));
           // }
           return result;
         }
@@ -997,7 +999,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     assert !eof;
     // if (DEBUG) {
     //   System.out.println("\nBTTR.next seg=" + fr.parent.segment + " term=" +
-    // ToStringUtils.brToString(term) + " termExists?=" + termExists + " field=" +
+    // ToStringUtils.bytesRefToString(term) + " termExists?=" + termExists + " field=" +
     // fr.fieldInfo.name + " termBlockOrd=" + currentFrame.state.termBlockOrd +
     // " validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
@@ -1063,7 +1065,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // try to scan to the right floor frame:
         currentFrame.loadBlock();
       } else {
-        // if (DEBUG) System.out.println("  return term=" + ToStringUtils.brToString(term) +
+        // if (DEBUG) System.out.println("  return term=" + ToStringUtils.bytesRefToString(term) +
         // " currentFrame.ord=" + currentFrame.ord);
         return term.get();
       }

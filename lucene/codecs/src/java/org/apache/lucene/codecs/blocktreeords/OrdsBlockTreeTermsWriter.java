@@ -289,7 +289,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return ToStringUtils.brToString(termBytes);
+      return ToStringUtils.bytesRefToString(termBytes);
     }
   }
 
@@ -335,7 +335,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return "BLOCK: " + ToStringUtils.brToString(prefix);
+      return "BLOCK: " + ToStringUtils.bytesRefToString(prefix);
     }
 
     public void compileIndex(
@@ -646,7 +646,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       // if (DEBUG) {
       //   System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment +
       // " pending.size()=" + pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" +
-      // ToStringUtils.brToString(prefix) + " entCount=" + length + " startFP=" + startFP +
+      // ToStringUtils.bytesRefToString(prefix) + " entCount=" + length + " startFP=" + startFP +
       // (isFloor ? (" floorLeadByte=" + Integer.toHexString(floorLeadByte&0xff)) : "") +
       // " isLastInFloor=" + isLastInFloor);
       // }
@@ -766,7 +766,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
               BytesRef suffixBytes = new BytesRef(suffix);
               System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0, suffix);
               suffixBytes.length = suffix;
-              System.out.println("    write sub-block suffix=" + ToStringUtils.brToString(suffixBytes) +
+              System.out.println("    write sub-block suffix=" + ToStringUtils.bytesRefToString(suffixBytes) +
               " subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" + block.isFloor);
             }
             */
@@ -825,7 +825,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       if (DEBUG) {
         int[] tmp = new int[lastTerm.length];
         System.arraycopy(prefixStarts, 0, tmp, 0, tmp.length);
-        System.out.println("BTTW: write term=" + ToStringUtils.brToString(text) + " prefixStarts=" +
+        System.out.println("BTTW: write term=" + ToStringUtils.bytesRefToString(text) + " prefixStarts=" +
         Arrays.toString(tmp) + " pending.size()=" + pending.size());
       }
       */
