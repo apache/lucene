@@ -2137,6 +2137,34 @@ Other
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
 
+======================= Lucene 8.11.3 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
+  splitting. (Ignacio Vera)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
+* LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
+  occurs when computing the partition point. (Ignacio Vera)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+Optimizations
+---------------------
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
+
 ======================= Lucene 8.11.2 =======================
 
 Bug Fixes
