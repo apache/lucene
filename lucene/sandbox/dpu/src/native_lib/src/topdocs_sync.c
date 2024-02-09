@@ -1,13 +1,13 @@
 #include "topdocs_sync.h"
 
-#include <dpu.h>          // for dpu_broadcast_to, dpu_get_nr_dpus, dpu_prep...
-#include <errno.h>        // for errno
-#include <pthread.h>      // for pthread_mutex_t, pthread_mutex_destroy, pth...
-#include <stdbool.h>      // for bool, false, true
-#include <stddef.h>       // for NULL, size_t
-#include <stdint.h>       // for uint32_t, uint8_t, uint64_t
-#include <stdio.h>        // for fprintf, stderr
-#include <stdlib.h>       // for free, realloc, malloc
+#include <dpu.h> // for dpu_broadcast_to, dpu_get_nr_dpus, dpu_prep...
+#include <errno.h> // for errno
+#include <pthread.h> // for pthread_mutex_t, pthread_mutex_destroy, pth...
+#include <stdbool.h> // for bool, false, true
+#include <stddef.h> // for NULL, size_t
+#include <stdint.h> // for uint32_t, uint8_t, uint64_t
+#include <stdio.h> // for fprintf, stderr
+#include <stdlib.h> // for free, realloc, malloc
 
 typedef float score_t;
 
@@ -15,7 +15,7 @@ typedef float score_t;
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define i_cmp -c_default_cmp
 #define i_type PQue
-#include <stc/cpque.h>    // for PQue_push, PQue_size, PQue_top, PQue_clear
+#include <stc/cpque.h> // for PQue_push, PQue_size, PQue_top, PQue_clear
 // IWYU pragma: no_include "stc/ccommon.h"
 // IWYU pragma: no_forward_declare PQue
 
@@ -112,6 +112,12 @@ typedef struct {
     const int *quant_factors; // int[nr_queries]
     uint32_t nb_dpu_scores;
 } broadcast_params_t;
+
+typedef struct {
+    update_bounds_atomic_context_t *ctx;
+    broadcast_params_t *broadcast_args;
+    uint32_t nr_ranks;
+} run_sync_loop_context_t;
 
 static const uint32_t MAX_NR_DPUS_PER_RANK = DPU_MAX_NR_CIS * DPU_MAX_NR_DPUS_PER_CI;
 static const uint32_t MAX_NB_SCORES = 8;
@@ -402,12 +408,9 @@ update_pques(int nr_queries,
 }
 
 NODISCARD static inline dpu_error_t
-update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, void *args)
+update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atomic_context_t *ctx, bool *finished)
 {
-    const update_bounds_atomic_context_t *ctx = args;
     const int nr_queries = ctx->nr_queries;
-
-    bool *finished = &ctx->finished_ranks[rank_id];
 
     DPU_PROPAGATE(update_rank_status(rank, finished));
 
@@ -440,17 +443,6 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params_t *args)
 }
 
 NODISCARD static inline bool
-all_dpus_have_finished(const bool *finished_ranks, uint32_t nr_ranks)
-{
-    for (uint32_t i = 0; i < nr_ranks; i++) {
-        if (finished_ranks[i] == 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
-NODISCARD static inline bool
 nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries])
 {
     for (int i = 0; i < nr_queries; ++i) {
@@ -462,35 +454,37 @@ nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries])
 }
 
 NODISCARD static inline dpu_error_t
-sync_loop_iteration(struct dpu_set_t set, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, bool first_run)
+sync_loop_iteration(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, bool first_run, bool *finished)
 {
     if (!first_run) {
         broadcast_args->nb_dpu_scores *= NB_SCORES_SCALING_FACTOR;
-        DPU_PROPAGATE(broadcast_new_bounds(set, broadcast_args));
-        DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
+        DPU_PROPAGATE(broadcast_new_bounds(rank, broadcast_args));
+        DPU_PROPAGATE(dpu_launch(rank, DPU_SYNCHRONOUS));
     }
-    DPU_PROPAGATE(dpu_callback(set, update_bounds_atomic, ctx, DPU_CALLBACK_ASYNC));
+    DPU_PROPAGATE(update_bounds_atomic(rank, rank_id, ctx, finished));
     // TODO(sbrocard) : benchmark if syncing is the best strategy
-    DPU_PROPAGATE(dpu_sync(set));
+    // DPU_PROPAGATE(dpu_sync(rank));
     if (first_run) {
         // tell the DPU that the next runs are for the same query
         uint32_t new_query = 0;
-        DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
+        DPU_PROPAGATE(dpu_broadcast_to(rank, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
     }
 
     return DPU_OK;
 }
 
 NODISCARD static inline dpu_error_t
-run_sync_loop(struct dpu_set_t set, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, uint32_t nr_ranks)
+run_sync_loop(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
-    bool *finished_ranks = ctx->finished_ranks;
+    bool finished = false;
     bool first_run = true;
 
+    run_sync_loop_context_t *run_sync_loop_ctx = args;
+
     do {
-        DPU_PROPAGATE(sync_loop_iteration(set, ctx, broadcast_args, first_run));
+        DPU_PROPAGATE(sync_loop_iteration(rank, rank_id, run_sync_loop_ctx->ctx, run_sync_loop_ctx->broadcast_args, first_run, &finished));
         first_run = false;
-    } while (!all_dpus_have_finished(finished_ranks, nr_ranks));
+    } while (!finished);
 
     return DPU_OK;
 }
@@ -504,11 +498,12 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
 {
     // uint32_t new_query = 1;
     // DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
-    bool use_lower_bound_flow = !nb_topdocs_above_limit(nr_queries, nr_topdocs);
-    // uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
+    const bool use_lower_bound_flow = !nb_topdocs_above_limit(nr_queries, nr_topdocs);
+    // const uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
     // DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
     // DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
 
+    // (void)fprintf(stderr, "use_lower_bound_flow: %d\n", use_lower_bound_flow);
     if (use_lower_bound_flow) {
         uint32_t nr_ranks = 0;
         pque_array_t score_pques = {};
@@ -522,8 +517,10 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
         update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
         broadcast_params_t broadcast_args
             = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+        run_sync_loop_context_t run_sync_loop_ctx = { &ctx, &broadcast_args, nr_ranks };
 
-        return run_sync_loop(set, &ctx, &broadcast_args, nr_ranks);
+        DPU_PROPAGATE(dpu_callback(set, run_sync_loop, &run_sync_loop_ctx, DPU_CALLBACK_ASYNC));
+        DPU_PROPAGATE(dpu_sync(set));
     }
     return DPU_OK;
 }

@@ -181,20 +181,6 @@ test_update_pques(void)
 }
 
 void
-test_all_dpus_have_finished(void)
-{
-    uint32_t nr_ranks = 5;
-    bool finished_ranks[] = { true, true, true, true, true };
-
-    bool result = all_dpus_have_finished(finished_ranks, nr_ranks);
-    CU_ASSERT_TRUE(result);
-
-    finished_ranks[2] = false;
-    result = all_dpus_have_finished(finished_ranks, nr_ranks);
-    CU_ASSERT_FALSE(result);
-}
-
-void
 test_bitfield_is_sound(void)
 {
     // representation on DPU
@@ -247,7 +233,6 @@ main()
         || (NULL == CU_add_test(p_suite, "test_init_inbound_buffers", test_init_inbound_buffers))
         || (NULL == CU_add_test(p_suite, "test_entry_init_topdocs_sync", test_entry_init_topdocs_sync))
         || (NULL == CU_add_test(p_suite, "test_update_pques", test_update_pques))
-        || (NULL == CU_add_test(p_suite, "test_all_dpus_have_finished", test_all_dpus_have_finished))
         || (NULL == CU_add_test(p_suite, "test_bitfield_is_sound", test_bitfield_is_sound))) {
         CU_cleanup_registry();
         return (int)CU_get_error();
