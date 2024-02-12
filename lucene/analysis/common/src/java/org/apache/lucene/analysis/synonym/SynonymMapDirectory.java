@@ -134,38 +134,40 @@ public class SynonymMapDirectory implements Closeable {
               synonymMetadata.fstMetadata,
               directory.openInput(FST_FILE, IOContext.DEFAULT),
               new OffHeapFSTStore());
-      IndexInput wordsInput = directory.openInput(WORDS_FILE, IOContext.READ);
-      int[] bytesStartArray = new int[synonymMetadata.wordCount];
-      for (int i = 0; i < synonymMetadata.wordCount; i++) {
-        bytesStartArray[i] = Math.toIntExact(wordsInput.getFilePointer());
-        int length = wordsInput.readVInt();
-        wordsInput.seek(wordsInput.getFilePointer() + length);
+      OnHeapBytesRefHashLike words;
+      try (IndexInput wordsInput = directory.openInput(WORDS_FILE, IOContext.DEFAULT)) {
+        words = new OnHeapBytesRefHashLike(synonymMetadata.wordCount, wordsInput);
       }
-      return new SynonymMap(
-          fst,
-          new OffHeapBytesRefHashLike(bytesStartArray, wordsInput),
-          synonymMetadata.maxHorizontalContext);
+      return new SynonymMap(fst, words, synonymMetadata.maxHorizontalContext);
     }
 
-    private static class OffHeapBytesRefHashLike extends SynonymMap.BytesRefHashLike {
+    private static class OnHeapBytesRefHashLike extends SynonymMap.BytesRefHashLike {
       private final int[] bytesStartArray;
-      private final IndexInput wordsFile;
+      private final byte[] wordBytes;
 
-      public OffHeapBytesRefHashLike(int[] bytesStartArray, IndexInput wordsFile) {
-        this.bytesStartArray = bytesStartArray;
-        this.wordsFile = wordsFile;
+      public OnHeapBytesRefHashLike(int wordCount, IndexInput wordsFile) throws IOException {
+        bytesStartArray = new int[wordCount + 1];
+        int pos = 0;
+        for (int i = 0; i < wordCount; i++) {
+          bytesStartArray[i] = pos;
+          int size = wordsFile.readVInt();
+          pos += size;
+          wordsFile.seek(wordsFile.getFilePointer() + size);
+        }
+        bytesStartArray[wordCount] = pos;
+        wordsFile.seek(0);
+        wordBytes = new byte[pos];
+        for (int i = 0; i < wordCount; i++) {
+          int size = wordsFile.readVInt();
+          wordsFile.readBytes(wordBytes, bytesStartArray[i], size);
+        }
       }
 
       @Override
-      public void get(int id, BytesRef scratch) throws IOException {
-        wordsFile.seek(bytesStartArray[id]);
-        int length = wordsFile.readVInt();
-        if (scratch.bytes.length < length) {
-          scratch.bytes = new byte[length];
-        }
-        wordsFile.readBytes(scratch.bytes, 0, length);
-        scratch.offset = 0;
-        scratch.length = length;
+      public void get(int id, BytesRef scratch) {
+        scratch.bytes = wordBytes;
+        scratch.offset = bytesStartArray[id];
+        scratch.length = bytesStartArray[id + 1] - bytesStartArray[id];
       }
     }
 
