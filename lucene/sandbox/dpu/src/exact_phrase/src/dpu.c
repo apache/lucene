@@ -93,13 +93,13 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 
 #ifdef TEST1
 #define TEST
-#define DEBUG
+#define DBG_PRINT
 #include "../test/test1.h"
 #endif
 
-//#define DEBUG
+//#define DBG_PRINT
 
-#ifndef NDEBUG
+#ifdef DBG_PRINT
 uint16_t nb_did_skipped[DPU_MAX_BATCH_SIZE];
 #endif
 
@@ -194,7 +194,7 @@ main()
         for (uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
             lookup_postings_info_for_query(dpu_index, i);
             results_index[i] = 0;
-#ifndef NDEBUG
+#ifdef DBG_PRINT
             nb_did_skipped[i] = 0;
 #endif
         }
@@ -419,7 +419,7 @@ perform_did_and_pos_matching(uint32_t query_id, uint16_t segment_id, did_matcher
 #endif
                     } else {
                         abort_did(matchers, nr_terms);
-#ifndef NDEBUG
+#ifdef DBG_PRINT
                         mutex_lock(results_mutex);
                         nb_did_skipped[query_id]++;
                         mutex_unlock(results_mutex);
