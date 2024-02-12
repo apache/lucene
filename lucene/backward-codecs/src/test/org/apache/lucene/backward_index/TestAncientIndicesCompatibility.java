@@ -40,8 +40,8 @@ import org.apache.lucene.tests.util.TestUtil;
 @SuppressWarnings("deprecation")
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
-  static final String[] unsupportedNames = {
-    "1.9.0-cfs",
+  static final String[] UNSUPPORTED_VERSIONS = {
+    "1.9.0-cfs", // Force on separate lines
     "1.9.0-nocfs",
     "2.0.0-cfs",
     "2.0.0-nocfs",
@@ -245,13 +245,13 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
    * on too old indexes!
    */
   public void testUnsupportedOldIndexes() throws Exception {
-    for (int i = 0; i < unsupportedNames.length; i++) {
+    for (int i = 0; i < UNSUPPORTED_VERSIONS.length; i++) {
       if (VERBOSE) {
-        System.out.println("TEST: index " + unsupportedNames[i]);
+        System.out.println("TEST: index " + UNSUPPORTED_VERSIONS[i]);
       }
-      Path oldIndexDir = createTempDir(unsupportedNames[i]);
+      Path oldIndexDir = createTempDir(UNSUPPORTED_VERSIONS[i]);
       TestUtil.unzip(
-          getDataInputStream("unsupported." + unsupportedNames[i] + ".zip"), oldIndexDir);
+          getDataInputStream("unsupported." + UNSUPPORTED_VERSIONS[i] + ".zip"), oldIndexDir);
       BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir);
       // don't checkindex, these are intentionally not supported
       dir.setCheckIndexOnClose(false);
@@ -260,7 +260,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       IndexWriter writer = null;
       try {
         reader = DirectoryReader.open(dir);
-        fail("DirectoryReader.open should not pass for " + unsupportedNames[i]);
+        fail("DirectoryReader.open should not pass for " + UNSUPPORTED_VERSIONS[i]);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -300,7 +300,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
         writer =
             new IndexWriter(
                 dir, newIndexWriterConfig(new MockAnalyzer(random())).setCommitOnClose(false));
-        fail("IndexWriter creation should not pass for " + unsupportedNames[i]);
+        fail("IndexWriter creation should not pass for " + UNSUPPORTED_VERSIONS[i]);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -353,7 +353,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (unsupportedNames[i].startsWith("7.")) {
+      if (UNSUPPORTED_VERSIONS[i].startsWith("7.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);

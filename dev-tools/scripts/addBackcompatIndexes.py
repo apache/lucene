@@ -96,16 +96,17 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
   scriptutil.run('rm -rf %s' % bc_index_dir)
   print('done')
 
-def update_backcompat_tests(types, index_version, current_version):
-  print('  adding new indexes %s to backcompat tests...' % types, end='', flush=True)
+def update_backcompat_tests(index_version, current_version):
+  print('  adding new indexes to backcompat tests...', end='', flush=True)
   module = 'lucene/backward-codecs'
-  filename = '%s/src/test/org/apache/lucene/backward_index/TestGenerateBwcIndices.java' % module
+
+  filename = None
   if not current_version.is_back_compat_with(index_version):
-    matcher = re.compile(r'final String\[\] unsupportedNames = {|};')
-  elif 'sorted' in types:
-    matcher = re.compile(r'static final String\[\] oldSortedNames = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/TestAncientIndicesCompatibility.java' % module
+    matcher = re.compile(r'static final String\[\] UNSUPPORTED_VERSIONS = {|};')
   else:
-    matcher = re.compile(r'static final String\[\] oldNames = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/BackwardsCompatibilityTestBase.java' % module
+    matcher = re.compile(r'static final String\[\] OLD_VERSIONS = {|};')
 
   strip_dash_suffix_re = re.compile(r'-.*')
 
@@ -142,20 +143,15 @@ def update_backcompat_tests(types, index_version, current_version):
           spaces = ' ' * (len(last) - len(last.lstrip()))
         else:
           spaces = '    '
-        for (j, t) in enumerate(types):
-          if t == 'sorted':
-            newline = spaces + ('"sorted.%s"') % index_version
-          else:
-            newline = spaces + ('"%s-%s"' % (index_version, t))
-          if j < len(types) - 1 or i < len(buffer):
-            newline += ','
-          buffer.insert(i, newline + '\n')
-          i += 1
-
+        newLine = spaces + ('"%s"') % index_version
+        if i < len(buffer):
+          newLine += ','
+        buffer.insert(i, newLine + '\n')
+        i += 1
         buffer.append(line)
         return True
 
-      if 'Names = {' in line:
+      if 'VERSIONS = {' in line:
         self.start = len(buffer) # location of first index name
       buffer.append(line)
       return False
@@ -251,9 +247,8 @@ def main():
     print ('\nMANUAL UPDATE REQUIRED: edit TestGenerateBwcIndices to enable moreterms, dvupdates, and empty index testing')
     
   print('\nAdding backwards compatibility tests')
-  update_backcompat_tests(['cfs', 'nocfs'], c.version, current_version)
-  if should_make_sorted:
-    update_backcompat_tests(['sorted'], c.version, current_version)
+  update_backcompat_tests(c.version, current_version)
+
 
   print('\nTesting changes')
   check_backcompat_tests()
