@@ -14,15 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.tests.util;
 
-import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
+import java.time.LocalDateTime;
 
-/**
- * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
- * Scalar quantization scores.
- */
-abstract class QuantizedByteVectorValues extends ByteVectorValues {
-  abstract float getScoreCorrectionConstant() throws IOException;
+public class TestLineFileDocs extends LuceneTestCase {
+  /**
+   * Tests that {@link #expectThrows} behaves correctly when the Runnable throws (an instance of a
+   * subclass of) the expected Exception type: by returning that Exception.
+   */
+  public void testDateFieldNormalization() {
+    // europarl corpus uses this data format.
+    assertEquals(
+        LocalDateTime.of(2023, 2, 23, 0, 0),
+        LineFileDocs.DATE_FIELD_VALUE_TO_LOCALDATETIME.apply("2023-02-23"));
+    // enwiki uses this data format.
+    assertEquals(
+        LocalDateTime.of(2010, 1, 12, 12, 32, 45),
+        LineFileDocs.DATE_FIELD_VALUE_TO_LOCALDATETIME.apply("12-JAN-2010 12:32:45.000"));
+  }
 }

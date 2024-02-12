@@ -128,7 +128,7 @@ public final class UserDictionary implements Dictionary {
       }
 
       // add mapping to FST
-      scratch.grow(token.length());
+      scratch.growNoCopy(token.length());
       scratch.setLength(token.length());
       for (int i = 0; i < token.length(); i++) {
         scratch.setIntAt(i, token.charAt(i));
@@ -137,7 +137,8 @@ public final class UserDictionary implements Dictionary {
       lastToken = token;
       ord++;
     }
-    this.fst = new TokenInfoFST(fstCompiler.compile());
+    this.fst =
+        new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
     this.rightIds = new short[rightIds.size()];
     for (int i = 0; i < rightIds.size(); i++) {

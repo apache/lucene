@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -466,6 +467,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   /**
+   * Child classes can implement this method to modify the document corresponding to a category path
+   * before indexing it.
+   *
+   * @lucene.experimental
+   */
+  protected void enrichOrdinalDocument(Document d, FacetLabel categoryPath) {}
+
+  /**
    * Note that the methods calling addCategoryDocument() are synchronized, so this method is
    * effectively synchronized as well.
    */
@@ -497,6 +506,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     }
 
     d.add(fullPathField);
+
+    // add arbitrary ordinal data to the doc
+    enrichOrdinalDocument(d, categoryPath);
 
     indexWriter.addDocument(d);
     int id = nextID.getAndIncrement();
@@ -955,6 +967,34 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     initReaderManager(); // ensure that it's initialized
     refreshReaderManager();
     nextID.set(indexWriter.getDocStats().maxDoc);
+    taxoArrays = null; // must nullify so that it's re-computed next time it's needed
+
+    // need to clear the cache, so that addCategory won't accidentally return
+    // old categories that are in the cache.
+    cache.clear();
+    cacheIsComplete = false;
+    shouldFillCache = true;
+    cacheMisses.set(0);
+
+    // update indexEpoch as a taxonomy replace is just like it has be recreated
+    ++indexEpoch;
+  }
+
+  /**
+   * Delete the taxonomy and reset all state for this writer.
+   *
+   * <p>To keep using the same main index, you would have to regenerate the taxonomy, taking care
+   * that ordinals are indexed in the same order as before. An example of this can be found in
+   * {@link ReindexingEnrichedDirectoryTaxonomyWriter#reindexWithNewOrdinalData(BiConsumer)}.
+   *
+   * @lucene.experimental
+   */
+  synchronized void deleteAll() throws IOException {
+    indexWriter.deleteAll();
+    shouldRefreshReaderManager = true;
+    initReaderManager(); // ensure that it's initialized
+    refreshReaderManager();
+    nextID.set(0);
     taxoArrays = null; // must nullify so that it's re-computed next time it's needed
 
     // need to clear the cache, so that addCategory won't accidentally return

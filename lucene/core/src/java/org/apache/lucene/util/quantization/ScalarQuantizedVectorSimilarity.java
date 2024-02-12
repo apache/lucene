@@ -14,11 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.util.quantization;
 
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Calculates and adjust the scores correctly for quantized vectors given the scalar quantization

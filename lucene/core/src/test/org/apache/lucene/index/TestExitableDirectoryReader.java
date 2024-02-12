@@ -545,6 +545,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   5,
                   leaf.getLiveDocs(),
                   Integer.MAX_VALUE));
+
     } else {
       DocIdSetIterator iter = leaf.getByteVectorValues("vector");
       scanAndRetrieve(leaf, iter);

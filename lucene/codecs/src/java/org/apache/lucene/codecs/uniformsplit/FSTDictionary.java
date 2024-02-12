@@ -185,7 +185,8 @@ public class FSTDictionary implements IndexDictionary {
 
     @Override
     public FSTDictionary build() throws IOException {
-      return new FSTDictionary(fstCompiler.compile());
+      return new FSTDictionary(
+          FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     }
   }
 }

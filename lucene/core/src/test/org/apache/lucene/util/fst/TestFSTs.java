@@ -407,7 +407,7 @@ public class TestFSTs extends LuceneTestCase {
           System.out.println(ord + " terms...");
         }
       }
-      FST<Long> fst = fstCompiler.compile();
+      FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (VERBOSE) {
         System.out.println(
             "FST: "
@@ -569,7 +569,7 @@ public class TestFSTs extends LuceneTestCase {
         System.out.println(
             ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
-        FST<T> fst = fstCompiler.compile();
+        FST<T> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         long tEnd = System.nanoTime();
         System.out.println(
             ((tEnd - tMid) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to finish/pack");
@@ -774,7 +774,8 @@ public class TestFSTs extends LuceneTestCase {
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("foobar"), new IntsRefBuilder()), outputs.getNoOutput());
-    final BytesRefFSTEnum<Object> fstEnum = new BytesRefFSTEnum<>(fstCompiler.compile());
+    final BytesRefFSTEnum<Object> fstEnum =
+        new BytesRefFSTEnum<>(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     assertNull(fstEnum.seekFloor(newBytesRef("foo")));
     assertNull(fstEnum.seekCeil(newBytesRef("foobaz")));
   }
@@ -788,7 +789,7 @@ public class TestFSTs extends LuceneTestCase {
     for (int i = 0; i < 10; i++) {
       fstCompiler.add(Util.toIntsRef(newBytesRef(str), ints), outputs.getNoOutput());
     }
-    FST<Object> fst = fstCompiler.compile();
+    FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     // count the input paths
     int count = 0;
@@ -863,7 +864,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(b, new IntsRefBuilder()), 42L);
     fstCompiler.add(Util.toIntsRef(c, new IntsRefBuilder()), 13824324872317238L);
 
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     assertEquals(13824324872317238L, (long) Util.get(fst, c));
     assertEquals(42, (long) Util.get(fst, b));
@@ -1107,7 +1108,7 @@ public class TestFSTs extends LuceneTestCase {
           fstCompiler.add(Util.toIntsRef(term.get(), scratchIntsRef), nothing);
         }
 
-        return fstCompiler.compile();
+        return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       }
 
       void generate(ArrayList<String> out, StringBuilder b, char from, char to, int depth) {
@@ -1173,7 +1174,7 @@ public class TestFSTs extends LuceneTestCase {
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
     fstCompiler.add(Util.toUTF32("slat", new IntsRefBuilder()), 10L);
     fstCompiler.add(Util.toUTF32("st", new IntsRefBuilder()), 17L);
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));
     StringWriter w = new StringWriter();
     Util.toDot(fst, w, false, false);
@@ -1190,7 +1191,7 @@ public class TestFSTs extends LuceneTestCase {
         Util.toIntsRef(newBytesRef("stat"), new IntsRefBuilder()), outputs.getNoOutput());
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("station"), new IntsRefBuilder()), outputs.getNoOutput());
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp/out.dot"));
     Util.toDot(fst, w, false, false);
@@ -1216,7 +1217,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), 7L);
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
 
-    FST<Long> fst = fstCompiler.compile();
+    FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     // save the FST to DataOutput, here it would not matter whether we are saving to different
     // DataOutput for meta or not
@@ -1252,7 +1253,6 @@ public class TestFSTs extends LuceneTestCase {
     final Long nothing = outputs.getNoOutput();
     final FSTCompiler<Long> fstCompiler =
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
-    final FST<Long> fst = fstCompiler.fst;
 
     final FSTCompiler.UnCompiledNode<Long> rootNode =
         new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
@@ -1284,6 +1284,8 @@ public class TestFSTs extends LuceneTestCase {
     }
 
     fstCompiler.finish(fstCompiler.addNode(rootNode));
+
+    final FST<Long> fst = new FST<>(fstCompiler.fst.metadata, fstCompiler.getFSTReader());
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));
@@ -1333,7 +1335,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
     fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), 7L);
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
     // w.close();
@@ -1370,7 +1372,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(newBytesRef("adcde"), scratch), 17L);
 
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     final AtomicInteger rejectCount = new AtomicInteger();
     Util.TopNSearcher<Long> searcher =
         new Util.TopNSearcher<>(fst, 2, 6, minLongComparator) {
@@ -1433,7 +1435,8 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), outputs.newPair(22L, 57L));
     fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), outputs.newPair(7L, 36L));
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), outputs.newPair(17L, 85L));
-    final FST<Pair<Long, Long>> fst = fstCompiler.compile();
+    final FST<Pair<Long, Long>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
     // w.close();
@@ -1492,7 +1495,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(Util.toIntsRef(newBytesRef(e.getKey()), scratch), e.getValue());
     }
 
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // System.out.println("SAVE out.dot");
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
@@ -1619,7 +1622,8 @@ public class TestFSTs extends LuceneTestCase {
           Util.toIntsRef(newBytesRef(e.getKey()), scratch), outputs.newPair(weight, output));
     }
 
-    final FST<Pair<Long, Long>> fst = fstCompiler.compile();
+    final FST<Pair<Long, Long>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // System.out.println("SAVE out.dot");
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
@@ -1695,7 +1699,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(input.get(), newBytesRef(BytesRef.deepCopyOf(output)));
     }
 
-    final FST<BytesRef> fst = fstCompiler.compile();
+    final FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     for (int arc = 0; arc < 6; arc++) {
       input.setIntAt(0, arc);
       final BytesRef result = Util.get(fst, input.get());
@@ -1737,7 +1741,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(input.get(), term);
     }
 
-    FST<BytesRef> fst = fstCompiler.compile();
+    FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Arc<BytesRef> arc = new FST.Arc<>();
     fst.getFirstArc(arc);
@@ -1772,7 +1776,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(ac, new IntsRefBuilder()), 5L);
     fstCompiler.add(Util.toIntsRef(bd, new IntsRefBuilder()), 7L);
 
-    FST<Long> fst = fstCompiler.compile();
+    FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     assertEquals(3, (long) Util.get(fst, ab));
     assertEquals(5, (long) Util.get(fst, ac));
