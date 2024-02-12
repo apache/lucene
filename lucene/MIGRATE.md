@@ -151,8 +151,6 @@ may throw `IOException` on index problems, bubbling up unexpectedly to the calle
 `(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
 offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
-## Migration from Lucene 9.9 to Lucene 9.10
-
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
