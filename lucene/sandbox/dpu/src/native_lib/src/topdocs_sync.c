@@ -57,11 +57,11 @@ typedef float score_t;
         }                                                                                                                        \
     } while (0)
 #define SAFE_REALLOC(ptr, size)                                                                                                  \
-    ({                                                                                                                           \
+    do {                                                                                                                         \
         void *_ptr = realloc(ptr, size);                                                                                         \
         CHECK_REALLOC(_ptr, ptr);                                                                                                \
-        _ptr;                                                                                                                    \
-    })
+        (ptr) = _ptr;                                                                                                            \
+    } while (0)
 #define MIN(a, b)                                                                                                                \
     ({                                                                                                                           \
         __typeof__(a) _a = (a);                                                                                                  \
@@ -135,7 +135,7 @@ init_pques(pque_array_t *score_pques, const int nr_topdocs[score_pques->nr_pques
         PQue_reserve(&pques[i], nr_topdocs[i]);
     }
     if (pque_pool.nr_pques < nr_pques) {
-        pques = SAFE_REALLOC(pques, (size_t)nr_pques * sizeof(*pques));
+        SAFE_REALLOC(pques, (size_t)nr_pques * sizeof(*pques));
         for (int i = pque_pool.nr_pques; i < nr_pques; i++) {
             pques[i] = PQue_with_capacity(nr_topdocs[i]);
         }
@@ -181,10 +181,8 @@ init_inbound_buffer(struct dpu_set_t rank, uint32_t rank_id, void *args)
     /* Always realloc everything because the nr_dpus can change between two calls, not just the nr_queries.
        realloc on a NULL pointer is equivalent to malloc.
        Consider always allocating with max_nr_dpus. */
-    dpu_score_t(*inbound_scores)[nr_dpus][nr_queries][MAX_NB_SCORES] = inbound_scores_for_rank.buffer[rank_id];
-    inbound_scores_for_rank.buffer[rank_id] = SAFE_REALLOC(inbound_scores, sizeof(*inbound_scores));
-    uint8_t(*nb_scores)[nr_dpus][ALIGN8(nr_queries)] = inbound_scores_for_rank.nb_scores[rank_id];
-    inbound_scores_for_rank.nb_scores[rank_id] = SAFE_REALLOC(nb_scores, sizeof(*nb_scores));
+    SAFE_REALLOC(inbound_scores_for_rank.buffer[rank_id], sizeof(dpu_score_t[nr_dpus][nr_queries][MAX_NB_SCORES]));
+    SAFE_REALLOC(inbound_scores_for_rank.nb_scores[rank_id], sizeof(uint8_t[nr_dpus][ALIGN8(nr_queries)]));
 
     return DPU_OK;
 }
@@ -193,8 +191,8 @@ NODISCARD static inline dpu_error_t
 init_inbound_buffers(struct dpu_set_t set, int *nr_queries, uint32_t nr_ranks)
 {
     if (inbound_scores_for_rank.nr_ranks < nr_ranks) {
-        inbound_scores_for_rank.buffer = SAFE_REALLOC(inbound_scores_for_rank.buffer, nr_ranks * sizeof(dpu_score_t *));
-        inbound_scores_for_rank.nb_scores = SAFE_REALLOC(inbound_scores_for_rank.nb_scores, nr_ranks * sizeof(uint8_t *));
+        SAFE_REALLOC(inbound_scores_for_rank.buffer, nr_ranks * sizeof(dpu_score_t *));
+        SAFE_REALLOC(inbound_scores_for_rank.nb_scores, nr_ranks * sizeof(uint8_t *));
         for (uint32_t i = inbound_scores_for_rank.nr_ranks; i < nr_ranks; i++) {
             inbound_scores_for_rank.buffer[i] = NULL;
             inbound_scores_for_rank.nb_scores[i] = NULL;
