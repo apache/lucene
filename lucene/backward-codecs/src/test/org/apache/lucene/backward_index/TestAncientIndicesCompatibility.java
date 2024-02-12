@@ -40,8 +40,9 @@ import org.apache.lucene.tests.util.TestUtil;
 @SuppressWarnings("deprecation")
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
+  // spotless:off
   static final String[] UNSUPPORTED_VERSIONS = {
-    "1.9.0-cfs", // Force on separate lines
+    "1.9.0-cfs",
     "1.9.0-nocfs",
     "2.0.0-cfs",
     "2.0.0-nocfs",
@@ -239,6 +240,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
     "7.7.3-cfs",
     "7.7.3-nocfs"
   };
+  // spotless:on
 
   /**
    * This test checks that *only* IndexFormatTooOldExceptions are thrown when you open and operate

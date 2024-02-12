@@ -46,9 +46,10 @@ import org.junit.After;
 import org.junit.Before;
 
 public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
-  
+
+  // spotless:off
   static final String[] OLD_VERSIONS = {
-    "8.0.0", // Force on separate lines
+    "8.0.0",
     "8.1.0",
     "8.1.0",
     "8.1.1",
@@ -92,6 +93,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     "9.9.2",
     "9.10.0"
   };
+  // spotless:on
 
   protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
