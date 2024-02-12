@@ -108,6 +108,7 @@ typedef struct {
     pque_array_t score_pques;
     int nr_queries;
     const int *nr_topdocs;
+    mutex_array_t query_mutexes;
     lower_bound_t *updated_bounds; // lower_bound_t[nr_queries]
     const int *quant_factors; // int[nr_queries]
     uint32_t nb_dpu_scores;
@@ -428,11 +429,20 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atom
 NODISCARD static inline dpu_error_t
 broadcast_new_bounds(struct dpu_set_t set, broadcast_params_t *args)
 {
+    pthread_mutex_t *mutexes = args->query_mutexes.mutexes;
     for (int i_qry = 0; i_qry < args->nr_queries; i_qry++) {
+        if (pthread_mutex_lock(&mutexes[i_qry]) != 0) {
+            (void)fprintf(stderr, "pthread_mutex_lock failed, errno=%d\n", errno);
+            return DPU_ERR_SYSTEM;
+        }
         // compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
         args->updated_bounds[i_qry] = (PQue_size(&args->score_pques.pques[i_qry]) >= args->nr_topdocs[i_qry])
             ? (uint32_t)(*PQue_top(&args->score_pques.pques[i_qry]) * (float)args->quant_factors[i_qry])
             : 0;
+        if (pthread_mutex_unlock(&mutexes[i_qry]) != 0) {
+            (void)fprintf(stderr, "pthread_mutex_unlock failed, errno=%d\n", errno);
+            return DPU_ERR_SYSTEM;
+        }
     }
 
     DPU_PROPAGATE(dpu_broadcast_to(
@@ -516,7 +526,7 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
 
         update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
         broadcast_params_t broadcast_args
-            = { score_pques, nr_queries, nr_topdocs, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+            = { score_pques, nr_queries, nr_topdocs, query_mutexes, updated_bounds, quant_factors, INITIAL_NB_SCORES };
         run_sync_loop_context_t run_sync_loop_ctx = { &ctx, &broadcast_args, nr_ranks };
 
         DPU_PROPAGATE(dpu_callback(set, run_sync_loop, &run_sync_loop_ctx, DPU_CALLBACK_ASYNC));
