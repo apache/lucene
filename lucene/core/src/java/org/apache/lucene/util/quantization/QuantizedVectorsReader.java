@@ -14,15 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.util.quantization;
 
+import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.util.Accountable;
 
 /**
- * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
- * Scalar quantization scores.
+ * Quantized vector reader
+ *
+ * @lucene.experimental
  */
-abstract class QuantizedByteVectorValues extends ByteVectorValues {
-  abstract float getScoreCorrectionConstant() throws IOException;
+public interface QuantizedVectorsReader extends Closeable, Accountable {
+
+  QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
+
+  ScalarQuantizer getQuantizationState(String fieldName);
 }

@@ -287,7 +287,9 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
     "8.11.1-cfs",
     "8.11.1-nocfs",
     "8.11.2-cfs",
-    "8.11.2-nocfs"
+    "8.11.2-nocfs",
+    "8.11.3-cfs",
+    "8.11.3-nocfs"
   };
 
   /**

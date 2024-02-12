@@ -14,17 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.taxonomy.directory;
+package org.apache.lucene.util.quantization;
+
+import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 
 /**
- * This class holds constants used by the directory taxonomy implementations.
+ * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
+ * Scalar quantization scores.
  *
  * @lucene.experimental
  */
-abstract class Consts {
-  /** The name of the field containing the full path of a taxonomy document. */
-  static final String FULL = "$full_path$";
-
-  /** The name of the field containing the ordinal of the parent of a taxonomy document. */
-  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
+public abstract class QuantizedByteVectorValues extends ByteVectorValues {
+  public abstract float getScoreCorrectionConstant() throws IOException;
 }

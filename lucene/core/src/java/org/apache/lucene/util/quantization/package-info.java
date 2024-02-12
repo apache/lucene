@@ -14,17 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.taxonomy.directory;
 
 /**
- * This class holds constants used by the directory taxonomy implementations.
- *
- * @lucene.experimental
+ * Provides quantization methods for scaling vector values to smaller data types and possibly fewer
+ * dimensions
  */
-abstract class Consts {
-  /** The name of the field containing the full path of a taxonomy document. */
-  static final String FULL = "$full_path$";
-
-  /** The name of the field containing the ordinal of the parent of a taxonomy document. */
-  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
-}
+package org.apache.lucene.util.quantization;
