@@ -75,8 +75,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
         throw new RuntimeException(ex);
       }
     }
-    List<Version> allCurrentVersions = getAllCurrentVersions();
-    for (Version version : allCurrentVersions) {
+
+    for (Version version : getAllCurrentReleasedVersions()) {
       // make sure we never miss a version.
       assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
     }
@@ -181,19 +181,22 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     return versions;
   }
 
+  public static List<Version> getAllCurrentReleasedVersions() {
+    List<Version> currentReleasedVersions = getAllCurrentVersions();
+    assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
+    return currentReleasedVersions;
+  }
+
   public static Iterable<Object[]> allVersion(String name, String... suffixes) {
     List<Object> patterns = new ArrayList<>();
     for (String suffix : suffixes) {
       patterns.add(createPattern(name, suffix));
     }
     List<Object[]> versionAndPatterns = new ArrayList<>();
-    List<Version> versionList = getAllCurrentVersions();
+    List<Version> versionList = getAllCurrentReleasedVersions();
     for (Version v : versionList) {
-      if (v.equals(LATEST_PREVIOUS_MAJOR)
-          == false) { // the latest prev-major has not yet been released
-        for (Object p : patterns) {
-          versionAndPatterns.add(new Object[] {v, p});
-        }
+      for (Object p : patterns) {
+        versionAndPatterns.add(new Object[] {v, p});
       }
     }
     return versionAndPatterns;
