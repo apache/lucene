@@ -51,6 +51,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 
 class SimpleReplicaNode extends ReplicaNode {
   final int tcpPort;
@@ -170,6 +171,7 @@ class SimpleReplicaNode extends ReplicaNode {
   static final byte CMD_PRE_COPY_MERGE = 17;
 
   /** Handles incoming request to the naive TCP server wrapping this node */
+  @SuppressForbidden(reason = "Thread sleep")
   void handleOneConnection(
       ServerSocket ss,
       AtomicBoolean stop,

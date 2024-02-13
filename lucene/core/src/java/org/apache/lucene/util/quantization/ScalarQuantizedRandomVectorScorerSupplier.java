@@ -14,22 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.ScalarQuantizedVectorSimilarity;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-/** Quantized vector scorer supplier */
-final class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
+/**
+ * Quantized vector scorer supplier
+ *
+ * @lucene.experimental
+ */
+public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
 
   private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
-  ScalarQuantizedRandomVectorScorerSupplier(
+  public ScalarQuantizedRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       ScalarQuantizer scalarQuantizer,
       RandomAccessQuantizedByteVectorValues values) {

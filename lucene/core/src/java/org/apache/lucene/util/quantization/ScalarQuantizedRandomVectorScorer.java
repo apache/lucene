@@ -14,21 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ScalarQuantizedVectorSimilarity;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
-/** Quantized vector scorer */
-final class ScalarQuantizedRandomVectorScorer
+/**
+ * Quantized vector scorer
+ *
+ * @lucene.experimental
+ */
+public class ScalarQuantizedRandomVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer<byte[]> {
 
-  private static float quantizeQuery(
+  public static float quantizeQuery(
       float[] query,
       byte[] quantizedQuery,
       VectorSimilarityFunction similarityFunction,
@@ -50,7 +52,7 @@ final class ScalarQuantizedRandomVectorScorer
   private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
-  ScalarQuantizedRandomVectorScorer(
+  public ScalarQuantizedRandomVectorScorer(
       ScalarQuantizedVectorSimilarity similarityFunction,
       RandomAccessQuantizedByteVectorValues values,
       byte[] query,
@@ -62,7 +64,7 @@ final class ScalarQuantizedRandomVectorScorer
     this.values = values;
   }
 
-  ScalarQuantizedRandomVectorScorer(
+  public ScalarQuantizedRandomVectorScorer(
       VectorSimilarityFunction similarityFunction,
       ScalarQuantizer scalarQuantizer,
       RandomAccessQuantizedByteVectorValues values,

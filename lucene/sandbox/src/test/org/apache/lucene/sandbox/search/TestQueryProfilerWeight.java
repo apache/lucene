@@ -29,6 +29,7 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -45,26 +46,49 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) {
-      return new Scorer(this) {
+    public Scorer scorer(LeafReaderContext context) throws IOException {
+      return scorerSupplier(context).get(Long.MAX_VALUE);
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+      Weight weight = this;
+      return new ScorerSupplier() {
+        private long cost = 0;
+
         @Override
-        public DocIdSetIterator iterator() {
-          return null;
+        public Scorer get(long leadCost) {
+          return new Scorer(weight) {
+            @Override
+            public DocIdSetIterator iterator() {
+              return null;
+            }
+
+            @Override
+            public float getMaxScore(int upTo) {
+              return 42f;
+            }
+
+            @Override
+            public float score() {
+              return 0;
+            }
+
+            @Override
+            public int docID() {
+              return 0;
+            }
+          };
         }
 
         @Override
-        public float getMaxScore(int upTo) {
-          return 42f;
+        public long cost() {
+          return cost;
         }
 
         @Override
-        public float score() {
-          return 0;
-        }
-
-        @Override
-        public int docID() {
-          return 0;
+        public void setTopLevelScoringClause() {
+          cost = 42;
         }
       };
     }
@@ -152,5 +176,15 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
     assertEquals(42f, profileWeight.scorer(null).getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
+  }
+
+  public void testPropagateTopLevelScoringClause() throws IOException {
+    Query query = new MatchAllDocsQuery();
+    Weight fakeWeight = new FakeWeight(query);
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
+    QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
+    ScorerSupplier scorerSupplier = profileWeight.scorerSupplier(null);
+    scorerSupplier.setTopLevelScoringClause();
+    assertEquals(42, scorerSupplier.cost());
   }
 }

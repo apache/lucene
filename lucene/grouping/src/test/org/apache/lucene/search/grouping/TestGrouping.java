@@ -712,7 +712,7 @@ public class TestGrouping extends LuceneTestCase {
           // groups.
           randomValue = TestUtil.randomRealisticUnicodeString(random());
           // randomValue = TestUtil.randomSimpleString(random());
-        } while ("".equals(randomValue));
+        } while (randomValue.isEmpty());
 
         groups.add(new BytesRef(randomValue));
       }

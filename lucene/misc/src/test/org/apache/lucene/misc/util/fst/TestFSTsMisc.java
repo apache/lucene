@@ -174,7 +174,7 @@ public class TestFSTsMisc extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 3L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 0L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("b"), scratch), 17L);
-    final FST<Object> fst = fstCompiler.compile();
+    final FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Object output = Util.get(fst, new BytesRef("a"));
     assertNotNull(output);
@@ -208,7 +208,7 @@ public class TestFSTsMisc extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 0L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("b"), scratch), 0L);
 
-    final FST<Object> fst = fstCompiler.compile();
+    final FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Object output = Util.get(fst, new BytesRef(""));
     assertNotNull(output);

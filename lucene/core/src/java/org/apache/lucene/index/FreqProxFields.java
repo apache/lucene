@@ -505,7 +505,7 @@ class FreqProxFields extends Fields {
         hasPayload = true;
         // has a payload
         payload.setLength(posReader.readVInt());
-        payload.grow(payload.length());
+        payload.growNoCopy(payload.length());
         posReader.readBytes(payload.bytes(), 0, payload.length());
       } else {
         hasPayload = false;

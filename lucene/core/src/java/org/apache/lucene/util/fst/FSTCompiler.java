@@ -99,6 +99,7 @@ public class FSTCompiler<T> {
   private static final FSTReader NULL_FST_READER = new NullFSTReader();
 
   private final NodeHash<T> dedupHash;
+  // a temporary FST used during building for NodeHash cache
   final FST<T> fst;
   private final T NO_OUTPUT;
 
@@ -173,9 +174,7 @@ public class FSTCompiler<T> {
     paddingBytePending = true;
     this.dataOutput = dataOutput;
     fst =
-        new FST<>(
-            new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0),
-            toFSTReader(dataOutput));
+        new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0), NULL_FST_READER);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
@@ -191,16 +190,6 @@ public class FSTCompiler<T> {
     for (int idx = 0; idx < frontier.length; idx++) {
       frontier[idx] = new UnCompiledNode<>(this, idx);
     }
-  }
-
-  // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
-  // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
-  // NullFSTReader will throw UnsupportedOperationException
-  private FSTReader toFSTReader(DataOutput dataOutput) {
-    if (dataOutput instanceof FSTReader) {
-      return (FSTReader) dataOutput;
-    }
-    return NULL_FST_READER;
   }
 
   /**
@@ -225,6 +214,22 @@ public class FSTCompiler<T> {
       throw new UnsupportedOperationException(
           "FST was not constructed with getOnHeapReaderWriter()");
     }
+  }
+
+  /**
+   * Get the respective {@link FSTReader} of the {@link DataOutput}. To call this method, you need
+   * to use the default DataOutput or {@link #getOnHeapReaderWriter(int)}, otherwise we will throw
+   * an exception.
+   *
+   * @return the DataOutput as FSTReader
+   * @throws IllegalStateException if the DataOutput does not implement FSTReader
+   */
+  public FSTReader getFSTReader() {
+    if (dataOutput instanceof FSTReader) {
+      return (FSTReader) dataOutput;
+    }
+    throw new IllegalStateException(
+        "The DataOutput must implement FSTReader, but got " + dataOutput);
   }
 
   /**
@@ -967,10 +972,31 @@ public class FSTCompiler<T> {
     return output == NO_OUTPUT || !output.equals(NO_OUTPUT);
   }
 
-  /** Returns final FST. NOTE: this will return null if nothing is accepted by the FST. */
-  // TODO: make this method to only return the FSTMetadata and user needs to construct the FST
-  // themselves
-  public FST<T> compile() throws IOException {
+  /**
+   * Returns the metadata of the final FST. NOTE: this will return null if nothing is accepted by
+   * the FST themselves.
+   *
+   * <p>To create the FST, you need to:
+   *
+   * <p>- If a FSTReader DataOutput was used, such as the one returned by {@link
+   * #getOnHeapReaderWriter(int)}
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+   * </pre>
+   *
+   * <p>- If a non-FSTReader DataOutput was used, such as {@link
+   * org.apache.lucene.store.IndexOutput}, you need to first create the corresponding {@link
+   * org.apache.lucene.store.DataInput}, such as {@link org.apache.lucene.store.IndexInput} then
+   * pass it to the FST construct
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = new FST&lt;&gt;(fstMetadata, dataInput, new OffHeapFSTStore());
+   * </pre>
+   */
+  public FST.FSTMetadata<T> compile() throws IOException {
 
     final UnCompiledNode<T> root = frontier[0];
 
@@ -990,7 +1016,7 @@ public class FSTCompiler<T> {
     // root.output=" + root.output);
     finish(compileNode(root).node);
 
-    return fst;
+    return fst.metadata;
   }
 
   /** Expert: holds a pending (seen but not yet serialized) arc. */
