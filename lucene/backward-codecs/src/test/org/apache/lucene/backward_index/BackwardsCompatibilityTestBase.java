@@ -69,8 +69,10 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      OLD_VERSIONS = in.lines().filter(Predicate.not(String::isBlank))
-                      .collect(Collectors.toCollection(LinkedHashSet::new));
+      OLD_VERSIONS =
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }

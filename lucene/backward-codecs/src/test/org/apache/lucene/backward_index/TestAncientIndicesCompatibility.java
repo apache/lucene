@@ -26,13 +26,11 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
@@ -60,7 +58,9 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      indices = in.lines().filter(Predicate.not(String::isBlank))
+      indices =
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
               .flatMap(version -> Stream.of(version + "-cfs", version + "-nocfs"))
               .collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
@@ -69,12 +69,14 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
     name = "unsupported_indices.txt";
     try (LineNumberReader in =
-                 new LineNumberReader(
-                         IOUtils.getDecodingReader(
-                                 IOUtils.requireResourceNonNull(
-                                         TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
-                                 StandardCharsets.UTF_8))) {
-      indices.addAll(in.lines().filter(Predicate.not(String::isBlank))
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      indices.addAll(
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
               .collect(Collectors.toCollection(LinkedHashSet::new)));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
