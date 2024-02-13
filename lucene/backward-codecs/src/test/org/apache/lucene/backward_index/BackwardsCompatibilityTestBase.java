@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,54 +48,7 @@ import org.junit.Before;
 
 public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
-  // spotless:off
-  static final String[] OLD_VERSIONS = {
-    "8.0.0",
-    "8.1.0",
-    "8.1.0",
-    "8.1.1",
-    "8.2.0",
-    "8.3.0",
-    "8.3.1",
-    "8.4.0",
-    "8.4.1",
-    "8.5.0",
-    "8.5.1",
-    "8.5.2",
-    "8.6.0",
-    "8.6.1",
-    "8.6.2",
-    "8.6.3",
-    "8.7.0",
-    "8.8.0",
-    "8.8.1",
-    "8.8.2",
-    "8.9.0",
-    "8.10.0",
-    "8.10.1",
-    "8.11.0",
-    "8.11.1",
-    "8.11.2",
-    "8.11.3",
-    "8.12.0",
-    "9.0.0",
-    "9.1.0",
-    "9.2.0",
-    "9.3.0",
-    "9.4.0",
-    "9.4.1",
-    "9.4.2",
-    "9.5.0",
-    "9.6.0",
-    "9.7.0",
-    "9.8.0",
-    "9.9.0",
-    "9.9.1",
-    "9.9.2",
-    "9.10.0"
-  };
-  // spotless:on
-
+  static final String[] OLD_VERSIONS;
   protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
@@ -103,6 +57,14 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   protected final String indexPattern;
 
   static {
+    Properties properties = new Properties();
+    try (InputStream resourceAsStream =
+        TestAncientIndicesCompatibility.class.getResourceAsStream("versions.properties")) {
+      properties.load(resourceAsStream);
+    } catch (IOException exception) {
+      throw new RuntimeException("failed to load resource", exception);
+    }
+    OLD_VERSIONS = properties.keySet().toArray(new String[0]);
     Set<Version> binaryVersions = new HashSet<>();
     for (String version : OLD_VERSIONS) {
       try {
