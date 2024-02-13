@@ -22,6 +22,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Properties;
 import org.apache.lucene.index.CheckIndex;
@@ -37,17 +39,21 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
 @SuppressWarnings("deprecation")
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
   static final String[] UNSUPPORTED_VERSIONS;
 
   static {
+    String name = "unsupported_versions.properties";
     Properties properties = new Properties();
-    try (InputStream resourceAsStream =
-        TestAncientIndicesCompatibility.class.getResourceAsStream(
-            "unsupported_versions.properties")) {
-      properties.load(resourceAsStream);
+    try (Reader in =
+        IOUtils.getDecodingReader(
+            IOUtils.requireResourceNonNull(
+                TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+            StandardCharsets.UTF_8)) {
+      properties.load(in);
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }

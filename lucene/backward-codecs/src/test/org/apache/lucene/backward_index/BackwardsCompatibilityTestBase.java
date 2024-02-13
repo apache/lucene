@@ -19,8 +19,10 @@ package org.apache.lucene.backward_index;
 import com.carrotsearch.randomizedtesting.annotations.Name;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -54,15 +56,18 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
 
-
   protected final Version version;
   protected final String indexPattern;
 
   static {
+    String name = "versions.properties";
     Properties properties = new Properties();
-    try (InputStream resourceAsStream =
-        TestAncientIndicesCompatibility.class.getResourceAsStream("versions.properties")) {
-      properties.load(resourceAsStream);
+    try (Reader in =
+        IOUtils.getDecodingReader(
+            IOUtils.requireResourceNonNull(
+                TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+            StandardCharsets.UTF_8)) {
+      properties.load(in);
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
