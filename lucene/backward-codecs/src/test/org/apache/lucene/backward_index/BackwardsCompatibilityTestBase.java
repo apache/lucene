@@ -186,11 +186,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
     // The latest version from the current major is always under development.
     assertTrue(currentReleasedVersions.remove(Version.LATEST));
-    if (Version.LATEST.minor == 0 && Version.LATEST.bugfix == 0) {
-      // If the current branch points to the next major, then the latest minor from the previous
-      // major is also under development.
-      assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
-    }
+    // The latest minor from the previous major is also under development.
+    assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
 
     // In addition to those, we may need to remove one more version in case a release is in
     // progress, and the version constant has been added but backward-compatibility indexes have not
