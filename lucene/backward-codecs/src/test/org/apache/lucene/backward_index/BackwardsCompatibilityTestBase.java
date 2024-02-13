@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -183,7 +184,32 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   public static List<Version> getAllCurrentReleasedVersions() {
     List<Version> currentReleasedVersions = getAllCurrentVersions();
-    assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
+
+    // The latest version from the current major is always under development.
+    assertTrue(currentReleasedVersions.remove(Version.LATEST));
+    if (Version.LATEST.minor == 0 && Version.LATEST.bugfix == 0) {
+      // If the current branch points to the next major, then the latest minor from the previous
+      // major is also under development.
+      assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
+    }
+
+    // In addition to those, we may need to remove one more version in case a release is in
+    // progress, and the version constant has been added but backward-compatibility indexes have not
+    // been checked in yet.
+    List<Version> missingVersions = new ArrayList<>();
+    for (Iterator<Version> it = currentReleasedVersions.iterator(); it.hasNext(); ) {
+      Version version = it.next();
+      String indexName = String.format(Locale.ROOT, "index.%s-cfs.zip", version);
+      if (TestAncientIndicesCompatibility.class.getResource(indexName) == null) {
+        missingVersions.add(version);
+        it.remove();
+      }
+    }
+
+    if (missingVersions.size() > 1) {
+      throw new AssertionError(
+          "More than one version is missing backward-compatibility data: " + missingVersions);
+    }
     return currentReleasedVersions;
   }
 
