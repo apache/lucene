@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -68,7 +69,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      OLD_VERSIONS = in.lines().collect(Collectors.toCollection(LinkedHashSet::new));
+      OLD_VERSIONS = in.lines().filter(Predicate.not(String::isBlank))
+                      .collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }

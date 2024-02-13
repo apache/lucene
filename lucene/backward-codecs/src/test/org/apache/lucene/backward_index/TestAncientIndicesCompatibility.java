@@ -25,9 +25,14 @@ import java.io.LineNumberReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
@@ -44,20 +49,37 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
-  static final Set<String> UNSUPPORTED_VERSIONS;
+  static final Set<String> UNSUPPORTED_INDEXES;
 
   static {
     String name = "unsupported_versions.txt";
+    Set<String> indices;
     try (LineNumberReader in =
         new LineNumberReader(
             IOUtils.getDecodingReader(
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      UNSUPPORTED_VERSIONS = in.lines().collect(Collectors.toCollection(LinkedHashSet::new));
+      indices = in.lines().filter(Predicate.not(String::isBlank))
+              .flatMap(version -> Stream.of(version + "-cfs", version + "-nocfs"))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
+
+    name = "unsupported_indices.txt";
+    try (LineNumberReader in =
+                 new LineNumberReader(
+                         IOUtils.getDecodingReader(
+                                 IOUtils.requireResourceNonNull(
+                                         TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                                 StandardCharsets.UTF_8))) {
+      indices.addAll(in.lines().filter(Predicate.not(String::isBlank))
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
+    } catch (IOException exception) {
+      throw new RuntimeException("failed to load resource", exception);
+    }
+    UNSUPPORTED_INDEXES = Collections.unmodifiableSet(indices);
   }
 
   /**
@@ -65,7 +87,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
    * on too old indexes!
    */
   public void testUnsupportedOldIndexes() throws Exception {
-    for (String version : UNSUPPORTED_VERSIONS) {
+    for (String version : UNSUPPORTED_INDEXES) {
       if (VERBOSE) {
         System.out.println("TEST: index " + version);
       }
