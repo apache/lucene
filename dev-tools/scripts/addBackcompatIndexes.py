@@ -102,11 +102,9 @@ def update_backcompat_tests(index_version, current_version):
 
   filename = None
   if not current_version.is_back_compat_with(index_version):
-    filename = '%s/src/test/org/apache/lucene/backward_index/TestAncientIndicesCompatibility.java' % module
-    matcher = re.compile(r'static final String\[\] UNSUPPORTED_VERSIONS = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/unsupported_versions.properties' % module
   else:
-    filename = '%s/src/test/org/apache/lucene/backward_index/BackwardsCompatibilityTestBase.java' % module
-    matcher = re.compile(r'static final String\[\] OLD_VERSIONS = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/versions.properties' % module
 
   strip_dash_suffix_re = re.compile(r'-.*')
 
@@ -115,48 +113,25 @@ def update_backcompat_tests(index_version, current_version):
     x = re.sub(strip_dash_suffix_re, '', x) # remove the -suffix if any
     return scriptutil.Version.parse(x)
 
-  class Edit(object):
-    start = None
-    def __call__(self, buffer, match, line):
-      if self.start:
-        # find where this version should exist
-        i = len(buffer) - 1
-        previous_version_exists = not ('};' in line and buffer[-1].strip().endswith("{"))
-        if previous_version_exists: # Only look if there is a version here
-          v = find_version(buffer[i])
-          while i >= self.start and v.on_or_after(index_version):
-            i -= 1
-            v = find_version(buffer[i])
-        i += 1 # readjust since we skipped past by 1
+  def edit(buffer, match, line):
+    v = find_version(line)
+    changed = False
+    if v.on_or_after(index_version):
+       if not index_version.on_or_after(v):
+         buffer.append(('%s\n') % index_version)
+       changed = True
+    buffer.append(line)
+    return changed
 
-        # unfortunately python doesn't have a range remove from list...
-        # here we want to remove any previous references to the version we are adding
-        while i < len(buffer) and index_version.on_or_after(find_version(buffer[i])):
-          buffer.pop(i)
-
-        if i == len(buffer) and previous_version_exists and not buffer[-1].strip().endswith(","):
-          # add comma
-          buffer[-1] = buffer[-1].rstrip() + ",\n" 
-
-        if previous_version_exists:
-          last = buffer[-1]
-          spaces = ' ' * (len(last) - len(last.lstrip()))
-        else:
-          spaces = '    '
-        newLine = spaces + ('"%s"') % index_version
-        if i < len(buffer):
-          newLine += ','
-        buffer.insert(i, newLine + '\n')
-        i += 1
-        buffer.append(line)
-        return True
-
-      if 'VERSIONS = {' in line:
-        self.start = len(buffer) # location of first index name
-      buffer.append(line)
-      return False
+  def append(buffer, changed):
+    if changed:
+      return changed
+    if not buffer[len(buffer)-1].endswith('\n'):
+      buffer.append('\n')
+    buffer.append(('%s\n') % index_version)
+    return True
         
-  changed = scriptutil.update_file(filename, matcher, Edit())
+  changed = scriptutil.update_file(filename, re.compile(r'.*'), edit, append)
   print('done' if changed else 'uptodate')
 
 def check_backcompat_tests():
