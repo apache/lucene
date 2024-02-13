@@ -221,6 +221,8 @@ Improvements
 
 * GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
 
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 
