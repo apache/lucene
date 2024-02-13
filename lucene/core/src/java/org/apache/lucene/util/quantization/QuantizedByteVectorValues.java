@@ -14,24 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.benchmark.byTask.feeds;
+package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 
 /**
- * Parser for trec docs which selects the parser to apply according to the source files path,
- * defaulting to {@link TrecGov2Parser}.
+ * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
+ * Scalar quantization scores.
+ *
+ * @lucene.experimental
  */
-public class TrecParserByPath extends TrecDocParser {
-
-  @Override
-  public DocData parse(
-      DocData docData,
-      String name,
-      TrecContentSource trecSrc,
-      StringBuilder docBuf,
-      ParsePathType pathType)
-      throws IOException {
-    return pathType2Parser.get(pathType).parse(docData, name, trecSrc, docBuf, pathType);
-  }
+public abstract class QuantizedByteVectorValues extends ByteVectorValues {
+  public abstract float getScoreCorrectionConstant() throws IOException;
 }

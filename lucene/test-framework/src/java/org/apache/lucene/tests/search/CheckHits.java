@@ -734,6 +734,7 @@ public class CheckHits {
         continue;
       }
       if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
