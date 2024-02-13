@@ -405,7 +405,7 @@ public class SimpleWKTShapeParser {
     ENVELOPE("envelope"); // not part of the actual WKB spec
 
     private final String shapeName;
-    private static Map<String, ShapeType> shapeTypeMap;
+    private static final Map<String, ShapeType> shapeTypeMap;
     private static final String BBOX = "BBOX";
 
     static {
@@ -432,10 +432,9 @@ public class SimpleWKTShapeParser {
 
     public static ShapeType forName(String shapename) {
       String typename = shapename.toLowerCase(Locale.ROOT);
-      for (ShapeType type : values()) {
-        if (type.shapeName.equals(typename)) {
-          return type;
-        }
+      ShapeType type = shapeTypeMap.get(typename);
+      if (type != null) {
+        return type;
       }
       throw new IllegalArgumentException("unknown geo_shape [" + shapename + "]");
     }
