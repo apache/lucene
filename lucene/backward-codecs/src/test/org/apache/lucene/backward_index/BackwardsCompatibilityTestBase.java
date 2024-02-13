@@ -67,7 +67,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
         new LineNumberReader(
             IOUtils.getDecodingReader(
                 IOUtils.requireResourceNonNull(
-                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                    BackwardsCompatibilityTestBase.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
       OLD_VERSIONS =
           in.lines()
