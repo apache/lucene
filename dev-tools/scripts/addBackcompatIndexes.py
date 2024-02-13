@@ -102,9 +102,9 @@ def update_backcompat_tests(index_version, current_version):
 
   filename = None
   if not current_version.is_back_compat_with(index_version):
-    filename = '%s/src/test/org/apache/lucene/backward_index/unsupported_versions.properties' % module
+    filename = '%s/src/test/org/apache/lucene/backward_index/unsupported_versions.txt' % module
   else:
-    filename = '%s/src/test/org/apache/lucene/backward_index/versions.properties' % module
+    filename = '%s/src/test/org/apache/lucene/backward_index/versions.txt' % module
 
   strip_dash_suffix_re = re.compile(r'-.*')
 

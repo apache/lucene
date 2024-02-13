@@ -21,11 +21,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.LineNumberReader;
 import java.io.PrintStream;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Properties;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
@@ -41,23 +40,21 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 
-@SuppressWarnings("deprecation")
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
   static final String[] UNSUPPORTED_VERSIONS;
 
   static {
-    String name = "unsupported_versions.properties";
-    Properties properties = new Properties();
-    try (Reader in =
-        IOUtils.getDecodingReader(
-            IOUtils.requireResourceNonNull(
-                TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
-            StandardCharsets.UTF_8)) {
-      properties.load(in);
+    String name = "unsupported_versions.txt";
+    try (LineNumberReader in =
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      UNSUPPORTED_VERSIONS = in.lines().toArray(String[]::new);
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
-    UNSUPPORTED_VERSIONS = properties.keySet().toArray(new String[0]);
   }
 
   /**

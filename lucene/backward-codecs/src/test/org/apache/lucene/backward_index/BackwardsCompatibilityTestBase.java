@@ -19,7 +19,7 @@ package org.apache.lucene.backward_index;
 import com.carrotsearch.randomizedtesting.annotations.Name;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
+import java.io.LineNumberReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +32,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,18 +59,17 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   protected final String indexPattern;
 
   static {
-    String name = "versions.properties";
-    Properties properties = new Properties();
-    try (Reader in =
-        IOUtils.getDecodingReader(
-            IOUtils.requireResourceNonNull(
-                TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
-            StandardCharsets.UTF_8)) {
-      properties.load(in);
+    String name = "versions.txt";
+    try (LineNumberReader in =
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      OLD_VERSIONS = in.lines().filter(String::isBlank).toArray(String[]::new);
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
-    OLD_VERSIONS = properties.keySet().toArray(new String[0]);
     Set<Version> binaryVersions = new HashSet<>();
     for (String version : OLD_VERSIONS) {
       try {
