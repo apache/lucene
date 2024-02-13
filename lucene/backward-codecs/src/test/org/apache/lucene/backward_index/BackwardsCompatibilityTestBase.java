@@ -30,11 +30,13 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -50,7 +52,7 @@ import org.junit.Before;
 
 public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
-  static final String[] OLD_VERSIONS;
+  static final Set<String> OLD_VERSIONS;
   protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
@@ -66,7 +68,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      OLD_VERSIONS = in.lines().filter(String::isBlank).toArray(String[]::new);
+      OLD_VERSIONS = in.lines().collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }

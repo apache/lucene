@@ -25,6 +25,9 @@ import java.io.LineNumberReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
@@ -41,7 +44,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
-  static final String[] UNSUPPORTED_VERSIONS;
+  static final Set<String> UNSUPPORTED_VERSIONS;
 
   static {
     String name = "unsupported_versions.txt";
@@ -51,7 +54,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
                 IOUtils.requireResourceNonNull(
                     TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
                 StandardCharsets.UTF_8))) {
-      UNSUPPORTED_VERSIONS = in.lines().toArray(String[]::new);
+      UNSUPPORTED_VERSIONS = in.lines().collect(Collectors.toCollection(LinkedHashSet::new));
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
@@ -62,13 +65,12 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
    * on too old indexes!
    */
   public void testUnsupportedOldIndexes() throws Exception {
-    for (int i = 0; i < UNSUPPORTED_VERSIONS.length; i++) {
+    for (String version : UNSUPPORTED_VERSIONS) {
       if (VERBOSE) {
-        System.out.println("TEST: index " + UNSUPPORTED_VERSIONS[i]);
+        System.out.println("TEST: index " + version);
       }
-      Path oldIndexDir = createTempDir(UNSUPPORTED_VERSIONS[i]);
-      TestUtil.unzip(
-          getDataInputStream("unsupported." + UNSUPPORTED_VERSIONS[i] + ".zip"), oldIndexDir);
+      Path oldIndexDir = createTempDir(version);
+      TestUtil.unzip(getDataInputStream("unsupported." + version + ".zip"), oldIndexDir);
       BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir);
       // don't checkindex, these are intentionally not supported
       dir.setCheckIndexOnClose(false);
@@ -77,7 +79,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       IndexWriter writer = null;
       try {
         reader = DirectoryReader.open(dir);
-        fail("DirectoryReader.open should not pass for " + UNSUPPORTED_VERSIONS[i]);
+        fail("DirectoryReader.open should not pass for " + version);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -117,7 +119,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
         writer =
             new IndexWriter(
                 dir, newIndexWriterConfig(new MockAnalyzer(random())).setCommitOnClose(false));
-        fail("IndexWriter creation should not pass for " + UNSUPPORTED_VERSIONS[i]);
+        fail("IndexWriter creation should not pass for " + version);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -170,7 +172,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (UNSUPPORTED_VERSIONS[i].startsWith("7.")) {
+      if (version.startsWith("7.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
