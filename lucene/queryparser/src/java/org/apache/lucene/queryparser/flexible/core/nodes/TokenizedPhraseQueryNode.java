@@ -70,11 +70,14 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
   @Override
   public CharSequence getField() {
     List<QueryNode> children = getChildren();
-    if (children == null || children.isEmpty()) {
-      return null;
-    } else {
-      return ((FieldableNode) children.get(0)).getField();
+    if (children != null) {
+      for (QueryNode child : children) {
+        if (child instanceof FieldableNode) {
+          return ((FieldableNode) child).getField();
+        }
+      }
     }
+    return null;
   }
 
   @Override
