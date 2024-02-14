@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.shingle;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Objects;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -166,6 +167,7 @@ public final class ShingleFilter extends TokenFilter {
    */
   public ShingleFilter(TokenStream input, String tokenType) {
     this(input, DEFAULT_MIN_SHINGLE_SIZE, DEFAULT_MAX_SHINGLE_SIZE);
+    this.tokenType = Objects.requireNonNull(tokenType, "tokenType");
     setTokenType(tokenType);
   }
 
