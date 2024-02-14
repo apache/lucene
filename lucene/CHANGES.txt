@@ -15,7 +15,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
