@@ -12,7 +12,7 @@
 #include <stdint.h>                // for uint32_t, uint16_t, uint8_t, uint64_t
 #include <stdlib.h>                // for abort
 #include <string.h>                // for memset
-#ifdef DBG_print
+#ifdef DBG_PRINT
 #include <stdio.h>
 #endif
 //#define PERF_MESURE
@@ -276,9 +276,9 @@ main()
                 start = results_index[i - 1];
             }
             for (uint32_t j = start; j < results_index[i]; j++) {
-                uint64_t res = 0;
+                query_result_t res = {0};
                 mram_read(&results_batch_sorted[j * 8], &res, 8);
-                printf("doc:%u freq:%u norm:%u\n", *((uint32_t *)&res), *((uint16_t *)(&res) + 3), *((uint16_t *)(&res) + 2));
+                printf("doc:%u freq:%u norm:%u\n", res.doc_id, res.freq, res.norm);
             }
             /*
             printf("\nnb results per lucene segments:\n");
