@@ -1,4 +1,4 @@
-#! python
+#! python3
 """
 This module provides functionality to compare the results of PIM Lucene benchmarks outputs
 and generate a diff.
@@ -27,10 +27,11 @@ Note:
 import argparse
 from io import TextIOWrapper
 import os
+from pathlib import Path
 import pandas as pd
 
 
-def is_valid_file(parser: argparse.ArgumentParser, arg: str) -> TextIOWrapper:
+def is_valid_file(parser: argparse.ArgumentParser, arg: os.PathLike) -> TextIOWrapper:
     """
     Check if the given file exists.
 
@@ -59,11 +60,7 @@ def parse_results(file: os.PathLike) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The parsed results as a DataFrame.
     """
-    df = pd.read_table(
-        file,
-        header=None,
-        names=["lines"],
-    )
+    df = pd.read_table(file, header=None, names=["lines"])
 
     df["thread"] = df["lines"].str.extract(r"^THREAD (\d+):", expand=False)
     df["thread"] = df["thread"].ffill()
@@ -93,7 +90,7 @@ def parse_results(file: os.PathLike) -> pd.DataFrame:
 
 
 def compare_results(
-    df1: pd.DataFrame, df2: pd.DataFrame, name1: str, name2: str, out_dir: os.PathLike
+    df1: pd.DataFrame, df2: pd.DataFrame, name1: str, name2: str, out_path: os.PathLike
 ) -> None:
     """
     Compare the results between two dataframes and print the differences.
@@ -116,7 +113,7 @@ def compare_results(
         on=["thread", "search", "rank"],
         suffixes=(f"_{name1}", f"_{name2}"),
     )
-    merged[f"doc_id_{name1}"] = merged[f"doc_id_{name2}"].fillna(-1).astype(int)
+    merged[f"doc_id_{name1}"] = merged[f"doc_id_{name1}"].fillna(-1).astype(int)
     merged[f"doc_id_{name2}"] = merged[f"doc_id_{name2}"].fillna(-1).astype(int)
     differences = merged[
         (merged["_merge"] != "both")
@@ -132,12 +129,12 @@ def compare_results(
         return
     print(f"Differences between {name1} and {name2}:")
     print(differences)
-    out_path = os.path.join(out_dir, f"{name1}_{name2}_diff.fwf")
     print(f"Saving differences to {out_path}")
-    differences.to_string(out_path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        differences.to_string(f)
 
 
-def main() -> None:
+def main():
     """
     Compare two files and generate a diff of the results.
 
@@ -150,33 +147,34 @@ def main() -> None:
         file2 (str): The path to the new results.
     """
 
-    parser = argparse.ArgumentParser(description="Get both files to compare.")
+    parser = argparse.ArgumentParser(description="Compare two PIM Lucene benchmark results.")
     parser.add_argument(
         "file1",
-        help="First file to compare.",
+        help="Baseline file.",
         metavar="FILE1",
         type=lambda x: is_valid_file(parser, x),
     )
     parser.add_argument(
         "file2",
-        help="Second file to compare.",
+        help="New results file.",
         metavar="FILE2",
         type=lambda x: is_valid_file(parser, x),
     )
 
     args = parser.parse_args()
 
-    # name1 = os.path.basename(args.file1.name) + "_1"
     name1 = "baseline"
-    # name2 = os.path.basename(args.file2.name) + "_2"
     name2 = "new"
 
     out_dir = os.path.dirname(args.file1.name)
+    filename1 = os.path.basename(args.file1.name)
+    filename2 = os.path.basename(args.file2.name)
+    out_path = Path(os.path.join(out_dir, f"{filename1}_{filename2}_diff.fwf"))
 
     df1 = parse_results(args.file1)
     df2 = parse_results(args.file2)
 
-    compare_results(df1, df2, name1, name2, out_dir)
+    compare_results(df1, df2, name1, name2, out_path)
 
 
 if __name__ == "__main__":
