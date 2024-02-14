@@ -101,8 +101,6 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
-  static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
-
   /**
    * A parameter constructor for {@link com.carrotsearch.randomizedtesting.RandomizedRunner}. See
    * {@link #testVersionsFactory()} for details on the values provided to the framework.
