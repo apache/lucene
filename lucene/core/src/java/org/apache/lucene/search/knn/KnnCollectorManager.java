@@ -14,17 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
 
-import java.io.Closeable;
+package org.apache.lucene.search.knn;
+
 import java.io.IOException;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ScalarQuantizer;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.KnnCollector;
 
-/** Quantized vector reader */
-interface QuantizedVectorsReader extends Closeable, Accountable {
+/**
+ * KnnCollectorManager responsible for creating {@link KnnCollector} instances. Useful to create
+ * {@link KnnCollector} instances that share global state across leaves, such a global queue of
+ * results collected so far.
+ */
+public interface KnnCollectorManager {
 
-  QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
-
-  ScalarQuantizer getQuantizationState(String fieldName);
+  /**
+   * Return a new {@link KnnCollector} instance.
+   *
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @param context the leaf reader context
+   */
+  KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException;
 }

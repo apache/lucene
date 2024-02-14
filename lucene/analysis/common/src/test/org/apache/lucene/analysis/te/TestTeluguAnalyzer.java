@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.te;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.util.BytesRef;
 
 public class TestTeluguAnalyzer extends BaseTokenStreamTestCase {
 
@@ -45,6 +46,17 @@ public class TestTeluguAnalyzer extends BaseTokenStreamTestCase {
   public void testDigits() throws Exception {
     TeluguAnalyzer a = new TeluguAnalyzer();
     checkOneTerm(a, "౧౨౩౪", "1234");
+    a.close();
+  }
+
+  public void testNormalization() {
+    TeluguAnalyzer a = new TeluguAnalyzer();
+    // DecimalDigitsFilter
+    assertEquals(new BytesRef("1234"), a.normalize("dummy", "౧౨౩౪"));
+    // IndicNormalizationFilter
+    assertEquals(new BytesRef("ऑऑ"), a.normalize("dummy", "अाॅअाॅ"));
+    // TeluguNormalizationFilter
+    assertEquals(new BytesRef("ఓనమాల"), a.normalize("dummy", "ఒౕనమాల"));
     a.close();
   }
 

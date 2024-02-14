@@ -476,7 +476,7 @@ public final class Lucene40BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      index = fstCompiler.compile();
+      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
       assert subIndices == null;
 
