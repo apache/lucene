@@ -15,7 +15,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
@@ -92,8 +93,6 @@ Improvements
 * GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
   Tests are running with random byte order to ensure that the order does not affect correctness
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
-
-* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
