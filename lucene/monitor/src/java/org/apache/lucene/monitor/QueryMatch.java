@@ -48,6 +48,21 @@ public class QueryMatch {
             }
           };
 
+  public static final WrappedMatcherFactory<QueryMatch> SIMPLE_WRAPPED_MATCHER_FACTORY =
+      searcher ->
+          new WrappedCandidateMatcher<QueryMatch>(
+              new CollectingMatcher<QueryMatch>(searcher, ScoreMode.COMPLETE_NO_SCORES) {
+                @Override
+                public QueryMatch resolve(QueryMatch match1, QueryMatch match2) {
+                  return match1;
+                }
+
+                @Override
+                protected QueryMatch doMatch(String queryId, int doc, Scorable scorer) {
+                  return new QueryMatch(queryId);
+                }
+              });
+
   /**
    * Creates a new QueryMatch for a specific query and document
    *
