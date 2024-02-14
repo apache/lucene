@@ -73,6 +73,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -233,6 +234,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testLRUEviction() throws Exception {
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);

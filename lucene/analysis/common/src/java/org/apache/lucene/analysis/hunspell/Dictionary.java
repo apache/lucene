@@ -657,7 +657,7 @@ public class Dictionary {
       }
       fstCompiler.add(scratch.get(), output);
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   /**

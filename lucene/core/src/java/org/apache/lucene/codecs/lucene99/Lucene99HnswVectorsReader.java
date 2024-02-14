@@ -45,12 +45,14 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -68,7 +70,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final IndexInput vectorIndex;
   private final FlatVectorsReader flatVectorsReader;
 
-  Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
     this.flatVectorsReader = flatVectorsReader;
     boolean success = false;
@@ -169,7 +171,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
+  public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
     int similarityFunctionId = input.readInt();
     if (similarityFunctionId < 0
         || similarityFunctionId >= VectorSimilarityFunction.values().length) {
@@ -179,7 +182,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+  public static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
       throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);

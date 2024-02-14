@@ -677,6 +677,7 @@ public class TestNRTReplication extends LuceneTestCase {
   }
 
   @Nightly
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCrashPrimaryWhileCopying() throws Exception {
 
     Path path1 = createTempDir("1");
@@ -964,6 +965,7 @@ public class TestNRTReplication extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void waitForVersionAndHits(NodeProcess node, long expectedVersion, int expectedHitCount)
       throws Exception {
     try (Connection c = new Connection(node.tcpPort)) {

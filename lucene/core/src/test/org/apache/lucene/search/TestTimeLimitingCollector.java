@@ -32,6 +32,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -377,6 +378,7 @@ public class TestTimeLimitingCollector extends LuceneTestCase {
       // scorer is not needed
     }
 
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void collect(final int doc) throws IOException {
       int docId = doc + docBase;
