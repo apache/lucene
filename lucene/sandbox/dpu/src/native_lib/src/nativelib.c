@@ -713,14 +713,33 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
     jobject this,
     jint nr_queries,
     jint nr_segments,
-    jintArray nr_hits,
-    jintArray quant_factors,
-    jobjectArray scorers,
     jobject sgReturn)
 {
     struct dpu_set_t set = get_dpu_set(env, this);
 
-    perform_topdocs_lower_bound_sync(env, nr_queries, nr_hits, quant_factors, scorers, set);
-
     return perform_sg_xfer(env, set, nr_queries, nr_segments, sgReturn);
+}
+
+JNIEXPORT void JNICALL
+/**
+ * Run DPUs multiple times and computes a lower bound on score between each run.
+ * This enables the DPUs to skip documents.
+ *
+ * @param env The JNI environment.
+ * @param this The Java object calling this native method.
+ * @param nr_queries The number of queries executed.
+ * @param nr_segments The number of segments queried.
+ * @param sgReturn the structure to store the results.
+ * @return The results of the queries.
+ */
+Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_runDpusWithLowerBound(JNIEnv *env,
+    jobject this,
+    jint nr_queries,
+    jintArray nr_hits,
+    jintArray quant_factors,
+    jobjectArray scorers)
+{
+    struct dpu_set_t set = get_dpu_set(env, this);
+
+    perform_topdocs_lower_bound_sync(env, nr_queries, nr_hits, quant_factors, scorers, set);
 }
