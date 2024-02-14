@@ -87,6 +87,7 @@ uint8_t nr_segments_log2 = 0;
 mram_ptr_t dpu_index = 0;
 
 uint32_t batch_num = 0;
+bool exit_flag;
 // NOLINTNEXTLINE(misc-misplaced-const)
 MUTEX_INIT(batch_mutex);
 BARRIER_INIT(barrier, NR_TASKLETS);
@@ -128,6 +129,8 @@ static void
 early_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms, did_matcher_t *matchers);
 static void
 normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms);
+static void no_index_loaded_exit();
+static bool run_init();
 
 int
 main()
@@ -141,52 +144,18 @@ main()
         // this DPU has no index loaded
         // All information read by the host need
         // to be reset (search done, flags, number of results to 0 etc.)
-        search_done = 1;
-        reset_scores(nb_queries_in_batch);
-        for (uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
-            results_index[i] = 0;
+        if(me() == 0) {
+            no_index_loaded_exit();
         }
-        memset(results_index_lucene_segments,
-            0,
-            nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1U)) * sizeof(uint32_t));
         return 0;
     }
 #endif
     if (me() == 0) {
-
-        if (new_query) {
-
-#ifdef PERF_MESURE
-            perfcounter_config(COUNT_CYCLES, true);
-            printf("Number of queries: %d\n", nb_queries_in_batch);
-#endif
-            mem_reset();
-            results_buffer_index = 0;
-            initialize_decoder_pool();
-#ifdef TEST
-            // in test mode set the queries inputs correctly
-            nb_queries_in_batch = test_nb_queries_in_batch;
-            nb_bytes_in_batch = test_nb_bytes_in_batch;
-            mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
-            memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
-            dpu_index = (uintptr_t)(&index_mram[0]);
-#else
-            dpu_index = DPU_MRAM_HEAP_POINTER;
-#endif
-            get_segments_info(dpu_index);
-            assert(nr_segments_log2 < 8);
-            assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
-            memset(results_index_lucene_segments,
-                0,
-                nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1U)) * sizeof(uint32_t));
-            reset_score_lower_bounds(nb_queries_in_batch);
-        }
-        batch_num = 0;
-        search_done = 1;
-        reset_scores(nb_queries_in_batch);
+        exit_flag = run_init();
     }
-    // TODO(jlegriel): is this barrier really useful ?
     barrier_wait(&barrier);
+    if(exit_flag)
+        return 0;
 
     // first lookup the postings addresses for each query/term/segment
     // store them in MRAM for later use by the tasklets to find matching document/positions
@@ -750,4 +719,59 @@ normal_exit(uint32_t query_id, uint32_t segment_id, uint32_t nr_terms)
     assert(segment_id <= UINT8_MAX);
     update_postings_in_cache(query_id, (uint8_t)nr_terms, (uint8_t)segment_id, cache);
     flush_query_buffer();
+}
+
+void
+no_index_loaded_exit() {
+
+    search_done = 1;
+    reset_scores(nb_queries_in_batch);
+    for (uint32_t i = me(); i < nb_queries_in_batch; i += NR_TASKLETS) {
+        results_index[i] = 0;
+    }
+    memset(results_index_lucene_segments,
+        0,
+        nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1U)) * sizeof(uint32_t));
+}
+
+bool
+run_init() {
+
+        if (new_query) {
+
+#ifdef PERF_MESURE
+            perfcounter_config(COUNT_CYCLES, true);
+            printf("Number of queries: %d\n", nb_queries_in_batch);
+#endif
+            mem_reset();
+            results_buffer_index = 0;
+            initialize_decoder_pool();
+#ifdef TEST
+            // in test mode set the queries inputs correctly
+            nb_queries_in_batch = test_nb_queries_in_batch;
+            nb_bytes_in_batch = test_nb_bytes_in_batch;
+            mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
+            memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
+            dpu_index = (uintptr_t)(&index_mram[0]);
+#else
+            dpu_index = DPU_MRAM_HEAP_POINTER;
+#endif
+            get_segments_info(dpu_index);
+            assert(nr_segments_log2 < 8);
+            assert(nr_lucene_segments < DPU_MAX_NR_LUCENE_SEGMENTS);
+            memset(results_index_lucene_segments,
+                0,
+                nb_queries_in_batch * (nr_lucene_segments + (nr_lucene_segments & 1U)) * sizeof(uint32_t));
+            reset_score_lower_bounds(nb_queries_in_batch);
+        }
+        else if(search_done) {
+            // the host is launching DPUs for another run, but this DPU has already finished handling
+            // this query. Set the flag to make all tasklets exit
+            return true;
+        }
+        batch_num = 0;
+        // this flag will be set back to zero if any tasklet has early exit
+        search_done = 1;
+        reset_scores(nb_queries_in_batch);
+        return false;
 }
