@@ -1,4 +1,4 @@
-name: "Run tests: module lucene/distribution.tests"
+name: "Run checks: module lucene/distribution.tests"
 
 on:
   workflow_dispatch:

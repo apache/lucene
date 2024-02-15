@@ -1,4 +1,4 @@
-name: "Run tests: module lucene/analysis/common (extra regression tests)"
+name: "Run checks: module lucene/analysis/common"
 
 on:
   workflow_dispatch:
@@ -24,6 +24,7 @@ env:
 
 jobs:
   test:
+    name: Extra regression tests
     timeout-minutes: 15
 
     runs-on: ubuntu-latest
