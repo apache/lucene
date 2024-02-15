@@ -1,0 +1,38 @@
+name: "Run tests: module lucene/distribution.tests"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_9x'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_9x'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  test:
+    name: Run lucene/distribution.tests tests
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        # we want to run the distribution tests on all major OSs, 
+        # but it's occasionally too slow (or hangs or the forked process is 
+        # not started at all..., not sure the cause) on windows-latest.
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run 'gradlew lucene/distribution.tests test' (on ${{ matrix.os }})
+        run: ./gradlew -p lucene/distribution.tests test
