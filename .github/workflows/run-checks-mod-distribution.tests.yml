@@ -23,10 +23,9 @@ jobs:
 
     strategy:
       matrix:
-        # we want to run the distribution tests on all major OSs, 
-        # but it's occasionally too slow (or hangs or the forked process is 
-        # not started at all..., not sure the cause) on windows-latest.
-        os: [ubuntu-latest, macos-latest]
+        # ubuntu-latest is checked as part of run-checks-everything.yml
+        # windows-latest is slow and sometimes flaky.
+        os: [ macos-latest ]
 
     runs-on: ${{ matrix.os }}
 
