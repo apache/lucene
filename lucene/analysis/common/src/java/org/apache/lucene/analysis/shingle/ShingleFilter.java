@@ -167,7 +167,6 @@ public final class ShingleFilter extends TokenFilter {
    */
   public ShingleFilter(TokenStream input, String tokenType) {
     this(input, DEFAULT_MIN_SHINGLE_SIZE, DEFAULT_MAX_SHINGLE_SIZE);
-    this.tokenType = Objects.requireNonNull(tokenType, "tokenType");
     setTokenType(tokenType);
   }
 
@@ -177,7 +176,7 @@ public final class ShingleFilter extends TokenFilter {
    * @param tokenType token tokenType
    */
   public void setTokenType(String tokenType) {
-    this.tokenType = tokenType;
+    this.tokenType = Objects.requireNonNull(tokenType, "tokenType");
   }
 
   /**
