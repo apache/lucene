@@ -19,7 +19,16 @@ package org.apache.lucene.monitor;
 
 import org.apache.lucene.search.IndexSearcher;
 
+/**
+ * Interface for the creation of new WrappedCandidateMatcher objects
+ *
+ * @param <T> a subclass of {@link CandidateMatcher}
+ */
 public interface WrappedMatcherFactory<T extends QueryMatch> {
 
+  /**
+   * Create a new {@link WrappedCandidateMatcher} object, to be used to select queries to match
+   * against the passed-in IndexSearcher
+   */
   WrappedCandidateMatcher<T> createWrappedMatcher(IndexSearcher searcher);
 }
