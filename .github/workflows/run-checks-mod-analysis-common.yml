@@ -24,7 +24,6 @@ env:
 
 jobs:
   test:
-    name: Run Hunspell regression tests
     timeout-minutes: 15
 
     runs-on: ubuntu-latest

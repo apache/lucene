@@ -18,7 +18,6 @@ env:
 
 jobs:
   test:
-    name: Run lucene/distribution.tests tests
     timeout-minutes: 15
 
     strategy:
