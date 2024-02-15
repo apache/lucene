@@ -30,7 +30,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
 
 ======================== Lucene 9.10.0 =======================
 

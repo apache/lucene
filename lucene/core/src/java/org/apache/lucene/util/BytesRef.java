@@ -130,17 +130,20 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
     return false;
   }
 
-  /** Interprets stored bytes as UTF8 bytes, returning the resulting string */
+  /**
+   * Interprets stored bytes as UTF-8 bytes, returning the resulting string. May throw an {@link
+   * AssertionError} or a {@link RuntimeException} if the data is not well-formed UTF-8.
+   */
   public String utf8ToString() {
     final char[] ref = new char[length];
     final int len = UnicodeUtil.UTF8toUTF16(bytes, offset, length, ref);
     return new String(ref, 0, len);
   }
 
-  /** Returns hex encoded bytes, eg [0x6c 0x75 0x63 0x65 0x6e 0x65] */
+  /** Returns hex encoded bytes, e.g. "[6c 75 63 65 6e 65]" */
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
+    StringBuilder sb = new StringBuilder(2 + 3 * length);
     sb.append('[');
     final int end = offset + length;
     for (int i = offset; i < end; i++) {
