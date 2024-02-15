@@ -193,6 +193,8 @@ Improvements
 
 * GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
+* GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 (No changes)
