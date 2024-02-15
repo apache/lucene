@@ -205,7 +205,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12918: Adding a HOWTO manual on bumping the Lucene codec version. (Jakub Slowinski)
 
 ======================== Lucene 9.10.0 =======================
 
@@ -330,8 +331,6 @@ Other
   Code cleanups and optimizations. (Dmitry Cherniachenko)
 
 * GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
-
-* GITHUB#12918: Wrote a HOWTO manual on bumping the Lucene codec version. (Jakub Slowinski)
 
 ======================== Lucene 9.9.2 =======================
 
