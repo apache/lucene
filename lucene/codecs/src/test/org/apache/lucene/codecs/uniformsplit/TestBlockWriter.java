@@ -119,6 +119,7 @@ public class TestBlockWriter extends LuceneTestCase {
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
-        true);
+        true,
+        false);
   }
 }

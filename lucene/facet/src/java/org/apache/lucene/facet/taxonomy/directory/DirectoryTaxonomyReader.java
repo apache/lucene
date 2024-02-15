@@ -243,7 +243,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * Expert: returns the underlying {@link DirectoryReader} instance that is used by this {@link
    * TaxonomyReader}.
    */
-  protected DirectoryReader getInternalIndexReader() {
+  public DirectoryReader getInternalIndexReader() {
     ensureOpen();
     return indexReader;
   }

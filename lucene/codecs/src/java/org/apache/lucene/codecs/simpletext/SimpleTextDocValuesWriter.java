@@ -169,7 +169,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     int maxLength = 0;
     BinaryDocValues values = valuesProducer.getBinary(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      maxLength = Math.max(maxLength, values.binaryValue().length);
+      maxLength = Math.max(maxLength, values.binaryValue().toString().length());
     }
     writeFieldEntry(field, DocValuesType.BINARY);
 
@@ -197,17 +197,16 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
         values.nextDoc();
         assert values.docID() >= i;
       }
+      String stringVal = values.docID() == i ? values.binaryValue().toString() : null;
       // write length
-      final int length = values.docID() != i ? 0 : values.binaryValue().length;
+      final int length = stringVal == null ? 0 : stringVal.length();
       SimpleTextUtil.write(data, LENGTH);
       SimpleTextUtil.write(data, encoder.format(length), scratch);
       SimpleTextUtil.writeNewline(data);
 
-      // write bytes -- don't use SimpleText.write
-      // because it escapes:
-      if (values.docID() == i) {
-        BytesRef value = values.binaryValue();
-        data.writeBytes(value.bytes, value.offset, value.length);
+      // write bytes as hex array
+      if (stringVal != null) {
+        SimpleTextUtil.write(data, stringVal, scratch);
       }
 
       // pad to fit
@@ -215,7 +214,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
         data.writeByte((byte) ' ');
       }
       SimpleTextUtil.writeNewline(data);
-      if (values.docID() != i) {
+      if (stringVal == null) {
         SimpleTextUtil.write(data, "F", scratch);
       } else {
         SimpleTextUtil.write(data, "T", scratch);

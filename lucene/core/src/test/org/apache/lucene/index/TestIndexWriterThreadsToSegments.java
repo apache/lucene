@@ -38,6 +38,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 @LuceneTestCase.SuppressCodecs({"SimpleText", "Direct"})
@@ -250,6 +251,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     IOUtils.close(checker, w, dir);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testManyThreadsClose() throws Exception {
     Directory dir = newDirectory();
     Random r = random();

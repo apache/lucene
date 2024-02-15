@@ -93,7 +93,7 @@ public class IndexSearcher {
   }
 
   /**
-   * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
+   * By default, we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
    */
   private static final int TOTAL_HITS_THRESHOLD = 1000;
@@ -222,7 +222,7 @@ public class IndexSearcher {
    */
   public IndexSearcher(IndexReaderContext context, Executor executor) {
     assert context.isTopLevel
-        : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
+        : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
     this.taskExecutor =
         executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
@@ -231,7 +231,7 @@ public class IndexSearcher {
     Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
         executor == null
             ? leaves ->
-                leaves.size() == 0
+                leaves.isEmpty()
                     ? new LeafSlice[0]
                     : new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))}
             : this::slices;
@@ -420,6 +420,27 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    // Rewrite query before optimization check
+    query = rewrite(new ConstantScoreQuery(query));
+    if (query instanceof ConstantScoreQuery csq) {
+      query = csq.getQuery();
+    }
+
+    // Check if two clause disjunction optimization applies
+    if (query instanceof BooleanQuery booleanQuery
+        && this.reader.hasDeletions() == false
+        && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
+      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
+      int countTerm1 = count(queries[0]);
+      int countTerm2 = count(queries[1]);
+      if (countTerm1 == 0 || countTerm2 == 0) {
+        return Math.max(countTerm1, countTerm2);
+        // Only apply optimization if the intersection is significantly smaller than the union
+      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+          < 0.1) {
+        return countTerm1 + countTerm2 - count(queries[2]);
+      }
+    }
     return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
 
@@ -613,7 +634,7 @@ public class IndexSearcher {
     if (leafSlices.length == 0) {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
-      assert leafContexts.size() == 0;
+      assert leafContexts.isEmpty();
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
@@ -820,7 +841,7 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns this searchers the top-level {@link IndexReaderContext}.
+   * Returns this searcher's top-level {@link IndexReaderContext}.
    *
    * @see IndexReader#getContext()
    */
@@ -932,7 +953,7 @@ public class IndexSearcher {
 
   /**
    * Thrown when a client attempts to execute a Query that has more than {@link
-   * #getMaxClauseCount()} total clauses cumulatively in all of it's children.
+   * #getMaxClauseCount()} total clauses cumulatively in all of its children.
    *
    * @see #rewrite
    */

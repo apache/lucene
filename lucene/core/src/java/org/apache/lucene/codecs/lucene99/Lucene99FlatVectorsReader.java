@@ -17,6 +17,9 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +38,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
@@ -55,7 +57,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
 
-  Lucene99FlatVectorsReader(SegmentReadState state) throws IOException {
+  public Lucene99FlatVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -179,24 +181,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + " = "
               + numBytes);
     }
-  }
-
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
-    }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
-  }
-
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
-    int encodingId = input.readInt();
-    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
-      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
-    }
-    return VectorEncoding.values()[encodingId];
   }
 
   private FieldEntry readField(IndexInput input) throws IOException {

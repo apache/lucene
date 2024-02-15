@@ -42,7 +42,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -74,6 +73,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -198,7 +198,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                         .map(
                                             filterCollector ->
                                                 (DummyTotalHitCountCollector) filterCollector.in)
-                                        .collect(Collectors.toList()));
+                                        .toList());
                               }
                             });
                     assertEquals(totalHits2, totalHits1);
@@ -234,6 +234,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testLRUEviction() throws Exception {
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -555,7 +556,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   /** DummyQuery with Accountable, pretending to be a memory-eating query */
-  private class AccountableDummyQuery extends DummyQuery implements Accountable {
+  private static class AccountableDummyQuery extends DummyQuery implements Accountable {
 
     @Override
     public long ramBytesUsed() {
@@ -841,7 +842,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           @Override
           protected void onHit(Object readerCoreKey, Query query) {
             super.onHit(readerCoreKey, query);
-            switch (indexId.get(readerCoreKey).intValue()) {
+            switch (indexId.get(readerCoreKey)) {
               case 1:
                 hitCount1.incrementAndGet();
                 break;
@@ -856,7 +857,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           @Override
           protected void onMiss(Object readerCoreKey, Query query) {
             super.onMiss(readerCoreKey, query);
-            switch (indexId.get(readerCoreKey).intValue()) {
+            switch (indexId.get(readerCoreKey)) {
               case 1:
                 missCount1.incrementAndGet();
                 break;
@@ -1331,11 +1332,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     public void onUse(final Query query) {
       AtomicInteger count;
       synchronized (counts) {
-        count = counts.get(query);
-        if (count == null) {
-          count = new AtomicInteger();
-          counts.put(query, count);
-        }
+        count = counts.computeIfAbsent(query, k -> new AtomicInteger());
       }
       count.incrementAndGet();
     }
@@ -1388,8 +1385,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     weight = new WeightWrapper(weight, scorerCalled, bulkScorerCalled);
     weight = cache.doCache(weight, NEVER_CACHE);
     weight.bulkScorer(leaf);
-    assertEquals(true, bulkScorerCalled.get());
-    assertEquals(false, scorerCalled.get());
+    assertTrue(bulkScorerCalled.get());
+    assertFalse(scorerCalled.get());
     assertEquals(0, cache.getCacheCount());
 
     searcher.getIndexReader().close();
@@ -1779,7 +1776,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     assertEquals(2, searcher.count(query));
     assertEquals(2, query.scorerCreatedCount.get()); // both segments cached
 
-    w.updateNumericDocValue(new Term("text", "text"), "field", 2l);
+    w.updateNumericDocValue(new Term("text", "text"), "field", 2L);
     reader.close();
     reader = DirectoryReader.open(w);
     searcher =

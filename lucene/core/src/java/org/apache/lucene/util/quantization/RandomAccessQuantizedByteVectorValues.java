@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -22,8 +22,10 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 /**
  * Random access values for <code>byte[]</code>, but also includes accessing the score correction
  * constant for the current vector in the buffer.
+ *
+ * @lucene.experimental
  */
-interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
+public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
   float getScoreCorrectionConstant();
 
   @Override

@@ -28,7 +28,6 @@ import static org.apache.lucene.analysis.hunspell.WordContext.SIMPLE_WORD;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 
@@ -304,10 +303,7 @@ public class Hunspell {
    * Dictionary#lookupEntries}.
    */
   public List<String> getRoots(String word) {
-    return stemmer.stem(word).stream()
-        .map(CharsRef::toString)
-        .distinct()
-        .collect(Collectors.toList());
+    return stemmer.stem(word).stream().map(CharsRef::toString).distinct().toList();
   }
 
   /**

@@ -425,7 +425,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
 
       assert sumTotalTermCount == totFloorTermCount;
 
-      index = fstCompiler.compile();
+      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       assert subIndices == null;
 
       /*

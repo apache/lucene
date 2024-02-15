@@ -77,6 +77,13 @@ API Changes
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
 
+* GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
+  and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
+
+* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
+  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
+  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
+
 New Features
 ---------------------
 
@@ -86,6 +93,11 @@ New Features
 
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
+
+* GITHUB#12829: For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
+  IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
+  maintained alongside their parent documents during sort and merge. IndexWriterConfig now requires a parent field to be
+  specified if index sorting is used together with document blocks. (Simon Willnauer)
 
 Improvements
 ---------------------
@@ -101,6 +113,8 @@ Improvements
 
 * GITHUB#12873: Expressions module now uses JEP 371 "Hidden Classes" with JEP 309
   "Dynamic Class-File Constants" to implement Javascript expressions. (Uwe Schindler)
+
+* GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
 
 Optimizations
 ---------------------
@@ -127,6 +141,12 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
+
+Changes in Backwards Compatibility Policy
+-----------------------------------------
+
+* GITHUB#12829: IndexWriter#addDocuments or IndexWriter#updateDocuments now require a parent field name to be
+  specified in IndexWriterConfig is documents blocks are indexed and index time sorting is configured. (Simon Willnauer)
 
 Other
 ---------------------
@@ -156,6 +176,37 @@ Other
 
 * GITHUB#9049: Fixing bug in UnescapedCharSequence#toStringEscaped() (Jakub Slowinski)
 
+* GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
+
+======================== Lucene 9.11.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
+
+* GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
@@ -177,6 +228,20 @@ New Features
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
 
+* GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
+  Stefan Vodita)
+
+* GITHUB#12706: Add support for the final release of Java foreign memory API in Java 22 (and later).
+  Lucene's MMapDirectory will now mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) starting
+  from Java 19. Indexes closed while queries are running can no longer crash the JVM.
+  Support for vectorized implementations of VectorUtil based on jdk.incubator.vector APIs was added
+  for exactly Java 22. Therefore, applications started with command line parameter
+  "java --add-modules jdk.incubator.vector" will automatically use the new vectorized implementations
+  if running on a supported platform (Java 20/21/22 on x86 CPUs with AVX2 or later or ARM NEON CPUs).
+  This is an opt-in feature and requires explicit Java command line flag! When enabled, Lucene logs
+  a notice using java.util.logging. Please test thoroughly and report bugs/slowness to Lucene's mailing
+  list.  (Uwe Schindler, Chris Hegarty)
+
 Improvements
 ---------------------
 
@@ -186,11 +251,47 @@ Improvements
 
 * GITHUB#12910: Refactor around NeighborArray to make it more self-contained. (Patrick Zhai)
 
+* GITHUB#12999: Use Automaton for SurroundQuery prefix/pattern matching (Michael Gibney)
+
+* GITHUB#13043: Support getMaxScore of ConjunctionScorer for non top level scoring clause. (Shintaro Murakami)
+
+* GITHUB#13055: Make DEFAULT_STOP_TAGS in KoreanPartOfSpeechStopFilter immutable (Dmitry Cherniachenko)
+
+* GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
+  Tests are running with random byte order to ensure that the order does not affect correctness
+  of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
+
 Optimizations
 ---------------------
 
+* LUCENE-10366: Override readVInt() and readVLong() in ByteBufferDataInput to help Hotspot inline method. (Guo Feng)
+
 * GITHUB#12839: Introduce method to grow arrays up to a given upper limit and use it to reduce overallocation for
   DirectoryTaxonomyReader#getBulkOrdinals. (Stefan Vodita)
+
+* GITHUB#12841: Move group-varint encoding/decoding logic to DataOutput/DataInput.  (Adrien Grand, Zhang Chao, Uwe Schindler)
+
+* GITHUB#12997 Avoid reset BlockDocsEnum#freqBuffer when indexHasFreq is false. (Zhang Chao, Adrien Grand)
+
+* GITHUB#12989: Split taxonomy facet arrays across reusable chunks of elements to reduce allocations. (Michael Froh, Stefan Vodita)
+
+* GITHUB#13033: PointRangeQuery now exits earlier on segments whose values
+  don't intersect with the query range. When a PointRangeQuery is a required
+  clause of a boolean query, this helps save work on other required clauses of
+  the same boolean query. (Adrien Grand)
+
+* GITHUB#13026: ReqOptSumScorer will now propagate minimum competitive scores
+  to the optional clause if the required clause doesn't score. In practice,
+  this will help boolean queries that consist of a mix OF FILTER clauses and
+  SHOULD clauses. (Adrien Grand)
+
+* GITHUB#13052: Avoid set.removeAll(list) O(n^2) performance trap in the UpgradeIndexMergePolicy (Dmitry Cherniachenko)
+
+* GITHUB#13036 Optimize counts on two clause term disjunctions. (Adrien Grand, Johannes Fredén)
+
+* GITHUB#12962: Speedup concurrent multi-segment HNWS graph search (Mayya Sharipova, Tom Veasey)
+
+* GITHUB#13090: Prevent humongous allocations in ScalarQuantizer when building quantiles. (Ben Trent)
 
 Bug Fixes
 ---------------------
@@ -201,6 +302,14 @@ Bug Fixes
 
 * GITHUB#12920: Address bug in TestDrillSideways#testCollectionTerminated that could occasionally cause the test to
   fail with certain random seeds. (Greg Miller)
+
+* GITHUB#12885: Fixed the bug that JapaneseReadingFormFilter cannot convert some hiragana to romaji. (Takuma Kuramitsu)
+
+* GITHUB#12287: Fix a bug in ShapeTestUtil. (Heemin Kim)
+
+* GITHUB#13031: ScorerSupplier created by QueryProfilerWeight will propagate topLevelScoringClause to the sub ScorerSupplier. (Shintaro Murakami)
+
+* GITHUB#13059: Fixed missing IndicNormalization and DecimalDigit filters in TeluguAnalyzer normalization (Dmitry Cherniachenko)
 
 Build
 ---------------------
@@ -217,7 +326,21 @@ Other
 
 * GITHUB#12934: Cleaning up old references to Lucene/Solr. (Jakub Slowinski)
 
+* GITHUB#12967, GITHUB#13038, GITHUB#13040, GITHUB#13042, GITHUB#13047, GITHUB#13048, GITHUB#13049, GITHUB#13050, GITHUB#13051, GITHUB#13039:
+  Code cleanups and optimizations. (Dmitry Cherniachenko)
+
+* GITHUB#13053: Minor AnyQueryNode code cleanup (Dmitry Cherniachenko)
+
 * GITHUB#12918: Wrote a HOWTO manual on bumping the Lucene codec version. (Jakub Slowinski)
+
+======================== Lucene 9.9.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#13027: Fix NPE when sampling for quantization in Lucene99HnswScalarQuantizedVectorsFormat (Ben Trent)
+
+* GITHUB#13014: Rollback the tmp storage of BytesRefHash to -1 after sort (Guo Feng)
 
 ======================== Lucene 9.9.1 =======================
 
@@ -2215,6 +2338,34 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.3 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
+  splitting. (Ignacio Vera)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
+* LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
+  occurs when computing the partition point. (Ignacio Vera)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+Optimizations
+---------------------
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
 
 ======================= Lucene 8.11.2 =======================
 

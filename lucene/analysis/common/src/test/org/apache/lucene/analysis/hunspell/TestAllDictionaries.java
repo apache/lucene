@@ -97,7 +97,7 @@ public class TestAllDictionaries extends LuceneTestCase {
     AtomicBoolean failTest = new AtomicBoolean();
 
     Map<String, List<Long>> global = new LinkedHashMap<>();
-    for (Path aff : findAllAffixFiles().collect(Collectors.toList())) {
+    for (Path aff : findAllAffixFiles().toList()) {
       Map<String, List<Long>> local = new LinkedHashMap<>();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       try (ExposePosition is = new ExposePosition(Files.readAllBytes(aff))) {
@@ -184,9 +184,7 @@ public class TestAllDictionaries extends LuceneTestCase {
         };
 
     List<Callable<Void>> tasks =
-        findAllAffixFiles()
-            .map(aff -> (Callable<Void>) () -> process.apply(aff))
-            .collect(Collectors.toList());
+        findAllAffixFiles().map(aff -> (Callable<Void>) () -> process.apply(aff)).toList();
     try {
       for (Future<?> future : executor.invokeAll(tasks)) {
         future.get();

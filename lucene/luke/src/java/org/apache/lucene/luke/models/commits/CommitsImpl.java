@@ -119,7 +119,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
       return ic.getFileNames().stream()
           .map(name -> File.of(indexPath, name))
           .sorted(Comparator.comparing(File::getFileName))
-          .collect(Collectors.toList());
+          .toList();
     } catch (IOException e) {
       throw new LukeException(
           String.format(Locale.ENGLISH, "Failed to load files for commit generation %d", commitGen),
@@ -138,7 +138,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
       return infos.asList().stream()
           .map(Segment::of)
           .sorted(Comparator.comparing(Segment::getName))
-          .collect(Collectors.toList());
+          .toList();
     } catch (IOException e) {
       throw new LukeException(
           String.format(

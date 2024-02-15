@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.stream.IntStream;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader.ChildrenIterator;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
@@ -248,11 +249,11 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       // assert categories
       assertEquals(numCategories, reader.getSize());
       int roundOrdinal = reader.getOrdinal(new FacetLabel(Integer.toString(i)));
-      int[] parents = reader.getParallelTaxonomyArrays().parents();
-      assertEquals(0, parents[roundOrdinal]); // round's parent is root
+      ParallelTaxonomyArrays.IntArray parents = reader.getParallelTaxonomyArrays().parents();
+      assertEquals(0, parents.get(roundOrdinal)); // round's parent is root
       for (int j = 0; j < numCats; j++) {
         int ord = reader.getOrdinal(new FacetLabel(Integer.toString(i), Integer.toString(j)));
-        assertEquals(roundOrdinal, parents[ord]); // round's parent is root
+        assertEquals(roundOrdinal, parents.get(ord)); // round's parent is root
       }
     }
 
@@ -286,7 +287,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     TaxonomyReader reader = new DirectoryTaxonomyReader(writer);
     assertEquals(1, reader.getSize());
-    assertEquals(1, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(1, reader.getParallelTaxonomyArrays().parents().length());
 
     // add category and call forceMerge -- this should flush IW and merge segments down to 1
     // in ParentArray.initFromReader, this used to fail assuming there are no parents.
@@ -299,7 +300,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     reader.close();
     reader = newtr;
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     reader.close();
     writer.close();
@@ -336,7 +337,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     TaxonomyReader reader = new DirectoryTaxonomyReader(writer);
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     // merge all the segments so that NRT reader thinks there's a change
     iw.forceMerge(1);
@@ -347,7 +348,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     reader.close();
     reader = newtr;
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     reader.close();
     writer.close();

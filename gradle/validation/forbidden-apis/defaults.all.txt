@@ -74,3 +74,5 @@ javax.sql.rowset.spi.SyncFactory
 @defaultMessage Math.fma is insanely slow (2500x) in many environments (e.g. VMs). Use multiply/add and suffer the extra rounding
 java.lang.Math#fma(float,float,float)
 java.lang.Math#fma(double,double,double)
+
+java.lang.Thread#sleep(**) @ Thread.sleep makes inefficient use of resources, introduces weird race conditions and slows down the code/tests. Not a scalable and good practice so we should prevent it creeping into lucene code

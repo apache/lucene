@@ -2454,4 +2454,37 @@ public class TestPointQueries extends LuceneTestCase {
     r.close();
     dir.close();
   }
+
+  public void testRangeQuerySkipsNonMatchingSegments() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new IntPoint("field", 2));
+    doc.add(new IntPoint("field2d", 1, 3));
+    w.addDocument(doc);
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = IntPoint.newRangeQuery("field", 0, 1);
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field", 3, 4);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field2d", new int[] {0, 0}, new int[] {2, 2});
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field2d", new int[] {2, 2}, new int[] {4, 4});
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
 }
