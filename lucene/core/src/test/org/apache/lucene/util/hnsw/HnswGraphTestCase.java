@@ -74,7 +74,6 @@ import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -756,8 +755,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
     long actual = ramUsed(hnsw);
-    System.out.println("estimated = " + estimated + ", actual = " + actual + "delta = " + (double)estimated/actual);
-
     assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
   }
 

@@ -412,8 +412,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
         for (int i = size - 1; i > 0; --i) {
-          assert neighbors.scoreNodes[i].node < countOnLevel0 :
-            "node too large: " + neighbors.scoreNodes[i].node + ">=" + countOnLevel0;
+          assert neighbors.scoreNodes[i].node < countOnLevel0
+              : "node too large: " + neighbors.scoreNodes[i].node + ">=" + countOnLevel0;
           neighbors.scoreNodes[i].node -= neighbors.scoreNodes[i - 1].node;
         }
         for (int i = 0; i < size; i++) {

@@ -39,21 +39,18 @@ public class NeighborArray {
   private int sortedNodeSize;
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
-  /**
-   * Stores nodeId and its similarity score in a single object
-   */
+  /** Stores nodeId and its similarity score in a single object */
   public static final class ScoreNode {
     public int node;
     public float score;
+
     public ScoreNode(int node, float score) {
       this.node = node;
       this.score = score;
     }
   }
 
-  /**
-   * Comparator used to sort {@link ScoreNode} objects.
-   */
+  /** Comparator used to sort {@link ScoreNode} objects. */
   public static class ScoreNodeComparator implements Comparator<ScoreNode> {
     private final boolean isDescByScore;
     private final RandomVectorScorer scorer;
@@ -178,18 +175,14 @@ public class NeighborArray {
     return size;
   }
 
-  /**
-   * Returns a copy of NeighborArray nodes, for calls that require concurrent modifications
-   */
+  /** Returns a copy of NeighborArray nodes, for calls that require concurrent modifications */
   public int[] nodesCopy() {
-    System.out.println("VIGYA - NODESCOPY WITHOUT BUFFER CALLED");
     int[] nodes = new int[size];
     nodesCopy(nodes);
     return nodes;
   }
 
   public void nodesCopy(int[] target) {
-    System.out.println("VIGYA - NODESCOPY WITH BUFFER CALLED");
     assert target.length >= size;
     for (int i = 0; i < size; i++) {
       target[i] = scoreNodes[i].node;
@@ -249,15 +242,15 @@ public class NeighborArray {
   }
 
   /**
-   * Returns true if the node at candidateIndex is closer to one of the neighbors than it is
-   * to the target node for this NeighborArray.
+   * Returns true if the node at candidateIndex is closer to one of the neighbors than it is to the
+   * target node for this NeighborArray.
    */
   private boolean isWorstNonDiverse(
-    int candidateIndex,
-    ScoreNode[] uncheckedScoreNodes,
-    int uncheckedCursor,
-    RandomVectorScorerSupplier scorerSupplier)
-    throws IOException {
+      int candidateIndex,
+      ScoreNode[] uncheckedScoreNodes,
+      int uncheckedCursor,
+      RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
     float targetNodeSimilarity = scoreNodes[candidateIndex].score;
     RandomVectorScorer scorer = scorerSupplier.scorer(scoreNodes[candidateIndex].node);
     if (scoreNodes[candidateIndex].node == uncheckedScoreNodes[uncheckedCursor].node) {
