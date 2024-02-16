@@ -1,0 +1,50 @@
+name: Run smokeTestRelease.py against a release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifacts-url:
+        description: 'URL to artifacts, example: https://dist.apache.org/repos/dist/dev/lucene/lucene-...'
+        type: string
+        required: true
+
+      gradle-java-version:
+        description: "java version to run gradle with" 
+        type: string
+        required: true
+        default: 11
+
+      run-tests:
+        description: "Include a test run" 
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  smokeTestRelease:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java-version: [ '11' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-package: jdk
+          java-version: |
+            17
+            21
+            ${{ inputs.gradle-java-version }}
+
+      - name: Dump env variables
+        run: set | grep "JAVA"
+
+      - name: Run the smoke tester (${{ inputs.artifacts-url }})
+        run: |
+          echo "Running..."
+          # python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }}
