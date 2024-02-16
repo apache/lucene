@@ -40,7 +40,7 @@ jobs:
             ${{ matrix.java-version }}
             11
 
-      - name: Look up Java to test against.
+      - name: Run smoke tester with Java ${{ matrix.java-version }} and (${{ inputs.artifacts-url }})
         run: |
           echo "All installed JDKs:"
           set | grep "JAVA"
@@ -49,8 +49,6 @@ jobs:
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
 
-      - name: Run smoke tester with Java ${{ matrix.java-version }} and (${{ inputs.artifacts-url }})
-        run: |
           python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
             ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
