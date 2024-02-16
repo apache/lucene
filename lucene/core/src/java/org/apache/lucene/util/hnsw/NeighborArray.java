@@ -39,7 +39,7 @@ public class NeighborArray {
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
   public static final class ScoreNode {
-    public final int node;
+    public int node;
     public float score;
     public ScoreNode(int node, float score) {
       this.node = node;
@@ -163,26 +163,23 @@ public class NeighborArray {
     return size;
   }
 
-//  /**
-//   * Direct access to the internal list of node ids; provided for efficient writing of the graph
-//   *
-//   * @lucene.internal
-//   */
-//  public int[] nodes() {
-//    int[] nodes = new int[size];
-//    for (int i = 0; i < size; i++) {
-//      nodes[i] = scoreNodes[i].node;
-//    }
-//    return nodes;
-//  }
-//
-//  public float[] scores() {
-//    float[] scores = new float[size];
-//    for (int i = 0; i < size; i++) {
-//      scores[i] = scoreNodes[i].score;
-//    }
-//    return scores;
-//  }
+  /**
+   * Returns a copy of NeighborArray nodes, for calls that require concurrent modifications
+   */
+  public int[] nodesCopy() {
+    int[] nodes = new int[size];
+    nodesCopy(nodes);
+    return nodes;
+  }
+
+  public void nodesCopy(int[] nodeBuffer) {
+    if (nodeBuffer == null || nodeBuffer.length < size) {
+      nodeBuffer = new int[size];
+    }
+    for (int i = 0; i < size; i++) {
+      nodeBuffer[i] = scoreNodes[i].node;
+    }
+  }
 
   public void clear() {
     size = 0;
