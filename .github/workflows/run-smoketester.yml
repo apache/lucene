@@ -51,4 +51,4 @@ jobs:
 
       - name: Run the smoke tester (${{ inputs.artifacts-url }})
         run: |
-          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} ${{ RUN_TESTS_ARG }}
+          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} $RUN_TESTS_ARG
