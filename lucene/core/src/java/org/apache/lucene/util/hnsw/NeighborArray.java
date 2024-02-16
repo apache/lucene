@@ -35,23 +35,31 @@ public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
   private final ScoreNode[] scoreNodes;
-//  private final float[] scores;
-//  private final int[] nodes;
   private int sortedNodeSize;
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
-  private static final class ScoreNode {
-    private final int node;
-    private float score;
+  public static final class ScoreNode {
+    public final int node;
+    public float score;
     public ScoreNode(int node, float score) {
       this.node = node;
       this.score = score;
     }
+
+//    @Override
+//    public boolean equals(Object o) {
+//      if (o == this) {
+//        return true;
+//      }
+//      if (o instanceof ScoreNode == false) {
+//        return false;
+//      }
+//      ScoreNode other = (ScoreNode) o;
+//      return this.node == other.node && this.score == other.score;
+//    }
   }
 
   public NeighborArray(int maxSize, boolean descOrder) {
-//    nodes = new int[maxSize];
-//    scores = new float[maxSize];
     scoreNodes = new ScoreNode[maxSize];
     this.scoresDescOrder = descOrder;
   }
@@ -62,12 +70,10 @@ public class NeighborArray {
    */
   public void addInOrder(int newNode, float newScore) {
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
-//    if (size == nodes.length) {
     if (size == scoreNodes.length) {
       throw new IllegalStateException("No growth is allowed");
     }
     if (size > 0) {
-//      float previousScore = scores[size - 1];
       float previousScore = scoreNodes[size - 1].score;
       assert ((scoresDescOrder && (previousScore >= newScore))
               || (scoresDescOrder == false && (previousScore <= newScore)))
@@ -77,22 +83,17 @@ public class NeighborArray {
               + Arrays.toString(ArrayUtil.copyOfSubArray(scoreNodes, 0, size));
     }
     scoreNodes[size] = new ScoreNode(newNode, newScore);
-//    nodes[size] = newNode;
-//    scores[size] = newScore;
     ++size;
     ++sortedNodeSize;
   }
 
   /** Add node and newScore but do not insert as sorted */
   public void addOutOfOrder(int newNode, float newScore) {
-//    if (size == nodes.length) {
     if (size == scoreNodes.length) {
       throw new IllegalStateException("No growth is allowed");
     }
 
     scoreNodes[size] = new ScoreNode(newNode, newScore);
-//    scores[size] = newScore;
-//    nodes[size] = newNode;
     size++;
   }
 
@@ -124,12 +125,9 @@ public class NeighborArray {
    * @return indexes of newly sorted (unchecked) nodes, in ascending order, or null if the array is
    *     already fully sorted
    */
-//  int[] sort(RandomVectorScorer scorer) throws IOException {
-//  void sort(RandomVectorScorer scorer) throws IOException {
   ScoreNode[] sort(RandomVectorScorer scorer) throws IOException {
     if (size == sortedNodeSize) {
       // all nodes checked and sorted
-//      return;
       return null;
     }
     assert sortedNodeSize < size;
@@ -139,7 +137,7 @@ public class NeighborArray {
     }
 
     // simply sort the entire array
-    Arrays.sort(scoreNodes, (o1, o2) -> {
+    Arrays.sort(scoreNodes, 0, size, (o1, o2) -> {
       try {
         if (Float.isNaN(o1.score)) {
           o1.score = scorer.score(o1.node);
