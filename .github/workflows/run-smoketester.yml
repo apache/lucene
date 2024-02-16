@@ -52,4 +52,4 @@ jobs:
       - name: Run the smoke tester (${{ inputs.artifacts-url }})
         run: |
           python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
-            ${{ inputs.run-tests && '-Dtests.filter="@skipall"' || '' }}
+            ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }}
