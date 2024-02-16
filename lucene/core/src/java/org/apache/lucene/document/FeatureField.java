@@ -167,8 +167,9 @@ public final class FeatureField extends Field {
   }
 
   /**
-   * This is useful if you have multiple features sharing a name and you want to take action
-   * to deduplicate them.
+   * This is useful if you have multiple features sharing a name and you want to take action to
+   * deduplicate them.
+   *
    * @return the feature value of this field.
    */
   public float getFeatureValue() {
