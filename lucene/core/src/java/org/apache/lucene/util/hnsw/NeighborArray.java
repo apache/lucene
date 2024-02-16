@@ -34,7 +34,7 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
-  private final ScoreNode[] scoreNodes;
+  public final ScoreNode[] scoreNodes;
   private int sortedNodeSize;
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
@@ -163,26 +163,26 @@ public class NeighborArray {
     return size;
   }
 
-  /**
-   * Direct access to the internal list of node ids; provided for efficient writing of the graph
-   *
-   * @lucene.internal
-   */
-  public int[] nodes() {
-    int[] nodes = new int[size];
-    for (int i = 0; i < size; i++) {
-      nodes[i] = scoreNodes[i].node;
-    }
-    return nodes;
-  }
-
-  public float[] scores() {
-    float[] scores = new float[size];
-    for (int i = 0; i < size; i++) {
-      scores[i] = scoreNodes[i].score;
-    }
-    return scores;
-  }
+//  /**
+//   * Direct access to the internal list of node ids; provided for efficient writing of the graph
+//   *
+//   * @lucene.internal
+//   */
+//  public int[] nodes() {
+//    int[] nodes = new int[size];
+//    for (int i = 0; i < size; i++) {
+//      nodes[i] = scoreNodes[i].node;
+//    }
+//    return nodes;
+//  }
+//
+//  public float[] scores() {
+//    float[] scores = new float[size];
+//    for (int i = 0; i < size; i++) {
+//      scores[i] = scoreNodes[i].score;
+//    }
+//    return scores;
+//  }
 
   public void clear() {
     size = 0;
