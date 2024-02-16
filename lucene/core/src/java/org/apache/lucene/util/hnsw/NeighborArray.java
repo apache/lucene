@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.lucene.util.ArrayUtil;
@@ -44,6 +45,36 @@ public class NeighborArray {
     public ScoreNode(int node, float score) {
       this.node = node;
       this.score = score;
+    }
+  }
+
+  public static class ScoreNodeComparator implements Comparator<ScoreNode> {
+    private final boolean isDescByScore;
+    private final RandomVectorScorer scorer;
+
+    public ScoreNodeComparator(boolean isDesc, RandomVectorScorer scorer) {
+      this.isDescByScore = isDesc;
+      this.scorer = scorer;
+    }
+
+    @Override
+    public int compare(ScoreNode o1, ScoreNode o2) {
+      if (scorer != null) {
+        try {
+          if (Float.isNaN(o1.score)) {
+            o1.score = scorer.score(o1.node);
+          }
+          if (Float.isNaN(o2.score)) {
+            o2.score = scorer.score(o2.node);
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+      if (isDescByScore == false) {
+        return Float.compare(o1.score, o2.score);
+      }
+      return Float.compare(o2.score, o1.score);
     }
   }
 
@@ -124,32 +155,10 @@ public class NeighborArray {
       uncheckedScoreNodes[i - sortedNodeSize] = scoreNodes[i];
     }
 
-    // simply sort the entire array
-    Arrays.sort(scoreNodes, 0, size, (o1, o2) -> {
-      try {
-        if (Float.isNaN(o1.score)) {
-          o1.score = scorer.score(o1.node);
-        }
-        if (Float.isNaN(o2.score)) {
-          o2.score = scorer.score(o2.node);
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      if (scoresDescOrder == false) {
-        return Float.compare(o1.score, o2.score);
-      }
-      return Float.compare(o2.score, o1.score);
-    });
+    Arrays.sort(scoreNodes, 0, size, new ScoreNodeComparator(scoresDescOrder, scorer));
     sortedNodeSize = size;
-
-    // sort the unchecked scoreNodes as well
-    Arrays.sort(uncheckedScoreNodes, (o1, o2) -> {
-      if (scoresDescOrder == false) {
-        return Float.compare(o1.score, o2.score);
-      }
-      return Float.compare(o2.score, o1.score);
-    });
+    // sort the unchecked scoreNodes to allow checking them in the order of their scores
+    Arrays.sort(uncheckedScoreNodes, new ScoreNodeComparator(scoresDescOrder, null));
     return uncheckedScoreNodes;
   }
 
