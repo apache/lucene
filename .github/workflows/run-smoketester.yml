@@ -29,6 +29,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      RUN_TESTS_ARG: ${{ inputs.run-tests && '-Dtests.filter="@skipall"' || '' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -37,16 +40,11 @@ jobs:
           distribution: 'temurin'
           java-package: jdk
           check-latest: true
-          java-version: |
-            17
-            21
-            22
-            ${{ inputs.gradle-java-version }}
+          java-version: [ 17, 21, ${{ inputs.gradle-java-version }} ]
 
       - name: Dump env variables
         run: set | grep "JAVA"
 
       - name: Run the smoke tester (${{ inputs.artifacts-url }})
         run: |
-          echo "Running..."
-          # python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }}
+          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} ${{ RUN_TESTS_ARG }}
