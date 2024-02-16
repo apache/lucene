@@ -29,9 +29,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    env:
-      RUN_TESTS_ARG: ${{ inputs.run-tests && '-Dtests.filter="@skipall"' || '' }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -51,4 +48,5 @@ jobs:
 
       - name: Run the smoke tester (${{ inputs.artifacts-url }})
         run: |
-          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} $RUN_TESTS_ARG
+          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
+            ${{ inputs.run-tests && '-Dtests.filter="@skipall"' || '' }}
