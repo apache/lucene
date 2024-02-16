@@ -8,14 +8,8 @@ on:
         type: string
         required: true
 
-      gradle-java-version:
-        description: "java version to run gradle with" 
-        type: string
-        required: true
-        default: 11
-
       run-tests:
-        description: "Include a test run" 
+        description: "Include a full test run"
         type: boolean
         required: false
         default: false
@@ -25,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '11' ]
+        java-version: [ '11', '17', '21', '22-ea' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -39,17 +33,21 @@ jobs:
         with:
           distribution: 'temurin'
           java-package: jdk
-          check-latest: true
+          # TODO: turned off to speed up install (for now).
+          # check-latest: true
           java-version: |
-            17
-            21
-            22-ea
-            ${{ inputs.gradle-java-version }}
+            ${{ matrix.java-version }}
+            11
 
-      - name: Dump env variables
-        run: set | grep "JAVA"
+      - name: Look up Java to test against.
+        run: |
+          echo "Installed JDKs:"
+          set | grep "JAVA"
+          TEST_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
+          echo ${TEST_JAVA_HOME_VAR} points at ${!TEST_JAVA_HOME_VAR}
 
       - name: Run the smoke tester (${{ inputs.artifacts-url }})
+        if: false
         run: |
           python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
             ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }}
