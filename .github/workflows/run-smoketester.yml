@@ -16,6 +16,8 @@ on:
 
 jobs:
   smokeTestRelease:
+    name: "smoke jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
+
     strategy:
       matrix:
         os: [ ubuntu-latest ]
@@ -33,21 +35,22 @@ jobs:
         with:
           distribution: 'temurin'
           java-package: jdk
-          # TODO: turned off to speed up install (for now).
-          # check-latest: true
+          check-latest: true
           java-version: |
             ${{ matrix.java-version }}
             11
 
       - name: Look up Java to test against.
         run: |
-          echo "Installed JDKs:"
+          echo "All installed JDKs:"
           set | grep "JAVA"
-          TEST_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
-          echo ${TEST_JAVA_HOME_VAR} points at ${!TEST_JAVA_HOME_VAR}
 
-      - name: Run the smoke tester (${{ inputs.artifacts-url }})
-        if: false
+          echo "Build matrix-picked JDK:"
+          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
+          echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
+
+      - name: Run smoke tester with Java ${{ matrix.java-version }} and (${{ inputs.artifacts-url }})
         run: |
           python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
-            ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }}
+            ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }} \
+            -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
