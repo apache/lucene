@@ -39,6 +39,9 @@ public class NeighborArray {
   private int sortedNodeSize;
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
+  /**
+   * Stores nodeId and its similarity score in a single object
+   */
   public static final class ScoreNode {
     public int node;
     public float score;
@@ -48,6 +51,9 @@ public class NeighborArray {
     }
   }
 
+  /**
+   * Comparator used to sort {@link ScoreNode} objects.
+   */
   public static class ScoreNodeComparator implements Comparator<ScoreNode> {
     private final boolean isDescByScore;
     private final RandomVectorScorer scorer;
