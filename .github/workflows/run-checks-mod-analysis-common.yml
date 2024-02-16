@@ -8,7 +8,7 @@ on:
       - 'main'
       - 'branch_9x'
     paths:
-      - '.github/workflows/hunspell.yml'
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
       - 'lucene/analysis/common/**'
 
   push:
@@ -16,7 +16,7 @@ on:
       - 'main'
       - 'branch_9x'
     paths:
-      - '.github/workflows/hunspell.yml'
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
       - 'lucene/analysis/common/**'
 
 env:
