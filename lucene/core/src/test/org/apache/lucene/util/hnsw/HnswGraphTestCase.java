@@ -756,6 +756,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
     long actual = ramUsed(hnsw);
+    System.out.println("estimated = " + estimated + ", actual = " + actual + "delta = " + (double)estimated/actual);
 
     assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
   }

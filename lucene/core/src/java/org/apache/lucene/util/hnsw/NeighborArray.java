@@ -176,12 +176,14 @@ public class NeighborArray {
    * Returns a copy of NeighborArray nodes, for calls that require concurrent modifications
    */
   public int[] nodesCopy() {
+    System.out.println("VIGYA - NODESCOPY WITHOUT BUFFER CALLED");
     int[] nodes = new int[size];
     nodesCopy(nodes);
     return nodes;
   }
 
   public void nodesCopy(int[] target) {
+    System.out.println("VIGYA - NODESCOPY WITH BUFFER CALLED");
     assert target.length >= size;
     for (int i = 0; i < size; i++) {
       target[i] = scoreNodes[i].node;
