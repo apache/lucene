@@ -172,12 +172,10 @@ public class NeighborArray {
     return nodes;
   }
 
-  public void nodesCopy(int[] nodeBuffer) {
-    if (nodeBuffer == null || nodeBuffer.length < size) {
-      nodeBuffer = new int[size];
-    }
+  public void nodesCopy(int[] target) {
+    assert target.length >= size;
     for (int i = 0; i < size; i++) {
-      nodeBuffer[i] = scoreNodes[i].node;
+      target[i] = scoreNodes[i].node;
     }
   }
 

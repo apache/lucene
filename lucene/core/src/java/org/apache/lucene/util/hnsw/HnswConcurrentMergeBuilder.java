@@ -197,10 +197,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
       neighborArray.rwlock.readLock().lock();
       try {
-        size = neighborArray.size();
-        if (size >= 0) {
-          neighborArray.nodesCopy(nodeBuffer);
+        if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
+          nodeBuffer = new int[neighborArray.size()];
         }
+        size = neighborArray.size();
+        if (size >= 0) neighborArray.nodesCopy(nodeBuffer);
       } finally {
         neighborArray.rwlock.readLock().unlock();
       }
