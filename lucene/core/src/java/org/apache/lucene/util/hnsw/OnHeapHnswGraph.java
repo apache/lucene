@@ -275,16 +275,26 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+//    long neighborArrayBytes0 =
+//        (long) nsize0 * (Integer.BYTES + Float.BYTES)
+//            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
+//            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
+//            + Integer.BYTES * 3;
+//    long neighborArrayBytes =
+//        (long) nsize * (Integer.BYTES + Float.BYTES)
+//            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
+//            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
+//            + Integer.BYTES * 3;
     long neighborArrayBytes0 =
-        (long) nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
-            + Integer.BYTES * 3;
+      (long) nsize0 * (Integer.BYTES + Float.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+        + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+        + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + Integer.BYTES * 3;
     long neighborArrayBytes =
-        (long) nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
-            + Integer.BYTES * 3;
+      (long) nsize * (Integer.BYTES + Float.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+        + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+        + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + Integer.BYTES * 3;
     long total = 0;
     total +=
         size() * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
