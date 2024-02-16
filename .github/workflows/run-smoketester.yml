@@ -36,9 +36,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-package: jdk
+          check-latest: true
           java-version: |
             17
             21
+            22
             ${{ inputs.gradle-java-version }}
 
       - name: Dump env variables
