@@ -40,6 +40,7 @@ public class NeighborArray {
   public final ReadWriteLock rwlock = new ReentrantReadWriteLock(true);
 
   /** Stores nodeId and its similarity score in a single object */
+  // noCommit
   public static final class ScoreNode {
     public int node;
     public float score;
