@@ -50,30 +50,16 @@ public class NeighborArray {
     }
   }
 
-  /** Comparator used to sort {@link ScoreNode} objects. */
+  /** Comparator for sorting {@link ScoreNode} objects. */
   public static class ScoreNodeComparator implements Comparator<ScoreNode> {
     private final boolean isDescByScore;
-    private final RandomVectorScorer scorer;
 
-    public ScoreNodeComparator(boolean isDesc, RandomVectorScorer scorer) {
+    public ScoreNodeComparator(boolean isDesc) {
       this.isDescByScore = isDesc;
-      this.scorer = scorer;
     }
 
     @Override
     public int compare(ScoreNode o1, ScoreNode o2) {
-      if (scorer != null) {
-        try {
-          if (Float.isNaN(o1.score)) {
-            o1.score = scorer.score(o1.node);
-          }
-          if (Float.isNaN(o2.score)) {
-            o2.score = scorer.score(o2.node);
-          }
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
       if (isDescByScore == false) {
         return Float.compare(o1.score, o2.score);
       }
@@ -153,15 +139,23 @@ public class NeighborArray {
       return null;
     }
     assert sortedNodeSize < size;
-    ScoreNode[] uncheckedScoreNodes = new ScoreNode[size - sortedNodeSize];
-    for (int i = sortedNodeSize; i < size; i++) {
-      uncheckedScoreNodes[i - sortedNodeSize] = scoreNodes[i];
+
+    // Compute missing scores
+    if (scorer != null) {
+      for (int i = 0; i < size; i++) {
+        if (Float.isNaN(scoreNodes[i].score)) {
+          scoreNodes[i].score = scorer.score(scoreNodes[i].node);
+        }
+      }
     }
 
-    Arrays.sort(scoreNodes, 0, size, new ScoreNodeComparator(scoresDescOrder, scorer));
+    ScoreNode[] uncheckedScoreNodes = new ScoreNode[size - sortedNodeSize];
+    System.arraycopy(scoreNodes, sortedNodeSize, uncheckedScoreNodes, 0, size - sortedNodeSize);
+
+    Comparator<ScoreNode> cmp = new ScoreNodeComparator(scoresDescOrder);
+    Arrays.sort(scoreNodes, 0, size, cmp);
+    Arrays.sort(uncheckedScoreNodes, cmp);
     sortedNodeSize = size;
-    // sort the unchecked scoreNodes to allow checking them in the order of their scores
-    Arrays.sort(uncheckedScoreNodes, new ScoreNodeComparator(scoresDescOrder, null));
     return uncheckedScoreNodes;
   }
 
