@@ -50,5 +50,5 @@ jobs:
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
 
           python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
-            ${{ inputs.run-tests && '' || '-Dtests.filter="@skipall"' }} \
+            ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
