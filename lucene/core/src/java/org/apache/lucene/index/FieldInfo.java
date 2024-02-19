@@ -32,7 +32,7 @@ public final class FieldInfo {
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType = DocValuesType.NONE;
+  private DocValuesType docValuesType;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
