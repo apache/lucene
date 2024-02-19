@@ -256,6 +256,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig(r, new MockAnalyzer(r));
     iwc.setCommitOnClose(false);
     final RandomIndexWriter w = new RandomIndexWriter(r, dir, iwc);
+    TestUtil.reduceOpenFiles(w.w);
     w.setDoRandomForceMerge(false);
     Thread[] threads = new Thread[TestUtil.nextInt(random(), 4, 30)];
     final CountDownLatch startingGun = new CountDownLatch(1);
