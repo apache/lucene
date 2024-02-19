@@ -384,7 +384,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     ensureOpen();
     boolean hasEvents = false;
     while (flushControl.anyStalledThreads()
-        || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
+        || (config.checkPendingFlushOnUpdate && flushControl.numQueuedFlushes() > 0)) {
       // Help out flushing any queued DWPTs so we can un-stall:
       // Try pickup pending threads here if possible
       // no need to loop over the next pending flushes... doFlush will take care of this
