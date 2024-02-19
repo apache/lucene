@@ -1,0 +1,37 @@
+name: "Run checks: module lucene/analysis/common"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_9x'
+    paths:
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
+      - 'lucene/analysis/common/**'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_9x'
+    paths:
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
+      - 'lucene/analysis/common/**'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  test:
+    name: Extra regression tests
+    timeout-minutes: 15
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run 'gradlew lucene/analysis/common check testRegressions'
+        run: ./gradlew -p lucene/analysis/common check testRegressions

@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.text.ParseException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -67,7 +68,7 @@ public class ExpressionsBenchmark {
           lookup.findStatic(
               lookup.lookupClass(), "ident", MethodType.methodType(double.class, double.class)));
       m.put("mh_identity", MethodHandles.identity(double.class));
-      return m;
+      return Collections.unmodifiableMap(m);
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(e);
     }

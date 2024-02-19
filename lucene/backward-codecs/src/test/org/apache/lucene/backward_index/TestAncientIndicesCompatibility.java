@@ -21,8 +21,16 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.LineNumberReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFormatTooOldException;
@@ -36,274 +44,57 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
-@SuppressWarnings("deprecation")
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
+  static final Set<String> UNSUPPORTED_INDEXES;
 
-  static final String[] unsupportedNames = {
-    "1.9.0-cfs",
-    "1.9.0-nocfs",
-    "2.0.0-cfs",
-    "2.0.0-nocfs",
-    "2.1.0-cfs",
-    "2.1.0-nocfs",
-    "2.2.0-cfs",
-    "2.2.0-nocfs",
-    "2.3.0-cfs",
-    "2.3.0-nocfs",
-    "2.4.0-cfs",
-    "2.4.0-nocfs",
-    "2.4.1-cfs",
-    "2.4.1-nocfs",
-    "2.9.0-cfs",
-    "2.9.0-nocfs",
-    "2.9.1-cfs",
-    "2.9.1-nocfs",
-    "2.9.2-cfs",
-    "2.9.2-nocfs",
-    "2.9.3-cfs",
-    "2.9.3-nocfs",
-    "2.9.4-cfs",
-    "2.9.4-nocfs",
-    "3.0.0-cfs",
-    "3.0.0-nocfs",
-    "3.0.1-cfs",
-    "3.0.1-nocfs",
-    "3.0.2-cfs",
-    "3.0.2-nocfs",
-    "3.0.3-cfs",
-    "3.0.3-nocfs",
-    "3.1.0-cfs",
-    "3.1.0-nocfs",
-    "3.2.0-cfs",
-    "3.2.0-nocfs",
-    "3.3.0-cfs",
-    "3.3.0-nocfs",
-    "3.4.0-cfs",
-    "3.4.0-nocfs",
-    "3.5.0-cfs",
-    "3.5.0-nocfs",
-    "3.6.0-cfs",
-    "3.6.0-nocfs",
-    "3.6.1-cfs",
-    "3.6.1-nocfs",
-    "3.6.2-cfs",
-    "3.6.2-nocfs",
-    "4.0.0-cfs",
-    "4.0.0-cfs",
-    "4.0.0-nocfs",
-    "4.0.0.1-cfs",
-    "4.0.0.1-nocfs",
-    "4.0.0.2-cfs",
-    "4.0.0.2-nocfs",
-    "4.1.0-cfs",
-    "4.1.0-nocfs",
-    "4.2.0-cfs",
-    "4.2.0-nocfs",
-    "4.2.1-cfs",
-    "4.2.1-nocfs",
-    "4.3.0-cfs",
-    "4.3.0-nocfs",
-    "4.3.1-cfs",
-    "4.3.1-nocfs",
-    "4.4.0-cfs",
-    "4.4.0-nocfs",
-    "4.5.0-cfs",
-    "4.5.0-nocfs",
-    "4.5.1-cfs",
-    "4.5.1-nocfs",
-    "4.6.0-cfs",
-    "4.6.0-nocfs",
-    "4.6.1-cfs",
-    "4.6.1-nocfs",
-    "4.7.0-cfs",
-    "4.7.0-nocfs",
-    "4.7.1-cfs",
-    "4.7.1-nocfs",
-    "4.7.2-cfs",
-    "4.7.2-nocfs",
-    "4.8.0-cfs",
-    "4.8.0-nocfs",
-    "4.8.1-cfs",
-    "4.8.1-nocfs",
-    "4.9.0-cfs",
-    "4.9.0-nocfs",
-    "4.9.1-cfs",
-    "4.9.1-nocfs",
-    "4.10.0-cfs",
-    "4.10.0-nocfs",
-    "4.10.1-cfs",
-    "4.10.1-nocfs",
-    "4.10.2-cfs",
-    "4.10.2-nocfs",
-    "4.10.3-cfs",
-    "4.10.3-nocfs",
-    "4.10.4-cfs",
-    "4.10.4-nocfs",
-    "5x-with-4x-segments-cfs",
-    "5x-with-4x-segments-nocfs",
-    "5.0.0.singlesegment-cfs",
-    "5.0.0.singlesegment-nocfs",
-    "5.0.0-cfs",
-    "5.0.0-nocfs",
-    "5.1.0-cfs",
-    "5.1.0-nocfs",
-    "5.2.0-cfs",
-    "5.2.0-nocfs",
-    "5.2.1-cfs",
-    "5.2.1-nocfs",
-    "5.3.0-cfs",
-    "5.3.0-nocfs",
-    "5.3.1-cfs",
-    "5.3.1-nocfs",
-    "5.3.2-cfs",
-    "5.3.2-nocfs",
-    "5.4.0-cfs",
-    "5.4.0-nocfs",
-    "5.4.1-cfs",
-    "5.4.1-nocfs",
-    "5.5.0-cfs",
-    "5.5.0-nocfs",
-    "5.5.1-cfs",
-    "5.5.1-nocfs",
-    "5.5.2-cfs",
-    "5.5.2-nocfs",
-    "5.5.3-cfs",
-    "5.5.3-nocfs",
-    "5.5.4-cfs",
-    "5.5.4-nocfs",
-    "5.5.5-cfs",
-    "5.5.5-nocfs",
-    "6.0.0-cfs",
-    "6.0.0-nocfs",
-    "6.0.1-cfs",
-    "6.0.1-nocfs",
-    "6.1.0-cfs",
-    "6.1.0-nocfs",
-    "6.2.0-cfs",
-    "6.2.0-nocfs",
-    "6.2.1-cfs",
-    "6.2.1-nocfs",
-    "6.3.0-cfs",
-    "6.3.0-nocfs",
-    "6.4.0-cfs",
-    "6.4.0-nocfs",
-    "6.4.1-cfs",
-    "6.4.1-nocfs",
-    "6.4.2-cfs",
-    "6.4.2-nocfs",
-    "6.5.0-cfs",
-    "6.5.0-nocfs",
-    "6.5.1-cfs",
-    "6.5.1-nocfs",
-    "6.6.0-cfs",
-    "6.6.0-nocfs",
-    "6.6.1-cfs",
-    "6.6.1-nocfs",
-    "6.6.2-cfs",
-    "6.6.2-nocfs",
-    "6.6.3-cfs",
-    "6.6.3-nocfs",
-    "6.6.4-cfs",
-    "6.6.4-nocfs",
-    "6.6.5-cfs",
-    "6.6.5-nocfs",
-    "6.6.6-cfs",
-    "6.6.6-nocfs",
-    "7.0.0-cfs",
-    "7.0.0-nocfs",
-    "7.0.1-cfs",
-    "7.0.1-nocfs",
-    "7.1.0-cfs",
-    "7.1.0-nocfs",
-    "7.2.0-cfs",
-    "7.2.0-nocfs",
-    "7.2.1-cfs",
-    "7.2.1-nocfs",
-    "7.3.0-cfs",
-    "7.3.0-nocfs",
-    "7.3.1-cfs",
-    "7.3.1-nocfs",
-    "7.4.0-cfs",
-    "7.4.0-nocfs",
-    "7.5.0-cfs",
-    "7.5.0-nocfs",
-    "7.6.0-cfs",
-    "7.6.0-nocfs",
-    "7.7.0-cfs",
-    "7.7.0-nocfs",
-    "7.7.1-cfs",
-    "7.7.1-nocfs",
-    "7.7.2-cfs",
-    "7.7.2-nocfs",
-    "7.7.3-cfs",
-    "7.7.3-nocfs",
-    "8.0.0-cfs",
-    "8.0.0-nocfs",
-    "8.1.0-cfs",
-    "8.1.0-nocfs",
-    "8.1.1-cfs",
-    "8.1.1-nocfs",
-    "8.2.0-cfs",
-    "8.2.0-nocfs",
-    "8.3.0-cfs",
-    "8.3.0-nocfs",
-    "8.3.1-cfs",
-    "8.3.1-nocfs",
-    "8.4.0-cfs",
-    "8.4.0-nocfs",
-    "8.4.1-cfs",
-    "8.4.1-nocfs",
-    "8.5.0-cfs",
-    "8.5.0-nocfs",
-    "8.5.1-cfs",
-    "8.5.1-nocfs",
-    "8.5.2-cfs",
-    "8.5.2-nocfs",
-    "8.6.0-cfs",
-    "8.6.0-nocfs",
-    "8.6.1-cfs",
-    "8.6.1-nocfs",
-    "8.6.2-cfs",
-    "8.6.2-nocfs",
-    "8.6.3-cfs",
-    "8.6.3-nocfs",
-    "8.7.0-cfs",
-    "8.7.0-nocfs",
-    "8.8.0-cfs",
-    "8.8.0-nocfs",
-    "8.8.1-cfs",
-    "8.8.1-nocfs",
-    "8.8.2-cfs",
-    "8.8.2-nocfs",
-    "8.9.0-cfs",
-    "8.9.0-nocfs",
-    "8.10.0-cfs",
-    "8.10.0-nocfs",
-    "8.10.1-cfs",
-    "8.10.1-nocfs",
-    "8.11.0-cfs",
-    "8.11.0-nocfs",
-    "8.11.1-cfs",
-    "8.11.1-nocfs",
-    "8.11.2-cfs",
-    "8.11.2-nocfs",
-    "8.11.3-cfs",
-    "8.11.3-nocfs"
-  };
+  static {
+    String name = "unsupported_versions.txt";
+    Set<String> indices;
+    try (LineNumberReader in =
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      indices =
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
+              .flatMap(version -> Stream.of(version + "-cfs", version + "-nocfs"))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    } catch (IOException exception) {
+      throw new RuntimeException("failed to load resource", exception);
+    }
+
+    name = "unsupported_indices.txt";
+    try (LineNumberReader in =
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    TestAncientIndicesCompatibility.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      indices.addAll(
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
+    } catch (IOException exception) {
+      throw new RuntimeException("failed to load resource", exception);
+    }
+    UNSUPPORTED_INDEXES = Collections.unmodifiableSet(indices);
+  }
 
   /**
    * This test checks that *only* IndexFormatTooOldExceptions are thrown when you open and operate
    * on too old indexes!
    */
   public void testUnsupportedOldIndexes() throws Exception {
-    for (int i = 0; i < unsupportedNames.length; i++) {
+    for (String version : UNSUPPORTED_INDEXES) {
       if (VERBOSE) {
-        System.out.println("TEST: index " + unsupportedNames[i]);
+        System.out.println("TEST: index " + version);
       }
-      Path oldIndexDir = createTempDir(unsupportedNames[i]);
-      TestUtil.unzip(
-          getDataInputStream("unsupported." + unsupportedNames[i] + ".zip"), oldIndexDir);
+      Path oldIndexDir = createTempDir(version);
+      TestUtil.unzip(getDataInputStream("unsupported." + version + ".zip"), oldIndexDir);
       BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir);
       // don't checkindex, these are intentionally not supported
       dir.setCheckIndexOnClose(false);
@@ -312,7 +103,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       IndexWriter writer = null;
       try {
         reader = DirectoryReader.open(dir);
-        fail("DirectoryReader.open should not pass for " + unsupportedNames[i]);
+        fail("DirectoryReader.open should not pass for " + version);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -353,7 +144,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
         writer =
             new IndexWriter(
                 dir, newIndexWriterConfig(new MockAnalyzer(random())).setCommitOnClose(false));
-        fail("IndexWriter creation should not pass for " + unsupportedNames[i]);
+        fail("IndexWriter creation should not pass for " + version);
       } catch (IndexFormatTooOldException e) {
         if (e.getReason() != null) {
           assertNull(e.getVersion());
@@ -406,7 +197,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (unsupportedNames[i].startsWith("8.")) {
+      if (version.startsWith("8.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
