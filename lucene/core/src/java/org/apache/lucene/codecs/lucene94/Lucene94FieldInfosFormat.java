@@ -288,8 +288,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
   private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
     try {
-      var name = distFuncOrdToName(b);
-      return VectorSimilarityFunction.valueOf(name);
+      return distOrdToFunc(b);
     } catch (IllegalArgumentException e) {
       throw new CorruptIndexException("invalid distance function: " + b, input, e);
     }
@@ -299,23 +298,27 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   // in order to avoid an undesirable dependency on the declaration and order of
   // values in VectorSimilarityFunction. The list names and order have been chosen
   // to match that of VectorSimilarityFunction in, at least, Lucene 9.10.
-  static final List<String> SIMILARITY_FUNCTIONS_NAMES =
-      List.of("EUCLIDEAN", "DOT_PRODUCT", "COSINE", "MAXIMUM_INNER_PRODUCT");
+  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS_NAMES =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
 
-  static String distFuncOrdToName(byte i) {
+  static VectorSimilarityFunction distOrdToFunc(byte i) {
     if (i < 0 || i >= SIMILARITY_FUNCTIONS_NAMES.size()) {
       throw new IllegalArgumentException("invalid distance function: " + i);
     }
     return SIMILARITY_FUNCTIONS_NAMES.get(i);
   }
 
-  static byte distFuncNameToOrd(String name) {
+  static byte distFuncNameToOrd(VectorSimilarityFunction func) {
     for (int i = 0; i < SIMILARITY_FUNCTIONS_NAMES.size(); i++) {
-      if (SIMILARITY_FUNCTIONS_NAMES.get(i).equals(name)) {
+      if (SIMILARITY_FUNCTIONS_NAMES.get(i).equals(func)) {
         return (byte) i;
       }
     }
-    throw new IllegalArgumentException("invalid distance function: " + name);
+    throw new IllegalArgumentException("invalid distance function: " + func.name());
   }
 
   static {
@@ -406,7 +409,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte(distFuncNameToOrd(fi.getVectorSimilarityFunction().name()));
+        output.writeByte(distFuncNameToOrd(fi.getVectorSimilarityFunction()));
       }
       CodecUtil.writeFooter(output);
     }

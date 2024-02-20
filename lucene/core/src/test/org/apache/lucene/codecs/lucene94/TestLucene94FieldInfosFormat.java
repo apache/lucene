@@ -33,7 +33,7 @@ public class TestLucene94FieldInfosFormat extends BaseFieldInfoFormatTestCase {
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
     // differences should be considered carefully.
-    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).map(Enum::name).toList();
+    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
 
     assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_NAMES, expectedValues);
   }
