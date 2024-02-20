@@ -206,6 +206,8 @@ Bug Fixes
 Other
 ---------------------
 
+* GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
+
 * GITHUB#12918: Adding a HOWTO manual on bumping the Lucene codec version. (Jakub Slowinski)
 
 ======================== Lucene 9.10.0 =======================
