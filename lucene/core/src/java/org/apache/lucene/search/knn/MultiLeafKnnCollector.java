@@ -24,12 +24,12 @@ import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 import org.apache.lucene.util.hnsw.FloatHeap;
 
 /**
- * MultiLeafTopKnnCollector is a specific KnnCollector that can exchange the top collected results
+ * MultiLeafKnnCollector is a specific KnnCollector that can exchange the top collected results
  * across segments through a shared global queue.
  *
  * @lucene.experimental
  */
-public final class MultiLeafTopKnnCollector implements KnnCollector {
+public final class MultiLeafKnnCollector implements KnnCollector {
 
   // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
@@ -48,9 +48,14 @@ public final class MultiLeafTopKnnCollector implements KnnCollector {
   private final AbstractKnnCollector subCollector;
 
   /**
+   * Create a new MultiLeafKnnCollector.
+   *
    * @param k the number of neighbors to collect
+   * @param globalSimilarityQueue the global queue of the highest similarities collected so far
+   *     across all segments
+   * @param subCollector the local collector
    */
-  public MultiLeafTopKnnCollector(
+  public MultiLeafKnnCollector(
       int k, BlockingFloatHeap globalSimilarityQueue, AbstractKnnCollector subCollector) {
     this.greediness = DEFAULT_GREEDINESS;
     this.subCollector = subCollector;
@@ -123,6 +128,6 @@ public final class MultiLeafTopKnnCollector implements KnnCollector {
 
   @Override
   public String toString() {
-    return "MultiLeafTopKnnCollector[subCollector=" + subCollector + "]";
+    return "MultiLeafKnnCollector[subCollector=" + subCollector + "]";
   }
 }

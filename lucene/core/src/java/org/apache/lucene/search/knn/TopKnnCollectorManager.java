@@ -53,8 +53,7 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
     if (globalScoreQueue == null) {
       return new TopKnnCollector(k, visitedLimit);
     } else {
-      return new MultiLeafTopKnnCollector(
-          k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
+      return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
     }
   }
 }
