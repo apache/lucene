@@ -294,11 +294,11 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  // List of vector similarity function names. This list is defined in the format,
+  // List of vector similarity functions. This list is defined in the format,
   // in order to avoid an undesirable dependency on the declaration and order of
   // values in VectorSimilarityFunction. The list names and order have been chosen
   // to match that of VectorSimilarityFunction in, at least, Lucene 9.10.
-  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS_NAMES =
+  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
       List.of(
           VectorSimilarityFunction.EUCLIDEAN,
           VectorSimilarityFunction.DOT_PRODUCT,
@@ -306,15 +306,15 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
 
   static VectorSimilarityFunction distOrdToFunc(byte i) {
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS_NAMES.size()) {
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
       throw new IllegalArgumentException("invalid distance function: " + i);
     }
-    return SIMILARITY_FUNCTIONS_NAMES.get(i);
+    return SIMILARITY_FUNCTIONS.get(i);
   }
 
   static byte distFuncNameToOrd(VectorSimilarityFunction func) {
-    for (int i = 0; i < SIMILARITY_FUNCTIONS_NAMES.size(); i++) {
-      if (SIMILARITY_FUNCTIONS_NAMES.get(i).equals(func)) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
         return (byte) i;
       }
     }

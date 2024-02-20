@@ -35,6 +35,6 @@ public class TestLucene94FieldInfosFormat extends BaseFieldInfoFormatTestCase {
     // differences should be considered carefully.
     var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
 
-    assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_NAMES, expectedValues);
+    assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS, expectedValues);
   }
 }
