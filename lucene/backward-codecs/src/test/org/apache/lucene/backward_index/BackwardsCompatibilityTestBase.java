@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.Name;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.LineNumberReader;
@@ -27,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -265,7 +265,10 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     Path tmpDir = createTempDir();
 
     try (Directory dir = FSDirectory.open(tmpDir);
-        ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(zipFile.toFile()))) {
+        ZipOutputStream zipOut =
+            new ZipOutputStream(
+                Files.newOutputStream(
+                    zipFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
       createIndex(dir);
       for (String file : dir.listAll()) {
         try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
