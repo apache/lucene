@@ -296,8 +296,9 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
   // List of vector similarity functions. This list is defined in the format,
   // in order to avoid an undesirable dependency on the declaration and order of
-  // values in VectorSimilarityFunction. The list names and order have been chosen
-  // to match that of VectorSimilarityFunction in, at least, Lucene 9.10.
+  // values in VectorSimilarityFunction. The list values and order have been chosen
+  // to match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
+  // should only be appended to the end of the list.
   static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
       List.of(
           VectorSimilarityFunction.EUCLIDEAN,
@@ -312,13 +313,13 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     return SIMILARITY_FUNCTIONS.get(i);
   }
 
-  static byte distFuncNameToOrd(VectorSimilarityFunction func) {
+  static byte distFuncToOrd(VectorSimilarityFunction func) {
     for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
       if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
         return (byte) i;
       }
     }
-    throw new IllegalArgumentException("invalid distance function: " + func.name());
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   static {
@@ -409,7 +410,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte(distFuncNameToOrd(fi.getVectorSimilarityFunction()));
+        output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
       }
       CodecUtil.writeFooter(output);
     }
