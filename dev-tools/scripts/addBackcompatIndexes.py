@@ -45,16 +45,13 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
       'emptyIndex': 'empty'
     }[indextype]
   if indextype in ('cfs', 'nocfs'):
-    dirname = 'index.%s' % indextype
     filename = '%s.%s-%s.zip' % (prefix, index_version, indextype)
   else:
-    dirname = indextype
     filename = '%s.%s.zip' % (prefix, index_version)
   
   print('  creating %s...' % filename, end='', flush=True)
   module = 'backward-codecs'
   index_dir = os.path.join('lucene', module, 'src/test/org/apache/lucene/backward_index')
-  test_file = os.path.join(index_dir, filename)
   if os.path.exists(os.path.join(index_dir, filename)):
     print('uptodate')
     return
@@ -76,24 +73,20 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     '-Dtests.codec=default'
   ])
   base_dir = os.getcwd()
-  bc_index_dir = os.path.join(temp_dir, dirname)
-  bc_index_file = os.path.join(bc_index_dir, filename)
+  bc_index_file = os.path.join(temp_dir, filename)
   
   if os.path.exists(bc_index_file):
     print('alreadyexists')
   else:
-    if os.path.exists(bc_index_dir):
-      shutil.rmtree(bc_index_dir)
     os.chdir(source)
     scriptutil.run('./gradlew %s' % gradle_args)
-    os.chdir(bc_index_dir)
-    scriptutil.run('zip %s *' % filename)
+    if not os.path.exists(bc_index_file):
+      raise Exception("Expected file can't be found: %s" %bc_index_file)
     print('done')
   
   print('  adding %s...' % filename, end='', flush=True)
   scriptutil.run('cp %s %s' % (bc_index_file, os.path.join(base_dir, index_dir)))
   os.chdir(base_dir)
-  scriptutil.run('rm -rf %s' % bc_index_dir)
   print('done')
 
 def update_backcompat_tests(index_version, current_version):
