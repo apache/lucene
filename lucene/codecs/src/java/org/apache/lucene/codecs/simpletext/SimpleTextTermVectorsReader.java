@@ -150,7 +150,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
         readLine();
         assert StringHelper.startsWith(scratch.get(), TERMTEXT);
         int termLength = scratch.length() - TERMTEXT.length;
-        term.grow(termLength);
+        term.growNoCopy(termLength);
         term.setLength(termLength);
         System.arraycopy(scratch.bytes(), TERMTEXT.length, term.bytes(), 0, termLength);
 

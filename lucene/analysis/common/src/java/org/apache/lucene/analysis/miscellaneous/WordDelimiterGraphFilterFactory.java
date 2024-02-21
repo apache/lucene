@@ -67,7 +67,7 @@ public class WordDelimiterGraphFilterFactory extends TokenFilterFactory
   private final int flags;
   byte[] typeTable = null;
   private CharArraySet protectedWords = null;
-  private boolean adjustOffsets = false;
+  private final boolean adjustOffsets;
 
   /** Creates a new WordDelimiterGraphFilterFactory */
   public WordDelimiterGraphFilterFactory(Map<String, String> args) {

@@ -176,7 +176,7 @@ public class FSTCompletionBuilder {
           "Bucket outside of the allowed range [0, " + buckets + "): " + bucket);
     }
 
-    scratch.grow(utf8.length + 10);
+    scratch.growNoCopy(utf8.length + 10);
     scratch.clear();
     scratch.append((byte) bucket);
     scratch.append(utf8);
@@ -220,6 +220,6 @@ public class FSTCompletionBuilder {
       }
     }
 
-    return count == 0 ? null : fstCompiler.compile();
+    return count == 0 ? null : FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 }

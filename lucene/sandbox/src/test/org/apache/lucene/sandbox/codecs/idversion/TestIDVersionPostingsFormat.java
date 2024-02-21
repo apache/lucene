@@ -56,6 +56,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Basic tests for IDVersionPostingsFormat */
 // Cannot extend BasePostingsFormatTestCase because this PF is not
@@ -677,6 +678,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
   // Simulates optimistic concurrency in a distributed indexing app and confirms the latest version
   // always wins:
+  @SuppressForbidden(reason = "Thread sleep")
   public void testGlobalVersions() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -750,6 +752,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
               }
             }
 
+            @SuppressForbidden(reason = "Thread sleep")
             private void runForReal() throws IOException, InterruptedException {
               startingGun.await();
               PerThreadVersionPKLookup lookup = null;

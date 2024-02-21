@@ -90,7 +90,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints2);
         }
 
-        FST<Object> fst = fstCompiler.compile();
+        FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -183,7 +183,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<BytesRef> fst = fstCompiler.compile();
+        FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -273,7 +273,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<Long> fst = fstCompiler.compile();
+        FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
 

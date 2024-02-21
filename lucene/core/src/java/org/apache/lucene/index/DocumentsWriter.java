@@ -167,7 +167,11 @@ final class DocumentsWriter implements Closeable, Accountable {
   private boolean applyAllDeletes() throws IOException {
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
 
-    if (flushControl.isFullFlush() == false
+    // Check the applyAllDeletes flag first. This helps exit early most of the time without checking
+    // isFullFlush(), which takes a lock and introduces contention on small documents that are quick
+    // to index.
+    if (flushControl.getApplyAllDeletes()
+        && flushControl.isFullFlush() == false
         // never apply deletes during full flush this breaks happens before relationship.
         && deleteQueue.isOpen()
         // if it's closed then it's already fully applied and we have a new delete queue
@@ -380,7 +384,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     ensureOpen();
     boolean hasEvents = false;
     while (flushControl.anyStalledThreads()
-        || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
+        || (config.checkPendingFlushOnUpdate && flushControl.numQueuedFlushes() > 0)) {
       // Help out flushing any queued DWPTs so we can un-stall:
       // Try pickup pending threads here if possible
       // no need to loop over the next pending flushes... doFlush will take care of this

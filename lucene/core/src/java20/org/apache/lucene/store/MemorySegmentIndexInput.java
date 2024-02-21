@@ -253,6 +253,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public final int readVInt() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVInt();
+  }
+
+  @Override
+  public final long readVLong() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVLong();
+  }
+
+  @Override
   public final long readLong() throws IOException {
     try {
       final long v = curSegment.get(LAYOUT_LE_LONG, curPosition);

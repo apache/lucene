@@ -73,7 +73,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     }
 
     // Rollup any necessary dims:
-    int[] children = getChildren();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
       String dim = ent.getKey();
       DimConfig ft = ent.getValue();
@@ -81,21 +81,21 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
         int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
         assert dimRootOrd > 0;
         float newValue =
-            aggregationFunction.aggregate(values[dimRootOrd], rollup(children[dimRootOrd]));
+            aggregationFunction.aggregate(values[dimRootOrd], rollup(children.get(dimRootOrd)));
         values[dimRootOrd] = newValue;
       }
     }
   }
 
   private float rollup(int ord) throws IOException {
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
     float aggregationValue = 0f;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float childValue = aggregationFunction.aggregate(values[ord], rollup(children[ord]));
+      float childValue = aggregationFunction.aggregate(values[ord], rollup(children.get(ord)));
       values[ord] = childValue;
       aggregationValue = aggregationFunction.aggregate(aggregationValue, childValue);
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
     return aggregationValue;
   }
@@ -133,10 +133,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
 
-    int ord = children[dimOrd];
+    int ord = children.get(dimOrd);
     float aggregatedValue = 0;
 
     IntArrayList ordinals = new IntArrayList();
@@ -148,7 +148,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
         ordinals.add(ord);
         ordValues.add(values[ord]);
       }
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     if (aggregatedValue == 0) {
@@ -206,10 +206,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     float bottomValue = 0;
     int bottomOrd = Integer.MAX_VALUE;
 
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
 
-    int ord = children[pathOrd];
+    int ord = children.get(pathOrd);
     float aggregatedValue = 0;
     int childCount = 0;
 
@@ -233,7 +233,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
         }
       }
 
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     if (dimConfig.multiValued) {
@@ -294,8 +294,8 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     }
 
     // get existing children and siblings ordinal array from TaxonomyFacets
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
 
     // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
@@ -317,7 +317,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     Map<String, TopChildrenForPath> intermediateResults = null;
 
     // iterate over children and siblings ordinals for all dims
-    int ord = children[TaxonomyReader.ROOT_ORDINAL];
+    int ord = children.get(TaxonomyReader.ROOT_ORDINAL);
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       String dim = taxoReader.getPath(ord).components[0];
       FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
@@ -364,7 +364,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
           }
         }
       }
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     FacetResult[] results = new FacetResult[pq.size()];

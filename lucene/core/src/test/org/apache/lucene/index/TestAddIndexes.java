@@ -53,6 +53,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestAddIndexes extends LuceneTestCase {
 
@@ -1255,6 +1256,7 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   // LUCENE-1335: test simultaneous addIndexes & close
+  @SuppressForbidden(reason = "Thread sleep")
   public void testAddIndexesWithCloseNoWait() throws Throwable {
 
     final int NUM_COPY = 50;
@@ -1279,6 +1281,7 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   // LUCENE-1335: test simultaneous addIndexes & close
+  @SuppressForbidden(reason = "Thread sleep")
   public void testAddIndexesWithRollback() throws Throwable {
 
     final int NUM_COPY = TEST_NIGHTLY ? 50 : 5;
@@ -1936,5 +1939,98 @@ public class TestAddIndexes extends LuceneTestCase {
     reader.close();
     targetDir.close();
     sourceDir.close();
+  }
+
+  public void testIllegalParentDocChange() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriterConfig iwc1 = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc1.setParentField("foobar");
+    RandomIndexWriter w1 = new RandomIndexWriter(random(), dir1, iwc1);
+    Document parent = new Document();
+    w1.addDocuments(Arrays.asList(new Document(), new Document(), parent));
+    w1.commit();
+    w1.addDocuments(Arrays.asList(new Document(), new Document(), parent));
+    w1.commit();
+    // so the index sort is in fact burned into the index:
+    w1.forceMerge(1);
+    w1.close();
+
+    Directory dir2 = newDirectory();
+    IndexWriterConfig iwc2 = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc2.setParentField("foo");
+    RandomIndexWriter w2 = new RandomIndexWriter(random(), dir2, iwc2);
+
+    IndexReader r1 = DirectoryReader.open(dir1);
+    String message =
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes((SegmentReader) getOnlyLeafReader(r1));
+                })
+            .getMessage();
+    assertEquals(
+        "can't add field [foobar] as parent document field; this IndexWriter is configured with [foo] as parent document field",
+        message);
+
+    message =
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes(dir1);
+                })
+            .getMessage();
+    assertEquals(
+        "can't add field [foobar] as parent document field; this IndexWriter is configured with [foo] as parent document field",
+        message);
+
+    Directory dir3 = newDirectory();
+    IndexWriterConfig iwc3 = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc3.setParentField("foobar");
+    RandomIndexWriter w3 = new RandomIndexWriter(random(), dir3, iwc3);
+
+    w3.addIndexes((SegmentReader) getOnlyLeafReader(r1));
+    w3.addIndexes(dir1);
+
+    IOUtils.close(r1, dir1, w2, dir2, w3, dir3);
+  }
+
+  public void testIllegalNonParentField() throws IOException {
+    Directory dir1 = newDirectory();
+    IndexWriterConfig iwc1 = newIndexWriterConfig(new MockAnalyzer(random()));
+    RandomIndexWriter w1 = new RandomIndexWriter(random(), dir1, iwc1);
+    Document parent = new Document();
+    parent.add(new StringField("foo", "XXX", Field.Store.NO));
+    w1.addDocument(parent);
+    w1.close();
+
+    Directory dir2 = newDirectory();
+    IndexWriterConfig iwc2 = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc2.setParentField("foo");
+    RandomIndexWriter w2 = new RandomIndexWriter(random(), dir2, iwc2);
+
+    IndexReader r1 = DirectoryReader.open(dir1);
+    String message =
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes((SegmentReader) getOnlyLeafReader(r1));
+                })
+            .getMessage();
+    assertEquals(
+        "can't add [foo] as non parent document field; this IndexWriter is configured with [foo] as parent document field",
+        message);
+
+    message =
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  w2.addIndexes(dir1);
+                })
+            .getMessage();
+    assertEquals(
+        "can't add [foo] as non parent document field; this IndexWriter is configured with [foo] as parent document field",
+        message);
+
+    IOUtils.close(r1, dir1, w2, dir2);
   }
 }

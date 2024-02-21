@@ -179,7 +179,7 @@ public class QueryParser {
   }
 
   protected SrndQuery getTruncQuery(String truncated) {
-    return new SrndTruncQuery(truncated, TRUNCATOR, ANY_CHAR);
+    return new SrndTruncQuery(truncated);
   }
 }
 

@@ -108,10 +108,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     if (this.curSegment == null) {
       return new AlreadyClosedException("Already closed: " + this);
     }
-    // ISE can be thrown by MemorySegment and contains "closed" in message:
+    // in Java 22 or later we can check the isAlive status of all segments
+    // (see https://bugs.openjdk.org/browse/JDK-8310644):
+    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // fallback for Java 21: ISE can be thrown by MemorySegment and contains "closed" in message:
     if (e instanceof IllegalStateException
         && e.getMessage() != null
         && e.getMessage().contains("closed")) {
+      // the check is on message only, so preserve original cause for debugging:
       return new AlreadyClosedException("Already closed: " + this, e);
     }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
@@ -250,6 +256,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
+  }
+
+  @Override
+  public final int readVInt() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVInt();
+  }
+
+  @Override
+  public final long readVLong() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVLong();
   }
 
   @Override

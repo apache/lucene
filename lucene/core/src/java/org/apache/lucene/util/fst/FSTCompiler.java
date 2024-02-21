@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.fst;
 
-import static org.apache.lucene.store.ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP;
-import static org.apache.lucene.store.ByteBuffersDataOutput.NO_REUSE;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_CONTINUOUS;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
@@ -34,7 +32,6 @@ import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -102,12 +99,16 @@ public class FSTCompiler<T> {
   private static final FSTReader NULL_FST_READER = new NullFSTReader();
 
   private final NodeHash<T> dedupHash;
+  // a temporary FST used during building for NodeHash cache
   final FST<T> fst;
   private final T NO_OUTPUT;
 
   // private static final boolean DEBUG = true;
 
   private final IntsRefBuilder lastInput = new IntsRefBuilder();
+
+  // indicates whether we are not yet to write the padding byte
+  private boolean paddingBytePending;
 
   // NOTE: cutting this over to ArrayList instead loses ~6%
   // in build performance on 9.8M Wikipedia terms; so we
@@ -153,8 +154,7 @@ public class FSTCompiler<T> {
    * @return the DataOutput
    */
   public static DataOutput getOnHeapReaderWriter(int blockBits) {
-    return new ReadWriteDataOutput(
-        new ByteBuffersDataOutput(blockBits, blockBits, ALLOCATE_BB_ON_HEAP, NO_REUSE));
+    return new ReadWriteDataOutput(blockBits);
   }
 
   private FSTCompiler(
@@ -164,20 +164,17 @@ public class FSTCompiler<T> {
       boolean allowFixedLengthArcs,
       DataOutput dataOutput,
       float directAddressingMaxOversizingFactor,
-      int version)
-      throws IOException {
+      int version) {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     this.version = version;
     // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    dataOutput.writeByte((byte) 0);
+    // the stop state w/ no arcs. the actual byte will be written lazily
     numBytesWritten++;
+    paddingBytePending = true;
     this.dataOutput = dataOutput;
     fst =
-        new FST<>(
-            new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0),
-            toFSTReader(dataOutput));
+        new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0), NULL_FST_READER);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
@@ -193,16 +190,6 @@ public class FSTCompiler<T> {
     for (int idx = 0; idx < frontier.length; idx++) {
       frontier[idx] = new UnCompiledNode<>(this, idx);
     }
-  }
-
-  // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
-  // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
-  // NullFSTReader will throw UnsupportedOperationException
-  private FSTReader toFSTReader(DataOutput dataOutput) {
-    if (dataOutput instanceof FSTReader) {
-      return (FSTReader) dataOutput;
-    }
-    return NULL_FST_READER;
   }
 
   /**
@@ -227,6 +214,22 @@ public class FSTCompiler<T> {
       throw new UnsupportedOperationException(
           "FST was not constructed with getOnHeapReaderWriter()");
     }
+  }
+
+  /**
+   * Get the respective {@link FSTReader} of the {@link DataOutput}. To call this method, you need
+   * to use the default DataOutput or {@link #getOnHeapReaderWriter(int)}, otherwise we will throw
+   * an exception.
+   *
+   * @return the DataOutput as FSTReader
+   * @throws IllegalStateException if the DataOutput does not implement FSTReader
+   */
+  public FSTReader getFSTReader() {
+    if (dataOutput instanceof FSTReader) {
+      return (FSTReader) dataOutput;
+    }
+    throw new IllegalStateException(
+        "The DataOutput must implement FSTReader, but got " + dataOutput);
   }
 
   /**
@@ -344,7 +347,7 @@ public class FSTCompiler<T> {
     }
 
     /** Creates a new {@link FSTCompiler}. */
-    public FSTCompiler<T> build() throws IOException {
+    public FSTCompiler<T> build() {
       // create a default DataOutput if not specified
       if (dataOutput == null) {
         dataOutput = getOnHeapReaderWriter(15);
@@ -552,11 +555,25 @@ public class FSTCompiler<T> {
     }
 
     reverseScratchBytes();
+    // write the padding byte if needed
+    if (paddingBytePending) {
+      writePaddingByte();
+    }
     scratchBytes.writeTo(dataOutput);
     numBytesWritten += scratchBytes.getPosition();
 
     nodeCount++;
     return numBytesWritten - 1;
+  }
+
+  /**
+   * Write the padding byte, ensure no node gets address 0 which is reserved to mean the stop state
+   * w/ no arcs
+   */
+  private void writePaddingByte() throws IOException {
+    assert paddingBytePending;
+    dataOutput.writeByte((byte) 0);
+    paddingBytePending = false;
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
@@ -896,17 +913,16 @@ public class FSTCompiler<T> {
       assert validOutput(lastOutput);
 
       final T commonOutputPrefix;
-      final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
         commonOutputPrefix = fst.outputs.common(output, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        T wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
         assert validOutput(wordSuffix);
         parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
         node.prependOutput(wordSuffix);
       } else {
-        commonOutputPrefix = wordSuffix = NO_OUTPUT;
+        commonOutputPrefix = NO_OUTPUT;
       }
 
       output = fst.outputs.subtract(output, commonOutputPrefix);
@@ -956,10 +972,31 @@ public class FSTCompiler<T> {
     return output == NO_OUTPUT || !output.equals(NO_OUTPUT);
   }
 
-  /** Returns final FST. NOTE: this will return null if nothing is accepted by the FST. */
-  // TODO: make this method to only return the FSTMetadata and user needs to construct the FST
-  // themselves
-  public FST<T> compile() throws IOException {
+  /**
+   * Returns the metadata of the final FST. NOTE: this will return null if nothing is accepted by
+   * the FST themselves.
+   *
+   * <p>To create the FST, you need to:
+   *
+   * <p>- If a FSTReader DataOutput was used, such as the one returned by {@link
+   * #getOnHeapReaderWriter(int)}
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+   * </pre>
+   *
+   * <p>- If a non-FSTReader DataOutput was used, such as {@link
+   * org.apache.lucene.store.IndexOutput}, you need to first create the corresponding {@link
+   * org.apache.lucene.store.DataInput}, such as {@link org.apache.lucene.store.IndexInput} then
+   * pass it to the FST construct
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = new FST&lt;&gt;(fstMetadata, dataInput, new OffHeapFSTStore());
+   * </pre>
+   */
+  public FST.FSTMetadata<T> compile() throws IOException {
 
     final UnCompiledNode<T> root = frontier[0];
 
@@ -967,7 +1004,11 @@ public class FSTCompiler<T> {
     freezeTail(0);
     if (root.numArcs == 0) {
       if (fst.metadata.emptyOutput == null) {
+        // return null for completely empty FST which accepts nothing
         return null;
+      } else {
+        // we haven't written the padding byte so far, but the FST is still valid
+        writePaddingByte();
       }
     }
 
@@ -975,7 +1016,7 @@ public class FSTCompiler<T> {
     // root.output=" + root.output);
     finish(compileNode(root).node);
 
-    return fst;
+    return fst.metadata;
   }
 
   /** Expert: holds a pending (seen but not yet serialized) arc. */
@@ -1095,13 +1136,6 @@ public class FSTCompiler<T> {
       // assert target.node != -2;
       arc.nextFinalOutput = nextFinalOutput;
       arc.isFinal = isFinal;
-    }
-
-    void deleteLast(int label, Node target) {
-      assert numArcs > 0;
-      assert label == arcs[numArcs - 1].label;
-      assert target == arcs[numArcs - 1].target;
-      numArcs--;
     }
 
     void setLastOutput(int labelToMatch, T newOutput) {

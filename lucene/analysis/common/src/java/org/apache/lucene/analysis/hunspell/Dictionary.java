@@ -585,7 +585,7 @@ public class Dictionary {
   }
 
   static String extractLanguageCode(String isoCode) {
-    int underscore = isoCode.indexOf("_");
+    int underscore = isoCode.indexOf('_');
     return underscore < 0 ? isoCode : isoCode.substring(0, underscore);
   }
 
@@ -657,7 +657,7 @@ public class Dictionary {
       }
       fstCompiler.add(scratch.get(), output);
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   /**
