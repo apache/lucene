@@ -46,8 +46,6 @@ final class SegmentMerger {
   private final Codec codec;
 
   private final IOContext context;
-  private final TaskExecutor parallelMergeTaskExecutor;
-  private final int numParallelMergeWorkers;
 
   final MergeState mergeState;
   private final FieldInfos.Builder fieldInfosBuilder;
@@ -73,8 +71,6 @@ final class SegmentMerger {
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;
-    this.parallelMergeTaskExecutor = parallelMergeTaskExecutor;
-    this.numParallelMergeWorkers = numParallelMergeWorkers;
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
@@ -261,7 +257,7 @@ final class SegmentMerger {
   private void mergeVectorValues(
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
     try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
-      writer.merge(mergeState, this.parallelMergeTaskExecutor, this.numParallelMergeWorkers);
+      writer.merge(mergeState);
     }
   }
 
