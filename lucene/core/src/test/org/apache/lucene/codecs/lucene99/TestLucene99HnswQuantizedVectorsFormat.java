@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -185,5 +186,14 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         () ->
             new Lucene99HnswScalarQuantizedVectorsFormat(
                 20, 100, 1, null, new SameThreadExecutorService()));
+  }
+
+  // Ensures that all expected vector similarity functions are translatable
+  // in the format.
+  public void testVectorSimilarityFuncs() {
+    // This does not necessarily have to be all similarity functions, but
+    // differences should be considered carefully.
+    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
+    assertEquals(Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS, expectedValues);
   }
 }

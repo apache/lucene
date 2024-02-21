@@ -294,11 +294,10 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  // List of vector similarity functions. This list is defined in the format,
-  // in order to avoid an undesirable dependency on the declaration and order of
-  // values in VectorSimilarityFunction. The list values and order have been chosen
-  // to match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
-  // should only be appended to the end of the list.
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order have been chosen to
+  // match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
   static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
       List.of(
           VectorSimilarityFunction.EUCLIDEAN,
