@@ -523,17 +523,11 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // No match
             isSubBlock = popPushNext();
             continue nextTerm;
-          } else if (runAutomaton.isAccept(state) && automaton.getNumTransitions(state) == 1) {
+          } else if (runAutomaton.isAccept(state) && runAutomaton.terminable(state)) {
             // For PrefixQuery, we can terminate if we have matched the whole prefix.
-            Transition transition = new Transition();
-            automaton.getTransition(state, 0, transition);
-            // [0, 255] only suitable for PrefixQuery.
-            // TODO: Support RegexpQuery endWith .*
-            if (transition.dest == state && transition.min == 0 && transition.max == 255) {
-              // Match term/prefix directly.
-              // TODO: If there is subBlock, we could match its' terms and sub terms.
-              break;
-            }
+            // TODO: If there is subBlock, we could match its' terms and sub terms.
+            // TODO: Apply to RegexQuery endWith .*
+            break;
           }
         }
       } else {

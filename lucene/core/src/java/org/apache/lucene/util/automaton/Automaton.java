@@ -70,6 +70,7 @@ public class Automaton implements Accountable, TransitionAccessor {
   private int[] states;
 
   private final BitSet isAccept;
+  private final BitSet terminable;
 
   /** Holds toState, min, max for each transition. */
   private int[] transitions;
@@ -92,6 +93,7 @@ public class Automaton implements Accountable, TransitionAccessor {
   public Automaton(int numStates, int numTransitions) {
     states = new int[numStates * 2];
     isAccept = new BitSet(numStates);
+    terminable = new BitSet(numStates);
     transitions = new int[numTransitions * 3];
   }
 
@@ -108,6 +110,17 @@ public class Automaton implements Accountable, TransitionAccessor {
   public void setAccept(int state, boolean accept) {
     Objects.checkIndex(state, getNumStates());
     isAccept.set(state, accept);
+  }
+
+  /** Set automaton can terminate at this accept state. */
+  public void setTerminable(int state) {
+    assert isAccept(state);
+    terminable.set(state);
+  }
+
+  /** Return true if automaton can terminate at this state. */
+  public boolean terminable(int state) {
+    return terminable.get(state);
   }
 
   /**

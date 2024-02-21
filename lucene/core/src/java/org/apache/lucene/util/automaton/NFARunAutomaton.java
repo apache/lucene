@@ -106,6 +106,17 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
     return dStates[state].isAccept;
   }
 
+  /**
+   * Return true if automaton can terminate at this state.
+   *
+   * @param state the state
+   * @return whether automaton can terminate at this state.
+   */
+  @Override
+  public boolean terminable(int state) {
+    return false;
+  }
+
   @Override
   public int getSize() {
     return dStates.length;

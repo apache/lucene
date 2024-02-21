@@ -38,6 +38,14 @@ public interface ByteRunnable {
   boolean isAccept(int state);
 
   /**
+   * Return true if automaton can terminate at this state.
+   *
+   * @param state the state
+   * @return whether automaton can terminate at this state.
+   */
+  boolean terminable(int state);
+
+  /**
    * Returns number of states this automaton has, note this may not be an accurate number in case of
    * NFA
    *

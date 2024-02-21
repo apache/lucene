@@ -47,6 +47,7 @@ public abstract class RunAutomaton implements Accountable {
   final int alphabetSize;
   final int size;
   final FixedBitSet accept;
+  final FixedBitSet terminable;
   final int[] transitions; // delta(state,c) = transitions[state*points.length +
   // getCharClass(c)]
   final int[] points; // char interval start points
@@ -67,12 +68,16 @@ public abstract class RunAutomaton implements Accountable {
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
     accept = new FixedBitSet(size);
+    terminable = new FixedBitSet(size);
     transitions = new int[size * points.length];
     Arrays.fill(transitions, -1);
     Transition transition = new Transition();
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
+        if (a.terminable(n)) {
+          terminable.set(n);
+        }
       }
       transition.source = n;
       transition.transitionUpto = -1;
@@ -138,6 +143,16 @@ public abstract class RunAutomaton implements Accountable {
    */
   public final boolean isAccept(int state) {
     return accept.get(state);
+  }
+
+  /**
+   * Return true if automaton can terminate at this state.
+   *
+   * @param state the state
+   * @return whether automaton can terminate at this state.
+   */
+  public final boolean terminable(int state) {
+    return terminable.get(state);
   }
 
   /**

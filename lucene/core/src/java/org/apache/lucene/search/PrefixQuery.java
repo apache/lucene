@@ -51,6 +51,7 @@ public class PrefixQuery extends AutomatonQuery {
       lastState = state;
     }
     automaton.setAccept(lastState, true);
+    automaton.setTerminable(lastState);
     automaton.addTransition(lastState, lastState, 0, 255);
     automaton.finishState();
     assert automaton.isDeterministic();
