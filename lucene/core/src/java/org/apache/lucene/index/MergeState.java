@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.packed.PackedInts;
@@ -84,15 +85,28 @@ public class MergeState {
   /** InfoStream for debugging messages. */
   public final InfoStream infoStream;
 
+  /** How many workers for parallel merge activity */
+  public final int numParallelMergeWorkers;
+
+  /** Executor for parallel merge activity */
+  public final TaskExecutor parallelMergeTaskExecutor;
+
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
 
   /** Sole constructor. */
-  MergeState(List<CodecReader> readers, SegmentInfo segmentInfo, InfoStream infoStream)
+  MergeState(
+      List<CodecReader> readers,
+      SegmentInfo segmentInfo,
+      InfoStream infoStream,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;
     int numReaders = readers.size();
+    this.numParallelMergeWorkers = numParallelMergeWorkers;
+    this.parallelMergeTaskExecutor = parallelMergeTaskExecutor;
 
     maxDocs = new int[numReaders];
     fieldsProducers = new FieldsProducer[numReaders];

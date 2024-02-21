@@ -336,12 +336,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(
-      FieldInfo fieldInfo,
-      MergeState mergeState,
-      TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers)
-      throws IOException {
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     CloseableRandomVectorScorerSupplier scorerSupplier =
         flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
     boolean success = false;
@@ -357,7 +352,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // build graph
         HnswGraphMerger merger =
             createGraphMerger(
-                fieldInfo, scorerSupplier, parallelMergeTaskExecutor, numParallelMergeWorkers);
+                fieldInfo,
+                scorerSupplier,
+                mergeState.parallelMergeTaskExecutor,
+                mergeState.numParallelMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);

@@ -44,16 +44,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
-  /** merge one field allowing for parallel task merging */
-  public void mergeOneField(
-      FieldInfo fieldInfo,
-      MergeState mergeState,
-      TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers)
-      throws IOException {
-    this.mergeOneField(fieldInfo, mergeState);
-  }
-
   /** Write field for merging */
   @SuppressWarnings("unchecked")
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
@@ -108,7 +98,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(fieldInfo, mergeState, parallelMergeTaskExecutor, numParallelMergeWorkers);
+        mergeOneField(fieldInfo, mergeState);
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);

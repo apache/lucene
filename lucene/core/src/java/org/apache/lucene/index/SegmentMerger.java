@@ -67,7 +67,9 @@ final class SegmentMerger {
       throw new IllegalArgumentException(
           "IOContext.context should be MERGE; got: " + context.context);
     }
-    mergeState = new MergeState(readers, segmentInfo, infoStream);
+    mergeState =
+        new MergeState(
+            readers, segmentInfo, infoStream, parallelMergeTaskExecutor, numParallelMergeWorkers);
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;
