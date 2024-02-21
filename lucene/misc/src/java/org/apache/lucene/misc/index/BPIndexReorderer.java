@@ -355,8 +355,7 @@ public final class BPIndexReorderer {
       // Computing biases is typically a bottleneck, because each iteration needs to iterate over
       // all postings to recompute biases, and the total number of postings is usually one order of
       // magnitude or more larger than the number of docs. So we try to parallelize it.
-      ComputeBiasTask biasTask =
-          new ComputeBiasTask(
+      new ComputeBiasTask(
               docIDs.ints,
               biases,
               docIDs.offset,
@@ -364,12 +363,8 @@ public final class BPIndexReorderer {
               leftDocFreqs,
               rightDocFreqs,
               threadLocal,
-              depth);
-      if (shouldFork(docIDs.length, docIDs.ints.length)) {
-        invokeAll(biasTask);
-      } else {
-        biasTask.compute();
-      }
+              depth)
+          .compute();
 
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = docIDs.offset; i < midPoint; ++i) {
