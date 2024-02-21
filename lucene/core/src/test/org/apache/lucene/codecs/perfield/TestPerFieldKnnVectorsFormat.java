@@ -47,6 +47,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -240,6 +241,18 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
           fieldsWritten.add(fieldInfo.name);
           writer.mergeOneField(fieldInfo, mergeState);
+        }
+
+        @Override
+        public void mergeOneField(
+            FieldInfo fieldInfo,
+            MergeState mergeState,
+            TaskExecutor parallelMergeTaskExecutor,
+            int numParallelMergeWorkers)
+            throws IOException {
+          fieldsWritten.add(fieldInfo.name);
+          writer.mergeOneField(
+              fieldInfo, mergeState, parallelMergeTaskExecutor, numParallelMergeWorkers);
         }
 
         @Override

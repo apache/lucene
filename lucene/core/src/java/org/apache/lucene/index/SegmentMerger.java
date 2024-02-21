@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -45,6 +46,8 @@ final class SegmentMerger {
   private final Codec codec;
 
   private final IOContext context;
+  private final TaskExecutor parallelMergeTaskExecutor;
+  private final int numParallelMergeWorkers;
 
   final MergeState mergeState;
   private final FieldInfos.Builder fieldInfosBuilder;
@@ -56,7 +59,9 @@ final class SegmentMerger {
       InfoStream infoStream,
       Directory dir,
       FieldInfos.FieldNumbers fieldNumbers,
-      IOContext context)
+      IOContext context,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers)
       throws IOException {
     if (context.context != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
@@ -66,6 +71,8 @@ final class SegmentMerger {
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;
+    this.parallelMergeTaskExecutor = parallelMergeTaskExecutor;
+    this.numParallelMergeWorkers = numParallelMergeWorkers;
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
@@ -252,7 +259,7 @@ final class SegmentMerger {
   private void mergeVectorValues(
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
     try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
-      writer.merge(mergeState);
+      writer.merge(mergeState, this.parallelMergeTaskExecutor, this.numParallelMergeWorkers);
     }
   }
 

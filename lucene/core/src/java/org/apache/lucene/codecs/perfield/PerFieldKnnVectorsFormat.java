@@ -35,6 +35,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -120,6 +121,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       getInstance(fieldInfo).mergeOneField(fieldInfo, mergeState);
+    }
+
+    @Override
+    public void mergeOneField(
+        FieldInfo fieldInfo,
+        MergeState mergeState,
+        TaskExecutor parallelMergeTaskExecutor,
+        int numParallelMergeWorkers)
+        throws IOException {
+      getInstance(fieldInfo)
+          .mergeOneField(fieldInfo, mergeState, parallelMergeTaskExecutor, numParallelMergeWorkers);
     }
 
     @Override

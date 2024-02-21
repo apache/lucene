@@ -105,7 +105,9 @@ public class TestSegmentMerger extends LuceneTestCase {
             InfoStream.getDefault(),
             mergedDir,
             new FieldInfos.FieldNumbers(null, null),
-            newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))));
+            newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))),
+            null,
+            0);
     MergeState mergeState = merger.merge();
     int docsMerged = mergeState.segmentInfo.maxDoc();
     assertTrue(docsMerged == 2);

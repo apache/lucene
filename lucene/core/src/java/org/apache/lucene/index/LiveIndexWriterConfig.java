@@ -25,6 +25,7 @@ import org.apache.lucene.index.IndexWriter.IndexReaderWarmer;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
@@ -70,6 +71,12 @@ public class LiveIndexWriterConfig {
 
   /** {@link MergePolicy} for selecting merges. */
   protected volatile MergePolicy mergePolicy;
+
+  /** {@link TaskExecutor} for parallel merging of segments in a single merge action */
+  protected volatile TaskExecutor parallelMergeTaskExecutor;
+
+  /** The number of threads to use when executing a parallel merge. */
+  protected volatile int numParallelMergeWorkers;
 
   /** True if readers should be pooled. */
   protected volatile boolean readerPooling;
@@ -312,6 +319,11 @@ public class LiveIndexWriterConfig {
    */
   public MergeScheduler getMergeScheduler() {
     return mergeScheduler;
+  }
+
+  /** Returns the number of parallel workers allowed for parallel actions within a single merge */
+  public int getNumParallelMergeWorkers() {
+    return numParallelMergeWorkers;
   }
 
   /** Returns the current {@link Codec}. */

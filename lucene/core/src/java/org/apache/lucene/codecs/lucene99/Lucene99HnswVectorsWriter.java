@@ -336,7 +336,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneField(
+      FieldInfo fieldInfo,
+      MergeState mergeState,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers)
+      throws IOException {
     CloseableRandomVectorScorerSupplier scorerSupplier =
         flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
     boolean success = false;
@@ -350,7 +355,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (scorerSupplier.totalVectorCount() > 0) {
         // build graph
-        HnswGraphMerger merger = createGraphMerger(fieldInfo, scorerSupplier);
+        HnswGraphMerger merger =
+            createGraphMerger(
+                fieldInfo, scorerSupplier, parallelMergeTaskExecutor, numParallelMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
@@ -487,10 +494,26 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private HnswGraphMerger createGraphMerger(
-      FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier) {
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers) {
+    if (parallelMergeTaskExecutor != null && mergeExec != null) {
+      throw new IllegalArgumentException(
+          "Cannot specify both mergeExecutor in format construction and parallelMergeTaskExecutor in the index writing config");
+    }
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+    }
+    if (parallelMergeTaskExecutor != null) {
+      return new ConcurrentHnswMerger(
+          fieldInfo,
+          scorerSupplier,
+          M,
+          beamWidth,
+          parallelMergeTaskExecutor,
+          numParallelMergeWorkers);
     }
     return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
   }

@@ -32,6 +32,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 
@@ -82,6 +83,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert fieldInfo != null;
       assert mergeState != null;
       delegate.mergeOneField(fieldInfo, mergeState);
+    }
+
+    @Override
+    public void mergeOneField(
+        FieldInfo fieldInfo,
+        MergeState mergeState,
+        TaskExecutor parallelMergeTaskExecutor,
+        int numParallelMergeWorkers)
+        throws IOException {
+      assert fieldInfo != null;
+      assert mergeState != null;
+      assert numParallelMergeWorkers >= 0;
+      delegate.mergeOneField(
+          fieldInfo, mergeState, parallelMergeTaskExecutor, numParallelMergeWorkers);
     }
 
     @Override

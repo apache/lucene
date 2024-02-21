@@ -29,6 +29,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.Accountable;
 
 /** Writes vectors to an index. */
@@ -42,6 +43,16 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
+
+  /** merge one field allowing for parallel task merging */
+  public void mergeOneField(
+      FieldInfo fieldInfo,
+      MergeState mergeState,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers)
+      throws IOException {
+    this.mergeOneField(fieldInfo, mergeState);
+  }
 
   /** Write field for merging */
   @SuppressWarnings("unchecked")
@@ -80,7 +91,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
    * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
    * deleted documents.
    */
-  public final void merge(MergeState mergeState) throws IOException {
+  public final void merge(
+      MergeState mergeState, TaskExecutor parallelMergeTaskExecutor, int numParallelMergeWorkers)
+      throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
@@ -95,7 +108,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(fieldInfo, mergeState);
+        mergeOneField(fieldInfo, mergeState, parallelMergeTaskExecutor, numParallelMergeWorkers);
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
