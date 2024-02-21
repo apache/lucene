@@ -313,7 +313,9 @@ public final class BPIndexReorderer {
       for (int iter = 0; iter < maxIters; ++iter) {
         boolean moved;
         try {
-          moved = shuffle(forwardIndex, docIDs, right.offset, leftDocFreqs, rightDocFreqs, biases, iter);
+          moved =
+              shuffle(
+                  forwardIndex, docIDs, right.offset, leftDocFreqs, rightDocFreqs, biases, iter);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
