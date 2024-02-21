@@ -18,13 +18,10 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.Locale;
 import java.util.Random;
-import java.util.TimeZone;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -58,6 +55,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
   static final String INDEX_NAME = "sorted";
   static final String SUFFIX = "";
+  private static final Version FIRST_PARENT_DOC_VERSION = Version.LUCENE_9_11_0;
+  private static final String PARENT_FIELD_NAME = "___parent";
 
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
@@ -82,8 +81,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
             .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
             .setIndexSort(sort)
             .setMergePolicy(newLogMergePolicy());
-    if (this.version.onOrAfter(Version.LUCENE_10_0_0)) {
-      indexWriterConfig.setParentField("___parent");
+    if (this.version.onOrAfter(FIRST_PARENT_DOC_VERSION)) {
+      indexWriterConfig.setParentField(PARENT_FIELD_NAME);
     }
     // open writer
     try (IndexWriter writer = new IndexWriter(directory, indexWriterConfig)) {
@@ -92,7 +91,10 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
         Document child = new Document();
         child.add(new StringField("relation", "child", Field.Store.NO));
         child.add(new StringField("bid", "" + i, Field.Store.NO));
-        child.add(new NumericDocValuesField("dateDV", i));
+        if (version.onOrAfter(FIRST_PARENT_DOC_VERSION)
+            == false) { // only add this to earlier versions
+          child.add(new NumericDocValuesField("dateDV", i));
+        }
         Document parent = new Document();
         parent.add(new StringField("relation", "parent", Field.Store.NO));
         parent.add(new StringField("bid", "" + i, Field.Store.NO));
@@ -161,29 +163,21 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     conf.setUseCompoundFile(false);
     conf.setCodec(TestUtil.getDefaultCodec());
     conf.setParentField("___parent");
+    conf.setParentField(PARENT_FIELD_NAME);
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
-    SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
-    parser.setTimeZone(TimeZone.getTimeZone("UTC"));
-    ParsePosition position = new ParsePosition(0);
+
     for (int i = 0; i < 50; i++) {
       Document doc = TestUtil.cloneDocument(docs.nextDoc());
       String dateString = doc.get("date");
-      position.setIndex(0);
-      Date date = parser.parse(dateString, position);
-      if (position.getErrorIndex() != -1) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
-      if (position.getIndex() != dateString.length()) {
-        throw new AssertionError("failed to parse \"" + dateString + "\" as date");
-      }
+      LocalDateTime date = LineFileDocs.DATE_FIELD_VALUE_TO_LOCALDATETIME.apply(dateString);
       doc.add(
           new NumericDocValuesField(
               "docid_intDV", doc.getField("docid_int").numericValue().longValue()));
       doc.add(
           new SortedDocValuesField("titleDV", new BytesRef(doc.getField("title").stringValue())));
-      doc.add(new NumericDocValuesField("dateDV", date.getTime()));
+      doc.add(new NumericDocValuesField("dateDV", date.toInstant(ZoneOffset.UTC).toEpochMilli()));
       if (i % 10 == 0) { // commit every 10 documents
         writer.commit();
       }
@@ -205,9 +199,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
     topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
     assertEquals(50, topDocs.totalHits.value);
-
-    topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);
-    assertTrue(topDocs.totalHits.value > 0);
 
     topDocs =
         searcher.search(

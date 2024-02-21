@@ -41,8 +41,8 @@ public class PatternCaptureGroupFilterFactory extends TokenFilterFactory {
   /** SPI name */
   public static final String NAME = "patternCaptureGroup";
 
-  private Pattern pattern;
-  private boolean preserveOriginal = true;
+  private final Pattern pattern;
+  private final boolean preserveOriginal;
 
   public PatternCaptureGroupFilterFactory(Map<String, String> args) {
     super(args);

@@ -72,6 +72,7 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
       final int crashTime = TestUtil.nextInt(random(), 3000, 4000);
       Thread t =
           new Thread() {
+            @SuppressForbidden(reason = "Thread sleep")
             @Override
             public void run() {
               try {

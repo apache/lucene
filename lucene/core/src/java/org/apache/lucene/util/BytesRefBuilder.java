@@ -60,6 +60,13 @@ public class BytesRefBuilder {
     ref.bytes = ArrayUtil.grow(ref.bytes, capacity);
   }
 
+  /**
+   * Used to grow the builder without copying bytes. see {@link ArrayUtil#growNoCopy(byte[], int)}.
+   */
+  public void growNoCopy(int capacity) {
+    ref.bytes = ArrayUtil.growNoCopy(ref.bytes, capacity);
+  }
+
   /** Append a single byte to this builder. */
   public void append(byte b) {
     grow(ref.length + 1);
