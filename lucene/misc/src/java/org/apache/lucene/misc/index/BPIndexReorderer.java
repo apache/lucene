@@ -26,6 +26,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
@@ -46,10 +47,12 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSelector;
+import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -253,16 +256,19 @@ public final class BPIndexReorderer {
     private final IntsRef docIDs;
     private final float[] biases;
     private final CloseableThreadLocal<PerThreadState> threadLocal;
+    private final BitSet parents;
 
     IndexReorderingTask(
         IntsRef docIDs,
         float[] biases,
         CloseableThreadLocal<PerThreadState> threadLocal,
+        BitSet parents,
         int depth) {
       super(depth);
       this.docIDs = docIDs;
       this.biases = biases;
       this.threadLocal = threadLocal;
+      this.parents = parents;
     }
 
     private static void computeDocFreqs(IntsRef docs, ForwardIndex forwardIndex, int[] docFreqs) {
@@ -292,6 +298,7 @@ public final class BPIndexReorderer {
       } else {
         assert sorted(docIDs);
       }
+      assert assertParentStructure();
 
       int halfLength = docIDs.length / 2;
       if (halfLength < minPartitionSize) {
@@ -315,7 +322,14 @@ public final class BPIndexReorderer {
         try {
           moved =
               shuffle(
-                  forwardIndex, docIDs, right.offset, leftDocFreqs, rightDocFreqs, biases, iter);
+                  forwardIndex,
+                  docIDs,
+                  right.offset,
+                  leftDocFreqs,
+                  rightDocFreqs,
+                  biases,
+                  parents,
+                  iter);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
@@ -324,11 +338,34 @@ public final class BPIndexReorderer {
         }
       }
 
+      if (parents != null) {
+        // Make sure we split just after a parent doc
+        int split = right.offset;
+        while (parents.get(docIDs.ints[split - 1]) == false) {
+          split++;
+        }
+        assert split <= docIDs.offset + docIDs.length : "last doc ID of a slice must be a parent";
+        if (split == docIDs.offset + docIDs.length) {
+          // No luck, we have a single parent after the mid point, look before the mid point then.
+          split = right.offset - 1;
+          while (split > docIDs.offset && parents.get(docIDs.ints[split - 1]) == false) {
+            split--;
+          }
+          if (split == docIDs.offset) {
+            // The slice has a single block, no reordering needed.
+            return;
+          }
+        }
+        left = new IntsRef(docIDs.ints, docIDs.offset, split - docIDs.offset);
+        right = new IntsRef(docIDs.ints, split, docIDs.offset + docIDs.length - split);
+      }
+
       // It is fine for all tasks to share the same docs / biases array since they all work on
       // different slices of the array at a given point in time.
-      IndexReorderingTask leftTask = new IndexReorderingTask(left, biases, threadLocal, depth + 1);
+      IndexReorderingTask leftTask =
+          new IndexReorderingTask(left, biases, threadLocal, parents, depth + 1);
       IndexReorderingTask rightTask =
-          new IndexReorderingTask(right, biases, threadLocal, depth + 1);
+          new IndexReorderingTask(right, biases, threadLocal, parents, depth + 1);
 
       if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftTask, rightTask);
@@ -336,6 +373,28 @@ public final class BPIndexReorderer {
         leftTask.compute();
         rightTask.compute();
       }
+    }
+
+    // used for asserts
+    private boolean assertParentStructure() {
+      if (parents == null) {
+        return true;
+      }
+      int i = docIDs.offset;
+      final int end = docIDs.offset + docIDs.length;
+      while (i < end) {
+        final int firstChild = docIDs.ints[i];
+        final int parent = parents.nextSetBit(firstChild);
+        final int numChildren = parent - firstChild;
+        assert i + numChildren < end;
+        for (int j = 1; j <= numChildren; ++j) {
+          assert docIDs.ints[i + j] == firstChild + j : "Parent structure has not been preserved";
+        }
+        i += numChildren + 1;
+      }
+      assert i == end : "Last doc ID must be a parent doc";
+
+      return true;
     }
 
     /**
@@ -349,6 +408,7 @@ public final class BPIndexReorderer {
         int[] leftDocFreqs,
         int[] rightDocFreqs,
         float[] biases,
+        BitSet parents,
         int iter)
         throws IOException {
 
@@ -365,6 +425,23 @@ public final class BPIndexReorderer {
               threadLocal,
               depth)
           .compute();
+
+      if (parents != null) {
+        for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ) {
+          final int firstChild = docIDs.ints[i];
+          final int numChildren = parents.nextSetBit(firstChild) - firstChild;
+          assert parents.get(docIDs.ints[i + numChildren]);
+          double cumulativeBias = 0;
+          for (int j = 0; j <= numChildren; ++j) {
+            cumulativeBias += biases[i + j];
+          }
+          // Give all docs from the same block the same bias, which is the sum of biases of all
+          // documents in the block. This helps ensure that the follow-up sort() call preserves the
+          // block structure.
+          Arrays.fill(biases, i, i + numChildren + 1, (float) cumulativeBias);
+          i += numChildren + 1;
+        }
+      }
 
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = docIDs.offset; i < midPoint; ++i) {
@@ -383,50 +460,101 @@ public final class BPIndexReorderer {
         return false;
       }
 
-      new IntroSelector() {
+      if (parents == null) {
+        new IntroSelector() {
 
-        int pivotDoc;
-        float pivotBias;
+          int pivotDoc;
+          float pivotBias;
 
-        @Override
-        protected void setPivot(int i) {
-          pivotDoc = docIDs.ints[i];
-          pivotBias = biases[i];
-        }
-
-        @Override
-        protected int comparePivot(int j) {
-          int cmp = Float.compare(pivotBias, biases[j]);
-          if (cmp == 0) {
-            // Tie break on the doc ID to preserve doc ID ordering as much as possible
-            cmp = pivotDoc - docIDs.ints[j];
+          @Override
+          protected void setPivot(int i) {
+            pivotDoc = docIDs.ints[i];
+            pivotBias = biases[i];
           }
-          return cmp;
-        }
 
-        @Override
-        protected void swap(int i, int j) {
-          float tmpBias = biases[i];
-          biases[i] = biases[j];
-          biases[j] = tmpBias;
+          @Override
+          protected int comparePivot(int j) {
+            int cmp = Float.compare(pivotBias, biases[j]);
+            if (cmp == 0) {
+              // Tie break on the doc ID to preserve doc ID ordering as much as possible
+              cmp = pivotDoc - docIDs.ints[j];
+            }
+            return cmp;
+          }
 
-          if (i < midPoint == j < midPoint) {
-            int tmpDoc = docIDs.ints[i];
-            docIDs.ints[i] = docIDs.ints[j];
-            docIDs.ints[j] = tmpDoc;
-          } else {
-            // If we're swapping docs across the left and right sides, we need to keep doc freqs
-            // up-to-date.
-            int left = Math.min(i, j);
-            int right = Math.max(i, j);
-            try {
-              swapDocsAndFreqs(docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
+          @Override
+          protected void swap(int i, int j) {
+            float tmpBias = biases[i];
+            biases[i] = biases[j];
+            biases[j] = tmpBias;
+
+            if (i < midPoint == j < midPoint) {
+              int tmpDoc = docIDs.ints[i];
+              docIDs.ints[i] = docIDs.ints[j];
+              docIDs.ints[j] = tmpDoc;
+            } else {
+              // If we're swapping docs across the left and right sides, we need to keep doc freqs
+              // up-to-date.
+              int left = Math.min(i, j);
+              int right = Math.max(i, j);
+              try {
+                swapDocsAndFreqs(
+                    docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
             }
           }
-        }
-      }.select(docIDs.offset, docIDs.offset + docIDs.length, midPoint);
+        }.select(docIDs.offset, docIDs.offset + docIDs.length, midPoint);
+      } else {
+        // When we have parents, we need to do a full sort to make sure we're not breaking the
+        // parent structure.
+        new IntroSorter() {
+
+          int pivotDoc;
+          float pivotBias;
+
+          @Override
+          protected void setPivot(int i) {
+            pivotDoc = docIDs.ints[i];
+            pivotBias = biases[i];
+          }
+
+          @Override
+          protected int comparePivot(int j) {
+            int cmp = Float.compare(pivotBias, biases[j]);
+            if (cmp == 0) {
+              // Tie break on the doc ID to preserve doc ID ordering as much as possible
+              cmp = pivotDoc - docIDs.ints[j];
+            }
+            return cmp;
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            float tmpBias = biases[i];
+            biases[i] = biases[j];
+            biases[j] = tmpBias;
+
+            if (i < midPoint == j < midPoint) {
+              int tmpDoc = docIDs.ints[i];
+              docIDs.ints[i] = docIDs.ints[j];
+              docIDs.ints[j] = tmpDoc;
+            } else {
+              // If we're swapping docs across the left and right sides, we need to keep doc freqs
+              // up-to-date.
+              int left = Math.min(i, j);
+              int right = Math.max(i, j);
+              try {
+                swapDocsAndFreqs(
+                    docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+          }
+        }.sort(docIDs.offset, docIDs.offset + docIDs.length);
+      }
 
       return true;
     }
@@ -809,6 +937,12 @@ public final class BPIndexReorderer {
         sortedDocs[i] = i;
       }
 
+      BitSet parents = null;
+      String parentField = reader.getFieldInfos().getParentField();
+      if (parentField != null) {
+        parents = BitSet.of(DocValues.getNumeric(reader, parentField), maxDoc);
+      }
+
       try (CloseableThreadLocal<PerThreadState> threadLocal =
           new CloseableThreadLocal<>() {
             @Override
@@ -817,7 +951,8 @@ public final class BPIndexReorderer {
             }
           }) {
         IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        IndexReorderingTask task = new IndexReorderingTask(docs, new float[maxDoc], threadLocal, 0);
+        IndexReorderingTask task =
+            new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, 0);
         if (forkJoinPool != null) {
           forkJoinPool.execute(task);
           task.join();
