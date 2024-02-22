@@ -283,21 +283,10 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       if(qf != null) quantFactors[i] = qf;
     }
 
-    final int NB_TOPDOCS_LIMIT = 1000;
-    int nb_max_doc_match = Integer.MAX_VALUE;
-    for(int i = 0; i < queryBuffers.size(); ++i) {
-      if (numHits[i] <= NB_TOPDOCS_LIMIT) {
-        nb_max_doc_match = 1;
-      }
-    }
-
     // System.out.println(">> Launching DPUs");
-    // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
-    copyIntToDpus("nb_max_doc_match", nb_max_doc_match);
-    copyIntToDpus("new_query", 1);
-    // first run of DPUs is triggered in the Java layer, the subsequent runs are done in the native layer
-    // to use benefit from lower bound on score
-    dpuSystem.async().exec(null);
+    // 2) launch DPUs (program should be loaded on PimSystemManager Index load, only once)
+    // Several DPU runs can be done in the native layer in order
+    // to use the benefit of computing a lower bound on score on the CPU and broadcasting it back to DPUs
     runDpusWithLowerBound(queryBuffers.size(), numHits, quantFactors, scorers);
 
     // 3) results transfer from DPUs to CPU
