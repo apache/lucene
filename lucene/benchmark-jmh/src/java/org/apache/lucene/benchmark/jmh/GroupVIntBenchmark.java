@@ -181,6 +181,7 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public void benchMMapDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
     byteBufferGVIntIn.readGroupVInts(values, size);
@@ -188,6 +189,7 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
     this.readGroupVIntsBaseline(byteBufferGVIntIn, values, size);

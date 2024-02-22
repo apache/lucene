@@ -64,12 +64,63 @@ public final class GroupVIntUtil {
   }
 
   /**
+   * An abstraction to read an entire group of 4 values and write them to out. This allows some
+   * implementations to build in more efficient decoding.
+   */
+  @FunctionalInterface
+  public interface Decoder {
+    int decode(long pos, int flag, long[] dst, int offset);
+  }
+
+  public static int readGroupVInt(
+      DataInput in, long remaining, Decoder decoder, long pos, long[] dst, int offset)
+      throws IOException {
+    if (remaining < MAX_LENGTH_PER_GROUP) {
+      readGroupVInt(in, dst, offset);
+      return 0;
+    }
+    final int flag = in.readByte() & 0xFF;
+    // account for the call to readByte()
+    return decoder.decode(pos + 1, flag, dst, offset);
+  }
+
+  /**
    * Provides an abstraction for read int values, so that decoding logic can be reused in different
    * DataInput.
    */
   @FunctionalInterface
   public static interface IntReader {
     int read(long v);
+  }
+
+  /** A Decoder that reads 32-bit integers at unaligned positions to decode a group. */
+  public static class UnalignedDecoder implements Decoder {
+    private final IntReader reader;
+
+    public UnalignedDecoder(IntReader reader) {
+      this.reader = reader;
+    }
+
+    @Override
+    public int decode(long pos, int flag, long[] dst, int offset) {
+      final long posStart = pos;
+      final int n1Minus1 = flag >> 6;
+      final int n2Minus1 = (flag >> 4) & 0x03;
+      final int n3Minus1 = (flag >> 2) & 0x03;
+      final int n4Minus1 = flag & 0x03;
+
+      // This code path has fewer conditionals and tends to be significantly faster in
+      // benchmarks
+      dst[offset] = reader.read(pos) & MASKS[n1Minus1];
+      pos += 1 + n1Minus1;
+      dst[offset + 1] = reader.read(pos) & MASKS[n2Minus1];
+      pos += 1 + n2Minus1;
+      dst[offset + 2] = reader.read(pos) & MASKS[n3Minus1];
+      pos += 1 + n3Minus1;
+      dst[offset + 3] = reader.read(pos) & MASKS[n4Minus1];
+      pos += 1 + n4Minus1;
+      return (int) (pos - posStart);
+    }
   }
 
   /**
@@ -89,26 +140,6 @@ public final class GroupVIntUtil {
   public static int readGroupVInt(
       DataInput in, long remaining, IntReader reader, long pos, long[] dst, int offset)
       throws IOException {
-    if (remaining < MAX_LENGTH_PER_GROUP) {
-      readGroupVInt(in, dst, offset);
-      return 0;
-    }
-    final int flag = in.readByte() & 0xFF;
-    final long posStart = ++pos; // exclude the flag bytes, the position has updated via readByte().
-    final int n1Minus1 = flag >> 6;
-    final int n2Minus1 = (flag >> 4) & 0x03;
-    final int n3Minus1 = (flag >> 2) & 0x03;
-    final int n4Minus1 = flag & 0x03;
-
-    // This code path has fewer conditionals and tends to be significantly faster in benchmarks
-    dst[offset] = reader.read(pos) & MASKS[n1Minus1];
-    pos += 1 + n1Minus1;
-    dst[offset + 1] = reader.read(pos) & MASKS[n2Minus1];
-    pos += 1 + n2Minus1;
-    dst[offset + 2] = reader.read(pos) & MASKS[n3Minus1];
-    pos += 1 + n3Minus1;
-    dst[offset + 3] = reader.read(pos) & MASKS[n4Minus1];
-    pos += 1 + n4Minus1;
-    return (int) (pos - posStart);
+    return readGroupVInt(in, remaining, new UnalignedDecoder(reader), pos, dst, offset);
   }
 }

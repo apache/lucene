@@ -24,6 +24,8 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
@@ -322,17 +324,73 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  /** A Decoder implementation that uses vector APIs to speed up decoding of 4-value group. */
+  private static class VectorGroupDecoder implements GroupVIntUtil.Decoder {
+    private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
+    private MemorySegment segment;
+
+    public VectorGroupDecoder(MemorySegment segment) {
+      this.segment = segment;
+    }
+
+    public int decode(long pos, int flag, long[] dst, int offset) {
+      // The decoded input will be 4-16 bytes long. Load 16 bytes of input and perform 2 shuffles
+      // to produce 4 long values. We use rearrange() rather than expand() as expand() is emulated
+      // in software for ARM NEON.
+      ByteVector input =
+          ByteVector.fromMemorySegment(SPECIES, this.segment, pos, ByteOrder.LITTLE_ENDIAN);
+      // Split the flag into two nibbles and compute the encoded length of each nibble. We need the
+      // length of the lo nibble in order to compute the hi shuffle.
+      int flagLo = (flag >> 4) & 0xF;
+      int flagHi = flag & 0xF;
+      int nibbleSum = (flag & 0x33) + ((flag >> 2) & 0x33) + 0x22;
+      var shuffleLo = ByteVector.fromArray(SPECIES, SHUFFLES, flagLo * 16).toShuffle();
+      int lengthLo = (nibbleSum >> 4) & 0xF;
+      var shuffleHi =
+          ByteVector.fromArray(SPECIES, SHUFFLES, flagHi * 16)
+              .add(ByteVector.broadcast(SPECIES, lengthLo))
+              .toShuffle();
+      input
+          .rearrange(shuffleLo, shuffleLo.laneIsValid())
+          .reinterpretAsLongs()
+          .intoArray(dst, offset);
+      input
+          .rearrange(shuffleHi, shuffleHi.laneIsValid())
+          .reinterpretAsLongs()
+          .intoArray(dst, offset + 2);
+      return lengthLo + (nibbleSum & 0xF);
+    }
+
+    private static void fillShuffle(int flag, byte[] shuffles) {
+      int offset = flag * 16;
+      byte consumed = 0;
+      for (int i = 0; i <= ((flag >> 2) & 0x3); i++) {
+        shuffles[offset + i] = consumed++;
+      }
+      for (int i = 0; i <= (flag & 0x3); i++) {
+        shuffles[offset + i + 8] = consumed++;
+      }
+    }
+
+    private static byte[] computeShuffles() {
+      var shuffles = new byte[16 * 16];
+      Arrays.fill(shuffles, (byte) -16);
+      for (int i = 0; i < 16; i++) {
+        fillShuffle(i, shuffles);
+      }
+      return shuffles;
+    }
+
+    private static final byte[] SHUFFLES = computeShuffles();
+  }
+
   @Override
   protected void readGroupVInt(long[] dst, int offset) throws IOException {
     try {
-      final int len =
+      long remaining = curSegment.byteSize() - curPosition;
+      int len =
           GroupVIntUtil.readGroupVInt(
-              this,
-              curSegment.byteSize() - curPosition,
-              p -> curSegment.get(LAYOUT_LE_INT, p),
-              curPosition,
-              dst,
-              offset);
+              this, remaining, new VectorGroupDecoder(curSegment), curPosition, dst, offset);
       curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
