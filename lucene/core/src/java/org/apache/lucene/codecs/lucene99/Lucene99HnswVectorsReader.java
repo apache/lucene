@@ -174,9 +174,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   // List of vector similarity functions. This list is defined here, in order
   // to avoid an undesirable dependency on the declaration and order of values
-  // in VectorSimilarityFunction. The list values and order have been chosen to
-  // match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
-  // should only be appended to the end of the list.
+  // in VectorSimilarityFunction. The list values and order must be identical
+  // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
   public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
       List.of(
           VectorSimilarityFunction.EUCLIDEAN,
