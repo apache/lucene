@@ -197,7 +197,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
 
 Bug Fixes
 ---------------------
