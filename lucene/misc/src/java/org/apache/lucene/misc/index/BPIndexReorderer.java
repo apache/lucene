@@ -425,7 +425,6 @@ public final class BPIndexReorderer {
               threadLocal,
               depth)
           .compute();
-<<<<<<< HEAD
 
       if (parents != null) {
         for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ) {
