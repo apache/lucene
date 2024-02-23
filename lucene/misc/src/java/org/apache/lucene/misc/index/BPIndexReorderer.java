@@ -459,98 +459,72 @@ public final class BPIndexReorderer {
         return false;
       }
 
+      class Selector extends IntroSelector {
+
+        int pivotDoc;
+        float pivotBias;
+
+        @Override
+        public void setPivot(int i) {
+          pivotDoc = docIDs.ints[i];
+          pivotBias = biases[i];
+        }
+
+        @Override
+        public int comparePivot(int j) {
+          int cmp = Float.compare(pivotBias, biases[j]);
+          if (cmp == 0) {
+            // Tie break on the doc ID to preserve doc ID ordering as much as possible
+            cmp = pivotDoc - docIDs.ints[j];
+          }
+          return cmp;
+        }
+
+        @Override
+        public void swap(int i, int j) {
+          float tmpBias = biases[i];
+          biases[i] = biases[j];
+          biases[j] = tmpBias;
+
+          if (i < midPoint == j < midPoint) {
+            int tmpDoc = docIDs.ints[i];
+            docIDs.ints[i] = docIDs.ints[j];
+            docIDs.ints[j] = tmpDoc;
+          } else {
+            // If we're swapping docs across the left and right sides, we need to keep doc freqs
+            // up-to-date.
+            int left = Math.min(i, j);
+            int right = Math.max(i, j);
+            try {
+              swapDocsAndFreqs(docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+        }
+      }
+      ;
+      Selector selector = new Selector();
+
       if (parents == null) {
-        new IntroSelector() {
-
-          int pivotDoc;
-          float pivotBias;
-
-          @Override
-          protected void setPivot(int i) {
-            pivotDoc = docIDs.ints[i];
-            pivotBias = biases[i];
-          }
-
-          @Override
-          protected int comparePivot(int j) {
-            int cmp = Float.compare(pivotBias, biases[j]);
-            if (cmp == 0) {
-              // Tie break on the doc ID to preserve doc ID ordering as much as possible
-              cmp = pivotDoc - docIDs.ints[j];
-            }
-            return cmp;
-          }
-
-          @Override
-          protected void swap(int i, int j) {
-            float tmpBias = biases[i];
-            biases[i] = biases[j];
-            biases[j] = tmpBias;
-
-            if (i < midPoint == j < midPoint) {
-              int tmpDoc = docIDs.ints[i];
-              docIDs.ints[i] = docIDs.ints[j];
-              docIDs.ints[j] = tmpDoc;
-            } else {
-              // If we're swapping docs across the left and right sides, we need to keep doc freqs
-              // up-to-date.
-              int left = Math.min(i, j);
-              int right = Math.max(i, j);
-              try {
-                swapDocsAndFreqs(
-                    docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
-              }
-            }
-          }
-        }.select(docIDs.offset, docIDs.offset + docIDs.length, midPoint);
+        selector.select(docIDs.offset, docIDs.offset + docIDs.length, midPoint);
       } else {
         // When we have parents, we need to do a full sort to make sure we're not breaking the
         // parent structure.
         new IntroSorter() {
-
-          int pivotDoc;
-          float pivotBias;
-
           @Override
           protected void setPivot(int i) {
-            pivotDoc = docIDs.ints[i];
-            pivotBias = biases[i];
+            selector.setPivot(i);
           }
 
           @Override
           protected int comparePivot(int j) {
-            int cmp = Float.compare(pivotBias, biases[j]);
-            if (cmp == 0) {
-              // Tie break on the doc ID to preserve doc ID ordering as much as possible
-              cmp = pivotDoc - docIDs.ints[j];
-            }
-            return cmp;
+            return selector.comparePivot(j);
           }
 
           @Override
           protected void swap(int i, int j) {
-            float tmpBias = biases[i];
-            biases[i] = biases[j];
-            biases[j] = tmpBias;
-
-            if (i < midPoint == j < midPoint) {
-              int tmpDoc = docIDs.ints[i];
-              docIDs.ints[i] = docIDs.ints[j];
-              docIDs.ints[j] = tmpDoc;
-            } else {
-              // If we're swapping docs across the left and right sides, we need to keep doc freqs
-              // up-to-date.
-              int left = Math.min(i, j);
-              int right = Math.max(i, j);
-              try {
-                swapDocsAndFreqs(
-                    docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
-              }
-            }
+            selector.swap(i, j);
           }
         }.sort(docIDs.offset, docIDs.offset + docIDs.length);
       }
