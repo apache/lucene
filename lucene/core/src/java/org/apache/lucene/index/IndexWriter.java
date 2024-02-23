@@ -67,7 +67,6 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -380,7 +379,6 @@ public class IndexWriter
   // merges
   private final HashSet<SegmentCommitInfo> mergingSegments = new HashSet<>();
   private final MergeScheduler mergeScheduler;
-  private final TaskExecutor parallelMergeExecutor;
   private final Set<SegmentMerger> runningAddIndexesMerges = new HashSet<>();
   private final Deque<MergePolicy.OneMerge> pendingMerges = new ArrayDeque<>();
   private final Set<MergePolicy.OneMerge> runningMerges = new HashSet<>();
@@ -959,7 +957,6 @@ public class IndexWriter
       directoryOrig = d;
       directory = new LockValidatingDirectoryWrapper(d, writeLock);
       mergeScheduler = config.getMergeScheduler();
-      parallelMergeExecutor = config.parallelMergeTaskExecutor;
       mergeScheduler.initialize(infoStream, directoryOrig);
       OpenMode mode = config.getOpenMode();
       final boolean indexExists;
@@ -3447,8 +3444,7 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            parallelMergeExecutor,
-            config.getNumParallelMergeWorkers());
+            mergeScheduler.getInterMergeExecutor(merge));
 
     if (!merger.shouldMerge()) {
       return;
@@ -5238,8 +5234,7 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              parallelMergeExecutor,
-              config.getNumParallelMergeWorkers());
+              mergeScheduler.getInterMergeExecutor(merge));
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 

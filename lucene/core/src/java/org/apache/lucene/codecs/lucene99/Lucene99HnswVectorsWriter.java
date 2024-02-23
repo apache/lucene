@@ -352,10 +352,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // build graph
         HnswGraphMerger merger =
             createGraphMerger(
-                fieldInfo,
-                scorerSupplier,
-                mergeState.parallelMergeTaskExecutor,
-                mergeState.numParallelMergeWorkers);
+                fieldInfo, scorerSupplier, mergeState.parallelMergeTaskExecutor, numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);

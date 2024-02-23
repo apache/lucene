@@ -21,7 +21,11 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -109,6 +113,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
 
+  private ScaledExecutor scaledExecutor;
+
   /** Sole constructor, with all settings set to default values. */
   public ConcurrentMergeScheduler() {}
 
@@ -147,6 +153,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       }
       this.maxThreadCount = maxThreadCount;
       this.maxMergeCount = maxMergeCount;
+    }
+    if (scaledExecutor != null) {
+      scaledExecutor.updatePoolSize();
     }
   }
 
@@ -257,6 +266,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     assert false : "merge thread " + currentThread + " was not found";
+  }
+
+  @Override
+  public Executor getInterMergeExecutor(OneMerge merge) {
+    assert scaledExecutor != null : "scaledExecutor is not initialized";
+    return scaledExecutor;
   }
 
   @Override
@@ -446,7 +461,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public void close() {
-    sync();
+    try {
+      sync();
+    } finally {
+      if (scaledExecutor != null) {
+        scaledExecutor.shutdown();
+      }
+    }
   }
 
   /**
@@ -510,6 +531,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   void initialize(InfoStream infoStream, Directory directory) throws IOException {
     super.initialize(infoStream, directory);
     initDynamicDefaults(directory);
+    if (scaledExecutor == null) {
+      scaledExecutor = new ScaledExecutor();
+    } else {
+      scaledExecutor.updatePoolSize();
+    }
   }
 
   @Override
@@ -909,5 +935,59 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
             cms.setSuppressExceptions();
           }
         });
+  }
+
+  private class ScaledExecutor extends ThreadPoolExecutor {
+
+    AtomicInteger activeCount = new AtomicInteger(0);
+
+    public ScaledExecutor() {
+      super(
+          Math.max(0, maxThreadCount - 1),
+          Math.max(1, maxThreadCount - 1),
+          Long.MAX_VALUE,
+          TimeUnit.NANOSECONDS,
+          new SynchronousQueue<>());
+    }
+
+    private void updatePoolSize() {
+      int newMax = Math.max(0, maxThreadCount - 1);
+      if (newMax > getCorePoolSize()) {
+        setMaximumPoolSize(Math.max(newMax, 1));
+        setCorePoolSize(newMax);
+      } else {
+        setCorePoolSize(newMax);
+        setMaximumPoolSize(Math.max(newMax, 1));
+      }
+    }
+
+    boolean incrementUpTo(int max) {
+      while (true) {
+        int value = activeCount.get();
+        if (value >= max) {
+          return false;
+        }
+        if (activeCount.compareAndSet(value, value + 1)) {
+          return true;
+        }
+      }
+    }
+
+    @Override
+    public void execute(Runnable command) {
+      assert mergeThreads.contains(Thread.currentThread()) : "caller is not a merge thread";
+      int max = maxThreadCount - 1;
+      if (incrementUpTo(max)) {
+        super.execute(command);
+      } else {
+        command.run();
+      }
+    }
+
+    @Override
+    protected void afterExecute(Runnable r, Throwable t) {
+      super.afterExecute(r, t);
+      activeCount.decrementAndGet();
+    }
   }
 }

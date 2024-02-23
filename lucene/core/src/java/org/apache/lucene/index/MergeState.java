@@ -85,9 +85,6 @@ public class MergeState {
   /** InfoStream for debugging messages. */
   public final InfoStream infoStream;
 
-  /** How many workers for parallel merge activity */
-  public final int numParallelMergeWorkers;
-
   /** Executor for parallel merge activity */
   public final TaskExecutor parallelMergeTaskExecutor;
 
@@ -99,13 +96,11 @@ public class MergeState {
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
       InfoStream infoStream,
-      TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers)
+      TaskExecutor parallelMergeTaskExecutor)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;
     int numReaders = readers.size();
-    this.numParallelMergeWorkers = numParallelMergeWorkers;
     this.parallelMergeTaskExecutor = parallelMergeTaskExecutor;
 
     maxDocs = new int[numReaders];

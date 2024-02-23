@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
@@ -58,8 +59,7 @@ final class SegmentMerger {
       Directory dir,
       FieldInfos.FieldNumbers fieldNumbers,
       IOContext context,
-      TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers)
+      Executor parallelMergeTaskExecutor)
       throws IOException {
     if (context.context != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
@@ -67,7 +67,10 @@ final class SegmentMerger {
     }
     mergeState =
         new MergeState(
-            readers, segmentInfo, infoStream, parallelMergeTaskExecutor, numParallelMergeWorkers);
+            readers,
+            segmentInfo,
+            infoStream,
+            parallelMergeTaskExecutor == null ? null : new TaskExecutor(parallelMergeTaskExecutor));
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;

@@ -27,7 +27,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriter.IndexReaderWarmer;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
@@ -275,33 +274,6 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
       throw new IllegalArgumentException("mergeScheduler must not be null");
     }
     this.mergeScheduler = mergeScheduler;
-    return this;
-  }
-
-  /**
-   * Expert: sets the parallel merge scheduler used by this writer. By default, individual merges
-   * are single threaded, but when this is set to a {@link TaskExecutor}, the merges are executed in
-   * parallel according to the number {@link #setNumParallelMergeWorkers(int)}.
-   *
-   * <p>Only takes effect when IndexWriter is first created
-   */
-  public IndexWriterConfig setParallelMergeTaskExecutor(TaskExecutor taskExecutor) {
-    this.parallelMergeTaskExecutor = taskExecutor;
-    return this;
-  }
-
-  /**
-   * Expert: sets the number of threads that are used by an individual merge action. The executor
-   * used by the threads is defined by {@link #setParallelMergeTaskExecutor(TaskExecutor)}.
-   *
-   * <p>Takes effect on subsequent merge selections. Any merges in flight or any merges already
-   * registered are not affected.
-   */
-  public IndexWriterConfig setNumParallelMergeWorkers(int numParallelMergeWorkers) {
-    if (numParallelMergeWorkers <= 0) {
-      throw new IllegalArgumentException("numParallelMergeWorkers must be > 0");
-    }
-    this.numParallelMergeWorkers = numParallelMergeWorkers;
     return this;
   }
 
