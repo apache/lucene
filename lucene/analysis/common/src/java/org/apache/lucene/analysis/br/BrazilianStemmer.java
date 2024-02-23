@@ -278,7 +278,7 @@ public class BrazilianStemmer {
       return false;
     }
 
-    return value.substring(value.length() - suffix.length()).equals(suffix);
+    return value.endsWith(suffix);
   }
 
   /**

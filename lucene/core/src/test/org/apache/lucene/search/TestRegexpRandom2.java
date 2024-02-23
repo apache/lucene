@@ -139,7 +139,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
 
     @Override
     public String toString(String field) {
-      return field.toString() + automaton.toString();
+      return field + automaton;
     }
 
     @Override

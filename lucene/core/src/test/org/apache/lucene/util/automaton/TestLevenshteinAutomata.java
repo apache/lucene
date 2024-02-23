@@ -212,10 +212,10 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     List<Automaton> list = new ArrayList<>();
     for (int i = 0; i < s.length() - 1; i++) {
       StringBuilder sb = new StringBuilder();
-      sb.append(s.substring(0, i));
+      sb.append(s, 0, i);
       sb.append(s.charAt(i + 1));
       sb.append(s.charAt(i));
-      sb.append(s.substring(i + 2, s.length()));
+      sb.append(s, i + 2, s.length());
       String st = sb.toString();
       if (!st.equals(s)) {
         list.add(Automata.makeString(st));

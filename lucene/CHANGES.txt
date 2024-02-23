@@ -25,6 +25,8 @@ Optimizations
 
 * GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
 
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
+
 Bug Fixes
 ---------------------
 (No changes)
