@@ -390,10 +390,27 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     nextTerm:
     while (true) {
+      // Match sub block's entry directly.
+      if (currentFrame.matchAll) {
+        while (true) {
+          // TODO: Is it necessary to set currentTransition, state etc.
+          if (isSubBlock) {
+            copyTerm();
+            currentFrame = pushFrame(currentFrame.state);
+            currentFrame.matchAll = true;
+            isSubBlock = popPushNext();
+          } else {
+            copyTerm();
+            return term;
+          }
+        }
+      }
+
       assert currentFrame.transition == currentTransition;
 
       int state;
       int lastState;
+      boolean earlyTerminate = false;
 
       // NOTE: suffix == 0 can only happen on the first term in a block, when
       // there is a term exactly matching a prefix in the index.  If we
@@ -525,8 +542,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             continue nextTerm;
           } else if (runAutomaton.isAccept(state) && runAutomaton.terminable(state)) {
             // For PrefixQuery, we can terminate if we have matched the whole prefix.
-            // TODO: If there is subBlock, we could match its' terms and sub terms.
             // TODO: Apply to RegexQuery endWith .*
+            earlyTerminate = true;
             break;
           }
         }
@@ -539,6 +556,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         // Match!  Recurse:
         copyTerm();
         currentFrame = pushFrame(state);
+        if (earlyTerminate) {
+          currentFrame.matchAll = true;
+        }
         currentTransition = currentFrame.transition;
         currentFrame.lastState = lastState;
       } else if (runAutomaton.isAccept(state)) {

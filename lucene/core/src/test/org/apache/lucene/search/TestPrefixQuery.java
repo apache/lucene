@@ -21,10 +21,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -61,6 +61,65 @@ public class TestPrefixQuery extends LuceneTestCase {
     writer.close();
     reader.close();
     directory.close();
+  }
+
+  public void testSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // TODO: Set minTermBlockSize to 2, maxTermBlockSize to 3, to deep subBlock.
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig().setCodec(new Lucene99Codec()));
+    String[] categories = new String[] {"regular", "request", "rest", "teacher", "team"};
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    PrefixQuery query = new PrefixQuery(new Term("category", "re"));
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(3, hits.length);
+
+    query = new PrefixQuery(new Term("category", "te"));
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // TODO: Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig().setCodec(new Lucene99Codec()));
+    String[] categories =
+        new String[] {
+          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    PrefixQuery query = new PrefixQuery(new Term("category", "re"));
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(6, hits.length);
+
+    query = new PrefixQuery(new Term("category", "te"));
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
   }
 
   public void testMatchAll() throws Exception {
