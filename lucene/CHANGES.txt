@@ -153,9 +153,6 @@ Other
 
 * LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
 
-* LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
-  (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
-
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
@@ -177,6 +174,9 @@ Other
 * GITHUB#9049: Fixing bug in UnescapedCharSequence#toStringEscaped() (Jakub Slowinski)
 
 * GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
+
+* GITHUB#12753: Bump minimum required Java version to 21
+  (Chris Hegarty, Robert Muir, Uwe Schindler)
 
 ======================== Lucene 9.11.0 =======================
 
