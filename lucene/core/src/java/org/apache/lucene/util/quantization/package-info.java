@@ -14,15 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
-
-import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
 
 /**
- * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
- * Scalar quantization scores.
+ * Provides quantization methods for scaling vector values to smaller data types and possibly fewer
+ * dimensions
  */
-abstract class QuantizedByteVectorValues extends ByteVectorValues {
-  abstract float getScoreCorrectionConstant() throws IOException;
-}
+package org.apache.lucene.util.quantization;

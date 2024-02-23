@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -111,6 +112,8 @@ import org.apache.lucene.store.IndexOutput;
  *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
  *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
  *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>3: MAXIMUM_INNER_PRODUCT similarity. ({@link
+ *             VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT})
  *       </ul>
  * </ul>
  *
@@ -284,10 +287,38 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   }
 
   private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException("invalid distance function: " + b, input);
+    try {
+      return distOrdToFunc(b);
+    } catch (IllegalArgumentException e) {
+      throw new CorruptIndexException("invalid distance function: " + b, input, e);
     }
-    return VectorSimilarityFunction.values()[b];
+  }
+
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order have been chosen to
+  // match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
+  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+
+  static VectorSimilarityFunction distOrdToFunc(byte i) {
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
+    }
+    return SIMILARITY_FUNCTIONS.get(i);
+  }
+
+  static byte distFuncToOrd(VectorSimilarityFunction func) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   static {
@@ -378,7 +409,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
+        output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
       }
       CodecUtil.writeFooter(output);
     }

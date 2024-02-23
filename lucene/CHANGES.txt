@@ -114,6 +114,8 @@ Improvements
 * GITHUB#12873: Expressions module now uses JEP 371 "Hidden Classes" with JEP 309
   "Dynamic Class-File Constants" to implement Javascript expressions. (Uwe Schindler)
 
+* GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
+
 Optimizations
 ---------------------
 
@@ -176,6 +178,39 @@ Other
 
 * GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
 
+======================== Lucene 9.11.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
+
+* GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
+
+Optimizations
+---------------------
+
+* GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
+
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+
+* GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
@@ -196,6 +231,20 @@ New Features
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
+
+* GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
+  Stefan Vodita)
+
+* GITHUB#12706: Add support for the final release of Java foreign memory API in Java 22 (and later).
+  Lucene's MMapDirectory will now mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) starting
+  from Java 19. Indexes closed while queries are running can no longer crash the JVM.
+  Support for vectorized implementations of VectorUtil based on jdk.incubator.vector APIs was added
+  for exactly Java 22. Therefore, applications started with command line parameter
+  "java --add-modules jdk.incubator.vector" will automatically use the new vectorized implementations
+  if running on a supported platform (Java 20/21/22 on x86 CPUs with AVX2 or later or ARM NEON CPUs).
+  This is an opt-in feature and requires explicit Java command line flag! When enabled, Lucene logs
+  a notice using java.util.logging. Please test thoroughly and report bugs/slowness to Lucene's mailing
+  list.  (Uwe Schindler, Chris Hegarty)
 
 Improvements
 ---------------------
@@ -246,7 +295,7 @@ Optimizations
 
 * GITHUB#12962: Speedup concurrent multi-segment HNWS graph search (Mayya Sharipova, Tom Veasey)
 
-* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
+* GITHUB#13090: Prevent humongous allocations in ScalarQuantizer when building quantiles. (Ben Trent)
 
 Bug Fixes
 ---------------------
@@ -2291,6 +2340,34 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.3 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-9580: Fix bug in the polygon tessellator when introducing collinear edges during polygon
+  splitting. (Ignacio Vera)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
+* LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
+  occurs when computing the partition point. (Ignacio Vera)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+Optimizations
+---------------------
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
 
 ======================= Lucene 8.11.2 =======================
 

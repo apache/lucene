@@ -55,6 +55,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
   static final String INDEX_NAME = "sorted";
   static final String SUFFIX = "";
+  private static final Version FIRST_PARENT_DOC_VERSION = Version.LUCENE_9_11_0;
+  private static final String PARENT_FIELD_NAME = "___parent";
 
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
@@ -79,8 +81,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
             .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
             .setIndexSort(sort)
             .setMergePolicy(newLogMergePolicy());
-    if (this.version.onOrAfter(Version.LUCENE_10_0_0)) {
-      indexWriterConfig.setParentField("___parent");
+    if (this.version.onOrAfter(FIRST_PARENT_DOC_VERSION)) {
+      indexWriterConfig.setParentField(PARENT_FIELD_NAME);
     }
     // open writer
     try (IndexWriter writer = new IndexWriter(directory, indexWriterConfig)) {
@@ -89,7 +91,10 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
         Document child = new Document();
         child.add(new StringField("relation", "child", Field.Store.NO));
         child.add(new StringField("bid", "" + i, Field.Store.NO));
-        child.add(new NumericDocValuesField("dateDV", i));
+        if (version.onOrAfter(FIRST_PARENT_DOC_VERSION)
+            == false) { // only add this to earlier versions
+          child.add(new NumericDocValuesField("dateDV", i));
+        }
         Document parent = new Document();
         parent.add(new StringField("relation", "parent", Field.Store.NO));
         parent.add(new StringField("bid", "" + i, Field.Store.NO));
@@ -158,6 +163,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     conf.setUseCompoundFile(false);
     conf.setCodec(TestUtil.getDefaultCodec());
     conf.setParentField("___parent");
+    conf.setParentField(PARENT_FIELD_NAME);
     conf.setIndexSort(new Sort(new SortField("dateDV", SortField.Type.LONG, true)));
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
