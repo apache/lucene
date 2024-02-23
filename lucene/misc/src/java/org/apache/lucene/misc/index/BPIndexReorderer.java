@@ -340,22 +340,21 @@ public final class BPIndexReorderer {
 
       if (parents != null) {
         // Make sure we split just after a parent doc
-        int split = right.offset;
-        while (parents.get(docIDs.ints[split - 1]) == false) {
-          split++;
-        }
-        assert split <= docIDs.offset + docIDs.length : "last doc ID of a slice must be a parent";
+        int lastLeftDocID = docIDs.ints[right.offset - 1];
+        int split = right.offset + parents.nextSetBit(lastLeftDocID) - lastLeftDocID;
+
         if (split == docIDs.offset + docIDs.length) {
-          // No luck, we have a single parent after the mid point, look before the mid point then.
-          split = right.offset - 1;
-          while (split > docIDs.offset && parents.get(docIDs.ints[split - 1]) == false) {
-            split--;
-          }
+          // No good split on the right side, look on the left side then.
+          split = right.offset - (lastLeftDocID - parents.prevSetBit(lastLeftDocID));
           if (split == docIDs.offset) {
-            // The slice has a single block, no reordering needed.
+            // No good split on the left side either: this slice has a single parent document, no
+            // reordering is possible. Stop recursing.
             return;
           }
         }
+
+        assert parents.get(docIDs.ints[split - 1]);
+
         left = new IntsRef(docIDs.ints, docIDs.offset, split - docIDs.offset);
         right = new IntsRef(docIDs.ints, split, docIDs.offset + docIDs.length - split);
       }
