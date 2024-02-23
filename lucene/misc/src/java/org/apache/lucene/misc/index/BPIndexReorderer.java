@@ -503,7 +503,7 @@ public final class BPIndexReorderer {
           }
         }
       }
-      ;
+
       Selector selector = new Selector();
 
       if (parents == null) {
