@@ -144,10 +144,10 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
       'Implementation-Vendor: The Apache Software Foundation',
       'Specification-Title: Lucene Search Engine:',
       'Implementation-Title: org.apache.lucene',
-      'X-Compile-Source-JDK: 17',
-      'X-Compile-Target-JDK: 17',
+      'X-Compile-Source-JDK: 21',
+      'X-Compile-Target-JDK: 21',
       'Specification-Version: %s' % version,
-      'X-Build-JDK: 17.',
+      'X-Build-JDK: 21.',
       'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
@@ -611,13 +611,13 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     validateCmd = './gradlew --no-daemon check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
-    java.run_java17(validateCmd, '%s/validate.log' % unpackPath)
+    java.run_java21(validateCmd, '%s/validate.log' % unpackPath)
 
-    print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
-    java.run_java17('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-    print("    compile jars w/ Java 17")
-    java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-    testDemo(java.run_java17, isSrc, version, '17')
+    print("    run tests w/ Java 21 and testArgs='%s'..." % testArgs)
+    java.run_java21('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+    print("    compile jars w/ Java 21")
+    java.run_java21('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+    testDemo(java.run_java21, isSrc, version, '21')
 
     if java.run_java19:
       print("    run tests w/ Java 19 and testArgs='%s'..." % testArgs)
@@ -633,7 +633,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     checkAllJARs(os.getcwd(), gitRevision, version)
 
-    testDemo(java.run_java17, isSrc, version, '17')
+    testDemo(java.run_java21, isSrc, version, '21')
     if java.run_java19:
       testDemo(java.run_java19, isSrc, version, '19')
 
@@ -925,16 +925,16 @@ def make_java_config(parser, java19_home):
     def run_java(cmd, logfile):
       run('%s; %s' % (cmd_prefix, cmd), logfile)
     return run_java
-  java17_home =  os.environ.get('JAVA_HOME')
-  if java17_home is None:
+  java21_home =  os.environ.get('JAVA_HOME')
+  if java21_home is None:
     parser.error('JAVA_HOME must be set')
-  run_java17 = _make_runner(java17_home, '17')
+  run_java21 = _make_runner(java21_home, '21')
   run_java19 = None
   if java19_home is not None:
     run_java19 = _make_runner(java19_home, '19')
 
-  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java19 java19_home')
-  return jc(run_java17, java17_home, run_java19, java19_home)
+  jc = namedtuple('JavaConfig', 'run_java21 java21_home run_java19 java19_home')
+  return jc(run_java21, java21_home, run_java19, java19_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev-([a-f\d]+)')
