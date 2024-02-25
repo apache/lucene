@@ -793,6 +793,10 @@ public class CheckHits {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
       TwoPhaseIterator twoPhase2 = s2.twoPhaseIterator();
       DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation();
