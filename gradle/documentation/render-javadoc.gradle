@@ -55,6 +55,7 @@ allprojects {
       dependsOn sourceSets.main.compileClasspath
       classpath = sourceSets.main.compileClasspath
       srcDirSet = sourceSets.main.java
+      releaseVersion = rootProject.minJavaVersion
 
       outputDir = project.javadoc.destinationDir
     }
@@ -74,6 +75,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
+        releaseVersion = rootProject.minJavaVersion
 
         relativeProjectLinks = true
 
@@ -265,7 +267,10 @@ class RenderJavadocTask extends DefaultTask {
   boolean relativeProjectLinks = false
 
   @Input
-  def offlineLinks = [:]
+  JavaVersion releaseVersion
+
+  @Input
+  Map<String, File> offlineLinks = [:]
 
   @Input
   @Optional
@@ -399,7 +404,7 @@ class RenderJavadocTask extends DefaultTask {
       opts << [ '-linkoffline', url, dir ]
     }
 
-    opts << [ '--release', 11 ]
+    opts << [ '--release', releaseVersion.toString() ]
     opts << '-Xdoclint:all,-missing'
 
     // Increase Javadoc's heap.
