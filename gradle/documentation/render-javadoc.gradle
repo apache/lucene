@@ -73,6 +73,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
+        releaseVersion = rootProject.minJavaVersion
 
         relativeProjectLinks = true
 
