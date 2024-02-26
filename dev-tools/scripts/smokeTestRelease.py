@@ -639,8 +639,6 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     testDemo(java.run_java, isSrc, version, BASE_JAVA_VERSION)
     if java.run_alt_javas:
       for run_alt_java, alt_java_version in zip(java.run_alt_javas, java.alt_java_versions):
-        print("DELETEME")
-        print("    run test demo w/ Java %s..." % alt_java_version)
         testDemo(run_alt_java, isSrc, version, alt_java_version)
 
   testChangesText('.', version)
@@ -929,9 +927,13 @@ def make_java_config(parser, alt_java_homes):
     actual_version = re.search(r'version "([1-9][0-9]*)', s).group(1)
     print('Java %s JAVA_HOME=%s' % (actual_version, java_home))
 
-    if (is_base_version and BASE_JAVA_VERSION != actual_version) \
-    or int(BASE_JAVA_VERSION) > int(actual_version):
-      parser.error('got wrong version for java %s:\n%s' % (BASE_JAVA_VERSION, s))
+    # validate Java version
+    if is_base_version:
+      if BASE_JAVA_VERSION != actual_version:
+        parser.error('got wrong base version for java %s:\n%s' % (BASE_JAVA_VERSION, s))
+    else:
+      if int(actual_version) < int(BASE_JAVA_VERSION):
+        parser.error('got wrong version for java %s, less than base version %s:\n%s' % (actual_version, BASE_JAVA_VERSION, s))
 
     def run_java(cmd, logfile):
       run('%s; %s' % (cmd_prefix, cmd), logfile)
