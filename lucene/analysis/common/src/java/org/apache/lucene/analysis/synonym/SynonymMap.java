@@ -305,7 +305,7 @@ public class SynonymMap {
         fstCompiler.add(Util.toUTF32(input, scratchIntsRef), scratch.toBytesRef());
       }
 
-      FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+      FST.FSTMetadata<BytesRef> fstMetaData = fstCompiler.compile();
       if (directory != null) {
         fstOutput.close(); // TODO -- Should fstCompiler.compile take care of this?
         try (SynonymMapDirectory.WordsOutput wordsOutput = directory.wordsOutput()) {
@@ -315,9 +315,10 @@ public class SynonymMap {
             wordsOutput.addWord(scratchRef);
           }
         }
-        directory.writeMetadata(words.size(), maxHorizontalContext, fst);
+        directory.writeMetadata(words.size(), maxHorizontalContext, fstMetaData);
         return directory.readMap();
       }
+      FST<BytesRef> fst = FST.fromFSTReader(fstMetaData, fstCompiler.getFSTReader());
       BytesRefHashLike wordsLike =
           new BytesRefHashLike() {
             @Override

@@ -52,9 +52,10 @@ public class SynonymMapDirectory implements Closeable {
     return synonymMapFormat.getWordsOutput(directory);
   }
 
-  public void writeMetadata(int wordCount, int maxHorizontalContext, FST<BytesRef> fst)
+  public void writeMetadata(
+      int wordCount, int maxHorizontalContext, FST.FSTMetadata<BytesRef> fstMetadata)
       throws IOException {
-    synonymMapFormat.writeMetadata(directory, wordCount, maxHorizontalContext, fst);
+    synonymMapFormat.writeMetadata(directory, wordCount, maxHorizontalContext, fstMetadata);
   }
 
   public SynonymMap readMap() throws IOException {
@@ -107,12 +108,15 @@ public class SynonymMapDirectory implements Closeable {
     ;
 
     public void writeMetadata(
-        Directory directory, int wordCount, int maxHorizontalContext, FST<BytesRef> fst)
+        Directory directory,
+        int wordCount,
+        int maxHorizontalContext,
+        FST.FSTMetadata<BytesRef> fstMetadata)
         throws IOException {
       try (IndexOutput metadataOutput = directory.createOutput(METADATA_FILE, IOContext.DEFAULT)) {
         metadataOutput.writeVInt(wordCount);
         metadataOutput.writeVInt(maxHorizontalContext);
-        fst.saveMetadata(metadataOutput);
+        fstMetadata.save(metadataOutput);
       }
       directory.sync(List.of(FST_FILE, WORDS_FILE, METADATA_FILE));
     }
@@ -130,10 +134,13 @@ public class SynonymMapDirectory implements Closeable {
     public SynonymMap readSynonymMap(Directory directory) throws IOException {
       SynonymMetadata synonymMetadata = readMetadata(directory);
       FST<BytesRef> fst =
-          new FST<>(
+          FST.fromFSTReader(
               synonymMetadata.fstMetadata,
-              directory.openInput(FST_FILE, IOContext.DEFAULT),
-              new OffHeapFSTStore());
+              new OffHeapFSTStore(
+                      directory.openInput(FST_FILE, IOContext.DEFAULT),
+                      0,
+                      synonymMetadata.fstMetadata
+              ));
       OnHeapBytesRefHashLike words;
       try (IndexInput wordsInput = directory.openInput(WORDS_FILE, IOContext.DEFAULT)) {
         words = new OnHeapBytesRefHashLike(synonymMetadata.wordCount, wordsInput);
