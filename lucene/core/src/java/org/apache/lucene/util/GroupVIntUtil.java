@@ -72,6 +72,20 @@ public final class GroupVIntUtil {
     int decode(long pos, int flag, long[] dst, int offset);
   }
 
+  /**
+   * Faster implementation of read single group, fails back to a slower method if the read would
+   * cross a boundary.
+   *
+   * @param in the input to use to read data.
+   * @param remaining the number of remaining bytes allowed to read for current block/segment.
+   * @param decoder a decoder that will read the next 4 values.
+   * @param pos the start pos to read from the reader.
+   * @param dst the array to read ints into.
+   * @param offset the offset in the array to start storing ints.
+   * @return the number of bytes read excluding the flag. this indicates the number of positions
+   *     should to be increased for caller, it is 0 or positive number and less than {@link
+   *     #MAX_LENGTH_PER_GROUP}
+   */
   public static int readGroupVInt(
       DataInput in, long remaining, Decoder decoder, long pos, long[] dst, int offset)
       throws IOException {
