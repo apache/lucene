@@ -147,7 +147,7 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
       'X-Compile-Source-JDK: 17',
       'X-Compile-Target-JDK: 17',
       'Specification-Version: %s' % version,
-      'X-Build-JDK: 17.',
+      'X-Build-JDK: 17',
       'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
@@ -578,7 +578,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
   #     in_root_folder.remove(fileName)
 
-  expected_folders = ['analysis', 'analysis.tests', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'core.tests',
+  expected_folders = ['analysis', 'analysis.tests', 'backward-codecs', 'benchmark', 'benchmark-jmh', 'classification', 'codecs', 'core', 'core.tests',
                       'distribution.tests', 'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
                       'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']
