@@ -307,7 +307,7 @@ public class LineFileDocs implements Closeable {
       throw new RuntimeException("line: [" + line + "] is in an invalid format !");
     }
 
-    docState.body.setStringValue(line.substring(1 + spot2, line.length()));
+    docState.body.setStringValue(line.substring(1 + spot2));
     final String title = line.substring(0, spot);
     docState.title.setStringValue(title);
     docState.titleTokenized.setStringValue(title);

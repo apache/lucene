@@ -197,11 +197,18 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
+
+* GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
+
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13105: Fix ByteKnnVectorFieldSource & FloatKnnVectorFieldSource to work correctly when a segment does not contain
+  any docs with vectors (hossman)
 
 Other
 ---------------------
