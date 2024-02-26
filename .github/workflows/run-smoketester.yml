@@ -36,6 +36,7 @@ jobs:
           distribution: 'temurin'
           java-package: jdk
           check-latest: true
+          # This intentionally lists two versions, the last one is used as the system default (for running gradle).
           java-version: |
             ${{ matrix.java-version }}
             11
