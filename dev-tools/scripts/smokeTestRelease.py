@@ -698,7 +698,7 @@ def removeTrailingZeros(version):
 def checkMaven(baseURL, tmpDir, gitRevision, version, isSigned, keysFile):
   print('    download artifacts')
   artifacts = []
-  artifactsURL = '%s/lucene/maven/org/apache/lucene/' % baseURL
+  artifactsURL = '%s/maven/org/apache/lucene/' % baseURL
   targetDir = '%s/maven/org/apache/lucene' % tmpDir
   if not os.path.exists(targetDir):
     os.makedirs(targetDir)
