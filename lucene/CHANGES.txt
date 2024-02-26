@@ -29,7 +29,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13105: Fix ByteKnnVectorFieldSource & FloatKnnVectorFieldSource to work correctly when a segment does not contain
+  any docs with vectors (hossman)
 
 Other
 ---------------------
