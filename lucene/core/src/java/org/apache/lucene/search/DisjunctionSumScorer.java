@@ -49,17 +49,20 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
+    int min = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer scorer : scorers) {
-      scorer.advanceShallow(target);
+      if (scorer.docID() <= target) {
+        min = Math.max(min, scorer.advanceShallow(target));
+      }
     }
-    return super.advanceShallow(target);
+    return min;
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
     double maxScore = 0;
     for (Scorer scorer : scorers) {
-      maxScore += scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
+      maxScore += scorer.getMaxScore(upTo);
     }
     return (float) MathUtil.sumUpperBound(maxScore, scorers.size());
   }
