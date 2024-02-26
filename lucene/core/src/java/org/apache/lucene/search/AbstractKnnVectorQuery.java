@@ -29,6 +29,8 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -79,11 +81,12 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
+    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight));
+      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
     }
     TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 
@@ -95,8 +98,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
-    TopDocs results = getLeafResults(ctx, filterWeight);
+  private TopDocs searchLeaf(
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
+      throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight, knnCollectorManager);
     if (ctx.docBase > 0) {
       for (ScoreDoc scoreDoc : results.scoreDocs) {
         scoreDoc.doc += ctx.docBase;
@@ -105,12 +110,14 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
-  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+  private TopDocs getLeafResults(
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
+      throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, knnCollectorManager);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -119,7 +126,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    int cost = acceptDocs.cardinality();
+    final int cost = acceptDocs.cardinality();
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
@@ -128,7 +135,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
+    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, knnCollectorManager);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
@@ -155,8 +163,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new TopKnnCollectorManager(k, searcher);
+  }
+
   protected abstract TopDocs approximateSearch(
-      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
+      throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
@@ -426,7 +442,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]";
+      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]," + maxScore;
     }
 
     @Override

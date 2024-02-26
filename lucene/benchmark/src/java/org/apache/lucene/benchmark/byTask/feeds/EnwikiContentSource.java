@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import javax.xml.XMLConstants;
@@ -68,7 +67,7 @@ public class EnwikiContentSource extends ContentSource {
     private boolean stopped = false;
     private String[] tuple;
     private NoMoreDataException nmde;
-    private StringBuilder contents = new StringBuilder();
+    private final StringBuilder contents = new StringBuilder();
     private String title;
     private String body;
     private String time;
@@ -113,13 +112,13 @@ public class EnwikiContentSource extends ContentSource {
     String time(String original) {
       StringBuilder buffer = new StringBuilder();
 
-      buffer.append(original.substring(8, 10));
+      buffer.append(original, 8, 10);
       buffer.append('-');
       buffer.append(months[Integer.parseInt(original.substring(5, 7)) - 1]);
       buffer.append('-');
-      buffer.append(original.substring(0, 4));
+      buffer.append(original, 0, 4);
       buffer.append(' ');
-      buffer.append(original.substring(11, 19));
+      buffer.append(original, 11, 19);
       buffer.append(".000");
 
       return buffer.toString();
@@ -262,7 +261,6 @@ public class EnwikiContentSource extends ContentSource {
     }
   }
 
-  private static final Map<String, Integer> ELEMENTS = new HashMap<>();
   private static final int TITLE = 0;
   private static final int DATE = TITLE + 1;
   private static final int BODY = DATE + 1;
@@ -272,24 +270,24 @@ public class EnwikiContentSource extends ContentSource {
   // should not be part of the tuple, we should define them after LENGTH.
   private static final int PAGE = LENGTH + 1;
 
+  private static final Map<String, Integer> ELEMENTS =
+      Map.of(
+          "page", PAGE,
+          "text", BODY,
+          "timestamp", DATE,
+          "title", TITLE,
+          "id", ID);
+
   private static final String[] months = {
     "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
   };
-
-  static {
-    ELEMENTS.put("page", Integer.valueOf(PAGE));
-    ELEMENTS.put("text", Integer.valueOf(BODY));
-    ELEMENTS.put("timestamp", Integer.valueOf(DATE));
-    ELEMENTS.put("title", Integer.valueOf(TITLE));
-    ELEMENTS.put("id", Integer.valueOf(ID));
-  }
 
   /**
    * Returns the type of the element if defined, otherwise returns -1. This method is useful in
    * startElement and endElement, by not needing to compare the element qualified name over and
    * over.
    */
-  private static final int getElementType(String elem) {
+  private static int getElementType(String elem) {
     Integer val = ELEMENTS.get(elem);
     return val == null ? -1 : val.intValue();
   }
@@ -297,7 +295,7 @@ public class EnwikiContentSource extends ContentSource {
   private Path file;
   private boolean keepImages = true;
   private InputStream is;
-  private Parser parser = new Parser();
+  private final Parser parser = new Parser();
 
   @Override
   public void close() throws IOException {

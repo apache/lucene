@@ -79,8 +79,8 @@ public final class BytesRefHash implements Accountable {
     Arrays.fill(ids, -1);
     this.bytesStartArray = bytesStartArray;
     bytesStart = bytesStartArray.init();
-    bytesUsed =
-        bytesStartArray.bytesUsed() == null ? Counter.newCounter() : bytesStartArray.bytesUsed();
+    final Counter bytesUsed = bytesStartArray.bytesUsed();
+    this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
     bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
@@ -214,6 +214,7 @@ public final class BytesRefHash implements Accountable {
         pool.fillBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
+    Arrays.fill(compact, tmpOffset, compact.length, -1);
     return compact;
   }
 

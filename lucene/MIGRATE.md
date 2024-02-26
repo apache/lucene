@@ -19,6 +19,10 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### OpenNLP dependency upgrade
+
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using and be running on Java 17.
+
 ### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
 
 For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via

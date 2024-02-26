@@ -177,7 +177,7 @@ public class TestTransactionRollback extends LuceneTestCase {
           // This code reads the last id ("30" in this example) and deletes it
           // if it is after the desired rollback point
           String x = userData.get("index");
-          String lastVal = x.substring(x.lastIndexOf("-") + 1);
+          String lastVal = x.substring(x.lastIndexOf('-') + 1);
           int last = Integer.parseInt(lastVal);
           if (last > rollbackPoint) {
             /*
