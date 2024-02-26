@@ -971,7 +971,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
 
     private void checkFileExist() throws IOException {
-      if (!Files.exists(filePath)) {
+      if (Files.exists(filePath) == false) {
         throw new NoSuchFileException(filePath.toString());
       }
     }
