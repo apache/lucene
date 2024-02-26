@@ -842,8 +842,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     // The string should contain matching docIds and their score.
     // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
     // matched
-    // But that instead the string format is expected and that the score is 1.0
-    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[1.0,...]"));
+    // But that instead the string format is expected and that the max score is 1.0
+    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[\\d+.\\d+,...],1.0"));
   }
 
   /**
