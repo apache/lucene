@@ -20,7 +20,7 @@ Checksum validation errors
 --------------------------
 
 LUCENE-9868 introduced a system of storing (and validating) checksums of
-generated files so that they are not accidentally modified. This checkums
+generated files so that they are not accidentally modified. This checksums
 system will fail the build with a message similar to this one:
 
 Execution failed for task ':lucene:core:generateStandardTokenizerChecksumCheck'.
