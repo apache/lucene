@@ -3,11 +3,6 @@ name: Run smokeTestRelease.py against a release candidate
 on:
   workflow_dispatch:
     inputs:
-      artifacts-url:
-        description: 'URL to artifacts, example: https://dist.apache.org/repos/dist/dev/lucene/lucene-...'
-        type: string
-        required: true
-
       run-tests:
         description: "Include a full test run"
         type: boolean
@@ -38,7 +33,7 @@ jobs:
             ${{ matrix.java-version }}
             17
 
-      - name: Run smoke tester with Java ${{ matrix.java-version }} and (${{ inputs.artifacts-url }})
+      - name: Run smoke tester with Java ${{ matrix.java-version }}
         run: |
           echo "All installed JDKs:"
           set | grep "JAVA"
