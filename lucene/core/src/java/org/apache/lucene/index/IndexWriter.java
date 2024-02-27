@@ -3941,10 +3941,7 @@ public class IndexWriter
                 // in a separate map in order to be applied to the merged segment after it's done
                 rld.setIsMerging();
                 return rld.getReaderForMerge(
-                    context,
-                    mr -> {
-                      deleter.incRef(mr.reader.getSegmentInfo().files());
-                    });
+                    context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
               });
         }
         closeReaders = false;
@@ -5148,10 +5145,7 @@ public class IndexWriter
             rld.setIsMerging();
             synchronized (this) {
               return rld.getReaderForMerge(
-                  context,
-                  mr -> {
-                    deleter.incRef(mr.reader.getSegmentInfo().files());
-                  });
+                  context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
             }
           });
       // Let the merge wrap readers
