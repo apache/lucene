@@ -87,6 +87,12 @@ public class TestSynonymQuery extends LuceneTestCase {
         new SynonymQuery.Builder("field2").addTerm(new Term("field2", "b"), 0.4f).build());
   }
 
+  public void testGetField() {
+    SynonymQuery query =
+        new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a")).build();
+    assertEquals("field1", query.getField());
+  }
+
   public void testBogusParams() {
     expectThrows(
         IllegalArgumentException.class,
