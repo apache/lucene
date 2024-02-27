@@ -39,6 +39,8 @@ import zipfile
 from collections import namedtuple
 import scriptutil
 
+BASE_JAVA_VERSION = "17"
+
 # This tool expects to find /lucene off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been
 # tested on Linux and on Cygwin under Windows 7.
@@ -144,10 +146,10 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
       'Implementation-Vendor: The Apache Software Foundation',
       'Specification-Title: Lucene Search Engine:',
       'Implementation-Title: org.apache.lucene',
-      'X-Compile-Source-JDK: 17',
-      'X-Compile-Target-JDK: 17',
+      'X-Compile-Source-JDK: %s' % BASE_JAVA_VERSION,
+      'X-Compile-Target-JDK: %s' % BASE_JAVA_VERSION,
       'Specification-Version: %s' % version,
-      'X-Build-JDK: 17',
+      'X-Build-JDK: %s ' % BASE_JAVA_VERSION,
       'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
@@ -614,20 +616,21 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     validateCmd = './gradlew --no-daemon check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
-    java.run_java17(validateCmd, '%s/validate.log' % unpackPath)
+    java.run_java(validateCmd, '%s/validate.log' % unpackPath)
 
-    print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
-    java.run_java17('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-    print("    compile jars w/ Java 17")
-    java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-    testDemo(java.run_java17, isSrc, version, '17')
+    print("    run tests w/ Java %s and testArgs='%s'..." % (BASE_JAVA_VERSION, testArgs))
+    java.run_java('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+    print("    compile jars w/ Java %s" % BASE_JAVA_VERSION)
+    java.run_java('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+    testDemo(java.run_java, isSrc, version, BASE_JAVA_VERSION)
 
-    if java.run_java19:
-      print("    run tests w/ Java 19 and testArgs='%s'..." % testArgs)
-      java.run_java19('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-      print("    compile jars w/ Java 19")
-      java.run_java19('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-      testDemo(java.run_java19, isSrc, version, '19')
+    if java.run_alt_javas:
+      for run_alt_java, alt_java_version in zip(java.run_alt_javas, java.alt_java_versions):
+        print("    run tests w/ Java %s and testArgs='%s'..." % (alt_java_version, testArgs))
+        run_alt_java('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+        print("    compile jars w/ Java %s" % alt_java_version)
+        run_alt_java('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+        testDemo(run_alt_java, isSrc, version, alt_java_version)
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
     confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
@@ -636,9 +639,10 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     checkAllJARs(os.getcwd(), gitRevision, version)
 
-    testDemo(java.run_java17, isSrc, version, '17')
-    if java.run_java19:
-      testDemo(java.run_java19, isSrc, version, '19')
+    testDemo(java.run_java, isSrc, version, BASE_JAVA_VERSION)
+    if java.run_alt_javas:
+      for run_alt_java, alt_java_version in zip(java.run_alt_javas, java.alt_java_versions):
+        testDemo(run_alt_java, isSrc, version, alt_java_version)
 
   testChangesText('.', version)
 
@@ -667,7 +671,7 @@ def testDemo(run_java, isSrc, version, jdk):
     checkIndexCmd = 'java -ea %s --module org.apache.lucene.core/org.apache.lucene.index.CheckIndex index' % cp
     indexFilesCmd = 'java -Dsmoketester=true %s --module org.apache.lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
     searchFilesCmd = 'java %s --module org.apache.lucene.demo/org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
-      
+
   run_java(indexFilesCmd, 'index.log')
   run_java(searchFilesCmd, 'search.log')
   reMatchingDocs = re.compile('(\d+) total matching documents')
@@ -914,33 +918,49 @@ def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
         sys.stdout.write('.')
 
 
-def make_java_config(parser, java19_home):
-  def _make_runner(java_home, version):
-    print('Java %s JAVA_HOME=%s' % (version, java_home))
+def make_java_config(parser, alt_java_homes):
+  def _make_runner(java_home, is_base_version=False):
     if cygwin:
       java_home = subprocess.check_output('cygpath -u "%s"' % java_home, shell=True).decode('utf-8').strip()
     cmd_prefix = 'export JAVA_HOME="%s" PATH="%s/bin:$PATH" JAVACMD="%s/bin/java"' % \
                  (java_home, java_home, java_home)
     s = subprocess.check_output('%s; java -version' % cmd_prefix,
                                 shell=True, stderr=subprocess.STDOUT).decode('utf-8')
-    if s.find(' version "%s' % version) == -1:
-      parser.error('got wrong version for java %s:\n%s' % (version, s))
+
+    actual_version = re.search(r'version "([1-9][0-9]*)', s).group(1)
+    print('Java %s JAVA_HOME=%s' % (actual_version, java_home))
+
+    # validate Java version
+    if is_base_version:
+      if BASE_JAVA_VERSION != actual_version:
+        parser.error('got wrong base version for java %s:\n%s' % (BASE_JAVA_VERSION, s))
+    else:
+      if int(actual_version) < int(BASE_JAVA_VERSION):
+        parser.error('got wrong version for java %s, less than base version %s:\n%s' % (actual_version, BASE_JAVA_VERSION, s))
+
     def run_java(cmd, logfile):
       run('%s; %s' % (cmd_prefix, cmd), logfile)
-    return run_java
-  java17_home =  os.environ.get('JAVA_HOME')
-  if java17_home is None:
-    parser.error('JAVA_HOME must be set')
-  run_java17 = _make_runner(java17_home, '17')
-  run_java19 = None
-  if java19_home is not None:
-    run_java19 = _make_runner(java19_home, '19')
 
-  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java19 java19_home')
-  return jc(run_java17, java17_home, run_java19, java19_home)
+    return run_java, actual_version
+
+  java_home =  os.environ.get('JAVA_HOME')
+  if java_home is None:
+    parser.error('JAVA_HOME must be set')
+  run_java, _ = _make_runner(java_home, True)
+  run_alt_javas = []
+  alt_java_versions = []
+  if alt_java_homes:
+    for alt_java_home in alt_java_homes:
+      run_alt_java, version = _make_runner(alt_java_home)
+      run_alt_javas.append(run_alt_java)
+      alt_java_versions.append(version)
+
+  jc = namedtuple('JavaConfig', 'run_java java_home run_alt_javas alt_java_homes alt_java_versions')
+  return jc(run_java, java_home, run_alt_javas, alt_java_homes, alt_java_versions)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev-([a-f\d]+)')
+
 def parse_config():
   epilogue = textwrap.dedent('''
     Example usage:
@@ -959,8 +979,8 @@ def parse_config():
                       help='GIT revision number that release was built with, defaults to that in URL')
   parser.add_argument('--version', metavar='X.Y.Z(-ALPHA|-BETA)?',
                       help='Version of the release, defaults to that in URL')
-  parser.add_argument('--test-java19', metavar='java19_home',
-                      help='Path to Java home directory, to run tests with if specified')
+  parser.add_argument('--test-alternative-java', action='append',
+                      help='Path to alternative Java home directory, to run tests with if specified')
   parser.add_argument('--download-only', action='store_true', default=False,
                       help='Only perform download and sha hash check steps')
   parser.add_argument('url', help='Url pointing to release to test')
@@ -987,7 +1007,7 @@ def parse_config():
   if c.local_keys is not None and not os.path.exists(c.local_keys):
     parser.error('Local KEYS file "%s" not found' % c.local_keys)
 
-  c.java = make_java_config(parser, c.test_java19)
+  c.java = make_java_config(parser, c.test_alternative_java)
 
   if c.tmp_dir:
     c.tmp_dir = os.path.abspath(c.tmp_dir)

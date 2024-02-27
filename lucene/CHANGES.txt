@@ -215,6 +215,8 @@ Other
 
 * GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
 
+* GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
