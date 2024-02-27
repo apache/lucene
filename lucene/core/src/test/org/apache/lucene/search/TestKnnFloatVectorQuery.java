@@ -48,11 +48,6 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, vec, k, query);
-  }
-
-  @Override
   float[] randomVector(int dim) {
     return TestVectorUtil.randomVector(dim);
   }
@@ -234,23 +229,6 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           }
         }
       }
-    }
-  }
-
-  private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
-
-    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter);
-    }
-
-    @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
-      throw new UnsupportedOperationException("exact search is not supported");
-    }
-
-    @Override
-    public String toString(String field) {
-      return null;
     }
   }
 }

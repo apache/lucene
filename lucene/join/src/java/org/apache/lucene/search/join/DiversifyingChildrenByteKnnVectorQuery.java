@@ -20,20 +20,15 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -75,53 +70,6 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     this.parentsFilter = parentsFilter;
     this.k = k;
     this.query = query;
-  }
-
-  @Override
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
-      throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return NO_RESULTS;
-    }
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      return null;
-    }
-    BitSet parentBitSet = parentsFilter.getBitSet(context);
-    if (parentBitSet == null) {
-      return NO_RESULTS;
-    }
-    ParentBlockJoinByteVectorScorer vectorScorer =
-        new ParentBlockJoinByteVectorScorer(
-            context.reader().getByteVectorValues(field),
-            acceptIterator,
-            parentBitSet,
-            query,
-            fi.getVectorSimilarityFunction());
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = vectorScorer.bestChild();
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
   }
 
   @Override
