@@ -29,6 +29,7 @@ jobs:
 
     env:
       LUCENE_RELEASE_DIR: /tmp/lucene-release-dir
+      TMP_DIR: /tmp/lucene-tmp-dir
 
     steps:
       - uses: actions/checkout@v4
@@ -65,5 +66,14 @@ jobs:
         run: |
           python3 -u dev-tools/scripts/smokeTestRelease.py \
             --not-signed \
+            --tmp-dir ${{ env.TMP_DIR }} \
             file://`realpath ${{ env.LUCENE_RELEASE_DIR }}/lucene*` \
             ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }}
+
+      - name: "Store smoke tester logs"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-tester-logs
+          path: |
+            ${{ env.TMP_DIR }}/**/*.log
