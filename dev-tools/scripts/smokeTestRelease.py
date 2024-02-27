@@ -158,9 +158,9 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
           break
       else:
         if len(verify) == 1:
-          raise RuntimeError('%s is missing "%s" inside its META-INF/MANIFEST.MF' % (desc, verify[0]))
+          raise RuntimeError('%s is missing "%s" inside its META-INF/MANIFEST.MF: %s' % (desc, verify[0], s))
         else:
-          raise RuntimeError('%s is missing one of "%s" inside its META-INF/MANIFEST.MF' % (desc, verify))
+          raise RuntimeError('%s is missing one of "%s" inside its META-INF/MANIFEST.MF: %s' % (desc, verify, s))
 
     if gitRevision != 'skip':
       # Make sure this matches the version and git revision we think we are releasing:
