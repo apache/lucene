@@ -21,15 +21,12 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '11', '17', '21', '22-ea' ]
+        java-version: [ '17', '21', '22-ea' ]
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # TODO: shouldn't be needed but smoketester checks java version and we're on main.
-          ref: 'branch_9_10'
 
       - uses: actions/setup-java@v4
         with:
@@ -39,7 +36,7 @@ jobs:
           # This intentionally lists two versions, the last one is used as the system default (for running gradle).
           java-version: |
             ${{ matrix.java-version }}
-            11
+            17
 
       - name: Run smoke tester with Java ${{ matrix.java-version }} and (${{ inputs.artifacts-url }})
         run: |
@@ -50,6 +47,10 @@ jobs:
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
 
-          python3 -u dev-tools/scripts/smokeTestRelease.py ${{ inputs.artifacts-url }} \
+          # Assemble a release in dev mode, locally.
+          LUCENE_RELEASE_DIR=/tmp/lucene-release-dir
+          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local $LUCENE_RELEASE_DIR
+
+          python3 -u dev-tools/scripts/smokeTestRelease.py file://`realpath $LUCENE_RELEASE_DIR` \
             ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
