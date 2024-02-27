@@ -11,7 +11,7 @@ on:
 
   # run nightly at 2:04am.
   schedule:
-    - cron: '10 19 * * *'
+    - cron: '4 2 * * *'
 
 jobs:
   smokeTestRelease:
