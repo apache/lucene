@@ -20,6 +20,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      LUCENE_RELEASE_DIR: /tmp/lucene-release-dir
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +36,7 @@ jobs:
             ${{ matrix.java-version }}
             17
 
-      - name: Run smoke tester with Java ${{ matrix.java-version }}
+      - name: Echo diagnostic paths and locations
         run: |
           echo "All installed JDKs:"
           set | grep "JAVA"
@@ -42,12 +45,17 @@ jobs:
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
 
+      - name: Run buildAndPushRelease.py (in dev mode, locally)
+        run: |
           # Assemble a release in dev mode, locally.
-          LUCENE_RELEASE_DIR=/tmp/lucene-release-dir
-          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local $LUCENE_RELEASE_DIR
+          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ LUCENE_RELEASE_DIR }}
+
+      - name: Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})
+        run: |
+          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
 
           python3 -u dev-tools/scripts/smokeTestRelease.py \
             --not-signed \
-            file://`realpath $LUCENE_RELEASE_DIR/lucene*` \
+            file://`realpath ${{ LUCENE_RELEASE_DIR }}/lucene*` \
             ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
