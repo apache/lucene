@@ -232,9 +232,6 @@ def checkSigs(urlString, version, tmpDir, isSigned, keysFile):
       if text not in ('changes/', 'changes-%s/' % version):
         raise RuntimeError('lucene: found %s vs expected changes-%s/' % (text, version))
       changesURL = subURL
-    elif text == ".gitrev":
-      # git revision marker for local checks.
-      pass
     elif artifact is None:
       artifact = text
       artifactURL = subURL
@@ -702,7 +699,7 @@ def removeTrailingZeros(version):
 def checkMaven(baseURL, tmpDir, gitRevision, version, isSigned, keysFile):
   print('    download artifacts')
   artifacts = []
-  artifactsURL = '%s/maven/org/apache/lucene/' % baseURL
+  artifactsURL = '%s/lucene/maven/org/apache/lucene/' % baseURL
   targetDir = '%s/maven/org/apache/lucene' % tmpDir
   if not os.path.exists(targetDir):
     os.makedirs(targetDir)
@@ -1160,12 +1157,8 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
     baseURL = newBaseURL
 
   for text, subURL in getDirEntries(baseURL):
-    if text.find('lucene-' + version) == 0:
-      lucenePath = baseURL
-      break
-    if text.lower() == 'lucene':
+    if text.lower().find('lucene') != -1:
       lucenePath = subURL
-      break
 
   if lucenePath is None:
     raise RuntimeError('could not find lucene subdir')
