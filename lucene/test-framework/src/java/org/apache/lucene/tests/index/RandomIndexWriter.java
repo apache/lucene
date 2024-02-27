@@ -158,6 +158,7 @@ public class RandomIndexWriter implements Closeable {
     } else {
       softDeletesRatio = 0d;
     }
+
     w = mockIndexWriter(dir, c, r);
     config = w.getConfig();
     flushAt = TestUtil.nextInt(r, 10, 1000);

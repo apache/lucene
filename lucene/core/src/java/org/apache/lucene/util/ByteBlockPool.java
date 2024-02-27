@@ -216,7 +216,7 @@ public final class ByteBlockPool implements Accountable {
       result.offset = pos;
     } else {
       // Uncommon case: The slice spans at least 2 blocks, so we must copy the bytes.
-      builder.grow(length);
+      builder.growNoCopy(length);
       result.bytes = builder.get().bytes;
       result.offset = 0;
       readBytes(offset, result.bytes, 0, length);

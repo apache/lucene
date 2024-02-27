@@ -35,6 +35,26 @@ package org.apache.lucene.facet.taxonomy;
  * @lucene.experimental
  */
 public abstract class ParallelTaxonomyArrays {
+  /** Abstraction that looks like an int[], but read-only. */
+  public abstract static class IntArray {
+    /** Sole constructor * */
+    public IntArray() {}
+
+    /**
+     * Equivalent to array[i].
+     *
+     * @param i the index of the value to retrieve
+     * @return the value at position i
+     */
+    public abstract int get(int i);
+
+    /**
+     * Equivalent to array.length.
+     *
+     * @return the allocated size of the array
+     */
+    public abstract int length();
+  }
 
   /** Sole constructor. */
   public ParallelTaxonomyArrays() {}
@@ -43,17 +63,17 @@ public abstract class ParallelTaxonomyArrays {
    * Returns the parents array, where {@code parents[i]} denotes the parent of category ordinal
    * {@code i}.
    */
-  public abstract int[] parents();
+  public abstract IntArray parents();
 
   /**
    * Returns the children array, where {@code children[i]} denotes a child of category ordinal
    * {@code i}.
    */
-  public abstract int[] children();
+  public abstract IntArray children();
 
   /**
    * Returns the siblings array, where {@code siblings[i]} denotes the sibling of category ordinal
    * {@code i}.
    */
-  public abstract int[] siblings();
+  public abstract IntArray siblings();
 }

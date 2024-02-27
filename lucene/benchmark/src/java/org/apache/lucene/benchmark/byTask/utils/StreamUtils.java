@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.compress.compressors.CompressorException;
@@ -70,15 +69,9 @@ public class StreamUtils {
     }
   }
 
-  private static final Map<String, Type> extensionToType = new HashMap<>();
-
-  static {
-    // these in are lower case, we will lower case at the test as well
-    extensionToType.put(".bz2", Type.BZIP2);
-    extensionToType.put(".bzip", Type.BZIP2);
-    extensionToType.put(".gz", Type.GZIP);
-    extensionToType.put(".gzip", Type.GZIP);
-  }
+  // these are in lower case, we will lower case at the test as well
+  private static final Map<String, Type> extensionToType =
+      Map.of(".bz2", Type.BZIP2, ".bzip", Type.BZIP2, ".gz", Type.GZIP, ".gzip", Type.GZIP);
 
   /**
    * Returns an {@link InputStream} over the requested file. This method attempts to identify the

@@ -927,7 +927,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       return;
     }
     sb.append("<b>");
-    sb.append(surface.substring(0, prefixToken.length()));
+    sb.append(surface, 0, prefixToken.length());
     sb.append("</b>");
     sb.append(surface.substring(prefixToken.length()));
   }

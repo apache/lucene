@@ -69,7 +69,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene99FlatVectorsWriter(SegmentWriteState state) throws IOException {
+  public Lucene99FlatVectorsWriter(SegmentWriteState state) throws IOException {
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(

@@ -1,5 +1,7 @@
 import org.apache.lucene.gradle.datasets.ExtractReuters
 
+import java.nio.file.Files
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,8 +19,25 @@ import org.apache.lucene.gradle.datasets.ExtractReuters
  * limitations under the License.
  */
 
-// TODO: not sure whether this should live in benchmarks, but for now
-// let it be.
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.github.luben:zstd-jni:1.5.5-11"
+  }
+}
+
+def unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
+  try (InputStream is = new com.github.luben.zstd.ZstdInputStream(new BufferedInputStream(Files.newInputStream(src)));
+       OutputStream os = new BufferedOutputStream(Files.newOutputStream(dst))) {
+    is.transferTo(os)
+  }
+}
+
+
+// TODO: not sure whether this should live in benchmarks, but for now let it be.
 configure(project(":lucene:benchmark")) {
   apply plugin: "java"
   apply plugin: "de.undercouch.download"
@@ -51,8 +70,8 @@ configure(project(":lucene:benchmark")) {
   task getEnWikiRandomLines(type: Download) {
     ext {
       name = "enwiki.random.lines.txt"
-      src = "https://home.apache.org/~mikemccand/${name}.bz2"
-      intermediate = file("${dataDir}/${name}.bz2")
+      src = "https://home.apache.org/~mikemccand/${name}.zst"
+      intermediate = file("${dataDir}/${name}.zst")
       dst = file("${dataDir}/${name}")
     }
 
@@ -65,7 +84,7 @@ configure(project(":lucene:benchmark")) {
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
-      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+      unzstd(ext.intermediate.toPath(), ext.dst.toPath())
     }
   }
 

@@ -1,0 +1,50 @@
+# This workflow warns of PRs that have had no activity for a specified amount of time.
+#
+# For more information, see https://github.com/actions/stale
+name: Mark stale pull requests
+
+on:
+  # Run every day at 00:00 UTC
+  schedule:
+  - cron: '0 0 * * *'
+  # Or run on demand
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/stale@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          days-before-pr-stale: 14
+          days-before-issue-stale: -1   # don't mark issues as stale
+          exempt-draft-pr: true         # don't mark draft PRs as stale
+
+          days-before-close: -1         # don't close stale PRs/issues
+
+          stale-pr-message: >
+            This PR has not had activity in the past 2 weeks, labeling it as stale.
+            If the PR is waiting for review, notify the dev@lucene.apache.org list.
+            Thank you for your contribution!
+
+          debug-only: false             # turn on to run the action without applying changes
+          operations-per-run: 500       # operations budget
+
+# The table shows the cost in operations of all combinations of stale / not-stale for a PR.
+# Processing a non-PR issue takes 0 operations, since we don't perform any action on it.
+#
+#                            +-----------------------+
+#            number of       |  state after workflow |
+#           operations       +-----------+-----------+
+#                            |   stale   | not stale |
+#     +----------+-----------+-----------+-----------+
+#     |  state   |   stale   |     3     |     4     |
+#     |  before  +-----------+-----------+-----------+
+#     | workflow | not stale |     5     |     1     |
+#     +----------+-----------+-----------+-----------+

@@ -543,19 +543,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     }
   }
 
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
-    }
-  }
-
   private void copyTerm() {
     final int len = currentFrame.prefix + currentFrame.suffix;
     if (term.bytes.length < len) {
