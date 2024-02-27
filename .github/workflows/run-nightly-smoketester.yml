@@ -1,4 +1,4 @@
-name: Run smokeTestRelease.py against a release candidate
+name: "Run nightly: buildAndPushRelease and smokeTestRelease.py"
 
 on:
   workflow_dispatch:
@@ -9,9 +9,13 @@ on:
         required: false
         default: false
 
+  # run nightly at 2:04am.
+  schedule:
+    - cron: '10 19 * * *'
+
 jobs:
   smokeTestRelease:
-    name: "smoke jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
+    name: "Smoke test release on jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
 
     strategy:
       matrix:
@@ -41,21 +45,22 @@ jobs:
           echo "All installed JDKs:"
           set | grep "JAVA"
 
-          echo "Build matrix-picked JDK:"
+          echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
 
-      - name: Run buildAndPushRelease.py (in dev mode, locally)
+          # This sets the environment variable and makes it available for subsequent job steps.
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
+          echo "RUNTIME_JAVA_HOME=${!RUNTIME_JAVA_HOME_VAR}" >> "$GITHUB_ENV"
+
+      - name: "Run buildAndPushRelease.py (--dev-mode)"
         run: |
-          # Assemble a release in dev mode, locally.
+          # Assemble an unsigned release, in dev mode, publish locally.
           python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ env.LUCENE_RELEASE_DIR }}
 
       - name: "Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})"
         run: |
-          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
-
           python3 -u dev-tools/scripts/smokeTestRelease.py \
             --not-signed \
             file://`realpath ${{ env.LUCENE_RELEASE_DIR }}/lucene*` \
-            ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
-            -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
+            ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }}
