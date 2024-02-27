@@ -50,7 +50,7 @@ jobs:
           # Assemble a release in dev mode, locally.
           python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ LUCENE_RELEASE_DIR }}
 
-      - name: Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})
+      - name: "Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})"
         run: |
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
 
