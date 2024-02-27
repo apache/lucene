@@ -204,6 +204,8 @@ Optimizations
 
 * GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
+* GITHUB#13142: Replace Collections.synchronizedSet() with ConcurrentHashMap.newKeySet() (Dmitry Cherniachenko)
+
 Bug Fixes
 ---------------------
 
