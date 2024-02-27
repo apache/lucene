@@ -17,6 +17,9 @@ jobs:
   smokeTestRelease:
     name: "Smoke test release on jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
 
+    # only run on schedule in the main Lucene repo (not in forks).
+    if: (github.event_name == 'schedule' && github.repository == 'apache/lucene') || (github.event_name != 'schedule')
+
     strategy:
       matrix:
         os: [ ubuntu-latest ]
