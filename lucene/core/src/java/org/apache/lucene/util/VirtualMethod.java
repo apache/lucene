@@ -19,9 +19,8 @@ package org.apache.lucene.util;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A utility for keeping backwards compatibility on previously abstract methods (or similar
@@ -74,8 +73,7 @@ import java.util.Set;
  */
 public final class VirtualMethod<C> {
 
-  private static final Set<Method> singletonSet =
-      Collections.synchronizedSet(new HashSet<Method>());
+  private static final Set<Method> singletonSet = ConcurrentHashMap.newKeySet();
 
   private final Class<C> baseClass;
   private final String method;
@@ -100,7 +98,7 @@ public final class VirtualMethod<C> {
     this.method = method;
     this.parameters = parameters;
     try {
-      if (!singletonSet.add(baseClass.getDeclaredMethod(method, parameters)))
+      if (singletonSet.add(baseClass.getDeclaredMethod(method, parameters)) == false)
         throw new UnsupportedOperationException(
             "VirtualMethod instances must be singletons and therefore "
                 + "assigned to static final members in the same class, they use as baseClass ctor param.");

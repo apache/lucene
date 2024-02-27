@@ -17,14 +17,14 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** A delegating Directory that records which files were written to and deleted. */
 public final class TrackingDirectoryWrapper extends FilterDirectory {
 
-  private final Set<String> createdFileNames = Collections.synchronizedSet(new HashSet<String>());
+  private final Set<String> createdFileNames = ConcurrentHashMap.newKeySet();
 
   public TrackingDirectoryWrapper(Directory in) {
     super(in);
@@ -61,10 +61,8 @@ public final class TrackingDirectoryWrapper extends FilterDirectory {
   @Override
   public void rename(String source, String dest) throws IOException {
     in.rename(source, dest);
-    synchronized (createdFileNames) {
-      createdFileNames.add(dest);
-      createdFileNames.remove(source);
-    }
+    createdFileNames.add(dest);
+    createdFileNames.remove(source);
   }
 
   /** NOTE: returns a copy of the created files. */

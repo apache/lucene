@@ -71,7 +71,7 @@ public abstract class ReplicaNode extends Node {
   protected final Collection<String> lastNRTFiles = new HashSet<>();
 
   /** Currently running merge pre-copy jobs */
-  protected final Set<CopyJob> mergeCopyJobs = Collections.synchronizedSet(new HashSet<>());
+  protected final Set<CopyJob> mergeCopyJobs = ConcurrentHashMap.newKeySet();
 
   /** Non-null when we are currently copying files from a new NRT point: */
   protected CopyJob curNRTCopy;
@@ -80,7 +80,7 @@ public abstract class ReplicaNode extends Node {
   private final Lock writeFileLock;
 
   /** Merged segment files that we pre-copied, but have not yet made visible in a new NRT point. */
-  final Set<String> pendingMergeFiles = Collections.synchronizedSet(new HashSet<String>());
+  final Set<String> pendingMergeFiles = ConcurrentHashMap.newKeySet();
 
   /** Primary gen last time we successfully replicated: */
   protected long lastPrimaryGen;
@@ -470,8 +470,7 @@ public abstract class ReplicaNode extends Node {
       if (copyState.completedMergeFiles.isEmpty() == false) {
         message("now remove-if-not-ref'd completed merge files: " + copyState.completedMergeFiles);
         for (String fileName : copyState.completedMergeFiles) {
-          if (pendingMergeFiles.contains(fileName)) {
-            pendingMergeFiles.remove(fileName);
+          if (pendingMergeFiles.remove(fileName)) {
             deleter.deleteIfNoRef(fileName);
           }
         }
@@ -625,19 +624,17 @@ public abstract class ReplicaNode extends Node {
     for (String fileName : curNRTCopy.getFileNamesToCopy()) {
       assert lastCommitFiles.contains(fileName) == false
           : "fileName=" + fileName + " is in lastCommitFiles and is being copied?";
-      synchronized (mergeCopyJobs) {
-        for (CopyJob mergeJob : mergeCopyJobs) {
-          if (mergeJob.getFileNames().contains(fileName)) {
-            // TODO: we could maybe transferAndCancel here?  except CopyJob can't transferAndCancel
-            // more than one currently
-            message(
-                "top: now cancel merge copy job="
-                    + mergeJob
-                    + ": file "
-                    + fileName
-                    + " is now being copied via NRT point");
-            mergeJob.cancel("newNRTPoint is copying over the same file", null);
-          }
+      for (CopyJob mergeJob : mergeCopyJobs) {
+        if (mergeJob.getFileNames().contains(fileName)) {
+          // TODO: we could maybe transferAndCancel here?  except CopyJob can't transferAndCancel
+          // more than one currently
+          message(
+              "top: now cancel merge copy job="
+                  + mergeJob
+                  + ": file "
+                  + fileName
+                  + " is now being copied via NRT point");
+          mergeJob.cancel("newNRTPoint is copying over the same file", null);
         }
       }
     }
