@@ -46,6 +46,8 @@ jobs:
           LUCENE_RELEASE_DIR=/tmp/lucene-release-dir
           python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local $LUCENE_RELEASE_DIR
 
-          python3 -u dev-tools/scripts/smokeTestRelease.py file://`realpath $LUCENE_RELEASE_DIR/lucene*` \
+          python3 -u dev-tools/scripts/smokeTestRelease.py \
+            --not-signed \
+            file://`realpath $LUCENE_RELEASE_DIR/lucene*` \
             ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
