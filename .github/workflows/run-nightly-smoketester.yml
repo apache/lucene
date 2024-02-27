@@ -1,13 +1,8 @@
 name: "Run nightly: buildAndPushRelease and smokeTestRelease.py"
 
 on:
+  # Allow manual dispatch.
   workflow_dispatch:
-    inputs:
-      run-tests:
-        description: "Include a full test run"
-        type: boolean
-        required: false
-        default: false
 
   # run nightly at 2:04am.
   schedule:
@@ -68,7 +63,7 @@ jobs:
             --not-signed \
             --tmp-dir ${{ env.TMP_DIR }} \
             file://`realpath ${{ env.LUCENE_RELEASE_DIR }}/lucene*` \
-            ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }}
+            -Ptests.filter="@skipall"
 
       - name: "Store smoke tester logs"
         if: ${{ always() }}
