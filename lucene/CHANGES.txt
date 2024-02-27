@@ -178,6 +178,8 @@ Other
 
 * GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
 
+* GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
