@@ -48,7 +48,7 @@ jobs:
       - name: Run buildAndPushRelease.py (in dev mode, locally)
         run: |
           # Assemble a release in dev mode, locally.
-          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ LUCENE_RELEASE_DIR }}
+          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ env.LUCENE_RELEASE_DIR }}
 
       - name: "Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})"
         run: |
@@ -56,6 +56,6 @@ jobs:
 
           python3 -u dev-tools/scripts/smokeTestRelease.py \
             --not-signed \
-            file://`realpath ${{ LUCENE_RELEASE_DIR }}/lucene*` \
+            file://`realpath ${{ env.LUCENE_RELEASE_DIR }}/lucene*` \
             ${{ inputs.run-tests && ' ' || '-Dtests.filter="@skipall"' }} \
             -Druntime.java.home=${!RUNTIME_JAVA_HOME_VAR}
