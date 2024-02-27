@@ -149,7 +149,7 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
       'X-Compile-Source-JDK: %s' % BASE_JAVA_VERSION,
       'X-Compile-Target-JDK: %s' % BASE_JAVA_VERSION,
       'Specification-Version: %s' % version,
-      'X-Build-JDK: %s' % BASE_JAVA_VERSION,
+      'X-Build-JDK: %s.' % BASE_JAVA_VERSION,
       'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
