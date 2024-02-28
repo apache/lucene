@@ -190,7 +190,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#13087: Changed `static final Set` constants to be immutable. Among others it affected
+  ScandinavianNormalizer.ALL_FOLDINGS set with public access. (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
@@ -259,8 +260,6 @@ Improvements
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
 
 * GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
-
-* GITHUB#13087: Some `static final Set` constants were mutable - rectified. (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
