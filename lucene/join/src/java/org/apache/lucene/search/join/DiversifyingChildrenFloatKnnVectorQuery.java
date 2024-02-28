@@ -19,10 +19,7 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -30,7 +27,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 /**
