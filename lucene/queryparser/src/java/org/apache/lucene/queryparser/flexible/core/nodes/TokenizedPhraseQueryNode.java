@@ -32,10 +32,11 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
 
   @Override
   public String toString() {
-    if (getChildren() == null || getChildren().size() == 0) return "<tokenizedphrase/>";
+    List<QueryNode> children = getChildren();
+    if (children == null || children.isEmpty()) return "<tokenizedphrase/>";
     StringBuilder sb = new StringBuilder();
-    sb.append("<tokenizedtphrase>");
-    for (QueryNode child : getChildren()) {
+    sb.append("<tokenizedphrase>");
+    for (QueryNode child : children) {
       sb.append("\n");
       sb.append(child.toString());
     }
@@ -46,16 +47,15 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
   // This text representation is not re-parseable
   @Override
   public CharSequence toQueryString(EscapeQuerySyntax escapeSyntaxParser) {
-    if (getChildren() == null || getChildren().size() == 0) return "";
-
+    List<QueryNode> children = getChildren();
+    if (children == null || children.isEmpty()) return "";
     StringBuilder sb = new StringBuilder();
     String filler = "";
-    for (QueryNode child : getChildren()) {
+    for (QueryNode child : children) {
       sb.append(filler).append(child.toQueryString(escapeSyntaxParser));
       filler = ",";
     }
-
-    return "[TP[" + sb.toString() + "]]";
+    return "[TP[" + sb + "]]";
   }
 
   @Override
@@ -70,27 +70,25 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
   @Override
   public CharSequence getField() {
     List<QueryNode> children = getChildren();
-
-    if (children == null || children.size() == 0) {
-      return null;
-
-    } else {
-      return ((FieldableNode) children.get(0)).getField();
+    if (children != null) {
+      for (QueryNode child : children) {
+        if (child instanceof FieldableNode) {
+          return ((FieldableNode) child).getField();
+        }
+      }
     }
+    return null;
   }
 
   @Override
   public void setField(CharSequence fieldName) {
     List<QueryNode> children = getChildren();
-
     if (children != null) {
-
-      for (QueryNode child : getChildren()) {
-
+      for (QueryNode child : children) {
         if (child instanceof FieldableNode) {
           ((FieldableNode) child).setField(fieldName);
         }
       }
     }
   }
-} // end class MultitermQueryNode
+}

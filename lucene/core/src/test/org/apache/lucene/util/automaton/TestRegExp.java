@@ -119,7 +119,7 @@ public class TestRegExp extends LuceneTestCase {
 
     // Add any head to the result, unchanged
     if (substitutionPoint > 0) {
-      result.append(docValue.substring(0, substitutionPoint));
+      result.append(docValue, 0, substitutionPoint);
     }
 
     // Modify the middle...

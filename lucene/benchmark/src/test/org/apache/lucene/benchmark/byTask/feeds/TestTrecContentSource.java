@@ -36,7 +36,7 @@ public class TestTrecContentSource extends LuceneTestCase {
   /** A TrecDocMaker which works on a String and not files. */
   private static class StringableTrecSource extends TrecContentSource {
 
-    private String docs = null;
+    private final String docs;
 
     public StringableTrecSource(String docs, boolean forever) {
       this.docs = docs;

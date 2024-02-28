@@ -190,20 +190,35 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
+
+* GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
+
 * GITHUB#13087: Changed `static final Set` constants to be immutable. Among others it affected
   ScandinavianNormalizer.ALL_FOLDINGS set with public access. (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
+
+* GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
+
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13105: Fix ByteKnnVectorFieldSource & FloatKnnVectorFieldSource to work correctly when a segment does not contain
+  any docs with vectors (hossman)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
+
+* GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
 
 ======================== Lucene 9.10.0 =======================
 
@@ -258,8 +273,6 @@ Improvements
 * GITHUB#888: Use native byte order varhandles to spare CPU's byte swapping.
   Tests are running with random byte order to ensure that the order does not affect correctness
   of code. Native order was enabled for LZ4 compression.  (Uwe Schindler)
-
-* GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
 Optimizations
 ---------------------

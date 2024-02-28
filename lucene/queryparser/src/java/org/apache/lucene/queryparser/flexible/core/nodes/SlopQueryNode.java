@@ -32,7 +32,7 @@ import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
  */
 public class SlopQueryNode extends QueryNodeImpl implements FieldableNode {
 
-  private int value = 0;
+  private int value;
 
   /**
    * @param query - QueryNode Tree with the phrase

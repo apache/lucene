@@ -73,7 +73,7 @@ public class Trie {
   List<CharSequence> cmds = new ArrayList<>();
   int root;
 
-  boolean forward = false;
+  boolean forward;
 
   /**
    * Constructor for the Trie object.
