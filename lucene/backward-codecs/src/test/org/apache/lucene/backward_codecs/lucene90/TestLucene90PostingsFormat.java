@@ -26,6 +26,7 @@ import org.apache.lucene.backward_codecs.lucene90.Lucene90ScoreSkipReader.Mutabl
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
+import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99SkipWriter;
@@ -45,7 +46,27 @@ import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene90RWPostingsFormat());
+  private final Codec codec =
+      TestUtil.alwaysPostingsFormat(
+          new Lucene90RWPostingsFormat(
+              Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+              Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE,
+              getBlockHeapSizeLimitBytes()));
+
+  private static long getBlockHeapSizeLimitBytes() {
+    // randomize the block heap max size between 3 states:
+    // - 0, effectively disable on-heap FST and always use off-heap
+    // - DEFAULT_BLOCK_HEAP_LIMIT_BYTES
+    // - a random number between 0 and DEFAULT_BLOCK_HEAP_LIMIT_BYTES
+    int r = random().nextInt(2);
+    if (r == 0) {
+      return 0;
+    }
+    if (r == 1) {
+      return Lucene90BlockTreeTermsWriter.DEFAULT_BLOCK_HEAP_LIMIT_BYTES;
+    }
+    return random().nextLong(Lucene90BlockTreeTermsWriter.DEFAULT_BLOCK_HEAP_LIMIT_BYTES);
+  }
 
   @Override
   protected Codec getCodec() {
