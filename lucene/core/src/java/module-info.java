@@ -42,6 +42,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.search;
   exports org.apache.lucene.search.comparators;
   exports org.apache.lucene.search.similarities;
+  exports org.apache.lucene.search.knn;
   exports org.apache.lucene.store;
   exports org.apache.lucene.util;
   exports org.apache.lucene.util.automaton;
@@ -61,6 +62,8 @@ module org.apache.lucene.core {
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
+
+  exports org.apache.lucene.util.quantization;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

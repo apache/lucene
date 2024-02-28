@@ -438,6 +438,21 @@ public final class FST<T> implements Accountable {
   }
 
   /**
+   * Create a FST from a {@link FSTReader}. Return null if the metadata is null.
+   *
+   * @param fstMetadata the metadata
+   * @param fstReader the FSTReader
+   * @return the FST
+   */
+  public static <T> FST<T> fromFSTReader(FSTMetadata<T> fstMetadata, FSTReader fstReader) {
+    // FSTMetadata could be null if there is no node accepted by the FST
+    if (fstMetadata == null) {
+      return null;
+    }
+    return new FST<>(fstMetadata, Objects.requireNonNull(fstReader, "FSTReader cannot be null"));
+  }
+
+  /**
    * Read the FST metadata from DataInput
    *
    * @param metaIn the DataInput of the metadata
@@ -516,9 +531,7 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Save the FST to DataOutput. If you use an {@link org.apache.lucene.store.IndexOutput} to build
-   * the FST, then you should not and do not need to call this method, as the FST is already saved.
-   * Doing so will throw an {@link UnsupportedOperationException}.
+   * Save the FST to DataOutput.
    *
    * @param metaOut the DataOutput to write the metadata to
    * @param out the DataOutput to write the FST bytes to

@@ -107,7 +107,7 @@ public class TestPrefixRandom extends LuceneTestCase {
 
     @Override
     public String toString(String field) {
-      return field.toString() + ":" + prefix.toString();
+      return field + ":" + prefix;
     }
 
     @Override

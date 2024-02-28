@@ -20,8 +20,10 @@ import static org.apache.lucene.backward_index.BackwardsCompatibilityTestBase.cr
 
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
 import org.apache.lucene.util.Version;
 
+@SuppressFileSystems("ExtrasFS")
 public class TestGenerateBwcIndices extends LuceneTestCase {
 
   // Backcompat index generation, described below, is mostly automated in:

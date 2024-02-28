@@ -81,7 +81,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         float score1 =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
-        assertScorerResults(searcher, query, new float[] {score0, score1}, new String[] {"1", "2"});
+        assertScorerResults(
+            searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
     }
   }
