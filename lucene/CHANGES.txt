@@ -206,7 +206,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13017: Fix DV update files referenced by merge will be deleted by concurrent flush. (Jialiang Guo)
 
 Other
 ---------------------
