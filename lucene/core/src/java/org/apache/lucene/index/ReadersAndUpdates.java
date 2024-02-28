@@ -784,7 +784,8 @@ final class ReadersAndUpdates {
     }
 
     SegmentReader reader = getReader(context);
-    if (pendingDeletes.needsRefresh(reader)) {
+    if (pendingDeletes.needsRefresh(reader)
+        || reader.getSegmentInfo().getDelGen() != pendingDeletes.info.getDelGen()) {
       // beware of zombies:
       assert pendingDeletes.getLiveDocs() != null;
       reader = createNewReaderWithLatestLiveDocs(reader);

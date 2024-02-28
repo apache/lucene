@@ -1307,4 +1307,85 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     writerWithMergePolicy.close();
     mockDirectory.close();
   }
+
+  public void testForceMergeWithPendingHardAndSoftDeleteFile() throws Exception {
+    Path path = createTempDir("testForceMergeWithPendingHardAndSoftDeleteFile");
+    Directory mockDirectory =
+        new FilterDirectory(newFSDirectory(path)) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            IndexInput indexInput = super.openInput(name, context);
+            return new MockAssertFileExistIndexInput(name, indexInput, path.resolve(name));
+          }
+        };
+
+    MergePolicy mockMergePolicy =
+        new OneMergeWrappingMergePolicy(
+            new TieredMergePolicy() {
+              @Override
+              public MergeSpecification findMerges(
+                  MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+                  throws IOException {
+                // only allow force merge
+                return null;
+              }
+            },
+            merge -> new MergePolicy.OneMerge(merge.segments) {});
+
+    IndexWriter writer =
+        new IndexWriter(mockDirectory, newIndexWriterConfig().setMergePolicy(mockMergePolicy));
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "3", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "4", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "5", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    writer.updateDocument(new Term("id", "2"), doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "3", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    writer.updateDocument(new Term("id", "3"), doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "4", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    Field field = new NumericDocValuesField("soft_delete", 1);
+    writer.softUpdateDocument(new Term("id", "4"), doc, field);
+
+    DirectoryReader reader = writer.getReader(true, false);
+    reader.close();
+    writer.commit();
+
+    writer.forceMerge(1);
+
+    writer.close();
+    mockDirectory.close();
+  }
 }
