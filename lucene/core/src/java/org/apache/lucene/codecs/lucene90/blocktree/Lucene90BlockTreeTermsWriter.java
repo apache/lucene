@@ -1347,13 +1347,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         IOUtils.closeWhileHandlingException(metaOut, termsOut, indexOut, postingsWriter);
         IOUtils.closeWhileHandlingException(tempIndexInputs);
       }
-      for (String inputName : tempInputNames) {
-        try {
-          state.directory.deleteFile(inputName);
-        } catch (IOException ex) {
-
-        }
-      }
+      IOUtils.deleteFilesIgnoringExceptions(state.directory, tempInputNames);
     }
   }
 
