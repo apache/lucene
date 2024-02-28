@@ -29,12 +29,12 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -61,7 +61,7 @@ import org.junit.BeforeClass;
 @SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
 public class TestSimpleServer extends LuceneTestCase {
 
-  static final Set<Thread> clientThreads = ConcurrentHashMap.newKeySet();
+  static final Set<Thread> clientThreads = Collections.synchronizedSet(new HashSet<>());
   static final AtomicBoolean stop = new AtomicBoolean();
 
   /** Handles one client connection */
