@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -84,7 +85,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
             // depending on when it happens.
             writer.commit();
             indexExists = true;
-          } catch (IOException | IllegalStateException e) {
+          } catch (IOException | IllegalStateException | UncheckedIOException e) {
             if (VERBOSE) {
               System.out.println("TEST: exception on commit");
               e.printStackTrace(System.out);
@@ -364,7 +365,10 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               done = true;
             }
 
-          } catch (IllegalStateException | IOException | MergePolicy.MergeException e) {
+          } catch (IllegalStateException
+              | IOException
+              | MergePolicy.MergeException
+              | UncheckedIOException e) {
             success = false;
             err = e;
             if (VERBOSE) {
