@@ -99,6 +99,7 @@ public abstract class VectorizationProvider {
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion <= 22) {
+      assert runtimeVersion >= 21;
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
