@@ -33,7 +33,13 @@ import java.nio.LongBuffer;
  *
  * <p>For efficiency, this class requires that the buffers are a power-of-two (<code>chunkSizePower
  * </code>).
+ *
+ * @deprecated This class was made public for internal reasons ({@code instanceof} checks). In
+ *     {@link MMapDirectory} it was replaced by {@code MemorySegment} based {@link IndexInput}
+ *     implementations and will be no longer required in Lucene 10.
+ * @lucene.internal
  */
+@Deprecated
 public abstract class ByteBufferIndexInput extends IndexInput implements RandomAccessInput {
   private static final FloatBuffer EMPTY_FLOATBUFFER = FloatBuffer.allocate(0);
   private static final LongBuffer EMPTY_LONGBUFFER = LongBuffer.allocate(0);
