@@ -195,6 +195,9 @@ Improvements
 
 * GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
 
+* GITHUB#13087: Changed `static final Set` constants to be immutable. Among others it affected
+  ScandinavianNormalizer.ALL_FOLDINGS set with public access. (Dmitry Cherniachenko)
+
 Optimizations
 ---------------------
 
