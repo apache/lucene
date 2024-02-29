@@ -27,7 +27,6 @@ import org.apache.lucene.search.suggest.analyzing.FSTUtil;
 import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBufferIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
@@ -327,8 +326,7 @@ public final class NRTSuggester implements Accountable {
       case AUTO:
         // TODO: Make this less hacky to maybe expose "off-heap" feature using a marker interface on
         // the IndexInput
-        return input instanceof ByteBufferIndexInput
-            || input.getClass().getName().contains(".MemorySegmentIndexInput");
+        return input.getClass().getName().contains(".MemorySegmentIndexInput");
       default:
         throw new IllegalStateException("unknown enum constant: " + fstLoadMode);
     }
