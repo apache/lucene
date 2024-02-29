@@ -352,7 +352,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // build graph
         HnswGraphMerger merger =
             createGraphMerger(
-                fieldInfo, scorerSupplier, mergeState.parallelMergeTaskExecutor, numMergeWorkers);
+                fieldInfo,
+                scorerSupplier,
+                mergeState.parallelMergeTaskExecutor == null
+                    ? null
+                    : new TaskExecutor(mergeState.parallelMergeTaskExecutor),
+                numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
@@ -493,10 +498,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       RandomVectorScorerSupplier scorerSupplier,
       TaskExecutor parallelMergeTaskExecutor,
       int numParallelMergeWorkers) {
-    if (parallelMergeTaskExecutor != null && mergeExec != null) {
-      throw new IllegalArgumentException(
-          "Cannot specify both mergeExecutor in format construction and parallelMergeTaskExecutor in the index writing config");
-    }
+    assert (parallelMergeTaskExecutor == null) == (mergeExec != null);
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);

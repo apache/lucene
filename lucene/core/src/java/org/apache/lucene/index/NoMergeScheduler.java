@@ -55,7 +55,7 @@ public final class NoMergeScheduler extends MergeScheduler {
   }
 
   @Override
-  public Executor getInterMergeExecutor(OneMerge merge) {
-    return null;
+  public Executor getIntraMergeExecutor(OneMerge merge) {
+    throw new UnsupportedOperationException("NoMergeScheduler does not support merges");
   }
 }

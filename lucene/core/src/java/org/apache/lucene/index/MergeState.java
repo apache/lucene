@@ -21,6 +21,7 @@ import static org.apache.lucene.index.IndexWriter.isCongruentSort;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -30,7 +31,6 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.packed.PackedInts;
@@ -86,7 +86,7 @@ public class MergeState {
   public final InfoStream infoStream;
 
   /** Executor for parallel merge activity */
-  public final TaskExecutor parallelMergeTaskExecutor;
+  public final Executor parallelMergeTaskExecutor;
 
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
@@ -96,7 +96,7 @@ public class MergeState {
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
       InfoStream infoStream,
-      TaskExecutor parallelMergeTaskExecutor)
+      Executor parallelMergeTaskExecutor)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;

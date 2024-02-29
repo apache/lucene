@@ -269,7 +269,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   @Override
-  public Executor getInterMergeExecutor(OneMerge merge) {
+  public Executor getIntraMergeExecutor(OneMerge merge) {
     assert scaledExecutor != null : "scaledExecutor is not initialized";
     return scaledExecutor;
   }
@@ -942,23 +942,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     AtomicInteger activeCount = new AtomicInteger(0);
 
     public ScaledExecutor() {
-      super(
-          Math.max(0, maxThreadCount - 1),
-          Math.max(1, maxThreadCount - 1),
-          Long.MAX_VALUE,
-          TimeUnit.NANOSECONDS,
-          new SynchronousQueue<>());
+      super(0, Math.max(1, maxThreadCount - 1), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
     }
 
     private void updatePoolSize() {
       int newMax = Math.max(0, maxThreadCount - 1);
-      if (newMax > getCorePoolSize()) {
-        setMaximumPoolSize(Math.max(newMax, 1));
-        setCorePoolSize(newMax);
-      } else {
-        setCorePoolSize(newMax);
-        setMaximumPoolSize(Math.max(newMax, 1));
-      }
+      setMaximumPoolSize(Math.max(newMax, 1));
     }
 
     boolean incrementUpTo(int max) {

@@ -60,7 +60,7 @@ public abstract class MergeScheduler implements Closeable {
    * Provides an executor for parallelism during a single merge operation. By default, this method
    * returns an executor that runs tasks in the calling thread.
    */
-  public Executor getInterMergeExecutor(OneMerge merge) {
+  public Executor getIntraMergeExecutor(OneMerge merge) {
     return executor;
   }
 

@@ -29,7 +29,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -65,12 +64,7 @@ final class SegmentMerger {
       throw new IllegalArgumentException(
           "IOContext.context should be MERGE; got: " + context.context);
     }
-    mergeState =
-        new MergeState(
-            readers,
-            segmentInfo,
-            infoStream,
-            parallelMergeTaskExecutor == null ? null : new TaskExecutor(parallelMergeTaskExecutor));
+    mergeState = new MergeState(readers, segmentInfo, infoStream, parallelMergeTaskExecutor);
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;

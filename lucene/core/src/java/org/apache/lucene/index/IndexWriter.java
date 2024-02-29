@@ -3444,7 +3444,7 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            mergeScheduler.getInterMergeExecutor(merge));
+            mergeScheduler.getIntraMergeExecutor(merge));
 
     if (!merger.shouldMerge()) {
       return;
@@ -5234,7 +5234,7 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              mergeScheduler.getInterMergeExecutor(merge));
+              mergeScheduler.getIntraMergeExecutor(merge));
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 
