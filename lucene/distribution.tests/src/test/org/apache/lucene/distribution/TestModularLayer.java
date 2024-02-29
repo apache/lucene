@@ -217,12 +217,9 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
                     .isNotNull();
               }
 
-              final int runtimeVersion = Runtime.version().feature();
-              if (jarVersions.contains(runtimeVersion)) {
-                Assertions.assertThat(
-                        loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
-                    .isNotNull();
-              }
+              Assertions.assertThat(
+                      loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
+                  .isNotNull();
             });
   }
 
