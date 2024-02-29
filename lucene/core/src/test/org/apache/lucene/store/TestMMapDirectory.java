@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
-import org.junit.BeforeClass;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -33,11 +32,6 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     MMapDirectory m = new MMapDirectory(path);
     m.setPreload((file, context) -> random().nextBoolean());
     return m;
-  }
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
   public void testAceWithThreads() throws Exception {
