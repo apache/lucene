@@ -73,7 +73,7 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_21
+  minJavaVersion = JavaVersion.VERSION_17
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
