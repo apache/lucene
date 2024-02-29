@@ -42,6 +42,12 @@ import org.apache.lucene.util.Constants;
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
  *
+ * <p>This class will use the modern {@link java.lang.foreign.MemorySegment} API available since
+ * Java 21 which allows to safely unmap previously mmapped files after closing the {@link
+ * IndexInput}s. There is no need to enable the "preview feature" of your Java version; it works out
+ * of box with some compilation tricks. For more information about the foreign memory API read
+ * documentation of the {@link java.lang.foreign} package.
+ *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
  * blocked on IO. The channel will remain closed and subsequent access to {@link MMapDirectory} will
