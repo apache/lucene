@@ -59,7 +59,7 @@ import org.apache.lucene.util.Constants;
  * synchronize on the <code>MMapDirectory</code> instance as this may cause deadlock; use your own
  * (non-Lucene) objects instead.
  *
- * @see <a href="http://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Blog post
+ * @see <a href="https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Blog post
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
