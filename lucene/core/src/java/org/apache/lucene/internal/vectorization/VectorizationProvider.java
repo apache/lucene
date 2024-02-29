@@ -98,8 +98,8 @@ public abstract class VectorizationProvider {
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
+    assert runtimeVersion >= 21;
     if (runtimeVersion <= 22) {
-      assert runtimeVersion >= 21;
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
@@ -160,7 +160,7 @@ public abstract class VectorizationProvider {
       }
     } else {
       LOG.warning(
-          "You are running with Java "
+          "You are running with unsupported Java "
               + runtimeVersion
               + ". To make full use of the Vector API, please update Apache Lucene.");
     }
