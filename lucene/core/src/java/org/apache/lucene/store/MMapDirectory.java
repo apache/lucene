@@ -79,7 +79,14 @@ public class MMapDirectory extends FSDirectory {
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
-  /** Default max chunk size: 16 GiBytes */
+  /**
+   * Default max chunk size:
+   *
+   * <ul>
+   *   <li>16 GiBytes for 64 bit JVMs
+   *   <li>256 MiBytes for 32 bit JVMs
+   * </ul>
+   */
   public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   final int chunkSizePower;
