@@ -97,7 +97,7 @@ allprojects {
     title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
-        "https://docs.oracle.com/en/java/javase/11/docs/api/": javaJavadocPackages,
+        "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
         "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
 
