@@ -84,8 +84,8 @@ API Changes
   make compile() only return the FSTMetadata. For on-heap (default) use case, please use
   FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
 
-* GITHUB#13146: Remove ByteBufferIndexInput and only use MemorySegment APIs for MMapDirectory.
-  (Uwe Schindler)
+* GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
+  for MMapDirectory.  (Uwe Schindler)
 
 New Features
 ---------------------
