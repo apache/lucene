@@ -164,24 +164,24 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     // is no ByteBuffer#getLongs to read multiple longs at once. So we use the
     // below trick in order to be able to leverage LongBuffer#get(long[]) to
     // read multiple longs at once with as little overhead as possible.
-    if (curLongBufferViews == null) {
-      // readLELongs is only used for postings today, so we compute the long
-      // views lazily so that other data-structures don't have to pay for the
-      // associated initialization/memory overhead.
-      curLongBufferViews = new LongBuffer[Long.BYTES];
-      for (int i = 0; i < Long.BYTES; ++i) {
-        // Compute a view for each possible alignment. We cache these views
-        // because #asLongBuffer() has some cost that we don't want to pay on
-        // each invocation of #readLELongs.
-        if (i < curBuf.limit()) {
-          curLongBufferViews[i] =
-              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
-        } else {
-          curLongBufferViews[i] = EMPTY_LONGBUFFER;
+    try {
+      if (curLongBufferViews == null) {
+        // readLELongs is only used for postings today, so we compute the long
+        // views lazily so that other data-structures don't have to pay for the
+        // associated initialization/memory overhead.
+        curLongBufferViews = new LongBuffer[Long.BYTES];
+        for (int i = 0; i < Long.BYTES; ++i) {
+          // Compute a view for each possible alignment. We cache these views
+          // because #asLongBuffer() has some cost that we don't want to pay on
+          // each invocation of #readLELongs.
+          if (i < curBuf.limit()) {
+            curLongBufferViews[i] =
+                curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
+          } else {
+            curLongBufferViews[i] = EMPTY_LONGBUFFER;
+          }
         }
       }
-    }
-    try {
       final int position = curBuf.position();
       guard.getLongs(
           curLongBufferViews[position & 0x07].position(position >>> 3), dst, offset, length);
@@ -199,18 +199,18 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   @Override
   public void readInts(int[] dst, int offset, int length) throws IOException {
     // See notes about readLongs above
-    if (curIntBufferViews == null) {
-      curIntBufferViews = new IntBuffer[Integer.BYTES];
-      for (int i = 0; i < Integer.BYTES; ++i) {
-        if (i < curBuf.limit()) {
-          curIntBufferViews[i] =
-              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-        } else {
-          curIntBufferViews[i] = EMPTY_INTBUFFER;
+    try {
+      if (curIntBufferViews == null) {
+        curIntBufferViews = new IntBuffer[Integer.BYTES];
+        for (int i = 0; i < Integer.BYTES; ++i) {
+          if (i < curBuf.limit()) {
+            curIntBufferViews[i] =
+                curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+          } else {
+            curIntBufferViews[i] = EMPTY_INTBUFFER;
+          }
         }
       }
-    }
-    try {
       final int position = curBuf.position();
       guard.getInts(
           curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
@@ -228,20 +228,20 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   @Override
   public final void readFloats(float[] floats, int offset, int len) throws IOException {
     // See notes about readLongs above
-    if (curFloatBufferViews == null) {
-      curFloatBufferViews = new FloatBuffer[Float.BYTES];
-      for (int i = 0; i < Float.BYTES; ++i) {
-        // Compute a view for each possible alignment.
-        if (i < curBuf.limit()) {
-          ByteBuffer dup = curBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-          dup.position(i);
-          curFloatBufferViews[i] = dup.asFloatBuffer();
-        } else {
-          curFloatBufferViews[i] = EMPTY_FLOATBUFFER;
+    try {
+      if (curFloatBufferViews == null) {
+        curFloatBufferViews = new FloatBuffer[Float.BYTES];
+        for (int i = 0; i < Float.BYTES; ++i) {
+          // Compute a view for each possible alignment.
+          if (i < curBuf.limit()) {
+            ByteBuffer dup = curBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+            dup.position(i);
+            curFloatBufferViews[i] = dup.asFloatBuffer();
+          } else {
+            curFloatBufferViews[i] = EMPTY_FLOATBUFFER;
+          }
         }
       }
-    }
-    try {
       final int position = curBuf.position();
       FloatBuffer floatBuffer = curFloatBufferViews[position & 0x03];
       floatBuffer.position(position >>> 2);
@@ -560,6 +560,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     curBufIndex = 0;
     curLongBufferViews = null;
     curIntBufferViews = null;
+    curFloatBufferViews = null;
   }
 
   /** Optimization of ByteBufferIndexInput for when there is only one buffer */
