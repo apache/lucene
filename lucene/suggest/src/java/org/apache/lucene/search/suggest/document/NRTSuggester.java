@@ -325,7 +325,10 @@ public final class NRTSuggester implements Accountable {
       case OFF_HEAP:
         return true;
       case AUTO:
-        return input instanceof ByteBufferIndexInput;
+        // TODO: Make this less hacky to maybe expose "off-heap" feature using a marker interface on
+        // the IndexInput
+        return input instanceof ByteBufferIndexInput
+            || input.getClass().getName().contains(".MemorySegmentIndexInput");
       default:
         throw new IllegalStateException("unknown enum constant: " + fstLoadMode);
     }

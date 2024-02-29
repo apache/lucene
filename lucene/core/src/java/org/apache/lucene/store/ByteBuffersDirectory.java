@@ -82,6 +82,13 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_AS_BYTE_ARRAY =
       OUTPUT_AS_ONE_BUFFER;
 
+  /**
+   * Use {@link ByteBufferIndexInput} for reading, otherwise identical to {@link
+   * #OUTPUT_AS_MANY_BUFFERS}.
+   *
+   * @deprecated Use {@link #OUTPUT_AS_MANY_BUFFERS} instead.
+   */
+  @Deprecated
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput>
       OUTPUT_AS_MANY_BUFFERS_LUCENE =
           (fileName, output) -> {
