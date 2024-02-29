@@ -8,7 +8,7 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
-* Deprecate ByteBufferIndexInput as it will be removed in Lucene 10.0. (Uwe Schindler)
+* GITHUB#13145: Deprecate ByteBufferIndexInput as it will be removed in Lucene 10.0. (Uwe Schindler)
 
 New Features
 ---------------------
@@ -37,7 +37,7 @@ Bug Fixes
 * GITHUB#13105: Fix ByteKnnVectorFieldSource & FloatKnnVectorFieldSource to work correctly when a segment does not contain
   any docs with vectors (hossman)
 
-* Detect MemorySegmentIndexInput correctly in NRTSuggester. (Uwe Schindler)
+* GITHUB#13145: Detect MemorySegmentIndexInput correctly in NRTSuggester. (Uwe Schindler)
 
 Other
 ---------------------
