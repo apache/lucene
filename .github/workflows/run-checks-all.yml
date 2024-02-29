@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '17' ]
+        java: [ '21' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -52,7 +52,7 @@ jobs:
         # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
         # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
         os: [ ubuntu-latest ]
-        java: [ '17' ]
+        java: [ '21' ]
 
     runs-on: ${{ matrix.os }}
 
