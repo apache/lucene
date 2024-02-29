@@ -21,15 +21,10 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -95,8 +90,6 @@ import org.apache.lucene.util.SuppressForbidden;
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
-
-  private static final Logger LOG = Logger.getLogger(MMapDirectory.class.getName());
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
@@ -317,61 +310,30 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
-  }
-
-  private static boolean checkMemorySegmentsSysprop() {
-    try {
-      return Optional.ofNullable(System.getProperty(ENABLE_MEMORY_SEGMENTS_SYSPROP))
-          .map(Boolean::valueOf)
-          .orElse(Boolean.TRUE);
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
-      LOG.warning(
-          "Cannot read sysprop "
-              + ENABLE_MEMORY_SEGMENTS_SYSPROP
-              + ", so MemorySegments will be enabled by default, if possible.");
-      return true;
-    }
-  }
-
   private static MMapIndexInputProvider lookupProvider() {
-    if (checkMemorySegmentsSysprop() == false) {
-      return new MappedByteBufferIndexInputProvider();
-    }
     final var lookup = MethodHandles.lookup();
-    final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion >= 19) {
+    try {
+      final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
+      // we use method handles, so we do not need to deal with setAccessible as we have private
+      // access through the lookup:
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
       try {
-        final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
-        // we use method handles, so we do not need to deal with setAccessible as we have private
-        // access through the lookup:
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        try {
-          return (MMapIndexInputProvider) constr.invoke();
-        } catch (RuntimeException | Error e) {
-          throw e;
-        } catch (Throwable th) {
-          throw new AssertionError(th);
-        }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
-        throw new LinkageError(
-            "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError(
-            "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
+        return (MMapIndexInputProvider) constr.invoke();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable th) {
+        throw new AssertionError(th);
       }
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new LinkageError(
+          "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
+    } catch (ClassNotFoundException cnfe) {
+      throw new LinkageError("MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
     }
-    return new MappedByteBufferIndexInputProvider();
   }
 
   static {
-    PROVIDER = doPrivileged(MMapDirectory::lookupProvider);
+    PROVIDER = lookupProvider();
     DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
     UNMAP_SUPPORTED = PROVIDER.isUnmapSupported();
     UNMAP_NOT_SUPPORTED_REASON = PROVIDER.getUnmapNotSupportedReason();

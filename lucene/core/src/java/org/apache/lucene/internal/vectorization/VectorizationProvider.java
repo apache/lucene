@@ -17,11 +17,9 @@
 
 package org.apache.lucene.internal.vectorization;
 
-import java.lang.Runtime.Version;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -97,20 +95,10 @@ public abstract class VectorizationProvider {
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
 
-  /** The minimal version of Java that has the bugfix for JDK-8301190. */
-  private static final Version VERSION_JDK8301190_FIXED = Version.parse("20.0.2");
-
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion >= 20 && runtimeVersion <= 22) {
-      // is locale sane (only buggy in Java 20)
-      if (isAffectedByJDK8301190()) {
-        LOG.warning(
-            "Java runtime is using a buggy default locale; Java vector incubator API can't be enabled: "
-                + Locale.getDefault());
-        return new DefaultVectorizationProvider();
-      }
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
@@ -187,15 +175,6 @@ public abstract class VectorizationProvider {
     return Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
         .orElse(ModuleLayer.boot())
         .findModule("jdk.incubator.vector");
-  }
-
-  /**
-   * Check if runtime is affected by JDK-8301190 (avoids assertion when default language is say
-   * "tr").
-   */
-  private static boolean isAffectedByJDK8301190() {
-    return VERSION_JDK8301190_FIXED.compareToIgnoreOptional(Runtime.version()) > 0
-        && !Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
   }
 
   // add all possible callers here as FQCN:

@@ -90,7 +90,7 @@ public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
                     new ByteBuffersDirectory(
                         new SingleInstanceLockFactory(),
                         ByteBuffersDataOutput::new,
-                        ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE),
+                        ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS),
             "lucene's buffers (heap)"
           },
           {
