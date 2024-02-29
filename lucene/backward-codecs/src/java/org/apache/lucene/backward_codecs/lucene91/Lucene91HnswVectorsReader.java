@@ -238,11 +238,21 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     RandomVectorScorer scorer =
         RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
-    HnswGraphSearcher.search(
-        scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        getAcceptOrds(acceptDocs, fieldEntry));
+    final KnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    if (knnCollector.k() < scorer.maxOrd()) {
+      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    } else {
+      // if k is larger than the number of vectors, we can just iterate over all vectors
+      // and collect them
+      for (int i = 0; i < scorer.maxOrd(); i++) {
+        if (acceptedOrds == null || acceptedOrds.get(i)) {
+          knnCollector.incVisitedCount(1);
+          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+        }
+      }
+    }
   }
 
   @Override
