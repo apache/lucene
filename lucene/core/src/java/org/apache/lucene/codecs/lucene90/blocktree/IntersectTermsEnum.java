@@ -391,13 +391,13 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     nextTerm:
     while (true) {
       // Match sub block's entry directly.
-      if (currentFrame.matchAll) {
+      if (currentFrame.matchAllSuffix) {
         while (true) {
           // TODO: Is it necessary to set currentTransition, state etc.
           if (isSubBlock) {
             copyTerm();
             currentFrame = pushFrame(currentFrame.state);
-            currentFrame.matchAll = true;
+            currentFrame.matchAllSuffix = true;
             isSubBlock = popPushNext();
           } else {
             copyTerm();
@@ -410,7 +410,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
       int state;
       int lastState;
-      boolean earlyTerminate = false;
+      boolean matchAllSuffix = false;
 
       // NOTE: suffix == 0 can only happen on the first term in a block, when
       // there is a term exactly matching a prefix in the index.  If we
@@ -540,10 +540,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // No match
             isSubBlock = popPushNext();
             continue nextTerm;
-          } else if (runAutomaton.isAccept(state) && runAutomaton.terminable(state)) {
-            // For PrefixQuery, we can terminate if we have matched the whole prefix.
-            // TODO: Apply to RegexQuery endWith .*
-            earlyTerminate = true;
+          } else if (runAutomaton.isAccept(state) && runAutomaton.isMatchAllSuffix(state)) {
+            matchAllSuffix = true;
             break;
           }
         }
@@ -556,8 +554,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         // Match!  Recurse:
         copyTerm();
         currentFrame = pushFrame(state);
-        if (earlyTerminate) {
-          currentFrame.matchAll = true;
+        if (matchAllSuffix) {
+          currentFrame.matchAllSuffix = true;
         }
         currentTransition = currentFrame.transition;
         currentFrame.lastState = lastState;
@@ -571,19 +569,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       }
 
       isSubBlock = popPushNext();
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
     }
   }
 

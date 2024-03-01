@@ -47,7 +47,7 @@ public abstract class RunAutomaton implements Accountable {
   final int alphabetSize;
   final int size;
   final FixedBitSet accept;
-  final FixedBitSet terminable;
+  final FixedBitSet matchAllSuffix;
   final int[] transitions; // delta(state,c) = transitions[state*points.length +
   // getCharClass(c)]
   final int[] points; // char interval start points
@@ -68,15 +68,15 @@ public abstract class RunAutomaton implements Accountable {
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
     accept = new FixedBitSet(size);
-    terminable = new FixedBitSet(size);
+    matchAllSuffix = new FixedBitSet(size);
     transitions = new int[size * points.length];
     Arrays.fill(transitions, -1);
     Transition transition = new Transition();
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
-        if (a.terminable(n)) {
-          terminable.set(n);
+        if (canMatchAllSuffix(n)) {
+          matchAllSuffix.set(n);
         }
       }
       transition.source = n;
@@ -99,6 +99,35 @@ public abstract class RunAutomaton implements Accountable {
       }
       classmap[j] = i;
     }
+  }
+
+  /** Returns true if this state can accept everything(all remaining suffixes). */
+  private boolean canMatchAllSuffix(int state) {
+    assert automaton.isAccept(state);
+    int numTransitions = automaton.getNumTransitions(state);
+    // Apply to PrefixQuery, TermRangeQuery.
+    if (numTransitions == 1) {
+      Transition transition = new Transition();
+      automaton.getTransition(state, 0, transition);
+      if (transition.dest == state && transition.min == 0 && transition.max == 255) {
+        return true;
+      }
+    }
+
+    // Apply to RegexpQuery, WildcardQuery.
+    for (int i = 0; i < numTransitions; i++) {
+      Transition transition = new Transition();
+      automaton.getTransition(state, i, transition);
+      if (transition.dest == state && transition.min == 0 && transition.max == 127) {
+        return true;
+      } else if (transition.dest != state
+          && automaton.isAccept(transition.dest)
+          && transition.min == 0
+          && transition.max == 127) {
+        return canMatchAllSuffix(transition.dest);
+      }
+    }
+    return false;
   }
 
   /** Returns a string representation of this automaton. */
@@ -146,13 +175,13 @@ public abstract class RunAutomaton implements Accountable {
   }
 
   /**
-   * Return true if automaton can terminate at this state.
+   * Returns true if this state can accept all remaining suffixes from now on.
    *
    * @param state the state
-   * @return whether automaton can terminate at this state.
+   * @return whether this state can accept all remaining suffixes.
    */
-  public final boolean terminable(int state) {
-    return terminable.get(state);
+  public final boolean isMatchAllSuffix(int state) {
+    return matchAllSuffix.get(state);
   }
 
   /**

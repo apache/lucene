@@ -94,7 +94,7 @@ final class IntersectTermsEnumFrame {
   int startBytePos;
   int suffix;
 
-  boolean matchAll;
+  boolean matchAllSuffix;
 
   private final IntersectTermsEnum ite;
 

@@ -107,13 +107,13 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
   }
 
   /**
-   * Return true if automaton can terminate at this state.
+   * Returns true if this state can accept all remaining suffixes from now on.
    *
    * @param state the state
-   * @return whether automaton can terminate at this state.
+   * @return whether this state can accept all remaining suffixes.
    */
   @Override
-  public boolean terminable(int state) {
+  public final boolean isMatchAllSuffix(int state) {
     return false;
   }
 

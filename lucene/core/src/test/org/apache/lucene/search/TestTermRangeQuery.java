@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
+import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
+
 import java.io.IOException;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -71,6 +75,72 @@ public class TestTermRangeQuery extends LuceneTestCase {
     hits = searcher.search(query, 1000).scoreDocs;
     assertEquals("C added, still only B in range", 1, hits.length);
     reader.close();
+  }
+
+  public void testSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories = new String[] {"regular", "request", "rest", "teacher", "team"};
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    Query query = TermRangeQuery.newStringRange("category", "reg", "rez", true, true);
+
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(3, hits.length);
+
+    query = TermRangeQuery.newStringRange("category", "te", "tec", true, true);
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    Query query = TermRangeQuery.newStringRange("category", "reg", "res", true, true);
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(5, hits.length);
+
+    query = TermRangeQuery.newStringRange("category", "te", "tec", true, true);
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
   }
 
   public void testInclusive() throws Exception {
