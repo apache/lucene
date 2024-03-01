@@ -42,7 +42,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to

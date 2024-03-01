@@ -83,7 +83,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
+public class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene99HnswVectorsFormatMeta";
   static final String VECTOR_INDEX_CODEC_NAME = "Lucene99HnswVectorsFormatIndex";
