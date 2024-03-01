@@ -54,6 +54,8 @@ grant {
   permission java.lang.RuntimePermission "getStackTrace";
   // needed for mock filesystems in tests
   permission java.lang.RuntimePermission "fileSystemProvider";
+  // test runner seems to require supression of access checks:
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
 };
 
 // Permissions to support ant build
