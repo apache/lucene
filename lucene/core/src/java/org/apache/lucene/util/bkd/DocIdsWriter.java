@@ -39,13 +39,14 @@ final class DocIdsWriter {
   private final ScratchDocIdSetIterator scratchDocIdSetIterator = new ScratchDocIdSetIterator();
 
   /**
-   DocIdSetIterator to be used to iterate over the scratch buffer. A single instance is reused to avoid
-   re-allocating the object. The reset method should be called before each use with the count.
-
-   The main reason for existing is to be able to call the {@link IntersectVisitor#visit(DocIdSetIterator)} method
-   rather than the {@link IntersectVisitor#visit(int)} method. This seems to make a difference in performance,
-   probably due to fewer virtual calls then happening (once per read call rather than once per doc).
-
+   * DocIdSetIterator to be used to iterate over the scratch buffer. A single instance is reused to
+   * avoid re-allocating the object. The reset method should be called before each use with the
+   * count.
+   *
+   * <p>The main reason for existing is to be able to call the {@link
+   * IntersectVisitor#visit(DocIdSetIterator)} method rather than the {@link
+   * IntersectVisitor#visit(int)} method. This seems to make a difference in performance, probably
+   * due to fewer virtual calls then happening (once per read call rather than once per doc).
    */
   private class ScratchDocIdSetIterator extends DocIdSetIterator {
 
