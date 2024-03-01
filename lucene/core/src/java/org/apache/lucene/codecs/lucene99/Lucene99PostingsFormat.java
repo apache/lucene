@@ -359,6 +359,11 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
+  // We check if total bits required for packed encoding a block exceeds bits required for dense
+  // encoding in order to decide which encoding to use. When this factor is 1 we pick whichever
+  // that takes less space. TODO: how to control this?
+  // static final int DENSE_ENCODING_FACTOR = 1;
+
   /**
    * Expert: The maximum number of skip levels. Smaller values result in slightly smaller indexes,
    * but slower skipping in big posting lists.

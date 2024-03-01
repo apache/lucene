@@ -26,6 +26,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 
 public class TestForDeltaUtil extends LuceneTestCase {
@@ -65,10 +66,11 @@ public class TestForDeltaUtil extends LuceneTestCase {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
+      FixedBitSet bits = new FixedBitSet(ForUtil.BLOCK_SIZE * Long.SIZE);
       for (int i = 0; i < iterations; ++i) {
         long base = 0;
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forDeltaUtil.decodeAndPrefixSum(in, base, restored);
+        int headByte = forDeltaUtil.decodeAndPrefixSum(in, base, restored, bits);
         final long[] expected = new long[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
@@ -78,6 +80,13 @@ public class TestForDeltaUtil extends LuceneTestCase {
             expected[j] += base;
           }
         }
+        // nocommit this probably doesn't belong in ForDeltaUtil
+        if ((headByte & 0x80) != 0) {
+          // System.out.println("dense " + (headByte & 0x7f));
+          decodeBits(bits, base, restored);
+        } else {
+          // System.out.println("packed " + (headByte & 0x7f));
+        }
         assertArrayEquals(Arrays.toString(restored), expected, restored);
       }
       assertEquals(endPointer, in.getFilePointer());
@@ -85,5 +94,14 @@ public class TestForDeltaUtil extends LuceneTestCase {
     }
 
     d.close();
+  }
+
+  static void decodeBits(FixedBitSet bits, long base, long[] longs) {
+    int bitIndex = bits.nextSetBit(0);
+    int bufferUpto = 0;
+    while (bitIndex != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS) {
+      longs[bufferUpto++] = bitIndex + base;
+      bitIndex = bits.nextSetBit(bitIndex + 1);
+    }
   }
 }

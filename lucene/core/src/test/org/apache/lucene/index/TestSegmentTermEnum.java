@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -42,6 +43,35 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     super.tearDown();
   }
 
+  public void testTermEnumNoPositions() throws IOException {
+
+    try (IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())))) {
+      // ADDA2C8D6A322EC0
+      // ADD 200 documents with term : aaa
+      // add 100 documents with terms: bbb
+      // Therefore, term 'aaa' has document frequency of 200 and term 'bbb' 100
+      for (int i = 0; i < 100; i++) {
+        addStringFieldDoc(writer, "aaa");
+        addStringFieldDoc(writer, "aaa");
+        addStringFieldDoc(writer, "bbb");
+      }
+    }
+
+    // verify document frequency of terms in an multi segment index
+    verifyDocFreq();
+
+    // merge segments
+    try (IndexWriter writer =
+        new IndexWriter(
+            dir, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND))) {
+      writer.forceMerge(1);
+    }
+
+    // verify document frequency of terms in a single segment index
+    verifyDocFreq();
+  }
+
   public void testTermEnum() throws IOException {
     IndexWriter writer = null;
 
@@ -51,8 +81,8 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     // add 100 documents with terms: aaa bbb
     // Therefore, term 'aaa' has document frequency of 200 and term 'bbb' 100
     for (int i = 0; i < 100; i++) {
-      addDoc(writer, "aaa");
       addDoc(writer, "aaa bbb");
+      addDoc(writer, "aaa");
     }
 
     writer.close();
@@ -103,38 +133,51 @@ public class TestSegmentTermEnum extends LuceneTestCase {
   }
 
   private void verifyDocFreq() throws IOException {
-    IndexReader reader = DirectoryReader.open(dir);
-    TermsEnum termEnum = MultiTerms.getTerms(reader, "content").iterator();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      TermsEnum termEnum = MultiTerms.getTerms(reader, "content").iterator();
 
-    // create enumeration of all terms
-    // go to the first term (aaa)
-    termEnum.next();
-    // assert that term is 'aaa'
-    assertEquals("aaa", termEnum.term().utf8ToString());
-    assertEquals(200, termEnum.docFreq());
-    // go to the second term (bbb)
-    termEnum.next();
-    // assert that term is 'bbb'
-    assertEquals("bbb", termEnum.term().utf8ToString());
-    assertEquals(100, termEnum.docFreq());
+      // create enumeration of all terms
+      // go to the first term (aaa)
+      termEnum.next();
+      // assert that term is 'aaa'
+      assertEquals("aaa", termEnum.term().utf8ToString());
+      assertEquals(200, termEnum.docFreq());
+      PostingsEnum postingsEnum = termEnum.postings(null);
+      int count = 0;
+      int doc = -1;
+      while ((doc = postingsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        count += 1;
+      }
+      assertEquals(200, count);
+      // go to the second term (bbb)
+      termEnum.next();
+      // assert that term is 'bbb'
+      assertEquals("bbb", termEnum.term().utf8ToString());
+      assertEquals(100, termEnum.docFreq());
 
-    // create enumeration of terms after term 'aaa',
-    // including 'aaa'
-    termEnum.seekCeil(new BytesRef("aaa"));
-    // assert that term is 'aaa'
-    assertEquals("aaa", termEnum.term().utf8ToString());
-    assertEquals(200, termEnum.docFreq());
-    // go to term 'bbb'
-    termEnum.next();
-    // assert that term is 'bbb'
-    assertEquals("bbb", termEnum.term().utf8ToString());
-    assertEquals(100, termEnum.docFreq());
-    reader.close();
+      // create enumeration of terms after term 'aaa',
+      // including 'aaa'
+      termEnum.seekCeil(new BytesRef("aaa"));
+      // assert that term is 'aaa'
+      assertEquals("aaa", termEnum.term().utf8ToString());
+      assertEquals(200, termEnum.docFreq());
+      // go to term 'bbb'
+      termEnum.next();
+      // assert that term is 'bbb'
+      assertEquals("bbb", termEnum.term().utf8ToString());
+      assertEquals(100, termEnum.docFreq());
+    }
   }
 
   private void addDoc(IndexWriter writer, String value) throws IOException {
     Document doc = new Document();
     doc.add(newTextField("content", value, Field.Store.NO));
+    writer.addDocument(doc);
+  }
+
+  private void addStringFieldDoc(IndexWriter writer, String value) throws IOException {
+    Document doc = new Document();
+    doc.add(newStringField("content", value, Field.Store.NO));
     writer.addDocument(doc);
   }
 }
