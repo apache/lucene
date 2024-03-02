@@ -177,6 +177,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.fp = f.fpOrig = currentFrame.lastSubFP;
     f.prefix = currentFrame.prefix + currentFrame.suffix;
     f.setState(state);
+    f.matchAllSuffix = false;
 
     // Walk the arc through the index -- we only
     // "bother" with this so we can get the floor data
