@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
-import org.apache.lucene.codecs.lucene99.GroupVIntReader;
-import org.apache.lucene.codecs.lucene99.GroupVIntWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -394,7 +392,6 @@ final class FreqProxTermsWriter extends TermsHash {
     private int endOffset;
     private final BytesRef payload = new BytesRef();
     private int currFreq;
-    private final GroupVIntWriter groupVIntWriter = new GroupVIntWriter();
     private final int POS_BUFFER_SIZE = 128;
     private final long[] posDeltaBuffer = new long[POS_BUFFER_SIZE];
     // Force buffer refill:
@@ -461,7 +458,7 @@ final class FreqProxTermsWriter extends TermsHash {
         posDeltaBuffer[1] = startOffset - previousEndOffset;
         posDeltaBuffer[2] = endOffset - startOffset;
         posDeltaBuffer[3] = payload == null ? 0 : payload.length;
-        groupVIntWriter.writeValues(out, posDeltaBuffer, 4);
+        out.writeGroupVInts(posDeltaBuffer, 4);
         previousEndOffset = endOffset;
         if (payload != null) {
           out.writeBytes(payload.bytes, payload.offset, payload.length);
@@ -557,7 +554,7 @@ final class FreqProxTermsWriter extends TermsHash {
     private void refillPositions() throws IOException {
       assert posLeft > 0;
       int limit = Math.min(posLeft, POS_BUFFER_SIZE);
-      GroupVIntReader.readValues(postingInput, posDeltaBuffer, limit);
+      postingInput.readGroupVInts(posDeltaBuffer, limit);
       posLeft -= limit;
       posBufferUpto = 0;
     }
@@ -566,7 +563,7 @@ final class FreqProxTermsWriter extends TermsHash {
       if (len == 0) {
         return;
       }
-      groupVIntWriter.writeValues(out, posDeltaBuffer, len);
+      out.writeGroupVInts(posDeltaBuffer, len);
     }
 
     private void readPayload(int token, boolean readPayloadLength) throws IOException {
@@ -590,7 +587,7 @@ final class FreqProxTermsWriter extends TermsHash {
         return -1;
       }
       if (storeOffsets) {
-        GroupVIntReader.readValues(postingInput, posDeltaBuffer, 4);
+        postingInput.readGroupVInts(posDeltaBuffer, 4);
         final int token = (int) posDeltaBuffer[0];
         pos += token >>> 1;
         startOffset = endOffset + (int) posDeltaBuffer[1];
