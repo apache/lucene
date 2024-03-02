@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
@@ -42,6 +43,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -55,7 +57,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.junit.Before;
 
@@ -554,7 +555,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  // Write vectors, one segment with with SimpleText, another with default codec, then forceMerge
+  // Write vectors, one segment with SimpleText, another with default codec, then forceMerge
   public void testDifferentCodecs2() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     iwc.setCodec(Codec.forName("SimpleText"));
@@ -732,7 +733,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     String fieldName = "field";
     float[] v = {0};
     try (Directory dir = newDirectory();
-        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter iw =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setMergePolicy(NoMergePolicy.INSTANCE)
+                    .setMaxBufferedDocs(3)
+                    .setRAMBufferSizeMB(-1))) {
       Document doc1 = new Document();
       doc1.add(new KnnFloatVectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
       v[0] = 1;
@@ -748,6 +755,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader r = getOnlyLeafReader(reader);
         FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
+        assertEquals(3, vectorValues.size());
         vectorValues.nextDoc();
         assertEquals(1, vectorValues.vectorValue()[0], 0);
         vectorValues.nextDoc();
@@ -1083,7 +1091,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   /**
    * Index random vectors, sometimes skipping documents, sometimes updating a document, sometimes
-   * merging, sometimes sorting the index, using an HNSW similarity function so as to also produce a
+   * merging, sometimes sorting the index, using an HNSW similarity function to also produce a
    * graph, and verify that the expected values can be read back consistently.
    */
   public void testRandomWithUpdatesAndGraph() throws Exception {
@@ -1270,7 +1278,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
+      CheckIndex.Status status =
+          TestUtil.checkIndex(
+              dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, output);
       assertEquals(1, status.segmentInfos.size());
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
       // total 3 vector values were indexed:
@@ -1279,7 +1289,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       assertEquals(2, segStatus.vectorValuesStatus.totalKnnVectorFields);
 
       // Make sure CheckIndex in fact declares that it is testing vectors!
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors..."));
+      assertTrue(output.toString(UTF_8).contains("test: vectors..."));
     }
   }
 

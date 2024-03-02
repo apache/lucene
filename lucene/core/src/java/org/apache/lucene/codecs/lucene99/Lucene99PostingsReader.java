@@ -149,7 +149,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       boolean indexHasFreq,
       boolean decodeFreq)
       throws IOException {
-    GroupVIntReader.readValues(docIn, docBuffer, num);
+    docIn.readGroupVInts(docBuffer, num);
     if (indexHasFreq && decodeFreq) {
       for (int i = 0; i < num; ++i) {
         freqBuffer[i] = docBuffer[i] & 0x01;
@@ -400,9 +400,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.needsFreq = PostingsEnum.featureRequested(flags, PostingsEnum.FREQS);
       this.isFreqsRead = true;
       if (indexHasFreq == false || needsFreq == false) {
-        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-          freqBuffer[i] = 1;
-        }
+        // Filling this buffer may not be cheap when doing primary key lookups, so we make sure to
+        // not fill more than `docFreq` entries.
+        Arrays.fill(freqBuffer, 0, Math.min(ForUtil.BLOCK_SIZE, docFreq), 1);
       }
       accum = 0;
       blockUpto = 0;

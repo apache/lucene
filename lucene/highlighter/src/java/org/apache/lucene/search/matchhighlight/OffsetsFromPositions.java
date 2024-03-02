@@ -60,7 +60,7 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
   }
 
   List<OffsetRange> convertPositionsToOffsets(
-      ArrayList<OffsetRange> positionRanges, List<CharSequence> values) throws IOException {
+      ArrayList<OffsetRange> positionRanges, List<String> values) throws IOException {
 
     if (positionRanges.isEmpty()) {
       return positionRanges;
@@ -94,7 +94,7 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
     int position = -1;
     int valueOffset = 0;
     for (int valueIndex = 0, max = values.size(); valueIndex < max; valueIndex++) {
-      final String value = values.get(valueIndex).toString();
+      final String value = values.get(valueIndex);
       final boolean lastValue = valueIndex + 1 == max;
 
       TokenStream ts = analyzer.tokenStream(field, value);

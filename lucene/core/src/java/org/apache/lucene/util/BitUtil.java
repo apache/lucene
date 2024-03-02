@@ -30,6 +30,29 @@ public final class BitUtil {
   private BitUtil() {} // no instance
 
   /**
+   * Native byte order.
+   *
+   * <p>Warning: This constant is {@link ByteOrder#nativeOrder()} only in production environments,
+   * during testing we randomize it. If you need to communicate with native APIs (e.g., Java's
+   * Panama API), use {@link ByteOrder#nativeOrder()}.
+   */
+  public static final ByteOrder NATIVE_BYTE_ORDER = getNativeByteOrder();
+
+  private static ByteOrder getNativeByteOrder() {
+    try {
+      var prop = System.getProperty("tests.seed");
+      if (prop != null) {
+        return (prop.hashCode() % 2 == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // fall-through
+    }
+    return ByteOrder.nativeOrder();
+  }
+
+  /**
    * A {@link VarHandle} to read/write little endian {@code short} from/to a byte array. Shape:
    * {@code short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short
    * val)}
@@ -64,6 +87,62 @@ public final class BitUtil {
    */
   public static final VarHandle VH_LE_DOUBLE =
       MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code short} from/to a byte array. Shape:
+   * {@code short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short
+   * val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_SHORT =
+      MethodHandles.byteArrayViewVarHandle(short[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code int} from a byte array. Shape: {@code
+   * int vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code long} from a byte array. Shape: {@code
+   * long vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_LONG =
+      MethodHandles.byteArrayViewVarHandle(long[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, NATIVE_BYTE_ORDER);
 
   /**
    * A {@link VarHandle} to read/write big endian {@code short} from a byte array. Shape: {@code

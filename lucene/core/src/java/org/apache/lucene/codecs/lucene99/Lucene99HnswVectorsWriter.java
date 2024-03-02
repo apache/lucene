@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
@@ -72,7 +74,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene99HnswVectorsWriter(
+  public Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
       int beamWidth,
@@ -319,7 +321,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     vectorIndex.writeVInt(size);
 
     // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.node();
+    int[] nnodes = neighbors.nodes();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -408,7 +410,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         long offsetStart = vectorIndex.getFilePointer();
         vectorIndex.writeVInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
@@ -436,7 +438,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(distFuncToOrd(field.getVectorSimilarityFunction()));
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
@@ -498,6 +500,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorIndex, flatVectorWriter);
+  }
+
+  static int distFuncToOrd(VectorSimilarityFunction func) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {

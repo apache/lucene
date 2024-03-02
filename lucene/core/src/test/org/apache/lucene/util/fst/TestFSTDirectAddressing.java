@@ -67,7 +67,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       entries.add(new BytesRef(b));
     }
-    long size = buildFST(entries).ramBytesUsed();
+    long size = buildFST(entries).numBytes();
     // Size is 1648 when we use only list-encoding. We were previously failing to ever de-dup
     // direct addressing, which led this case to blow up.
     // This test will fail if there is more than 1% size increase with direct addressing.
@@ -196,7 +196,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       last = entry;
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   public static void main(String... args) throws Exception {
@@ -333,7 +333,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
     while ((inputOutput = fstEnum.next()) != null) {
       fstCompiler.add(inputOutput.input, CharsRef.deepCopyOf(inputOutput.output));
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   private static int walk(FST<CharsRef> read) throws IOException {

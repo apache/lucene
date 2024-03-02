@@ -89,7 +89,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
   private boolean singleSort;
 
   /** Whether this comparator is allowed to skip documents. */
-  private boolean canSkipDocuments = true;
+  private boolean canSkipDocuments;
 
   /** Whether the collector is done with counting hits so that we can start skipping documents. */
   private boolean hitsThresholdReached = false;

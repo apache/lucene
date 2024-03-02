@@ -129,19 +129,18 @@ final class NodeHash<T> {
         } else {
           // not in fallback either -- freeze & add the incoming node
 
-          long startAddress = fstCompiler.bytes.getPosition();
           // freeze & add
           nodeAddress = fstCompiler.addNode(nodeIn);
 
-          // TODO: Write the bytes directly from BytesStore
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
           assert nodeAddress != FST.FINAL_END_NODE && nodeAddress != FST.NON_FINAL_END_NODE;
-          byte[] buf = new byte[Math.toIntExact(nodeAddress - startAddress + 1)];
-          fstCompiler.bytes.writeTo(startAddress, buf, 0, buf.length);
 
           primaryTable.setNodeAddress(hashSlot, nodeAddress);
-          primaryTable.copyNodeBytes(hashSlot, buf);
+          primaryTable.copyNodeBytes(
+              hashSlot,
+              fstCompiler.scratchBytes.getBytes(),
+              fstCompiler.scratchBytes.getPosition());
 
           // confirm frozen hash and unfrozen hash are the same
           assert primaryTable.hash(nodeAddress, hashSlot) == hash
@@ -300,9 +299,9 @@ final class NodeHash<T> {
     }
 
     /** copy the node bytes from the FST */
-    void copyNodeBytes(long hashSlot, byte[] bytes) {
+    void copyNodeBytes(long hashSlot, byte[] bytes, int length) {
       assert copiedNodeAddress.get(hashSlot) == 0;
-      copiedNodes.append(bytes);
+      copiedNodes.append(bytes, 0, length);
       // write the offset, which points to the last byte of the node we copied since we later read
       // this node in reverse
       copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);

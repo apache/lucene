@@ -49,7 +49,7 @@ import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -444,7 +444,7 @@ public class CheckHits {
           int k1 = descr.indexOf("max plus ");
           if (k1 >= 0) {
             k1 += "max plus ".length();
-            int k2 = descr.indexOf(" ", k1);
+            int k2 = descr.indexOf(' ', k1);
             try {
               x = Float.parseFloat(descr.substring(k1, k2).trim());
               if (descr.substring(k2).trim().equals("times others of:")) {
@@ -700,13 +700,15 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    CollectorManager<TopScoreDocCollector, TopDocs> complete =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
-    ScoreDoc[] completeScoreDocs = searcher.search(query, complete).scoreDocs;
-    CollectorManager<TopScoreDocCollector, TopDocs> topScores =
-        TopScoreDocCollector.createSharedManager(numHits, null, 1);
-    ScoreDoc[] topScoresScoreDocs = searcher.search(query, topScores).scoreDocs;
-    checkEqual(query, completeScoreDocs, topScoresScoreDocs);
+    boolean supportsConcurrency = searcher.getSlices().length > 1;
+    TopScoreDocCollectorManager complete =
+        new TopScoreDocCollectorManager(
+            numHits, null, Integer.MAX_VALUE, supportsConcurrency); // COMPLETE
+    TopScoreDocCollectorManager topScores =
+        new TopScoreDocCollectorManager(numHits, null, 1, supportsConcurrency); // TOP_SCORES
+    TopDocs completeTopDocs = searcher.search(query, complete);
+    TopDocs topScoresTopDocs = searcher.search(query, topScores);
+    checkEqual(query, completeTopDocs.scoreDocs, topScoresTopDocs.scoreDocs);
   }
 
   private static void doCheckMaxScores(Random random, Query query, IndexSearcher searcher)
@@ -729,6 +731,10 @@ public class CheckHits {
       }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
@@ -785,6 +791,10 @@ public class CheckHits {
       }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();

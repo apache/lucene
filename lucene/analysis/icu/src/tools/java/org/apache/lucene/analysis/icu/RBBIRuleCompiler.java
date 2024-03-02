@@ -16,18 +16,18 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.ibm.icu.text.RuleBasedBreakIterator;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Command-line utility to converts RuleBasedBreakIterator (.rbbi) files into binary compiled form
@@ -38,8 +38,8 @@ public class RBBIRuleCompiler {
   static String getRules(Path ruleFile) throws IOException {
     StringBuilder rules = new StringBuilder();
     InputStream in = Files.newInputStream(ruleFile);
-    BufferedReader cin = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-    String line = null;
+    BufferedReader cin = new BufferedReader(new InputStreamReader(in, UTF_8));
+    String line;
     while ((line = cin.readLine()) != null) {
       if (!line.startsWith("#")) {
         rules.append(line);
@@ -54,10 +54,7 @@ public class RBBIRuleCompiler {
   static void compile(Path srcDir, Path destDir) throws Exception {
     List<Path> files;
     try (var stream = Files.list(srcDir)) {
-      files =
-          stream
-              .filter(name -> name.getFileName().toString().endsWith("rbbi"))
-              .collect(Collectors.toList());
+      files = stream.filter(name -> name.getFileName().toString().endsWith("rbbi")).toList();
     }
 
     if (files.isEmpty()) throw new IOException("No input files matching *.rbbi at: " + srcDir);

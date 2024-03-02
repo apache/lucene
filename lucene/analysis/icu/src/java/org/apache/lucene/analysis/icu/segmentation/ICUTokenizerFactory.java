@@ -87,7 +87,7 @@ public class ICUTokenizerFactory extends TokenizerFactory implements ResourceLoa
     if (rulefilesArg != null) {
       List<String> scriptAndResourcePaths = splitFileNames(rulefilesArg);
       for (String scriptAndResourcePath : scriptAndResourcePaths) {
-        int colonPos = scriptAndResourcePath.indexOf(":");
+        int colonPos = scriptAndResourcePath.indexOf(':');
         String scriptCode = scriptAndResourcePath.substring(0, colonPos).trim();
         String resourcePath = scriptAndResourcePath.substring(colonPos + 1).trim();
         tailored.put(UCharacter.getPropertyValueEnum(UProperty.SCRIPT, scriptCode), resourcePath);

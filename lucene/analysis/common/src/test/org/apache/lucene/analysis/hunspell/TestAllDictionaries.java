@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.RamUsageTester;
@@ -72,9 +71,8 @@ public class TestAllDictionaries extends LuceneTestCase {
     Path dic = Path.of(affPath.substring(0, affPath.length() - 4) + ".dic");
     assert Files.exists(dic) : dic;
     try (InputStream dictionary = Files.newInputStream(dic);
-        InputStream affix = Files.newInputStream(aff);
-        BaseDirectoryWrapper tempDir = newDirectory()) {
-      return new Dictionary(tempDir, "dictionary", affix, dictionary) {
+        InputStream affix = Files.newInputStream(aff)) {
+      return new Dictionary(affix, List.of(dictionary), false, SortingStrategy.inMemory()) {
         @Override
         protected boolean tolerateAffixRuleCountMismatches() {
           return true;
@@ -99,7 +97,7 @@ public class TestAllDictionaries extends LuceneTestCase {
     AtomicBoolean failTest = new AtomicBoolean();
 
     Map<String, List<Long>> global = new LinkedHashMap<>();
-    for (Path aff : findAllAffixFiles().collect(Collectors.toList())) {
+    for (Path aff : findAllAffixFiles().toList()) {
       Map<String, List<Long>> local = new LinkedHashMap<>();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       try (ExposePosition is = new ExposePosition(Files.readAllBytes(aff))) {
@@ -186,9 +184,7 @@ public class TestAllDictionaries extends LuceneTestCase {
         };
 
     List<Callable<Void>> tasks =
-        findAllAffixFiles()
-            .map(aff -> (Callable<Void>) () -> process.apply(aff))
-            .collect(Collectors.toList());
+        findAllAffixFiles().map(aff -> (Callable<Void>) () -> process.apply(aff)).toList();
     try {
       for (Future<?> future : executor.invokeAll(tasks)) {
         future.get();

@@ -113,7 +113,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
 
             if (echoOutput && !verboseMode) {
                synchronized (this) {
-                  System.out.println("");
+                  System.out.println();
                   System.out.println(suite.getClassName() + " > test suite's output saved to " + outputLog + ", copied below:");
                   try (BufferedReader reader = Files.newBufferedReader(outputLog, StandardCharsets.UTF_8)) {
                      char[] buf = new char[1024];

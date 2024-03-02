@@ -24,12 +24,14 @@ import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
 
 /**
  * Read the quantized vector values and their score correction values from the index input. This
  * supports both iterated and random access.
  */
-abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
+public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
     implements RandomAccessQuantizedByteVectorValues {
 
   protected final int dimension;
@@ -77,7 +79,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     return scoreCorrectionConstant[0];
   }
 
-  static OffHeapQuantizedByteVectorValues load(
+  public static OffHeapQuantizedByteVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
@@ -98,7 +100,11 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
   }
 
-  static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
+  /**
+   * Dense vector values that are stored off-heap. This is the most common case when every doc has a
+   * vector.
+   */
+  public static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     private int doc = -1;
 
@@ -231,7 +237,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorValue() {
       throw new UnsupportedOperationException();
     }
 
@@ -246,17 +252,17 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
 
     @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       return doc = NO_MORE_DOCS;
     }
 
     @Override
-    public EmptyOffHeapVectorValues copy() throws IOException {
+    public EmptyOffHeapVectorValues copy() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public byte[] vectorValue(int targetOrd) throws IOException {
+    public byte[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 

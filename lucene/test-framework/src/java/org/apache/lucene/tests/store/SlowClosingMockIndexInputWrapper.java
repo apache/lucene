@@ -18,6 +18,7 @@ package org.apache.lucene.tests.store;
 
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -32,6 +33,7 @@ class SlowClosingMockIndexInputWrapper extends MockIndexInputWrapper {
     super(dir, name, delegate, null);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   public void close() throws IOException {
     try {

@@ -61,29 +61,20 @@ public class TestSortedSetDocValuesSetQuery extends LuceneTestCase {
     List<BytesRef> terms = new ArrayList<>();
     terms.add(new BytesRef("5"));
     results =
-        searcher.search(
-                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
-                numDocs)
-            .scoreDocs;
+        searcher.search(SortedDocValuesField.newSlowSetQuery(fieldName, terms), numDocs).scoreDocs;
     assertEquals("Must match nothing", 0, results.length);
 
     terms = new ArrayList<>();
     terms.add(new BytesRef("10"));
     results =
-        searcher.search(
-                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
-                numDocs)
-            .scoreDocs;
+        searcher.search(SortedDocValuesField.newSlowSetQuery(fieldName, terms), numDocs).scoreDocs;
     assertEquals("Must match 1", 1, results.length);
 
     terms = new ArrayList<>();
     terms.add(new BytesRef("10"));
     terms.add(new BytesRef("20"));
     results =
-        searcher.search(
-                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
-                numDocs)
-            .scoreDocs;
+        searcher.search(SortedDocValuesField.newSlowSetQuery(fieldName, terms), numDocs).scoreDocs;
     assertEquals("Must match 2", 2, results.length);
 
     reader.close();
@@ -91,21 +82,39 @@ public class TestSortedSetDocValuesSetQuery extends LuceneTestCase {
   }
 
   public void testEquals() {
+    List<BytesRef> bar = new ArrayList<>();
+    bar.add(new BytesRef("bar"));
+
+    List<BytesRef> barbar = new ArrayList<>();
+    barbar.add(new BytesRef("bar"));
+    barbar.add(new BytesRef("bar"));
+
+    List<BytesRef> barbaz = new ArrayList<>();
+    barbaz.add(new BytesRef("bar"));
+    barbaz.add(new BytesRef("baz"));
+
+    List<BytesRef> bazbar = new ArrayList<>();
+    bazbar.add(new BytesRef("baz"));
+    bazbar.add(new BytesRef("bar"));
+
+    List<BytesRef> baz = new ArrayList<>();
+    baz.add(new BytesRef("baz"));
+
     assertEquals(
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")),
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")));
+        SortedDocValuesField.newSlowSetQuery("foo", bar),
+        SortedDocValuesField.newSlowSetQuery("foo", bar));
     assertEquals(
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")),
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"), new BytesRef("bar")));
+        SortedDocValuesField.newSlowSetQuery("foo", bar),
+        SortedDocValuesField.newSlowSetQuery("foo", barbar));
     assertEquals(
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"), new BytesRef("baz")),
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("baz"), new BytesRef("bar")));
-    assertFalse(
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"))
-            .equals(SortedDocValuesField.newSlowSetQuery("foo2", new BytesRef("bar"))));
-    assertFalse(
-        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"))
-            .equals(SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("baz"))));
+        SortedDocValuesField.newSlowSetQuery("foo", barbaz),
+        SortedDocValuesField.newSlowSetQuery("foo", bazbar));
+    assertNotEquals(
+        SortedDocValuesField.newSlowSetQuery("foo", bar),
+        SortedDocValuesField.newSlowSetQuery("foo2", bar));
+    assertNotEquals(
+        SortedDocValuesField.newSlowSetQuery("foo", bar),
+        SortedDocValuesField.newSlowSetQuery("foo", baz));
   }
 
   public void testDuelTermsQuery() throws IOException {
@@ -159,9 +168,7 @@ public class TestSortedSetDocValuesSetQuery extends LuceneTestCase {
           bytesTerms.add(term.bytes());
         }
         final Query q2 =
-            new BoostQuery(
-                SortedDocValuesField.newSlowSetQuery("f", bytesTerms.toArray(new BytesRef[0])),
-                boost);
+            new BoostQuery(SortedDocValuesField.newSlowSetQuery("f", bytesTerms), boost);
         assertSameMatches(searcher, q1, q2, true);
       }
 
@@ -221,9 +228,7 @@ public class TestSortedSetDocValuesSetQuery extends LuceneTestCase {
           bytesTerms.add(term.bytes());
         }
         final Query q2 =
-            new BoostQuery(
-                SortedDocValuesField.newSlowSetQuery("f", bytesTerms.toArray(new BytesRef[0])),
-                boost);
+            new BoostQuery(SortedDocValuesField.newSlowSetQuery("f", bytesTerms), boost);
 
         BooleanQuery.Builder bq1 = new BooleanQuery.Builder();
         bq1.add(q1, Occur.MUST);

@@ -45,7 +45,7 @@ abstract class DocValuesUpdate {
   final String field;
   // used in BufferedDeletes to apply this update only to a slice of docs. It's initialized to
   // BufferedUpdates.MAX_INT
-  // since it's safe and most often used this way we safe object creations.
+  // since it's safe and most often used this way we save object creations.
   final int docIDUpTo;
   final boolean hasValue;
 
@@ -57,7 +57,7 @@ abstract class DocValuesUpdate {
    */
   protected DocValuesUpdate(
       DocValuesType type, Term term, String field, int docIDUpTo, boolean hasValue) {
-    assert docIDUpTo >= 0 : docIDUpTo + "must be >= 0";
+    assert docIDUpTo >= 0 : docIDUpTo + " must be >= 0";
     this.type = type;
     this.term = term;
     this.field = field;

@@ -107,7 +107,6 @@ public final class TaskExecutor {
     }
 
     RunnableFuture<T> createTask(Callable<T> callable) {
-      // -1: cancelled; 0: not yet started; 1: started
       AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
       return new FutureTask<>(
           () -> {

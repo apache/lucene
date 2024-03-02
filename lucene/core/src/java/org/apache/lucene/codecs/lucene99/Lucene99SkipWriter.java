@@ -166,7 +166,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
     this.curPayPointer = payFP;
     this.curPosBufferUpto = posBufferUpto;
     this.curPayloadByteUpto = payloadByteUpto;
-    this.curCompetitiveFreqNorms[0].addAll(competitiveFreqNorms);
+    this.curCompetitiveFreqNorms[0].copy(competitiveFreqNorms);
     bufferSkip(numDocs);
   }
 

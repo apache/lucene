@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -289,12 +288,10 @@ public class TestPayloads extends LuceneTestCase {
     reader.close();
   }
 
-  static final Charset utf8 = StandardCharsets.UTF_8;
-
   private void generateRandomData(byte[] data) {
     // this test needs the random data to be valid unicode
     String s = TestUtil.randomFixedByteLengthUnicodeString(random(), data.length);
-    byte[] b = s.getBytes(utf8);
+    byte[] b = s.getBytes(StandardCharsets.UTF_8);
     assert b.length == data.length;
     System.arraycopy(b, 0, data, 0, b.length);
   }
@@ -493,7 +490,7 @@ public class TestPayloads extends LuceneTestCase {
       this.pool = pool;
       payload = pool.get();
       generateRandomData(payload);
-      term = new String(payload, 0, payload.length, utf8);
+      term = new String(payload, StandardCharsets.UTF_8);
       first = true;
       payloadAtt = addAttribute(PayloadAttribute.class);
       termAtt = addAttribute(CharTermAttribute.class);

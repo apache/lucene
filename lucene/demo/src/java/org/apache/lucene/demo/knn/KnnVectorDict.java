@@ -155,7 +155,7 @@ public class KnnVectorDict implements Closeable {
         while (addOneLine(in, binOut)) {
           // continue;
         }
-        fstCompiler.compile().save(fstOut, fstOut);
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()).save(fstOut, fstOut);
         binOut.writeInt(numFields - 1);
       }
     }
