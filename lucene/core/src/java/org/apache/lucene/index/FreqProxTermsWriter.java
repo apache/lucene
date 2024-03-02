@@ -440,73 +440,46 @@ final class FreqProxTermsWriter extends TermsHash {
       this.postingInput = buffer.toDataInput();
     }
 
-    private void writePositionsWithOffsets(final PostingsEnum in, final DataOutput out, int freq)
-        throws IOException {
-      int previousPosition = 0;
-      int previousEndOffset = 0;
-      for (int i = 0; i < freq; i++) {
-        final int pos = in.nextPosition();
-        final BytesRef payload = in.getPayload();
-        // The low-order bit of token is set only if there is a payload, the
-        // previous bits are the delta-encoded position.
-        final int token = (pos - previousPosition) << 1 | (payload == null ? 0 : 1);
-        previousPosition = pos;
-
-        final int startOffset = in.startOffset();
-        final int endOffset = in.endOffset();
-        posDeltaBuffer[0] = token;
-        posDeltaBuffer[1] = startOffset - previousEndOffset;
-        posDeltaBuffer[2] = endOffset - startOffset;
-        posDeltaBuffer[3] = payload == null ? 0 : payload.length;
-        out.writeGroupVInts(posDeltaBuffer, 4);
-        previousEndOffset = endOffset;
-        if (payload != null) {
-          out.writeBytes(payload.bytes, payload.offset, payload.length);
-        }
-      }
-    }
-
-    private void writePositionsWithOutOffsets(final PostingsEnum in, final DataOutput out, int freq)
-        throws IOException {
-      int previousPosition = 0;
-      if (storePayloads) {
-        for (int i = 0; i < freq; i++) {
-          final int pos = in.nextPosition();
-          final BytesRef payload = in.getPayload();
-          // The low-order bit of token is set only if there is a payload, the
-          // previous bits are the delta-encoded position.
-          final int token = (pos - previousPosition) << 1 | (payload == null ? 0 : 1);
-          out.writeVInt(token);
-          previousPosition = pos;
-          if (payload != null) {
-            out.writeVInt(payload.length);
-            out.writeBytes(payload.bytes, payload.offset, payload.length);
-          }
-        }
-      } else { // Only store token
-        int posWrite = 0;
-        for (int i = 0; i < freq; i++) {
-          final int pos = in.nextPosition();
-          final int token = (pos - previousPosition) << 1;
-          posDeltaBuffer[posWrite++] = token;
-          previousPosition = pos;
-          if (posWrite == POS_BUFFER_SIZE) {
-            flushPositions(out, posWrite);
-            posWrite = 0;
-          }
-        }
-        flushPositions(out, posWrite);
-      }
-    }
-
     private void addPositions(final PostingsEnum in, final DataOutput out) throws IOException {
       int freq = in.freq();
       out.writeVInt(freq);
       if (storePositions) {
-        if (storeOffsets) {
-          writePositionsWithOffsets(in, out, freq);
-        } else {
-          writePositionsWithOutOffsets(in, out, freq);
+        int previousPosition = 0;
+        int previousEndOffset = 0;
+        if (storeOffsets || storePayloads) {
+          for (int i = 0; i < freq; i++) {
+            final int pos = in.nextPosition();
+            final BytesRef payload = in.getPayload();
+            // The low-order bit of token is set only if there is a payload, the
+            // previous bits are the delta-encoded position.
+            final int token = (pos - previousPosition) << 1 | (payload == null ? 0 : 1);
+            out.writeVInt(token);
+            previousPosition = pos;
+            if (storeOffsets) { // don't encode offsets if they are not stored
+              final int startOffset = in.startOffset();
+              final int endOffset = in.endOffset();
+              out.writeVInt(startOffset - previousEndOffset);
+              out.writeVInt(endOffset - startOffset);
+              previousEndOffset = endOffset;
+            }
+            if (payload != null) {
+              out.writeVInt(payload.length);
+              out.writeBytes(payload.bytes, payload.offset, payload.length);
+            }
+          }
+        } else { // Only store token
+          int posWrite = 0;
+          for (int i = 0; i < freq; i++) {
+            final int pos = in.nextPosition();
+            final int token = (pos - previousPosition) << 1;
+            posDeltaBuffer[posWrite++] = token;
+            previousPosition = pos;
+            if (posWrite == POS_BUFFER_SIZE) {
+              flushPositions(out, posWrite);
+              posWrite = 0;
+            }
+          }
+          flushPositions(out, posWrite);
         }
       }
     }
@@ -566,47 +539,36 @@ final class FreqProxTermsWriter extends TermsHash {
       out.writeGroupVInts(posDeltaBuffer, len);
     }
 
-    private void readPayload(int token, boolean readPayloadLength) throws IOException {
-      if ((token & 1) != 0) {
-        payload.offset = 0;
-        if (readPayloadLength) {
-          payload.length = postingInput.readVInt();
-        }
-        if (payload.length > payload.bytes.length) {
-          payload.bytes = new byte[ArrayUtil.oversize(payload.length, 1)];
-        }
-        postingInput.readBytes(payload.bytes, 0, payload.length);
-      } else {
-        payload.length = 0;
-      }
-    }
-
     @Override
     public int nextPosition() throws IOException {
       if (storePositions == false) {
         return -1;
       }
-      if (storeOffsets) {
-        postingInput.readGroupVInts(posDeltaBuffer, 4);
-        final int token = (int) posDeltaBuffer[0];
+
+      if (storeOffsets || storePayloads) {
+        final int token = postingInput.readVInt();
         pos += token >>> 1;
-        startOffset = endOffset + (int) posDeltaBuffer[1];
-        endOffset = startOffset + (int) posDeltaBuffer[2];
-        payload.length = (int) posDeltaBuffer[3];
-        readPayload(token, false);
-      } else {
-        if (storePayloads) {
-          final int token = postingInput.readVInt();
-          pos += token >>> 1;
-          readPayload(token, true);
-        } else {
-          // decode token from group-varint
-          if (posBufferUpto == POS_BUFFER_SIZE) {
-            refillPositions();
-          }
-          pos += posDeltaBuffer[posBufferUpto] >>> 1;
-          posBufferUpto++;
+        if (storeOffsets) {
+          startOffset = endOffset + postingInput.readVInt();
+          endOffset = startOffset + postingInput.readVInt();
         }
+        if ((token & 1) != 0) {
+          payload.offset = 0;
+          payload.length = postingInput.readVInt();
+          if (payload.length > payload.bytes.length) {
+            payload.bytes = new byte[ArrayUtil.oversize(payload.length, 1)];
+          }
+          postingInput.readBytes(payload.bytes, 0, payload.length);
+        } else {
+          payload.length = 0;
+        }
+      } else {
+        // decode token from group-varint
+        if (posBufferUpto == POS_BUFFER_SIZE) {
+          refillPositions();
+        }
+        pos += posDeltaBuffer[posBufferUpto] >>> 1;
+        posBufferUpto++;
       }
       return pos;
     }
