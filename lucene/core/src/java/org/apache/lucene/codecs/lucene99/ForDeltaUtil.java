@@ -64,7 +64,7 @@ public class ForDeltaUtil {
       assert or != 0;
       final int bitsPerValue = PackedInts.bitsRequired(or);
       // nocommit tune me
-      if (longs.length * bitsPerValue >= sum) {
+      if (longs.length * bitsPerValue >= (int) sum) {
         // sum = bits required in dense bitset;
         // len (block_size=128) * bitsPerValue = number of bits required in packed encoding
         DenseUtil.encodeDeltas(longs, (int) sum, out);
