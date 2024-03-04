@@ -39,6 +39,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -669,11 +670,6 @@ final class ReadersAndUpdates {
     long bytes = ramBytesUsed.addAndGet(-bytesFreed);
     assert bytes >= 0;
 
-    // if there is a reader open, reopen it to reflect the updates
-    if (reader != null) {
-      swapNewReaderWithLatestLiveDocs();
-    }
-
     // writing field updates succeeded
     assert fieldInfosFiles != null;
     info.setFieldInfosFiles(fieldInfosFiles);
@@ -689,6 +685,11 @@ final class ReadersAndUpdates {
       }
     }
     info.setDocValuesUpdatesFiles(newDVFiles);
+
+    // if there is a reader open, reopen it to reflect the updates
+    if (reader != null) {
+      swapNewReaderWithLatestLiveDocs();
+    }
 
     if (infoStream.isEnabled("BD")) {
       infoStream.message(
@@ -766,7 +767,8 @@ final class ReadersAndUpdates {
   }
 
   /** Returns a reader for merge, with the latest doc values updates and deletions. */
-  synchronized MergePolicy.MergeReader getReaderForMerge(IOContext context) throws IOException {
+  synchronized MergePolicy.MergeReader getReaderForMerge(
+      IOContext context, IOConsumer<MergePolicy.MergeReader> readerConsumer) throws IOException {
 
     // We must carry over any still-pending DV updates because they were not
     // successfully written, e.g. because there was a hole in the delGens,
@@ -782,13 +784,17 @@ final class ReadersAndUpdates {
     }
 
     SegmentReader reader = getReader(context);
-    if (pendingDeletes.needsRefresh(reader)) {
+    if (pendingDeletes.needsRefresh(reader)
+        || reader.getSegmentInfo().getDelGen() != pendingDeletes.info.getDelGen()) {
       // beware of zombies:
       assert pendingDeletes.getLiveDocs() != null;
       reader = createNewReaderWithLatestLiveDocs(reader);
     }
     assert pendingDeletes.verifyDocCounts(reader);
-    return new MergePolicy.MergeReader(reader, pendingDeletes.getHardLiveDocs());
+    MergePolicy.MergeReader mergeReader =
+        new MergePolicy.MergeReader(reader, pendingDeletes.getHardLiveDocs());
+    readerConsumer.accept(mergeReader);
+    return mergeReader;
   }
 
   /**
