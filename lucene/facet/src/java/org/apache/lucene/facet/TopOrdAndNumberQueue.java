@@ -22,16 +22,22 @@ import org.apache.lucene.util.PriorityQueue;
 public abstract class TopOrdAndNumberQueue extends PriorityQueue<TopOrdAndNumberQueue.OrdAndValue> {
 
   /** Holds a single entry. */
-  public static final class OrdAndValue {
+  public abstract static class OrdAndValue {
 
     /** Ordinal of the entry. */
     public int ord;
 
-    /** Value associated with the ordinal. */
-    public Number value;
-
     /** Default constructor. */
     public OrdAndValue() {}
+
+    /** Compares this object with the specified object for order. */
+    public abstract boolean lessThan(OrdAndValue other);
+
+    /** Get the value. */
+    public abstract Number getValue();
+
+    /** Set the value. */
+    public abstract void setValue(Number value);
   }
 
   /** Sole constructor. */
@@ -40,6 +46,14 @@ public abstract class TopOrdAndNumberQueue extends PriorityQueue<TopOrdAndNumber
   }
 
   @Override
-  public abstract boolean lessThan(
-      TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b);
+  public final boolean lessThan(
+      TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
+    return a.lessThan(b);
+  }
+
+  /** Creates a new {@link OrdAndValue} of the appropriate type. */
+  public abstract OrdAndValue newOrdAndValue();
+
+  /** Create a zero value of the appropriate type. */
+  public abstract Number zero();
 }
