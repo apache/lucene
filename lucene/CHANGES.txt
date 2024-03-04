@@ -221,6 +221,8 @@ Bug Fixes
 
 * GITHUB#13145: Detect MemorySegmentIndexInput correctly in NRTSuggester. (Uwe Schindler)
 
+* GITHUB#13154: Hunspell GeneratingSuggester: ensure there are never more than 100 roots to process (Peter Gromov)
+
 Other
 ---------------------
 
