@@ -39,7 +39,7 @@ import zipfile
 from collections import namedtuple
 import scriptutil
 
-BASE_JAVA_VERSION = "17"
+BASE_JAVA_VERSION = "21"
 
 # This tool expects to find /lucene off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been
@@ -158,9 +158,9 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
           break
       else:
         if len(verify) == 1:
-          raise RuntimeError('%s is missing "%s" inside its META-INF/MANIFEST.MF' % (desc, verify[0]))
+          raise RuntimeError('%s is missing "%s" inside its META-INF/MANIFEST.MF: %s' % (desc, verify[0], s))
         else:
-          raise RuntimeError('%s is missing one of "%s" inside its META-INF/MANIFEST.MF' % (desc, verify))
+          raise RuntimeError('%s is missing one of "%s" inside its META-INF/MANIFEST.MF: %s' % (desc, verify, s))
 
     if gitRevision != 'skip':
       # Make sure this matches the version and git revision we think we are releasing:
@@ -577,7 +577,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
   #     in_root_folder.remove(fileName)
 
-  expected_folders = ['analysis', 'analysis.tests', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'core.tests',
+  expected_folders = ['analysis', 'analysis.tests', 'backward-codecs', 'benchmark', 'benchmark-jmh', 'classification', 'codecs', 'core', 'core.tests',
                       'distribution.tests', 'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
                       'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']

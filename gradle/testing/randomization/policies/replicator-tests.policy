@@ -54,8 +54,7 @@ grant {
   permission java.lang.RuntimePermission "getStackTrace";
   // needed for mock filesystems in tests
   permission java.lang.RuntimePermission "fileSystemProvider";
-  // needed to test unmap hack on platforms that support it
-  permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
+  // test runner seems to require supression of access checks:
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
 };
 

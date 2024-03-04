@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -98,7 +99,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
       // make sure we never miss a version.
       assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
     }
-    BINARY_SUPPORTED_VERSIONS = binaryVersions;
+    BINARY_SUPPORTED_VERSIONS = Collections.unmodifiableSet(binaryVersions);
   }
 
   /**
