@@ -204,6 +204,8 @@ Improvements
 
 * GITHUB#13155: Hunspell: allow ignoring exceptions on duplicate ICONV/OCONV mappings (Peter Gromov)
 
+* GITHUB#13156: Hunspell: don't proceed with other suggestions if we found good REP ones (Peter Gromov)
+
 Optimizations
 ---------------------
 
