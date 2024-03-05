@@ -945,7 +945,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     public ScaledExecutor() {
       this.executor =
           new ThreadPoolExecutor(
-              0, Math.max(1, maxThreadCount - 1), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+              0, Math.max(1, maxThreadCount), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
     }
 
     void shutdown() {
@@ -953,27 +953,14 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     private void updatePoolSize() {
-      executor.setMaximumPoolSize(Math.max(1, maxThreadCount - 1));
-    }
-
-    boolean incrementUpTo(int max) {
-      while (true) {
-        int value = activeCount.get();
-        if (value >= max) {
-          return false;
-        }
-        if (activeCount.compareAndSet(value, value + 1)) {
-          return true;
-        }
-      }
+      executor.setMaximumPoolSize(Math.max(1, maxThreadCount));
     }
 
     @Override
     public void execute(Runnable command) {
       assert mergeThreads.contains(Thread.currentThread()) : "caller is not a merge thread";
       Thread currentThread = Thread.currentThread();
-      if (currentThread instanceof MergeThread) {
-        MergeThread mergeThread = (MergeThread) currentThread;
+      if (currentThread instanceof MergeThread mergeThread) {
         execute(mergeThread, command);
       } else {
         command.run();
@@ -990,7 +977,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // synchronize on CMS to get an accurate count of current threads
         synchronized (ConcurrentMergeScheduler.this) {
           int max = maxThreadCount - mergeThreads.size();
-          isThreadAvailable = incrementUpTo(max);
+          int value = activeCount.get();
+          if (value < max) {
+            activeCount.incrementAndGet();
+            isThreadAvailable = true;
+          } else {
+            isThreadAvailable = false;
+          }
         }
         if (isThreadAvailable) {
           executor.execute(
