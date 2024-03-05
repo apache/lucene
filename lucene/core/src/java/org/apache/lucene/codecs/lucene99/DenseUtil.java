@@ -58,6 +58,15 @@ final class DenseUtil {
     long[] longs = bits.getBits();
     in.readLongs(longs, 0, numLongs);
     // empty out the "ghost bits" so FixedBitSet doesn't get upset
-    Arrays.fill(longs, numLongs, longs.length, 0);
+    // but this is not really required since the trailing longs are
+    // never seen by FixedBitSet -- the methods we use are all restricted by
+    // numLongs. In fact we could relax FixedBitSet verification.
+    // Arrays.fill(longs, numLongs, longs.length, 0);
+    assert clear(bits);
+  }
+
+  private static boolean clear(FixedBitSet bits) {
+    Arrays.fill(bits.getBits(), 0);
+    return true;
   }
 }
