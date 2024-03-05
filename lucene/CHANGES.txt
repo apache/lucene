@@ -24,6 +24,8 @@ Improvements
 * GITHUB#13087: Changed `static final Set` constants to be immutable. Among others it affected
   ScandinavianNormalizer.ALL_FOLDINGS set with public access. (Dmitry Cherniachenko)
 
+* GITHUB#13155: Hunspell: allow ignoring exceptions on duplicate ICONV/OCONV mappings (Peter Gromov)
+
 Optimizations
 ---------------------
 
