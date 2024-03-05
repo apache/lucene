@@ -937,17 +937,23 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         });
   }
 
-  private class ScaledExecutor extends ThreadPoolExecutor {
+  private class ScaledExecutor implements Executor {
 
-    AtomicInteger activeCount = new AtomicInteger(0);
+    private final AtomicInteger activeCount = new AtomicInteger(0);
+    private final ThreadPoolExecutor executor;
 
     public ScaledExecutor() {
-      super(0, Math.max(1, maxThreadCount - 1), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+      this.executor =
+          new ThreadPoolExecutor(
+              0, Math.max(1, maxThreadCount - 1), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+    }
+
+    void shutdown() {
+      executor.shutdown();
     }
 
     private void updatePoolSize() {
-      int newMax = Math.max(0, maxThreadCount - 1);
-      setMaximumPoolSize(Math.max(newMax, 1));
+      executor.setMaximumPoolSize(Math.max(1, maxThreadCount - 1));
     }
 
     boolean incrementUpTo(int max) {
@@ -965,18 +971,40 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     @Override
     public void execute(Runnable command) {
       assert mergeThreads.contains(Thread.currentThread()) : "caller is not a merge thread";
-      int max = maxThreadCount - 1;
-      if (incrementUpTo(max)) {
-        super.execute(command);
+      Thread currentThread = Thread.currentThread();
+      if (currentThread instanceof MergeThread) {
+        MergeThread mergeThread = (MergeThread) currentThread;
+        execute(mergeThread, command);
       } else {
         command.run();
       }
     }
 
-    @Override
-    protected void afterExecute(Runnable r, Throwable t) {
-      super.afterExecute(r, t);
-      activeCount.decrementAndGet();
+    private void execute(MergeThread mergeThread, Runnable command) {
+      // don't do multithreaded merges for small merges
+      if (mergeThread.merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
+        command.run();
+      } else {
+        final boolean isThreadAvailable;
+        // we need to check if a thread is available before submitting the task to the executor
+        // synchronize on CMS to get an accurate count of current threads
+        synchronized (ConcurrentMergeScheduler.this) {
+          int max = maxThreadCount - mergeThreads.size();
+          isThreadAvailable = incrementUpTo(max);
+        }
+        if (isThreadAvailable) {
+          executor.execute(
+              () -> {
+                try {
+                  command.run();
+                } finally {
+                  activeCount.decrementAndGet();
+                }
+              });
+        } else {
+          command.run();
+        }
+      }
     }
   }
 }
