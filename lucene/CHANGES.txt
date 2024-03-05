@@ -215,6 +215,9 @@ Optimizations
 
 * GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
+* GITHUB#13121: Speedup multi-segment HNSW graph search for diversifying child kNN queries. Builds on GITHUB#12962.
+  (Ben Trent)
+
 Bug Fixes
 ---------------------
 
