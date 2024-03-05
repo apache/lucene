@@ -126,7 +126,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter);
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher);
   }
 
   @Override
@@ -136,12 +136,10 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    BitSet parentBitSet = parentsFilter.getBitSet(context);
-    if (parentBitSet == null) {
+    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
+    if (collector == null) {
       return NO_RESULTS;
     }
-    KnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }

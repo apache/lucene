@@ -64,6 +64,11 @@ public class TopKnnCollector extends AbstractKnnCollector {
   }
 
   @Override
+  public int numCollected() {
+    return queue.size();
+  }
+
+  @Override
   public String toString() {
     return "TopKnnCollector[k=" + k() + ", size=" + queue.size() + "]";
   }
