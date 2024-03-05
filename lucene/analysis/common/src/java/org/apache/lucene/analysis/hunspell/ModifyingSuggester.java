@@ -123,7 +123,11 @@ class ModifyingSuggester {
 
   private boolean tryVariationsOf(String word) {
     boolean hasGoodSuggestions = trySuggestion(word.toUpperCase(Locale.ROOT));
-    hasGoodSuggestions |= tryRep(word);
+
+    GradedSuggestions repResult = tryRep(word);
+    if (repResult == GradedSuggestions.Best) return true;
+
+    hasGoodSuggestions |= repResult == GradedSuggestions.Normal;
 
     if (!speller.dictionary.mapTable.isEmpty()) {
       enumerateMapReplacements(word, "", 0);
@@ -155,12 +159,20 @@ class ModifyingSuggester {
     return hasGoodSuggestions;
   }
 
-  private boolean tryRep(String word) {
+  private enum GradedSuggestions {
+    None,
+    Normal,
+    Best
+  }
+
+  private GradedSuggestions tryRep(String word) {
+    boolean hasBest = false;
     int before = result.size();
     for (RepEntry entry : speller.dictionary.repTable) {
       for (String candidate : entry.substitute(word)) {
         candidate = candidate.trim();
         if (trySuggestion(candidate)) {
+          hasBest = true;
           continue;
         }
 
@@ -170,7 +182,8 @@ class ModifyingSuggester {
         }
       }
     }
-    return result.size() > before;
+    if (hasBest) return GradedSuggestions.Best;
+    return result.size() > before ? GradedSuggestions.Normal : GradedSuggestions.None;
   }
 
   private void enumerateMapReplacements(String word, String accumulated, int offset) {
