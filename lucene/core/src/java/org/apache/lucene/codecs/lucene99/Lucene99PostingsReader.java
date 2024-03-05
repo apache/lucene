@@ -594,6 +594,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
         } else {
           this.doc = denseBlockBaseDoc + next;
           // count all the set bits between here and there
@@ -995,6 +996,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
         } else {
           this.doc = denseBlockBaseDoc + next;
           // count bits to know how many docs in this block we advanced
@@ -1354,6 +1356,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
         } else {
           doc = denseBlockBaseDoc + next;
           docBufferUpto += denseDocs.count(bitIndex + 1, next) + 1;
@@ -1611,13 +1614,16 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
         } else {
           this.doc = denseBlockBaseDoc + next;
-          int advanceTo = docBufferUpto + denseDocs.count(bitIndex + 1, next);
+          int numAdvance = denseDocs.count(bitIndex + 1, next);
+          int advanceTo = docBufferUpto + numAdvance;
           while (docBufferUpto <= advanceTo) {
             freq = (int) freqBuffer[docBufferUpto++];
             posPendingCount += freq;
           }
+          docUpto += numAdvance;
           position = 0;
           bitIndex = next;
         }
@@ -2083,11 +2089,16 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
         } else {
           this.doc = denseBlockBaseDoc + next;
-          docBufferUpto += denseDocs.count(bitIndex + 1, next) + 1;
+          int numAdvanced = denseDocs.count(bitIndex + 1, next) + 1;
+          docBufferUpto += numAdvanced;
+          docUpto += numAdvanced;
           bitIndex = next;
         }
+        position = 0;
+        lastStartOffset = 0;
         return this.doc;
       } else {
         // Now scan:
