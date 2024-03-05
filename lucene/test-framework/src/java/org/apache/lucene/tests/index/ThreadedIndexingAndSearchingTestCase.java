@@ -19,12 +19,12 @@ package org.apache.lucene.tests.index;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -573,8 +573,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     final int MAX_ITERATIONS = LuceneTestCase.TEST_NIGHTLY ? 200 : 10 * RANDOM_MULTIPLIER;
 
-    final Set<String> delIDs = Collections.synchronizedSet(new HashSet<String>());
-    final Set<String> delPackIDs = Collections.synchronizedSet(new HashSet<String>());
+    final Set<String> delIDs = ConcurrentHashMap.newKeySet();
+    final Set<String> delPackIDs = ConcurrentHashMap.newKeySet();
     final List<SubDocs> allSubDocs = Collections.synchronizedList(new ArrayList<SubDocs>());
 
     final Thread[] indexThreads =

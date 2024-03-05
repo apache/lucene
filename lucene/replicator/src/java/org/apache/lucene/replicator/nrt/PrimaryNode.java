@@ -21,9 +21,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentCommitInfo;
@@ -67,7 +67,7 @@ public abstract class PrimaryNode extends Node {
    * Contains merged segments that have been copied to all running replicas (as of when that merge
    * started warming).
    */
-  final Set<String> finishedMergedFiles = Collections.synchronizedSet(new HashSet<String>());
+  final Set<String> finishedMergedFiles = ConcurrentHashMap.newKeySet();
 
   private final AtomicInteger copyingCount = new AtomicInteger();
 
@@ -158,10 +158,7 @@ public abstract class PrimaryNode extends Node {
    */
   public boolean flushAndRefresh() throws IOException {
     message("top: now flushAndRefresh");
-    Set<String> completedMergeFiles;
-    synchronized (finishedMergedFiles) {
-      completedMergeFiles = Set.copyOf(finishedMergedFiles);
-    }
+    Set<String> completedMergeFiles = Set.copyOf(finishedMergedFiles);
     mgr.maybeRefreshBlocking();
     boolean result = setCurrentInfos(completedMergeFiles);
     if (result) {

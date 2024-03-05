@@ -27,13 +27,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
@@ -81,7 +81,7 @@ class SimplePrimaryNode extends PrimaryNode {
   int[] replicaIDs = new int[0];
 
   // So we only flip a bit once per file name:
-  final Set<String> bitFlipped = Collections.synchronizedSet(new HashSet<>());
+  final Set<String> bitFlipped = ConcurrentHashMap.newKeySet();
 
   final List<MergePreCopy> warmingSegments = Collections.synchronizedList(new ArrayList<>());
 

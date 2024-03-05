@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -3347,7 +3348,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testCheckPendingFlushPostUpdate() throws IOException, InterruptedException {
     MockDirectoryWrapper dir = newMockDirectory();
-    Set<String> flushingThreads = Collections.synchronizedSet(new HashSet<>());
+    Set<String> flushingThreads = ConcurrentHashMap.newKeySet();
     dir.failOn(
         new MockDirectoryWrapper.Failure() {
           @Override
@@ -3593,7 +3594,7 @@ public class TestIndexWriter extends LuceneTestCase {
     CountDownLatch startLatch = new CountDownLatch(1);
     CountDownLatch started = new CountDownLatch(threads.length);
     boolean updateSeveralDocs = random().nextBoolean();
-    Set<String> ids = Collections.synchronizedSet(new HashSet<>());
+    Set<String> ids = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
           new Thread(

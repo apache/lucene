@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -185,7 +184,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   final AtomicLong nodeStartCounter = new AtomicLong();
 
-  final Set<Integer> crashingNodes = Collections.synchronizedSet(new HashSet<>());
+  final Set<Integer> crashingNodes = ConcurrentHashMap.newKeySet();
 
   @Nightly
   @SuppressForbidden(reason = "Thread sleep")

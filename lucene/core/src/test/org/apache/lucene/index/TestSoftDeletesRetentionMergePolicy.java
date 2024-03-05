@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -292,7 +293,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     CountDownLatch startLatch = new CountDownLatch(1);
     CountDownLatch started = new CountDownLatch(threads.length);
     boolean updateSeveralDocs = random().nextBoolean();
-    Set<String> ids = Collections.synchronizedSet(new HashSet<>());
+    Set<String> ids = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
           new Thread(
