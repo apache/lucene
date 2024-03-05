@@ -97,8 +97,7 @@ class GeneratingSuggester {
 
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
-          boolean overflow = roots.size() == MAX_ROOTS;
-          if (overflow && isWorseThan(sc, rootChars, roots.peek())) {
+          if (roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.peek())) {
             return;
           }
 
@@ -109,7 +108,7 @@ class GeneratingSuggester {
           for (int i = 0; i < forms.length; i++) {
             if (isSuggestible.test(forms.ints[forms.offset + i])) {
               roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
-              if (overflow) {
+              if (roots.size() == MAX_ROOTS) {
                 roots.poll();
               }
             }
