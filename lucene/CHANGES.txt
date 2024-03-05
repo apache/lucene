@@ -84,6 +84,9 @@ API Changes
   make compile() only return the FSTMetadata. For on-heap (default) use case, please use
   FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
 
+* GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
+  for MMapDirectory.  (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -153,9 +156,6 @@ Other
 
 * LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
 
-* LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
-  (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
-
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
@@ -178,11 +178,15 @@ Other
 
 * GITHUB#13001: Put Thread#sleep() on the list of forbidden APIs. (Shubham Chaudhary)
 
+* GITHUB#12753: Bump minimum required Java version to 21
+  (Chris Hegarty, Robert Muir, Uwe Schindler)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#13145: Deprecate ByteBufferIndexInput as it will be removed in Lucene 10.0. (Uwe Schindler)
 
 New Features
 ---------------------
@@ -195,18 +199,40 @@ Improvements
 
 * GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
 
+* GITHUB#13087: Changed `static final Set` constants to be immutable. Among others it affected
+  ScandinavianNormalizer.ALL_FOLDINGS set with public access. (Dmitry Cherniachenko)
+
+* GITHUB#13155: Hunspell: allow ignoring exceptions on duplicate ICONV/OCONV mappings (Peter Gromov)
+
+* GITHUB#13156: Hunspell: don't proceed with other suggestions if we found good REP ones (Peter Gromov)
+
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
+
+* GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
+
+* GITHUB#13085: Remove unnecessary toString() / substring() calls to save some String allocations (Dmitry Cherniachenko)
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13105: Fix ByteKnnVectorFieldSource & FloatKnnVectorFieldSource to work correctly when a segment does not contain
+  any docs with vectors (hossman)
+
+* GITHUB#13017: Fix DV update files referenced by merge will be deleted by concurrent flush. (Jialiang Guo)
+
+* GITHUB#13145: Detect MemorySegmentIndexInput correctly in NRTSuggester. (Uwe Schindler)
+
+* GITHUB#13154: Hunspell GeneratingSuggester: ensure there are never more than 100 roots to process (Peter Gromov)
 
 Other
 ---------------------
 
 * GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
+
+* GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
 
 ======================== Lucene 9.10.0 =======================
 

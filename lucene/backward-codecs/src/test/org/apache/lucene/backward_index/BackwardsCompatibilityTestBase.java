@@ -26,8 +26,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -38,11 +40,17 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -91,7 +99,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
       // make sure we never miss a version.
       assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
     }
-    BINARY_SUPPORTED_VERSIONS = binaryVersions;
+    BINARY_SUPPORTED_VERSIONS = Collections.unmodifiableSet(binaryVersions);
   }
 
   /**
@@ -253,10 +261,23 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   protected abstract void createIndex(Directory directory) throws IOException;
 
   public final void createBWCIndex() throws IOException {
-    Path indexDir = getIndexDir().resolve(indexName(Version.LATEST));
-    Files.deleteIfExists(indexDir);
-    try (Directory dir = newFSDirectory(indexDir)) {
+    Path zipFile = getIndexDir().resolve(indexName(Version.LATEST));
+    Files.deleteIfExists(zipFile);
+    Path tmpDir = createTempDir();
+
+    try (Directory dir = FSDirectory.open(tmpDir);
+        ZipOutputStream zipOut =
+            new ZipOutputStream(
+                Files.newOutputStream(
+                    zipFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
       createIndex(dir);
+      for (String file : dir.listAll()) {
+        try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
+          zipOut.putNextEntry(new ZipEntry(file));
+          new OutputStreamDataOutput(zipOut).copyBytes(in, in.length());
+          zipOut.closeEntry();
+        }
+      }
     }
   }
 
