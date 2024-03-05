@@ -96,6 +96,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
+  @Override
+  public int numCollected() {
+    return heap.size();
+  }
+
   /**
    * This is a minimum binary heap, inspired by {@link org.apache.lucene.util.LongHeap}. But instead
    * of encoding and using `long` values. Node ids and scores are kept separate. Additionally, this
