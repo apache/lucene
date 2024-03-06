@@ -22,8 +22,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ProcessBuilder.Redirect;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /**
@@ -187,36 +184,8 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
     return found.get();
   }
 
-  /** currently, this only works/tested on Sun and IBM. */
-  @SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
+  /** forcibly halt the JVM: similar to crashing */
   public void crashJRE() {
-    final String vendor = Constants.JAVA_VENDOR;
-    final boolean supportsUnsafeNpeDereference =
-        vendor.startsWith("Oracle") || vendor.startsWith("Sun") || vendor.startsWith("Apple");
-
-    try {
-      if (supportsUnsafeNpeDereference) {
-        try {
-          Class<?> clazz = Class.forName("sun.misc.Unsafe");
-          Field field = clazz.getDeclaredField("theUnsafe");
-          field.setAccessible(true);
-          Object o = field.get(null);
-          Method m = clazz.getMethod("putAddress", long.class, long.class);
-          m.invoke(o, 0L, 0L);
-        } catch (Throwable e) {
-          System.out.println("Couldn't kill the JVM via Unsafe.");
-          e.printStackTrace(System.out);
-        }
-      }
-
-      // Fallback attempt to Runtime.halt();
-      Runtime.getRuntime().halt(-1);
-    } catch (Exception e) {
-      System.out.println("Couldn't kill the JVM.");
-      e.printStackTrace(System.out);
-    }
-
-    // We couldn't get the JVM to crash for some reason.
-    fail();
+    Runtime.getRuntime().halt(1);
   }
 }
