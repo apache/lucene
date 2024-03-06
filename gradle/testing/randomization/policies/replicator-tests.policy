@@ -98,3 +98,6 @@ grant codeBase "file:${randomizedtesting.jar}" {
 grant codeBase "file:${junit.jar}" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
 };
+grant codeBase "file:${lucene.test.framework}${/}-" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
