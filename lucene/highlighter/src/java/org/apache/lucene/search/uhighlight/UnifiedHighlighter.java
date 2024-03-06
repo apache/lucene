@@ -49,6 +49,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.queries.function.FunctionQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -1130,7 +1131,9 @@ public class UnifiedHighlighter {
           @Override
           public void visitLeaf(Query query) {
             if (MultiTermHighlighting.canExtractAutomataFromLeafQuery(query) == false) {
-              if (!(query instanceof MatchAllDocsQuery || query instanceof MatchNoDocsQuery)) {
+              if (!(query instanceof MatchAllDocsQuery
+                  || query instanceof MatchNoDocsQuery
+                  || query instanceof FunctionQuery)) {
                 hasUnknownLeaf[0] = true;
               }
             }
