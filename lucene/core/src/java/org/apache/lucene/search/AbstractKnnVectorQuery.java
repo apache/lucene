@@ -187,6 +187,9 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer == null) {
+      return NO_RESULTS;
+    }
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
