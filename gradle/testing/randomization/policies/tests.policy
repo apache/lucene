@@ -59,6 +59,8 @@ grant {
 
   // TestLockFactoriesMultiJVM opens a random port on 127.0.0.1 (port 0 = ephemeral port range):
   permission java.net.SocketPermission "127.0.0.1:0", "accept,listen,resolve";
+  // Replicator tests connect to ephemeral ports
+  permission java.net.SocketPermission "127.0.0.1:1024-", "connect,resolve";
 
   // read access to all system properties:
   permission java.util.PropertyPermission "*", "read";
