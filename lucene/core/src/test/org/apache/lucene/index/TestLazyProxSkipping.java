@@ -104,8 +104,8 @@ public class TestLazyProxSkipping extends LuceneTestCase {
     writer.close();
 
     LeafReader reader = getOnlyLeafReader(DirectoryReader.open(directory));
-
-    this.searcher = newSearcher(reader);
+    // disable concurrency because it has a single segment and makes assumptions based on that.
+    this.searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
   }
 
   private ScoreDoc[] search() throws IOException {

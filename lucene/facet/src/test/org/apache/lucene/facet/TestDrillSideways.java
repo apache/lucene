@@ -146,6 +146,10 @@ public class TestDrillSideways extends FacetTestCase {
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     searcher.setTimeout(null);
+    // TODO I think that DrillSideways does not support bulk scoring, and needs the entire range of
+    // docs to be scored
+    // at once: how do we make intra-segment concurrency work then? Should we just disable it
+    // instead?
     return searcher;
   }
 
@@ -1668,6 +1672,14 @@ public class TestDrillSideways extends FacetTestCase {
 
     @Override
     protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
+        throws IOException {
+      AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+      super.search(leaves, weight, assertingCollector);
+      assert assertingCollector.hasFinishedCollectingPreviousLeaf;
+    }
+
+    @Override
+    protected void search(LeafReaderContextPartition[] leaves, Weight weight, Collector collector)
         throws IOException {
       AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
       super.search(leaves, weight, assertingCollector);

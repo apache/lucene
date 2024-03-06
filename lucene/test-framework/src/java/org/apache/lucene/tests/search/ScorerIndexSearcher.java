@@ -52,8 +52,14 @@ public class ScorerIndexSearcher extends IndexSearcher {
   }
 
   @Override
-  protected void searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)
+  protected void searchLeaf(
+      LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)
       throws IOException {
+    // TODO this is ok for our internal usage, but maybe not for external usages, given that the
+    // class is part of the test framework
+    if (minDocId != 0 || maxDocId != DocIdSetIterator.NO_MORE_DOCS) {
+      throw new IllegalStateException("range of doc ids not supported by this searcher");
+    }
     // we force the use of Scorer (not BulkScorer) to make sure
     // that the scorer passed to LeafCollector.setScorer supports
     // Scorer.getChildren
