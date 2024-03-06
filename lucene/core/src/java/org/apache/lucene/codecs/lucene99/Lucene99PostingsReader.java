@@ -45,7 +45,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -346,7 +345,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final FixedBitSet denseDocs = new FixedBitSet(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits(8);
 
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
@@ -591,7 +590,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         // NOTE: the loop below encodes the assumption that this block has docids
         // >= target; otherwise we would have skipped ahead already. So we don't
         // need to check for overflow here
-        int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
           docBufferUpto = BLOCK_SIZE;
@@ -657,7 +656,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final FixedBitSet denseDocs = new FixedBitSet(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits(8);
 
     private Lucene99SkipReader skipper;
     private boolean skipped;
@@ -929,9 +928,15 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
+      // if (denseBlockBaseDoc >= 0) {
       // System.out.println("  enter nextDoc i=" + bitIndex + " [" + docBufferUpto + "]");
+      // }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
+        if (denseBlockBaseDoc >= 0) {
+          // System.out.println("  refilled: nextDoc i=" + bitIndex + " [" + docBufferUpto + "] : "
+          // + Arrays.toString(denseDocs.getBits()));
+        }
       }
 
       if (denseBlockBaseDoc >= 0) {
@@ -946,7 +951,10 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
       position = 0;
       lastStartOffset = 0;
-      // System.out.println("  exit nextDoc " + doc + " [" + docBufferUpto + "] freq=" + freq);
+      // if (denseBlockBaseDoc >= 0) {
+      // System.out.println("  exit nextDoc " + doc + " i=" + bitIndex + " [" + docBufferUpto + "]
+      // freq=" + freq);
+      // }
       return doc;
     }
 
@@ -993,7 +1001,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       if (denseBlockBaseDoc >= 0) {
-        int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
           docBufferUpto = BLOCK_SIZE;
@@ -1001,17 +1009,15 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           this.doc = denseBlockBaseDoc + next;
           // count bits to know how many docs in this block we advanced
           int advanceTo = docBufferUpto + denseDocs.count(bitIndex + 1, next);
+          assert advanceTo < BLOCK_SIZE;
           while (docBufferUpto <= advanceTo) {
             freq = (int) freqBuffer[docBufferUpto++];
             posPendingCount += freq;
           }
           bitIndex = next;
         }
-        position = 0;
         // System.out.println("  advance " + target + "->" + doc + " [" + docBufferUpto + "] freq="+
         // freq);
-        return this.doc;
-
       } else {
 
         // Now scan... this is an inlined/pared down version
@@ -1027,10 +1033,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
             break;
           }
         }
-        position = 0;
-        lastStartOffset = 0;
-        return this.doc = (int) doc;
+        this.doc = (int) doc;
       }
+      position = 0;
+      lastStartOffset = 0;
+      return this.doc;
     }
 
     // TODO: in theory we could avoid loading frq block
@@ -1175,7 +1182,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final FixedBitSet denseDocs = new FixedBitSet(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits(8);
 
     private final Lucene99ScoreSkipReader skipper;
 
@@ -1353,7 +1360,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
       if (denseBlockBaseDoc >= 0) {
-        int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           doc = NO_MORE_DOCS;
           docBufferUpto = BLOCK_SIZE;
@@ -1412,7 +1419,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final FixedBitSet denseDocs = new FixedBitSet(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits(DENSE_BITSET_SIZE);
     private final Lucene99ScoreSkipReader skipper;
 
     final IndexInput docIn;
@@ -1611,7 +1618,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       if (denseBlockBaseDoc >= 0) {
-        int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
           docBufferUpto = BLOCK_SIZE;
@@ -1746,7 +1753,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final FixedBitSet denseDocs = new FixedBitSet(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits(DENSE_BITSET_SIZE);
 
     private final Lucene99ScoreSkipReader skipper;
 
@@ -2086,7 +2093,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
 
       if (denseBlockBaseDoc >= 0) {
-        int next = checkNextSetBit(denseDocs, target - denseBlockBaseDoc);
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
         if (next == NO_MORE_DOCS) {
           this.doc = NO_MORE_DOCS;
           docBufferUpto = BLOCK_SIZE;
@@ -2097,9 +2104,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           docUpto += numAdvanced;
           bitIndex = next;
         }
-        position = 0;
-        lastStartOffset = 0;
-        return this.doc;
       } else {
         // Now scan:
         long doc;
@@ -2116,10 +2120,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
             return this.doc = NO_MORE_DOCS;
           }
         }
-        position = 0;
-        lastStartOffset = 0;
-        return this.doc = (int) doc;
+        this.doc = (int) doc;
       }
+      position = 0;
+      lastStartOffset = 0;
+      return this.doc;
     }
 
     // TODO: in theory we could avoid loading frq block
@@ -2260,14 +2265,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     @Override
     public long cost() {
       return docFreq;
-    }
-  }
-
-  static int checkNextSetBit(FixedBitSet bitset, int index) {
-    if (index > bitset.length()) {
-      return NO_MORE_DOCS;
-    } else {
-      return bitset.nextSetBit(index);
     }
   }
 

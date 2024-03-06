@@ -26,7 +26,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 
 public class TestForDeltaUtil extends LuceneTestCase {
@@ -66,7 +65,7 @@ public class TestForDeltaUtil extends LuceneTestCase {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
-      FixedBitSet bits = new FixedBitSet(ForUtil.BLOCK_SIZE * Long.SIZE);
+      PostingBits bits = new PostingBits(1);
       for (int i = 0; i < iterations; ++i) {
         long base = 0;
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
@@ -80,7 +79,6 @@ public class TestForDeltaUtil extends LuceneTestCase {
             expected[j] += base;
           }
         }
-        // nocommit this probably doesn't belong in ForDeltaUtil
         if ((headByte & 0x80) != 0) {
           // System.out.println("dense " + (headByte & 0x7f));
           decodeBits(bits, base, restored);
@@ -96,11 +94,14 @@ public class TestForDeltaUtil extends LuceneTestCase {
     d.close();
   }
 
-  static void decodeBits(FixedBitSet bits, long base, long[] longs) {
+  static void decodeBits(PostingBits bits, long base, long[] longs) {
     int bitIndex = bits.nextSetBit(0);
     int bufferUpto = 0;
-    while (bitIndex != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS) {
+    for (; ; ) {
       longs[bufferUpto++] = bitIndex + base;
+      if (bufferUpto == ForUtil.BLOCK_SIZE) {
+        break;
+      }
       bitIndex = bits.nextSetBit(bitIndex + 1);
     }
   }

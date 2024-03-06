@@ -17,19 +17,18 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.FixedBitSet;
 
-/** Utility class to encode 128 bits ha ha */
+/** Utility class to encode reinflate deltas and encode as bitset */
 final class DenseUtil {
 
   /**
    * Encode 128 integer deltas from {@code longs} into {@code out} as a bitset.
    *
-   * @param numBits indicates the delta between the first and last encoded docid, which is the
-   *     number of bits required
+   * @param numBits indicates the delta between the first and last encoded docid, plus one, which is
+   *     the number of bits required
    */
   static void encodeDeltas(long[] longs, int numBits, DataOutput out) throws IOException {
     FixedBitSet bits = new FixedBitSet(numBits);
@@ -38,35 +37,45 @@ final class DenseUtil {
       lastSetBit += l;
       bits.set(lastSetBit);
     }
-    int numLongs = bits.getBits().length;
-    // the encoding format uses this bit
-    assert numLongs < 0x80;
-    // nocommit: we are wastefully writing full longs when we could skip the trailing zero bytes
-    // instead we should write only the bytes we need and write that number rather than numLongs
-    // when we read we will have to reconstruct the trailiing partial long
-    out.writeByte((byte) (0x80 | numLongs));
     assert numBits == lastSetBit + 1;
-    // out.writeByte((byte) (nBytes & 0xff));
-    for (long l : bits.getBits()) {
-      out.writeLong(l);
+    int numLongs = bits.getBits().length;
+    int numBytes = (numBits + 7) >> 3; // 2^3 = 8 = bits/byte
+    // the encoding format uses this bit
+    assert numBytes < 0x80;
+    out.writeByte((byte) (0x80 | numBytes));
+    for (int i = 0; i < numLongs - 1; i++) {
+      out.writeLong(bits.getBits()[i]);
     }
+    long last = bits.getBits()[numLongs - 1];
+    for (int i = 0; i < numBytes - (numLongs - 1) * Long.BYTES; i++) {
+      // little-endian
+      out.writeByte((byte) (last & 0xff));
+      last >>>= Byte.SIZE;
+    }
+    /*
+    if (last != 0) {
+      System.out.println(Arrays.toString(longs));
+      System.out.printf("lastSetBit=%d last=%x lastorig=%x numLongs=%d numBytes=%d numBits=%d\n", lastSetBit, last, bits.getBits()[numLongs - 1], numLongs, numBytes, numBits);
+    }
+    */
+    // System.out.printf("lastSetBit=%d last=%x lastorig=%x numLongs=%d numBytes=%d numBits=%d\n",
+    // lastSetBit, last, bits.getBits()[numLongs - 1], numLongs, numBytes, numBits);
+    assert last == 0;
   }
 
-  public static void readBlock(int bitsPerValue, DataInput in, FixedBitSet bits)
-      throws IOException {
-    int numLongs = bitsPerValue & 0x7f;
+  public static void readBlock(int numBytes, DataInput in, PostingBits bits) throws IOException {
+    int numFullLongs = numBytes >> 3;
+    int extraBytes = numBytes - numFullLongs * Long.BYTES;
+    bits.resize(numBytes);
     long[] longs = bits.getBits();
-    in.readLongs(longs, 0, numLongs);
-    // empty out the "ghost bits" so FixedBitSet doesn't get upset
-    // but this is not really required since the trailing longs are
-    // never seen by FixedBitSet -- the methods we use are all restricted by
-    // numLongs. In fact we could relax FixedBitSet verification.
-    // Arrays.fill(longs, numLongs, longs.length, 0);
-    assert clear(bits);
-  }
-
-  private static boolean clear(FixedBitSet bits) {
-    Arrays.fill(bits.getBits(), 0);
-    return true;
+    in.readLongs(longs, 0, numFullLongs);
+    if (extraBytes > 0) {
+      long last = 0;
+      for (int shift = 0; shift < extraBytes * Byte.SIZE; shift += Byte.SIZE) {
+        last |= ((long) in.readByte() & 0xff) << shift;
+      }
+      bits.getBits()[numFullLongs] = last;
+    }
+    bits.updateNumBits();
   }
 }

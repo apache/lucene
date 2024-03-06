@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene99;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Utility class to encode/decode increasing sequences of 128 integers. */
@@ -60,11 +59,14 @@ public class ForDeltaUtil {
       for (long l : longs) {
         or |= l;
         sum += l;
+        // TODO: check for overflow? These are deltas, it really should not overflow?
+        assert sum < Integer.MAX_VALUE;
       }
       assert or != 0;
       final int bitsPerValue = PackedInts.bitsRequired(or);
       // nocommit tune me
-      if (longs.length * bitsPerValue >= (int) sum) {
+      if (longs.length * bitsPerValue >= (int) sum && sum <= 31 * Long.BYTES) {
+        //
         // sum = bits required in dense bitset;
         // len (block_size=128) * bitsPerValue = number of bits required in packed encoding
         DenseUtil.encodeDeltas(longs, (int) sum, out);
@@ -76,13 +78,13 @@ public class ForDeltaUtil {
   }
 
   /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  int decodeAndPrefixSum(DataInput in, long base, long[] longs, FixedBitSet denseDocs)
+  int decodeAndPrefixSum(DataInput in, long base, long[] longs, PostingBits denseDocs)
       throws IOException {
     final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
     if (bitsPerValue == 0) {
       prefixSumOfOnes(longs, base);
     } else if ((bitsPerValue & 0x80) != 0) {
-      DenseUtil.readBlock(bitsPerValue, in, denseDocs);
+      DenseUtil.readBlock(bitsPerValue & 0x7f, in, denseDocs);
     } else {
       forUtil.decodeAndPrefixSum(bitsPerValue, in, base, longs);
     }
