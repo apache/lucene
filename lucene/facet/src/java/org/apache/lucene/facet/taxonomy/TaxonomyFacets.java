@@ -335,7 +335,7 @@ abstract class TaxonomyFacets extends Facets {
       TopOrdAndNumberQueue.OrdAndValue ordAndValue = q.pop();
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
-      values[i] = ordAndValue.getValue();
+      values[i] = ordAndValue.value;
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -432,15 +432,15 @@ abstract class TaxonomyFacets extends Facets {
       int ord,
       Number value) {
     if (incomingOrdAndValue == null) {
-      incomingOrdAndValue = q.newOrdAndValue();
+      incomingOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
     }
     incomingOrdAndValue.ord = ord;
-    incomingOrdAndValue.setValue(value);
+    incomingOrdAndValue.value = value;
 
     if (q.size() < topN || q.lessThan(bottomOrdAndValue, incomingOrdAndValue)) {
       incomingOrdAndValue = q.insertWithOverflow(incomingOrdAndValue);
       bottomOrdAndValue.ord = q.top().ord;
-      bottomOrdAndValue.setValue(q.top().getValue());
+      bottomOrdAndValue.value = q.top().value;
     }
     return incomingOrdAndValue;
   }
@@ -457,9 +457,9 @@ abstract class TaxonomyFacets extends Facets {
     int childCount = 0;
 
     TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue = null;
-    TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue = q.newOrdAndValue();
+    TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
     bottomOrdAndValue.ord = Integer.MAX_VALUE;
-    bottomOrdAndValue.setValue(q.zero());
+    bottomOrdAndValue.value = 0;
 
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap
