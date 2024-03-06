@@ -1672,6 +1672,12 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
       // ignore if fieldType is not POSTINGS only
       return;
 
+    final UnifiedHighlighter.OffsetSource expectedOffsetSource;
+    if (this.fieldType.storeTermVectors())
+      expectedOffsetSource = UnifiedHighlighter.OffsetSource.POSTINGS_WITH_TERM_VECTORS;
+    else
+      expectedOffsetSource = UnifiedHighlighter.OffsetSource.POSTINGS;
+
     RandomIndexWriter iw = newIndexOrderPreservingWriter();
 
     Field body = new Field("body", "", fieldType);
@@ -1694,7 +1700,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     Set<Term> queryTerms = UnifiedHighlighter.extractTerms(query);
     FieldHighlighter fieldHighlighter = highlighter.getFieldHighlighter("body", query, queryTerms, 1);
-    assertEquals(UnifiedHighlighter.OffsetSource.POSTINGS, fieldHighlighter.getOffsetSource()); // TermQuery is compatible with POSTINGS offset strategy
+    assertEquals(expectedOffsetSource, fieldHighlighter.getOffsetSource()); // TermQuery is compatible with POSTINGS offset strategy
 
     String[] snippets = highlighter.highlight("body", query, topDocs);
 
@@ -1705,7 +1711,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
             .build();
       queryTerms = UnifiedHighlighter.extractTerms(booleanQuery);
       fieldHighlighter = highlighter.getFieldHighlighter("body", booleanQuery, queryTerms, 1);
-      assertEquals(noEffectQuery.getClass().toString(), UnifiedHighlighter.OffsetSource.POSTINGS, fieldHighlighter.getOffsetSource()); // combining to a query with no effet (on highlighting) should lead to the same highlighter behavior
+      assertEquals(noEffectQuery.getClass().toString(), expectedOffsetSource, fieldHighlighter.getOffsetSource()); // combining to a query with no effet (on highlighting) should lead to the same highlighter behavior
 
       String[] bqSnippets = highlighter.highlight("body", query, topDocs);
       assertArrayEquals(bqSnippets.toString(), snippets, bqSnippets); // ensuring that the combined query does produce the same output
