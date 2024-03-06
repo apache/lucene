@@ -84,13 +84,6 @@ grant {
   permission java.io.FilePermission "${hunspell.dictionaries}${/}-", "read";
 };
 
-// Permissions to support ant build
-grant {
-  permission java.io.FilePermission "${user.home}${/}.ivy2${/}cache${/}-", "read";
-  permission java.io.FilePermission "${junit4.tempDir}${/}*", "read,write,delete";
-  permission java.io.FilePermission "${clover.db.dir}${/}-", "read,write,delete";
-};
-
 // Permissions for jacoco code coverage
 grant {
   // permission to write the per-jvm code coverage output
