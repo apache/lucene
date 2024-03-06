@@ -27,8 +27,12 @@ final class PostingBits {
   private int numBits; // The number of bits in use
   private int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
 
-  PostingBits(int numWords) {
-    this.numWords = numWords;
+  PostingBits() {
+    this(8);
+  }
+
+  PostingBits(int initialCapacity) {
+    this.numWords = initialCapacity;
     this.bits = new long[numWords];
   }
 

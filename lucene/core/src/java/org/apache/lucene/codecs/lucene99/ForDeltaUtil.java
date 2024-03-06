@@ -64,7 +64,7 @@ public class ForDeltaUtil {
       }
       assert or != 0;
       final int bitsPerValue = PackedInts.bitsRequired(or);
-      // nocommit tune me
+      // TODO: tune me
       if (longs.length * bitsPerValue >= (int) sum && sum <= 31 * Long.BYTES) {
         //
         // sum = bits required in dense bitset;

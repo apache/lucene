@@ -144,8 +144,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
       assertEquals(200, termEnum.docFreq());
       PostingsEnum postingsEnum = termEnum.postings(null);
       int count = 0;
-      int doc = -1;
-      while ((doc = postingsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      while (postingsEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         count += 1;
       }
       assertEquals(200, count);

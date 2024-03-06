@@ -24,7 +24,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.POS_CODEC
 import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.VERSION_START;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -53,11 +52,6 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene99PostingsReader extends PostingsReaderBase {
-
-  // nocommit this seems absurdly large - it's unlikely we would ever use this much in practice
-  // maybe we should put an arbitrary maximum in place so that even if this would use fewer
-  // bits than packed encoding we only use it if the bitmap is < that maximum size...
-  static final int DENSE_BITSET_SIZE = BLOCK_SIZE * Long.SIZE;
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -345,7 +339,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final PostingBits denseDocs = new PostingBits(8);
+    private final PostingBits denseDocs = new PostingBits();
 
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
@@ -656,7 +650,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final PostingBits denseDocs = new PostingBits(8);
+    private final PostingBits denseDocs = new PostingBits();
 
     private Lucene99SkipReader skipper;
     private boolean skipped;
@@ -1182,7 +1176,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final PostingBits denseDocs = new PostingBits(8);
+    private final PostingBits denseDocs = new PostingBits();
 
     private final Lucene99ScoreSkipReader skipper;
 
@@ -1419,7 +1413,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final PostingBits denseDocs = new PostingBits(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits();
     private final Lucene99ScoreSkipReader skipper;
 
     final IndexInput docIn;
@@ -1753,7 +1747,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     // docID of first doc in the block; only used/valid when blockFormat is dense
     private int denseBlockBaseDoc;
     private int bitIndex; // tracks nextDoc() iteration through dense bits
-    private final PostingBits denseDocs = new PostingBits(DENSE_BITSET_SIZE);
+    private final PostingBits denseDocs = new PostingBits();
 
     private final Lucene99ScoreSkipReader skipper;
 
