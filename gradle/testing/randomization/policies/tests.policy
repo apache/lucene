@@ -33,8 +33,6 @@ grant {
 
   // misc HardlinkCopyDirectoryWrapper needs this to test if hardlinks can be created
   permission java.nio.file.LinkPermission "hard";
-  // needed by SSD detection tests in TestIOUtils (creates symlinks)
-  permission java.nio.file.LinkPermission "symbolic";
 
   // needed by randomizedtesting runner to identify test methods.
   permission java.lang.RuntimePermission "accessDeclaredMembers";
