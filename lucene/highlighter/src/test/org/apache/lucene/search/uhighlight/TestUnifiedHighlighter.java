@@ -46,6 +46,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
@@ -1704,7 +1705,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     String[] snippets = highlighter.highlight("body", query, topDocs);
 
-    for (Query noEffectQuery: new Query[] {new MatchAllDocsQuery(), new FunctionQuery(new ConstValueSource(5))}) {
+    for (Query noEffectQuery: new Query[] {new MatchAllDocsQuery(), new MatchNoDocsQuery(), new FunctionQuery(new ConstValueSource(5))}) {
       final Query booleanQuery = new BooleanQuery.Builder()
             .add(noEffectQuery, BooleanClause.Occur.MUST)
             .add(query, BooleanClause.Occur.MUST)
