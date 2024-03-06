@@ -38,10 +38,8 @@ grant {
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   // needed by certain tests to capture sysout/syserr:
   permission java.lang.RuntimePermission "setIO";
-  // needed by randomized runner to catch failures from other threads:
+  // needed by luke and randomized runner to catch failures from other threads:
   permission java.lang.RuntimePermission "setDefaultUncaughtExceptionHandler";
-  // needed by randomized runner getTopThreadGroup:
-  permission java.lang.RuntimePermission "modifyThreadGroup";
   // needed by tests e.g. shutting down executors:
   permission java.lang.RuntimePermission "modifyThread";
   // needed for tons of test hacks etc
@@ -115,6 +113,7 @@ grant {
 // Grant reflection permissions to certain JARs (https://github.com/apache/lucene/pull/13146)
 grant codeBase "file:${randomizedtesting.jar}" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  permission java.lang.RuntimePermission "modifyThreadGroup";
 };
 grant codeBase "file:${junit.jar}" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
