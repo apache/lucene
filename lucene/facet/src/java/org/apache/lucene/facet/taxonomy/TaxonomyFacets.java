@@ -426,8 +426,6 @@ abstract class TaxonomyFacets extends Facets {
 
   private TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
       TopOrdAndNumberQueue q,
-      int topN,
-      TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue,
       TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue,
       int ord,
       Number value) {
@@ -437,11 +435,7 @@ abstract class TaxonomyFacets extends Facets {
     incomingOrdAndValue.ord = ord;
     incomingOrdAndValue.value = value;
 
-    if (q.size() < topN || q.lessThan(bottomOrdAndValue, incomingOrdAndValue)) {
-      incomingOrdAndValue = q.insertWithOverflow(incomingOrdAndValue);
-      bottomOrdAndValue.ord = q.top().ord;
-      bottomOrdAndValue.value = q.top().value;
-    }
+    incomingOrdAndValue = q.insertWithOverflow(incomingOrdAndValue);
     return incomingOrdAndValue;
   }
 
@@ -457,9 +451,6 @@ abstract class TaxonomyFacets extends Facets {
     int childCount = 0;
 
     TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue = null;
-    TopOrdAndNumberQueue.OrdAndValue bottomOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
-    bottomOrdAndValue.ord = Integer.MAX_VALUE;
-    bottomOrdAndValue.value = 0;
 
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap
@@ -472,8 +463,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
 
-          incomingOrdAndValue =
-              insertIntoQueue(q, topN, bottomOrdAndValue, incomingOrdAndValue, ord, value);
+          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord, value);
         }
       }
     } else {
@@ -487,8 +477,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
 
-          incomingOrdAndValue =
-              insertIntoQueue(q, topN, bottomOrdAndValue, incomingOrdAndValue, ord, value);
+          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord, value);
         }
         ord = siblings[ord];
       }
