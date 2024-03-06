@@ -34,7 +34,7 @@ grant {
   // misc HardlinkCopyDirectoryWrapper needs this to test if hardlinks can be created
   permission java.nio.file.LinkPermission "hard";
 
-  // needed by randomizedtesting runner to identify test methods.
+  // needed by RamUsageEstimator, and randomizedtesting runner to identify test methods.
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   // needed by certain tests to capture sysout/syserr:
   permission java.lang.RuntimePermission "setIO";
@@ -110,7 +110,7 @@ grant {
   permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
 };
 
-// Grant reflection permissions to certain JARs (https://github.com/apache/lucene/pull/13146)
+// Grant permissions to certain test-related JARs (https://github.com/apache/lucene/pull/13146)
 grant codeBase "file:${randomizedtesting.jar}" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   permission java.lang.RuntimePermission "modifyThreadGroup";
