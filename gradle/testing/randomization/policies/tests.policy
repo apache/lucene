@@ -50,8 +50,6 @@ grant {
   permission java.lang.RuntimePermission "getStackTrace";
   // needed for mock filesystems in tests
   permission java.lang.RuntimePermission "fileSystemProvider";
-  // test runner seems to require supression of access checks:
-  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   // needed by cyberneko usage by benchmarks on J9
   permission java.lang.RuntimePermission "accessClassInPackage.org.apache.xerces.util";
 
@@ -122,3 +120,13 @@ grant {
   permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
 };
 
+// Grant reflection permissions to certain JARs (https://github.com/apache/lucene/pull/13146)
+grant codeBase "file:${randomizedtesting.jar}" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
+grant codeBase "file:${junit.jar}" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
+grant codeBase "file:${lucene.test.framework}${/}-" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
