@@ -104,27 +104,27 @@ public abstract class RunAutomaton implements Accountable {
   /** Returns true if this state can accept everything(all remaining suffixes). */
   private boolean canMatchAllSuffix(int state) {
     assert automaton.isAccept(state);
+    Transition transition = new Transition();
     int numTransitions = automaton.getNumTransitions(state);
     // Apply to PrefixQuery, TermRangeQuery.
     if (numTransitions == 1) {
-      Transition transition = new Transition();
       automaton.getTransition(state, 0, transition);
-      if (transition.dest == state && transition.min == 0 && transition.max == 255) {
+      if (transition.dest == state && transition.min == 0 && transition.max == alphabetSize - 1) {
         return true;
       }
     }
 
-    // Apply to RegexpQuery, WildcardQuery.
+    // Apply to RegexpQuery, WildcardQuery, custom Automata.
+    // TODO Track other transitions.
     for (int i = 0; i < numTransitions; i++) {
-      Transition transition = new Transition();
       automaton.getTransition(state, i, transition);
-      if (transition.dest == state && transition.min == 0 && transition.max == 127) {
-        return true;
-      } else if (transition.dest != state
-          && automaton.isAccept(transition.dest)
-          && transition.min == 0
-          && transition.max == 127) {
-        return canMatchAllSuffix(transition.dest);
+      if (transition.min == 0 && transition.max == 127) {
+        if (transition.dest == state) {
+          return true;
+        } else if (automaton.isAccept(transition.dest)) {
+          // recurse
+          return canMatchAllSuffix(transition.dest);
+        }
       }
     }
     return false;

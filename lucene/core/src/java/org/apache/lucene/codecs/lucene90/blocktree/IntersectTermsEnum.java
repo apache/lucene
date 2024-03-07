@@ -394,7 +394,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // Match sub block's entry directly.
       if (currentFrame.matchAllSuffix) {
         while (true) {
-          // TODO: Is it necessary to set currentTransition, state etc.
+          // There is no need to set currentTransition, state, etc.
+          // It will be reset properly on the next recursion.
           if (isSubBlock) {
             copyTerm();
             currentFrame = pushFrame(currentFrame.state);
@@ -555,9 +556,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         // Match!  Recurse:
         copyTerm();
         currentFrame = pushFrame(state);
-        if (matchAllSuffix) {
-          currentFrame.matchAllSuffix = true;
-        }
+        currentFrame.matchAllSuffix = matchAllSuffix;
         currentTransition = currentFrame.transition;
         currentFrame.lastState = lastState;
       } else if (runAutomaton.isAccept(state)) {
