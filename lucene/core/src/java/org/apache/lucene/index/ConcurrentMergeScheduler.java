@@ -271,6 +271,10 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   @Override
   public Executor getIntraMergeExecutor(OneMerge merge) {
     assert scaledExecutor != null : "scaledExecutor is not initialized";
+    // don't do multithreaded merges for small merges
+    if (merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
+      return null;
+    }
     return scaledExecutor;
   }
 
@@ -959,19 +963,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     @Override
     public void execute(Runnable command) {
       assert mergeThreads.contains(Thread.currentThread()) : "caller is not a merge thread";
-      Thread currentThread = Thread.currentThread();
-      if (currentThread instanceof MergeThread mergeThread) {
-        execute(mergeThread, command);
-      } else {
-        command.run();
-      }
-    }
-
-    private void execute(MergeThread mergeThread, Runnable command) {
-      // don't do multithreaded merges for small merges
-      if (mergeThread.merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
-        command.run();
-      } else {
+      if (Thread.currentThread() instanceof MergeThread) {
         final boolean isThreadAvailable;
         // we need to check if a thread is available before submitting the task to the executor
         // synchronize on CMS to get an accurate count of current threads
@@ -997,6 +989,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         } else {
           command.run();
         }
+      } else {
+        command.run();
       }
     }
   }

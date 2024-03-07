@@ -186,7 +186,6 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
 
 Improvements
 ---------------------
@@ -194,6 +193,10 @@ Improvements
 * GITHUB#13092: `static final Map` constants have been made immutable (Dmitry Cherniachenko)
 
 * GITHUB#13041: TokenizedPhraseQueryNode code cleanup (Dmitry Cherniachenko)
+
+* GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
+  implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
+  executor is provided. (Ben Trent)
 
 Optimizations
 ---------------------
