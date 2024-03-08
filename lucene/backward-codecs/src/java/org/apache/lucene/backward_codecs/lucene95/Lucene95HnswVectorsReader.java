@@ -302,11 +302,21 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             vectorData);
     RandomVectorScorer scorer =
         RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
-    HnswGraphSearcher.search(
-        scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+    final KnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    if (knnCollector.k() < scorer.maxOrd()) {
+      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    } else {
+      // if k is larger than the number of vectors, we can just iterate over all vectors
+      // and collect them
+      for (int i = 0; i < scorer.maxOrd(); i++) {
+        if (acceptedOrds == null || acceptedOrds.get(i)) {
+          knnCollector.incVisitedCount(1);
+          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+        }
+      }
+    }
   }
 
   @Override
@@ -330,11 +340,21 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             vectorData);
     RandomVectorScorer scorer =
         RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
-    HnswGraphSearcher.search(
-        scorer,
-        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+    final KnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    if (knnCollector.k() < scorer.maxOrd()) {
+      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    } else {
+      // if k is larger than the number of vectors, we can just iterate over all vectors
+      // and collect them
+      for (int i = 0; i < scorer.maxOrd(); i++) {
+        if (acceptedOrds == null || acceptedOrds.get(i)) {
+          knnCollector.incVisitedCount(1);
+          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+        }
+      }
+    }
   }
 
   /** Get knn graph values; used for testing */

@@ -21,7 +21,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -30,11 +29,6 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
     return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
-  }
-
-  @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
   }
 
   @Override
@@ -85,22 +79,5 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     KnnByteVectorQuery q1 = new KnnByteVectorQuery("f1", queryVectorBytes, 10);
     assertArrayEquals(queryVectorBytes, q1.getTargetCopy());
     assertNotSame(queryVectorBytes, q1.getTargetCopy());
-  }
-
-  private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
-
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
-      super(field, target, k, filter);
-    }
-
-    @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
-      throw new UnsupportedOperationException("exact search is not supported");
-    }
-
-    @Override
-    public String toString(String field) {
-      return null;
-    }
   }
 }

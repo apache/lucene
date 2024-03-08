@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
@@ -125,24 +124,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    final int cost = acceptDocs.cardinality();
-
-    if (cost <= k) {
-      // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
-      // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
-    }
-
-    // Perform the approximate kNN search
-    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, knnCollectorManager);
-    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      return results;
-    } else {
-      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
-    }
+    return approximateSearch(
+        ctx,
+        createBitSet(scorer.iterator(), liveDocs, maxDoc),
+        Integer.MAX_VALUE,
+        knnCollectorManager);
   }
 
   private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
@@ -173,48 +159,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;
-
-  abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
-      throws IOException;
-
-  // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
-      throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return NO_RESULTS;
-    }
-
-    VectorScorer vectorScorer = createVectorScorer(context, fi);
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      boolean advanced = vectorScorer.advanceExact(doc);
-      assert advanced;
-
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
-  }
 
   /**
    * Merges all segment-level kNN results to get the index-level kNN results.

@@ -28,7 +28,6 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -54,9 +53,6 @@ import org.apache.lucene.util.FixedBitSet;
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter);
-
-  abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
@@ -501,92 +497,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             assertTrue(scoreDoc.score <= last);
             last = scoreDoc.score;
           }
-        }
-      }
-    }
-  }
-
-  /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
-  public void testRandomWithFilter() throws IOException {
-    int numDocs = 1000;
-    int dimension = atLeast(5);
-    int numIters = atLeast(10);
-    try (Directory d = newDirectory()) {
-      // Always use the default kNN format to have predictable behavior around when it hits
-      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
-      // format
-      // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
-      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        doc.add(getKnnVectorField("field", randomVector(dimension)));
-        doc.add(new NumericDocValuesField("tag", i));
-        doc.add(new IntPoint("tag", i));
-        w.addDocument(doc);
-      }
-      w.forceMerge(1);
-      w.close();
-
-      try (DirectoryReader reader = DirectoryReader.open(d)) {
-        IndexSearcher searcher = newSearcher(reader);
-        for (int i = 0; i < numIters; i++) {
-          int lower = random().nextInt(500);
-
-          // Test a filter with cost less than k and check we use exact search
-          Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 8);
-          TopDocs results =
-              searcher.search(
-                  getKnnVectorQuery("field", randomVector(dimension), 10, filter1), numDocs);
-          assertEquals(9, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
-                      numDocs));
-
-          // Test a restrictive filter and check we use exact search
-          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          results =
-              searcher.search(
-                  getKnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
-          assertEquals(5, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
-                      numDocs));
-
-          // Test an unrestrictive filter and check we use approximate search
-          Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
-          results =
-              searcher.search(
-                  getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
-                  numDocs,
-                  new Sort(new SortField("tag", SortField.Type.INT)));
-          assertEquals(5, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
-
-          for (ScoreDoc scoreDoc : results.scoreDocs) {
-            FieldDoc fieldDoc = (FieldDoc) scoreDoc;
-            assertEquals(1, fieldDoc.fields.length);
-
-            int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= numDocs);
-          }
-
-          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
-                      numDocs));
         }
       }
     }

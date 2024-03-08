@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -94,14 +93,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
     context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
-  }
-
-  @Override
-  VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      return null;
-    }
-    return VectorScorer.create(context, fi, target);
   }
 
   @Override
