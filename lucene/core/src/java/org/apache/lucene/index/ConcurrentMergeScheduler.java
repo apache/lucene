@@ -113,7 +113,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
 
-  private ScaledExecutor scaledExecutor;
+  /** The executor provided for intra-merge parallelization */
+  protected ScaledExecutor intraMergeExecutor;
 
   /** Sole constructor, with all settings set to default values. */
   public ConcurrentMergeScheduler() {}
@@ -154,8 +155,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       this.maxThreadCount = maxThreadCount;
       this.maxMergeCount = maxMergeCount;
     }
-    if (scaledExecutor != null) {
-      scaledExecutor.updatePoolSize();
+    if (intraMergeExecutor != null) {
+      intraMergeExecutor.updatePoolSize();
     }
   }
 
@@ -270,12 +271,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public Executor getIntraMergeExecutor(OneMerge merge) {
-    assert scaledExecutor != null : "scaledExecutor is not initialized";
+    assert intraMergeExecutor != null : "scaledExecutor is not initialized";
     // don't do multithreaded merges for small merges
     if (merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
       return null;
     }
-    return scaledExecutor;
+    return intraMergeExecutor;
   }
 
   @Override
@@ -468,8 +469,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     try {
       sync();
     } finally {
-      if (scaledExecutor != null) {
-        scaledExecutor.shutdown();
+      if (intraMergeExecutor != null) {
+        intraMergeExecutor.shutdown();
       }
     }
   }
@@ -535,10 +536,10 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   void initialize(InfoStream infoStream, Directory directory) throws IOException {
     super.initialize(infoStream, directory);
     initDynamicDefaults(directory);
-    if (scaledExecutor == null) {
-      scaledExecutor = new ScaledExecutor();
+    if (intraMergeExecutor == null) {
+      intraMergeExecutor = new ScaledExecutor();
     } else {
-      scaledExecutor.updatePoolSize();
+      intraMergeExecutor.updatePoolSize();
     }
   }
 
