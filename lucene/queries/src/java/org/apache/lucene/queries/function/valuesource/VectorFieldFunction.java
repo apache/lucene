@@ -17,6 +17,9 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -52,5 +55,30 @@ public abstract class VectorFieldFunction extends FunctionValues {
       curDocID = getVectorIterator().advance(doc);
     }
     return doc == curDocID;
+  }
+
+  /**
+   * Checks the Vector Encoding of a field
+   *
+   * @throws IllegalStateException if {@code field} exists, but was not indexed with vectors.
+   * @throws IllegalStateException if {@code field} has vectors, but using a different encoding
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  static void checkField(LeafReader in, String field, VectorEncoding expectedEncoding) {
+    FieldInfo fi = in.getFieldInfos().fieldInfo(field);
+    if (fi != null) {
+      final VectorEncoding actual = fi.hasVectorValues() ? fi.getVectorEncoding() : null;
+      if (expectedEncoding != actual) {
+        throw new IllegalStateException(
+            "Unexpected vector encoding ("
+                + actual
+                + ") for field "
+                + field
+                + "(expected="
+                + expectedEncoding
+                + ")");
+      }
+    }
   }
 }

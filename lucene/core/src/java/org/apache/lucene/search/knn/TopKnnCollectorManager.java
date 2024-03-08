@@ -20,6 +20,7 @@ package org.apache.lucene.search.knn;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
@@ -48,12 +49,11 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
    * @param context the leaf reader context
    */
   @Override
-  public TopKnnCollector newCollector(int visitedLimit, LeafReaderContext context)
-      throws IOException {
+  public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
     if (globalScoreQueue == null) {
       return new TopKnnCollector(k, visitedLimit);
     } else {
-      return new MultiLeafTopKnnCollector(k, visitedLimit, globalScoreQueue);
+      return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
     }
   }
 }

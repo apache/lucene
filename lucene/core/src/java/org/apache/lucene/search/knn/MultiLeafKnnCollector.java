@@ -17,20 +17,19 @@
 
 package org.apache.lucene.search.knn;
 
-import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.AbstractKnnCollector;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 import org.apache.lucene.util.hnsw.FloatHeap;
 
 /**
- * MultiLeafTopKnnCollector is a specific KnnCollector that can exchange the top collected results
+ * MultiLeafKnnCollector is a specific KnnCollector that can exchange the top collected results
  * across segments through a shared global queue.
  *
  * @lucene.experimental
  */
-public final class MultiLeafTopKnnCollector extends TopKnnCollector {
+public final class MultiLeafKnnCollector implements KnnCollector {
 
   // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
@@ -46,23 +45,55 @@ public final class MultiLeafTopKnnCollector extends TopKnnCollector {
   private final int interval = 0xff; // 255
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
+  private final AbstractKnnCollector subCollector;
 
   /**
+   * Create a new MultiLeafKnnCollector.
+   *
    * @param k the number of neighbors to collect
-   * @param visitLimit how many vector nodes the results are allowed to visit
+   * @param globalSimilarityQueue the global queue of the highest similarities collected so far
+   *     across all segments
+   * @param subCollector the local collector
    */
-  public MultiLeafTopKnnCollector(int k, int visitLimit, BlockingFloatHeap globalSimilarityQueue) {
-    super(k, visitLimit);
+  public MultiLeafKnnCollector(
+      int k, BlockingFloatHeap globalSimilarityQueue, AbstractKnnCollector subCollector) {
     this.greediness = DEFAULT_GREEDINESS;
+    this.subCollector = subCollector;
     this.globalSimilarityQueue = globalSimilarityQueue;
     this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
     this.updatesQueue = new FloatHeap(k);
   }
 
   @Override
+  public boolean earlyTerminated() {
+    return subCollector.earlyTerminated();
+  }
+
+  @Override
+  public void incVisitedCount(int count) {
+    subCollector.incVisitedCount(count);
+  }
+
+  @Override
+  public long visitedCount() {
+    return subCollector.visitedCount();
+  }
+
+  @Override
+  public long visitLimit() {
+    return subCollector.visitLimit();
+  }
+
+  @Override
+  public int k() {
+    return subCollector.k();
+  }
+
+  @Override
   public boolean collect(int docId, float similarity) {
-    boolean localSimUpdated = queue.insertWithOverflow(docId, similarity);
-    boolean firstKResultsCollected = (kResultsCollected == false && queue.size() == k());
+    boolean localSimUpdated = subCollector.collect(docId, similarity);
+    boolean firstKResultsCollected =
+        (kResultsCollected == false && subCollector.numCollected() == k());
     if (firstKResultsCollected) {
       kResultsCollected = true;
     }
@@ -71,7 +102,7 @@ public final class MultiLeafTopKnnCollector extends TopKnnCollector {
 
     if (kResultsCollected) {
       // as we've collected k results, we can start do periodic updates with the global queue
-      if (firstKResultsCollected || (visitedCount & interval) == 0) {
+      if (firstKResultsCollected || (subCollector.visitedCount() & interval) == 0) {
         cachedGlobalMinSim = globalSimilarityQueue.offer(updatesQueue.getHeap());
         updatesQueue.clear();
         globalSimUpdated = true;
@@ -85,26 +116,18 @@ public final class MultiLeafTopKnnCollector extends TopKnnCollector {
     if (kResultsCollected == false) {
       return Float.NEGATIVE_INFINITY;
     }
-    return Math.max(queue.topScore(), Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
+    return Math.max(
+        subCollector.minCompetitiveSimilarity(),
+        Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
   }
 
   @Override
   public TopDocs topDocs() {
-    assert queue.size() <= k() : "Tried to collect more results than the maximum number allowed";
-    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
-    for (int i = 1; i <= scoreDocs.length; i++) {
-      scoreDocs[scoreDocs.length - i] = new ScoreDoc(queue.topNode(), queue.topScore());
-      queue.pop();
-    }
-    TotalHits.Relation relation =
-        earlyTerminated()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+    return subCollector.topDocs();
   }
 
   @Override
   public String toString() {
-    return "MultiLeafTopKnnCollector[k=" + k() + ", size=" + queue.size() + "]";
+    return "MultiLeafKnnCollector[subCollector=" + subCollector + "]";
   }
 }

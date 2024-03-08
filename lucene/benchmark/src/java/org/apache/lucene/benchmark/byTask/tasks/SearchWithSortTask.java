@@ -59,7 +59,7 @@ public class SearchWithSortTask extends ReadTask {
         String typeString;
         if (index != -1) {
           fieldName = field.substring(0, index);
-          typeString = field.substring(1 + index, field.length());
+          typeString = field.substring(1 + index);
         } else {
           throw new RuntimeException("You must specify the sort type ie page:int,subject:string");
         }

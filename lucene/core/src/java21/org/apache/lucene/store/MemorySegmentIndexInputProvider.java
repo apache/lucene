@@ -23,20 +23,11 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
-
-  public MemorySegmentIndexInputProvider() {
-    var log = Logger.getLogger(getClass().getName());
-    log.info(
-        "Using MemorySegmentIndexInput with Java 21 or later; to disable start with -D"
-            + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
-            + "=false");
-  }
 
   @Override
   public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
@@ -69,16 +60,6 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   @Override
   public long getDefaultMaxChunkSize() {
     return Constants.JRE_IS_64BIT ? (1L << 34) : (1L << 28);
-  }
-
-  @Override
-  public boolean isUnmapSupported() {
-    return true;
-  }
-
-  @Override
-  public String getUnmapNotSupportedReason() {
-    return null;
   }
 
   private final MemorySegment[] map(

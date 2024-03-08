@@ -74,7 +74,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           ByteBuffersDataOutput::new,
           (fileName, content) -> {
             cacheSize.addAndGet(content.size());
-            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE.apply(fileName, content);
+            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS.apply(fileName, content);
           });
 
   private final long maxMergeSizeBytes;

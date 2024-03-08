@@ -97,7 +97,7 @@ public final class JavascriptCompiler {
 
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
-  private static final int CLASSFILE_VERSION = Opcodes.V17;
+  private static final int CLASSFILE_VERSION = Opcodes.V21;
 
   private static final MethodType MT_EXPRESSION_CTOR_LOOKUP =
       MethodType.methodType(void.class, String.class, String[].class);
