@@ -41,6 +41,7 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
   public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
     final FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
     if (vectorValues == null) {
+      FloatVectorValues.checkField(ctx.reader(), fieldName);
       return DoubleValues.EMPTY;
     }
     VectorSimilarityFunction function =

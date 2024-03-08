@@ -133,6 +133,7 @@ public class FieldExistsQuery extends Query {
               case FLOAT32 -> leaf.getFloatVectorValues(field);
               case BYTE -> leaf.getByteVectorValues(field);
             };
+        assert vectorValues != null : "unexpected null vector values";
         if (vectorValues != null && vectorValues.cost() != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;

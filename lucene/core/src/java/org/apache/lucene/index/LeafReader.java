@@ -248,7 +248,6 @@ public abstract non-sealed class LeafReader extends IndexReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     FloatVectorValues floatVectorValues = getFloatVectorValues(fi.name);
     if (floatVectorValues == null) {
-      FloatVectorValues.checkField(this, field);
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
     k = Math.min(k, floatVectorValues.size());
@@ -290,7 +289,6 @@ public abstract non-sealed class LeafReader extends IndexReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     ByteVectorValues byteVectorValues = getByteVectorValues(fi.name);
     if (byteVectorValues == null) {
-      ByteVectorValues.checkField(this, field);
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
     k = Math.min(k, byteVectorValues.size());
