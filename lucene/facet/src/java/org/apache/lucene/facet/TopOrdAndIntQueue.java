@@ -24,15 +24,34 @@ public class TopOrdAndIntQueue extends TopOrdAndNumberQueue {
     super(topN);
   }
 
+  /** Holds an ordinal and an int value. */
+  public static final class OrdAndInt extends OrdAndValue {
+    /** The value corresponding to the ordinal is an int. */
+    public int value;
+
+    /** Default constructor. */
+    public OrdAndInt() {}
+
+    @Override
+    public boolean lessThan(OrdAndValue other) {
+      OrdAndInt otherOrdAndInt = (OrdAndInt) other;
+      if (value < otherOrdAndInt.value) {
+        return true;
+      }
+      if (value > otherOrdAndInt.value) {
+        return false;
+      }
+      return ord > otherOrdAndInt.ord;
+    }
+
+    @Override
+    public Number getValue() {
+      return value;
+    }
+  }
+
   @Override
-  public boolean lessThan(TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
-    int comparison = (int) a.value - (int) b.value;
-    if (comparison < 0) {
-      return true;
-    }
-    if (comparison > 0) {
-      return false;
-    }
-    return a.ord > b.ord;
+  public OrdAndValue newOrdAndValue() {
+    return new OrdAndInt();
   }
 }

@@ -120,4 +120,9 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     }
     return aggregatedValue;
   }
+
+  @Override
+  protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
+    ((TopOrdAndFloatQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
+  }
 }

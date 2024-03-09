@@ -335,7 +335,7 @@ abstract class TaxonomyFacets extends Facets {
       TopOrdAndNumberQueue.OrdAndValue ordAndValue = q.pop();
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
-      values[i] = ordAndValue.value;
+      values[i] = ordAndValue.getValue();
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -424,16 +424,17 @@ abstract class TaxonomyFacets extends Facets {
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
-  private TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
-      TopOrdAndNumberQueue q,
-      TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue,
-      int ord,
-      Number value) {
+  protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
+    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
+  }
+
+  protected TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
+      TopOrdAndNumberQueue q, TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     if (incomingOrdAndValue == null) {
-      incomingOrdAndValue = new TopOrdAndNumberQueue.OrdAndValue();
+      incomingOrdAndValue = q.newOrdAndValue();
     }
     incomingOrdAndValue.ord = ord;
-    incomingOrdAndValue.value = value;
+    setIncomingValue(incomingOrdAndValue, ord);
 
     incomingOrdAndValue = q.insertWithOverflow(incomingOrdAndValue);
     return incomingOrdAndValue;
@@ -463,7 +464,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
 
-          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord, value);
+          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord);
         }
       }
     } else {
@@ -477,7 +478,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedValue = aggregate(aggregatedValue, value);
           childCount++;
 
-          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord, value);
+          incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord);
         }
         ord = siblings[ord];
       }

@@ -24,15 +24,34 @@ public class TopOrdAndFloatQueue extends TopOrdAndNumberQueue {
     super(topN);
   }
 
+  /** Holds an ordinal and a float value. */
+  public static final class OrdAndFloat extends OrdAndValue {
+    /** The value corresponding to the ordinal is a float. */
+    public float value;
+
+    /** Default constructor. */
+    public OrdAndFloat() {}
+
+    @Override
+    public boolean lessThan(OrdAndValue other) {
+      OrdAndFloat otherOrdAndFloat = (OrdAndFloat) other;
+      if (value < otherOrdAndFloat.value) {
+        return true;
+      }
+      if (value > otherOrdAndFloat.value) {
+        return false;
+      }
+      return ord > otherOrdAndFloat.ord;
+    }
+
+    @Override
+    public Number getValue() {
+      return value;
+    }
+  }
+
   @Override
-  public boolean lessThan(TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
-    float comparison = (float) a.value - (float) b.value;
-    if (comparison < 0) {
-      return true;
-    }
-    if (comparison > 0) {
-      return false;
-    }
-    return a.ord > b.ord;
+  public OrdAndValue newOrdAndValue() {
+    return new OrdAndFloat();
   }
 }

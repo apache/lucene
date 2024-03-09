@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.TopOrdAndIntQueue;
+import org.apache.lucene.facet.TopOrdAndNumberQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to int. */
 abstract class IntTaxonomyFacets extends TaxonomyFacets {
@@ -108,5 +110,10 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return aggregatedValue;
+  }
+
+  @Override
+  protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
+    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
   }
 }
