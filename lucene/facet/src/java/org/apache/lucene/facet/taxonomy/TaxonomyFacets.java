@@ -440,6 +440,36 @@ abstract class TaxonomyFacets extends Facets {
     return incomingOrdAndValue;
   }
 
+  protected abstract static class AggregatedValue {
+    /** Aggregate the value corresponding to the given ordinal into this value. */
+    public abstract void aggregate(int ord);
+
+    /** Retrieve the encapsulated value. */
+    public abstract Number get();
+  }
+
+  private class AggregatedCount extends AggregatedValue {
+    private int count;
+
+    private AggregatedCount(int count) {
+      this.count = count;
+    }
+
+    @Override
+    public void aggregate(int ord) {
+      count += getCount(ord);
+    }
+
+    @Override
+    public Number get() {
+      return count;
+    }
+  }
+
+  protected AggregatedValue newAggregatedValue() {
+    return new AggregatedCount(0);
+  }
+
   /**
    * Determine the top-n children for a specified dimension + path. Results are in an intermediate
    * form.
@@ -448,7 +478,7 @@ abstract class TaxonomyFacets extends Facets {
       throws IOException {
     TopOrdAndNumberQueue q = makeTopOrdAndNumberQueue(topN);
 
-    Number aggregatedValue = 0;
+    AggregatedValue aggregatedValue = newAggregatedValue();
     int childCount = 0;
 
     TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue = null;
@@ -459,9 +489,8 @@ abstract class TaxonomyFacets extends Facets {
       for (IntIntCursor c : sparseCounts) {
         int ord = c.key;
         int count = c.value;
-        Number value = getAggregationValue(ord);
         if (parents[ord] == pathOrd && count > 0) {
-          aggregatedValue = aggregate(aggregatedValue, value);
+          aggregatedValue.aggregate(ord);
           childCount++;
 
           incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord);
@@ -473,9 +502,8 @@ abstract class TaxonomyFacets extends Facets {
       int ord = children[pathOrd];
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int count = counts[ord];
-        Number value = getAggregationValue(ord);
         if (count > 0) {
-          aggregatedValue = aggregate(aggregatedValue, value);
+          aggregatedValue.aggregate(ord);
           childCount++;
 
           incomingOrdAndValue = insertIntoQueue(q, incomingOrdAndValue, ord);
@@ -484,16 +512,17 @@ abstract class TaxonomyFacets extends Facets {
       }
     }
 
+    Number aggregatedValueNumber = aggregatedValue.get();
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = getAggregationValue(pathOrd);
+        aggregatedValueNumber = getAggregationValue(pathOrd);
       } else {
         // Our aggregated value is not correct, in general:
-        aggregatedValue = missingAggregationValue();
+        aggregatedValueNumber = missingAggregationValue();
       }
     }
 
-    return new TopChildrenForPath(aggregatedValue, childCount, q);
+    return new TopChildrenForPath(aggregatedValueNumber, childCount, q);
   }
 
   @Override

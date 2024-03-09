@@ -116,4 +116,27 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
   }
+
+  protected class IntAggregatedValue extends AggregatedValue {
+    private int value;
+
+    public IntAggregatedValue(int value) {
+      this.value = value;
+    }
+
+    @Override
+    public void aggregate(int ord) {
+      value = aggregationFunction.aggregate(value, getValue(ord));
+    }
+
+    @Override
+    public Number get() {
+      return value;
+    }
+  }
+
+  @Override
+  protected AggregatedValue newAggregatedValue() {
+    return new IntAggregatedValue(0);
+  }
 }

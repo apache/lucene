@@ -125,4 +125,27 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     ((TopOrdAndFloatQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
   }
+
+  protected class FloatAggregatedValue extends AggregatedValue {
+    private float value;
+
+    public FloatAggregatedValue(float value) {
+      this.value = value;
+    }
+
+    @Override
+    public void aggregate(int ord) {
+      value = aggregationFunction.aggregate(value, getValue(ord));
+    }
+
+    @Override
+    public Number get() {
+      return value;
+    }
+  }
+
+  @Override
+  protected AggregatedValue newAggregatedValue() {
+    return new FloatAggregatedValue(0f);
+  }
 }
