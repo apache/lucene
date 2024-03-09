@@ -74,7 +74,9 @@ public class IntsRefBuilder {
    * @lucene.internal
    */
   public void grow(int newLength) {
-    ref.ints = ArrayUtil.grow(ref.ints, newLength);
+    if (ref.ints.length < newLength) {
+      ref.ints = ArrayUtil.grow(ref.ints, newLength);
+    }
   }
 
   /** Grow the reference array without copying the origin data to the new array. */

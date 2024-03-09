@@ -57,7 +57,9 @@ public class BytesRefBuilder {
 
   /** Ensure that this builder can hold at least <code>capacity</code> bytes without resizing. */
   public void grow(int capacity) {
-    ref.bytes = ArrayUtil.grow(ref.bytes, capacity);
+    if (ref.bytes.length < capacity) {
+      ref.bytes = ArrayUtil.grow(ref.bytes, capacity);
+    }
   }
 
   /**
