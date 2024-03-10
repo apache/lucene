@@ -718,7 +718,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
         final Thread subprocessKiller =
             new Thread(
                 () -> {
-                  while (System.nanoTime() < deadline || !p.isAlive()) {
+                  while (System.nanoTime() < deadline && p.isAlive()) {
                     try {
                       Thread.sleep(250);
                     } catch (InterruptedException e) {
