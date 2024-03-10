@@ -119,6 +119,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 public class TestStressNRTReplication extends LuceneTestCase {
+  public static final String CRASH_MSG_PREFIX = "will crash after ";
 
   // Test evilness controls:
 
@@ -256,7 +257,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     if (TEST_NIGHTLY) {
       runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 120, 240);
     } else {
-      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 45, 120);
+      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 20, 60);
     }
 
     System.out.println("TEST: will run for " + runTimeSec + " sec");
@@ -701,8 +702,35 @@ public class TestStressNRTReplication extends LuceneTestCase {
         initCommitVersion = Integer.parseInt(l.substring(16).trim());
       } else if (l.startsWith("INFOS VERSION: ")) {
         initInfosVersion = Integer.parseInt(l.substring(15).trim());
-      } else if (l.contains("will crash after")) {
+      } else if (l.contains(CRASH_MSG_PREFIX)) {
         willCrash = true;
+        Pattern crashMsg =
+            Pattern.compile(Pattern.quote(CRASH_MSG_PREFIX) + "\\s*(?<millis>[0-9]+)");
+        var m = crashMsg.matcher(l);
+        if (!m.find()) {
+          throw new AssertionError("Expected the crash message to include the timeout: " + l);
+        }
+        final long deadline =
+            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Integer.parseInt(m.group("millis")));
+        // Fork a new thread that will attempt to terminate the subprocess after a certain delay.
+        // We don't keep track of these "killer" subprocesses; they will end gracefully if the
+        // subprocess is terminated prior to the timeout.
+        final Thread subprocessKiller =
+            new Thread(
+                () -> {
+                  while (System.nanoTime() < deadline || !p.isAlive()) {
+                    try {
+                      Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                      // ignore.
+                    }
+                  }
+                  if (p.isAlive()) {
+                    message("now killing process " + p);
+                    p.destroyForcibly();
+                  }
+                });
+        subprocessKiller.start();
       } else if (l.startsWith("NODE STARTED")) {
         break;
       }
