@@ -332,7 +332,9 @@ public class TestSimpleServer extends LuceneTestCase {
                     while (true) {
                       try {
                         new CountDownLatch(1).await();
-                      } catch (InterruptedException e) {
+                      } catch (
+                          @SuppressWarnings("unused")
+                          InterruptedException e) {
                         // We'll eventually be killed by an outside process, retry.
                       }
                     }
