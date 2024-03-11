@@ -232,7 +232,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(
         fieldEntry.ordToDoc,
