@@ -128,19 +128,20 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        final int numVectors;
+        final DocIdSetIterator vectorValues;
         switch (fieldInfo.getVectorEncoding()) {
           case FLOAT32:
-            numVectors = leaf.getFloatVectorValues(field).size();
+            vectorValues = leaf.getFloatVectorValues(field);
             break;
           case BYTE:
-            numVectors = leaf.getByteVectorValues(field).size();
+            vectorValues = leaf.getByteVectorValues(field);
             break;
           default:
             throw new IllegalArgumentException(
                 "unknown vector encoding=" + fieldInfo.getVectorEncoding());
         }
-        if (numVectors != leaf.maxDoc()) {
+        assert vectorValues != null : "unexpected null vector values";
+        if (vectorValues != null && vectorValues.cost() != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }

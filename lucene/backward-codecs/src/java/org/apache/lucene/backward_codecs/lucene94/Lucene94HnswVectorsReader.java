@@ -262,7 +262,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(fieldEntry, vectorData);
   }

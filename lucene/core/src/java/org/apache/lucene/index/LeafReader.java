@@ -246,11 +246,11 @@ public abstract class LeafReader extends IndexReader {
   public final TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
+    FloatVectorValues floatVectorValues = getFloatVectorValues(fi.name);
+    if (floatVectorValues == null) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getFloatVectorValues(fi.name).size());
+    k = Math.min(k, floatVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
@@ -287,11 +287,11 @@ public abstract class LeafReader extends IndexReader {
   public final TopDocs searchNearestVectors(
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
+    ByteVectorValues byteVectorValues = getByteVectorValues(fi.name);
+    if (byteVectorValues == null) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getByteVectorValues(fi.name).size());
+    k = Math.min(k, byteVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }

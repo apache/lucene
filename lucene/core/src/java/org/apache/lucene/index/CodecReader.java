@@ -261,7 +261,9 @@ public abstract class CodecReader extends LeafReader {
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return;
     }
@@ -273,7 +275,9 @@ public abstract class CodecReader extends LeafReader {
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       // Field does not exist or does not index vectors
       return;
     }
