@@ -600,7 +600,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       SimpleTextUtil.readLine(in, scratch);
       if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
         final int len = scratch.length() - PAYLOAD.length;
-        scratch2.grow(len);
+        scratch2.growNoCopy(len);
         System.arraycopy(scratch.bytes(), PAYLOAD.length, scratch2.bytes(), 0, len);
         scratch2.setLength(len);
         payload = scratch2.get();
@@ -727,7 +727,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
           }
           lastDocsStart = in.getFilePointer();
           final int len = scratch.length() - TERM.length;
-          lastTerm.grow(len);
+          lastTerm.growNoCopy(len);
           System.arraycopy(scratch.bytes(), TERM.length, lastTerm.bytes(), 0, len);
           lastTerm.setLength(len);
           docFreq = 0;
@@ -738,7 +738,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         }
       }
       docCount = visitedDocs.cardinality();
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       /*
       PrintStream ps = new PrintStream("out.dot");
       fst.toDot(ps);

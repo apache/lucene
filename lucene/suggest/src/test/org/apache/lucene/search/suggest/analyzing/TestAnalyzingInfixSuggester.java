@@ -892,7 +892,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
           b.append("<b>");
           b.append(queryTerm);
           b.append("</b>");
-          b.append(inputTerm.substring(queryTerm.length(), inputTerm.length()));
+          b.append(inputTerm.substring(queryTerm.length()));
           matched = true;
           break;
         }

@@ -163,7 +163,7 @@ public final class AnalysisImpl implements Analysis {
           config
               .getConfigDir()
               .map(path -> CustomAnalyzer.builder(FileSystems.getDefault().getPath(path)))
-              .orElse(CustomAnalyzer.builder());
+              .orElseGet(CustomAnalyzer::builder);
 
       // set tokenizer
       builder.withTokenizer(

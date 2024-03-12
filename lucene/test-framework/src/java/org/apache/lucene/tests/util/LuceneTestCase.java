@@ -166,7 +166,6 @@ import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -190,7 +189,6 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -498,31 +496,9 @@ public abstract class LuceneTestCase extends Assert {
     LEAVE_TEMPORARY = defaultValue;
   }
 
-  /**
-   * Returns true, if MMapDirectory supports unmapping on this platform (required for Windows), or
-   * if we are not on Windows.
-   */
-  public static boolean hasWorkingMMapOnWindows() {
-    return !Constants.WINDOWS || MMapDirectory.UNMAP_SUPPORTED;
-  }
-
-  /**
-   * Assumes that the current MMapDirectory implementation supports unmapping, so the test will not
-   * fail on Windows.
-   *
-   * @see #hasWorkingMMapOnWindows()
-   */
-  public static void assumeWorkingMMapOnWindows() {
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, hasWorkingMMapOnWindows());
-  }
-
   /** Filesystem-based {@link Directory} implementations. */
   private static final List<String> FS_DIRECTORIES =
-      Arrays.asList(
-          "NIOFSDirectory",
-          // NIOFSDirectory as replacement for MMapDirectory if unmapping is not supported on
-          // Windows (to make randomization stable):
-          hasWorkingMMapOnWindows() ? "MMapDirectory" : "NIOFSDirectory");
+      Arrays.asList("NIOFSDirectory", "MMapDirectory");
 
   /** All {@link Directory} implementations. */
   private static final List<String> CORE_DIRECTORIES;

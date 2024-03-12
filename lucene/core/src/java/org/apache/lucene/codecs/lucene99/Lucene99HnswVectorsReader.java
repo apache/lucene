@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
@@ -45,12 +46,14 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -68,7 +71,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final IndexInput vectorIndex;
   private final FlatVectorsReader flatVectorsReader;
 
-  Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
     this.flatVectorsReader = flatVectorsReader;
     boolean success = false;
@@ -169,17 +172,27 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  static VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order must be identical
+  // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
+  public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+
+  public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int i = input.readInt();
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
     }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
+    return SIMILARITY_FUNCTIONS.get(i);
   }
 
-  static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+  public static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
       throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);

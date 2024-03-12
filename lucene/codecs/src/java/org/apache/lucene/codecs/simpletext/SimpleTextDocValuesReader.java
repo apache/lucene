@@ -302,6 +302,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     IntFunction<BytesRef> values =
         new IntFunction<BytesRef>() {
           final BytesRefBuilder term = new BytesRefBuilder();
+          final BytesRefBuilder termByteArray = new BytesRefBuilder();
 
           @Override
           public BytesRef apply(int docID) {
@@ -329,9 +330,10 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
               } catch (ParseException pe) {
                 throw new CorruptIndexException("failed to parse int length", in, pe);
               }
-              term.grow(len);
-              term.setLength(len);
-              in.readBytes(term.bytes(), 0, len);
+              termByteArray.growNoCopy(len);
+              termByteArray.setLength(len);
+              in.readBytes(termByteArray.bytes(), 0, len);
+              term.copyBytes(SimpleTextUtil.fromBytesRefString(termByteArray.get().utf8ToString()));
               return term.get();
             } catch (IOException ioe) {
               throw new RuntimeException(ioe);
@@ -569,7 +571,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();
@@ -756,7 +758,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();

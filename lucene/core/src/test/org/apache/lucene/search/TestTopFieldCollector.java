@@ -31,6 +31,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
@@ -180,12 +181,21 @@ public class TestTopFieldCollector extends LuceneTestCase {
     Sort sort = new Sort(new SortField("foo", SortField.Type.LONG));
     IndexWriter w =
         new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE).setIndexSort(sort));
+            dir,
+            newIndexWriterConfig()
+                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setIndexSort(sort)
+                .setMaxBufferedDocs(7)
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
     Document doc = new Document();
     doc.add(new NumericDocValuesField("foo", 3));
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+    for (Document d : Arrays.asList(doc, doc, doc, doc)) {
+      w.addDocument(d);
+    }
     w.flush();
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc, doc));
+    for (Document d : Arrays.asList(doc, doc, doc, doc, doc, doc)) {
+      w.addDocument(d);
+    }
     w.flush();
     IndexReader reader = DirectoryReader.open(w);
     assertEquals(2, reader.leaves().size());

@@ -81,7 +81,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
     this.confidenceInterval = confidenceInterval;
   }
 
-  static float calculateDefaultConfidenceInterval(int vectorDimension) {
+  public static float calculateDefaultConfidenceInterval(int vectorDimension) {
     return Math.max(MINIMUM_CONFIDENCE_INTERVAL, 1f - (1f / (vectorDimension + 1)));
   }
 

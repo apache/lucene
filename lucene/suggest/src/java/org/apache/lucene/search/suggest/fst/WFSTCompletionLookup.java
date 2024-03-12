@@ -126,7 +126,7 @@ public class WFSTCompletionLookup extends Lookup {
       previous.copyBytes(scratch);
       newCount++;
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     count = newCount;
   }
 

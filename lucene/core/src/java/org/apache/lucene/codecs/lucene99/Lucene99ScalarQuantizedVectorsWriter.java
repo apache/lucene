@@ -53,11 +53,14 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Writes quantized vector values and metadata to index segments.
@@ -95,7 +98,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
 
-  Lucene99ScalarQuantizedVectorsWriter(
+  public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state, Float confidenceInterval, FlatVectorsWriter rawVectorDelegate)
       throws IOException {
     this.confidenceInterval = confidenceInterval;
@@ -533,7 +536,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     return null;
   }
 
-  static ScalarQuantizer mergeAndRecalculateQuantiles(
+  /**
+   * Merges the quantiles of the segments and recalculates the quantiles if necessary.
+   *
+   * @param mergeState The merge state
+   * @param fieldInfo The field info
+   * @param confidenceInterval The confidence interval
+   * @return The merged quantiles
+   * @throws IOException If there is a low-level I/O error
+   */
+  public static ScalarQuantizer mergeAndRecalculateQuantiles(
       MergeState mergeState, FieldInfo fieldInfo, float confidenceInterval) throws IOException {
     List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
     List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
@@ -557,9 +569,20 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // merged
     // segment view
     if (mergedQuantiles == null || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
+      int numVectors = 0;
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      mergedQuantiles = ScalarQuantizer.fromVectors(vectorValues, confidenceInterval, 7);
+      // iterate vectorValues and increment numVectors
+      for (int doc = vectorValues.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = vectorValues.nextDoc()) {
+        numVectors++;
+      }
+      mergedQuantiles =
+          ScalarQuantizer.fromVectors(
+              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+              confidenceInterval,
+              numVectors);
     }
     return mergedQuantiles;
   }
@@ -587,7 +610,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static DocsWithFieldSet writeQuantizedVectorData(
+  public static DocsWithFieldSet writeQuantizedVectorData(
       IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     for (int docV = quantizedByteVectorValues.nextDoc();
@@ -650,7 +673,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
               confidenceInterval,
-              7);
+              floatVectors.size());
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
@@ -867,7 +890,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    float getScoreCorrectionConstant() throws IOException {
+    public float getScoreCorrectionConstant() throws IOException {
       return current.values.getScoreCorrectionConstant();
     }
   }
@@ -897,7 +920,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    float getScoreCorrectionConstant() {
+    public float getScoreCorrectionConstant() {
       return offsetValue;
     }
 
@@ -1005,7 +1028,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    float getScoreCorrectionConstant() throws IOException {
+    public float getScoreCorrectionConstant() throws IOException {
       return scalarQuantizer.recalculateCorrectiveOffset(
           in.vectorValue(), oldScalarQuantizer, vectorSimilarityFunction);
     }

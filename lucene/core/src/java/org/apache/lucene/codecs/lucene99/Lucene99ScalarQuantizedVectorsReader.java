@@ -40,8 +40,11 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads Scalar Quantized vectors from the index segments along with index data structures.
@@ -58,8 +61,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
-      throws IOException {
+  public Lucene99ScalarQuantizedVectorsReader(
+      SegmentReadState state, FlatVectorsReader rawVectorsReader) throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
