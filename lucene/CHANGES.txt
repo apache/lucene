@@ -52,6 +52,8 @@ Bug Fixes
 
 * GITHUB#13162: Fix NPE when LeafReader return null VectorValues (Pan Guixin)
 
+* GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
+
 Other
 ---------------------
 
