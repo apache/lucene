@@ -155,9 +155,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       this.maxThreadCount = maxThreadCount;
       this.maxMergeCount = maxMergeCount;
     }
-    if (intraMergeExecutor != null) {
-      intraMergeExecutor.updatePoolSize();
-    }
   }
 
   /**
@@ -538,8 +535,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     initDynamicDefaults(directory);
     if (intraMergeExecutor == null) {
       intraMergeExecutor = new ScaledExecutor();
-    } else {
-      intraMergeExecutor.updatePoolSize();
     }
   }
 
@@ -949,16 +944,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
     public ScaledExecutor() {
       this.executor =
-          new ThreadPoolExecutor(
-              0, Math.max(1, maxThreadCount), 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+          new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
     }
 
     void shutdown() {
       executor.shutdown();
-    }
-
-    private void updatePoolSize() {
-      executor.setMaximumPoolSize(Math.max(1, maxThreadCount));
     }
 
     @Override
@@ -969,10 +959,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // we need to check if a thread is available before submitting the task to the executor
         // synchronize on CMS to get an accurate count of current threads
         synchronized (ConcurrentMergeScheduler.this) {
-          int max = maxThreadCount - mergeThreads.size();
+          int max = maxThreadCount - mergeThreads.size() - 1;
           int value = activeCount.get();
           if (value < max) {
             activeCount.incrementAndGet();
+            assert activeCount.get() > 0 : "active count must be greater than 0 after increment";
             isThreadAvailable = true;
           } else {
             isThreadAvailable = false;
@@ -985,6 +976,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
                   command.run();
                 } finally {
                   activeCount.decrementAndGet();
+                  assert activeCount.get() >= 0 : "unexpected negative active count";
                 }
               });
         } else {

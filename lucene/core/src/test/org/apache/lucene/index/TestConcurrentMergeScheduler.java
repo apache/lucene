@@ -470,7 +470,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
                       0,
                       new byte[16])));
       mergeScheduler.initialize(InfoStream.NO_OUTPUT, dir);
-      mergeScheduler.setMaxMergesAndThreads(5, 5);
+      mergeScheduler.setMaxMergesAndThreads(6, 6);
       Executor executor = mergeScheduler.intraMergeExecutor;
       AtomicInteger threadsExecutedOnPool = new AtomicInteger();
       AtomicInteger threadsExecutedOnSelf = new AtomicInteger();
