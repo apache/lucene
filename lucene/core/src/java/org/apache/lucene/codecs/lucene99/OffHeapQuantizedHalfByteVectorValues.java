@@ -24,6 +24,8 @@ import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
 
 /**
  * Read the quantized vector values and their score correction values from the index input. This

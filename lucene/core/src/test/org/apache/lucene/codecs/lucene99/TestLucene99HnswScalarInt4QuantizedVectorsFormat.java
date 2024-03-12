@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -43,12 +47,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
@@ -240,13 +238,17 @@ public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVec
 
   public void testLimits() {
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(-1, 20));
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(-1, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(0, 20));
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(0, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(20, 0));
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(20, 0));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(20, -1));
+        IllegalArgumentException.class,
+        () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(20, -1));
     expectThrows(
         IllegalArgumentException.class,
         () -> new Lucene99HnswScalarInt4QuantizedVectorsFormat(512 + 1, 20));

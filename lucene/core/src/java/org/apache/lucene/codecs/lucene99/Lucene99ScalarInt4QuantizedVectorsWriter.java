@@ -48,9 +48,11 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Writes quantized vector values and metadata to index segments.
@@ -248,8 +250,8 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
 
   private void writeQuantizedVectors(FieldWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
-
     byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 1) >> 1];
+    byte[] quantized = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (float[] v : fieldData.floatVectors) {
@@ -260,8 +262,12 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
       }
 
       float offsetCorrection =
-          scalarQuantizer.quantizeCompressed(
-              v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+          scalarQuantizer.quantize(v, quantized, fieldData.fieldInfo.getVectorSimilarityFunction());
+      for (int i = 0; i < vector.length; i++) {
+        byte q1 = quantized[i];
+        byte q2 = quantized[i + vector.length];
+        vector[i] = (byte) ((q1 << 4) | q2);
+      }
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -310,6 +316,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
   private void writeSortedQuantizedVectors(FieldWriter fieldData, int[] ordMap) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 1) >> 1];
+    byte[] quantized = new byte[fieldData.fieldInfo.getVectorDimension()];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (int ordinal : ordMap) {
@@ -320,8 +327,12 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
         v = copy;
       }
       float offsetCorrection =
-          scalarQuantizer.quantizeCompressed(
-              v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+          scalarQuantizer.quantize(v, quantized, fieldData.fieldInfo.getVectorSimilarityFunction());
+      for (int i = 0; i < vector.length; i++) {
+        byte q1 = quantized[i];
+        byte q2 = quantized[i + vector.length];
+        vector[i] = (byte) ((q1 << 4) | q2);
+      }
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -410,8 +421,17 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
     // TODO we need to optimize re-calculating quantiles
     FloatVectorValues vectorValues =
         KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    int numVectors = 0;
+    for (int doc = vectorValues.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = vectorValues.nextDoc()) {
+      numVectors++;
+    }
     return ScalarQuantizer.fromVectorsAutoInterval(
-        vectorValues, fieldInfo.getVectorSimilarityFunction(), 4);
+        KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+        fieldInfo.getVectorSimilarityFunction(),
+        numVectors,
+        4);
   }
 
   /**
@@ -489,7 +509,8 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
               fieldInfo.getVectorSimilarityFunction(),
-              4);
+              4,
+              floatVectors.size());
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
@@ -502,7 +523,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
 
     ScalarQuantizer createQuantizer() {
       assert finished;
-      return new ScalarQuantizer(minQuantile, maxQuantile, null, 4);
+      return new ScalarQuantizer(minQuantile, maxQuantile, 4);
     }
 
     @Override

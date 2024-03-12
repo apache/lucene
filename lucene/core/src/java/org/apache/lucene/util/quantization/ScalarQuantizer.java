@@ -79,26 +79,23 @@ public class ScalarQuantizer {
   private final float alpha;
   private final float scale;
   private final float minQuantile, maxQuantile;
-  private final Float confidenceInterval;
 
   /**
    * @param minQuantile the lower quantile of the distribution
    * @param maxQuantile the upper quantile of the distribution
-   * @param confidenceInterval The configured confidence interval used to calculate the quantiles.
-   *     Can be null if the quantiles were dynamically calculated.
+   * @param bits the number of bits to use for quantization
    */
-  public ScalarQuantizer(float minQuantile, float maxQuantile, Float confidenceInterval, int bits) {
+  public ScalarQuantizer(float minQuantile, float maxQuantile, int bits) {
     assert maxQuantile >= minQuantile;
     this.minQuantile = minQuantile;
     this.maxQuantile = maxQuantile;
     float divisor = (float) ((1 << bits) - 1);
     this.scale = divisor / (maxQuantile - minQuantile);
     this.alpha = (maxQuantile - minQuantile) / divisor;
-    this.confidenceInterval = confidenceInterval;
   }
 
-  public ScalarQuantizer(float minQuantile, float maxQuantile, Float confidenceInterval) {
-    this(minQuantile, maxQuantile, confidenceInterval, 7);
+  public ScalarQuantizer(float minQuantile, float maxQuantile) {
+    this(minQuantile, maxQuantile, 7);
   }
 
   /**
@@ -121,27 +118,8 @@ public class ScalarQuantizer {
     return correction;
   }
 
-/*  public float quantizeCompressed(
-      float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
-    assert (src.length + 1) >> 1 == dest.length;
-    FloatSummation summation = new FloatSummation();
-    if (src.length == 1) {
-      byte q1 = quantizeFloat(src[0], summation);
-      dest[0] = q1;
-      return (float) summation.v;
-    }
-    for (int i = 0; i < dest.length; i++) {
-      byte q1 = quantizeFloat(src[i], summation);
-      byte q2 = quantizeFloat(src[i + dest.length], summation);
-      dest[i] = (byte) ((q1 << 4) | q2);
-    }
-    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
-      return 0;
-    }
-    return (float) summation.v;
-  }*/
-
   private float quantizeFloat(float v, byte[] dest, int destIndex) {
+    assert dest == null || destIndex < dest.length;
     // Make sure the value is within the quantile range, cutting off the tails
     // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
     // minQuantile)
@@ -209,29 +187,18 @@ public class ScalarQuantizer {
     return maxQuantile;
   }
 
-  public float getConfidenceInterval() {
-    return confidenceInterval;
-  }
-
   public float getConstantMultiplier() {
     return alpha * alpha;
   }
 
   @Override
   public String toString() {
-    return "ScalarQuantizer{"
-        + "minQuantile="
-        + minQuantile
-        + ", maxQuantile="
-        + maxQuantile
-        + ", confidenceInterval="
-        + confidenceInterval
-        + '}';
+    return "ScalarQuantizer{" + "minQuantile=" + minQuantile + ", maxQuantile=" + maxQuantile + '}';
   }
 
   private static final Random random = new Random(42);
 
-  static int[] reservoirSampleIndices(int numFloatVecs, int sampleSize) {
+  private static int[] reservoirSampleIndices(int numFloatVecs, int sampleSize) {
     int[] vectorsToTake = IntStream.range(0, sampleSize).toArray();
     for (int i = sampleSize; i < numFloatVecs; i++) {
       int j = random.nextInt(i + 1);
@@ -273,7 +240,7 @@ public class ScalarQuantizer {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
     assert quantizationSampleSize > SCRATCH_SIZE;
     if (totalVectorCount == 0) {
-      return new ScalarQuantizer(0f, 0f, confidenceInterval);
+      return new ScalarQuantizer(0f, 0f);
     }
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
@@ -284,10 +251,10 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(min, max, confidenceInterval, 7);
+      return new ScalarQuantizer(min, max);
     }
     final float[] quantileGatheringScratch =
-      new float[floatVectorValues.dimension() * Math.min(SCRATCH_SIZE, totalVectorCount)];
+        new float[floatVectorValues.dimension() * Math.min(SCRATCH_SIZE, totalVectorCount)];
     int count = 0;
     double upperSum = 0;
     double lowerSum = 0;
@@ -297,11 +264,11 @@ public class ScalarQuantizer {
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
         float[] vectorValue = floatVectorValues.vectorValue();
         System.arraycopy(
-          vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
+            vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
         if (i == scratchSize) {
           float[] upperAndLower =
-            getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
+              getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
           upperSum += upperAndLower[1];
           lowerSum += upperAndLower[0];
           i = 0;
@@ -311,8 +278,7 @@ public class ScalarQuantizer {
       // Note, we purposefully don't use the rest of the scratch state if we have fewer than
       // `SCRATCH_SIZE` vectors, mainly because if we are sampling so few vectors then we don't
       // want to be adversely affected by the extreme confidence intervals over small sample sizes
-      return new ScalarQuantizer(
-        (float) lowerSum / count, (float) upperSum / count, confidenceInterval);
+      return new ScalarQuantizer((float) lowerSum / count, (float) upperSum / count);
     }
     int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, quantizationSampleSize);
     int index = 0;
@@ -326,103 +292,111 @@ public class ScalarQuantizer {
       assert floatVectorValues.docID() != NO_MORE_DOCS;
       float[] vectorValue = floatVectorValues.vectorValue();
       System.arraycopy(
-        vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
+          vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
       if (idx == SCRATCH_SIZE) {
         float[] upperAndLower =
-          getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
+            getUpperAndLowerQuantile(quantileGatheringScratch, confidenceInterval);
         upperSum += upperAndLower[1];
         lowerSum += upperAndLower[0];
         count++;
         idx = 0;
       }
     }
-    return new ScalarQuantizer(
-      (float) lowerSum / count, (float) upperSum / count, confidenceInterval);
+    return new ScalarQuantizer((float) lowerSum / count, (float) upperSum / count);
   }
 
   public static ScalarQuantizer fromVectorsAutoInterval(
-      FloatVectorValues floatVectorValues, VectorSimilarityFunction function, int bits)
+      FloatVectorValues floatVectorValues,
+      VectorSimilarityFunction function,
+      int totalVectorCount,
+      int bits)
       throws IOException {
-    if (floatVectorValues.size() == 0) {
-      return new ScalarQuantizer(0f, 0f, null, bits);
+    if (totalVectorCount == 0) {
+      return new ScalarQuantizer(0f, 0f, bits);
     }
 
-    int dim = floatVectorValues.dimension();
-    final float[] sampledValues;
-    final List<float[]> sampledDocs = new ArrayList<>(Math.min(floatVectorValues.size(), 1000));
-    if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
-      int copyOffset = 0;
-      sampledValues = new float[floatVectorValues.size() * dim];
-      int[] sampledDocsIds =
-          floatVectorValues.size() < 1000
-              ? null
-              : reservoirSampleIndices(floatVectorValues.size(), 1000);
-      int docId;
-      int sampledDocsIdx = 0;
-      while ((docId = floatVectorValues.nextDoc()) != NO_MORE_DOCS) {
-        float[] floatVector = floatVectorValues.vectorValue();
-        System.arraycopy(floatVector, 0, sampledValues, copyOffset, floatVector.length);
-        if (sampledDocsIds != null) {
-          if (sampledDocsIdx < sampledDocsIds.length && sampledDocsIds[sampledDocsIdx] == docId) {
-            float[] copy = new float[floatVector.length];
-            System.arraycopy(floatVector, 0, copy, 0, floatVector.length);
-            sampledDocs.add(copy);
-            sampledDocsIdx++;
-          }
-        } else {
-          float[] copy = new float[floatVector.length];
-          System.arraycopy(floatVector, 0, copy, 0, floatVector.length);
-          sampledDocs.add(copy);
+    int sampleSize = Math.min(totalVectorCount, 1000);
+    final float[] quantileGatheringScratch =
+        new float[floatVectorValues.dimension() * Math.min(SCRATCH_SIZE, totalVectorCount)];
+    int count = 0;
+    double[] upperSum = new double[2];
+    double[] lowerSum = new double[2];
+    final List<float[]> sampledDocs = new ArrayList<>(sampleSize);
+    if (totalVectorCount <= sampleSize) {
+      int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
+      int i = 0;
+      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
+        float[] vectorValue = floatVectorValues.vectorValue();
+        float[] copy = new float[vectorValue.length];
+        System.arraycopy(vectorValue, 0, copy, 0, vectorValue.length);
+        sampledDocs.add(copy);
+        System.arraycopy(
+            vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
+        i++;
+        if (i == scratchSize) {
+          float[] upperAndLower =
+              getUpperAndLowerQuantile(
+                  quantileGatheringScratch,
+                  1
+                      - Math.min(32, floatVectorValues.dimension() / 10f)
+                          / (floatVectorValues.dimension() + 1));
+          upperSum[0] += upperAndLower[1];
+          lowerSum[0] += upperAndLower[0];
+          upperAndLower =
+              getUpperAndLowerQuantile(
+                  quantileGatheringScratch, 1 - 1f / (floatVectorValues.dimension() + 1));
+          upperSum[1] += upperAndLower[1];
+          lowerSum[1] += upperAndLower[0];
+          i = 0;
+          count++;
         }
-        copyOffset += dim;
       }
     } else {
       // Reservoir sample the vector ordinals we want to read
-      sampledValues = new float[SCALAR_QUANTIZATION_SAMPLE_SIZE * dim];
+      int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, 1000);
       // TODO make this faster by .advance()ing & dual iterator
-      int[] vectorsToTake =
-          reservoirSampleIndices(floatVectorValues.size(), SCALAR_QUANTIZATION_SAMPLE_SIZE);
-      int[] sampledDocsIds = reservoirSampleIndices(floatVectorValues.size(), 1000);
-      int copyOffset = 0;
-      int docId;
-      int sampledDocsIdx = 0;
-      int vectorsToTakeIdx = 0;
-      while ((docId = floatVectorValues.nextDoc()) != NO_MORE_DOCS) {
-        if (sampledDocsIdx >= sampledDocsIds.length && vectorsToTakeIdx >= vectorsToTake.length) {
-          break;
+      int index = 0;
+      int idx = 0;
+      for (int i : vectorsToTake) {
+        while (index <= i) {
+          // We cannot use `advance(docId)` as MergedVectorValues does not support it
+          floatVectorValues.nextDoc();
+          index++;
         }
-        if (sampledDocsIdx < sampledDocsIds.length && docId == sampledDocsIds[sampledDocsIdx]) {
-          float[] floatVector = floatVectorValues.vectorValue();
-          float[] copy = new float[floatVector.length];
-          System.arraycopy(floatVector, 0, copy, 0, floatVector.length);
-          sampledDocs.add(copy);
-          sampledDocsIdx++;
-        }
-        if (vectorsToTakeIdx < vectorsToTake.length && docId == vectorsToTake[vectorsToTakeIdx]) {
-          assert floatVectorValues.docID() != NO_MORE_DOCS;
-          float[] floatVector = floatVectorValues.vectorValue();
-          System.arraycopy(floatVector, 0, sampledValues, copyOffset, floatVector.length);
-          copyOffset += dim;
-          vectorsToTakeIdx++;
+        assert floatVectorValues.docID() != NO_MORE_DOCS;
+        float[] vectorValue = floatVectorValues.vectorValue();
+        float[] copy = new float[vectorValue.length];
+        System.arraycopy(vectorValue, 0, copy, 0, vectorValue.length);
+        sampledDocs.add(copy);
+        System.arraycopy(
+            vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
+        idx++;
+        if (idx == SCRATCH_SIZE) {
+          float[] upperAndLower =
+              getUpperAndLowerQuantile(
+                  quantileGatheringScratch,
+                  1
+                      - Math.min(32, floatVectorValues.dimension() / 10f)
+                          / (floatVectorValues.dimension() + 1));
+          upperSum[0] += upperAndLower[1];
+          lowerSum[0] += upperAndLower[0];
+          upperAndLower =
+              getUpperAndLowerQuantile(
+                  quantileGatheringScratch, 1 - 1f / (floatVectorValues.dimension() + 1));
+          upperSum[1] += upperAndLower[1];
+          lowerSum[1] += upperAndLower[0];
+          count++;
+          index = 0;
         }
       }
     }
 
-    // Gather the candidate quantiles via two broad confidence intervals
-    float[] upperAndLowerSecond =
-        getUpperAndLowerQuantile(
-            sampledValues,
-            1
-                - Math.min(32, floatVectorValues.dimension() / 10f)
-                    / (floatVectorValues.dimension() + 1));
-    float[] upperAndLowerFirst =
-        getUpperAndLowerQuantile(sampledValues, 1 - 1f / (floatVectorValues.dimension() + 1));
-
-    float al = upperAndLowerFirst[0];
-    float bu = upperAndLowerFirst[1];
-    final float au = upperAndLowerSecond[0];
-    final float bl = upperAndLowerSecond[1];
+    float al = (float) lowerSum[0] / count;
+    float bu = (float) upperSum[0] / count;
+    ;
+    final float au = (float) lowerSum[1] / count;
+    final float bl = (float) upperSum[1] / count;
     final float[] lowerCandidates = new float[17];
     final float[] upperCandidates = new float[17];
     int idx = 0;
@@ -450,7 +424,7 @@ public class ScalarQuantizer {
     float[] bestPair =
         candidateGridSearch(
             nearestNeighbors, sampledDocs, lowerCandidates, upperCandidates, function, bits);
-    return new ScalarQuantizer(bestPair[0], bestPair[1], null, bits);
+    return new ScalarQuantizer(bestPair[0], bestPair[1], bits);
   }
 
   private static float[] candidateGridSearch(
@@ -657,7 +631,7 @@ public class ScalarQuantizer {
 
     double scoreErrorCorrelation(float lowerQuantile, float upperQuantile) {
       corr.reset();
-      ScalarQuantizer quantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, null, bits);
+      ScalarQuantizer quantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, bits);
       ScalarQuantizedVectorSimilarity scalarQuantizedVectorSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               function, quantizer.getConstantMultiplier());
@@ -681,5 +655,4 @@ public class ScalarQuantizer {
       return corr.mean;
     }
   }
-
 }
