@@ -106,17 +106,17 @@ public class ScalarQuantizer {
    */
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
-    FloatSummation summation = new FloatSummation();
+    float correction = 0;
     for (int i = 0; i < src.length; i++) {
-      dest[i] = quantizeFloat(src[i], summation);
+      correction += quantizeFloat(src[i], dest, i);
     }
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0;
     }
-    return (float) summation.v;
+    return correction;
   }
 
-  public float quantizeCompressed(
+/*  public float quantizeCompressed(
       float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert (src.length + 1) >> 1 == dest.length;
     FloatSummation summation = new FloatSummation();
@@ -134,9 +134,9 @@ public class ScalarQuantizer {
       return 0;
     }
     return (float) summation.v;
-  }
+  }*/
 
-  private byte quantizeFloat(float v, FloatSummation summation) {
+  private float quantizeFloat(float v, byte[] dest, int destIndex) {
     // Make sure the value is within the quantile range, cutting off the tails
     // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
     // minQuantile)
@@ -148,13 +148,15 @@ public class ScalarQuantizer {
     // We multiply by `alpha` here to get the quantized value back into the original range
     // to aid in calculating the corrective offset
     float dxq = Math.round(dxs) * alpha;
+    if (dest != null) {
+      dest[destIndex] = (byte) Math.round(dxs);
+    }
     // Calculate the corrective offset that needs to be applied to the score
     // in addition to the `byte * minQuantile * alpha` term in the equation
     // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
     // will be rounded to the nearest whole number and lose some accuracy
     // Additionally, we account for the global correction of `minQuantile^2` in the equation
-    summation.add(minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq);
-    return (byte) Math.round(dxs);
+    return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
   }
 
   /**
@@ -176,11 +178,7 @@ public class ScalarQuantizer {
     for (int i = 0; i < quantizedVector.length; i++) {
       // dequantize the old value in order to recalculate the corrective offset
       float v = (oldQuantizer.alpha * quantizedVector[i]) + oldQuantizer.minQuantile;
-      float dx = v - minQuantile;
-      float dxc = Math.max(minQuantile, Math.min(maxQuantile, v)) - minQuantile;
-      float dxs = scale * dxc;
-      float dxq = Math.round(dxs) * alpha;
-      correctiveOffset += minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
+      correctiveOffset += quantizeFloat(v, null, 0);
     }
     return correctiveOffset;
   }
@@ -191,7 +189,7 @@ public class ScalarQuantizer {
    * @param src the source vector
    * @param dest the destination vector
    */
-  public void deQuantize(byte[] src, float[] dest) {
+  void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
       dest[i] = (alpha * src[i]) + minQuantile;
@@ -642,11 +640,7 @@ public class ScalarQuantizer {
     }
   }
 
-  static class FloatSummation {
-    double v = 0;
-
-    void add(float x) {
-      v += x;
-    }
+  private interface ByteConsumer {
+    void accept(byte b);
   }
 }
