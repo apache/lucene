@@ -139,20 +139,10 @@ final class SegmentMerger {
     List<Callable<Void>> mergingTasks = new ArrayList<>();
 
     if (mergeState.mergeFieldInfos.hasNorms()) {
-      mergingTasks.add(
-          () -> {
-            mergeWithLogging(
-                this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
-            return null;
-          });
+      mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
     }
 
-    mergingTasks.add(
-        () -> {
-          mergeWithLogging(
-              this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
-          return null;
-        });
+    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
       mergingTasks.add(
