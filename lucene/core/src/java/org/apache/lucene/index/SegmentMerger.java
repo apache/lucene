@@ -17,7 +17,9 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
@@ -29,6 +31,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -132,19 +135,41 @@ final class SegmentMerger {
             IOContext.READ,
             segmentWriteState.segmentSuffix);
 
+    TaskExecutor taskExecutor = new TaskExecutor(mergeState.intraMergeTaskExecutor);
+    List<Callable<Void>> mergingTasks = new ArrayList<>();
+
     if (mergeState.mergeFieldInfos.hasNorms()) {
-      mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
+      mergingTasks.add(
+          () -> {
+            mergeWithLogging(
+                this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
+            return null;
+          });
     }
 
-    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
+    mergingTasks.add(
+        () -> {
+          mergeWithLogging(
+              this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
+          return null;
+        });
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
-      mergeWithLogging(
-          this::mergeDocValues, segmentWriteState, segmentReadState, "doc values", numMerged);
+      mergingTasks.add(
+          () -> {
+            mergeWithLogging(
+                this::mergeDocValues, segmentWriteState, segmentReadState, "doc values", numMerged);
+            return null;
+          });
     }
 
     if (mergeState.mergeFieldInfos.hasPointValues()) {
-      mergeWithLogging(this::mergePoints, segmentWriteState, segmentReadState, "points", numMerged);
+      mergingTasks.add(
+          () -> {
+            mergeWithLogging(
+                this::mergePoints, segmentWriteState, segmentReadState, "points", numMerged);
+            return null;
+          });
     }
 
     if (mergeState.mergeFieldInfos.hasVectorValues()) {
@@ -157,9 +182,14 @@ final class SegmentMerger {
     }
 
     if (mergeState.mergeFieldInfos.hasVectors()) {
-      mergeWithLogging(this::mergeTermVectors, "term vectors");
+      mergingTasks.add(
+          () -> {
+            mergeWithLogging(this::mergeTermVectors, "term vectors");
+            return null;
+          });
     }
 
+    taskExecutor.invokeAll(mergingTasks);
     // write the merged infos
     mergeWithLogging(
         this::mergeFieldInfos, segmentWriteState, segmentReadState, "field infos", numMerged);
