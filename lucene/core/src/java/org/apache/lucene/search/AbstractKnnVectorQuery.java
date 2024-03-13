@@ -187,6 +187,9 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer == null) {
+      return NO_RESULTS;
+    }
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
@@ -442,7 +445,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]";
+      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]," + maxScore;
     }
 
     @Override

@@ -30,8 +30,8 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Operations;
 
-/** TestWildcard tests the '*' and '?' wildcard characters. */
-public class TestWildcard extends LuceneTestCase {
+/** TestWildcardQuery tests the '*' and '?' wildcard characters. */
+public class TestWildcardQuery extends LuceneTestCase {
 
   @SuppressWarnings("unlikely-arg-type")
   public void testEquals() {

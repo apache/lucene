@@ -815,7 +815,7 @@ public class Dictionary {
 
     for (int i = 0; i < num; i++) {
       String[] parts = splitBySpace(reader, reader.readLine(), 3);
-      if (mappings.put(parts[1], parts[2]) != null) {
+      if (mappings.put(parts[1], parts[2]) != null && !tolerateDuplicateConversionMappings()) {
         throw new IllegalStateException("duplicate mapping specified for: " + parts[1]);
       }
     }
@@ -1164,6 +1164,14 @@ public class Dictionary {
    * ParseException} will happen.
    */
   protected boolean tolerateAffixRuleCountMismatches() {
+    return false;
+  }
+
+  /**
+   * Whether duplicate ICONV/OCONV lines should be silently ignored. False by default: an {@link
+   * IllegalStateException} will happen.
+   */
+  protected boolean tolerateDuplicateConversionMappings() {
     return false;
   }
 

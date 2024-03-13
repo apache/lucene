@@ -78,6 +78,10 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     document.add(new KnnByteVectorField("knnByteField2", new byte[] {4, 2, 3}));
     iw.addDocument(document);
 
+    if (usually(random())) {
+      iw.commit();
+    }
+
     Document document2 = new Document();
     document2.add(new StringField("id", "2", Field.Store.NO));
     document2.add(new SortedDocValuesField("id", new BytesRef("2")));
@@ -232,7 +236,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
 
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatKnnVectorFieldSource("knnByteField1");
@@ -241,8 +245,16 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
 
     assertThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () -> searcher.search(new FunctionQuery(floatVectorSimilarityFunction), 10));
+
+    v1 = new FloatKnnVectorFieldSource("id");
+    FloatVectorSimilarityFunction idVectorSimilarityFunction =
+        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new FunctionQuery(idVectorSimilarityFunction), 10));
   }
 
   private static void assertHits(Query q, float[] scores) throws Exception {

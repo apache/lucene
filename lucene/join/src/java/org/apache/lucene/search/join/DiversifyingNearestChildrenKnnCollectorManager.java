@@ -19,8 +19,12 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.MultiLeafKnnCollector;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
 /**
  * DiversifyingNearestChildrenKnnCollectorManager responsible for creating {@link
@@ -32,6 +36,7 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   private final int k;
   // filter identifying the parent documents.
   private final BitSetProducer parentsFilter;
+  private final BlockingFloatHeap globalScoreQueue;
 
   /**
    * Constructor
@@ -39,9 +44,12 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
    * @param k - the number of top k vectors to collect
    * @param parentsFilter Filter identifying the parent documents.
    */
-  public DiversifyingNearestChildrenKnnCollectorManager(int k, BitSetProducer parentsFilter) {
+  public DiversifyingNearestChildrenKnnCollectorManager(
+      int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher) {
     this.k = k;
     this.parentsFilter = parentsFilter;
+    this.globalScoreQueue =
+        indexSearcher.getIndexReader().leaves().size() > 1 ? new BlockingFloatHeap(k) : null;
   }
 
   /**
@@ -51,12 +59,18 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
    * @param context the leaf reader context
    */
   @Override
-  public DiversifyingNearestChildrenKnnCollector newCollector(
-      int visitedLimit, LeafReaderContext context) throws IOException {
+  public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return null;
     }
-    return new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
+    if (globalScoreQueue == null) {
+      return new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
+    } else {
+      return new MultiLeafKnnCollector(
+          k,
+          globalScoreQueue,
+          new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet));
+    }
   }
 }

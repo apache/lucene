@@ -61,6 +61,8 @@ public abstract class AbstractKnnCollector implements KnnCollector {
   @Override
   public abstract boolean collect(int docId, float similarity);
 
+  public abstract int numCollected();
+
   @Override
   public abstract float minCompetitiveSimilarity();
 
