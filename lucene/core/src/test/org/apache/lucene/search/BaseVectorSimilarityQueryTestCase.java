@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
@@ -356,11 +357,18 @@ abstract class BaseVectorSimilarityQueryTestCase<
       Query query2 = new BoostQuery(query1, boost);
       ScoreDoc[] scoreDocs2 = searcher.search(query2, numDocs).scoreDocs;
 
-      // Check that all docs are identical, with boosted scores
+      // Check that original scores and boosted scores are equal considering the delta to account
+      // for floating point precision limitations. Don't take the exact result order into
+      // consideration as for small original scores with tiny differences
+      // the boosted scores can be become the same, which might affect the result order.
       assertEquals(scoreDocs1.length, scoreDocs2.length);
       for (int i = 0; i < scoreDocs1.length; i++) {
-        assertEquals(scoreDocs1[i].doc, scoreDocs2[i].doc);
-        assertEquals(boost * scoreDocs1[i].score, scoreDocs2[i].score, delta);
+        int idx = i;
+        Optional<ScoreDoc> boostedDoc =
+            Arrays.stream(scoreDocs2).filter(d -> d.doc == scoreDocs1[idx].doc).findFirst();
+
+        assertTrue(boostedDoc.isPresent());
+        assertEquals(boost * scoreDocs1[i].score, boostedDoc.get().score, delta);
       }
     }
   }

@@ -191,6 +191,9 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#13125: Recursive graph bisection is now supported on indexes that have blocks, as long as
+  they configure a parent field via `IndexWriterConfig#setParentField`. (Adrien Grand)
+
 Improvements
 ---------------------
 
@@ -232,6 +235,10 @@ Bug Fixes
 * GITHUB#13145: Detect MemorySegmentIndexInput correctly in NRTSuggester. (Uwe Schindler)
 
 * GITHUB#13154: Hunspell GeneratingSuggester: ensure there are never more than 100 roots to process (Peter Gromov)
+
+* GITHUB#13162: Fix NPE when LeafReader return null VectorValues (Pan Guixin)
+
+* GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
 
 Other
 ---------------------

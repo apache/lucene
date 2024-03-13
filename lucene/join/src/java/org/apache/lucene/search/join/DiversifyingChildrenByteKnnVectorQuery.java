@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
@@ -80,21 +79,21 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   @Override
   protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
       throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
+    ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
+    if (byteVectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
       return NO_RESULTS;
     }
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      return null;
-    }
+
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
+
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     ParentBlockJoinByteVectorScorer vectorScorer =
         new ParentBlockJoinByteVectorScorer(
-            context.reader().getByteVectorValues(field),
+            byteVectorValues,
             acceptIterator,
             parentBitSet,
             query,
