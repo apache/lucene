@@ -27,7 +27,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.MergePolicy.OneMerge;
-import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -271,7 +270,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     assert intraMergeExecutor != null : "scaledExecutor is not initialized";
     // don't do multithreaded merges for small merges
     if (merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
-      return null;
+      return super.getIntraMergeExecutor(merge);
     }
     return intraMergeExecutor;
   }
@@ -781,11 +780,16 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder(getClass().getSimpleName() + ": ");
-    sb.append("maxThreadCount=").append(maxThreadCount).append(", ");
-    sb.append("maxMergeCount=").append(maxMergeCount).append(", ");
-    sb.append("ioThrottle=").append(doAutoIOThrottle);
-    return sb.toString();
+    return getClass().getSimpleName()
+        + ": "
+        + "maxThreadCount="
+        + maxThreadCount
+        + ", "
+        + "maxMergeCount="
+        + maxMergeCount
+        + ", "
+        + "ioThrottle="
+        + doAutoIOThrottle;
   }
 
   private boolean isBacklog(long now, OneMerge merge) {
@@ -928,13 +932,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   static {
-    TestSecrets.setConcurrentMergeSchedulerAccess(
-        new ConcurrentMergeSchedulerAccess() {
-          @Override
-          public void setSuppressExceptions(ConcurrentMergeScheduler cms) {
-            cms.setSuppressExceptions();
-          }
-        });
+    TestSecrets.setConcurrentMergeSchedulerAccess(ConcurrentMergeScheduler::setSuppressExceptions);
   }
 
   private class ScaledExecutor implements Executor {

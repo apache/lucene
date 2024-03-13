@@ -144,7 +144,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null);
   }
 
   /**
@@ -154,25 +154,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("Lucene99HnswVectorsFormat");
-    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
-      throw new IllegalArgumentException(
-          "maxConn must be positive and less than or equal to "
-              + MAXIMUM_MAX_CONN
-              + "; maxConn="
-              + maxConn);
-    }
-    if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
-      throw new IllegalArgumentException(
-          "beamWidth must be positive and less than or equal to "
-              + MAXIMUM_BEAM_WIDTH
-              + "; beamWidth="
-              + beamWidth);
-    }
-    this.maxConn = maxConn;
-    this.beamWidth = beamWidth;
-    this.mergeExec = null;
-    this.numMergeWorkers = 1;
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null);
   }
 
   /**

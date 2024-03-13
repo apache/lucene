@@ -46,6 +46,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
@@ -402,7 +403,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
           @Override
           protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
               throws IOException {
-            assertNull(this.getIntraMergeExecutor(merge));
+            assertTrue(this.getIntraMergeExecutor(merge) instanceof SameThreadExecutorService);
             super.doMerge(mergeSource, merge);
           }
         });
