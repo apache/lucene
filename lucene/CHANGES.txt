@@ -12,7 +12,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#13125: Recursive graph bisection is now supported on indexes that have blocks, as long as
+  they configure a parent field via `IndexWriterConfig#setParentField`. (Adrien Grand)
 
 Improvements
 ---------------------
