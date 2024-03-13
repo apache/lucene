@@ -435,19 +435,6 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
   }
 
   /**
-   * Returns true if the quantiles of the new quantization state are too far from the quantiles of
-   * the existing quantization state. This would imply that floating point values would slightly
-   * shift quantization buckets.
-   *
-   * @param existingQuantiles The existing quantiles for a segment
-   * @param newQuantiles The new quantiles for a segment, could be merged, or fully re-calculated
-   * @return true if the floating point values should be requantized
-   */
-  static boolean shouldRequantize(ScalarQuantizer existingQuantiles, ScalarQuantizer newQuantiles) {
-    return true;
-  }
-
-  /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeQuantizedVectorData(

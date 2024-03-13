@@ -45,8 +45,9 @@ import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
@@ -152,6 +153,7 @@ public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVec
         ScalarQuantizer.fromVectorsAutoInterval(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
             similarityFunction,
+            vectors.size(),
             4);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];

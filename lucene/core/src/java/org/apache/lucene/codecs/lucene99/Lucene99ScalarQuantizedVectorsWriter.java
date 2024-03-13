@@ -460,9 +460,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static ScalarQuantizer mergeQuantiles(
-      List<ScalarQuantizer> quantizationStates,
-      List<Integer> segmentSizes,
-      float confidenceInterval) {
+      List<ScalarQuantizer> quantizationStates, List<Integer> segmentSizes) {
     assert quantizationStates.size() == segmentSizes.size();
     if (quantizationStates.isEmpty()) {
       return null;
@@ -480,7 +478,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
     lowerQuantile /= totalCount;
     upperQuantile /= totalCount;
-    return new ScalarQuantizer(lowerQuantile, upperQuantile, confidenceInterval);
+    return new ScalarQuantizer(lowerQuantile, upperQuantile);
   }
 
   /**
@@ -561,8 +559,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         segmentSizes.add(fvv.size());
       }
     }
-    ScalarQuantizer mergedQuantiles =
-        mergeQuantiles(quantizationStates, segmentSizes, confidenceInterval);
+    ScalarQuantizer mergedQuantiles = mergeQuantiles(quantizationStates, segmentSizes);
     // Segments no providing quantization state indicates that their quantiles were never
     // calculated.
     // To be safe, we should always recalculate given a sample set over all the float vectors in the
@@ -692,7 +689,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     ScalarQuantizer createQuantizer() {
       assert finished;
-      return new ScalarQuantizer(minQuantile, maxQuantile, confidenceInterval);
+      return new ScalarQuantizer(minQuantile, maxQuantile);
     }
 
     @Override

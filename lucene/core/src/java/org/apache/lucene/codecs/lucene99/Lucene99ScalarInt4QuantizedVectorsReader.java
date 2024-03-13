@@ -40,8 +40,11 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads Int4 Scalar Quantized vectors from the index segments along with index data structures.
@@ -290,7 +293,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsReader extends FlatVectorsR
       if (size > 0) {
         float minQuantile = Float.intBitsToFloat(input.readInt());
         float maxQuantile = Float.intBitsToFloat(input.readInt());
-        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, null, 4);
+        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, 4);
       } else {
         scalarQuantizer = null;
       }
