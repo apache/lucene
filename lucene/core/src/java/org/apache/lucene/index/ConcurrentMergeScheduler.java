@@ -935,6 +935,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     TestSecrets.setConcurrentMergeSchedulerAccess(ConcurrentMergeScheduler::setSuppressExceptions);
   }
 
+  /**
+   * This executor provides intra-merge threads for parallel execution of merge tasks. It provides a
+   * limited number of threads to execute merge tasks. In particular, if the number of
+   * `mergeThreads` is equal to `maxThreadCount`, then the executor will execute the merge task in
+   * the calling thread.
+   */
   private class CachedExecutor implements Executor {
 
     private final AtomicInteger activeCount = new AtomicInteger(0);
