@@ -361,28 +361,16 @@ public class ScalarQuantizer {
     }
 
     // Here we gather the upper and lower bounds for the quantile grid search
-    float al = (float) lowerSum[0] / count;
-    float bu = (float) upperSum[0] / count;
-    final float au = (float) lowerSum[1] / count;
-    final float bl = (float) upperSum[1] / count;
+    float al = (float) lowerSum[1] / count;
+    float bu = (float) upperSum[1] / count;
+    final float au = (float) lowerSum[0] / count;
+    final float bl = (float) upperSum[0] / count;
     final float[] lowerCandidates = new float[16];
     final float[] upperCandidates = new float[16];
     int idx = 0;
     for (float i = 0f; i < 32f; i += 2f) {
-      float origin = al + i * (au - al) / 32f;
-      float bound = al + (i + 2) * (au - al) / 32f;
-      if (origin < bound && (origin - bound) < Double.POSITIVE_INFINITY) {
-        lowerCandidates[idx] = (float) random.nextDouble(origin, bound);
-      } else {
-        lowerCandidates[idx] = origin;
-      }
-      origin = bl + i * (bu - bl) / 32f;
-      bound = bl + (i + 2) * (bu - bl) / 32f;
-      if (origin < bound && (origin - bound) < Double.POSITIVE_INFINITY) {
-        upperCandidates[idx] = (float) random.nextDouble(origin, bound);
-      } else {
-        upperCandidates[idx] = origin;
-      }
+      lowerCandidates[idx] = al + i * (au - al) / 32f;
+      upperCandidates[idx] = bl + i * (bu - bl) / 32f;
       idx++;
     }
     // Now we need to find the best candidate pair by correlating the true quantized nearest

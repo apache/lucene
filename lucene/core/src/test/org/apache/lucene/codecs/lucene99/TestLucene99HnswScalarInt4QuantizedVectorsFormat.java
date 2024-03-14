@@ -74,6 +74,9 @@ public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVec
     VectorEncoding[] fieldVectorEncodings = new VectorEncoding[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
+      if (fieldDims[i] % 2 != 0) {
+        fieldDims[i]++;
+      }
       fieldSimilarityFunctions[i] = randomSimilarity();
       fieldVectorEncodings[i] = randomVectorEncoding();
     }
@@ -145,6 +148,9 @@ public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVec
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
+    if (dim % 2 != 0) {
+      dim++;
+    }
     List<float[]> vectors = new ArrayList<>(numVectors);
     for (int i = 0; i < numVectors; i++) {
       vectors.add(randomVector(dim));
@@ -234,7 +240,7 @@ public class TestLucene99HnswScalarInt4QuantizedVectorsFormat extends BaseKnnVec
           }
         };
     String expectedString =
-        "Lucene99HnswScalarInt4QuantizedVectorsFormat(name=Lucene99HnswScalarInt4QuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, rawVectorFormat=Lucene99FlatVectorsFormat()))";
+        "Lucene99HnswScalarInt4QuantizedVectorsFormat(name=Lucene99HnswScalarInt4QuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarInt4QuantizedVectorsFormat(name=Lucene99ScalarInt4QuantizedVectorsFormat, rawVectorFormat=Lucene99FlatVectorsFormat()))";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 

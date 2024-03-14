@@ -116,6 +116,13 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
   public FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      if (fieldInfo.getVectorDimension() % 2 != 0) {
+        throw new IllegalArgumentException(
+            "dimension must be a multiple of 2 for "
+                + Lucene99ScalarInt4QuantizedVectorsFormat.NAME
+                + "; got "
+                + fieldInfo.getVectorDimension());
+      }
       FieldWriter quantizedWriter =
           new FieldWriter(fieldInfo, segmentWriteState.infoStream, indexWriter);
       fields.add(quantizedWriter);
@@ -496,8 +503,8 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
                   floatVectors,
                   fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
               fieldInfo.getVectorSimilarityFunction(),
-              4,
-              floatVectors.size());
+              floatVectors.size(),
+              4);
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {

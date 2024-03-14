@@ -118,6 +118,30 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
   }
 
+  public void testFromVectorsAutoInterval() throws IOException {
+    int dims = 128;
+    int numVecs = 100;
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+
+    float[][] floats = randomFloats(numVecs, dims);
+    FloatVectorValues floatVectorValues = fromFloats(floats);
+    ScalarQuantizer scalarQuantizer =
+        ScalarQuantizer.fromVectorsAutoInterval(floatVectorValues, similarityFunction, numVecs, 4);
+    assertNotNull(scalarQuantizer);
+    float[] dequantized = new float[dims];
+    byte[] quantized = new byte[dims];
+    byte[] requantized = new byte[dims];
+    for (int i = 0; i < numVecs; i++) {
+      scalarQuantizer.quantize(floats[i], quantized, similarityFunction);
+      scalarQuantizer.deQuantize(quantized, dequantized);
+      scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
+      for (int j = 0; j < dims; j++) {
+        assertEquals(dequantized[j], floats[i][j], 0.1);
+        assertEquals(quantized[j], requantized[j]);
+      }
+    }
+  }
+
   static void shuffleArray(float[] ar) {
     for (int i = ar.length - 1; i > 0; i--) {
       int index = random().nextInt(i + 1);
