@@ -113,7 +113,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
 
   /** The executor provided for intra-merge parallelization */
-  protected ScaledExecutor intraMergeExecutor;
+  protected CachedExecutor intraMergeExecutor;
 
   /** Sole constructor, with all settings set to default values. */
   public ConcurrentMergeScheduler() {}
@@ -533,7 +533,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     super.initialize(infoStream, directory);
     initDynamicDefaults(directory);
     if (intraMergeExecutor == null) {
-      intraMergeExecutor = new ScaledExecutor();
+      intraMergeExecutor = new CachedExecutor();
     }
   }
 
@@ -935,12 +935,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     TestSecrets.setConcurrentMergeSchedulerAccess(ConcurrentMergeScheduler::setSuppressExceptions);
   }
 
-  private class ScaledExecutor implements Executor {
+  private class CachedExecutor implements Executor {
 
     private final AtomicInteger activeCount = new AtomicInteger(0);
     private final ThreadPoolExecutor executor;
 
-    public ScaledExecutor() {
+    public CachedExecutor() {
       this.executor =
           new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
     }
@@ -951,35 +951,30 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
     @Override
     public void execute(Runnable command) {
-      assert mergeThreads.contains(Thread.currentThread()) : "caller is not a merge thread";
-      if (Thread.currentThread() instanceof MergeThread) {
-        final boolean isThreadAvailable;
-        // we need to check if a thread is available before submitting the task to the executor
-        // synchronize on CMS to get an accurate count of current threads
-        synchronized (ConcurrentMergeScheduler.this) {
-          int max = maxThreadCount - mergeThreads.size() - 1;
-          int value = activeCount.get();
-          if (value < max) {
-            activeCount.incrementAndGet();
-            assert activeCount.get() > 0 : "active count must be greater than 0 after increment";
-            isThreadAvailable = true;
-          } else {
-            isThreadAvailable = false;
-          }
-        }
-        if (isThreadAvailable) {
-          executor.execute(
-              () -> {
-                try {
-                  command.run();
-                } finally {
-                  activeCount.decrementAndGet();
-                  assert activeCount.get() >= 0 : "unexpected negative active count";
-                }
-              });
+      final boolean isThreadAvailable;
+      // we need to check if a thread is available before submitting the task to the executor
+      // synchronize on CMS to get an accurate count of current threads
+      synchronized (ConcurrentMergeScheduler.this) {
+        int max = maxThreadCount - mergeThreads.size() - 1;
+        int value = activeCount.get();
+        if (value < max) {
+          activeCount.incrementAndGet();
+          assert activeCount.get() > 0 : "active count must be greater than 0 after increment";
+          isThreadAvailable = true;
         } else {
-          command.run();
+          isThreadAvailable = false;
         }
+      }
+      if (isThreadAvailable) {
+        executor.execute(
+            () -> {
+              try {
+                command.run();
+              } finally {
+                activeCount.decrementAndGet();
+                assert activeCount.get() >= 0 : "unexpected negative active count";
+              }
+            });
       } else {
         command.run();
       }
