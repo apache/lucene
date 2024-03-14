@@ -1298,13 +1298,21 @@ public class TestIndexWriter extends LuceneTestCase {
       // NOTE: here we rely on "Windows" behavior, i.e. even though IW wanted to delete _0.cfs
       // since it was merged away, because we have a reader open against this file,
       // it should still be here:
-      assertTrue(Files.exists(indexPath.resolve("_0.cfs")));
+      if(iter == 1 && Constants.ON_OR_AFTER_WINDOWS_11){
+        assertFalse(Files.exists(indexPath.resolve("_0.cfs")));
+      }else{
+        assertTrue(Files.exists(indexPath.resolve("_0.cfs")));
+      }
       // forceMerge created this
       // assertTrue(files.contains("_2.cfs"));
       w.deleteUnusedFiles();
 
       // r still holds this file open
-      assertTrue(Files.exists(indexPath.resolve("_0.cfs")));
+      if(iter == 1 && Constants.ON_OR_AFTER_WINDOWS_11){
+        assertFalse(Files.exists(indexPath.resolve("_0.cfs")));
+      }else{
+        assertTrue(Files.exists(indexPath.resolve("_0.cfs")));
+      }
       // assertTrue(files.contains("_2.cfs"));
 
       r.close();
@@ -1323,6 +1331,7 @@ public class TestIndexWriter extends LuceneTestCase {
       dir.close();
     }
   }
+
 
   public void testDeleteUnusedFiles2() throws Exception {
     // Validates that iw.deleteUnusedFiles() also deletes unused index commits

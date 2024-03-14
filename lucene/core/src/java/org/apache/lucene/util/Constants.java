@@ -41,6 +41,9 @@ public final class Constants {
   /** True iff running on Windows. */
   public static final boolean WINDOWS = OS_NAME.startsWith("Windows");
 
+  /** True iff running on Windows and the version is on or after Windows 11. */
+  public static final boolean ON_OR_AFTER_WINDOWS_11 = onOrAfterWindows(11);
+
   /** True iff running on SunOS. */
   public static final boolean SUN_OS = OS_NAME.startsWith("SunOS");
 
@@ -99,6 +102,24 @@ public final class Constants {
 
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
+
+  private static boolean onOrAfterWindows(float version){
+    if(WINDOWS){
+      String[] s = OS_NAME.split(" ");
+      // False for Windows Server 2022, etc.
+      if(s.length == 2){
+        try{
+          if(Float.parseFloat(s[1]) >= version){
+            return true;
+          }
+        }catch (NumberFormatException e){
+          // False for Windows XP, etc.
+          return false;
+        }
+      }
+    }
+    return false;
+  }
 
   private static boolean hasFastVectorFMA() {
     if (HAS_FMA) {
