@@ -103,16 +103,16 @@ public final class Constants {
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
 
-  private static boolean onOrAfterWindows(float version){
-    if(WINDOWS){
+  private static boolean onOrAfterWindows(float version) {
+    if (WINDOWS) {
       String[] s = OS_NAME.split(" ");
       // False for Windows Server 2022, etc.
-      if(s.length == 2){
-        try{
-          if(Float.parseFloat(s[1]) >= version){
+      if (s.length == 2) {
+        try {
+          if (Float.parseFloat(s[1]) >= version) {
             return true;
           }
-        }catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
           // False for Windows XP, etc.
           return false;
         }
