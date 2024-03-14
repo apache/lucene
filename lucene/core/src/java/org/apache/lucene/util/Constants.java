@@ -112,7 +112,9 @@ public final class Constants {
           if (Float.parseFloat(s[1]) >= version) {
             return true;
           }
-        } catch (NumberFormatException e) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException e) {
           // False for Windows XP, etc.
           return false;
         }
