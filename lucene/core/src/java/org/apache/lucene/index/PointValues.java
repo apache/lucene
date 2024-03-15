@@ -31,6 +31,7 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /**
@@ -295,6 +296,17 @@ public abstract class PointValues {
       int docID;
       while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         visit(docID);
+      }
+    }
+
+    /**
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
+     * their optimizations. Even if the implementation does the same thing, this can be a speed
+     * improvement due to fewer virtual calls.
+     */
+    default void visit(IntsRef ref) throws IOException {
+      for (int i = ref.offset; i < ref.length + ref.offset; i++) {
+        visit(ref.ints[i]);
       }
     }
 

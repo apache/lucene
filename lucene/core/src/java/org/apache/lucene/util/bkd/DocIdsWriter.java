@@ -23,6 +23,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 final class DocIdsWriter {
 
@@ -36,64 +37,20 @@ final class DocIdsWriter {
 
   private final int[] scratch;
 
-  private final ScratchDocIdSetIterator scratchDocIdSetIterator = new ScratchDocIdSetIterator();
-
   /**
-   * DocIdSetIterator to be used to iterate over the scratch buffer. A single instance is reused to
-   * avoid re-allocating the object. The reset method should be called before each use with the
-   * count.
+   * IntsRef to be used to iterate over the scratch buffer. A single instance is reused to avoid
+   * re-allocating the object. The ints and length fields need to be reset each use.
    *
    * <p>The main reason for existing is to be able to call the {@link
-   * IntersectVisitor#visit(DocIdSetIterator)} method rather than the {@link
-   * IntersectVisitor#visit(int)} method. This seems to make a difference in performance, probably
-   * due to fewer virtual calls then happening (once per read call rather than once per doc).
+   * IntersectVisitor#visit(IntsRef)} method rather than the {@link IntersectVisitor#visit(int)}
+   * method. This seems to make a difference in performance, probably due to fewer virtual calls
+   * then happening (once per read call rather than once per doc).
    */
-  private class ScratchDocIdSetIterator extends DocIdSetIterator {
+  private final IntsRef scratchIntsRef = new IntsRef();
 
-    private int index = -1;
-    private int count = -1;
-
-    @Override
-    public int docID() {
-      if (index < 0) {
-        return -1;
-      }
-      if (index >= count) {
-        return NO_MORE_DOCS;
-      }
-      return scratch[index];
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      index++;
-      if (index >= count) {
-        return NO_MORE_DOCS;
-      }
-      return scratch[index];
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      while (index < count && scratch[index] < target) {
-        index++;
-      }
-      if (index >= count) {
-        return NO_MORE_DOCS;
-      } else {
-        return scratch[index];
-      }
-    }
-
-    @Override
-    public long cost() {
-      return count;
-    }
-
-    void reset(int count) {
-      this.count = count;
-      this.index = -1;
-    }
+  {
+    // This is here to not rely on the default constructor of IntsRef to set offset to 0
+    scratchIntsRef.offset = 0;
   }
 
   DocIdsWriter(int maxPointsInLeaf) {
@@ -378,8 +335,9 @@ final class DocIdsWriter {
 
   private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     readDelta16(in, count, scratch);
-    scratchDocIdSetIterator.reset(count);
-    visitor.visit(scratchDocIdSetIterator);
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
   }
 
   private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
@@ -405,7 +363,8 @@ final class DocIdsWriter {
 
   private void readInts32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     in.readInts(scratch, 0, count);
-    scratchDocIdSetIterator.reset(count);
-    visitor.visit(scratchDocIdSetIterator);
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
   }
 }
