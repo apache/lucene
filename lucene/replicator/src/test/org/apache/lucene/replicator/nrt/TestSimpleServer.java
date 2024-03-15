@@ -21,7 +21,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -45,7 +44,6 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assume;
@@ -58,7 +56,6 @@ import org.junit.BeforeClass;
  */
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
-@SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
 public class TestSimpleServer extends LuceneTestCase {
 
   static final Set<Thread> clientThreads = Collections.synchronizedSet(new HashSet<>());
@@ -135,39 +132,12 @@ public class TestSimpleServer extends LuceneTestCase {
     }
   }
 
-  /** currently, this only works/tested on Sun and IBM. */
+  /** forcibly halt the JVM: similar to crashing */
 
   // poached from TestIndexWriterOnJRECrash ... should we factor out to TestUtil?  seems dangerous
   // to give it such "publicity"?
   private static void crashJRE() {
-    final String vendor = Constants.JAVA_VENDOR;
-    final boolean supportsUnsafeNpeDereference =
-        vendor.startsWith("Oracle") || vendor.startsWith("Sun") || vendor.startsWith("Apple");
-
-    try {
-      if (supportsUnsafeNpeDereference) {
-        try {
-          Class<?> clazz = Class.forName("sun.misc.Unsafe");
-          java.lang.reflect.Field field = clazz.getDeclaredField("theUnsafe");
-          field.setAccessible(true);
-          Object o = field.get(null);
-          Method m = clazz.getMethod("putAddress", long.class, long.class);
-          m.invoke(o, 0L, 0L);
-        } catch (Throwable e) {
-          System.out.println("Couldn't kill the JVM via Unsafe.");
-          e.printStackTrace(System.out);
-        }
-      }
-
-      // Fallback attempt to Runtime.halt();
-      Runtime.getRuntime().halt(-1);
-    } catch (Exception e) {
-      System.out.println("Couldn't kill the JVM.");
-      e.printStackTrace(System.out);
-    }
-
-    // We couldn't get the JVM to crash for some reason.
-    throw new RuntimeException("JVM refuses to die!");
+    Runtime.getRuntime().halt(1);
   }
 
   static void writeFilesMetaData(DataOutput out, Map<String, FileMetaData> files)
@@ -328,6 +298,7 @@ public class TestSimpleServer extends LuceneTestCase {
 
         Thread t =
             new Thread() {
+              @SuppressForbidden(reason = "Thread sleep")
               @Override
               public void run() {
                 long endTime = System.nanoTime() + waitForMS * 1000000L;

@@ -23,6 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Tests for {@link DocumentsWriterStallControl} */
@@ -50,6 +51,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
     join(waitThreads);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testRandom() throws InterruptedException {
     final DocumentsWriterStallControl ctrl = new DocumentsWriterStallControl();
     ctrl.updateStalled(false);
@@ -166,6 +168,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void assertState(
       int numReleasers,
       int numStallers,
@@ -296,6 +299,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
     return true;
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public static void start(Thread[] tostart) throws InterruptedException {
     for (Thread thread : tostart) {
       thread.start();
@@ -324,6 +328,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
   }
 
   /** Waits for all incoming threads to be in wait() methods. */
+  @SuppressForbidden(reason = "Thread sleep")
   public static void awaitState(Thread.State state, Thread... threads) throws InterruptedException {
     while (true) {
       boolean done = true;

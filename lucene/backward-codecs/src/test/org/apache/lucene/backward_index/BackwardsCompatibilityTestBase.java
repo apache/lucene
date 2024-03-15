@@ -19,24 +19,38 @@ package org.apache.lucene.backward_index;
 import com.carrotsearch.randomizedtesting.annotations.Name;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.LineNumberReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -47,25 +61,31 @@ import org.junit.Before;
 
 public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
-  protected final Version version;
-  private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
-  protected final String indexPattern;
+  static final Set<String> OLD_VERSIONS;
   protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
-  static {
-    String[] oldVersions =
-        new String[] {
-          "8.0.0", "8.0.0", "8.1.0", "8.1.0", "8.1.1", "8.1.1", "8.2.0", "8.2.0", "8.3.0", "8.3.0",
-          "8.3.1", "8.3.1", "8.4.0", "8.4.0", "8.4.1", "8.4.1", "8.5.0", "8.5.0", "8.5.1", "8.5.1",
-          "8.5.2", "8.5.2", "8.6.0", "8.6.0", "8.6.1", "8.6.1", "8.6.2", "8.6.2", "8.6.3", "8.6.3",
-          "8.7.0", "8.7.0", "8.8.0", "8.8.0", "8.8.1", "8.8.1", "8.8.2", "8.8.2", "8.9.0", "8.9.0",
-          "8.10.0", "8.10.0", "8.10.1", "8.10.1", "8.11.0", "8.11.0", "8.11.1", "8.11.1", "8.11.2",
-          "8.11.2", "9.0.0", "9.1.0", "9.2.0", "9.3.0", "9.4.0", "9.4.1", "9.4.2", "9.5.0", "9.6.0",
-          "9.7.0", "9.8.0", "9.9.0", "9.9.1", "9.9.2", "9.10.0", "10.0.0",
-        };
+  private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
 
+  protected final Version version;
+  protected final String indexPattern;
+
+  static {
+    String name = "versions.txt";
+    try (LineNumberReader in =
+        new LineNumberReader(
+            IOUtils.getDecodingReader(
+                IOUtils.requireResourceNonNull(
+                    BackwardsCompatibilityTestBase.class.getResourceAsStream(name), name),
+                StandardCharsets.UTF_8))) {
+      OLD_VERSIONS =
+          in.lines()
+              .filter(Predicate.not(String::isBlank))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    } catch (IOException exception) {
+      throw new RuntimeException("failed to load resource", exception);
+    }
     Set<Version> binaryVersions = new HashSet<>();
-    for (String version : oldVersions) {
+    for (String version : OLD_VERSIONS) {
       try {
         Version v = Version.parse(version);
         assertTrue("Unsupported binary version: " + v, v.major >= Version.MIN_SUPPORTED_MAJOR - 1);
@@ -74,12 +94,12 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
         throw new RuntimeException(ex);
       }
     }
-    List<Version> allCurrentVersions = getAllCurrentVersions();
-    for (Version version : allCurrentVersions) {
+
+    for (Version version : getAllCurrentReleasedVersions()) {
       // make sure we never miss a version.
       assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
     }
-    BINARY_SUPPORTED_VERSIONS = binaryVersions;
+    BINARY_SUPPORTED_VERSIONS = Collections.unmodifiableSet(binaryVersions);
   }
 
   /**
@@ -180,19 +200,51 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     return versions;
   }
 
+  private static List<Version> getAllCurrentReleasedVersions() {
+    List<Version> currentReleasedVersions = getAllCurrentVersions();
+
+    // The latest version from the current major is always under development.
+    assertTrue(currentReleasedVersions.remove(Version.LATEST));
+    // The latest minor from the previous major is also under development.
+    assertTrue(currentReleasedVersions.remove(LATEST_PREVIOUS_MAJOR));
+
+    // In addition to those, we may need to remove one more version in case a release is in
+    // progress, and the version constant has been added but backward-compatibility indexes have not
+    // been checked in yet.
+    List<Version> missingVersions = new ArrayList<>();
+    for (Iterator<Version> it = currentReleasedVersions.iterator(); it.hasNext(); ) {
+      Version version = it.next();
+      String indexName = String.format(Locale.ROOT, "index.%s-cfs.zip", version);
+      if (TestAncientIndicesCompatibility.class.getResource(indexName) == null) {
+        missingVersions.add(version);
+        it.remove();
+      }
+    }
+
+    if (missingVersions.size() > 1) {
+      throw new AssertionError(
+          "More than one version is missing backward-compatibility data: " + missingVersions);
+    }
+    return currentReleasedVersions;
+  }
+
+  /** Get all versions that are released, plus the latest version which is unreleased. */
+  public static List<Version> getAllCurrentReleasedVersionsAndCurrent() {
+    List<Version> versions = new ArrayList<>(getAllCurrentReleasedVersions());
+    versions.add(Version.LATEST);
+    return versions;
+  }
+
   public static Iterable<Object[]> allVersion(String name, String... suffixes) {
     List<Object> patterns = new ArrayList<>();
     for (String suffix : suffixes) {
       patterns.add(createPattern(name, suffix));
     }
     List<Object[]> versionAndPatterns = new ArrayList<>();
-    List<Version> versionList = getAllCurrentVersions();
+    List<Version> versionList = getAllCurrentReleasedVersionsAndCurrent();
     for (Version v : versionList) {
-      if (v.equals(LATEST_PREVIOUS_MAJOR)
-          == false) { // the latest prev-major has not yet been released
-        for (Object p : patterns) {
-          versionAndPatterns.add(new Object[] {v, p});
-        }
+      for (Object p : patterns) {
+        versionAndPatterns.add(new Object[] {v, p});
       }
     }
     return versionAndPatterns;
@@ -209,10 +261,23 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   protected abstract void createIndex(Directory directory) throws IOException;
 
   public final void createBWCIndex() throws IOException {
-    Path indexDir = getIndexDir().resolve(indexName(Version.LATEST));
-    Files.deleteIfExists(indexDir);
-    try (Directory dir = newFSDirectory(indexDir)) {
+    Path zipFile = getIndexDir().resolve(indexName(Version.LATEST));
+    Files.deleteIfExists(zipFile);
+    Path tmpDir = createTempDir();
+
+    try (Directory dir = FSDirectory.open(tmpDir);
+        ZipOutputStream zipOut =
+            new ZipOutputStream(
+                Files.newOutputStream(
+                    zipFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
       createIndex(dir);
+      for (String file : dir.listAll()) {
+        try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
+          zipOut.putNextEntry(new ZipEntry(file));
+          new OutputStreamDataOutput(zipOut).copyBytes(in, in.length());
+          zipOut.closeEntry();
+        }
+      }
     }
   }
 

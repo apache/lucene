@@ -105,6 +105,9 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         if (filterWeight == null) {
           // Return exhaustive results
           TopDocs results = approximateSearch(context, liveDocs, Integer.MAX_VALUE);
+          if (results.scoreDocs.length == 0) {
+            return null;
+          }
           return VectorSimilarityScorer.fromScoreDocs(this, boost, results.scoreDocs);
         }
 
@@ -148,6 +151,8 @@ abstract class AbstractVectorSimilarityQuery extends Query {
               createVectorScorer(context),
               new BitSetIterator(acceptDocs, cardinality),
               resultSimilarity);
+        } else if (results.scoreDocs.length == 0) {
+          return null;
         } else {
           // Return an iterator over the collected results
           return VectorSimilarityScorer.fromScoreDocs(this, boost, results.scoreDocs);

@@ -115,8 +115,14 @@ public final class SynonymQuery extends Query {
     this.field = Objects.requireNonNull(field);
   }
 
+  /** Returns the terms of this {@link SynonymQuery} */
   public List<Term> getTerms() {
     return Arrays.stream(terms).map(t -> new Term(field, t.term)).toList();
+  }
+
+  /** Returns the field name of this {@link SynonymQuery} */
+  public String getField() {
+    return field;
   }
 
   @Override

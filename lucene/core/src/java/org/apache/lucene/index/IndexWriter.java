@@ -74,7 +74,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.LockValidatingDirectoryWrapper;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Accountable;
@@ -1303,12 +1302,6 @@ public class IndexWriter
               + Version.LATEST.toString()
               + "\n"
               + config.toString());
-      final StringBuilder unmapInfo =
-          new StringBuilder(Boolean.toString(MMapDirectory.UNMAP_SUPPORTED));
-      if (!MMapDirectory.UNMAP_SUPPORTED) {
-        unmapInfo.append(" (").append(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON).append(")");
-      }
-      infoStream.message("IW", "MMapDirectory.UNMAP_SUPPORTED=" + unmapInfo);
     }
   }
 
@@ -3940,7 +3933,8 @@ public class IndexWriter
                 // updates
                 // in a separate map in order to be applied to the merged segment after it's done
                 rld.setIsMerging();
-                return rld.getReaderForMerge(context);
+                return rld.getReaderForMerge(
+                    context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
               });
         }
         closeReaders = false;
@@ -5072,6 +5066,7 @@ public class IndexWriter
                 readerPool.drop(rld.info);
               }
             }
+            deleter.decRef(mr.reader.getSegmentInfo().files());
           });
     } else {
       assert merge.getMergeReader().isEmpty()
@@ -5141,7 +5136,10 @@ public class IndexWriter
           sci -> {
             final ReadersAndUpdates rld = getPooledInstance(sci, true);
             rld.setIsMerging();
-            return rld.getReaderForMerge(context);
+            synchronized (this) {
+              return rld.getReaderForMerge(
+                  context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
+            }
           });
       // Let the merge wrap readers
       List<CodecReader> mergeReaders = new ArrayList<>();

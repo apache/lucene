@@ -29,9 +29,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 
 public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
@@ -45,6 +47,20 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
       BitSetProducer parentBitSet) {
     return new DiversifyingChildrenFloatKnnVectorQuery(
         fieldName, queryVector, childFilter, k, parentBitSet);
+  }
+
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      Query filter = new TermQuery(new Term("other", "value"));
+      BitSetProducer parentFilter = parentFilter(reader);
+      Query kvq =
+          new DiversifyingChildrenByteKnnVectorQuery(
+              "field", new byte[] {1, 2}, filter, 2, parentFilter);
+      assertThrows(IllegalStateException.class, () -> searcher.search(kvq, 3));
+    }
   }
 
   public void testScoreCosine() throws IOException {
@@ -81,7 +97,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         float score1 =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
-        assertScorerResults(searcher, query, new float[] {score0, score1}, new String[] {"1", "2"});
+        assertScorerResults(
+            searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
     }
   }

@@ -191,7 +191,7 @@ public final class IndexFileNames {
     if (idx == -1) {
       return null;
     } else {
-      return filename.substring(idx + 1, filename.length());
+      return filename.substring(idx + 1);
     }
   }
 

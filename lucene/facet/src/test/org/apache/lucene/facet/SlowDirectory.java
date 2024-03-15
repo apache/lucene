@@ -25,6 +25,7 @@ import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Test utility - slow directory */
@@ -63,6 +64,7 @@ public class SlowDirectory extends FilterDirectory {
     return super.openInput(name, context);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   void doSleep(Random random, int length) {
     int sTime = length < 10 ? sleepMillis : (int) (sleepMillis * Math.log(length));
     if (random != null) {

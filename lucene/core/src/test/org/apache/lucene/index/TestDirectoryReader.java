@@ -48,6 +48,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -1005,6 +1006,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     dir.close();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testStressTryIncRef() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));

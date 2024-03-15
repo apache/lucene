@@ -79,6 +79,20 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = new MatchAllDocsQuery();
+      }
+      AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
+    }
+  }
+
   public void testGetTarget() {
     float[] queryVector = new float[] {0, 1};
     KnnFloatVectorQuery q1 = new KnnFloatVectorQuery("f1", queryVector, 10);
