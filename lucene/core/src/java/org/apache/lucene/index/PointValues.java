@@ -301,8 +301,8 @@ public abstract class PointValues {
 
     /**
      * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
-     * their optimizations. Even if the implementation does the same thing, this can be a speed
-     * improvement due to fewer virtual calls.
+     * their optimizations. Even if the implementation does the same thing this method, this may be
+     * a speed improvement due to fewer virtual calls.
      */
     default void visit(IntsRef ref) throws IOException {
       for (int i = ref.offset; i < ref.length + ref.offset; i++) {
