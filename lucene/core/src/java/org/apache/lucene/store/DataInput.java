@@ -189,6 +189,21 @@ public abstract class DataInput implements Cloneable {
     }
   }
 
+  //  TODO: read VLongs, etc.
+  /**
+   * Reads a specified number of vints into an array at the specified offset.
+   *
+   * @param dst the array to read bytes into
+   * @param offset the offset in the array to start storing ints
+   * @param length the number of vints to read
+   */
+  public void readVInts(int[] dst, int offset, int length) throws IOException {
+    Objects.checkFromIndexSize(offset, length, dst.length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = readVInt();
+    }
+  }
+
   /**
    * Reads a specified number of floats into an array at the specified offset.
    *
