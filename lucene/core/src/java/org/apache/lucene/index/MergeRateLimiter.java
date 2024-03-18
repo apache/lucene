@@ -39,7 +39,7 @@ public class MergeRateLimiter extends RateLimiter {
   private volatile double mbPerSec;
   private volatile long minPauseCheckBytes;
 
-  private long lastNS;
+  private AtomicLong lastNS = new AtomicLong(0);
 
   private AtomicLong totalBytesWritten = new AtomicLong();
 
@@ -118,24 +118,32 @@ public class MergeRateLimiter extends RateLimiter {
       throw new MergePolicy.MergeAbortedException("Merge aborted.");
     }
 
-    double rate = mbPerSec; // read from volatile rate once.
-    double secondsToPause = (bytes / 1024. / 1024.) / rate;
+    final double rate = mbPerSec; // read from volatile rate once.
+    final double secondsToPause = (bytes / 1024. / 1024.) / rate;
 
-    // Time we should sleep until; this is purely instantaneous
-    // rate (just adds seconds onto the last time we had paused to);
-    // maybe we should also offer decayed recent history one?
-    long targetNS = lastNS + (long) (1000000000 * secondsToPause);
+    AtomicLong curPauseNSSetter = new AtomicLong();
+    lastNS.updateAndGet(
+        last -> {
+          // Time we should sleep until; this is purely instantaneous
+          // rate (just adds seconds onto the last time we had paused to);
+          // maybe we should also offer decayed recent history one?
+          long targetNS = last + (long) (1000000000 * secondsToPause);
+          long curPauseNS = targetNS - curNS;
+          // We don't bother with thread pausing if the pause is smaller than 2 msec.
+          if (curPauseNS <= MIN_PAUSE_NS) {
+            // Set to curNS, not targetNS, to enforce the instant rate, not
+            // the "averaged over all history" rate:
+            curPauseNSSetter.set(0);
+            return curNS;
+          }
+          curPauseNSSetter.set(curPauseNS);
+          return last;
+        });
 
-    long curPauseNS = targetNS - curNS;
-
-    // We don't bother with thread pausing if the pause is smaller than 2 msec.
-    if (curPauseNS <= MIN_PAUSE_NS) {
-      // Set to curNS, not targetNS, to enforce the instant rate, not
-      // the "averaged over all history" rate:
-      lastNS = curNS;
+    if (curPauseNSSetter.get() == 0) {
       return -1;
     }
-
+    long curPauseNS = curPauseNSSetter.get();
     // Defensive: don't sleep for too long; the loop above will call us again if
     // we should keep sleeping and the rate may be adjusted in between.
     if (curPauseNS > MAX_PAUSE_NS) {

@@ -30,13 +30,13 @@ public final class RateLimitedIndexOutput extends FilterIndexOutput {
   private final RateLimiter rateLimiter;
 
   /** How many bytes we've written since we last called rateLimiter.pause. */
-  private AtomicLong bytesSinceLastPause;
+  private final AtomicLong bytesSinceLastPause = new AtomicLong(0);
 
   /**
    * Cached here not not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
    * read.
    */
-  private AtomicLong currentMinPauseCheckBytes;
+  private final AtomicLong currentMinPauseCheckBytes;
 
   public RateLimitedIndexOutput(final RateLimiter rateLimiter, final IndexOutput out) {
     super("RateLimitedIndexOutput(" + out + ")", out.getName(), out);
@@ -93,6 +93,8 @@ public final class RateLimitedIndexOutput extends FilterIndexOutput {
             currentMinPauseCheckBytes.set(rateLimiter.getMinPauseCheckBytes());
             localBytesSinceLastPause.set(bytes);
             return 0;
+          } else {
+            shouldPause.set(false);
           }
           return bytes;
         });
