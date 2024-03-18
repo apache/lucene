@@ -18,12 +18,10 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.Executor;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.SameThreadExecutorService;
 
 /**
  * Expert: {@link IndexWriter} uses an instance implementing this interface to execute the merges
@@ -33,8 +31,6 @@ import org.apache.lucene.util.SameThreadExecutorService;
  * @lucene.experimental
  */
 public abstract class MergeScheduler implements Closeable {
-
-  private final Executor executor = new SameThreadExecutorService();
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected MergeScheduler() {}
@@ -54,15 +50,6 @@ public abstract class MergeScheduler implements Closeable {
   public Directory wrapForMerge(OneMerge merge, Directory in) {
     // A no-op by default.
     return in;
-  }
-
-  /**
-   * Provides an executor for parallelism during a single merge operation. By default, the method
-   * returns a {@link SameThreadExecutorService} where all intra-merge actions occur in their
-   * calling thread.
-   */
-  public Executor getIntraMergeExecutor(OneMerge merge) {
-    return executor;
   }
 
   /** Close this MergeScheduler. */

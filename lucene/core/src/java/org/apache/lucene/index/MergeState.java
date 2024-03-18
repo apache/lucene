@@ -21,7 +21,6 @@ import static org.apache.lucene.index.IndexWriter.isCongruentSort;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -85,23 +84,15 @@ public class MergeState {
   /** InfoStream for debugging messages. */
   public final InfoStream infoStream;
 
-  /** Executor for intra merge activity */
-  public final Executor intraMergeTaskExecutor;
-
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
 
   /** Sole constructor. */
-  MergeState(
-      List<CodecReader> readers,
-      SegmentInfo segmentInfo,
-      InfoStream infoStream,
-      Executor intraMergeTaskExecutor)
+  MergeState(List<CodecReader> readers, SegmentInfo segmentInfo, InfoStream infoStream)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;
     int numReaders = readers.size();
-    this.intraMergeTaskExecutor = intraMergeTaskExecutor;
 
     maxDocs = new int[numReaders];
     fieldsProducers = new FieldsProducer[numReaders];
