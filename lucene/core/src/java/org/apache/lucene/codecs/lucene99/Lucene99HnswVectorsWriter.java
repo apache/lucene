@@ -352,14 +352,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (scorerSupplier.totalVectorCount() > 0) {
         // build graph
-        HnswGraphMerger merger =
-            createGraphMerger(
-                fieldInfo,
-                scorerSupplier,
-                mergeState.intraMergeTaskExecutor == null
-                    ? null
-                    : new TaskExecutor(mergeState.intraMergeTaskExecutor),
-                numMergeWorkers);
+        HnswGraphMerger merger = createGraphMerger(fieldInfo, scorerSupplier);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
@@ -503,22 +496,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private HnswGraphMerger createGraphMerger(
-      FieldInfo fieldInfo,
-      RandomVectorScorerSupplier scorerSupplier,
-      TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers) {
+      FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
-    }
-    if (parallelMergeTaskExecutor != null) {
-      return new ConcurrentHnswMerger(
-          fieldInfo,
-          scorerSupplier,
-          M,
-          beamWidth,
-          parallelMergeTaskExecutor,
-          numParallelMergeWorkers);
     }
     return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
   }

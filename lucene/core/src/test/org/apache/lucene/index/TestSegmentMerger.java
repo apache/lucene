@@ -32,7 +32,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -106,8 +105,7 @@ public class TestSegmentMerger extends LuceneTestCase {
             InfoStream.getDefault(),
             mergedDir,
             new FieldInfos.FieldNumbers(null, null, Version.LATEST.major),
-            newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))),
-            new SameThreadExecutorService());
+            newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))));
     MergeState mergeState = merger.merge();
     int docsMerged = mergeState.segmentInfo.maxDoc();
     assertTrue(docsMerged == 2);

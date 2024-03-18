@@ -21,12 +21,9 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -111,9 +108,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   private boolean doAutoIOThrottle = true;
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
-
-  /** The executor provided for intra-merge parallelization */
-  protected CachedExecutor intraMergeExecutor;
 
   /** Sole constructor, with all settings set to default values. */
   public ConcurrentMergeScheduler() {}
@@ -263,16 +257,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     assert false : "merge thread " + currentThread + " was not found";
-  }
-
-  @Override
-  public Executor getIntraMergeExecutor(OneMerge merge) {
-    assert intraMergeExecutor != null : "scaledExecutor is not initialized";
-    // don't do multithreaded merges for small merges
-    if (merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
-      return super.getIntraMergeExecutor(merge);
-    }
-    return intraMergeExecutor;
   }
 
   @Override
@@ -462,13 +446,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public void close() {
-    try {
-      sync();
-    } finally {
-      if (intraMergeExecutor != null) {
-        intraMergeExecutor.shutdown();
-      }
-    }
+    sync();
   }
 
   /**
@@ -532,9 +510,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   void initialize(InfoStream infoStream, Directory directory) throws IOException {
     super.initialize(infoStream, directory);
     initDynamicDefaults(directory);
-    if (intraMergeExecutor == null) {
-      intraMergeExecutor = new CachedExecutor();
-    }
   }
 
   @Override
@@ -780,16 +755,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName()
-        + ": "
-        + "maxThreadCount="
-        + maxThreadCount
-        + ", "
-        + "maxMergeCount="
-        + maxMergeCount
-        + ", "
-        + "ioThrottle="
-        + doAutoIOThrottle;
+    StringBuilder sb = new StringBuilder(getClass().getSimpleName() + ": ");
+    sb.append("maxThreadCount=").append(maxThreadCount).append(", ");
+    sb.append("maxMergeCount=").append(maxMergeCount).append(", ");
+    sb.append("ioThrottle=").append(doAutoIOThrottle);
+    return sb.toString();
   }
 
   private boolean isBacklog(long now, OneMerge merge) {
@@ -932,58 +902,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   static {
-    TestSecrets.setConcurrentMergeSchedulerAccess(ConcurrentMergeScheduler::setSuppressExceptions);
-  }
-
-  /**
-   * This executor provides intra-merge threads for parallel execution of merge tasks. It provides a
-   * limited number of threads to execute merge tasks. In particular, if the number of
-   * `mergeThreads` is equal to `maxThreadCount`, then the executor will execute the merge task in
-   * the calling thread.
-   */
-  private class CachedExecutor implements Executor {
-
-    private final AtomicInteger activeCount = new AtomicInteger(0);
-    private final ThreadPoolExecutor executor;
-
-    public CachedExecutor() {
-      this.executor =
-          new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
-    }
-
-    void shutdown() {
-      executor.shutdown();
-    }
-
-    @Override
-    public void execute(Runnable command) {
-      final boolean isThreadAvailable;
-      // we need to check if a thread is available before submitting the task to the executor
-      // synchronize on CMS to get an accurate count of current threads
-      synchronized (ConcurrentMergeScheduler.this) {
-        int max = maxThreadCount - mergeThreads.size() - 1;
-        int value = activeCount.get();
-        if (value < max) {
-          activeCount.incrementAndGet();
-          assert activeCount.get() > 0 : "active count must be greater than 0 after increment";
-          isThreadAvailable = true;
-        } else {
-          isThreadAvailable = false;
-        }
-      }
-      if (isThreadAvailable) {
-        executor.execute(
-            () -> {
-              try {
-                command.run();
-              } finally {
-                activeCount.decrementAndGet();
-                assert activeCount.get() >= 0 : "unexpected negative active count";
-              }
-            });
-      } else {
-        command.run();
-      }
-    }
+    TestSecrets.setConcurrentMergeSchedulerAccess(
+        new ConcurrentMergeSchedulerAccess() {
+          @Override
+          public void setSuppressExceptions(ConcurrentMergeScheduler cms) {
+            cms.setSuppressExceptions();
+          }
+        });
   }
 }

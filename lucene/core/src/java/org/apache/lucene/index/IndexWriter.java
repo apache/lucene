@@ -3439,14 +3439,7 @@ public class IndexWriter
     }
 
     SegmentMerger merger =
-        new SegmentMerger(
-            readers,
-            segInfo,
-            infoStream,
-            trackingDir,
-            globalFieldNumberMap,
-            context,
-            mergeScheduler.getIntraMergeExecutor(merge));
+        new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
 
     if (!merger.shouldMerge()) {
       return;
@@ -5235,13 +5228,7 @@ public class IndexWriter
 
       final SegmentMerger merger =
           new SegmentMerger(
-              mergeReaders,
-              merge.info.info,
-              infoStream,
-              dirWrapper,
-              globalFieldNumberMap,
-              context,
-              mergeScheduler.getIntraMergeExecutor(merge));
+              mergeReaders, merge.info.info, infoStream, dirWrapper, globalFieldNumberMap, context);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.util.concurrent.Executor;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
 
@@ -52,10 +51,5 @@ public final class NoMergeScheduler extends MergeScheduler {
   @Override
   public MergeScheduler clone() {
     return this;
-  }
-
-  @Override
-  public Executor getIntraMergeExecutor(OneMerge merge) {
-    throw new UnsupportedOperationException("NoMergeScheduler does not support merges");
   }
 }
