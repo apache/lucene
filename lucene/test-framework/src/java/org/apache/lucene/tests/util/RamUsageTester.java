@@ -83,7 +83,7 @@ public final class RamUsageTester {
    * referenced objects.
    *
    * <p><b>Resource Usage:</b> This method internally uses a set of every object seen during
-   * traversals so it does allocate memory (it isn't side-effect free). After the method exits, this
+   * traversals so it does allocate memory (it isn't side effect free). After the method exits, this
    * memory should be GCed.
    */
   public static long ramUsed(Object obj, Accumulator accumulator) {
@@ -113,7 +113,7 @@ public final class RamUsageTester {
    */
   private static long measureObjectSize(Object root, Accumulator accumulator) {
     // Objects seen so far.
-    final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+    final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     // Class cache with reference Field and precalculated shallow size.
     final IdentityHashMap<Class<?>, ClassCache> classCache = new IdentityHashMap<>();
     // Stack of objects pending traversal. Recursion caused stack overflows.
@@ -194,9 +194,7 @@ public final class RamUsageTester {
       } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
         final List<Object> values =
             ((Map<?, ?>) ob)
-                .entrySet().stream()
-                    .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
-                    .collect(Collectors.toList());
+                .entrySet().stream().flatMap(e -> Stream.of(e.getKey(), e.getValue())).toList();
         return accumulator.accumulateArray(
                 ob,
                 alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
@@ -246,7 +244,7 @@ public final class RamUsageTester {
       values = Collections.emptyList();
     } else {
       values =
-          new AbstractList<Object>() {
+          new AbstractList<>() {
 
             @Override
             public Object get(int index) {
@@ -267,10 +265,9 @@ public final class RamUsageTester {
    * their public properties. This is needed for Java 9, which does not allow to look into runtime
    * class fields.
    */
-  @SuppressWarnings("serial")
   private static final Map<Class<?>, ToLongFunction<Object>> SIMPLE_TYPES =
       Collections.unmodifiableMap(
-          new IdentityHashMap<Class<?>, ToLongFunction<Object>>() {
+          new IdentityHashMap<>() {
             {
               init();
             }
@@ -363,7 +360,7 @@ public final class RamUsageTester {
                   cachedInfo =
                       new ClassCache(
                           RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-                          referenceFields.toArray(new Field[referenceFields.size()]));
+                          referenceFields.toArray(new Field[0]));
                   return cachedInfo;
                 });
     return classCache;

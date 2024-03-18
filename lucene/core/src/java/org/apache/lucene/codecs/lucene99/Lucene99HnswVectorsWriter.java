@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
@@ -72,7 +74,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene99HnswVectorsWriter(
+  public Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
       int beamWidth,
@@ -350,7 +352,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (scorerSupplier.totalVectorCount() > 0) {
         // build graph
-        HnswGraphMerger merger = createGraphMerger(fieldInfo, scorerSupplier);
+        HnswGraphMerger merger =
+            createGraphMerger(
+                fieldInfo,
+                scorerSupplier,
+                mergeState.intraMergeTaskExecutor == null
+                    ? null
+                    : new TaskExecutor(mergeState.intraMergeTaskExecutor),
+                numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
@@ -436,7 +445,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(distFuncToOrd(field.getVectorSimilarityFunction()));
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
@@ -487,10 +496,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private HnswGraphMerger createGraphMerger(
-      FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier) {
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+    }
+    if (parallelMergeTaskExecutor != null) {
+      return new ConcurrentHnswMerger(
+          fieldInfo,
+          scorerSupplier,
+          M,
+          beamWidth,
+          parallelMergeTaskExecutor,
+          numParallelMergeWorkers);
     }
     return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
   }
@@ -498,6 +519,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorIndex, flatVectorWriter);
+  }
+
+  static int distFuncToOrd(VectorSimilarityFunction func) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {

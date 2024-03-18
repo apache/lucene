@@ -322,8 +322,7 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
       if (liveDocs == null) {
         countOneSegmentNHLD(ordinalMap, context.reader(), context.ord);
       } else {
-        countOneSegment(
-            ordinalMap, context.reader(), context.ord, null, context.reader().getLiveDocs());
+        countOneSegment(ordinalMap, context.reader(), context.ord, null, liveDocs);
       }
     }
   }

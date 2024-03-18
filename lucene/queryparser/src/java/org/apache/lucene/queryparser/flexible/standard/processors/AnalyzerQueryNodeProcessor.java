@@ -38,13 +38,11 @@ import org.apache.lucene.queryparser.flexible.core.nodes.NoTokenFoundQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QuotedFieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.RangeQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.TextableQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.TokenizedPhraseQueryNode;
 import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessorImpl;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler.ConfigurationKeys;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler.Operator;
 import org.apache.lucene.queryparser.flexible.standard.nodes.MultiPhraseQueryNode;
-import org.apache.lucene.queryparser.flexible.standard.nodes.RegexpQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.SynonymQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.WildcardQueryNode;
 
@@ -107,10 +105,9 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof TextableQueryNode
+    if (node instanceof FieldQueryNode
         && !(node instanceof WildcardQueryNode)
         && !(node instanceof FuzzyQueryNode)
-        && !(node instanceof RegexpQueryNode)
         && !(node.getParent() instanceof RangeQueryNode)) {
 
       FieldQueryNode fieldNode = ((FieldQueryNode) node);

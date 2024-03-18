@@ -21,7 +21,6 @@ import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
   requires java.logging;
-  requires static jdk.unsupported; // this is optional but without it MMapDirectory won't be enabled
   requires static jdk.management; // this is optional but explicit declaration is recommended
 
   exports org.apache.lucene.analysis;
@@ -42,6 +41,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.search;
   exports org.apache.lucene.search.comparators;
   exports org.apache.lucene.search.similarities;
+  exports org.apache.lucene.search.knn;
   exports org.apache.lucene.store;
   exports org.apache.lucene.util;
   exports org.apache.lucene.util.automaton;
@@ -61,6 +61,8 @@ module org.apache.lucene.core {
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
+
+  exports org.apache.lucene.util.quantization;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
@@ -101,7 +100,7 @@ public final class SynonymQuery extends Query {
 
     /** Builds the {@link SynonymQuery}. */
     public SynonymQuery build() {
-      Collections.sort(terms, Comparator.comparing(a -> a.term));
+      terms.sort(Comparator.comparing(a -> a.term));
       return new SynonymQuery(terms.toArray(new TermAndBoost[0]), field);
     }
   }
@@ -116,9 +115,14 @@ public final class SynonymQuery extends Query {
     this.field = Objects.requireNonNull(field);
   }
 
+  /** Returns the terms of this {@link SynonymQuery} */
   public List<Term> getTerms() {
-    return Collections.unmodifiableList(
-        Arrays.stream(terms).map(t -> new Term(field, t.term)).collect(Collectors.toList()));
+    return Arrays.stream(terms).map(t -> new Term(field, t.term)).toList();
+  }
+
+  /** Returns the field name of this {@link SynonymQuery} */
+  public String getField() {
+    return field;
   }
 
   @Override
@@ -232,8 +236,7 @@ public final class SynonymQuery extends Query {
       if (indexTerms == null) {
         return super.matches(context, doc);
       }
-      List<Term> termList =
-          Arrays.stream(terms).map(t -> new Term(field, t.term)).collect(Collectors.toList());
+      List<Term> termList = Arrays.stream(terms).map(t -> new Term(field, t.term)).toList();
       return MatchesUtils.forField(
           field,
           () -> DisjunctionMatchesIterator.fromTerms(context, doc, getQuery(), field, termList));
@@ -357,7 +360,7 @@ public final class SynonymQuery extends Query {
     assert impactsEnums.length == boosts.length;
     return new ImpactsSource() {
 
-      class SubIterator {
+      static class SubIterator {
         final Iterator<Impact> iterator;
         int previousFreq;
         Impact current;
@@ -439,7 +442,7 @@ public final class SynonymQuery extends Query {
                           .map(
                               impact ->
                                   new Impact((int) Math.ceil(impact.freq * boost), impact.norm))
-                          .collect(Collectors.toList());
+                          .toList();
                 } else {
                   impactList = impacts[i].getImpacts(impactsLevel);
                 }

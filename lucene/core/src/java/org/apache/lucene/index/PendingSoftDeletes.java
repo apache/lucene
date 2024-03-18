@@ -172,7 +172,7 @@ final class PendingSoftDeletes extends PendingDeletes {
 
   private boolean assertPendingDeletes() {
     assert pendingDeleteCount + info.getSoftDelCount() >= 0
-        : " illegal pending delete count: " + pendingDeleteCount + info.getSoftDelCount();
+        : "illegal pending delete count: " + (pendingDeleteCount + info.getSoftDelCount());
     assert info.info.maxDoc() >= getDelCount();
     return true;
   }
@@ -199,13 +199,13 @@ final class PendingSoftDeletes extends PendingDeletes {
     if (dvGeneration == -2) {
       FieldInfos fieldInfos = readFieldInfos();
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-      // we try to only open a reader if it's really necessary ie. indices that are mainly append
+      // we try to only open a reader if it's really necessary i.e. indices that are mainly append
       // only might have
       // big segments that don't even have any docs in the soft deletes field. In such a case it's
       // simply
       // enough to look at the FieldInfo for the field and check if the field has DocValues
       if (fieldInfo != null && fieldInfo.getDocValuesType() != DocValuesType.NONE) {
-        // in order to get accurate numbers we need to have a least one reader see here.
+        // in order to get accurate numbers we need to have at least one reader see here.
         onNewReader(readerIOSupplier.get(), info);
       } else {
         // we are safe here since we don't have any doc values for the soft-delete field on disk

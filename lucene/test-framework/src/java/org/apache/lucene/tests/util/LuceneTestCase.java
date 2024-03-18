@@ -98,7 +98,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
@@ -139,7 +138,6 @@ import org.apache.lucene.index.ParallelCompositeReader;
 import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SimpleMergedSegmentWarmer;
 import org.apache.lucene.index.SnapshotDeletionPolicy;
@@ -168,7 +166,6 @@ import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -192,7 +189,6 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -492,7 +488,7 @@ public abstract class LuceneTestCase extends Assert {
     boolean defaultValue = false;
     for (String property :
         Arrays.asList(
-            "tests.leaveTemporary" /* ANT tasks's (junit4) flag. */,
+            "tests.leaveTemporary" /* ANT tasks' (junit4) flag. */,
             "tests.leavetemporary" /* lowercase */,
             "tests.leavetmpdir" /* default */)) {
       defaultValue |= systemPropertyAsBoolean(property, false);
@@ -500,31 +496,9 @@ public abstract class LuceneTestCase extends Assert {
     LEAVE_TEMPORARY = defaultValue;
   }
 
-  /**
-   * Returns true, if MMapDirectory supports unmapping on this platform (required for Windows), or
-   * if we are not on Windows.
-   */
-  public static boolean hasWorkingMMapOnWindows() {
-    return !Constants.WINDOWS || MMapDirectory.UNMAP_SUPPORTED;
-  }
-
-  /**
-   * Assumes that the current MMapDirectory implementation supports unmapping, so the test will not
-   * fail on Windows.
-   *
-   * @see #hasWorkingMMapOnWindows()
-   */
-  public static void assumeWorkingMMapOnWindows() {
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, hasWorkingMMapOnWindows());
-  }
-
   /** Filesystem-based {@link Directory} implementations. */
   private static final List<String> FS_DIRECTORIES =
-      Arrays.asList(
-          "NIOFSDirectory",
-          // NIOFSDirectory as replacement for MMapDirectory if unmapping is not supported on
-          // Windows (to make randomization stable):
-          hasWorkingMMapOnWindows() ? "MMapDirectory" : "NIOFSDirectory");
+      Arrays.asList("NIOFSDirectory", "MMapDirectory");
 
   /** All {@link Directory} implementations. */
   private static final List<String> CORE_DIRECTORIES;
@@ -565,7 +539,7 @@ public abstract class LuceneTestCase extends Assert {
   protected static TestRuleMarkFailure suiteFailureMarker;
 
   /** Temporary files cleanup rule. */
-  private static TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
+  private static final TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
 
   /**
    * Ignore tests after hitting a designated number of initial failures. This is truly a "static"
@@ -667,13 +641,14 @@ public abstract class LuceneTestCase extends Assert {
   // -----------------------------------------------------------------
 
   /** Enforces {@link #setUp()} and {@link #tearDown()} calls are chained. */
-  private TestRuleSetupTeardownChained parentChainCallRule = new TestRuleSetupTeardownChained();
+  private final TestRuleSetupTeardownChained parentChainCallRule =
+      new TestRuleSetupTeardownChained();
 
   /** Save test thread and name. */
-  private TestRuleThreadAndTestName threadAndTestNameRule = new TestRuleThreadAndTestName();
+  private final TestRuleThreadAndTestName threadAndTestNameRule = new TestRuleThreadAndTestName();
 
   /** Taint suite result with individual test failures. */
-  private TestRuleMarkFailure testFailureMarker = new TestRuleMarkFailure(suiteFailureMarker);
+  private final TestRuleMarkFailure testFailureMarker = new TestRuleMarkFailure(suiteFailureMarker);
 
   /**
    * This controls how individual test rules are nested. It is important that _all_ rules declared
@@ -687,13 +662,13 @@ public abstract class LuceneTestCase extends Assert {
           .around(new TestRuleSetupAndRestoreInstanceEnv())
           .around(parentChainCallRule);
 
-  private static final Map<String, FieldType> fieldToType = new HashMap<String, FieldType>();
+  private static final Map<String, FieldType> fieldToType = new HashMap<>();
 
   enum LiveIWCFlushMode {
     BY_RAM,
     BY_DOCS,
     EITHER
-  };
+  }
 
   /** Set by TestRuleSetupAndRestoreClassEnv */
   static LiveIWCFlushMode liveIWCFlushMode;
@@ -1270,7 +1245,7 @@ public abstract class LuceneTestCase extends Assert {
         }
       } else {
         // but just in case of something ridiculous...
-        diff.append(current.toString());
+        diff.append(current);
       }
 
       // its possible to be empty, if we "change" a value to what it had before.
@@ -1394,8 +1369,7 @@ public abstract class LuceneTestCase extends Assert {
       }
 
       Directory fsdir = newFSDirectoryImpl(clazz, f, lf);
-      BaseDirectoryWrapper wrapped = wrapDirectory(random(), fsdir, bare, true);
-      return wrapped;
+      return wrapDirectory(random(), fsdir, bare, true);
     } catch (Exception e) {
       Rethrow.rethrow(e);
       throw null; // dummy to prevent compiler failure
@@ -1894,7 +1868,7 @@ public abstract class LuceneTestCase extends Assert {
             threads,
             0L,
             TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
+            new LinkedBlockingQueue<>(),
             new NamedThreadFactory("LuceneTestCase"));
     // uncomment to intensify LUCENE-3840
     // executor.prestartAllCoreThreads();
@@ -2014,13 +1988,7 @@ public abstract class LuceneTestCase extends Assert {
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
       if (random().nextBoolean()) {
-        ret.setTimeout(
-            new QueryTimeout() {
-              @Override
-              public boolean shouldExit() {
-                return false;
-              }
-            });
+        ret.setTimeout(() -> false);
       }
       return ret;
     }
@@ -2340,7 +2308,7 @@ public abstract class LuceneTestCase extends Assert {
     int numPasses = 0;
     while (numPasses < 10 && tests.size() < numTests) {
       leftEnum = leftTerms.iterator();
-      BytesRef term = null;
+      BytesRef term;
       while ((term = leftEnum.next()) != null) {
         int code = random.nextInt(10);
         if (code == 0) {
@@ -2446,17 +2414,11 @@ public abstract class LuceneTestCase extends Assert {
       // in whatever way it wants (e.g. maybe it packs related fields together or something)
       // To fix this, we sort the fields in both documents by name, but
       // we still assume that all instances with same name are in order:
-      Comparator<IndexableField> comp =
-          new Comparator<IndexableField>() {
-            @Override
-            public int compare(IndexableField arg0, IndexableField arg1) {
-              return arg0.name().compareTo(arg1.name());
-            }
-          };
+      Comparator<IndexableField> comp = Comparator.comparing(IndexableField::name);
       List<IndexableField> leftFields = new ArrayList<>(leftDoc.getFields());
       List<IndexableField> rightFields = new ArrayList<>(rightDoc.getFields());
-      Collections.sort(leftFields, comp);
-      Collections.sort(rightFields, comp);
+      leftFields.sort(comp);
+      rightFields.sort(comp);
 
       Iterator<IndexableField> leftIterator = leftFields.iterator();
       Iterator<IndexableField> rightIterator = rightFields.iterator();
@@ -2724,7 +2686,7 @@ public abstract class LuceneTestCase extends Assert {
             public void visit(int docID, byte[] packedValue) throws IOException {
               int topDocID = ctx.docBase + docID;
               if (docValues.containsKey(topDocID) == false) {
-                docValues.put(topDocID, new HashSet<BytesRef>());
+                docValues.put(topDocID, new HashSet<>());
               }
               docValues.get(topDocID).add(new BytesRef(packedValue.clone()));
             }
@@ -2878,8 +2840,7 @@ public abstract class LuceneTestCase extends Assert {
       }
     }
 
-    List<String> exceptionTypes =
-        expectedTypes.stream().map(c -> c.getSimpleName()).collect(Collectors.toList());
+    List<String> exceptionTypes = expectedTypes.stream().map(Class::getSimpleName).toList();
 
     if (thrown != null) {
       AssertionFailedError assertion =
@@ -2947,12 +2908,11 @@ public abstract class LuceneTestCase extends Assert {
       LinkedHashMap<Class<? extends TO>, List<Class<? extends TW>>> expectedOuterToWrappedTypes,
       ThrowingRunnable runnable) {
     final List<Class<? extends TO>> outerClasses =
-        expectedOuterToWrappedTypes.keySet().stream().collect(Collectors.toList());
+        new ArrayList<>(expectedOuterToWrappedTypes.keySet());
     final Throwable thrown = _expectThrows(outerClasses, runnable);
 
     if (null == thrown) {
-      List<String> outerTypes =
-          outerClasses.stream().map(Class::getSimpleName).collect(Collectors.toList());
+      List<String> outerTypes = outerClasses.stream().map(Class::getSimpleName).toList();
       throw new AssertionFailedError(
           "Expected any of the following outer exception types: "
               + outerTypes
@@ -2973,7 +2933,7 @@ public abstract class LuceneTestCase extends Assert {
             }
           }
           List<String> wrappedTypes =
-              expectedWrappedTypes.stream().map(Class::getSimpleName).collect(Collectors.toList());
+              expectedWrappedTypes.stream().map(Class::getSimpleName).toList();
           AssertionFailedError assertion =
               new AssertionFailedError(
                   "Unexpected wrapped exception type, expected one of "
@@ -2985,8 +2945,7 @@ public abstract class LuceneTestCase extends Assert {
         }
       }
     }
-    List<String> outerTypes =
-        outerClasses.stream().map(Class::getSimpleName).collect(Collectors.toList());
+    List<String> outerTypes = outerClasses.stream().map(Class::getSimpleName).toList();
     AssertionFailedError assertion =
         new AssertionFailedError(
             "Unexpected outer exception type, expected one of "

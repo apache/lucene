@@ -151,7 +151,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
   }
 
   protected SrndQuery getTruncQuery(String truncated) {
-    return new SrndTruncQuery(truncated, TRUNCATOR, ANY_CHAR);
+    return new SrndTruncQuery(truncated);
   }
 
   final public SrndQuery TopSrndQuery() throws ParseException {SrndQuery q;

@@ -13,3 +13,7 @@ MAP a b
 SFX A Y 1
 SFX A   nout        l          [aeiouyáéíóúýůěr][^aeiouyáéíóúýůěrl][^aeiouy
 SFX A b c d
+
+ICONV 2
+ICONV x y
+ICONV x y

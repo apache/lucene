@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -34,7 +37,7 @@ import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Assert;
+import org.hamcrest.MatcherAssert;
 
 public class TestWordBreakSpellChecker extends LuceneTestCase {
   private Directory dir;
@@ -49,7 +52,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
     for (int i = 900; i < 1112; i++) {
       Document doc = new Document();
-      String num = English.intToEnglish(i).replaceAll("[-]", " ").replaceAll("[,]", "");
+      String num = English.intToEnglish(i).replace("-", " ").replace(",", "");
       doc.add(newTextField("numbers", num, Field.Store.NO));
       writer.addDocument(doc);
     }
@@ -105,10 +108,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
 
       // sanity check that our suggester isn't completely broken
-      assertThat(sw.length, org.hamcrest.Matchers.greaterThan(0));
+      MatcherAssert.assertThat(sw.length, greaterThan(0));
 
-      // if maxEvaluations is respected, we can't possibly have more suggestions then that.
-      assertThat(sw.length, org.hamcrest.Matchers.lessThan(maxEvals));
+      // if maxEvaluations is respected, we can't possibly have more suggestions than that
+      MatcherAssert.assertThat(sw.length, lessThan(maxEvals));
     }
   }
 
@@ -130,30 +133,16 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
       wbsp.setMinSuggestionFrequency(1);
       CombineSuggestion[] cs =
           wbsp.suggestWordCombinations(terms, 10, ir, SuggestMode.SUGGEST_ALWAYS);
-      Assert.assertTrue(cs.length == 5);
+      assertEquals(5, cs.length);
 
-      Assert.assertTrue(cs[0].originalTermIndexes.length == 2);
-      Assert.assertTrue(cs[0].originalTermIndexes[0] == 1);
-      Assert.assertTrue(cs[0].originalTermIndexes[1] == 2);
-      Assert.assertTrue(cs[0].suggestion.string.equals("hundred"));
-      Assert.assertTrue(cs[0].suggestion.score == 1);
-
-      Assert.assertTrue(cs[1].originalTermIndexes.length == 2);
-      Assert.assertTrue(cs[1].originalTermIndexes[0] == 3);
-      Assert.assertTrue(cs[1].originalTermIndexes[1] == 4);
-      Assert.assertTrue(cs[1].suggestion.string.equals("eighty"));
-      Assert.assertTrue(cs[1].suggestion.score == 1);
-
-      Assert.assertTrue(cs[2].originalTermIndexes.length == 2);
-      Assert.assertTrue(cs[2].originalTermIndexes[0] == 4);
-      Assert.assertTrue(cs[2].originalTermIndexes[1] == 5);
-      Assert.assertTrue(cs[2].suggestion.string.equals("yeight"));
-      Assert.assertTrue(cs[2].suggestion.score == 1);
+      assertSuggestionEquals(cs[0], "hundred", 1.0f, 1, 2);
+      assertSuggestionEquals(cs[1], "eighty", 1.0f, 3, 4);
+      assertSuggestionEquals(cs[2], "yeight", 1.0f, 4, 5);
 
       for (int i = 3; i < 5; i++) {
-        Assert.assertTrue(cs[i].originalTermIndexes.length == 3);
-        Assert.assertTrue(cs[i].suggestion.score == 2);
-        Assert.assertTrue(
+        assertEquals(3, cs[i].originalTermIndexes.length);
+        assertEquals(2, cs[i].suggestion.score, 0);
+        assertTrue(
             (cs[i].originalTermIndexes[0] == 1
                     && cs[i].originalTermIndexes[1] == 2
                     && cs[i].originalTermIndexes[2] == 3
@@ -165,20 +154,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
       }
 
       cs = wbsp.suggestWordCombinations(terms, 5, ir, SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
-      Assert.assertTrue(cs.length == 2);
-      Assert.assertTrue(cs[0].originalTermIndexes.length == 2);
-      Assert.assertTrue(cs[0].suggestion.score == 1);
-      Assert.assertTrue(cs[0].originalTermIndexes[0] == 1);
-      Assert.assertTrue(cs[0].originalTermIndexes[1] == 2);
-      Assert.assertTrue(cs[0].suggestion.string.equals("hundred"));
-      Assert.assertTrue(cs[0].suggestion.score == 1);
+      assertEquals(2, cs.length);
 
-      Assert.assertTrue(cs[1].originalTermIndexes.length == 3);
-      Assert.assertTrue(cs[1].suggestion.score == 2);
-      Assert.assertTrue(cs[1].originalTermIndexes[0] == 1);
-      Assert.assertTrue(cs[1].originalTermIndexes[1] == 2);
-      Assert.assertTrue(cs[1].originalTermIndexes[2] == 3);
-      Assert.assertTrue(cs[1].suggestion.string.equals("hundredeight"));
+      assertSuggestionEquals(cs[0], "hundred", 1.0f, 1, 2);
+      assertSuggestionEquals(cs[1], "hundredeight", 2.0f, 1, 2, 3);
     }
     ir.close();
   }
@@ -199,12 +178,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 1);
-      Assert.assertTrue(sw[0].length == 2);
-      Assert.assertTrue(sw[0][0].string.equals("ninety"));
-      Assert.assertTrue(sw[0][1].string.equals("nine"));
-      Assert.assertTrue(sw[0][0].score == 1);
-      Assert.assertTrue(sw[0][1].score == 1);
+      assertEquals(1, sw.length);
+      assertEquals(2, sw[0].length);
+      assertSuggestionEquals(sw[0][0], "ninety", 1.0f);
+      assertSuggestionEquals(sw[0][1], "nine", 1.0f);
     }
     {
       Term term = new Term("numbers", "onethousand");
@@ -218,12 +195,10 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 1);
-      Assert.assertTrue(sw[0].length == 2);
-      Assert.assertTrue(sw[0][0].string.equals("one"));
-      Assert.assertTrue(sw[0][1].string.equals("thousand"));
-      Assert.assertTrue(sw[0][0].score == 1);
-      Assert.assertTrue(sw[0][1].score == 1);
+      assertEquals(1, sw.length);
+      assertEquals(2, sw[0].length);
+      assertSuggestionEquals(sw[0][0], "one", 1.0f);
+      assertSuggestionEquals(sw[0][1], "thousand", 1.0f);
 
       wbsp.setMaxChanges(2);
       wbsp.setMinSuggestionFrequency(1);
@@ -234,8 +209,8 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 1);
-      Assert.assertTrue(sw[0].length == 2);
+      assertEquals(1, sw.length);
+      assertEquals(2, sw[0].length);
 
       wbsp.setMaxChanges(2);
       wbsp.setMinSuggestionFrequency(2);
@@ -246,8 +221,8 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 1);
-      Assert.assertTrue(sw[0].length == 2);
+      assertEquals(1, sw.length);
+      assertEquals(2, sw[0].length);
 
       wbsp.setMaxChanges(2);
       wbsp.setMinSuggestionFrequency(1);
@@ -258,24 +233,20 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 2);
-      Assert.assertTrue(sw[0].length == 2);
-      Assert.assertTrue(sw[0][0].string.equals("one"));
-      Assert.assertTrue(sw[0][1].string.equals("thousand"));
-      Assert.assertTrue(sw[0][0].score == 1);
-      Assert.assertTrue(sw[0][1].score == 1);
-      Assert.assertTrue(sw[0][1].freq > 1);
-      Assert.assertTrue(sw[0][0].freq > sw[0][1].freq);
-      Assert.assertTrue(sw[1].length == 3);
-      Assert.assertTrue(sw[1][0].string.equals("one"));
-      Assert.assertTrue(sw[1][1].string.equals("thou"));
-      Assert.assertTrue(sw[1][2].string.equals("sand"));
-      Assert.assertTrue(sw[1][0].score == 2);
-      Assert.assertTrue(sw[1][1].score == 2);
-      Assert.assertTrue(sw[1][2].score == 2);
-      Assert.assertTrue(sw[1][0].freq > 1);
-      Assert.assertTrue(sw[1][1].freq == 1);
-      Assert.assertTrue(sw[1][2].freq == 1);
+      assertEquals(2, sw.length);
+      assertEquals(2, sw[0].length);
+      assertSuggestionEquals(sw[0][0], "one", 1.0f);
+      assertSuggestionEquals(sw[0][1], "thousand", 1.0f);
+      MatcherAssert.assertThat(sw[0][1].freq, greaterThan(1));
+      MatcherAssert.assertThat(sw[0][0].freq, greaterThan(sw[0][1].freq));
+
+      assertEquals(3, sw[1].length);
+      assertSuggestionEquals(sw[1][0], "one", 2.0f);
+      assertSuggestionEquals(sw[1][1], "thou", 2.0f);
+      assertSuggestionEquals(sw[1][2], "sand", 2.0f);
+      MatcherAssert.assertThat(sw[1][0].freq, greaterThan(1));
+      assertEquals(1, sw[1][1].freq);
+      assertEquals(1, sw[1][2].freq);
     }
     {
       Term term = new Term("numbers", "onethousandonehundredeleven");
@@ -289,7 +260,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 0);
+      assertEquals(0, sw.length);
 
       wbsp.setMaxChanges(4);
       sw =
@@ -299,8 +270,8 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 1);
-      Assert.assertTrue(sw[0].length == 5);
+      assertEquals(1, sw.length);
+      assertEquals(5, sw[0].length);
 
       wbsp.setMaxChanges(5);
       sw =
@@ -310,12 +281,12 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 2);
-      Assert.assertTrue(sw[0].length == 5);
-      Assert.assertTrue(sw[0][1].string.equals("thousand"));
-      Assert.assertTrue(sw[1].length == 6);
-      Assert.assertTrue(sw[1][1].string.equals("thou"));
-      Assert.assertTrue(sw[1][2].string.equals("sand"));
+      assertEquals(2, sw.length);
+      assertEquals(5, sw[0].length);
+      assertEquals("thousand", sw[0][1].string);
+      assertEquals(6, sw[1].length);
+      assertEquals("thou", sw[1][1].string);
+      assertEquals("sand", sw[1][2].string);
     }
     {
       // make sure we can handle 2-char codepoints
@@ -330,7 +301,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
-      Assert.assertTrue(sw.length == 0);
+      assertEquals(0, sw.length);
     }
 
     ir.close();
@@ -338,7 +309,6 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
   public void testRandom() throws Exception {
     int numDocs = TestUtil.nextInt(random(), (10 * RANDOM_MULTIPLIER), (100 * RANDOM_MULTIPLIER));
-    IndexReader ir = null;
 
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
@@ -349,14 +319,15 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       String orig = "";
       if (random().nextBoolean()) {
-        while (!goodTestString(orig)) {
+        while (badTestString(orig)) {
           orig = TestUtil.randomSimpleString(random(), maxLength);
         }
       } else {
-        while (!goodTestString(orig)) {
+        while (badTestString(orig)) {
           orig = TestUtil.randomUnicodeString(random(), maxLength);
         }
       }
+
       originals.add(orig);
       int totalLength = orig.codePointCount(0, orig.length());
       int breakAt = orig.offsetByCodePoints(0, TestUtil.nextInt(random(), 1, totalLength - 1));
@@ -372,7 +343,7 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
     writer.commit();
     writer.close();
 
-    ir = DirectoryReader.open(dir);
+    IndexReader ir = DirectoryReader.open(dir);
     WordBreakSpellChecker wbsp = new WordBreakSpellChecker();
     wbsp.setMaxChanges(1);
     wbsp.setMinBreakWordLength(1);
@@ -394,12 +365,12 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
                 BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
         boolean failed = true;
         for (SuggestWord[] sw1 : sw) {
-          Assert.assertTrue(sw1.length == 2);
+          assertEquals(2, sw1.length);
           if (sw1[0].string.equals(left) && sw1[1].string.equals(right)) {
             failed = false;
           }
         }
-        Assert.assertFalse(
+        assertFalse(
             "Failed getting break suggestions\n >Original: "
                 + orig
                 + "\n >Left: "
@@ -414,12 +385,12 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
             wbsp.suggestWordCombinations(terms, originals.size(), ir, SuggestMode.SUGGEST_ALWAYS);
         boolean failed = true;
         for (CombineSuggestion cs1 : cs) {
-          Assert.assertTrue(cs1.originalTermIndexes.length == 2);
+          assertEquals(2, cs1.originalTermIndexes.length);
           if (cs1.suggestion.string.equals(left + right)) {
             failed = false;
           }
         }
-        Assert.assertFalse(
+        assertFalse(
             "Failed getting combine suggestions\n >Original: "
                 + orig
                 + "\n >Left: "
@@ -432,12 +403,21 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
     IOUtils.close(ir, dir, analyzer);
   }
 
+  private static void assertSuggestionEquals(
+      CombineSuggestion cs, String word, float score, int... termIndexes) {
+    assertEquals(word, cs.suggestion.string);
+    assertEquals(score, cs.suggestion.score, 0);
+    assertArrayEquals(termIndexes, cs.originalTermIndexes);
+  }
+
+  private static void assertSuggestionEquals(SuggestWord sw, String word, float score) {
+    assertEquals(word, sw.string);
+    assertEquals(score, sw.score, 0);
+  }
+
   private static final Pattern mockTokenizerWhitespacePattern = Pattern.compile("[ \\t\\r\\n]");
 
-  private boolean goodTestString(String s) {
-    if (s.codePointCount(0, s.length()) < 2 || mockTokenizerWhitespacePattern.matcher(s).find()) {
-      return false;
-    }
-    return true;
+  private boolean badTestString(String s) {
+    return s.codePointCount(0, s.length()) < 2 || mockTokenizerWhitespacePattern.matcher(s).find();
   }
 }

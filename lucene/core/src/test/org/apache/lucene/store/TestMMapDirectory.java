@@ -18,11 +18,9 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
-import org.junit.BeforeClass;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -36,30 +34,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     return m;
   }
 
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
-  }
-
-  private static boolean isMemorySegmentImpl() {
-    return Objects.equals(
-        "MemorySegmentIndexInputProvider", MMapDirectory.PROVIDER.getClass().getSimpleName());
-  }
-
-  public void testCorrectImplementation() {
-    final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion >= 19 && runtimeVersion <= 21) {
-      assertTrue(
-          "on Java 19, 20, and 21 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
-          isMemorySegmentImpl());
-    } else {
-      assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
-    }
-  }
-
   public void testAceWithThreads() throws Exception {
-    assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
-
     final int nInts = 8 * 1024 * 1024;
 
     try (Directory dir = getDirectory(createTempDir("testAceWithThreads"))) {
