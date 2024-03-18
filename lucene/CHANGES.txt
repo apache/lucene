@@ -16,6 +16,9 @@ New Features
 * GITHUB#13125: Recursive graph bisection is now supported on indexes that have blocks, as long as
   they configure a parent field via `IndexWriterConfig#setParentField`. (Adrien Grand)
 
+* GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
+  and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
+
 Improvements
 ---------------------
 
@@ -82,7 +85,6 @@ API Changes
 
 New Features
 ---------------------
-
 * GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
