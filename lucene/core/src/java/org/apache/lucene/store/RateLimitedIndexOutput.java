@@ -17,6 +17,8 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A {@link RateLimiter rate limiting} {@link IndexOutput}
@@ -28,30 +30,30 @@ public final class RateLimitedIndexOutput extends FilterIndexOutput {
   private final RateLimiter rateLimiter;
 
   /** How many bytes we've written since we last called rateLimiter.pause. */
-  private long bytesSinceLastPause;
+  private AtomicLong bytesSinceLastPause;
 
   /**
    * Cached here not not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
    * read.
    */
-  private long currentMinPauseCheckBytes;
+  private AtomicLong currentMinPauseCheckBytes;
 
   public RateLimitedIndexOutput(final RateLimiter rateLimiter, final IndexOutput out) {
     super("RateLimitedIndexOutput(" + out + ")", out.getName(), out);
     this.rateLimiter = rateLimiter;
-    this.currentMinPauseCheckBytes = rateLimiter.getMinPauseCheckBytes();
+    this.currentMinPauseCheckBytes = new AtomicLong(rateLimiter.getMinPauseCheckBytes());
   }
 
   @Override
   public void writeByte(byte b) throws IOException {
-    bytesSinceLastPause++;
+    bytesSinceLastPause.incrementAndGet();
     checkRate();
     out.writeByte(b);
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    bytesSinceLastPause += length;
+    bytesSinceLastPause.addAndGet(length);
     checkRate();
     // The bytes array slice is written without pauses.
     // This can cause instant write rate to breach rate limit if there have
@@ -62,30 +64,40 @@ public final class RateLimitedIndexOutput extends FilterIndexOutput {
 
   @Override
   public void writeInt(int i) throws IOException {
-    bytesSinceLastPause += Integer.BYTES;
+    bytesSinceLastPause.addAndGet(Integer.BYTES);
     checkRate();
     out.writeInt(i);
   }
 
   @Override
   public void writeShort(short i) throws IOException {
-    bytesSinceLastPause += Short.BYTES;
+    bytesSinceLastPause.addAndGet(Short.BYTES);
     checkRate();
     out.writeShort(i);
   }
 
   @Override
   public void writeLong(long i) throws IOException {
-    bytesSinceLastPause += Long.BYTES;
+    bytesSinceLastPause.addAndGet(Long.BYTES);
     checkRate();
     out.writeLong(i);
   }
 
   private void checkRate() throws IOException {
-    if (bytesSinceLastPause > currentMinPauseCheckBytes) {
-      rateLimiter.pause(bytesSinceLastPause);
-      bytesSinceLastPause = 0;
-      currentMinPauseCheckBytes = rateLimiter.getMinPauseCheckBytes();
+    AtomicLong localBytesSinceLastPause = new AtomicLong(0);
+    AtomicBoolean shouldPause = new AtomicBoolean(false);
+    bytesSinceLastPause.updateAndGet(
+        bytes -> {
+          if (bytes > currentMinPauseCheckBytes.get()) {
+            shouldPause.set(true);
+            currentMinPauseCheckBytes.set(rateLimiter.getMinPauseCheckBytes());
+            localBytesSinceLastPause.set(bytes);
+            return 0;
+          }
+          return bytes;
+        });
+    if (shouldPause.get()) {
+      rateLimiter.pause(localBytesSinceLastPause.get());
     }
   }
 }
