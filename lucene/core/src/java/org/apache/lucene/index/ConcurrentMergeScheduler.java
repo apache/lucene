@@ -295,14 +295,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // somewhere that is failing to pass down the right IOContext:
         assert context.context == IOContext.Context.MERGE : "got context=" + context.context;
 
-        // Because rateLimiter is bound to a particular merge thread, this method should
-        // always be called from that context. Verify this.
-        /*        assert mergeThread == Thread.currentThread()
-        : "Not the same merge thread, current="
-            + Thread.currentThread()
-            + ", expected="
-            + mergeThread;*/
-
         return new RateLimitedIndexOutput(rateLimiter, in.createOutput(name, context));
       }
     };
