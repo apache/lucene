@@ -190,12 +190,13 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (vectorScorer == null) {
       return NO_RESULTS;
     }
+    DocIdSetIterator vectorIterator = vectorScorer.iterator();
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      boolean advanced = vectorScorer.advanceExact(doc);
-      assert advanced;
+      vectorIterator.advance(doc);
+      assert vectorIterator.docID() == doc;
 
       float score = vectorScorer.score();
       if (score > topDoc.score) {

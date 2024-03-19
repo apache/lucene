@@ -35,6 +35,8 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -44,6 +46,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -151,7 +154,15 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    return rawVectorsReader.getFloatVectorValues(field);
+    final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    final QuantizedByteVectorValues quantizedVectorValues = getQuantizedVectorValues(field);
+    if (quantizedVectorValues == null) {
+      return rawVectorValues;
+    }
+    VectorSimilarityFunction similarityFunction = fields.get(field).similarityFunction;
+    ScalarQuantizer scalarQuantizer = fields.get(field).scalarQuantizer;
+    return new QuantizedVectorValues(
+        rawVectorValues, quantizedVectorValues, scalarQuantizer, similarityFunction);
   }
 
   @Override
@@ -303,6 +314,83 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE + RamUsageEstimator.sizeOf(ordToDoc);
+    }
+  }
+
+  private static final class QuantizedVectorValues extends FloatVectorValues {
+    private final FloatVectorValues rawVectorValues;
+    private final QuantizedByteVectorValues quantizedVectorValues;
+    private final ScalarQuantizer scalarQuantizer;
+    private final VectorSimilarityFunction similarityFunction;
+    private final ScalarQuantizedVectorSimilarity similarity;
+
+    QuantizedVectorValues(
+        FloatVectorValues rawVectorValues,
+        QuantizedByteVectorValues quantizedVectorValues,
+        ScalarQuantizer scalarQuantizer,
+        VectorSimilarityFunction similarityFunction) {
+      this.rawVectorValues = rawVectorValues;
+      this.quantizedVectorValues = quantizedVectorValues;
+      this.scalarQuantizer = scalarQuantizer;
+      this.similarityFunction = similarityFunction;
+      this.similarity =
+          ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
+              similarityFunction, scalarQuantizer.getConstantMultiplier());
+    }
+
+    @Override
+    public int dimension() {
+      return rawVectorValues.dimension();
+    }
+
+    @Override
+    public int size() {
+      return rawVectorValues.size();
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return rawVectorValues.vectorValue();
+    }
+
+    @Override
+    public int docID() {
+      return rawVectorValues.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      rawVectorValues.nextDoc();
+      quantizedVectorValues.nextDoc();
+      return 0;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      rawVectorValues.advance(target);
+      quantizedVectorValues.advance(target);
+      return 0;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) {
+      final byte[] quantizedQuery = new byte[rawVectorValues.dimension()];
+      final float queryCorrection =
+          ScalarQuantizedRandomVectorScorer.quantizeQuery(
+              query, quantizedQuery, similarityFunction, scalarQuantizer);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          byte[] quantizedVector = quantizedVectorValues.vectorValue();
+          float correction = quantizedVectorValues.getScoreCorrectionConstant();
+          return similarity.score(quantizedQuery, queryCorrection, quantizedVector, correction);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return QuantizedVectorValues.this;
+        }
+      };
     }
   }
 }
