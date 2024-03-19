@@ -190,7 +190,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (vectorScorer == null) {
       return NO_RESULTS;
     }
-    HitQueue queue = new HitQueue(k, true);
+    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
+    HitQueue queue = new HitQueue(queueSize, true);
     ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {

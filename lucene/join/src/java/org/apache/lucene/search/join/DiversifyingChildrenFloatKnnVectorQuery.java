@@ -98,7 +98,8 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
             parentBitSet,
             query,
             fi.getVectorSimilarityFunction());
-    HitQueue queue = new HitQueue(k, true);
+    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
+    HitQueue queue = new HitQueue(queueSize, true);
     ScoreDoc topDoc = queue.top();
     while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
       float score = vectorScorer.score();
