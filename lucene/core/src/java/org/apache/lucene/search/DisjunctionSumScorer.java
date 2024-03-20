@@ -52,7 +52,7 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
     int min = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer scorer : scorers) {
       if (scorer.docID() <= target) {
-        min = Math.max(min, scorer.advanceShallow(target));
+        min = Math.min(min, scorer.advanceShallow(target));
       }
     }
     return min;
