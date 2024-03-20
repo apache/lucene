@@ -33,6 +33,8 @@ Improvements
 
 * GITHUB#13156: Hunspell: don't proceed with other suggestions if we found good REP ones (Peter Gromov)
 
+* GITHUB#13066: Support getMaxScore of DisjunctionSumScorer for non top level scoring clause (Shintaro Murakami)
+
 Optimizations
 ---------------------
 
