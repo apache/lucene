@@ -194,6 +194,9 @@ New Features
 * GITHUB#13125: Recursive graph bisection is now supported on indexes that have blocks, as long as
   they configure a parent field via `IndexWriterConfig#setParentField`. (Adrien Grand)
 
+* GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
+  and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
+
 Improvements
 ---------------------
 
@@ -207,6 +210,8 @@ Improvements
 * GITHUB#13155: Hunspell: allow ignoring exceptions on duplicate ICONV/OCONV mappings (Peter Gromov)
 
 * GITHUB#13156: Hunspell: don't proceed with other suggestions if we found good REP ones (Peter Gromov)
+
+* GITHUB#13066: Support getMaxScore of DisjunctionSumScorer for non top level scoring clause (Shintaro Murakami)
 
 * GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
   implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
@@ -223,6 +228,7 @@ Optimizations
 
 * GITHUB#13121: Speedup multi-segment HNSW graph search for diversifying child kNN queries. Builds on GITHUB#12962.
   (Ben Trent)
+* GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
 
 Bug Fixes
 ---------------------
@@ -262,7 +268,6 @@ API Changes
 
 New Features
 ---------------------
-
 * GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
