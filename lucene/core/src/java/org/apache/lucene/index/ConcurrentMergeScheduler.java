@@ -284,6 +284,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     // Return a wrapped Directory which has rate-limited output.
+    // Note: the rate limiter is only per thread. So, if there are multiple merge threads running
+    // and throttling is required, each thread will be throttled independently.
+    // The implication of this, is that the total IO rate could be higher than the target rate.
     RateLimiter rateLimiter = ((MergeThread) mergeThread).rateLimiter;
     return new FilterDirectory(in) {
       @Override
@@ -453,7 +456,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
+    super.close();
     try {
       sync();
     } finally {

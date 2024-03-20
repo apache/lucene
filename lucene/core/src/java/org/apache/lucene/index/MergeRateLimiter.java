@@ -122,6 +122,12 @@ public class MergeRateLimiter extends RateLimiter {
     final double secondsToPause = (bytes / 1024. / 1024.) / rate;
 
     AtomicLong curPauseNSSetter = new AtomicLong();
+    // While we use updateAndGet to avoid a race condition between multiple threads, this doesn't
+    // mean
+    // that multiple threads will end up getting paused at the same time.
+    // We only pause the calling thread. This means if the upstream caller (e.g.
+    // ConcurrentMergeScheduler)
+    // is using multiple intra-threads, they will all be paused independently.
     lastNS.updateAndGet(
         last -> {
           long curNS = System.nanoTime();
