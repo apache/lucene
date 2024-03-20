@@ -35,7 +35,7 @@ public interface ScalarQuantizedVectorSimilarity {
    * @param constMultiplier constant multiplier used for quantization
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
-  static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
+  public static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
       VectorSimilarityFunction sim, float constMultiplier) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);

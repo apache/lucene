@@ -355,7 +355,7 @@ public class ScalarQuantizer {
         if (idx == SCRATCH_SIZE) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
           count++;
-          index = 0;
+          idx = 0;
         }
       }
     }

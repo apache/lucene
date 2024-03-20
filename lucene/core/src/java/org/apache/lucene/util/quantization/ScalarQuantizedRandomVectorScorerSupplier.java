@@ -41,7 +41,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
     this.values = values;
   }
 
-  private ScalarQuantizedRandomVectorScorerSupplier(
+  public ScalarQuantizedRandomVectorScorerSupplier(
       ScalarQuantizedVectorSimilarity similarity, RandomAccessQuantizedByteVectorValues values) {
     this.similarity = similarity;
     this.values = values;

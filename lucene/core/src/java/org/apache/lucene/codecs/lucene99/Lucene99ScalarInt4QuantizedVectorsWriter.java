@@ -52,6 +52,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -144,7 +145,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
               .mergeQuantizedByteVectorValues(fieldInfo, mergeState, mergedQuantizationState);
       long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
       DocsWithFieldSet docsWithField =
-          writeQuantizedVectorData(quantizedVectorData, byteVectorValues);
+          writeQuantizedVectorData(quantizedVectorData, byteVectorValues, true);
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
       writeMeta(
           fieldInfo,
@@ -270,11 +271,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
 
       float offsetCorrection =
           scalarQuantizer.quantize(v, quantized, fieldData.fieldInfo.getVectorSimilarityFunction());
-      for (int i = 0; i < vector.length; i++) {
-        byte q1 = quantized[i];
-        byte q2 = quantized[i + vector.length];
-        vector[i] = (byte) ((q1 << 4) | q2);
-      }
+      OffHeapQuantizedHalfByteVectorValues.compressBytes(quantized, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -335,11 +332,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
       }
       float offsetCorrection =
           scalarQuantizer.quantize(v, quantized, fieldData.fieldInfo.getVectorSimilarityFunction());
-      for (int i = 0; i < vector.length; i++) {
-        byte q1 = quantized[i];
-        byte q2 = quantized[i + vector.length];
-        vector[i] = (byte) ((q1 << 4) | q2);
-      }
+      OffHeapQuantizedHalfByteVectorValues.compressBytes(quantized, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -380,14 +373,18 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
           Lucene99ScalarQuantizedVectorsWriter.MergedQuantizedVectorValues
               .mergeQuantizedByteVectorValues(fieldInfo, mergeState, mergedQuantizationState);
       DocsWithFieldSet docsWithField =
-          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
+          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues, false);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
           segmentWriteState.directory.openInput(
               tempQuantizedVectorData.getName(), segmentWriteState.context);
-      quantizedVectorData.copyBytes(
-          quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
+      copyBytesToCompressed(
+          quantizedVectorData,
+          quantizationDataInput,
+          fieldInfo.getVectorDimension(),
+          docsWithField.cardinality(),
+          quantizationDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(quantizationDataInput);
       writeMeta(
@@ -408,8 +405,7 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
           },
           docsWithField.cardinality(),
           new ScalarQuantizedRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(),
-              mergedQuantizationState,
+              new Int4DotProduct(mergedQuantizationState.getConstantMultiplier()),
               new OffHeapQuantizedHalfByteVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
@@ -445,9 +441,10 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeQuantizedVectorData(
-      IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues) throws IOException {
+      IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues, boolean compress)
+      throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    byte[] vector = new byte[(quantizedByteVectorValues.dimension() + 1) >> 1];
+    byte[] vector = compress ? new byte[(quantizedByteVectorValues.dimension() + 1) >> 1] : null;
     for (int docV = quantizedByteVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = quantizedByteVectorValues.nextDoc()) {
@@ -455,12 +452,32 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
       byte[] binaryValue = quantizedByteVectorValues.vectorValue();
       assert binaryValue.length == quantizedByteVectorValues.dimension()
           : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
-      OffHeapQuantizedHalfByteVectorValues.compressBytes(binaryValue, vector);
-      output.writeBytes(vector, vector.length);
+      if (compress) {
+        OffHeapQuantizedHalfByteVectorValues.compressBytes(binaryValue, vector);
+        output.writeBytes(vector, vector.length);
+      } else {
+        output.writeBytes(binaryValue, binaryValue.length);
+      }
       output.writeInt(Float.floatToIntBits(quantizedByteVectorValues.getScoreCorrectionConstant()));
       docsWithField.add(docV);
     }
     return docsWithField;
+  }
+
+  private static void copyBytesToCompressed(
+      IndexOutput output, IndexInput input, int dim, int numVectors, long expectedBytes)
+      throws IOException {
+    byte[] quantized = new byte[(dim + 1) >> 1];
+    byte[] vector = new byte[dim];
+    long readBytes = 0;
+    for (int i = 0; i < numVectors; i++) {
+      input.readBytes(vector, 0, dim);
+      OffHeapQuantizedHalfByteVectorValues.compressBytes(vector, quantized);
+      output.writeBytes(quantized, quantized.length);
+      output.copyBytes(input, Float.BYTES);
+      readBytes += dim + Float.BYTES;
+    }
+    assert readBytes == expectedBytes;
   }
 
   @Override
@@ -542,6 +559,22 @@ public final class Lucene99ScalarInt4QuantizedVectorsWriter extends FlatVectorsW
     @Override
     public float[] copyValue(float[] vectorValue) {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  static class Int4DotProduct implements ScalarQuantizedVectorSimilarity {
+    private final float constMultiplier;
+
+    public Int4DotProduct(float constMultiplier) {
+      this.constMultiplier = constMultiplier;
+    }
+
+    @Override
+    public float score(
+        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
+      int dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
+      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
+      return (1 + adjustedDistance) / 2;
     }
   }
 }

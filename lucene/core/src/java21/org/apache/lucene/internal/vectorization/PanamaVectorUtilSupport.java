@@ -390,6 +390,35 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length > 1024 || a.length % 32 != 0 || a.length < 64) {
+      return dotProduct(a, b);
+    }
+
+    ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_128);
+    ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
+    for (int i = 0; i < a.length; i += ByteVector.SPECIES_128.length()) {
+      // load 8 bytes
+      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
+      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector prod8 = va8.mul(vb8);
+      ShortVector prod16 = (ShortVector) prod8.convertShape(B2S, ShortVector.SPECIES_128, 0);
+      acc0 = acc0.add(prod16.and((short) 0xFF));
+
+      va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + 8);
+      vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + 8);
+      prod8 = va8.mul(vb8);
+      prod16 = (ShortVector) prod8.convertShape(B2S, ShortVector.SPECIES_128, 0);
+      acc1 = acc1.add(prod16.and((short) 0xFF));
+    }
+    IntVector intAcc0 = (IntVector) acc0.convertShape(S2I, IntVector.SPECIES_128, 0);
+    IntVector intAcc1 = (IntVector) acc0.convertShape(S2I, IntVector.SPECIES_128, 1);
+    IntVector intAcc2 = (IntVector) acc1.convertShape(S2I, IntVector.SPECIES_128, 0);
+    IntVector intAcc3 = (IntVector) acc1.convertShape(S2I, IntVector.SPECIES_128, 1);
+    return intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+  }
+
+  @Override
   public float cosine(byte[] a, byte[] b) {
     int i = 0;
     int sum = 0;
