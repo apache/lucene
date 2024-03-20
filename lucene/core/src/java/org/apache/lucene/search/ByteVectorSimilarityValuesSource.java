@@ -39,6 +39,10 @@ class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
   @Override
   public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
     final ByteVectorValues vectorValues = ctx.reader().getByteVectorValues(fieldName);
+    if (vectorValues == null) {
+      ByteVectorValues.checkField(ctx.reader(), fieldName);
+      return DoubleValues.EMPTY;
+    }
     VectorSimilarityFunction function =
         ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
     return new DoubleValues() {

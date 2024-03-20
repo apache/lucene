@@ -44,8 +44,6 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
   private static long LIMIT = 3L * 1024 * 1024 * 1024;
 
   public void test() throws Exception {
-    assumeWorkingMMapOnWindows();
-
     int[] ints = new int[7];
     IntsRef input = new IntsRef(ints, 0, ints.length);
     long seed = random().nextLong();

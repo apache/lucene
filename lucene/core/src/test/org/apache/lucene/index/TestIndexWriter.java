@@ -1234,7 +1234,6 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testDeleteUnusedFiles() throws Exception {
     assumeFalse("test relies on exact filenames", Codec.getDefault() instanceof SimpleTextCodec);
-    assumeWorkingMMapOnWindows();
 
     for (int iter = 0; iter < 2; iter++) {
       // relies on Windows semantics

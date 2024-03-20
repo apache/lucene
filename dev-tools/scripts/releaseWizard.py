@@ -66,7 +66,7 @@ from consolemenu.items import FunctionItem, SubmenuItem, ExitItem
 from scriptutil import BranchType, Version, download, run
 
 # Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 17}
+java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21}
 editor = None
 
 # Edit this to add other global jinja2 variables or filters

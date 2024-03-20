@@ -119,6 +119,18 @@ allprojects {
 // Resolve test option values after all evaluation is complete.
 allprojects {
   plugins.withType(JavaPlugin) {
+    configurations {
+      secManagerExclusions
+    }
+    dependencies {
+      secManagerExclusions ( "com.carrotsearch.randomizedtesting:randomizedtesting-runner", {
+          exclude group: "junit"
+      })
+      secManagerExclusions ( "junit:junit", {
+        exclude group: "org.hamcrest"
+      })
+    }
+
     afterEvaluate {
       ext.testOptionsResolved = testOptions.findAll { opt ->
         propertyOrDefault(opt.propName, opt.value) != null
@@ -155,7 +167,7 @@ allprojects {
       }
 
       // Append resolved test properties to the test task.
-      tasks.withType(Test) { task ->
+      tasks.withType(Test) { Test task ->
         // TODO: we could remove some options that are only relevant to the build environment
         // and not the test JVM itself.
         systemProperties testOptionsResolved
@@ -172,13 +184,13 @@ allprojects {
 
         // Enable security manager, if requested. We could move the selection of security manager and security policy
         // to each project's build/ configuration but it seems compact enough to keep it here for now.
-        def securityArgumentProvider = new SecurityArgumentProvider(commonDir: project(":lucene").layout.projectDirectory)
+        def securityArgumentProvider = new SecurityArgumentProvider()
+        securityArgumentProvider.commonDir = project(":lucene").layout.projectDirectory
+        securityArgumentProvider.otherProperties = project.objects.mapProperty(String, String)
+
         if (Boolean.parseBoolean(testOptionsResolved["tests.useSecurityManager"])) {
           if (project.path.endsWith(".tests")) {
             // LUCENE-10301: for now, do not use the security manager for modular tests (test framework is not available).
-          } else if (project.path == ":lucene:replicator") {
-            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
-            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/tests.policy")
@@ -189,6 +201,14 @@ allprojects {
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
           systemProperty 'gradle.worker.jar', Paths.get("${gradleUserHome}/caches/${gradle.gradleVersion}/workerMain/gradle-worker.jar").toAbsolutePath().toString()
           systemProperty 'gradle.user.home', gradleUserHome.toPath().toAbsolutePath().toString()
+
+          securityArgumentProvider.otherProperties.put("randomizedtesting.jar", project.provider { ->
+            return configurations.secManagerExclusions.resolve().find { it.name.startsWith("randomizedtesting-runner-") }.absolutePath
+          })
+          securityArgumentProvider.otherProperties.put("junit.jar", project.provider { ->
+            return configurations.secManagerExclusions.resolve().find { it.name.startsWith("junit-") }.absolutePath
+          })
+          securityArgumentProvider.otherProperties.put("lucene.test.framework", project(":lucene:test-framework").layout.buildDirectory.get().asFile.absolutePath)
         }
 
         doFirst {
@@ -242,12 +262,20 @@ class SecurityArgumentProvider implements CommandLineArgumentProvider {
   @PathSensitive(PathSensitivity.RELATIVE)
   RegularFile javaSecurityPolicy
 
+  @Input
+  MapProperty<String, String> otherProperties
+
   @Override
   Iterable<String> asArguments() {
     def args = ["-Dcommon.dir=${commonDir.getAsFile()}"]
     if (javaSecurityPolicy) {
       args.add("-Djava.security.policy=${javaSecurityPolicy.getAsFile()}")
     }
+
+    otherProperties.getOrElse(Map.of()).forEach { key, value ->
+      args.add("-D${key}=${value}")
+    }
+
     return args
   }
 }

@@ -21,9 +21,9 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -83,13 +83,13 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return TopDocsCollector.EMPTY_TOPDOCS;
+    ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
+    if (byteVectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
     }
-    if (Math.min(knnCollector.k(), context.reader().getByteVectorValues(fi.name).size()) == 0) {
-      return TopDocsCollector.EMPTY_TOPDOCS;
+    if (Math.min(knnCollector.k(), byteVectorValues.size()) == 0) {
+      return NO_RESULTS;
     }
     context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
@@ -98,9 +98,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      return null;
-    }
     return VectorScorer.create(context, fi, target);
   }
 

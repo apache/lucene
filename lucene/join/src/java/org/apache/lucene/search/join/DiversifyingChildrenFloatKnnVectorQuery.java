@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
@@ -80,26 +79,27 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   @Override
   protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
       throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
+    FloatVectorValues floatVectorValues = context.reader().getFloatVectorValues(field);
+    if (floatVectorValues == null) {
+      FloatVectorValues.checkField(context.reader(), field);
       return NO_RESULTS;
     }
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      return null;
-    }
+
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
+
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     DiversifyingChildrenFloatVectorScorer vectorScorer =
         new DiversifyingChildrenFloatVectorScorer(
-            context.reader().getFloatVectorValues(field),
+            floatVectorValues,
             acceptIterator,
             parentBitSet,
             query,
             fi.getVectorSimilarityFunction());
-    HitQueue queue = new HitQueue(k, true);
+    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
+    HitQueue queue = new HitQueue(queueSize, true);
     ScoreDoc topDoc = queue.top();
     while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
       float score = vectorScorer.score();
@@ -126,7 +126,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter);
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher);
   }
 
   @Override

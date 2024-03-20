@@ -14,21 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.core.tests;
+package org.apache.lucene.util;
 
-import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Assert;
+import java.io.IOException;
 
-public class TestMMap extends LuceneTestCase {
-  public void testUnmapSupported() {
-    final Module module = MMapDirectory.class.getModule();
-    Assert.assertTrue("Lucene Core is not loaded as module", module.isNamed());
-    Assert.assertTrue(
-        "Lucene Core can't read 'jdk.unsupported' module",
-        module.getLayer().findModule("jdk.unsupported").map(module::canRead).orElse(false));
-
-    // check that MMapDirectory can unmap by running the autodetection logic:
-    Assert.assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
-  }
+/**
+ * A Runnable that may throw an IOException
+ *
+ * @see java.lang.Runnable
+ */
+@FunctionalInterface
+public interface IORunnable {
+  public abstract void run() throws IOException;
 }
