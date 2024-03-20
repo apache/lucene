@@ -62,7 +62,9 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
   public float getMaxScore(int upTo) throws IOException {
     double maxScore = 0;
     for (Scorer scorer : scorers) {
-      maxScore += scorer.getMaxScore(upTo);
+      if (scorer.docID() <= upTo) {
+        maxScore += scorer.getMaxScore(upTo);
+      }
     }
     return (float) MathUtil.sumUpperBound(maxScore, scorers.size());
   }
