@@ -89,14 +89,18 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
       try (IndexReader ireader = DirectoryReader.open(directory)) {
         LeafReader reader = ireader.leaves().get(0).reader();
-        TopDocs hits1 =
+        TopDocs hits =
             reader.searchNearestVectors(
                 "missing_field",
                 new float[] {1, 2, 3},
                 10,
                 reader.getLiveDocs(),
                 Integer.MAX_VALUE);
-        assertEquals(0, hits1.scoreDocs.length);
+        assertEquals(0, hits.scoreDocs.length);
+        hits =
+            reader.searchNearestVectors(
+                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
       }
     }
   }
