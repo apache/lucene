@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 @SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
 
-  private static final Logger LOG = Logger.getLogger(NativeAccess.class.getName());
+  private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());
 
   private final MethodHandle mh$posix_madvise;
 
