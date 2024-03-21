@@ -972,6 +972,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
             () -> {
               try {
                 command.run();
+              } catch (Throwable exc) {
+                if (suppressExceptions == false) {
+                  // suppressExceptions is normally only set during
+                  // testing.
+                  handleMergeException(exc);
+                }
               } finally {
                 activeCount.decrementAndGet();
                 assert activeCount.get() >= 0 : "unexpected negative active count";
