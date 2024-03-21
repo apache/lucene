@@ -23,6 +23,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.OptionalInt;
+import org.apache.lucene.store.IOContext.Context;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -77,8 +79,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       boolean preload,
       long length)
       throws IOException {
-    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
+    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE) {
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
+    }
+
+    final OptionalInt advice = mapContextToMadvise(context);
 
     final long chunkSize = 1L << chunkSizePower;
 
@@ -97,18 +102,21 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
-      // If the segment size is not 0 we can call madvise for readOnce files.
-      // The last segment may be of zero size and isn't native, so exclude that special case.
-      // Hack: Some test use very small segment sizes, so mmaped segments are not pageSize aligned,
-      // ignore those.
-      if (context.readOnce && segSize > 0L && chunkSizePower >= 13) {
-        nativeAccess.madvise(segment, NativeAccess.POSIX_MADV_SEQUENTIAL);
-      } else if (preload) {
+      if (preload) {
         segment.load();
+      } else if (segSize > 0L && advice.isPresent()) { // not when preloading!
+        nativeAccess.madvise(segment, advice.getAsInt());
       }
       segments[segNr] = segment;
       startOffset += segSize;
     }
     return segments;
+  }
+
+  private OptionalInt mapContextToMadvise(IOContext context) {
+    if (context.readOnce || context.context == Context.MERGE) {
+      return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
+    }
+    return OptionalInt.empty();
   }
 }

@@ -24,15 +24,44 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Locale;
+import java.util.OptionalLong;
+import java.util.logging.Logger;
+import org.apache.lucene.util.Constants;
 
 @SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
 
+  private static final Logger LOG = Logger.getLogger(NativeAccess.class.getName());
+
+  private final int _SC_PAGESIZE = 30; // only valid on Linux, on MacOS it is 29 !?!
+
   private final MethodHandle mh$posix_madvise;
+  private final OptionalLong pageSize;
 
   PosixNativeAccess() {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
+    if (Constants.LINUX) {
+      final MethodHandle mh$sysconf =
+          findFunction(
+              linker,
+              stdlib,
+              "sysconf",
+              FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+      final long ps;
+      try {
+        ps = (long) mh$sysconf.invokeExact(_SC_PAGESIZE);
+      } catch (Throwable th) {
+        throw new AssertionError(th);
+      }
+      if (ps <= 0) {
+        throw new UnsupportedOperationException(
+            "Can't get the page size; madvise() is not possible.");
+      }
+      this.pageSize = OptionalLong.of(ps);
+    } else {
+      this.pageSize = OptionalLong.empty();
+    }
     this.mh$posix_madvise =
         findFunction(
             linker,
@@ -43,6 +72,7 @@ final class PosixNativeAccess extends NativeAccess {
                 ValueLayout.ADDRESS,
                 ValueLayout.JAVA_LONG,
                 ValueLayout.JAVA_INT));
+    LOG.info("madvise() available on this platform");
   }
 
   private static MethodHandle findFunction(
@@ -59,11 +89,21 @@ final class PosixNativeAccess extends NativeAccess {
 
   @Override
   public void madvise(MemorySegment segment, int advise) throws IOException {
+    if (pageSize.isPresent() && segment.address() % pageSize.getAsLong() != 0) {
+      // for testing we have very small chunk sizes, so FileChannel#map does not return correctly
+      // aligned
+      // TODO: remove the warning after testing
+      LOG.warning(
+          String.format(
+              Locale.ENGLISH,
+              "Too small chunksize to have correctly aligned segments, address (address=0x%08X) is not aligned at pageSize=%d",
+              segment.address(),
+              segment.byteSize()));
+      return;
+    }
     final int ret;
     try {
       ret = (int) mh$posix_madvise.invokeExact(segment, segment.byteSize(), advise);
-    } catch (RuntimeException | Error e) {
-      throw e;
     } catch (Throwable th) {
       throw new AssertionError(th);
     }

@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
+import java.util.Locale;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -25,7 +26,7 @@ import org.apache.lucene.util.Constants;
 abstract class NativeAccess {
   private static final Logger LOG = Logger.getLogger(NativeAccess.class.getName());
 
-  // these constants were extracted form glibc and macos header files - luckily they are the same:
+  // these constants were extracted from glibc and macos header files - luckily they are the same:
 
   /** No further special treatment. */
   public static final int POSIX_MADV_NORMAL = 0;
@@ -56,8 +57,11 @@ abstract class NativeAccess {
         LOG.warning(uoe.getMessage());
       } catch (IllegalCallerException ice) {
         LOG.warning(
-            "Lucene has no access to native functions. nocommit: explain what to do: "
-                + ice.getMessage());
+            String.format(
+                Locale.ENGLISH,
+                "Lucene has no access to native functions (%s). To enable access to native functions, "
+                    + "pass the following on command line: --enable-native-access=org.apache.lucene.core",
+                ice.getMessage()));
       }
     }
     return new NoopNativeAccess();
