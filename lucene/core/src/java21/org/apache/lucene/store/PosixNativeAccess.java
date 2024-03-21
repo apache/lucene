@@ -98,7 +98,7 @@ final class PosixNativeAccess extends NativeAccess {
               Locale.ENGLISH,
               "Too small chunksize to have correctly aligned segments, address (address=0x%08X) is not aligned at pageSize=%d",
               segment.address(),
-              segment.byteSize()));
+              pageSize.getAsLong()));
       return;
     }
     final int ret;
