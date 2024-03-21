@@ -120,6 +120,9 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   private OptionalInt mapContextToMadvise(IOContext context) {
+    if (context.randomAccess) {
+      return OptionalInt.of(NativeAccess.POSIX_MADV_RANDOM);
+    }
     if (context.readOnce || context.context == Context.MERGE) {
       return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
     }
