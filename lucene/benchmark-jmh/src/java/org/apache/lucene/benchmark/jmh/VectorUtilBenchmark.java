@@ -40,9 +40,8 @@ public class VectorUtilBenchmark {
   private byte[] halfBytesB;
   private float[] floatsA;
   private float[] floatsB;
-  private int expectedDotProduct;
 
-  @Param({"1024"})
+  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
 
   @Setup(Level.Iteration)
@@ -115,11 +114,7 @@ public class VectorUtilBenchmark {
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVector() {
-    int result = VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
-    if (result != expectedDotProduct) {
-      throw new IllegalStateException("Expected " + expectedDotProduct + " but got " + result);
-    }
-    return result;
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark
