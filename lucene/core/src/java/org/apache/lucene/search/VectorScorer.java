@@ -42,12 +42,13 @@ public interface VectorScorer {
    */
   DocIdSetIterator iterator();
 
+  /** A scorer for byte vector values. */
   class ByteVectorScorer implements VectorScorer {
     private final byte[] query;
     private final ByteVectorValues values;
     private final VectorSimilarityFunction similarity;
 
-    protected ByteVectorScorer(
+    public ByteVectorScorer(
         ByteVectorValues values, byte[] query, VectorSimilarityFunction similarity) {
       this.similarity = similarity;
       this.values = values;
@@ -70,12 +71,13 @@ public interface VectorScorer {
     }
   }
 
+  /** A scorer for float vector values. */
   class FloatVectorScorer implements VectorScorer {
     private final float[] query;
     private final FloatVectorValues values;
     private final VectorSimilarityFunction similarity;
 
-    protected FloatVectorScorer(
+    public FloatVectorScorer(
         FloatVectorValues values, float[] query, VectorSimilarityFunction similarity) {
       this.similarity = similarity;
       this.query = query;

@@ -28,7 +28,9 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 
 /** Writes vectors to an index. */
@@ -160,7 +162,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           }
         }
       }
-      return new MergedFloat32VectorValues(subs, mergeState);
+      return new MergedFloat32VectorValues(
+          subs, mergeState, fieldInfo.getVectorSimilarityFunction());
     }
 
     /** Returns a merged view over all the segment's {@link ByteVectorValues}. */
@@ -181,18 +184,22 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           }
         }
       }
-      return new MergedByteVectorValues(subs, mergeState);
+      return new MergedByteVectorValues(subs, mergeState, fieldInfo.getVectorSimilarityFunction());
     }
 
     static class MergedFloat32VectorValues extends FloatVectorValues {
       private final List<VectorValuesSub> subs;
       private final DocIDMerger<VectorValuesSub> docIdMerger;
       private final int size;
+      private final VectorSimilarityFunction similarityFunction;
 
       private int docId;
       VectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<VectorValuesSub> subs, MergeState mergeState)
+      private MergedFloat32VectorValues(
+          List<VectorValuesSub> subs,
+          MergeState mergeState,
+          VectorSimilarityFunction vectorSimilarityFunction)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -202,6 +209,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
         size = totalSize;
         docId = -1;
+        this.similarityFunction = vectorSimilarityFunction;
       }
 
       @Override
@@ -239,17 +247,36 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       public int dimension() {
         return subs.get(0).values.dimension();
       }
+
+      @Override
+      public VectorScorer scorer(float[] target) {
+        return new VectorScorer() {
+          @Override
+          public float score() throws IOException {
+            return similarityFunction.compare(target, vectorValue());
+          }
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return current.values;
+          }
+        };
+      }
     }
 
     static class MergedByteVectorValues extends ByteVectorValues {
       private final List<ByteVectorValuesSub> subs;
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
       private final int size;
+      private final VectorSimilarityFunction similarityFunction;
 
       private int docId;
       ByteVectorValuesSub current;
 
-      private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
+      private MergedByteVectorValues(
+          List<ByteVectorValuesSub> subs,
+          MergeState mergeState,
+          VectorSimilarityFunction vectorSimilarityFunction)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -259,6 +286,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
         size = totalSize;
         docId = -1;
+        this.similarityFunction = vectorSimilarityFunction;
       }
 
       @Override
@@ -295,6 +323,21 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       @Override
       public int dimension() {
         return subs.get(0).values.dimension();
+      }
+
+      @Override
+      public VectorScorer scorer(byte[] target) {
+        return new VectorScorer() {
+          @Override
+          public float score() throws IOException {
+            return similarityFunction.compare(target, vectorValue());
+          }
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return current.values;
+          }
+        };
       }
     }
   }

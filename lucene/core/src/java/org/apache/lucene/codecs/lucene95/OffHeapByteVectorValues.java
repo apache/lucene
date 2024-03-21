@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -80,17 +79,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public VectorScorer scorer(byte[] query) {
-    return new VectorScorer() {
-      @Override
-      public float score() throws IOException {
-        return similarityFunction.compare(query, vectorValue());
-      }
-
-      @Override
-      public DocIdSetIterator iterator() {
-        return OffHeapByteVectorValues.this;
-      }
-    };
+    return new VectorScorer.ByteVectorScorer(this, query, similarityFunction);
   }
 
   private void readValue(int targetOrd) throws IOException {

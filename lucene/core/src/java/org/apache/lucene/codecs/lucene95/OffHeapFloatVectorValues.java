@@ -22,7 +22,6 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -79,17 +78,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   @Override
   public VectorScorer scorer(float[] query) {
-    return new VectorScorer() {
-      @Override
-      public float score() throws IOException {
-        return similarityFunction.compare(query, vectorValue());
-      }
-
-      @Override
-      public DocIdSetIterator iterator() {
-        return OffHeapFloatVectorValues.this;
-      }
-    };
+    return new VectorScorer.FloatVectorScorer(this, query, similarityFunction);
   }
 
   public static OffHeapFloatVectorValues load(

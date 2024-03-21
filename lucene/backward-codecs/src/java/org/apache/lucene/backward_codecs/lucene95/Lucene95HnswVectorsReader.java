@@ -252,6 +252,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + VectorEncoding.FLOAT32);
     }
     return OffHeapFloatVectorValues.load(
+        fieldEntry.similarityFunction,
         fieldEntry.ordToDocVectorValues,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -273,6 +274,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(
+        fieldEntry.similarityFunction,
         fieldEntry.ordToDocVectorValues,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -294,6 +296,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
     OffHeapFloatVectorValues vectorValues =
         OffHeapFloatVectorValues.load(
+            fieldEntry.similarityFunction,
             fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
@@ -322,6 +325,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
     OffHeapByteVectorValues vectorValues =
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
             fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,

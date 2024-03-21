@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
@@ -256,7 +257,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapFloatVectorValues(
-        fieldEntry.dimension, fieldEntry.size(), fieldEntry.ordToDoc, bytesSlice);
+        fieldEntry.dimension,
+        fieldEntry.size(),
+        fieldEntry.ordToDoc,
+        fieldEntry.similarityFunction,
+        bytesSlice);
   }
 
   private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
@@ -390,16 +395,23 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private final IndexInput dataIn;
     private final int byteSize;
     private final float[] value;
+    private final VectorSimilarityFunction similarityFunction;
 
     private int ord = -1;
     private int doc = -1;
 
-    OffHeapFloatVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
+    OffHeapFloatVectorValues(
+        int dimension,
+        int size,
+        int[] ordToDoc,
+        VectorSimilarityFunction similarityFunction,
+        IndexInput dataIn) {
       this.dimension = dimension;
       this.size = size;
       this.ordToDoc = ordToDoc;
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
       this.dataIn = dataIn;
+      this.similarityFunction = similarityFunction;
       byteSize = Float.BYTES * dimension;
       value = new float[dimension];
     }
@@ -459,7 +471,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public RandomAccessVectorValues<float[]> copy() {
-      return new OffHeapFloatVectorValues(dimension, size, ordToDoc, dataIn.clone());
+      return new OffHeapFloatVectorValues(
+          dimension, size, ordToDoc, similarityFunction, dataIn.clone());
     }
 
     @Override
@@ -467,6 +480,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) targetOrd * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      return new VectorScorer.FloatVectorScorer(this, target, similarityFunction);
     }
   }
 

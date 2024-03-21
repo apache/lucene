@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestScalarQuantizer extends LuceneTestCase {
@@ -209,6 +210,11 @@ public class TestScalarQuantizer extends LuceneTestCase {
     public int advance(int target) throws IOException {
       curDoc = target - 1;
       return nextDoc();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
     }
   }
 }

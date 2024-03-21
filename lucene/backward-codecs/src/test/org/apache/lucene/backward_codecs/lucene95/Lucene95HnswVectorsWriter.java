@@ -445,7 +445,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize),
+                        byteSize,
+                        fieldInfo.getVectorSimilarityFunction()),
                     fieldInfo.getVectorSimilarityFunction());
             break;
           case FLOAT32:
@@ -455,7 +456,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize),
+                        byteSize,
+                        fieldInfo.getVectorSimilarityFunction()),
                     fieldInfo.getVectorSimilarityFunction());
             break;
           default:

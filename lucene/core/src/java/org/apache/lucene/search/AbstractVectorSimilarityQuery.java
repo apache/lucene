@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -83,7 +84,10 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         VectorScorer scorer = createVectorScorer(context);
         if (scorer == null) {
           return Explanation.noMatch("Not indexed as the correct vector field");
-        } else if (scorer.advanceExact(doc)) {
+        }
+        DocIdSetIterator iterator = scorer.iterator();
+        int docId = iterator.advance(doc);
+        if (docId == doc) {
           float score = scorer.score();
           if (score >= resultSimilarity) {
             return Explanation.match(boost * score, "Score above threshold");
@@ -256,12 +260,15 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         DocIdSetIterator acceptDocs,
         float threshold) {
       float[] cachedScore = new float[1];
+      DocIdSetIterator conjunction =
+          ConjunctionDISI.createConjunction(List.of(scorer.iterator(), acceptDocs), null);
       DocIdSetIterator iterator =
-          new FilteredDocIdSetIterator(acceptDocs) {
+          new FilteredDocIdSetIterator(conjunction) {
             @Override
             protected boolean match(int doc) throws IOException {
               // Advance the scorer
-              if (!scorer.advanceExact(doc)) {
+              int docId = conjunction.advance(doc);
+              if (docId != doc) {
                 return false;
               }
 

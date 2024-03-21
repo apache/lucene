@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -97,7 +98,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         }
         assert fieldEntries.containsKey(fieldName) == false;
         fieldEntries.put(
-            fieldName, new FieldEntry(dimension, vectorDataOffset, vectorDataLength, docIds));
+            fieldName,
+            new FieldEntry(
+                dimension,
+                vectorDataOffset,
+                vectorDataLength,
+                docIds,
+                readState.fieldInfos.fieldInfo(fieldName).getVectorSimilarityFunction()));
         fieldNumber = readInt(in, FIELD_NUMBER);
       }
       SimpleTextUtil.checkFooter(in);
@@ -300,12 +307,19 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     final long vectorDataOffset;
     final long vectorDataLength;
     final int[] ordToDoc;
+    final VectorSimilarityFunction similarityFunction;
 
-    FieldEntry(int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
+    FieldEntry(
+        int dimension,
+        long vectorDataOffset,
+        long vectorDataLength,
+        int[] ordToDoc,
+        VectorSimilarityFunction vectorSimilarityFunction) {
       this.dimension = dimension;
       this.vectorDataOffset = vectorDataOffset;
       this.vectorDataLength = vectorDataLength;
       this.ordToDoc = ordToDoc;
+      this.similarityFunction = vectorSimilarityFunction;
     }
 
     int size() {
@@ -376,6 +390,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) throws IOException {
       return slowAdvance(target);
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      return new VectorScorer.FloatVectorScorer(this, target, entry.similarityFunction);
     }
 
     private void readAllVectors() throws IOException {
@@ -469,6 +488,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) throws IOException {
       return slowAdvance(target);
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      return new VectorScorer.ByteVectorScorer(this, target, entry.similarityFunction);
     }
 
     private void readAllVectors() throws IOException {

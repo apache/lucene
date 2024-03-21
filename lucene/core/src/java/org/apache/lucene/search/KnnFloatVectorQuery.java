@@ -99,7 +99,11 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    return VectorScorer.create(context, fi, target);
+    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    if (vectorValues == null) {
+      return null;
+    }
+    return vectorValues.scorer(target);
   }
 
   @Override
