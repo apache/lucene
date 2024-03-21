@@ -136,14 +136,6 @@ public abstract class MergePolicy {
      */
     public void pauseNanos(long pauseNanos, PauseReason reason, BooleanSupplier condition)
         throws InterruptedException {
-      if (Thread.currentThread() != owner) {
-        throw new RuntimeException(
-            "Only the merge owner thread can call pauseNanos(). This thread: "
-                + Thread.currentThread().getName()
-                + ", owner thread: "
-                + owner);
-      }
-
       long start = System.nanoTime();
       AtomicLong timeUpdate = pauseTimesNS.get(reason);
       pauseLock.lock();
