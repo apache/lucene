@@ -83,7 +83,13 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
     }
 
-    final OptionalInt advice = mapContextToMadvise(context);
+    final OptionalInt advice;
+    if (chunkSizePower < 21) {
+      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment):
+      advice = OptionalInt.empty();
+    } else {
+      advice = mapContextToMadvise(context);
+    }
 
     final long chunkSize = 1L << chunkSizePower;
 

@@ -21,8 +21,6 @@ import java.lang.foreign.MemorySegment;
 @SuppressWarnings("preview")
 final class NoopNativeAccess extends NativeAccess {
 
-  NoopNativeAccess() {}
-
   @Override
-  public void madvise(MemorySegment segment, int advise) {}
+  public void madvise(MemorySegment segment, int advice) {}
 }

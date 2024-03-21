@@ -44,7 +44,7 @@ abstract class NativeAccess {
   public static final int POSIX_MADV_DONTNEED = 4;
 
   /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
-  public abstract void madvise(MemorySegment segment, int advise) throws IOException;
+  public abstract void madvise(MemorySegment segment, int advice) throws IOException;
 
   /**
    * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
