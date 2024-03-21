@@ -29,6 +29,12 @@ import org.apache.lucene.util.Unwrappable;
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
+  private final NativeAccess nativeAccess;
+
+  MemorySegmentIndexInputProvider() {
+    this.nativeAccess = NativeAccess.getImplementation();
+  }
+
   @Override
   public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
       throws IOException {
@@ -45,7 +51,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(arena, resourceDescription, fc, chunkSizePower, preload, fileSize),
+              map(arena, resourceDescription, fc, context, chunkSizePower, preload, fileSize),
               fileSize,
               chunkSizePower);
       success = true;
@@ -66,6 +72,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       Arena arena,
       String resourceDescription,
       FileChannel fc,
+      IOContext context,
       int chunkSizePower,
       boolean preload,
       long length)
@@ -90,7 +97,13 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
-      if (preload) {
+      // If the segment size is not 0 we can call madvise for readOnce files.
+      // The last segment may be of zero size and isn't native, so exclude that special case.
+      // Hack: Some test use very small segment sizes, so mmaped segments are not pageSize aligned,
+      // ignore those.
+      if (context.readOnce && segSize > 0L && chunkSizePower >= 13) {
+        nativeAccess.madvise(segment, NativeAccess.POSIX_MADV_SEQUENTIAL);
+      } else if (preload) {
         segment.load();
       }
       segments[segNr] = segment;
