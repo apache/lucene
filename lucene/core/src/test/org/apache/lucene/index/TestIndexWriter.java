@@ -42,7 +42,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -111,6 +114,7 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
@@ -1100,20 +1104,32 @@ public class TestIndexWriter extends LuceneTestCase {
         new ThreadInterruptedException(new InterruptedException()).getCause()
             instanceof InterruptedException);
 
-    // issue 100 interrupts to child thread
-    final int numInterrupts = atLeast(100);
-    int i = 0;
-    while (i < numInterrupts) {
-      // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
-      Thread.sleep(10);
-      if (t.allowInterrupt) {
-        i++;
-        t.interrupt();
-      }
-      if (!t.isAlive()) {
-        break;
-      }
-    }
+    // issue at least 100 interrupts to IndexerThreadInterrupt thread
+    final CountDownLatch numInterrupts = new CountDownLatch(atLeast(100));
+    final int initialDelay = 10;
+    final int subsequentDelay = 10;
+    final Runnable interruptionThread =
+        () -> {
+          if (t.allowInterrupt) {
+            numInterrupts.countDown();
+            t.interrupt();
+          }
+          if (!t.isAlive()) {
+            while (numInterrupts.getCount() > 0) {
+              numInterrupts.countDown();
+            }
+          }
+        };
+
+    final ScheduledExecutorService scheduledInterruptionThreadService =
+        Executors.newSingleThreadScheduledExecutor(
+            new NamedThreadFactory("testThreadInterruptDeadlock"));
+    // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
+    scheduledInterruptionThreadService.scheduleWithFixedDelay(
+        interruptionThread, initialDelay, subsequentDelay, TimeUnit.MILLISECONDS);
+    numInterrupts.await();
+    scheduledInterruptionThreadService.shutdown();
+
     t.finish = true;
     t.join();
     if (t.failed) {

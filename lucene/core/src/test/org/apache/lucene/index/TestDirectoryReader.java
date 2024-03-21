@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -48,7 +52,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -1006,56 +1010,59 @@ public class TestDirectoryReader extends LuceneTestCase {
     dir.close();
   }
 
-  @SuppressForbidden(reason = "Thread sleep")
   public void testStressTryIncRef() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
-    writer.addDocument(new Document());
-    writer.commit();
-    DirectoryReader r = DirectoryReader.open(dir);
-    int numThreads = atLeast(2);
+    final ScheduledExecutorService closeReaderBeforeJoiningThreads =
+        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("testStressTryIncRef"));
 
-    IncThread[] threads = new IncThread[numThreads];
-    for (int i = 0; i < threads.length; i++) {
-      threads[i] = new IncThread(r, random());
-      threads[i].start();
-    }
-    Thread.sleep(100);
+    try (dir;
+        writer) {
+      writer.addDocument(new Document());
+      writer.commit();
+      IndexReader indexReader = DirectoryReader.open(dir);
 
-    assertTrue(r.tryIncRef());
-    r.decRef();
-    r.close();
-
-    for (IncThread thread : threads) {
-      thread.join();
-      assertNull(thread.failed);
-    }
-    assertFalse(r.tryIncRef());
-    writer.close();
-    dir.close();
-  }
-
-  static class IncThread extends Thread {
-    final IndexReader toInc;
-    final Random random;
-    Throwable failed;
-
-    IncThread(IndexReader toInc, Random random) {
-      this.toInc = toInc;
-      this.random = random;
-    }
-
-    @Override
-    public void run() {
-      try {
-        while (toInc.tryIncRef()) {
-          assertFalse(toInc.hasDeletions());
-          toInc.decRef();
-        }
-        assertFalse(toInc.tryIncRef());
-      } catch (Throwable e) {
-        failed = e;
+      final AtomicReference<Throwable> failed = new AtomicReference<>(null);
+      final Runnable stressIncAndDecRefCount =
+          () -> {
+            try {
+              while (indexReader.tryIncRef()) {
+                assertFalse(indexReader.hasDeletions());
+                indexReader.decRef();
+              }
+              assertFalse(indexReader.tryIncRef());
+            } catch (Throwable e) {
+              failed.set(e);
+            }
+          };
+      final int delay = 100;
+      final Runnable closeDirectoryReader =
+          () -> {
+            try {
+              assertTrue(indexReader.tryIncRef());
+              indexReader.decRef();
+              indexReader.close();
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          };
+      // Start the stressIncAndDecRefCount runnable
+      int numThreads = atLeast(2);
+      Thread[] threads = new Thread[numThreads];
+      for (int i = 0; i < threads.length; i++) {
+        threads[i] = new Thread(stressIncAndDecRefCount);
+        threads[i].start();
       }
+      // Start the closeDirectoryReader runnable after some delay
+      closeReaderBeforeJoiningThreads.schedule(closeDirectoryReader, delay, TimeUnit.MILLISECONDS);
+
+      for (Thread thread : threads) {
+        thread.join();
+      }
+      assertNull(failed.get());
+      assertFalse(indexReader.tryIncRef());
+    } finally {
+      closeReaderBeforeJoiningThreads.shutdown();
     }
   }
 
