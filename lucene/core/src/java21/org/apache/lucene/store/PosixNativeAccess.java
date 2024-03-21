@@ -31,12 +31,20 @@ final class PosixNativeAccess extends NativeAccess {
 
   private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());
 
-  private final MethodHandle mh$posix_madvise;
+  private static final MethodHandle mh$posix_madvise = lookupmadvise();
 
-  public PosixNativeAccess() {
+  private static final PosixNativeAccess INSTANCE = new PosixNativeAccess();
+
+  private PosixNativeAccess() {}
+
+  static PosixNativeAccess getInstance() {
+    return INSTANCE;
+  }
+
+  private static MethodHandle lookupmadvise() {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
-    this.mh$posix_madvise =
+    final MethodHandle mh =
         findFunction(
             linker,
             stdlib,
@@ -47,6 +55,7 @@ final class PosixNativeAccess extends NativeAccess {
                 ValueLayout.JAVA_LONG,
                 ValueLayout.JAVA_INT));
     LOG.info("posix_madvise() available on this platform");
+    return mh;
   }
 
   private static MethodHandle findFunction(
