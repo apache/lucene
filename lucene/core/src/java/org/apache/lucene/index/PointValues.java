@@ -386,9 +386,7 @@ public abstract class PointValues {
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
    * {@link IntersectVisitor} and an upperBound that estimate will terminate when the estimated
-   * point count get greater than the bound.
-   *
-   * @see DocIdSetIterator#cost
+   * point count gets greater than the bound.
    */
   public static long estimatePointCount(
       IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {

@@ -475,7 +475,8 @@ final class LatLonPointDistanceFeatureQuery extends Query {
       final long currentQueryCost = Math.min(leadCost, it.cost());
       final long threshold = currentQueryCost >>> 3;
       long estimatedNumberOfMatches =
-          pointValues.estimatePointCount(visitor); // runs in O(log(numPoints))
+          PointValues.estimatePointCount(
+              visitor, pointValues.getPointTree(), threshold); // runs in O(log(numPoints))
       // TODO: what is the right factor compared to the current disi? Is 8 optimal?
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing
