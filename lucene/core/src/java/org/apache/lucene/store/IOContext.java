@@ -54,7 +54,7 @@ public class IOContext {
    * This flag is used for files that are a small fraction of the total index size and are expected
    * to be heavily accessed in random-access fashion. Some {@link Directory} implementations may
    * choose to load such files into physical memory (e.g. Java heap) as a way to provide stronger
-   * guarantees on query latency.
+   * guarantees on query latency. If this flag is set, then {@link #randomAccess} will be true.
    */
   public final boolean load;
 
@@ -64,7 +64,7 @@ public class IOContext {
 
   public static final IOContext READ = new IOContext(false, false, false);
 
-  public static final IOContext LOAD = new IOContext(false, true, false);
+  public static final IOContext LOAD = new IOContext(false, true, true);
 
   public static final IOContext RANDOM = new IOContext(false, false, true);
 
@@ -89,6 +89,9 @@ public class IOContext {
   private IOContext(boolean readOnce, boolean load, boolean randomAccess) {
     if (readOnce && randomAccess) {
       throw new IllegalArgumentException("cannot be both readOnce and randomAccess");
+    }
+    if (load && randomAccess == false) {
+      throw new IllegalArgumentException("cannot be load but not randomAccess");
     }
     this.context = Context.READ;
     this.mergeInfo = null;

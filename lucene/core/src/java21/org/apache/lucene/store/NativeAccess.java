@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -32,10 +33,10 @@ abstract class NativeAccess {
    * Return the NativeAccess instance for this platform, or null. At moment we only support Linux
    * and MacOS.
    */
-  public static NativeAccess getImplementation() {
+  public static Optional<NativeAccess> getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {
-      return PosixNativeAccess.getInstanceOrNull();
+      return Optional.ofNullable(PosixNativeAccess.getInstanceOrNull());
     }
-    return null;
+    return Optional.empty();
   }
 }

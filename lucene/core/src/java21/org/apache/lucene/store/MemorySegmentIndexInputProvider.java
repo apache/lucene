@@ -23,13 +23,14 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
-  private final NativeAccess nativeAccess;
+  private final Optional<NativeAccess> nativeAccess;
 
   MemorySegmentIndexInputProvider() {
     this.nativeAccess = NativeAccess.getImplementation();
@@ -77,9 +78,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       boolean preload,
       long length)
       throws IOException {
-    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE) {
+    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
-    }
 
     final long chunkSize = 1L << chunkSizePower;
 
@@ -102,8 +102,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
       if (preload) {
         segment.load();
-      } else if (nativeAccess != null && chunkSizePower >= 21) {
-        nativeAccess.madvise(segment, context);
+      } else if (nativeAccess.isPresent() && chunkSizePower >= 21) {
+        nativeAccess.get().madvise(segment, context);
       }
       segments[segNr] = segment;
       startOffset += segSize;
