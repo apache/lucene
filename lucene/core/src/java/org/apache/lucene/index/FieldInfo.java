@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.util.Map;
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 
 /**
  * Access to the Field Info file that describes document fields and whether or not they are indexed.
@@ -58,7 +59,7 @@ public final class FieldInfo {
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
   private final VectorEncoding vectorEncoding;
-  private final VectorSimilarityFunction vectorSimilarityFunction;
+  private final VectorSimilarity vectorSimilarity;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -85,7 +86,7 @@ public final class FieldInfo {
       int pointNumBytes,
       int vectorDimension,
       VectorEncoding vectorEncoding,
-      VectorSimilarityFunction vectorSimilarityFunction,
+      VectorSimilarity vectorSimilarity,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -112,9 +113,9 @@ public final class FieldInfo {
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
-    this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
+    this.vectorSimilarity = vectorSimilarity;
     this.checkConsistency();
   }
 
@@ -202,7 +203,7 @@ public final class FieldInfo {
               + "')");
     }
 
-    if (vectorSimilarityFunction == null) {
+    if (vectorSimilarity == null) {
       throw new IllegalArgumentException(
           "Vector similarity function must not be null (field: '" + name + "')");
     }
@@ -245,10 +246,10 @@ public final class FieldInfo {
         fieldName,
         this.vectorDimension,
         this.vectorEncoding,
-        this.vectorSimilarityFunction,
+        this.vectorSimilarity,
         o.vectorDimension,
         o.vectorEncoding,
-        o.vectorSimilarityFunction);
+        o.vectorSimilarity);
   }
 
   /**
@@ -365,11 +366,11 @@ public final class FieldInfo {
       String fieldName,
       int vd1,
       VectorEncoding ve1,
-      VectorSimilarityFunction vsf1,
+      VectorSimilarity vsf1,
       int vd2,
       VectorEncoding ve2,
-      VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
+      VectorSimilarity vsf2) {
+    if (vd1 != vd2 || Objects.equals(vsf1, vsf2) || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -499,8 +500,14 @@ public final class FieldInfo {
   }
 
   /** Returns {@link VectorSimilarityFunction} for the field */
+  @Deprecated
   public VectorSimilarityFunction getVectorSimilarityFunction() {
-    return vectorSimilarityFunction;
+    return VectorSimilarity.fromVectorSimilarity(vectorSimilarity);
+  }
+
+  /** Returns {@link VectorSimilarity} for the field */
+  public VectorSimilarity getVectorSimilarity() {
+    return vectorSimilarity;
   }
 
   /** Record that this field is indexed with docvalues, with the specified type */
