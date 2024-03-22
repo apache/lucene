@@ -24,6 +24,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.store.IOContext.Context;
 
@@ -49,12 +50,40 @@ final class PosixNativeAccess extends NativeAccess {
   /** Don't need these pages. */
   public static final int POSIX_MADV_DONTNEED = 4;
 
-  private final MethodHandle mh$posix_madvise;
+  private static final MethodHandle MH$posix_madvise;
 
-  public PosixNativeAccess() {
+  private static final Optional<NativeAccess> INSTANCE;
+
+  private PosixNativeAccess() {}
+
+  static Optional<NativeAccess> getInstance() {
+    return INSTANCE;
+  }
+
+  static {
+    MethodHandle adviseHandle = null;
+    PosixNativeAccess instance = null;
+    try {
+      adviseHandle = lookupMadvise();
+      instance = new PosixNativeAccess();
+    } catch (UnsupportedOperationException uoe) {
+      LOG.warning(uoe.getMessage());
+    } catch (IllegalCallerException ice) {
+      LOG.warning(
+          String.format(
+              Locale.ENGLISH,
+              "Lucene has no access to native functions (%s). To enable access to native functions, "
+                  + "pass the following on command line: --enable-native-access=org.apache.lucene.core",
+              ice.getMessage()));
+    }
+    MH$posix_madvise = adviseHandle;
+    INSTANCE = Optional.ofNullable(instance);
+  }
+
+  private static MethodHandle lookupMadvise() {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
-    this.mh$posix_madvise =
+    final MethodHandle mh =
         findFunction(
             linker,
             stdlib,
@@ -65,6 +94,7 @@ final class PosixNativeAccess extends NativeAccess {
                 ValueLayout.JAVA_LONG,
                 ValueLayout.JAVA_INT));
     LOG.info("posix_madvise() available on this platform");
+    return mh;
   }
 
   private static MethodHandle findFunction(
@@ -91,7 +121,7 @@ final class PosixNativeAccess extends NativeAccess {
     }
     final int ret;
     try {
-      ret = (int) mh$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
+      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
     } catch (Throwable th) {
       throw new AssertionError(th);
     }
