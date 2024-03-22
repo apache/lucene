@@ -81,6 +81,7 @@ final class PosixNativeAccess extends NativeAccess {
 
   @Override
   public void madvise(MemorySegment segment, IOContext context) throws IOException {
+    // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
     if (segment.byteSize() == 0L) {
       return; // empty segments should be excluded, because they may have no address at all
     }
