@@ -35,7 +35,7 @@ abstract class NativeAccess {
    */
   public static Optional<NativeAccess> getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {
-      return Optional.ofNullable(PosixNativeAccess.getInstanceOrNull());
+      return PosixNativeAccess.getInstance();
     }
     return Optional.empty();
   }

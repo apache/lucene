@@ -24,6 +24,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.store.IOContext.Context;
 
@@ -51,11 +52,11 @@ final class PosixNativeAccess extends NativeAccess {
 
   private static final MethodHandle mh$posix_madvise;
 
-  private static final PosixNativeAccess INSTANCE; // may be null
+  private static final Optional<NativeAccess> INSTANCE;
 
   private PosixNativeAccess() {}
 
-  static PosixNativeAccess getInstanceOrNull() {
+  static Optional<NativeAccess> getInstance() {
     return INSTANCE;
   }
 
@@ -76,7 +77,7 @@ final class PosixNativeAccess extends NativeAccess {
               ice.getMessage()));
     }
     mh$posix_madvise = adviseHandle;
-    INSTANCE = instance;
+    INSTANCE = Optional.ofNullable(instance);
   }
 
   private static MethodHandle lookupMadvise() {
