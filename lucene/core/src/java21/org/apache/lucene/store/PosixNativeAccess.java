@@ -50,7 +50,7 @@ final class PosixNativeAccess extends NativeAccess {
   /** Don't need these pages. */
   public static final int POSIX_MADV_DONTNEED = 4;
 
-  private static final MethodHandle mh$posix_madvise;
+  private static final MethodHandle MH$posix_madvise;
 
   private static final Optional<NativeAccess> INSTANCE;
 
@@ -76,7 +76,7 @@ final class PosixNativeAccess extends NativeAccess {
                   + "pass the following on command line: --enable-native-access=org.apache.lucene.core",
               ice.getMessage()));
     }
-    mh$posix_madvise = adviseHandle;
+    MH$posix_madvise = adviseHandle;
     INSTANCE = Optional.ofNullable(instance);
   }
 
@@ -121,7 +121,7 @@ final class PosixNativeAccess extends NativeAccess {
     }
     final int ret;
     try {
-      ret = (int) mh$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
+      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
     } catch (Throwable th) {
       throw new AssertionError(th);
     }

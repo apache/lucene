@@ -19,12 +19,10 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
 @SuppressWarnings("preview")
 abstract class NativeAccess {
-  private static final Logger LOG = Logger.getLogger(NativeAccess.class.getName());
 
   /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
   public abstract void madvise(MemorySegment segment, IOContext context) throws IOException;
