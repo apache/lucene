@@ -120,10 +120,15 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   private OptionalInt mapContextToMadvise(IOContext context) {
+    // Merging always wins and implies sequential access, because kernel is advised to free pages
+    // after use:
+    if (context.context == Context.MERGE) {
+      return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
+    }
     if (context.randomAccess) {
       return OptionalInt.of(NativeAccess.POSIX_MADV_RANDOM);
     }
-    if (context.readOnce || context.context == Context.MERGE) {
+    if (context.readOnce) {
       return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
     }
     return OptionalInt.empty();
