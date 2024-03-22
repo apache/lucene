@@ -483,6 +483,11 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
+  /** Get a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
+  public QueryTimeout getTimeout() {
+    return this.queryTimeout;
+  }
+
   /** Set a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
   public void setTimeout(QueryTimeout queryTimeout) {
     this.queryTimeout = queryTimeout;

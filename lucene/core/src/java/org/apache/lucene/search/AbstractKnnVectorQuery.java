@@ -81,7 +81,9 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
+    KnnCollectorManager knnCollectorManager =
+        new TimeLimitingKnnCollectorManager(
+            getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());

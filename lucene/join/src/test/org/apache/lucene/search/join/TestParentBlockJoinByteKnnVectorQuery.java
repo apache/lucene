@@ -67,6 +67,23 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
     }
   }
 
+  public void testTimeout() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      BitSetProducer parentFilter = parentFilter(reader);
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query query =
+          new DiversifyingChildrenByteKnnVectorQuery(
+              "field", new byte[] {1, 2}, null, 2, parentFilter);
+      assertEquals(2, searcher.count(query)); // Expect some results without timeout
+
+      searcher.setTimeout(() -> true); // Immediately timeout
+      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+    }
+  }
+
   private static byte[] fromFloat(float[] queryVector) {
     byte[] query = new byte[queryVector.length];
     for (int i = 0; i < queryVector.length; i++) {
