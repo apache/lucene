@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -32,10 +33,10 @@ abstract class NativeAccess {
   /**
    * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
    */
-  public static NativeAccess getImplementation() {
+  public static Optional<NativeAccess> getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {
       try {
-        return new PosixNativeAccess();
+        return Optional.of(new PosixNativeAccess());
       } catch (UnsupportedOperationException uoe) {
         LOG.warning(uoe.getMessage());
       } catch (IllegalCallerException ice) {
@@ -47,6 +48,6 @@ abstract class NativeAccess {
                 ice.getMessage()));
       }
     }
-    return new NoopNativeAccess();
+    return Optional.empty();
   }
 }
