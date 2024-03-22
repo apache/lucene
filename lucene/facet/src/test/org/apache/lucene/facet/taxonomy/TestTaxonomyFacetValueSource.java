@@ -592,7 +592,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
 
-  public void testRandom() throws Exception {
+  public void doTestDifferentValueRanges(FloatSupplier valueSupplier) throws Exception {
     String[] tokens = getRandomTokens(10);
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -606,7 +606,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     for (TestDoc testDoc : testDocs) {
       Document doc = new Document();
       doc.add(newStringField("content", testDoc.content, Field.Store.NO));
-      testDoc.value = random().nextFloat();
+      testDoc.value = valueSupplier.get();
       doc.add(new FloatDocValuesField("value", testDoc.value));
       for (int j = 0; j < numDims; j++) {
         if (testDoc.dims[j] != null) {
@@ -655,6 +655,20 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     IOUtils.close(tw, searcher.getIndexReader(), tr, indexDir, taxoDir);
   }
 
+  public void testRandom() throws Exception {
+    doTestDifferentValueRanges(() -> random().nextFloat());
+  }
+
+  public void testBoundaryCases() throws Exception {
+    final float[] boundaryCases = new float[] {0, 1};
+    doTestDifferentValueRanges(() -> boundaryCases[random().nextInt(boundaryCases.length)]);
+  }
+
+  @FunctionalInterface
+  private interface FloatSupplier {
+    float get();
+  }
+
   private void checkResults(
       int numDims,
       List<TestDoc> testDocs,
@@ -693,8 +707,10 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
       List<LabelAndValue> labelValues = new ArrayList<>();
       float aggregatedValue = 0;
       for (Map.Entry<String, Float> ent : expectedValues[i].entrySet()) {
-        labelValues.add(new LabelAndValue(ent.getKey(), ent.getValue()));
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, ent.getValue());
+        if (ent.getValue() > 0) {
+          labelValues.add(new LabelAndValue(ent.getKey(), ent.getValue()));
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, ent.getValue());
+        }
       }
       sortLabelValues(labelValues);
       if (aggregatedValue > 0) {
