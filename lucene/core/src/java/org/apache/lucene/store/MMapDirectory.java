@@ -48,7 +48,7 @@ import org.apache.lucene.util.Constants;
  * of box with some compilation tricks. For more information about the foreign memory API read
  * documentation of the {@link java.lang.foreign} package.
  *
- * <p>On some platforms like Linux and MacOS X, this calls will invoke the syscall {@code madvise()}
+ * <p>On some platforms like Linux and MacOS X, this class will invoke the syscall {@code madvise()}
  * to advise how OS kernel should handle paging after opening a file. For this to work, Java code
  * must be able to call native code. If this is not allowed, a warning is logged. To enable native
  * access for Lucene in a modularized application, pass {@code
