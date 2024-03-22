@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -258,10 +259,15 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       IndexSearcher searcher = newSearcher(reader);
 
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
+      AbstractKnnVectorQuery exactQuery =
+          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
+
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
+      assertEquals(3, searcher.count(exactQuery)); // Same for exact search
 
       searcher.setTimeout(() -> true); // Immediately timeout
       assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+      assertEquals(0, searcher.count(exactQuery)); // Same for exact search
     }
   }
 
@@ -272,7 +278,8 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(
+        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 

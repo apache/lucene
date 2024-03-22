@@ -22,6 +22,7 @@ import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
@@ -77,7 +78,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected TopDocs exactSearch(
+      LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
     if (byteVectorValues == null) {
@@ -102,6 +104,10 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     HitQueue queue = new HitQueue(queueSize, true);
     ScoreDoc topDoc = queue.top();
     while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
+        return NO_RESULTS;
+      }
+
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
