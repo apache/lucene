@@ -68,13 +68,16 @@ final class PosixNativeAccess extends NativeAccess {
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
       LOG.warning(uoe.getMessage());
-    } catch (IllegalCallerException ice) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalCallerException ice) {
       LOG.warning(
           String.format(
               Locale.ENGLISH,
-              "Lucene has no access to native functions (%s). To enable access to native functions, "
-                  + "pass the following on command line: --enable-native-access=org.apache.lucene.core",
-              ice.getMessage()));
+              "Lucene has no access to native functions. To enable access to native functions, "
+                  + "pass the following on command line: --enable-native-access=%s",
+              Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
+                  .orElse("ALL-UNNAMED")));
     }
     MH$posix_madvise = adviseHandle;
     INSTANCE = Optional.ofNullable(instance);
