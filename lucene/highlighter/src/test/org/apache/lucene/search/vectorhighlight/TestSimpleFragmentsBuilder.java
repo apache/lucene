@@ -235,7 +235,7 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
       String randomValue;
       do {
         randomValue = TestUtil.randomSimpleString(random());
-      } while ("".equals(randomValue));
+      } while (randomValue.isEmpty());
       randomValues[i] = randomValue;
     }
 

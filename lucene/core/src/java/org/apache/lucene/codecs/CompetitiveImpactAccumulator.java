@@ -93,6 +93,18 @@ public final class CompetitiveImpactAccumulator {
     assert assertConsistent();
   }
 
+  /** Replace the content of this {@code acc} with the provided {@code acc}. */
+  public void copy(CompetitiveImpactAccumulator acc) {
+    int[] maxFreqs = this.maxFreqs;
+    int[] otherMaxFreqs = acc.maxFreqs;
+
+    System.arraycopy(otherMaxFreqs, 0, maxFreqs, 0, maxFreqs.length);
+    otherFreqNormPairs.clear();
+    otherFreqNormPairs.addAll(acc.otherFreqNormPairs);
+
+    assert assertConsistent();
+  }
+
   /** Get the set of competitive freq and norm pairs, ordered by increasing freq and norm. */
   public Collection<Impact> getCompetitiveFreqNormPairs() {
     List<Impact> impacts = new ArrayList<>();

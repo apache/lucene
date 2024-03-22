@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import java.util.stream.Collectors;
 import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
@@ -98,7 +97,7 @@ public class TestFSTCompletion extends LuceneTestCase {
             .sorted(
                 Comparator.comparing(
                     completion -> completion.utf8.utf8ToString().toLowerCase(Locale.ROOT)))
-            .collect(Collectors.toList());
+            .toList();
 
     assertMatchEquals(
         completions, "foundation/1", "four/0", "fourblah/1", "fourier/0", "fourty/1.0");
@@ -231,8 +230,8 @@ public class TestFSTCompletion extends LuceneTestCase {
 
     List<LookupResult> result = lookup.lookup(stringToCharSequence("wit"), true, 5);
     assertEquals(5, result.size());
-    assertTrue(result.get(0).key.toString().equals("wit")); // exact match.
-    assertTrue(result.get(1).key.toString().equals("with")); // highest count.
+    assertEquals("wit", result.get(0).key.toString()); // exact match.
+    assertEquals("with", result.get(1).key.toString()); // highest count.
     tempDir.close();
   }
 
@@ -276,7 +275,7 @@ public class TestFSTCompletion extends LuceneTestCase {
 
     Directory tempDir = getDirectory();
     FSTCompletionLookup lookup = new FSTCompletionLookup(tempDir, "fst");
-    lookup.build(new InputArrayIterator(freqs.toArray(new Input[freqs.size()])));
+    lookup.build(new InputArrayIterator(freqs.toArray(new Input[0])));
 
     for (Input tf : freqs) {
       final String term = tf.term.utf8ToString();
@@ -315,8 +314,8 @@ public class TestFSTCompletion extends LuceneTestCase {
                 i < result.length ? result[i] : "--"));
       }
 
-      System.err.println(b.toString());
-      fail("Expected different output:\n" + b.toString());
+      System.err.println(b);
+      fail("Expected different output:\n" + b);
     }
   }
 

@@ -23,13 +23,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.facet.DrillSidewaysScorer.DocsAndCost;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -175,6 +175,17 @@ class DrillSidewaysQuery extends Query {
 
         int drillDownCount = drillDowns.length;
 
+        FacetsCollector drillDownCollector;
+        LeafCollector drillDownLeafCollector;
+        if (drillDownCollectorManager != null) {
+          drillDownCollector = drillDownCollectorManager.newCollector();
+          managedDrillDownCollectors.add(drillDownCollector);
+          drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
+        } else {
+          drillDownCollector = null;
+          drillDownLeafCollector = null;
+        }
+
         FacetsCollector[] sidewaysCollectors = new FacetsCollector[drillDownCount];
         managedDrillSidewaysCollectors.add(sidewaysCollectors);
 
@@ -193,42 +204,29 @@ class DrillSidewaysQuery extends Query {
           FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
           sidewaysCollectors[dim] = sidewaysCollector;
 
-          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, sidewaysCollector);
+          dims[dim] =
+              new DrillSidewaysScorer.DocsAndCost(
+                  scorer, sidewaysCollector.getLeafCollector(context));
         }
 
-        // If more than one dim has no matches, then there
-        // are no hits nor drill-sideways counts.  Or, if we
-        // have only one dim and that dim has no matches,
-        // same thing.
-        // if (nullCount > 1 || (nullCount == 1 && dims.length == 1)) {
-        if (nullCount > 1) {
+        // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
+        // a null scorer in this case, but we need to make sure #finish gets called on all facet
+        // collectors since IndexSearcher won't handle this for us:
+        if (baseScorer == null || nullCount > 1) {
+          if (drillDownCollector != null) {
+            drillDownCollector.finish();
+          }
+          for (FacetsCollector fc : sidewaysCollectors) {
+            fc.finish();
+          }
           return null;
         }
 
         // Sort drill-downs by most restrictive first:
-        Arrays.sort(
-            dims,
-            new Comparator<DrillSidewaysScorer.DocsAndCost>() {
-              @Override
-              public int compare(DocsAndCost o1, DocsAndCost o2) {
-                return Long.compare(o1.approximation.cost(), o2.approximation.cost());
-              }
-            });
-
-        if (baseScorer == null) {
-          return null;
-        }
-
-        FacetsCollector drillDownCollector;
-        if (drillDownCollectorManager != null) {
-          drillDownCollector = drillDownCollectorManager.newCollector();
-          managedDrillDownCollectors.add(drillDownCollector);
-        } else {
-          drillDownCollector = null;
-        }
+        Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
 
         return new DrillSidewaysScorer(
-            context, baseScorer, drillDownCollector, dims, scoreSubDocsAtOnce);
+            context, baseScorer, drillDownLeafCollector, dims, scoreSubDocsAtOnce);
       }
     };
   }

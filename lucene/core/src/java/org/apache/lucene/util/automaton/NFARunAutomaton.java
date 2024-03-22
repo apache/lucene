@@ -25,9 +25,11 @@ import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
- * generated DFA states that has been explored
+ * generated DFA states that has been explored. Note: the current implementation is NOT thread-safe
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
+ *
+ * @lucene.internal
  */
 public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
 
@@ -191,8 +193,12 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
       // numTransitions times
     }
     assert dStates[t.source].transitions[t.transitionUpto] != NOT_COMPUTED;
-    t.dest = dStates[t.source].transitions[t.transitionUpto];
 
+    setTransitionAccordingly(t);
+  }
+
+  private void setTransitionAccordingly(Transition t) {
+    t.dest = dStates[t.source].transitions[t.transitionUpto];
     t.min = points[t.transitionUpto];
     if (t.transitionUpto == points.length - 1) {
       t.max = alphabetSize - 1;
@@ -220,12 +226,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
     }
     assert outgoingTransitions == index;
 
-    t.min = points[t.transitionUpto];
-    if (t.transitionUpto == points.length - 1) {
-      t.max = alphabetSize - 1;
-    } else {
-      t.max = points[t.transitionUpto + 1] - 1;
-    }
+    setTransitionAccordingly(t);
   }
 
   private class DState {

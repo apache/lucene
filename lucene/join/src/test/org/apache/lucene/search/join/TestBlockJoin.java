@@ -176,7 +176,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // You must use ToParentBlockJoinSearcher if you want to do BQ SHOULD queries:
   public void testBQShouldJoinedChild() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -248,7 +250,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimpleKnn() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -294,7 +298,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimple() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -383,7 +389,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimpleFilter() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -515,7 +523,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testBoostBug() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     IndexReader r = w.getReader();
     w.close();
     IndexSearcher s = newSearcher(r);
@@ -608,8 +618,14 @@ public class TestBlockJoin extends LuceneTestCase {
     final List<Integer> toDelete = new ArrayList<>();
 
     // TODO: parallel star join, nested join cases too!
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    final RandomIndexWriter joinW = new RandomIndexWriter(random(), joinDir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+    final RandomIndexWriter joinW =
+        new RandomIndexWriter(
+            random(),
+            joinDir,
+            newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int parentDocID = 0; parentDocID < numParentDocs; parentDocID++) {
       Document parentDoc = new Document();
       Document parentJoinDoc = new Document();
@@ -1187,7 +1203,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testMultiChildTypes() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -1259,7 +1277,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testAdvanceSingleParentSingleChild() throws Exception {
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     Document childDoc = new Document();
     childDoc.add(newStringField("child", "1", Field.Store.NO));
     Document parentDoc = new Document();
@@ -1322,7 +1342,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // LUCENE-4968
   public void testChildQueryNeverMatches() throws Exception {
     Directory d = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     Document parent = new Document();
     parent.add(new StoredField("parentID", "0"));
     parent.add(new SortedDocValuesField("parentID", new BytesRef("0")));
@@ -1392,7 +1414,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testAdvanceSingleDeletedParentNoChild() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // First doc with 1 children
     Document parentDoc = new Document();
@@ -1437,7 +1461,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testIntersectionWithRandomApproximation() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final int numBlocks = atLeast(100);
     for (int i = 0; i < numBlocks; ++i) {
@@ -1483,7 +1509,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // delete documents to simulate FilteredQuery applying a filter as acceptDocs
   public void testParentScoringBug() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -1521,7 +1549,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testToChildBlockJoinQueryExplain() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -1563,7 +1593,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testToChildInitialAdvanceParentButNoKids() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // degenerate case: first doc has no children
     w.addDocument(makeResume("first", "nokids"));
@@ -1601,7 +1633,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testMultiChildQueriesOfDiffParentLevels() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // randomly generate resume->jobs[]->qualifications[]
     final int numResumes = atLeast(100);
@@ -1680,7 +1714,12 @@ public class TestBlockJoin extends LuceneTestCase {
         };
     Directory dir = newDirectory();
     RandomIndexWriter w =
-        new RandomIndexWriter(random(), dir, newIndexWriterConfig().setSimilarity(sim));
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setSimilarity(sim)
+                .setMergePolicy(newMergePolicy(random(), false)));
     w.addDocuments(
         Arrays.asList(
             Collections.singleton(newTextField("foo", "bar bar", Store.NO)),

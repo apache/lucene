@@ -40,5 +40,7 @@ module org.apache.lucene.analysis.kuromoji {
       org.apache.lucene.analysis.ja.JapaneseKatakanaStemFilterFactory,
       org.apache.lucene.analysis.ja.JapaneseNumberFilterFactory,
       org.apache.lucene.analysis.ja.JapanesePartOfSpeechStopFilterFactory,
-      org.apache.lucene.analysis.ja.JapaneseReadingFormFilterFactory;
+      org.apache.lucene.analysis.ja.JapaneseReadingFormFilterFactory,
+      org.apache.lucene.analysis.ja.JapaneseHiraganaUppercaseFilterFactory,
+      org.apache.lucene.analysis.ja.JapaneseKatakanaUppercaseFilterFactory;
 }

@@ -119,7 +119,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
     }
   }
-  ;
 
   static String getSuffix(String formatName, String suffix) {
     return formatName + "_" + suffix;

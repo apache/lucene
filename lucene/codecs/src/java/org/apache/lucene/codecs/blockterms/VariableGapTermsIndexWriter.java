@@ -238,7 +238,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
     public FSTFieldWriter(FieldInfo fieldInfo, long termsFilePointer) throws IOException {
       this.fieldInfo = fieldInfo;
       fstOutputs = PositiveIntOutputs.getSingleton();
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, fstOutputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, fstOutputs).build();
       indexStart = out.getFilePointer();
       //// System.out.println("VGW: field=" + fieldInfo.name);
 
@@ -283,7 +283,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
     @Override
     public void finish(long termsFilePointer) throws IOException {
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (fst != null) {
         fst.save(out, out);
       }

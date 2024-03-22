@@ -112,9 +112,37 @@ public final class Version {
   /**
    * Match settings and bugs in Lucene's 9.9.0 release.
    *
-   * @deprecated Use latest
+   * @deprecated (9.9.1) Use latest
    */
   @Deprecated public static final Version LUCENE_9_9_0 = new Version(9, 9, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.9.1 release.
+   *
+   * @deprecated (9.9.2) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_1 = new Version(9, 9, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 9.9.2 release.
+   *
+   * @deprecated (9.10.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_2 = new Version(9, 9, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 9.10.0 release.
+   *
+   * @deprecated (9.11.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_10_0 = new Version(9, 10, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.11.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_11_0 = new Version(9, 11, 0);
 
   /**
    * Match settings and bugs in Lucene's 10.0.0 release.

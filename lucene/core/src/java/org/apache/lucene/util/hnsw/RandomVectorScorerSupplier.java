@@ -87,8 +87,12 @@ public interface RandomVectorScorerSupplier {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      return cand ->
-          similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+      return new RandomVectorScorer.AbstractRandomVectorScorer<>(vectors) {
+        @Override
+        public float score(int cand) throws IOException {
+          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+        }
+      };
     }
 
     @Override
@@ -115,8 +119,12 @@ public interface RandomVectorScorerSupplier {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      return cand ->
-          similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+      return new RandomVectorScorer.AbstractRandomVectorScorer<>(vectors) {
+        @Override
+        public float score(int cand) throws IOException {
+          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(cand));
+        }
+      };
     }
 
     @Override

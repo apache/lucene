@@ -45,7 +45,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             preserveOriginal="0" splitOnNumerics="1" splitOnCaseChange="1"
  *             catenateWords="0" catenateNumbers="0" catenateAll="0"
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
- *             types="wdfftypes.txt" /&gt;
+ *             types="wdfftypes.txt" ignoreKeywords="0" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
@@ -67,7 +67,7 @@ public class WordDelimiterGraphFilterFactory extends TokenFilterFactory
   private final int flags;
   byte[] typeTable = null;
   private CharArraySet protectedWords = null;
-  private boolean adjustOffsets = false;
+  private final boolean adjustOffsets;
 
   /** Creates a new WordDelimiterGraphFilterFactory */
   public WordDelimiterGraphFilterFactory(Map<String, String> args) {
@@ -99,6 +99,9 @@ public class WordDelimiterGraphFilterFactory extends TokenFilterFactory
     }
     if (getInt(args, "stemEnglishPossessive", 1) != 0) {
       flags |= STEM_ENGLISH_POSSESSIVE;
+    }
+    if (getInt(args, "ignoreKeywords", 0) != 0) {
+      flags |= IGNORE_KEYWORDS;
     }
     wordFiles = get(args, PROTECTED_TOKENS);
     types = get(args, TYPES);

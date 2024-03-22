@@ -41,6 +41,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
@@ -62,7 +63,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -133,7 +134,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -228,7 +229,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -734,14 +735,8 @@ public class TestBKD extends LuceneTestCase {
             docMaps = new ArrayList<>();
           }
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
-          Runnable finalizer = w.finish(out, out, out);
+          docMaps.add(docID1 -> curDocIDBase + docID1);
+          IORunnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
           valuesInThisSeg = TestUtil.nextInt(random(), numValues / 10, numValues / 2);
@@ -766,17 +761,11 @@ public class TestBKD extends LuceneTestCase {
 
       if (toMerge != null) {
         if (segCount > 0) {
-          Runnable finalizer = w.finish(out, out, out);
+          IORunnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
           final int curDocIDBase = lastDocIDBase;
-          docMaps.add(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return curDocIDBase + docID;
-                }
-              });
+          docMaps.add(docID -> curDocIDBase + docID);
         }
         out.close();
         in = dir.openInput("bkd", IOContext.DEFAULT);
@@ -795,14 +784,14 @@ public class TestBKD extends LuceneTestCase {
           readers.add(getPointValues(in));
         }
         out = dir.createOutput("bkd2", IOContext.DEFAULT);
-        Runnable finalizer = w.merge(out, out, out, docMaps, readers);
+        IORunnable finalizer = w.merge(out, out, out, docMaps, readers);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
         in.close();
         in = dir.openInput("bkd2", IOContext.DEFAULT);
       } else {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
@@ -1216,7 +1205,7 @@ public class TestBKD extends LuceneTestCase {
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
@@ -1282,7 +1271,7 @@ public class TestBKD extends LuceneTestCase {
     }
     final long indexFP;
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();
@@ -1344,7 +1333,7 @@ public class TestBKD extends LuceneTestCase {
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
@@ -1411,7 +1400,7 @@ public class TestBKD extends LuceneTestCase {
     }
 
     IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-    Runnable finalizer = w.finish(out, out, out);
+    IORunnable finalizer = w.finish(out, out, out);
     long fp = out.getFilePointer();
     finalizer.run();
     out.close();
@@ -1479,7 +1468,7 @@ public class TestBKD extends LuceneTestCase {
     }
     final long indexFP;
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();

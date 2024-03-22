@@ -100,19 +100,10 @@ public class HnswGraphSearcher {
       HnswGraphSearcher graphSearcher,
       Bits acceptOrds)
       throws IOException {
-    int initialEp = graph.entryNode();
-    if (initialEp == -1) {
-      return;
+    int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
+    if (ep != -1) {
+      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
     }
-    int[] epAndVisited = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector.visitLimit());
-    int numVisited = epAndVisited[1];
-    int ep = epAndVisited[0];
-    if (ep == -1) {
-      knnCollector.incVisitedCount(numVisited);
-      return;
-    }
-    knnCollector.incVisitedCount(numVisited);
-    graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
   }
 
   /**
@@ -143,18 +134,21 @@ public class HnswGraphSearcher {
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param graph the HNSWGraph
-   * @param visitLimit How many vectors are allowed to be visited
-   * @return An integer array whose first element is the best entry point, and second is the number
-   *     of candidates visited. Entry point of `-1` indicates visitation limit exceed
+   * @param collector the knn result collector
+   * @return the best entry point, `-1` indicates graph entry node not set, or visitation limit
+   *     exceeded
    * @throws IOException When accessing the vector fails
    */
-  private int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, long visitLimit)
+  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
-    int size = getGraphSize(graph);
-    int visitedCount = 1;
-    prepareScratchState(size);
     int currentEp = graph.entryNode();
+    if (currentEp == -1 || graph.numLevels() == 1) {
+      return currentEp;
+    }
+    int size = getGraphSize(graph);
+    prepareScratchState(size);
     float currentScore = scorer.score(currentEp);
+    collector.incVisitedCount(1);
     boolean foundBetter;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       foundBetter = true;
@@ -169,11 +163,11 @@ public class HnswGraphSearcher {
           if (visited.getAndSet(friendOrd)) {
             continue;
           }
-          if (visitedCount >= visitLimit) {
-            return new int[] {-1, visitedCount};
+          if (collector.earlyTerminated()) {
+            return -1;
           }
           float friendSimilarity = scorer.score(friendOrd);
-          visitedCount++;
+          collector.incVisitedCount(1);
           if (friendSimilarity > currentScore) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
@@ -182,7 +176,7 @@ public class HnswGraphSearcher {
         }
       }
     }
-    return new int[] {currentEp, visitedCount};
+    return collector.earlyTerminated() ? -1 : currentEp;
   }
 
   /**
@@ -314,7 +308,7 @@ public class HnswGraphSearcher {
     @Override
     int graphNextNeighbor(HnswGraph graph) {
       if (++upto < cur.size()) {
-        return cur.node[upto];
+        return cur.nodes()[upto];
       }
       return NO_MORE_DOCS;
     }

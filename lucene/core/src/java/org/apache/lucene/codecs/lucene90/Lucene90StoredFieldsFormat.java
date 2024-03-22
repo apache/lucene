@@ -37,21 +37,21 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *
  * <p>This {@link StoredFieldsFormat} compresses blocks of documents in order to improve the
  * compression ratio compared to document-level compression. It uses the <a
- * href="http://code.google.com/p/lz4/">LZ4</a> compression algorithm by default in 16KB blocks,
- * which is fast to compress and very fast to decompress data. Although the default compression
- * method that is used ({@link Mode#BEST_SPEED BEST_SPEED}) focuses more on speed than on
- * compression ratio, it should provide interesting compression ratios for redundant inputs (such as
- * log files, HTML or plain text). For higher compression, you can choose ({@link
+ * href="http://code.google.com/p/lz4/">LZ4</a> compression algorithm by default in 8KB blocks and
+ * shared dictionaries, which is fast to compress and very fast to decompress data. Although the
+ * default compression method that is used ({@link Mode#BEST_SPEED BEST_SPEED}) focuses more on
+ * speed than on compression ratio, it should provide interesting compression ratios for redundant
+ * inputs (such as log files, HTML or plain text). For higher compression, you can choose ({@link
  * Mode#BEST_COMPRESSION BEST_COMPRESSION}), which uses the <a
- * href="http://en.wikipedia.org/wiki/DEFLATE">DEFLATE</a> algorithm with 48kB blocks and shared
+ * href="http://en.wikipedia.org/wiki/DEFLATE">DEFLATE</a> algorithm with 48KB blocks and shared
  * dictionaries for a better ratio at the expense of slower performance. These two options can be
  * configured like this:
  *
  * <pre class="prettyprint">
  *   // the default: for high performance
- *   indexWriterConfig.setCodec(new Lucene87Codec(Mode.BEST_SPEED));
+ *   indexWriterConfig.setCodec(new Lucene99Codec(Mode.BEST_SPEED));
  *   // instead for higher performance (but slower):
- *   // indexWriterConfig.setCodec(new Lucene87Codec(Mode.BEST_COMPRESSION));
+ *   // indexWriterConfig.setCodec(new Lucene99Codec(Mode.BEST_COMPRESSION));
  * </pre>
  *
  * <p><b>File formats</b>
@@ -61,9 +61,9 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  * <ol>
  *   <li><a id="field_data"></a>
  *       <p>A fields data file (extension <code>.fdt</code>). This file stores a compact
- *       representation of documents in compressed blocks of 16KB or more. When writing a segment,
+ *       representation of documents in compressed blocks of 8KB or more. When writing a segment,
  *       documents are appended to an in-memory <code>byte[]</code> buffer. When its size reaches
- *       16KB or more, some metadata about the documents is flushed to disk, immediately followed by
+ *       80KB or more, some metadata about the documents is flushed to disk, immediately followed by
  *       a compressed representation of the buffer using the <a
  *       href="https://github.com/lz4/lz4">LZ4</a> <a
  *       href="http://fastcompression.blogspot.fr/2011/05/lz4-explained.html">compression
@@ -71,10 +71,10 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *       <p>Notes
  *       <ul>
  *         <li>When at least one document in a chunk is large enough so that the chunk is larger
- *             than 32KB, the chunk will actually be compressed in several LZ4 blocks of 16KB. This
+ *             than 80KB, the chunk will actually be compressed in several LZ4 blocks of 8KB. This
  *             allows {@link StoredFieldVisitor}s which are only interested in the first fields of a
  *             document to not have to decompress 10MB of data if the document is 10MB, but only
- *             16KB.
+ *             8-16KB(may cross the block).
  *         <li>Given that the original lengths are written in the metadata of the chunk, the
  *             decompressor can leverage this information to stop decoding as soon as enough data
  *             has been decompressed.

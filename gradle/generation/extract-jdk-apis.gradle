@@ -20,14 +20,14 @@ def resources = scriptResources(buildscript)
 configure(rootProject) {
   ext {
     // also change this in extractor tool: ExtractForeignAPI
-    vectorIncubatorJavaVersions = [ JavaVersion.VERSION_20, JavaVersion.VERSION_21 ] as Set
+    vectorIncubatorJavaVersions = [ JavaVersion.VERSION_21, JavaVersion.VERSION_22 ] as Set
   }
 }
 
 configure(project(":lucene:core")) {
   ext {
     apijars = layout.projectDirectory.dir("src/generated/jdk")
-    mrjarJavaVersions = [ 19, 20, 21 ]
+    mrjarJavaVersions = [ 21 ]
   }
   
   configurations {
@@ -62,7 +62,8 @@ configure(project(":lucene:core")) {
       classpath = configurations.apiextractor
       mainClass = file("${resources}/ExtractJdkApis.java") as String
       systemProperties = [
-        'user.timezone': 'UTC'
+        'user.timezone': 'UTC',
+        'file.encoding': 'UTF-8',
       ]
       args = [
         jdkVersion,

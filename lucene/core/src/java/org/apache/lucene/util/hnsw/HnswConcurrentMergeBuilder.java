@@ -22,15 +22,12 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -41,12 +38,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
 
-  private final ExecutorService exec;
+  private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private InfoStream infoStream = InfoStream.getDefault();
 
   public HnswConcurrentMergeBuilder(
-      ExecutorService exec,
+      TaskExecutor taskExecutor,
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int M,
@@ -54,7 +51,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
       throws IOException {
-    this.exec = exec;
+    this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     for (int i = 0; i < numWorker; i++) {
@@ -77,42 +74,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           HNSW_COMPONENT,
           "build graph from " + maxOrd + " vectors, with " + workers.length + " workers");
     }
-    List<Future<?>> futures = new ArrayList<>();
+    List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
       int finalI = i;
       futures.add(
-          exec.submit(
-              () -> {
-                try {
-                  workers[finalI].run(maxOrd);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
-                }
-              }));
+          () -> {
+            workers[finalI].run(maxOrd);
+            return null;
+          });
     }
-    Throwable exc = null;
-    for (Future<?> future : futures) {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        var newException = new ThreadInterruptedException(e);
-        if (exc == null) {
-          exc = newException;
-        } else {
-          exc.addSuppressed(newException);
-        }
-      } catch (ExecutionException e) {
-        if (exc == null) {
-          exc = e.getCause();
-        } else {
-          exc.addSuppressed(e.getCause());
-        }
-      }
-    }
-    if (exc != null) {
-      // The error handling was copied from TaskExecutor. should we just use TaskExecutor instead?
-      throw IOUtils.rethrowAlways(exc);
-    }
+    taskExecutor.invokeAll(futures);
     return workers[0].getGraph();
   }
 
@@ -230,7 +201,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           nodeBuffer = new int[neighborArray.size()];
         }
         size = neighborArray.size();
-        if (size >= 0) System.arraycopy(neighborArray.node, 0, nodeBuffer, 0, size);
+        if (size >= 0) System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
       } finally {
         neighborArray.rwlock.readLock().unlock();
       }

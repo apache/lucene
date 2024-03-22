@@ -247,10 +247,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getFloatVectorValues(fi.name).size());
+    FloatVectorValues floatVectorValues = getFloatVectorValues(fi.name);
+    if (floatVectorValues == null) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, floatVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
@@ -288,10 +291,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getByteVectorValues(fi.name).size());
+    ByteVectorValues byteVectorValues = getByteVectorValues(fi.name);
+    if (byteVectorValues == null) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, byteVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }

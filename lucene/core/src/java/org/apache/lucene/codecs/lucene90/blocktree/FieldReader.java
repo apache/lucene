@@ -91,7 +91,11 @@ public final class FieldReader extends Terms {
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();
     clone.seek(indexStartFP);
-    index = new FST<>(metaIn, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+    index =
+        new FST<>(
+            FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton()),
+            clone,
+            new OffHeapFSTStore());
     /*
      if (false) {
      final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
@@ -206,7 +210,7 @@ public final class FieldReader extends Terms {
   @Override
   public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
     // if (DEBUG) System.out.println("  FieldReader.intersect startTerm=" +
-    // BlockTreeTermsWriter.brToString(startTerm));
+    // ToStringUtils.bytesRefToString(startTerm));
     // System.out.println("intersect: " + compiled.type + " a=" + compiled.automaton);
     // TODO: we could push "it's a range" or "it's a prefix" down into IntersectTermsEnum?
     // can we optimize knowing that...?

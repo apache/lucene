@@ -1398,7 +1398,7 @@ public class UnifiedHighlighter {
         curValueBuilder.append(curValue);
       }
       curValueBuilder.append(valueSeparator);
-      curValueBuilder.append(value.substring(0, Math.min(lengthBudget - 1, value.length())));
+      curValueBuilder.append(value, 0, Math.min(lengthBudget - 1, value.length()));
       values[currentField] = curValueBuilder;
     }
 

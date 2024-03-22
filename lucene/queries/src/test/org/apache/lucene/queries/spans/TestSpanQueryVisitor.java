@@ -17,8 +17,6 @@
 
 package org.apache.lucene.queries.spans;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -86,6 +84,6 @@ public class TestSpanQueryVisitor extends LuceneTestCase {
                 new Term("field1", "term5"), new Term("field1", "term6"),
                 new Term("field1", "term7"), new Term("field2", "term10")));
     query.visit(QueryVisitor.termCollector(terms));
-    assertThat(terms, equalTo(expected));
+    assertEquals(expected, terms);
   }
 }

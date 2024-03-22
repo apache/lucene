@@ -86,8 +86,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
    */
   public static final int VERSION_MSB_VLONG_OUTPUT = 1;
 
+  /** The version that specialize arc store for continuous label in FST. */
+  public static final int VERSION_FST_CONTINUOUS_ARCS = 2;
+
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_MSB_VLONG_OUTPUT;
+  public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";
@@ -302,24 +305,6 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   @Override
   public int size() {
     return fieldMap.size();
-  }
-
-  // for debugging
-  String brToString(BytesRef b) {
-    if (b == null) {
-      return "null";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
   }
 
   @Override

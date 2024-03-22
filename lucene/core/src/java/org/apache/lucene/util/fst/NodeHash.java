@@ -123,26 +123,24 @@ final class NodeHash<T> {
           assert lastFallbackHashSlot != -1 && lastFallbackNodeLength != -1;
 
           // it was already in fallback -- promote to primary
-          // TODO: Copy directly between 2 ByteBlockPool to avoid double-copy
-          primaryTable.setNode(
-              hashSlot,
-              nodeAddress,
-              fallbackTable.getBytes(lastFallbackHashSlot, lastFallbackNodeLength));
+          primaryTable.setNodeAddress(hashSlot, nodeAddress);
+          primaryTable.copyFallbackNodeBytes(
+              hashSlot, fallbackTable, lastFallbackHashSlot, lastFallbackNodeLength);
         } else {
           // not in fallback either -- freeze & add the incoming node
 
-          long startAddress = fstCompiler.bytes.getPosition();
           // freeze & add
           nodeAddress = fstCompiler.addNode(nodeIn);
 
-          // TODO: Write the bytes directly from BytesStore
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
           assert nodeAddress != FST.FINAL_END_NODE && nodeAddress != FST.NON_FINAL_END_NODE;
-          byte[] buf = new byte[Math.toIntExact(nodeAddress - startAddress + 1)];
-          fstCompiler.bytes.copyBytes(startAddress, buf, 0, buf.length);
 
-          primaryTable.setNode(hashSlot, nodeAddress, buf);
+          primaryTable.setNodeAddress(hashSlot, nodeAddress);
+          primaryTable.copyNodeBytes(
+              hashSlot,
+              fstCompiler.scratchBytes.getBytes(),
+              fstCompiler.scratchBytes.getPosition());
 
           // confirm frozen hash and unfrozen hash are the same
           assert primaryTable.hash(nodeAddress, hashSlot) == hash
@@ -221,7 +219,7 @@ final class NodeHash<T> {
   }
 
   /** Inner class because it needs access to hash function and FST bytes. */
-  private class PagedGrowableHash {
+  class PagedGrowableHash {
     // storing the FST node address where the position is the masked hash of the node arcs
     private PagedGrowableWriter fstNodeAddress;
     // storing the local copiedNodes address in the same position as fstNodeAddress
@@ -289,21 +287,38 @@ final class NodeHash<T> {
     }
 
     /**
-     * Set the node address and bytes from the provided hash slot
+     * Set the node address from the provided hash slot
      *
      * @param hashSlot the hash slot to write to
      * @param nodeAddress the node address
-     * @param bytes the node bytes to be copied
      */
-    public void setNode(long hashSlot, long nodeAddress, byte[] bytes) {
+    public void setNodeAddress(long hashSlot, long nodeAddress) {
       assert fstNodeAddress.get(hashSlot) == 0;
       fstNodeAddress.set(hashSlot, nodeAddress);
       count++;
+    }
 
-      copiedNodes.append(bytes);
+    /** copy the node bytes from the FST */
+    void copyNodeBytes(long hashSlot, byte[] bytes, int length) {
+      assert copiedNodeAddress.get(hashSlot) == 0;
+      copiedNodes.append(bytes, 0, length);
       // write the offset, which points to the last byte of the node we copied since we later read
       // this node in reverse
+      copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);
+    }
+
+    /** promote the node bytes from the fallback table */
+    void copyFallbackNodeBytes(
+        long hashSlot, PagedGrowableHash fallbackTable, long fallbackHashSlot, int nodeLength) {
       assert copiedNodeAddress.get(hashSlot) == 0;
+      long fallbackAddress = fallbackTable.copiedNodeAddress.get(fallbackHashSlot);
+      // fallbackAddress is the last offset of the node, but we need to copy the bytes from the
+      // start address
+      long fallbackStartAddress = fallbackAddress - nodeLength + 1;
+      assert fallbackStartAddress >= 0;
+      copiedNodes.append(fallbackTable.copiedNodes, fallbackStartAddress, nodeLength);
+      // write the offset, which points to the last byte of the node we copied since we later read
+      // this node in reverse
       copiedNodeAddress.set(hashSlot, copiedNodes.getPosition() - 1);
     }
 
@@ -405,6 +420,12 @@ final class NodeHash<T> {
             // not actually be arcs), and the number of arcs
             if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
                 || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
+              return -1;
+            }
+            break;
+          case FST.ARCS_FOR_CONTINUOUS:
+            if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1)
+                != scratchArc.numArcs()) {
               return -1;
             }
             break;

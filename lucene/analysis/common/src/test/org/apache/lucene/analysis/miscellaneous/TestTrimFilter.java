@@ -30,19 +30,13 @@ import org.apache.lucene.tests.analysis.Token;
 public class TestTrimFilter extends BaseTokenStreamTestCase {
 
   public void testTrim() throws Exception {
-    char[] a = " a ".toCharArray();
-    char[] b = "b   ".toCharArray();
-    char[] ccc = "cCc".toCharArray();
-    char[] whitespace = "   ".toCharArray();
-    char[] empty = "".toCharArray();
-
     TokenStream ts =
         new CannedTokenStream(
-            new Token(new String(a, 0, a.length), 1, 5),
-            new Token(new String(b, 0, b.length), 6, 10),
-            new Token(new String(ccc, 0, ccc.length), 11, 15),
-            new Token(new String(whitespace, 0, whitespace.length), 16, 20),
-            new Token(new String(empty, 0, empty.length), 21, 21));
+            new Token(" a ", 1, 5),
+            new Token("b   ", 6, 10),
+            new Token("cCc", 11, 15),
+            new Token("   ", 16, 20),
+            new Token("", 21, 21));
     ts = new TrimFilter(ts);
 
     assertTokenStreamContents(ts, new String[] {"a", "b", "cCc", "", ""});

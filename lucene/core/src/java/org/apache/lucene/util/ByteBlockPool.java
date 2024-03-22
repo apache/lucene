@@ -132,18 +132,11 @@ public final class ByteBlockPool implements Accountable {
   }
 
   /**
-   * Resets the pool to its initial state, reusing the first buffer and filling all buffers with
-   * {@code 0} bytes before they are reused or passed to {@link
-   * Allocator#recycleByteBlocks(byte[][], int, int)}. Calling {@link ByteBlockPool#nextBuffer()} is
-   * not needed after reset.
-   */
-  public void reset() {
-    reset(true, true);
-  }
-
-  /**
-   * Expert: Resets the pool to its initial state, while reusing the first buffer. Calling {@link
-   * ByteBlockPool#nextBuffer()} is not needed after reset.
+   * Expert: Resets the pool to its initial state, while optionally reusing the first buffer.
+   * Buffers that are not reused are reclaimed by {@link Allocator#recycleByteBlocks(byte[][], int,
+   * int)}. Buffers can be filled with zeros before recycling them. This is useful if a slice pool
+   * works on top of this byte pool and relies on the buffers being filled with zeros to find the
+   * non-zero end of slices.
    *
    * @param zeroFillBuffers if {@code true} the buffers are filled with {@code 0}. This should be
    *     set to {@code true} if this pool is used with slices.
@@ -188,7 +181,8 @@ public final class ByteBlockPool implements Accountable {
   /**
    * Allocates a new buffer and advances the pool to it. This method should be called once after the
    * constructor to initialize the pool. In contrast to the constructor, a {@link
-   * ByteBlockPool#reset()} call will advance the pool to its first buffer immediately.
+   * ByteBlockPool#reset(boolean, boolean)} call will advance the pool to its first buffer
+   * immediately.
    */
   public void nextBuffer() {
     if (1 + bufferUpto == buffers.length) {
@@ -222,7 +216,7 @@ public final class ByteBlockPool implements Accountable {
       result.offset = pos;
     } else {
       // Uncommon case: The slice spans at least 2 blocks, so we must copy the bytes.
-      builder.grow(length);
+      builder.growNoCopy(length);
       result.bytes = builder.get().bytes;
       result.offset = 0;
       readBytes(offset, result.bytes, 0, length);
@@ -232,6 +226,46 @@ public final class ByteBlockPool implements Accountable {
   /** Appends the bytes in the provided {@link BytesRef} at the current position. */
   public void append(final BytesRef bytes) {
     append(bytes.bytes, bytes.offset, bytes.length);
+  }
+
+  /**
+   * Append the bytes from a source {@link ByteBlockPool} at a given offset and length
+   *
+   * @param srcPool the source pool to copy from
+   * @param srcOffset the source pool offset
+   * @param length the number of bytes to copy
+   */
+  public void append(ByteBlockPool srcPool, long srcOffset, int length) {
+    int bytesLeft = length;
+    while (bytesLeft > 0) {
+      int bufferLeft = BYTE_BLOCK_SIZE - byteUpto;
+      if (bytesLeft < bufferLeft) { // fits within current buffer
+        appendBytesSingleBuffer(srcPool, srcOffset, bytesLeft);
+        break;
+      } else { // fill up this buffer and move to next one
+        if (bufferLeft > 0) {
+          appendBytesSingleBuffer(srcPool, srcOffset, bufferLeft);
+          bytesLeft -= bufferLeft;
+          srcOffset += bufferLeft;
+        }
+        nextBuffer();
+      }
+    }
+  }
+
+  // copy from source pool until no bytes left. length must be fit within the current head buffer
+  private void appendBytesSingleBuffer(ByteBlockPool srcPool, long srcOffset, int length) {
+    assert length <= BYTE_BLOCK_SIZE - byteUpto;
+    // doing a loop as the bytes to copy might span across multiple byte[] in srcPool
+    while (length > 0) {
+      byte[] srcBytes = srcPool.buffers[Math.toIntExact(srcOffset >> BYTE_BLOCK_SHIFT)];
+      int srcPos = Math.toIntExact(srcOffset & BYTE_BLOCK_MASK);
+      int bytesToCopy = Math.min(length, BYTE_BLOCK_SIZE - srcPos);
+      System.arraycopy(srcBytes, srcPos, buffer, byteUpto, bytesToCopy);
+      length -= bytesToCopy;
+      srcOffset += bytesToCopy;
+      byteUpto += bytesToCopy;
+    }
   }
 
   /**
@@ -283,6 +317,7 @@ public final class ByteBlockPool implements Accountable {
     int pos = (int) (offset & BYTE_BLOCK_MASK);
     while (bytesLeft > 0) {
       byte[] buffer = buffers[bufferIndex++];
+      assert buffer != null;
       int chunk = Math.min(bytesLeft, BYTE_BLOCK_SIZE - pos);
       System.arraycopy(buffer, pos, bytes, bytesOffset, chunk);
       bytesOffset += chunk;

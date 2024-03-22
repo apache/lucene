@@ -40,7 +40,8 @@ class ConvTable {
 
     try {
       Outputs<CharsRef> outputs = CharSequenceOutputs.getSingleton();
-      FSTCompiler<CharsRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, outputs);
+      FSTCompiler<CharsRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, outputs).build();
       IntsRefBuilder scratchInts = new IntsRefBuilder();
       for (Map.Entry<String, String> entry : mappings.entrySet()) {
         String key = entry.getKey();
@@ -50,7 +51,7 @@ class ConvTable {
         fstCompiler.add(scratchInts.get(), new CharsRef(entry.getValue()));
       }
 
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     } catch (IOException bogus) {
       throw new RuntimeException(bogus);
     }

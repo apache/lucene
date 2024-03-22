@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -90,7 +93,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testIndexWithNoVectorsNorParents() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         // Add some documents without a vector
         for (int i = 0; i < 5; i++) {
           Document doc = new Document();
@@ -123,7 +128,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testIndexWithNoParents() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         for (int i = 0; i < 3; ++i) {
           Document doc = new Document();
           doc.add(getKnnVectorField("field", new float[] {2, 2}));
@@ -175,7 +182,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testScoringWithMultipleChildren() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
@@ -195,27 +204,30 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         }
         toAdd.add(makeParent(new int[] {6, 7, 8, 9, 10}));
         w.addDocuments(toAdd);
+        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
         Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
-        assertScorerResults(searcher, query, new float[] {1f, 1f / 51f}, new String[] {"2", "7"});
+        assertScorerResults(
+            searcher, query, new float[] {1f, 1f / 51f}, new String[] {"2", "7"}, 2);
 
         query = getParentJoinKnnQuery("field", new float[] {6, 6}, null, 3, parentFilter);
         assertScorerResults(
-            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
         assertScorerResults(
-            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
 
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
-        assertScorerResults(searcher, query, new float[] {1f / 3f}, new String[] {"5"});
+        assertScorerResults(
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 1);
       }
     }
   }
@@ -273,7 +285,11 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            indexStore,
+            newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int i = 0; i < contents.length; ++i) {
       List<Document> toAdd = new ArrayList<>();
       Document doc = new Document();
@@ -313,7 +329,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     assertEquals(expectedId, actualId);
   }
 
-  void assertScorerResults(IndexSearcher searcher, Query query, float[] scores, String[] ids)
+  void assertScorerResults(
+      IndexSearcher searcher, Query query, float[] possibleScores, String[] possibleIds, int count)
       throws IOException {
     IndexReader reader = searcher.getIndexReader();
     Query rewritten = query.rewrite(searcher);
@@ -323,11 +340,16 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     assertEquals(-1, scorer.docID());
     expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     DocIdSetIterator it = scorer.iterator();
-    for (int i = 0; i < scores.length; i++) {
+    Map<String, Float> idToScore =
+        IntStream.range(0, possibleIds.length)
+            .boxed()
+            .collect(Collectors.toMap(i -> possibleIds[i], i -> possibleScores[i]));
+    for (int i = 0; i < count; i++) {
       int docId = it.nextDoc();
       assertNotEquals(NO_MORE_DOCS, docId);
-      assertEquals(scores[i], scorer.score(), 0.0001);
-      assertIdMatches(reader, ids[i], docId);
+      String actualId = reader.storedFields().document(docId).get("id");
+      assertTrue(idToScore.containsKey(actualId));
+      assertEquals(idToScore.get(actualId), scorer.score(), 0.0001);
     }
   }
 }

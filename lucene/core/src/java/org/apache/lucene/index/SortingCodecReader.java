@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -77,7 +78,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     private final Sorter.DocMap docMap;
 
     SortingPointValues(final PointValues in, Sorter.DocMap docMap) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.docMap = docMap;
     }
 
@@ -367,7 +368,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     if (reader.maxDoc() != docMap.size()) {
       throw new IllegalArgumentException(
-          "reader.maxDoc() should be equal to docMap.size(), got"
+          "reader.maxDoc() should be equal to docMap.size(), got "
               + reader.maxDoc()
               + " != "
               + docMap.size());
@@ -472,6 +473,10 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public PointValues getValues(String field) throws IOException {
+        var values = delegate.getValues(field);
+        if (values == null) {
+          return null;
+        }
         return new SortingPointValues(delegate.getValues(field), docMap);
       }
 
@@ -716,8 +721,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   private boolean assertCreatedOnlyOnce(String field, boolean norms) {
     assert Thread.holdsLock(this);
     // this is mainly there to make sure we change anything in the way we merge we realize it early
-    Integer timesCached =
-        cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i.intValue() + 1);
+    int timesCached = cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i + 1);
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;

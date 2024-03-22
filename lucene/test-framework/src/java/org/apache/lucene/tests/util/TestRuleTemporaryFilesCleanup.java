@@ -235,7 +235,6 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       Class<?> clazz = ctx.getTargetClass();
       String prefix = clazz.getName();
       prefix = prefix.replaceFirst("^org.apache.lucene.", "lucene.");
-      prefix = prefix.replaceFirst("^org.apache.solr.", "solr.");
 
       int attempt = 0;
       Path f;

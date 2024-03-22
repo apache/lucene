@@ -21,22 +21,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.EnumSet;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.nio.file.StandardOpenOption.APPEND;
 
 /**
  * Standalone class that can be used to download a gradle-wrapper.jar
@@ -60,9 +54,9 @@ public class WrapperDownloader {
   }
 
   public static void checkVersion() {
-    int major = Runtime.getRuntime().version().feature();
-    if (major < 17 || major > 21) {
-      throw new IllegalStateException("java version must be between 17 and 21, your version: " + major);
+    int major = Runtime.version().feature();
+    if (major != 21) {
+      throw new IllegalStateException("java version must be 21, your version: " + major);
     }
   }
 

@@ -73,7 +73,7 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_17
+  minJavaVersion = JavaVersion.VERSION_21
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
@@ -110,6 +110,9 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 // eagerly).
 
 apply from: file('gradle/generation/local-settings.gradle')
+
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')

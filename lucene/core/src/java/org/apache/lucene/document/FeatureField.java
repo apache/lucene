@@ -166,6 +166,16 @@ public final class FeatureField extends Field {
     return stream;
   }
 
+  /**
+   * This is useful if you have multiple features sharing a name and you want to take action to
+   * deduplicate them.
+   *
+   * @return the feature value of this field.
+   */
+  public float getFeatureValue() {
+    return featureValue;
+  }
+
   private static final class FeatureTokenStream extends TokenStream {
     private final CharTermAttribute termAttribute = addAttribute(CharTermAttribute.class);
     private final TermFrequencyAttribute freqAttribute = addAttribute(TermFrequencyAttribute.class);
@@ -272,7 +282,6 @@ public final class FeatureField extends Field {
       return true;
     }
   }
-  ;
 
   static final class LogFunction extends FeatureFunction {
 

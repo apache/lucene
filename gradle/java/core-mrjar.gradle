@@ -46,15 +46,22 @@ configure(project(":lucene:core")) {
     }
     
     tasks.named('jar').configure {
+      boolean needMRJAR = false;
       mrjarJavaVersions.each { jdkVersion ->
-        into("META-INF/versions/${jdkVersion}") {
+        // the sourceSet which corresponds to the minimum/base Java version
+        // will copy its output to root of JAR, all other sourceSets will go into MR-JAR folders:
+        boolean isBaseVersion = (jdkVersion.toString() == rootProject.minJavaVersion.toString())
+        into(isBaseVersion ? '' : "META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }
+        needMRJAR |= !isBaseVersion
       }
 
-      manifest.attributes(
-        'Multi-Release': 'true'
-      )
+      if (needMRJAR) {
+        manifest.attributes(
+          'Multi-Release': 'true'
+        )
+      }
     }
   }
 }

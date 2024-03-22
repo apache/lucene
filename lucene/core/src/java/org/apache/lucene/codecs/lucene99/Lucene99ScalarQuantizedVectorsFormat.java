@@ -17,32 +17,43 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.FlatVectorsFormat;
+import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
+
 /**
  * Format supporting vector quantization, storage, and retrieval
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsFormat {
+public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsData";
-  static final String QUANTIZED_VECTOR_DATA_EXTENSION = "veq";
+  static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
+  static final String META_EXTENSION = "vemq";
+  static final String VECTOR_DATA_EXTENSION = "veq";
 
-  /** The minimum quantile */
-  private static final float MINIMUM_QUANTILE = 0.9f;
+  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
 
-  /** The maximum quantile */
-  private static final float MAXIMUM_QUANTILE = 1f;
+  /** The minimum confidence interval */
+  private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
+
+  /** The maximum confidence interval */
+  private static final float MAXIMUM_CONFIDENCE_INTERVAL = 1f;
 
   /**
-   * Controls the quantile used to scalar quantize the vectors the default quantile is calculated as
-   * `1-1/(vector_dimensions + 1)`
+   * Controls the confidence interval used to scalar quantize the vectors the default value is
+   * calculated as `1-1/(vector_dimensions + 1)`
    */
-  final Float quantile;
+  final Float confidenceInterval;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -52,28 +63,48 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
   /**
    * Constructs a format using the given graph construction parameters.
    *
-   * @param quantile the quantile for scalar quantizing the vectors, when `null` it is calculated
-   *     based on the vector field dimensions.
+   * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
+   *     it is calculated based on the vector field dimensions.
    */
-  public Lucene99ScalarQuantizedVectorsFormat(Float quantile) {
-    if (quantile != null && (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE)) {
+  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval) {
+    if (confidenceInterval != null
+        && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
+            || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
       throw new IllegalArgumentException(
-          "quantile must be between "
-              + MINIMUM_QUANTILE
+          "confidenceInterval must be between "
+              + MINIMUM_CONFIDENCE_INTERVAL
               + " and "
-              + MAXIMUM_QUANTILE
-              + "; quantile="
-              + quantile);
+              + MAXIMUM_CONFIDENCE_INTERVAL
+              + "; confidenceInterval="
+              + confidenceInterval);
     }
-    this.quantile = quantile;
+    this.confidenceInterval = confidenceInterval;
   }
 
-  static float calculateDefaultQuantile(int vectorDimension) {
-    return Math.max(MINIMUM_QUANTILE, 1f - (1f / (vectorDimension + 1)));
+  public static float calculateDefaultConfidenceInterval(int vectorDimension) {
+    return Math.max(MINIMUM_CONFIDENCE_INTERVAL, 1f - (1f / (vectorDimension + 1)));
   }
 
   @Override
   public String toString() {
-    return NAME + "(name=" + NAME + ", quantile=" + quantile + ")";
+    return NAME
+        + "(name="
+        + NAME
+        + ", confidenceInterval="
+        + confidenceInterval
+        + ", rawVectorFormat="
+        + rawVectorFormat
+        + ")";
+  }
+
+  @Override
+  public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsWriter(
+        state, confidenceInterval, rawVectorFormat.fieldsWriter(state));
+  }
+
+  @Override
+  public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
   }
 }
