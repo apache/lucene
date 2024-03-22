@@ -69,6 +69,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     return Constants.JRE_IS_64BIT ? (1L << 34) : (1L << 28);
   }
 
+  @Override
+  public boolean supportsMadvise() {
+    return nativeAccess.isPresent();
+  }
+
   private final MemorySegment[] map(
       Arena arena,
       String resourceDescription,

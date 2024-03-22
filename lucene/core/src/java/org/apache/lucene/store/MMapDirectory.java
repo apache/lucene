@@ -204,6 +204,8 @@ public class MMapDirectory extends FSDirectory {
 
     long getDefaultMaxChunkSize();
 
+    boolean supportsMadvise();
+
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
       final String originalMessage;
@@ -267,6 +269,14 @@ public class MMapDirectory extends FSDirectory {
     } catch (ClassNotFoundException cnfe) {
       throw new LinkageError("MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
     }
+  }
+
+  /**
+   * Returns true, if MMapDirectory uses the platform's {@code madvise()} syscall to advise how OS
+   * kernel should page results after opening a file.
+   */
+  public static boolean supportsMadvise() {
+    return PROVIDER.supportsMadvise();
   }
 
   static {

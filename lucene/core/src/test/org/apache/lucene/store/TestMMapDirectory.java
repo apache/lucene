@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.util.Constants;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -88,5 +89,12 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
       }
     }
+  }
+
+  public void testMadviseAvail() throws Exception {
+    assertEquals(
+        "madvise should be supported on Linux and Macos",
+        Constants.LINUX || Constants.MAC_OS_X,
+        MMapDirectory.supportsMadvise());
   }
 }
