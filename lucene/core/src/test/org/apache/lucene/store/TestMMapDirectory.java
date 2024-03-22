@@ -98,7 +98,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input IOContext.RANDOM to ensure basic code path coverage for POSIX_MADV_RANDOM.
+  // Opens the input with IOContext.RANDOM to ensure basic code path coverage for POSIX_MADV_RANDOM.
   public void testWithRandom() throws Exception {
     final int size = 8 * 1024 * 1024; // large enough to trigger madvise
     byte[] bytes = new byte[size];
