@@ -154,7 +154,11 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private IOSupplier<WeightOrDocIdSetIterator> rewrite(LeafReaderContext context, Terms terms)
+    private IOSupplier<WeightOrDocIdSetIterator> rewrite(
+        LeafReaderContext context,
+        Terms terms,
+        List<TermAndState> collectedTerms,
+        boolean[] collectResult)
         throws IOException {
       assert terms != null;
 
@@ -162,13 +166,12 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       final TermsEnum termsEnum = q.getTermsEnum(terms);
       assert termsEnum != null;
 
-      final List<TermAndState> collectedTerms = new ArrayList<>();
-      boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
-      if (collectResult && collectedTerms.isEmpty()) {
+      collectResult[0] = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+      if (collectResult[0] && collectedTerms.isEmpty()) {
         return null;
       }
       return () -> {
-        if (collectResult) {
+        if (collectResult[0]) {
           // build a boolean query
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
           for (TermAndState t : collectedTerms) {
@@ -240,9 +243,21 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         return null;
       }
 
-      final long cost = estimateCost(terms, q.getTermsCount());
-      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier = rewrite(context, terms);
+      List<TermAndState> collectedTerms = new ArrayList<>();
+      boolean[] collectResult = new boolean[1];
+      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
+          rewrite(context, terms, collectedTerms, collectResult);
       if (weightOrIteratorSupplier == null) return null;
+      final long cost;
+      if (collectResult[0]) {
+        long sumTermCost = 0;
+        for (TermAndState collectedTerm : collectedTerms) {
+          sumTermCost += collectedTerm.docFreq;
+        }
+        cost = sumTermCost;
+      } else {
+        cost = estimateCost(terms, q.getTermsCount());
+      }
 
       return new ScorerSupplier() {
         @Override
