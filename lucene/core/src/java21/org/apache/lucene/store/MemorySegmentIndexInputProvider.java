@@ -102,7 +102,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
       if (preload) {
         segment.load();
-      } else if (chunkSizePower >= 21) {
+      } else if (nativeAccess != null && chunkSizePower >= 21) {
         nativeAccess.madvise(segment, context);
       }
       segments[segNr] = segment;

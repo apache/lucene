@@ -18,7 +18,6 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
-import java.util.Locale;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -30,23 +29,13 @@ abstract class NativeAccess {
   public abstract void madvise(MemorySegment segment, IOContext context) throws IOException;
 
   /**
-   * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
+   * Return the NativeAccess instance for this platform, or null. At moment we only support Linux
+   * and MacOS.
    */
   public static NativeAccess getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {
-      try {
-        return new PosixNativeAccess();
-      } catch (UnsupportedOperationException uoe) {
-        LOG.warning(uoe.getMessage());
-      } catch (IllegalCallerException ice) {
-        LOG.warning(
-            String.format(
-                Locale.ENGLISH,
-                "Lucene has no access to native functions (%s). To enable access to native functions, "
-                    + "pass the following on command line: --enable-native-access=org.apache.lucene.core",
-                ice.getMessage()));
-      }
+      return PosixNativeAccess.getInstanceOrNull();
     }
-    return new NoopNativeAccess();
+    return null;
   }
 }
