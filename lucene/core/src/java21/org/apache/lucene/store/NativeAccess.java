@@ -26,25 +26,8 @@ import org.apache.lucene.util.Constants;
 abstract class NativeAccess {
   private static final Logger LOG = Logger.getLogger(NativeAccess.class.getName());
 
-  // these constants were extracted from glibc and macos header files - luckily they are the same:
-
-  /** No further special treatment. */
-  public static final int POSIX_MADV_NORMAL = 0;
-
-  /** Expect random page references. */
-  public static final int POSIX_MADV_RANDOM = 1;
-
-  /** Expect sequential page references. */
-  public static final int POSIX_MADV_SEQUENTIAL = 2;
-
-  /** Will need these pages. */
-  public static final int POSIX_MADV_WILLNEED = 3;
-
-  /** Don't need these pages. */
-  public static final int POSIX_MADV_DONTNEED = 4;
-
   /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
-  public abstract void madvise(MemorySegment segment, int advice) throws IOException;
+  public abstract void madvise(MemorySegment segment, IOContext context) throws IOException;
 
   /**
    * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS

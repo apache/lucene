@@ -23,8 +23,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.OptionalInt;
-import org.apache.lucene.store.IOContext.Context;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -83,14 +81,6 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
     }
 
-    final OptionalInt advice;
-    if (chunkSizePower < 21) {
-      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment):
-      advice = OptionalInt.empty();
-    } else {
-      advice = mapContextToMadvise(context);
-    }
-
     final long chunkSize = 1L << chunkSizePower;
 
     // we always allocate one more segments, the last one may be a 0 byte one
@@ -108,29 +98,16 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
+      // if preload apply it without madvise.
+      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
       if (preload) {
         segment.load();
-      } else if (segSize > 0L && advice.isPresent()) { // not when preloading!
-        nativeAccess.madvise(segment, advice.getAsInt());
+      } else if (chunkSizePower >= 21) {
+        nativeAccess.madvise(segment, context);
       }
       segments[segNr] = segment;
       startOffset += segSize;
     }
     return segments;
-  }
-
-  private OptionalInt mapContextToMadvise(IOContext context) {
-    // Merging always wins and implies sequential access, because kernel is advised to free pages
-    // after use:
-    if (context.context == Context.MERGE) {
-      return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
-    }
-    if (context.randomAccess) {
-      return OptionalInt.of(NativeAccess.POSIX_MADV_RANDOM);
-    }
-    if (context.readOnce) {
-      return OptionalInt.of(NativeAccess.POSIX_MADV_SEQUENTIAL);
-    }
-    return OptionalInt.empty();
   }
 }

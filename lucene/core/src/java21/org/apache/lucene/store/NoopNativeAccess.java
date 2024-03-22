@@ -22,5 +22,5 @@ import java.lang.foreign.MemorySegment;
 final class NoopNativeAccess extends NativeAccess {
 
   @Override
-  public void madvise(MemorySegment segment, int advice) {}
+  public void madvise(MemorySegment segment, IOContext context) {}
 }

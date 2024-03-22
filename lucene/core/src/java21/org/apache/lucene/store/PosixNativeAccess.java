@@ -25,11 +25,29 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Locale;
 import java.util.logging.Logger;
+import org.apache.lucene.store.IOContext.Context;
 
 @SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
 
   private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());
+
+  // these constants were extracted from glibc and macos header files - luckily they are the same:
+
+  /** No further special treatment. */
+  public static final int POSIX_MADV_NORMAL = 0;
+
+  /** Expect random page references. */
+  public static final int POSIX_MADV_RANDOM = 1;
+
+  /** Expect sequential page references. */
+  public static final int POSIX_MADV_SEQUENTIAL = 2;
+
+  /** Will need these pages. */
+  public static final int POSIX_MADV_WILLNEED = 3;
+
+  /** Don't need these pages. */
+  public static final int POSIX_MADV_DONTNEED = 4;
 
   private final MethodHandle mh$posix_madvise;
 
@@ -62,10 +80,17 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   @Override
-  public void madvise(MemorySegment segment, int advice) throws IOException {
+  public void madvise(MemorySegment segment, IOContext context) throws IOException {
+    if (segment.byteSize() == 0L) {
+      return; // empty segments should be excluded, because they may have no address at all
+    }
+    final Integer advice = mapIOContext(context);
+    if (advice == null) {
+      return; // do nothing
+    }
     final int ret;
     try {
-      ret = (int) mh$posix_madvise.invokeExact(segment, segment.byteSize(), advice);
+      ret = (int) mh$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
     } catch (Throwable th) {
       throw new AssertionError(th);
     }
@@ -78,5 +103,20 @@ final class PosixNativeAccess extends NativeAccess {
               segment.byteSize(),
               ret));
     }
+  }
+
+  private Integer mapIOContext(IOContext ctx) {
+    // Merging always wins and implies sequential access, because kernel is advised to free pages
+    // after use:
+    if (ctx.context == Context.MERGE) {
+      return POSIX_MADV_SEQUENTIAL;
+    }
+    if (ctx.randomAccess) {
+      return POSIX_MADV_RANDOM;
+    }
+    if (ctx.readOnce) {
+      return POSIX_MADV_SEQUENTIAL;
+    }
+    return null;
   }
 }
