@@ -52,7 +52,7 @@ abstract class NativeAccess {
   public static NativeAccess getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {
       try {
-        return PosixNativeAccess.getInstance();
+        return new PosixNativeAccess();
       } catch (UnsupportedOperationException uoe) {
         LOG.warning(uoe.getMessage());
       } catch (IllegalCallerException ice) {
