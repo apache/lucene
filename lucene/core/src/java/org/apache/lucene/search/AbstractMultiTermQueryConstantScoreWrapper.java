@@ -292,7 +292,21 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       };
     }
 
-    private static long estimateCost(Terms terms, long queryTermsCount) throws IOException {
+    private static final int MAX_TERMS_TO_COUNT = 128;
+
+    private long estimateCost(Terms terms, long queryTermsCount) throws IOException {
+
+      // Try to explicitly compute the cost, but only if the term count is sufficiently small.
+      if (queryTermsCount < MAX_TERMS_TO_COUNT) {
+        long totalCost = 0;
+        TermsEnum termsEnum = q.getTermsEnum(terms);
+        for (int i = 0; i < MAX_TERMS_TO_COUNT; i++) {
+          if (termsEnum.next() == null) {
+            return totalCost;
+          }
+          totalCost += termsEnum.docFreq();
+        }
+      }
       // Estimate the cost. If the MTQ can provide its term count, we can do a better job
       // estimating.
       // Cost estimation reasoning is:
@@ -315,7 +329,6 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         }
         cost = queryTermsCount + potentialExtraCost;
       }
-
       return cost;
     }
 
