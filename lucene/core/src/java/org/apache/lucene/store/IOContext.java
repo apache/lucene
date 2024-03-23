@@ -65,35 +65,26 @@ public record IOContext(
     }
   }
 
-  public IOContext() {
-    this(false, false);
-  }
-
-  public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, false, false);
-  }
-
-  public IOContext(Context context) {
-    this(context, null, null, false, false);
-  }
-
   private IOContext(boolean readOnce, boolean load) {
     this(Context.READ, null, null, readOnce, load);
   }
 
+  private IOContext(Context context) {
+    this(context, null, null, false, false);
+  }
+
+  /** Creates an IOContext for flushing. */
+  public IOContext(FlushInfo flushInfo) {
+    this(Context.FLUSH, null, flushInfo, false, false);
+  }
+
+  /** Creates an IOContext for merging. */
   public IOContext(MergeInfo mergeInfo) {
     this(Context.MERGE, mergeInfo, null, false, false);
   }
 
-  /**
-   * This constructor is used to initialize a {@link IOContext} instance with a new value for the
-   * readOnce variable.
-   *
-   * @param ctxt {@link IOContext} object whose information is used to create the new instance
-   *     except the readOnce variable.
-   * @param readOnce The new {@link IOContext} object will use this value for readOnce.
-   */
-  public IOContext(IOContext ctxt, boolean readOnce) {
-    this(ctxt.context, ctxt.mergeInfo, ctxt.flushInfo, readOnce, ctxt.load);
+  /** Return a copy of this IOContext with {@link #readOnce} set to {@code true}. */
+  public IOContext toReadOnce() {
+    return new IOContext(context, mergeInfo, flushInfo, true, load);
   }
 }
