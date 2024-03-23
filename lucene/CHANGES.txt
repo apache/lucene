@@ -68,6 +68,11 @@ Bug Fixes
 
 * GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
 
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.7 and ASM for APIJAR extraction to 9.7.  (Uwe Schindler)
+
 Other
 ---------------------
 
