@@ -24,7 +24,22 @@ import java.util.Objects;
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
  */
-public class IOContext {
+public record IOContext(
+    /** An object of a enumerator Context type */
+    Context context,
+    MergeInfo mergeInfo,
+    FlushInfo flushInfo,
+    /**
+     * This flag indicates that the file will be opened, then fully read sequentially then closed.
+     */
+    boolean readOnce,
+    /**
+     * This flag is used for files that are a small fraction of the total index size and are
+     * expected to be heavily accessed in random-access fashion. Some {@link Directory}
+     * implementations may choose to load such files into physical memory (e.g. Java heap) as a way
+     * to provide stronger guarantees on query latency.
+     */
+    boolean load) {
 
   /**
    * Context is a enumerator which specifies the context in which the Directory is being used for.
@@ -36,24 +51,6 @@ public class IOContext {
     DEFAULT
   };
 
-  /** An object of a enumerator Context type */
-  public final Context context;
-
-  public final MergeInfo mergeInfo;
-
-  public final FlushInfo flushInfo;
-
-  /** This flag indicates that the file will be opened, then fully read sequentially then closed. */
-  public final boolean readOnce;
-
-  /**
-   * This flag is used for files that are a small fraction of the total index size and are expected
-   * to be heavily accessed in random-access fashion. Some {@link Directory} implementations may
-   * choose to load such files into physical memory (e.g. Java heap) as a way to provide stronger
-   * guarantees on query latency.
-   */
-  public final boolean load;
-
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
   public static final IOContext READONCE = new IOContext(true, false);
@@ -62,44 +59,34 @@ public class IOContext {
 
   public static final IOContext LOAD = new IOContext(false, true);
 
+  @SuppressWarnings("incomplete-switch")
+  public IOContext {
+    switch (context) {
+      case MERGE -> Objects.requireNonNull(
+          mergeInfo, "mergeInfo must not be null if context is MERGE");
+      case FLUSH -> Objects.requireNonNull(
+          flushInfo, "flushInfo must not be null if context is FLUSH");
+    }
+  }
+
   public IOContext() {
     this(false, false);
   }
 
   public IOContext(FlushInfo flushInfo) {
-    assert flushInfo != null;
-    this.context = Context.FLUSH;
-    this.mergeInfo = null;
-    this.readOnce = false;
-    this.load = false;
-    this.flushInfo = flushInfo;
+    this(Context.FLUSH, null, flushInfo, false, false);
   }
 
   public IOContext(Context context) {
-    this(context, null);
+    this(context, null, null, false, false);
   }
 
   private IOContext(boolean readOnce, boolean load) {
-    this.context = Context.READ;
-    this.mergeInfo = null;
-    this.readOnce = readOnce;
-    this.load = load;
-    this.flushInfo = null;
+    this(Context.READ, null, null, readOnce, load);
   }
 
   public IOContext(MergeInfo mergeInfo) {
-    this(Context.MERGE, mergeInfo);
-  }
-
-  private IOContext(Context context, MergeInfo mergeInfo) {
-    assert context != Context.MERGE || mergeInfo != null
-        : "MergeInfo must not be null if context is MERGE";
-    assert context != Context.FLUSH : "Use IOContext(FlushInfo) to create a FLUSH IOContext";
-    this.context = context;
-    this.readOnce = false;
-    this.load = false;
-    this.mergeInfo = mergeInfo;
-    this.flushInfo = null;
+    this(Context.MERGE, mergeInfo, null, false, false);
   }
 
   /**
@@ -111,42 +98,6 @@ public class IOContext {
    * @param readOnce The new {@link IOContext} object will use this value for readOnce.
    */
   public IOContext(IOContext ctxt, boolean readOnce) {
-    this.context = ctxt.context;
-    this.mergeInfo = ctxt.mergeInfo;
-    this.flushInfo = ctxt.flushInfo;
-    this.readOnce = readOnce;
-    this.load = false;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(context, flushInfo, mergeInfo, readOnce, load);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null) return false;
-    if (getClass() != obj.getClass()) return false;
-    IOContext other = (IOContext) obj;
-    if (context != other.context) return false;
-    if (!Objects.equals(flushInfo, other.flushInfo)) return false;
-    if (!Objects.equals(mergeInfo, other.mergeInfo)) return false;
-    if (readOnce != other.readOnce) return false;
-    if (load != other.load) return false;
-    return true;
-  }
-
-  @Override
-  public String toString() {
-    return "IOContext [context="
-        + context
-        + ", mergeInfo="
-        + mergeInfo
-        + ", flushInfo="
-        + flushInfo
-        + ", readOnce="
-        + readOnce
-        + "]";
+    this(ctxt.context, ctxt.mergeInfo, ctxt.flushInfo, ctxt.readOnce, false);
   }
 }

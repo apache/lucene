@@ -81,7 +81,7 @@ public class MMapDirectory extends FSDirectory {
    * opening them if they use the {@link IOContext#LOAD} I/O context.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.load;
+      (filename, context) -> context.load();
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
