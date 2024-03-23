@@ -213,6 +213,10 @@ Improvements
 
 * GITHUB#13066: Support getMaxScore of DisjunctionSumScorer for non top level scoring clause (Shintaro Murakami)
 
+* GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
+  implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
+  executor is provided. (Ben Trent)
+
 Optimizations
 ---------------------
 
@@ -241,6 +245,8 @@ Bug Fixes
 * GITHUB#13162: Fix NPE when LeafReader return null VectorValues (Pan Guixin)
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
+
+* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
 
 Other
 ---------------------
