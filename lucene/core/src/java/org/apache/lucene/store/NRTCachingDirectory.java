@@ -224,9 +224,9 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
 
     long bytes = 0;
     if (context.mergeInfo() != null) {
-      bytes = context.mergeInfo().estimatedMergeBytes;
+      bytes = context.mergeInfo().estimatedMergeBytes();
     } else if (context.flushInfo() != null) {
-      bytes = context.flushInfo().estimatedSegmentSize;
+      bytes = context.flushInfo().estimatedSegmentSize();
     } else {
       return false;
     }
