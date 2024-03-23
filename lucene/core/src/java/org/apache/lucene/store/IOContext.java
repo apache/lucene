@@ -98,6 +98,6 @@ public record IOContext(
    * @param readOnce The new {@link IOContext} object will use this value for readOnce.
    */
   public IOContext(IOContext ctxt, boolean readOnce) {
-    this(ctxt.context, ctxt.mergeInfo, ctxt.flushInfo, ctxt.readOnce, false);
+    this(ctxt.context, ctxt.mergeInfo, ctxt.flushInfo, readOnce, ctxt.load);
   }
 }
