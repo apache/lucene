@@ -23,23 +23,19 @@ import java.util.Objects;
  * initialized as null as passed as a parameter to either {@link
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
+ *
+ * @param context An object of a enumerator Context type
+ * @param mergeInfo must be given when {@code context == MERGE}
+ * @param flushInfo must be given when {@code context == FLUSH}
+ * @param readOnce This flag indicates that the file will be opened, then fully read sequentially
+ *     then closed.
+ * @param load This flag is used for files that are a small fraction of the total index size and are
+ *     expected to be heavily accessed in random-access fashion. Some {@link Directory}
+ *     implementations may choose to load such files into physical memory (e.g. Java heap) as a way
+ *     to provide stronger guarantees on query latency.
  */
 public record IOContext(
-    /** An object of a enumerator Context type */
-    Context context,
-    MergeInfo mergeInfo,
-    FlushInfo flushInfo,
-    /**
-     * This flag indicates that the file will be opened, then fully read sequentially then closed.
-     */
-    boolean readOnce,
-    /**
-     * This flag is used for files that are a small fraction of the total index size and are
-     * expected to be heavily accessed in random-access fashion. Some {@link Directory}
-     * implementations may choose to load such files into physical memory (e.g. Java heap) as a way
-     * to provide stronger guarantees on query latency.
-     */
-    boolean load) {
+    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, boolean readOnce, boolean load) {
 
   /**
    * Context is a enumerator which specifies the context in which the Directory is being used for.
