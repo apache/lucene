@@ -66,6 +66,8 @@ Bug Fixes
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
 
+* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+
 Other
 ---------------------
 
