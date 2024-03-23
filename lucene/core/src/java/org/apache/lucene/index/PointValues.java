@@ -385,8 +385,10 @@ public abstract class PointValues {
 
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
-   * {@link IntersectVisitor} and an upperBound that estimate will terminate when the estimated
-   * point count gets greater than the bound.
+   * {@link IntersectVisitor}. The estimation will terminate when the point count exceeds the upper
+   * bound.
+   *
+   * <p>TODO: Broad-first will help extimation terminate earlier?
    */
   public static long estimatePointCount(
       IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
