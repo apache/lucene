@@ -19,6 +19,8 @@ package org.apache.lucene.store;
 /**
  * A MergeInfo provides information required for a MERGE context. It is used as part of an {@link
  * IOContext} in case of MERGE context.
+ *
+ * <p>These values are only estimates and are not the actual values.
  */
 public record MergeInfo(
     int totalMaxDoc, long estimatedMergeBytes, boolean isExternal, int mergeMaxNumSegments) {}

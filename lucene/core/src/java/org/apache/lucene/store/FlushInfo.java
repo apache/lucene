@@ -19,5 +19,7 @@ package org.apache.lucene.store;
 /**
  * A FlushInfo provides information required for a FLUSH context. It is used as part of an {@link
  * IOContext} in case of FLUSH context.
+ *
+ * <p>These values are only estimates and are not the actual values.
  */
 public record FlushInfo(int numDocs, long estimatedSegmentSize) {}
