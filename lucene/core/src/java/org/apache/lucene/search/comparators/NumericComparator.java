@@ -259,9 +259,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
               return PointValues.Relation.CELL_INSIDE_QUERY;
             }
 
-            private long bytesAsLong(byte[] bytes) {
-              assert bytes.length == bytesCount;
-              return switch (bytesCount) {
+            private static long bytesAsLong(byte[] bytes) {
+              return switch (bytes.length) {
                 case 4 -> NumericUtils.sortableBytesToInt(bytes, 0);
                 case 8 -> NumericUtils.sortableBytesToLong(bytes, 0);
                 default -> throw new IllegalStateException("bytes count should be 4 or 8");
