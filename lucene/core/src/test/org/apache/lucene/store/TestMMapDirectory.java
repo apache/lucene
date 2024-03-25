@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.util.Constants;
 import org.junit.BeforeClass;
 
 /** Tests MMapDirectory */
@@ -112,6 +113,31 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
       }
+    }
+  }
+
+  public void testMadviseAvail() throws Exception {
+    assertEquals(
+        "madvise should be supported on Linux and Macos",
+        Constants.LINUX || Constants.MAC_OS_X,
+        MMapDirectory.supportsMadvise());
+  }
+
+  // Opens the input with IOContext.RANDOM to ensure basic code path coverage for POSIX_MADV_RANDOM.
+  public void testWithRandom() throws Exception {
+    final int size = 8 * 1024 * 1024; // large enough to trigger madvise
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      final IndexInput in = dir.openInput("test", IOContext.RANDOM);
+      final byte[] readBytes = new byte[size];
+      in.readBytes(readBytes, 0, readBytes.length);
+      assertArrayEquals(bytes, readBytes);
     }
   }
 }

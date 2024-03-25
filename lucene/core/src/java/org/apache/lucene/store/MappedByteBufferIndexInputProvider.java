@@ -97,6 +97,11 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     return unmapNotSupportedReason;
   }
 
+  @Override
+  public boolean supportsMadvise() {
+    return false;
+  }
+
   /** Maps a file into a set of buffers */
   final ByteBuffer[] map(
       String resourceDescription, FileChannel fc, int chunkSizePower, boolean preload, long length)
