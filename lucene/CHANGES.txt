@@ -197,6 +197,11 @@ New Features
 * GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
   and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
+* GITHUB#13196: Add support for posix_madvise to MMapDirectory: If running on Linux/macOS and Java 21
+  or later, MMapDirectory uses IOContext to pass suitable MADV flags to kernel of operating system.
+  This may improve paging logic especially when large segments are merged under memory pressure.
+  (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
+
 Improvements
 ---------------------
 
