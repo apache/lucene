@@ -14,20 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
 
-// Declare script dependency versions outside of palantir's
-// version unification control. These are not our main dependencies
-// but are reused in buildSrc and across applied scripts.
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
+import java.util.Optional;
+import org.apache.lucene.util.Constants;
 
-ext {
-  scriptDepVersions = [
-      "apache-rat": "0.14",
-      "asm": "9.7",
-      "commons-codec": "1.13",
-      "ecj": "3.36.0",
-      "flexmark": "0.61.24",
-      "javacc": "7.0.12",
-      "jflex": "1.8.2",
-      "jgit": "5.13.1.202206130422-r",
-  ]
+@SuppressWarnings("preview")
+abstract class NativeAccess {
+
+  /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
+  public abstract void madvise(MemorySegment segment, IOContext context) throws IOException;
+
+  /**
+   * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
+   */
+  public static Optional<NativeAccess> getImplementation() {
+    if (Constants.LINUX || Constants.MAC_OS_X) {
+      return PosixNativeAccess.getInstance();
+    }
+    return Optional.empty();
+  }
 }

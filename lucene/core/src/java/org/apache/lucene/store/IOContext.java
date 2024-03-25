@@ -33,9 +33,11 @@ import java.util.Objects;
  *     expected to be heavily accessed in random-access fashion. Some {@link Directory}
  *     implementations may choose to load such files into physical memory (e.g. Java heap) as a way
  *     to provide stronger guarantees on query latency.
+ * @param randomAccess This flag indicates that the file will be accessed randomly. If this flag is set, then readOnce
+ *     will be false.
  */
 public record IOContext(
-    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, boolean readOnce, boolean load) {
+    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, boolean readOnce, boolean load, boolean randomAccess) {
 
   /**
    * Context is a enumerator which specifies the context in which the Directory is being used for.
@@ -49,11 +51,11 @@ public record IOContext(
 
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
-  public static final IOContext READONCE = new IOContext(true, false);
+  public static final IOContext READONCE = new IOContext(true, false, false);
 
-  public static final IOContext READ = new IOContext(false, false);
+  public static final IOContext READ = new IOContext(false, false, false);
 
-  public static final IOContext LOAD = new IOContext(false, true);
+  public static final IOContext LOAD = new IOContext(false, true, true);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -68,8 +70,8 @@ public record IOContext(
     }
   }
 
-  private IOContext(boolean readOnce, boolean load) {
-    this(Context.READ, null, null, readOnce, load);
+  private IOContext(boolean readOnce, boolean load, boolean randomAccess) {
+    this(Context.READ, null, null, readOnce, load, randomAccess);
   }
 
   private IOContext(Context context) {
