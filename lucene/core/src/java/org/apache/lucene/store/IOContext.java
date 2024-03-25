@@ -47,23 +47,31 @@ public class IOContext {
   public final boolean readOnce;
 
   /**
+   * This flag indicates that the file will be accessed randomly. If this flag is set, then readOnce
+   * will be false.
+   */
+  public final boolean randomAccess;
+
+  /**
    * This flag is used for files that are a small fraction of the total index size and are expected
    * to be heavily accessed in random-access fashion. Some {@link Directory} implementations may
    * choose to load such files into physical memory (e.g. Java heap) as a way to provide stronger
-   * guarantees on query latency.
+   * guarantees on query latency. If this flag is set, then {@link #randomAccess} will be true.
    */
   public final boolean load;
 
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
-  public static final IOContext READONCE = new IOContext(true, false);
+  public static final IOContext READONCE = new IOContext(true, false, false);
 
-  public static final IOContext READ = new IOContext(false, false);
+  public static final IOContext READ = new IOContext(false, false, false);
 
-  public static final IOContext LOAD = new IOContext(false, true);
+  public static final IOContext LOAD = new IOContext(false, true, true);
+
+  public static final IOContext RANDOM = new IOContext(false, false, true);
 
   public IOContext() {
-    this(false, false);
+    this(false, false, false);
   }
 
   public IOContext(FlushInfo flushInfo) {
@@ -72,6 +80,7 @@ public class IOContext {
     this.mergeInfo = null;
     this.readOnce = false;
     this.load = false;
+    this.randomAccess = false;
     this.flushInfo = flushInfo;
   }
 
@@ -79,11 +88,18 @@ public class IOContext {
     this(context, null);
   }
 
-  private IOContext(boolean readOnce, boolean load) {
+  private IOContext(boolean readOnce, boolean load, boolean randomAccess) {
+    if (readOnce && randomAccess) {
+      throw new IllegalArgumentException("cannot be both readOnce and randomAccess");
+    }
+    if (load && randomAccess == false) {
+      throw new IllegalArgumentException("cannot be load but not randomAccess");
+    }
     this.context = Context.READ;
     this.mergeInfo = null;
     this.readOnce = readOnce;
     this.load = load;
+    this.randomAccess = randomAccess;
     this.flushInfo = null;
   }
 
@@ -98,6 +114,7 @@ public class IOContext {
     this.context = context;
     this.readOnce = false;
     this.load = false;
+    this.randomAccess = false;
     this.mergeInfo = mergeInfo;
     this.flushInfo = null;
   }
@@ -115,12 +132,13 @@ public class IOContext {
     this.mergeInfo = ctxt.mergeInfo;
     this.flushInfo = ctxt.flushInfo;
     this.readOnce = readOnce;
+    this.randomAccess = ctxt.randomAccess;
     this.load = false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(context, flushInfo, mergeInfo, readOnce, load);
+    return Objects.hash(context, flushInfo, mergeInfo, readOnce, load, randomAccess);
   }
 
   @Override
@@ -134,6 +152,7 @@ public class IOContext {
     if (!Objects.equals(mergeInfo, other.mergeInfo)) return false;
     if (readOnce != other.readOnce) return false;
     if (load != other.load) return false;
+    if (randomAccess != other.randomAccess) return false;
     return true;
   }
 
@@ -147,6 +166,10 @@ public class IOContext {
         + flushInfo
         + ", readOnce="
         + readOnce
+        + ", load="
+        + load
+        + ", randomAccess="
+        + randomAccess
         + "]";
   }
 }

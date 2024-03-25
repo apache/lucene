@@ -81,6 +81,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     return null;
   }
 
+  @Override
+  public boolean supportsMadvise() {
+    return false;
+  }
+
   private final MemorySegment[] map(
       MemorySession session,
       String resourceDescription,

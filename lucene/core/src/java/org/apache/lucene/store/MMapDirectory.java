@@ -76,9 +76,16 @@ import org.apache.lucene.util.SuppressForbidden;
  *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
  * </ul>
  *
- * <p>On exactly <b>Java 19 / 20 / 21</b> this class will use the modern {@code MemorySegment} API
- * which allows to safely unmap (if you discover any problems with this preview API, you can disable
- * it by using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
+ * <p>Starting with <b>Java 19</b> this class will use the modern {@code MemorySegment} API which
+ * allows to safely unmap (if you discover any problems with this preview API, you can disable it by
+ * using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
+ *
+ * <p>Starting with <b>Java 21</b> on some platforms like Linux and MacOS X, this class will invoke
+ * the syscall {@code madvise()} to advise how OS kernel should handle paging after opening a file.
+ * For this to work, Java code must be able to call native code. If this is not allowed, a warning
+ * is logged. To enable native access for Lucene in a modularized application, pass {@code
+ * --enable-native-access=org.apache.lucene.core} to the Java command line. If Lucene is running in
+ * a classpath-based application, use {@code --enable-native-access=ALL-UNNAMED}.
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
@@ -345,6 +352,8 @@ public class MMapDirectory extends FSDirectory {
 
     String getUnmapNotSupportedReason();
 
+    boolean supportsMadvise();
+
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
       final String originalMessage;
@@ -439,6 +448,14 @@ public class MMapDirectory extends FSDirectory {
       }
     }
     return new MappedByteBufferIndexInputProvider();
+  }
+
+  /**
+   * Returns true, if MMapDirectory uses the platform's {@code madvise()} syscall to advise how OS
+   * kernel should handle paging after opening a file.
+   */
+  public static boolean supportsMadvise() {
+    return PROVIDER.supportsMadvise();
   }
 
   static {
