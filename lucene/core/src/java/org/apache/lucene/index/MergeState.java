@@ -266,4 +266,40 @@ public class MergeState {
     }
     return docMapBuilder.build();
   }
+
+  /** Create a new merge instance. */
+  public MergeState(
+      DocMap[] docMaps,
+      SegmentInfo segmentInfo,
+      FieldInfos mergeFieldInfos,
+      StoredFieldsReader[] storedFieldsReaders,
+      TermVectorsReader[] termVectorsReaders,
+      NormsProducer[] normsProducers,
+      DocValuesProducer[] docValuesProducers,
+      FieldInfos[] fieldInfos,
+      Bits[] liveDocs,
+      FieldsProducer[] fieldsProducers,
+      PointsReader[] pointsReaders,
+      KnnVectorsReader[] knnVectorsReaders,
+      int[] maxDocs,
+      InfoStream infoStream,
+      Executor intraMergeTaskExecutor,
+      boolean needsIndexSort) {
+    this.docMaps = docMaps;
+    this.segmentInfo = segmentInfo;
+    this.mergeFieldInfos = mergeFieldInfos;
+    this.storedFieldsReaders = storedFieldsReaders;
+    this.termVectorsReaders = termVectorsReaders;
+    this.normsProducers = normsProducers;
+    this.docValuesProducers = docValuesProducers;
+    this.fieldInfos = fieldInfos;
+    this.liveDocs = liveDocs;
+    this.fieldsProducers = fieldsProducers;
+    this.pointsReaders = pointsReaders;
+    this.knnVectorsReaders = knnVectorsReaders;
+    this.maxDocs = maxDocs;
+    this.infoStream = infoStream;
+    this.intraMergeTaskExecutor = intraMergeTaskExecutor;
+    this.needsIndexSort = needsIndexSort;
+  }
 }
