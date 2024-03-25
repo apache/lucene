@@ -153,19 +153,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int int4DotProduct(byte[] a, byte[] b) {
-    int total = 0;
-    int i = 0;
-    int upperBound = a.length & ~(4 - 1);
-    for (; i < upperBound; i += 4) {
-      total += a[i] * b[i];
-      total += a[i + 1] * b[i + 1];
-      total += a[i + 2] * b[i + 2];
-      total += a[i + 3] * b[i + 3];
-    }
-    for (; i < a.length; i++) {
-      total += a[i] * b[i];
-    }
-    return total;
+    return dotProduct(a, b);
   }
 
   @Override

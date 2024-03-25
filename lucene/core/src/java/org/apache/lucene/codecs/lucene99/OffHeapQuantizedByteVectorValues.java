@@ -268,7 +268,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   private static class EmptyOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, (byte) 8, null);
+      super(dimension, 0, (byte) 7, null);
     }
 
     private int doc = -1;

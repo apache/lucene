@@ -150,6 +150,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   public FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      if (bits <= 4 && fieldInfo.getVectorDimension() % 2 != 0) {
+        throw new IllegalArgumentException(
+            "bits="
+                + bits
+                + " is not supported for odd vector dimensions; vector dimension="
+                + fieldInfo.getVectorDimension());
+      }
       FieldWriter quantizedWriter =
           new FieldWriter(
               confidenceInterval, bits, fieldInfo, segmentWriteState.infoStream, indexWriter);

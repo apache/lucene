@@ -650,6 +650,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     VectorEncoding[] fieldVectorEncodings = new VectorEncoding[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
+      if (fieldDims[i] % 2 != 0) {
+        fieldDims[i]++;
+      }
       fieldSimilarityFunctions[i] = randomSimilarity();
       fieldVectorEncodings[i] = randomVectorEncoding();
     }
