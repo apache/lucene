@@ -101,7 +101,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
-    private static final int MAX_DISJUNCTION_CLAUSE = 64;
     private static final int MIN_DISJUNCTION_LENGTH = 512;
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
@@ -220,8 +219,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           competitiveIterator = getNumericDocValues(context, field);
           leadCost = Math.min(leadCost, competitiveIterator.cost());
         }
-        // limit the memory to maxDoc bits.
-        long threshold = Math.min(leadCost >> 1, maxDoc >> 5);
+        long threshold = Math.min(leadCost >> 3, (long) IndexSearcher.getMaxClauseCount() * MIN_DISJUNCTION_LENGTH);
         thresholdAsLong = intersectThresholdValue(threshold);
       }
 
@@ -621,6 +619,27 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     @Override
+    public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+      long l = bytesAsLong(packedValue);
+      if (l >= minInclusive && l <= maxInclusive) {
+        int doc = iterator.advance(docLowerBound);
+        while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+          consumeDoc(doc);
+          doc = iterator.nextDoc();
+        }
+      }
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      int doc = iterator.advance(docLowerBound);
+      while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+        consumeDoc(doc);
+        doc = iterator.nextDoc();
+      }
+    }
+
+    @Override
     public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
       long min = bytesAsLong(minPackedValue);
       long max = bytesAsLong(maxPackedValue);
@@ -723,8 +742,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       return "CompetitiveIterator{"
           + "maxDoc="
           + maxDoc
-          + ", doc="
-          + doc
           + ", disis="
           + disis
           + '}';
