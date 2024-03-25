@@ -101,7 +101,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
-    private static final int MIN_DISJUNCTION_LENGTH = 512;
+    private static final int MIN_BLOCK_DISI_LENGTH = 512;
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
@@ -219,7 +219,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           competitiveIterator = getNumericDocValues(context, field);
           leadCost = Math.min(leadCost, competitiveIterator.cost());
         }
-        long threshold = Math.min(leadCost >> 3, (long) IndexSearcher.getMaxClauseCount() * MIN_DISJUNCTION_LENGTH);
+        long threshold =
+            Math.min(
+                leadCost >> 3, (long) IndexSearcher.getMaxClauseCount() * MIN_BLOCK_DISI_LENGTH);
         thresholdAsLong = intersectThresholdValue(threshold);
       }
 
@@ -452,8 +454,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     private DocIdSetIterator initIterator() throws IOException {
-
-
       Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>();
       // most competitive entry stored last.
       Consumer<DisiAndMostCompetitiveValue> adder =
@@ -462,7 +462,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       class DisjunctionBuildVisitor extends RangeVisitor {
 
-        int[] docs = new int[MIN_DISJUNCTION_LENGTH + 1];
+        int[] docs = new int[MIN_BLOCK_DISI_LENGTH + 1];
         int index = 0;
         int blockMaxDoc = -1;
         boolean sorted = true;
@@ -490,7 +490,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
         void update() throws IOException {
           if (blockMinValue > blockMaxValue) {
-            // already flushed
             return;
           }
           long mostCompetitiveValue =
@@ -502,10 +501,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
           }
           docs[index] = DocIdSetIterator.NO_MORE_DOCS;
-          adder.accept(
-              new DisiAndMostCompetitiveValue(
-                  new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
-          docs = new int[MIN_DISJUNCTION_LENGTH + 1];
+          DocIdSetIterator iter = new IntArrayDocIdSet(docs, index).iterator();
+          adder.accept(new DisiAndMostCompetitiveValue(iter, mostCompetitiveValue));
+          docs = new int[MIN_BLOCK_DISI_LENGTH + 1];
           index = 0;
           blockMaxDoc = -1;
           sorted = true;
@@ -515,7 +513,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
           this.blockMinValue = Math.min(blockMinValue, leafMinValue);
           this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
-          if (index >= MIN_DISJUNCTION_LENGTH) {
+          if (index >= MIN_BLOCK_DISI_LENGTH) {
             update();
             this.blockMinValue = Long.MAX_VALUE;
             this.blockMaxValue = Long.MIN_VALUE;
@@ -523,7 +521,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
       }
 
-      DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor(minValueAsLong, maxValueAsLong, maxDocVisited);
+      DisjunctionBuildVisitor visitor =
+          new DisjunctionBuildVisitor(minValueAsLong, maxValueAsLong, maxDocVisited);
       intersectLeaves(pointValues.getPointTree(), visitor);
       visitor.update();
 
@@ -739,12 +738,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public String toString() {
-      return "CompetitiveIterator{"
-          + "maxDoc="
-          + maxDoc
-          + ", disis="
-          + disis
-          + '}';
+      return "CompetitiveIterator{" + "maxDoc=" + maxDoc + ", disis=" + disis + '}';
     }
   }
 }

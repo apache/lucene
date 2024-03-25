@@ -92,7 +92,7 @@ public final class LSBRadixSorter {
       return;
     }
 
-    buffer = ArrayUtil.growNoCopy(buffer, len);
+    buffer = ArrayUtil.grow(buffer, len);
 
     int[] arr = array;
 
