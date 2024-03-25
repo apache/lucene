@@ -31,7 +31,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Terms;
 
-/** Utility class to update the {@link MergeState} instance to be restricted to a set of fields. */
+/** Utility class creating a new {@link MergeState} to be restricted to a set of fields. */
 final class PerFieldMergeState {
 
   /**
