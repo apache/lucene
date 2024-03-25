@@ -76,14 +76,14 @@ import org.apache.lucene.util.SuppressForbidden;
  *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
  * </ul>
  *
- * <p>On exactly <b>Java 19 / 20 / 21</b> this class will use the modern {@code MemorySegment} API
- * which allows to safely unmap (if you discover any problems with this preview API, you can disable
- * it by using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
+ * <p>Starting with <b>Java 19</b> this class will use the modern {@code MemorySegment} API which
+ * allows to safely unmap (if you discover any problems with this preview API, you can disable it by
+ * using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
  *
- * <p>On some platforms like Linux and MacOS X, this class will invoke the syscall {@code madvise()}
- * to advise how OS kernel should handle paging after opening a file. For this to work, Java code
- * must be able to call native code. If this is not allowed, a warning is logged. To enable native
- * access for Lucene in a modularized application, pass {@code
+ * <p>Starting with <b>Java 21</b> on some platforms like Linux and MacOS X, this class will invoke
+ * the syscall {@code madvise()} to advise how OS kernel should handle paging after opening a file.
+ * For this to work, Java code must be able to call native code. If this is not allowed, a warning
+ * is logged. To enable native access for Lucene in a modularized application, pass {@code
  * --enable-native-access=org.apache.lucene.core} to the Java command line. If Lucene is running in
  * a classpath-based application, use {@code --enable-native-access=ALL-UNNAMED}.
  *
