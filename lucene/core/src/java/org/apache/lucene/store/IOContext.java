@@ -63,6 +63,9 @@ public record IOContext(
       case FLUSH -> Objects.requireNonNull(
           flushInfo, "flushInfo must not be null if context is FLUSH");
     }
+    if (load && readOnce) {
+      throw new IllegalArgumentException("load and readOnce are mutually exclusive.");
+    }
   }
 
   private IOContext(boolean readOnce, boolean load) {
@@ -83,8 +86,11 @@ public record IOContext(
     this(Context.MERGE, mergeInfo, null, false, false);
   }
 
-  /** Return a copy of this IOContext with {@link #readOnce} set to {@code true}. */
+  /**
+   * Return a copy of this IOContext with {@link #readOnce} set to {@code true}. The {@link #load}
+   * flag is set to {@code false}.
+   */
   public IOContext toReadOnce() {
-    return new IOContext(context, mergeInfo, flushInfo, true, load);
+    return new IOContext(context, mergeInfo, flushInfo, true, false);
   }
 }
