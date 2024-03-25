@@ -21,7 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
-final class IntArrayDocIdSet extends DocIdSet {
+public final class IntArrayDocIdSet extends DocIdSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(IntArrayDocIdSet.class);
@@ -29,7 +29,7 @@ final class IntArrayDocIdSet extends DocIdSet {
   private final int[] docs;
   private final int length;
 
-  IntArrayDocIdSet(int[] docs, int length) {
+  public IntArrayDocIdSet(int[] docs, int length) {
     if (docs[length] != DocIdSetIterator.NO_MORE_DOCS) {
       throw new IllegalArgumentException();
     }
