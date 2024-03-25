@@ -337,22 +337,28 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
         });
     try (Directory directory = newDirectory();
         IndexWriter writer = new IndexWriter(directory, config)) {
-      int numDocs = 50 + random().nextInt(500);
-      int numFields = 10 + random().nextInt(20);
+      int numDocs = 50 + random().nextInt(100);
+      int numFields = 5 + random().nextInt(5);
       for (int d = 0; d < numDocs; d++) {
         Document doc = new Document();
-        for (int f = 0; f < numFields; f++) {
+        for (int f = 0; f < numFields * 2; f++) {
           String field = "f-" + f;
           String value = "v-" + random().nextInt(100);
-          doc.add(new StringField(field, value, Field.Store.NO));
-          doc.add(new BinaryDocValuesField(field, new BytesRef(value)));
-          writer.addDocument(doc);
+          if (f % 2 == 0) {
+            doc.add(new StringField(field, value, Field.Store.NO));
+          } else {
+            doc.add(new BinaryDocValuesField(field, new BytesRef(value)));
+          }
         }
+        writer.addDocument(doc);
         if (random().nextInt(100) < 10) {
           writer.flush();
         }
       }
       writer.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(numDocs, reader.numDocs());
+      }
     }
   }
 
