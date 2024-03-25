@@ -73,10 +73,10 @@ public record IOContext(
           flushInfo, "flushInfo must not be null if context is FLUSH");
     }
     if (load && readOnce) {
-      throw new IllegalArgumentException("load and readOnce are mutually exclusive.");
+      throw new IllegalArgumentException("load and readOnce are mutually exclusive");
     }
     if (readOnce && randomAccess) {
-      throw new IllegalArgumentException("readOnce and randomAccess are mutually exclusive.");
+      throw new IllegalArgumentException("readOnce and randomAccess are mutually exclusive");
     }
     if (load && randomAccess == false) {
       throw new IllegalArgumentException("cannot be load but not randomAccess");
