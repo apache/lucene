@@ -19,6 +19,7 @@ package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -494,7 +495,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   reverse == false
                       ? Math.max(leafMinValue, minValueAsLong)
                       : Math.min(leafMaxValue, maxValueAsLong);
-              sorter.sort(PackedInts.bitsRequired(maxDoc - 1), docs, index);
+              Arrays.sort(docs, 0, index);
+//              sorter.sort(PackedInts.bitsRequired(maxDoc - 1), docs, index);
               docs[index] = DocIdSetIterator.NO_MORE_DOCS;
               adder.accept(
                   new DisiAndMostCompetitiveValue(
