@@ -134,27 +134,24 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
     final int cost = acceptDocs.cardinality();
+    QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(
-          ctx,
-          new BitSetIterator(acceptDocs, cost),
-          timeLimitingKnnCollectorManager.getQueryTimeout());
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
 
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
-    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
+    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO
+        // Return partial results only when timeout is met
+        || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(
-          ctx,
-          new BitSetIterator(acceptDocs, cost),
-          timeLimitingKnnCollectorManager.getQueryTimeout());
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
   }
 
@@ -206,11 +203,14 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
+    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
-        return NO_RESULTS;
+        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        break;
       }
 
       boolean advanced = vectorScorer.advanceExact(doc);
@@ -234,7 +234,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       topScoreDocs[i] = queue.pop();
     }
 
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
   }
 

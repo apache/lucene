@@ -102,10 +102,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
             fi.getVectorSimilarityFunction());
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
+    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
     while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
+      // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
-        return NO_RESULTS;
+        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        break;
       }
 
       float score = vectorScorer.score();
@@ -126,7 +129,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       topScoreDocs[i] = queue.pop();
     }
 
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
   }
 
