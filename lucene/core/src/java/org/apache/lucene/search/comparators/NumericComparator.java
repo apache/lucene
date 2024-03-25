@@ -477,6 +477,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
             int[] docs = new int[disiLength + 1];
             int index = 0;
+            int maxDocLeaf = -1;
 
             @Override
             public void grow(int count) {
@@ -486,23 +487,27 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             @Override
             protected void consumeDoc(int doc) {
               docs[index++] = doc;
+              maxDocLeaf = Math.max(doc, maxDocLeaf);
             }
 
             @Override
             void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
-              // todo: not bind with leaf size
-              long mostCompetitiveValue =
-                  reverse == false
-                      ? Math.max(leafMinValue, minValueAsLong)
-                      : Math.min(leafMaxValue, maxValueAsLong);
-              Arrays.sort(docs, 0, index);
-//              sorter.sort(PackedInts.bitsRequired(maxDoc - 1), docs, index);
-              docs[index] = DocIdSetIterator.NO_MORE_DOCS;
-              adder.accept(
-                  new DisiAndMostCompetitiveValue(
-                      new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
-              docs = new int[disiLength + 1];
-              index = 0;
+              if (index > 0) {
+                // todo: not bind with leaf size
+                long mostCompetitiveValue =
+                    reverse == false
+                        ? Math.max(leafMinValue, minValueAsLong)
+                        : Math.min(leafMaxValue, maxValueAsLong);
+
+                sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
+                docs[index] = DocIdSetIterator.NO_MORE_DOCS;
+                adder.accept(
+                    new DisiAndMostCompetitiveValue(
+                        new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
+                docs = new int[disiLength + 1];
+                index = 0;
+                maxDocLeaf = -1;
+              }
             }
           });
 
