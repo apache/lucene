@@ -149,12 +149,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
       // Delegate the merge to the appropriate consumer
       PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
-      try {
-        for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
-          e.getKey().merge(pfMergeState.apply(e.getValue()));
-        }
-      } finally {
-        pfMergeState.reset();
+      for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
+        e.getKey().merge(pfMergeState.apply(e.getValue()));
       }
     }
 

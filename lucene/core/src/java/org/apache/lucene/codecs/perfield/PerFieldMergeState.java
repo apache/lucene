@@ -31,40 +31,18 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Terms;
 
-/**
- * Utility class to update the {@link MergeState} instance to be restricted to a set of fields.
- *
- * <p>Warning: the input {@linkplain MergeState} instance will be updated when calling {@link
- * #apply(Collection)}.
- *
- * <p>It should be called within a {@code try {...} finally {...}} block to make sure that the
- * mergeState instance is restored to its original state:
- *
- * <pre>
- * PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
- * try {
- *   doSomething(pfMergeState.apply(fields));
- *   ...
- * } finally {
- *   pfMergeState.reset();
- * }
- * </pre>
- */
+/** Utility class to update the {@link MergeState} instance to be restricted to a set of fields. */
 final class PerFieldMergeState {
   private final MergeState in;
-  private final FieldInfos orgMergeFieldInfos;
-  private final FieldInfos[] orgFieldInfos;
-  private final FieldsProducer[] orgFieldsProducers;
+  private final MergeState copy;
 
   PerFieldMergeState(MergeState in) {
     this.in = in;
-    this.orgMergeFieldInfos = in.mergeFieldInfos;
-    this.orgFieldInfos = new FieldInfos[in.fieldInfos.length];
-    this.orgFieldsProducers = new FieldsProducer[in.fieldsProducers.length];
-
-    System.arraycopy(in.fieldInfos, 0, this.orgFieldInfos, 0, this.orgFieldInfos.length);
-    System.arraycopy(
-        in.fieldsProducers, 0, this.orgFieldsProducers, 0, this.orgFieldsProducers.length);
+    this.copy =
+        new MergeState(
+            in,
+            new FieldInfos[in.fieldInfos.length],
+            new FieldsProducer[in.fieldsProducers.length]);
   }
 
   /**
@@ -74,29 +52,17 @@ final class PerFieldMergeState {
    * @return The updated instance.
    */
   MergeState apply(Collection<String> fields) {
-    in.mergeFieldInfos = new FilterFieldInfos(orgMergeFieldInfos, fields);
-    for (int i = 0; i < orgFieldInfos.length; i++) {
-      in.fieldInfos[i] = new FilterFieldInfos(orgFieldInfos[i], fields);
+    copy.mergeFieldInfos = new FilterFieldInfos(in.mergeFieldInfos, fields);
+    for (int i = 0; i < in.fieldInfos.length; i++) {
+      copy.fieldInfos[i] = new FilterFieldInfos(in.fieldInfos[i], fields);
     }
-    for (int i = 0; i < orgFieldsProducers.length; i++) {
-      in.fieldsProducers[i] =
-          orgFieldsProducers[i] == null
+    for (int i = 0; i < in.fieldsProducers.length; i++) {
+      copy.fieldsProducers[i] =
+          in.fieldsProducers[i] == null
               ? null
-              : new FilterFieldsProducer(orgFieldsProducers[i], fields);
+              : new FilterFieldsProducer(in.fieldsProducers[i], fields);
     }
-    return in;
-  }
-
-  /**
-   * Resets the input {@link MergeState} instance to its original state.
-   *
-   * @return The reset instance.
-   */
-  MergeState reset() {
-    in.mergeFieldInfos = orgMergeFieldInfos;
-    System.arraycopy(orgFieldInfos, 0, in.fieldInfos, 0, in.fieldInfos.length);
-    System.arraycopy(orgFieldsProducers, 0, in.fieldsProducers, 0, in.fieldsProducers.length);
-    return in;
+    return copy;
   }
 
   private static class FilterFieldInfos extends FieldInfos {

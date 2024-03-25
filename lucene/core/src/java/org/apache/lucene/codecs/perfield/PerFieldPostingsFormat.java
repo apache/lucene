@@ -193,9 +193,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(indexedFieldNames);
 
       // Merge postings
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
       boolean success = false;
       try {
+        PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
           final FieldsGroup group = ent.getValue();
@@ -206,7 +206,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
         }
         success = true;
       } finally {
-        pfMergeState.reset();
         if (!success) {
           IOUtils.closeWhileHandlingException(toClose);
         }
