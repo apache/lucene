@@ -134,10 +134,11 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
-      final IndexInput in = dir.openInput("test", IOContext.RANDOM);
-      final byte[] readBytes = new byte[size];
-      in.readBytes(readBytes, 0, readBytes.length);
-      assertArrayEquals(bytes, readBytes);
+      try (final IndexInput in = dir.openInput("test", IOContext.RANDOM)) {
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
+      }
     }
   }
 }
