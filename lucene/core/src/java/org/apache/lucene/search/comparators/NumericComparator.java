@@ -479,10 +479,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             int index = 0;
             int maxDocLeaf = -1;
             boolean sorted = true;
+            DocIdSetIterator sortedLeafDocs;
 
             @Override
             public void grow(int count) {
               docs = ArrayUtil.grow(docs, count + 1);
+            }
+
+            @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              sortedLeafDocs = iterator;
             }
 
             @Override
@@ -503,17 +509,24 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                     reverse == false
                         ? Math.max(leafMinValue, minValueAsLong)
                         : Math.min(leafMaxValue, maxValueAsLong);
-                if (!sorted) {
-                  sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
+                if (sortedLeafDocs != null) {
+                  adder.accept(
+                      new DisiAndMostCompetitiveValue(
+                          sortedLeafDocs, mostCompetitiveValue));
+                } else {
+                  if (!sorted) {
+                    sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
+                  }
+                  docs[index] = DocIdSetIterator.NO_MORE_DOCS;
+                  adder.accept(
+                      new DisiAndMostCompetitiveValue(
+                          new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
                 }
-                docs[index] = DocIdSetIterator.NO_MORE_DOCS;
-                adder.accept(
-                    new DisiAndMostCompetitiveValue(
-                        new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
                 docs = new int[disiLength + 1];
                 index = 0;
                 maxDocLeaf = -1;
                 sorted = true;
+                sortedLeafDocs = null;
               }
             }
           });
