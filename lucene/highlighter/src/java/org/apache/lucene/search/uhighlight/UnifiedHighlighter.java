@@ -100,9 +100,6 @@ public class UnifiedHighlighter {
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
 
-  public static final Set<Class<? extends Query>> QUERIES_WITH_NO_HL_EFFECT =
-      Set.of(MatchAllDocsQuery.class, MatchNoDocsQuery.class, FunctionQuery.class);
-
   protected static final LabelledCharArrayMatcher[] ZERO_LEN_AUTOMATA_ARRAY =
       new LabelledCharArrayMatcher[0];
 
@@ -1121,6 +1118,12 @@ public class UnifiedHighlighter {
         highlightFlags);
   }
 
+  protected boolean isIgnorableQuery(Query q) {
+    return q instanceof MatchAllDocsQuery
+        || q instanceof MatchNoDocsQuery
+        || q instanceof FunctionQuery;
+  }
+
   protected boolean hasUnrecognizedQuery(Predicate<String> fieldMatcher, Query query) {
     boolean[] hasUnknownLeaf = new boolean[1];
     query.visit(
@@ -1134,16 +1137,7 @@ public class UnifiedHighlighter {
           @Override
           public void visitLeaf(Query query) {
             if (MultiTermHighlighting.canExtractAutomataFromLeafQuery(query) == false) {
-              boolean no_effect_query = false;
-              for (Class<? extends Query> queryType :
-                  UnifiedHighlighter.QUERIES_WITH_NO_HL_EFFECT) {
-                if (queryType.isInstance(query)) {
-                  no_effect_query = true;
-                  break;
-                }
-              }
-
-              if (!no_effect_query) {
+              if (!UnifiedHighlighter.this.isIgnorableQuery(query)) {
                 hasUnknownLeaf[0] = true;
               }
             }
