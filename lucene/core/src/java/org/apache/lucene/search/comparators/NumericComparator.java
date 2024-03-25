@@ -19,7 +19,6 @@ package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -455,81 +454,80 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     private DocIdSetIterator initIterator() throws IOException {
-      final long cost =
-          pointValues.estimatePointCount(
-              new RangeVisitor(minValueAsLong, maxValueAsLong, maxDocVisited));
 
-      final int maxDisjunctions =
-          Math.min(MAX_DISJUNCTION_CLAUSE, IndexSearcher.getMaxClauseCount());
-      final int disiLength =
-          Math.max(Math.toIntExact(cost / maxDisjunctions) + 1, MIN_DISJUNCTION_LENGTH);
-      final int size = Math.toIntExact(cost / disiLength) + 1;
 
-      Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>(size);
+      Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>();
       // most competitive entry stored last.
       Consumer<DisiAndMostCompetitiveValue> adder =
           reverse == false ? disis::addFirst : disis::addLast;
       LSBRadixSorter sorter = new LSBRadixSorter();
 
-      intersectLeaves(
-          pointValues.getPointTree(),
-          new RangeVisitor(minValueAsLong, maxValueAsLong, maxDocVisited) {
+      class DisjunctionBuildVisitor extends RangeVisitor {
 
-            int[] docs = new int[disiLength + 1];
-            int index = 0;
-            int maxDocLeaf = -1;
-            boolean sorted = true;
-            DocIdSetIterator sortedLeafDocs;
+        int[] docs = new int[MIN_DISJUNCTION_LENGTH + 1];
+        int index = 0;
+        int blockMaxDoc = -1;
+        boolean sorted = true;
+        long blockMinValue = Long.MAX_VALUE;
+        long blockMaxValue = Long.MIN_VALUE;
 
-            @Override
-            public void grow(int count) {
-              docs = ArrayUtil.grow(docs, count + 1);
-            }
+        private DisjunctionBuildVisitor(long minInclusive, long maxInclusive, int docLowerBound) {
+          super(minInclusive, maxInclusive, docLowerBound);
+        }
 
-            @Override
-            public void visit(DocIdSetIterator iterator) throws IOException {
-              sortedLeafDocs = iterator;
-            }
+        @Override
+        public void grow(int count) {
+          docs = ArrayUtil.grow(docs, index + count + 1);
+        }
 
-            @Override
-            protected void consumeDoc(int doc) {
-              docs[index++] = doc;
-              if (doc > maxDocLeaf) {
-                maxDocLeaf = doc;
-              } else {
-                sorted = false;
-              }
-            }
+        @Override
+        protected void consumeDoc(int doc) {
+          docs[index++] = doc;
+          if (doc >= blockMaxDoc) {
+            blockMaxDoc = doc;
+          } else {
+            sorted = false;
+          }
+        }
 
-            @Override
-            void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
-              if (index > 0) {
-                // todo: not bind with leaf size
-                long mostCompetitiveValue =
-                    reverse == false
-                        ? Math.max(leafMinValue, minValueAsLong)
-                        : Math.min(leafMaxValue, maxValueAsLong);
-                if (sortedLeafDocs != null) {
-                  adder.accept(
-                      new DisiAndMostCompetitiveValue(
-                          sortedLeafDocs, mostCompetitiveValue));
-                } else {
-                  if (!sorted) {
-                    sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
-                  }
-                  docs[index] = DocIdSetIterator.NO_MORE_DOCS;
-                  adder.accept(
-                      new DisiAndMostCompetitiveValue(
-                          new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
-                }
-                docs = new int[disiLength + 1];
-                index = 0;
-                maxDocLeaf = -1;
-                sorted = true;
-                sortedLeafDocs = null;
-              }
-            }
-          });
+        void update() throws IOException {
+          if (blockMinValue > blockMaxValue) {
+            // already flushed
+            return;
+          }
+          long mostCompetitiveValue =
+              reverse == false
+                  ? Math.max(blockMinValue, minValueAsLong)
+                  : Math.min(blockMaxValue, maxValueAsLong);
+
+          if (sorted == false) {
+            sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
+          }
+          docs[index] = DocIdSetIterator.NO_MORE_DOCS;
+          adder.accept(
+              new DisiAndMostCompetitiveValue(
+                  new IntArrayDocIdSet(docs, index).iterator(), mostCompetitiveValue));
+          docs = new int[MIN_DISJUNCTION_LENGTH + 1];
+          index = 0;
+          blockMaxDoc = -1;
+          sorted = true;
+        }
+
+        @Override
+        void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
+          this.blockMinValue = Math.min(blockMinValue, leafMinValue);
+          this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
+          if (index >= MIN_DISJUNCTION_LENGTH) {
+            update();
+            this.blockMinValue = Long.MAX_VALUE;
+            this.blockMaxValue = Long.MIN_VALUE;
+          }
+        }
+      }
+
+      DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor(minValueAsLong, maxValueAsLong, maxDocVisited);
+      intersectLeaves(pointValues.getPointTree(), visitor);
+      visitor.update();
 
       if (disis.isEmpty()) {
         return DocIdSetIterator.empty();
