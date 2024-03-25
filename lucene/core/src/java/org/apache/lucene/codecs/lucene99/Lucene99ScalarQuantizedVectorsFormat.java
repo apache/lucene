@@ -35,7 +35,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_ADD_BITS = 1;
+  static final int VERSION_CURRENT = VERSION_ADD_BITS;
   static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
@@ -55,18 +56,20 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    */
   final Float confidenceInterval;
 
+  final byte bits;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
-    this(null);
+    this(null, 7);
   }
 
   /**
    * Constructs a format using the given graph construction parameters.
    *
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     it is calculated based on the vector field dimensions.
+   *     the confidence interval is calculated dynamically.
    */
-  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval) {
+  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval, int bits) {
     if (confidenceInterval != null
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
             || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
@@ -78,6 +81,10 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
               + "; confidenceInterval="
               + confidenceInterval);
     }
+    if (bits < 1 || bits > 8) {
+      throw new IllegalArgumentException("bits must be between 1 and 8; bits=" + bits);
+    }
+    this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
   }
 
@@ -92,6 +99,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
         + NAME
         + ", confidenceInterval="
         + confidenceInterval
+        + ", bits="
+        + bits
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -100,7 +109,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, rawVectorFormat.fieldsWriter(state));
+        state, confidenceInterval, bits, rawVectorFormat.fieldsWriter(state));
   }
 
   @Override

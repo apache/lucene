@@ -78,6 +78,7 @@ public class ScalarQuantizer {
 
   private final float alpha;
   private final float scale;
+  private final byte bits;
   private final float minQuantile, maxQuantile;
 
   /**
@@ -85,17 +86,15 @@ public class ScalarQuantizer {
    * @param maxQuantile the upper quantile of the distribution
    * @param bits the number of bits to use for quantization
    */
-  public ScalarQuantizer(float minQuantile, float maxQuantile, int bits) {
+  public ScalarQuantizer(float minQuantile, float maxQuantile, byte bits) {
     assert maxQuantile >= minQuantile;
+    assert bits > 0 && bits <= 8;
     this.minQuantile = minQuantile;
     this.maxQuantile = maxQuantile;
-    float divisor = (float) ((1 << bits) - 1);
+    this.bits = bits;
+    final float divisor = (float) ((1 << bits) - 1);
     this.scale = divisor / (maxQuantile - minQuantile);
     this.alpha = (maxQuantile - minQuantile) / divisor;
-  }
-
-  public ScalarQuantizer(float minQuantile, float maxQuantile) {
-    this(minQuantile, maxQuantile, 7);
   }
 
   /**
@@ -191,9 +190,20 @@ public class ScalarQuantizer {
     return alpha * alpha;
   }
 
+  public byte getBits() {
+    return bits;
+  }
+
   @Override
   public String toString() {
-    return "ScalarQuantizer{" + "minQuantile=" + minQuantile + ", maxQuantile=" + maxQuantile + '}';
+    return "ScalarQuantizer{"
+        + "minQuantile="
+        + minQuantile
+        + ", maxQuantile="
+        + maxQuantile
+        + ", bits="
+        + bits
+        + '}';
   }
 
   private static final Random random = new Random(42);
@@ -221,26 +231,35 @@ public class ScalarQuantizer {
    * @param confidenceInterval the confidence interval used to calculate the quantiles
    * @param totalVectorCount the total number of live float vectors in the index. This is vital for
    *     accounting for deleted documents when calculating the quantiles.
+   * @param bits the number of bits to use for quantization
    * @return A new {@link ScalarQuantizer} instance
    * @throws IOException if there is an error reading the float vector values
    */
   public static ScalarQuantizer fromVectors(
-      FloatVectorValues floatVectorValues, float confidenceInterval, int totalVectorCount)
+      FloatVectorValues floatVectorValues,
+      float confidenceInterval,
+      int totalVectorCount,
+      byte bits)
       throws IOException {
     return fromVectors(
-        floatVectorValues, confidenceInterval, totalVectorCount, SCALAR_QUANTIZATION_SAMPLE_SIZE);
+        floatVectorValues,
+        confidenceInterval,
+        totalVectorCount,
+        bits,
+        SCALAR_QUANTIZATION_SAMPLE_SIZE);
   }
 
   static ScalarQuantizer fromVectors(
       FloatVectorValues floatVectorValues,
       float confidenceInterval,
       int totalVectorCount,
+      byte bits,
       int quantizationSampleSize)
       throws IOException {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
     assert quantizationSampleSize > SCRATCH_SIZE;
     if (totalVectorCount == 0) {
-      return new ScalarQuantizer(0f, 0f);
+      return new ScalarQuantizer(0f, 0f, bits);
     }
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
@@ -251,7 +270,7 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(min, max);
+      return new ScalarQuantizer(min, max, bits);
     }
     final float[] quantileGatheringScratch =
         new float[floatVectorValues.dimension() * Math.min(SCRATCH_SIZE, totalVectorCount)];
@@ -276,7 +295,7 @@ public class ScalarQuantizer {
       // Note, we purposefully don't use the rest of the scratch state if we have fewer than
       // `SCRATCH_SIZE` vectors, mainly because if we are sampling so few vectors then we don't
       // want to be adversely affected by the extreme confidence intervals over small sample sizes
-      return new ScalarQuantizer((float) lowerSum[0] / count, (float) upperSum[0] / count);
+      return new ScalarQuantizer((float) lowerSum[0] / count, (float) upperSum[0] / count, bits);
     }
     int[] vectorsToTake = reservoirSampleIndices(totalVectorCount, quantizationSampleSize);
     int index = 0;
@@ -298,14 +317,14 @@ public class ScalarQuantizer {
         idx = 0;
       }
     }
-    return new ScalarQuantizer((float) lowerSum[0] / count, (float) upperSum[0] / count);
+    return new ScalarQuantizer((float) lowerSum[0] / count, (float) upperSum[0] / count, bits);
   }
 
   public static ScalarQuantizer fromVectorsAutoInterval(
       FloatVectorValues floatVectorValues,
       VectorSimilarityFunction function,
       int totalVectorCount,
-      int bits)
+      byte bits)
       throws IOException {
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
@@ -418,7 +437,7 @@ public class ScalarQuantizer {
       float[] lowerCandidates,
       float[] upperCandidates,
       VectorSimilarityFunction function,
-      int bits) {
+      byte bits) {
     double maxCorr = Double.NEGATIVE_INFINITY;
     float bestLower = 0f;
     float bestUpper = 0f;
@@ -604,13 +623,13 @@ public class ScalarQuantizer {
     private final List<float[]> vectors;
     private final byte[] query;
     private final byte[] vector;
-    private final int bits;
+    private final byte bits;
 
     public ScoreErrorCorrelator(
         VectorSimilarityFunction function,
         List<ScoreDocsAndScoreVariance> nearestNeighbors,
         List<float[]> vectors,
-        int bits) {
+        byte bits) {
       this.function = function;
       this.nearestNeighbors = nearestNeighbors;
       this.vectors = vectors;
@@ -624,7 +643,7 @@ public class ScalarQuantizer {
       ScalarQuantizer quantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, bits);
       ScalarQuantizedVectorSimilarity scalarQuantizedVectorSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              function, quantizer.getConstantMultiplier());
+              function, quantizer.getConstantMultiplier(), quantizer.bits);
       for (int i = 0; i < nearestNeighbors.size(); i++) {
         float queryCorrection = quantizer.quantize(vectors.get(i), query, function);
         ScoreDocsAndScoreVariance scoreDocsAndScoreVariance = nearestNeighbors.get(i);

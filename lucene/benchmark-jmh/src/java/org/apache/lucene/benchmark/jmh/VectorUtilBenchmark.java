@@ -57,11 +57,9 @@ public class VectorUtilBenchmark {
     // this means that all values must be between 0 and 15
     halfBytesA = new byte[size];
     halfBytesB = new byte[size];
-    expectedDotProduct = 0;
     for (int i = 0; i < size; ++i) {
       halfBytesA[i] = (byte) random.nextInt(16);
       halfBytesB[i] = (byte) random.nextInt(16);
-      expectedDotProduct += halfBytesA[i] * halfBytesB[i];
     }
 
     // random float arrays for float methods

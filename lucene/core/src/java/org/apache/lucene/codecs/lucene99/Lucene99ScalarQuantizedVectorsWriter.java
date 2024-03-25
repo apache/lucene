@@ -96,12 +96,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final IndexOutput meta, quantizedVectorData;
   private final Float confidenceInterval;
   private final FlatVectorsWriter rawVectorDelegate;
+  private final byte bits;
   private boolean finished;
 
   public Lucene99ScalarQuantizedVectorsWriter(
-      SegmentWriteState state, Float confidenceInterval, FlatVectorsWriter rawVectorDelegate)
+      SegmentWriteState state,
+      Float confidenceInterval,
+      byte bits,
+      FlatVectorsWriter rawVectorDelegate)
       throws IOException {
     this.confidenceInterval = confidenceInterval;
+    this.bits = bits;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -145,12 +150,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   public FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      float confidenceInterval =
-          this.confidenceInterval == null
-              ? calculateDefaultConfidenceInterval(fieldInfo.getVectorDimension())
-              : this.confidenceInterval;
       FieldWriter quantizedWriter =
-          new FieldWriter(confidenceInterval, fieldInfo, segmentWriteState.infoStream, indexWriter);
+          new FieldWriter(
+              confidenceInterval, bits, fieldInfo, segmentWriteState.infoStream, indexWriter);
       fields.add(quantizedWriter);
       indexWriter = quantizedWriter;
     }
@@ -164,24 +166,22 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // the vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      ScalarQuantizer mergedQuantizationState = mergeQuantiles(fieldInfo, mergeState);
+      ScalarQuantizer mergedQuantizationState =
+          mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval, bits);
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
               fieldInfo, mergeState, mergedQuantizationState);
       long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
       DocsWithFieldSet docsWithField =
-          writeQuantizedVectorData(quantizedVectorData, byteVectorValues);
+          writeQuantizedVectorData(quantizedVectorData, byteVectorValues, bits);
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
-      float confidenceInterval =
-          this.confidenceInterval == null
-              ? calculateDefaultConfidenceInterval(fieldInfo.getVectorDimension())
-              : this.confidenceInterval;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
           confidenceInterval,
+          bits,
           mergedQuantizationState.getLowerQuantile(),
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
@@ -255,6 +255,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         vectorDataOffset,
         vectorDataLength,
         confidenceInterval,
+        bits,
         fieldData.minQuantile,
         fieldData.maxQuantile,
         fieldData.docsWithField);
@@ -266,6 +267,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       long vectorDataOffset,
       long vectorDataLength,
       Float confidenceInterval,
+      byte bits,
       Float lowerQuantile,
       Float upperQuantile,
       DocsWithFieldSet docsWithField)
@@ -280,11 +282,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     meta.writeInt(count);
     if (count > 0) {
       assert Float.isFinite(lowerQuantile) && Float.isFinite(upperQuantile);
-      meta.writeInt(
-          Float.floatToIntBits(
-              confidenceInterval != null
-                  ? confidenceInterval
-                  : calculateDefaultConfidenceInterval(field.getVectorDimension())));
+      meta.writeInt(confidenceInterval == null ? -1 : Float.floatToIntBits(confidenceInterval));
+      meta.writeByte(bits);
       meta.writeInt(Float.floatToIntBits(lowerQuantile));
       meta.writeInt(Float.floatToIntBits(upperQuantile));
     }
@@ -296,6 +295,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private void writeQuantizedVectors(FieldWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] compressedVector =
+        OffHeapQuantizedByteVectorValues.compressedArray(
+            fieldData.fieldInfo.getVectorDimension(), bits);
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (float[] v : fieldData.floatVectors) {
@@ -307,7 +309,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
-      quantizedVectorData.writeBytes(vector, vector.length);
+      if (compressedVector != null) {
+        OffHeapQuantizedByteVectorValues.compressBytes(vector, compressedVector);
+        quantizedVectorData.writeBytes(compressedVector, compressedVector.length);
+      } else {
+        quantizedVectorData.writeBytes(vector, vector.length);
+      }
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
       offsetBuffer.rewind();
@@ -348,6 +355,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         vectorDataOffset,
         quantizedVectorLength,
         confidenceInterval,
+        bits,
         fieldData.minQuantile,
         fieldData.maxQuantile,
         newDocsWithField);
@@ -356,6 +364,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private void writeSortedQuantizedVectors(FieldWriter fieldData, int[] ordMap) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] compressedVector =
+        OffHeapQuantizedByteVectorValues.compressedArray(
+            fieldData.fieldInfo.getVectorDimension(), bits);
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     float[] copy = fieldData.normalize ? new float[fieldData.fieldInfo.getVectorDimension()] : null;
     for (int ordinal : ordMap) {
@@ -367,7 +378,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       }
       float offsetCorrection =
           scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
-      quantizedVectorData.writeBytes(vector, vector.length);
+      if (compressedVector != null) {
+        OffHeapQuantizedByteVectorValues.compressBytes(vector, compressedVector);
+        quantizedVectorData.writeBytes(compressedVector, compressedVector.length);
+      } else {
+        quantizedVectorData.writeBytes(vector, vector.length);
+      }
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
       offsetBuffer.rewind();
@@ -376,12 +392,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   private ScalarQuantizer mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
-    assert fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32;
-    float confidenceInterval =
-        this.confidenceInterval == null
-            ? calculateDefaultConfidenceInterval(fieldInfo.getVectorDimension())
-            : this.confidenceInterval;
-    return mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval);
+    return mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval, bits);
   }
 
   private ScalarQuantizedCloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
@@ -412,7 +423,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
               fieldInfo, mergeState, mergedQuantizationState);
       DocsWithFieldSet docsWithField =
-          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues);
+          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues, bits);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
@@ -432,6 +443,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           vectorDataOffset,
           vectorDataLength,
           confidenceInterval,
+          bits,
           mergedQuantizationState.getLowerQuantile(),
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
@@ -449,6 +461,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
+                  bits,
                   quantizationDataInput)));
     } finally {
       if (success == false) {
@@ -460,7 +473,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static ScalarQuantizer mergeQuantiles(
-      List<ScalarQuantizer> quantizationStates, List<Integer> segmentSizes) {
+      List<ScalarQuantizer> quantizationStates, List<Integer> segmentSizes, byte bits) {
     assert quantizationStates.size() == segmentSizes.size();
     if (quantizationStates.isEmpty()) {
       return null;
@@ -475,10 +488,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       lowerQuantile += quantizationStates.get(i).getLowerQuantile() * segmentSizes.get(i);
       upperQuantile += quantizationStates.get(i).getUpperQuantile() * segmentSizes.get(i);
       totalCount += segmentSizes.get(i);
+      if (quantizationStates.get(i).getBits() != bits) {
+        return null;
+      }
     }
     lowerQuantile /= totalCount;
     upperQuantile /= totalCount;
-    return new ScalarQuantizer(lowerQuantile, upperQuantile);
+    return new ScalarQuantizer(lowerQuantile, upperQuantile, bits);
   }
 
   /**
@@ -540,11 +556,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
    * @param mergeState The merge state
    * @param fieldInfo The field info
    * @param confidenceInterval The confidence interval
+   * @param bits The number of bits
    * @return The merged quantiles
    * @throws IOException If there is a low-level I/O error
    */
   public static ScalarQuantizer mergeAndRecalculateQuantiles(
-      MergeState mergeState, FieldInfo fieldInfo, float confidenceInterval) throws IOException {
+      MergeState mergeState, FieldInfo fieldInfo, Float confidenceInterval, byte bits)
+      throws IOException {
+    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
     List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
     List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
@@ -559,7 +578,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         segmentSizes.add(fvv.size());
       }
     }
-    ScalarQuantizer mergedQuantiles = mergeQuantiles(quantizationStates, segmentSizes);
+    ScalarQuantizer mergedQuantiles = mergeQuantiles(quantizationStates, segmentSizes, bits);
     // Segments no providing quantization state indicates that their quantiles were never
     // calculated.
     // To be safe, we should always recalculate given a sample set over all the float vectors in the
@@ -576,10 +595,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         numVectors++;
       }
       mergedQuantiles =
-          ScalarQuantizer.fromVectors(
-              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              confidenceInterval,
-              numVectors);
+          confidenceInterval == null
+              ? ScalarQuantizer.fromVectorsAutoInterval(
+                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+                  fieldInfo.getVectorSimilarityFunction(),
+                  numVectors,
+                  bits)
+              : ScalarQuantizer.fromVectors(
+                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+                  confidenceInterval,
+                  numVectors,
+                  bits);
     }
     return mergedQuantiles;
   }
@@ -608,8 +634,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   public static DocsWithFieldSet writeQuantizedVectorData(
-      IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues) throws IOException {
+      IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues, byte bits)
+      throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    final byte[] compressedVector =
+        OffHeapQuantizedByteVectorValues.compressedArray(
+            quantizedByteVectorValues.dimension(), bits);
     for (int docV = quantizedByteVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = quantizedByteVectorValues.nextDoc()) {
@@ -617,7 +647,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       byte[] binaryValue = quantizedByteVectorValues.vectorValue();
       assert binaryValue.length == quantizedByteVectorValues.dimension()
           : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
-      output.writeBytes(binaryValue, binaryValue.length);
+      if (compressedVector != null) {
+        OffHeapQuantizedByteVectorValues.compressBytes(binaryValue, compressedVector);
+        output.writeBytes(compressedVector, compressedVector.length);
+      } else {
+        output.writeBytes(binaryValue, binaryValue.length);
+      }
       output.writeInt(Float.floatToIntBits(quantizedByteVectorValues.getScoreCorrectionConstant()));
       docsWithField.add(docV);
     }
@@ -633,7 +668,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private static final long SHALLOW_SIZE = shallowSizeOfInstance(FieldWriter.class);
     private final List<float[]> floatVectors;
     private final FieldInfo fieldInfo;
-    private final float confidenceInterval;
+    private final Float confidenceInterval;
+    private final byte bits;
     private final InfoStream infoStream;
     private final boolean normalize;
     private float minQuantile = Float.POSITIVE_INFINITY;
@@ -643,12 +679,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @SuppressWarnings("unchecked")
     FieldWriter(
-        float confidenceInterval,
+        Float confidenceInterval,
+        byte bits,
         FieldInfo fieldInfo,
         InfoStream infoStream,
         KnnFieldVectorsWriter<?> indexWriter) {
       super((KnnFieldVectorsWriter<float[]>) indexWriter);
       this.confidenceInterval = confidenceInterval;
+      this.bits = bits;
       this.fieldInfo = fieldInfo;
       this.normalize = fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE;
       this.floatVectors = new ArrayList<>();
@@ -664,13 +702,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         finished = true;
         return;
       }
+      FloatVectorValues floatVectorValues = new FloatVectorWrapper(floatVectors, normalize);
       ScalarQuantizer quantizer =
-          ScalarQuantizer.fromVectors(
-              new FloatVectorWrapper(
-                  floatVectors,
-                  fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE),
-              confidenceInterval,
-              floatVectors.size());
+          confidenceInterval == null
+              ? ScalarQuantizer.fromVectorsAutoInterval(
+                  floatVectorValues,
+                  fieldInfo.getVectorSimilarityFunction(),
+                  floatVectors.size(),
+                  bits)
+              : ScalarQuantizer.fromVectors(
+                  floatVectorValues, confidenceInterval, floatVectors.size(), bits);
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
@@ -679,6 +720,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             "quantized field="
                 + " confidenceInterval="
                 + confidenceInterval
+                + " bits="
+                + bits
                 + " minQuantile="
                 + minQuantile
                 + " maxQuantile="
@@ -689,7 +732,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     ScalarQuantizer createQuantizer() {
       assert finished;
-      return new ScalarQuantizer(minQuantile, maxQuantile);
+      return new ScalarQuantizer(minQuantile, maxQuantile, bits);
     }
 
     @Override

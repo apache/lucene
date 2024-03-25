@@ -65,7 +65,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, null);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, (byte) 7, null, null);
   }
 
   /**
@@ -75,7 +75,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, null);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, (byte) 7, null, null);
   }
 
   /**
@@ -94,6 +94,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
+      byte bits,
       Float confidenceInterval,
       ExecutorService mergeExec) {
     super("Lucene99HnswScalarQuantizedVectorsFormat");
@@ -127,7 +128,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat = new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval);
+    this.flatVectorsFormat = new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits);
   }
 
   @Override
