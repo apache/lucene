@@ -320,7 +320,7 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
         };
     mergeScheduler.setMaxMergesAndThreads(4, 4);
     config.setMergeScheduler(mergeScheduler);
-    Codec codec = config.getCodec();
+    Codec codec = TestUtil.getDefaultCodec();
     CyclicBarrier barrier = new CyclicBarrier(2);
     config.setCodec(
         new FilterCodec(codec.getName(), codec) {
