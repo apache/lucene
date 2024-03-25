@@ -118,6 +118,10 @@ public final class GroupVIntUtil {
     return Integer.BYTES - (Integer.numberOfLeadingZeros(v | 1) >> 3);
   }
 
+  /**
+   * The implementation for group-varint encoding, It uses a maximum of {@link
+   * #MAX_LENGTH_PER_GROUP} bytes scratch buffer.
+   */
   public static void writeGroupVInts(DataOutput out, byte[] scratch, long[] values, int limit)
       throws IOException {
     int readPos = 0;

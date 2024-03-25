@@ -336,7 +336,7 @@ public abstract class DataOutput {
    */
   public void writeGroupVInts(long[] values, int limit) throws IOException {
     if (groupVIntBytes == null) {
-      groupVIntBytes = new byte[17];
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
     }
     GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
   }
