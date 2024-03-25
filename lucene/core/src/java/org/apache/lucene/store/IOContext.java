@@ -33,11 +33,16 @@ import java.util.Objects;
  *     expected to be heavily accessed in random-access fashion. Some {@link Directory}
  *     implementations may choose to load such files into physical memory (e.g. Java heap) as a way
  *     to provide stronger guarantees on query latency.
- * @param randomAccess This flag indicates that the file will be accessed randomly. If this flag is set, then readOnce
- *     will be false.
+ * @param randomAccess This flag indicates that the file will be accessed randomly. If this flag is
+ *     set, then readOnce will be false.
  */
 public record IOContext(
-    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, boolean readOnce, boolean load, boolean randomAccess) {
+    Context context,
+    MergeInfo mergeInfo,
+    FlushInfo flushInfo,
+    boolean readOnce,
+    boolean load,
+    boolean randomAccess) {
 
   /**
    * Context is a enumerator which specifies the context in which the Directory is being used for.
@@ -57,6 +62,8 @@ public record IOContext(
 
   public static final IOContext LOAD = new IOContext(false, true, true);
 
+  public static final IOContext RANDOM = new IOContext(false, false, true);
+
   @SuppressWarnings("incomplete-switch")
   public IOContext {
     switch (context) {
@@ -68,6 +75,12 @@ public record IOContext(
     if (load && readOnce) {
       throw new IllegalArgumentException("load and readOnce are mutually exclusive.");
     }
+    if (readOnce && randomAccess) {
+      throw new IllegalArgumentException("readOnce and randomAccess are mutually exclusive.");
+    }
+    if (load && randomAccess == false) {
+      throw new IllegalArgumentException("cannot be load but not randomAccess");
+    }
   }
 
   private IOContext(boolean readOnce, boolean load, boolean randomAccess) {
@@ -75,17 +88,17 @@ public record IOContext(
   }
 
   private IOContext(Context context) {
-    this(context, null, null, false, false);
+    this(context, null, null, false, false, false);
   }
 
   /** Creates an IOContext for flushing. */
   public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, false, false);
+    this(Context.FLUSH, null, flushInfo, false, false, false);
   }
 
   /** Creates an IOContext for merging. */
   public IOContext(MergeInfo mergeInfo) {
-    this(Context.MERGE, mergeInfo, null, false, false);
+    this(Context.MERGE, mergeInfo, null, false, false, false);
   }
 
   /**
@@ -93,6 +106,6 @@ public record IOContext(
    * flag is set to {@code false}.
    */
   public IOContext toReadOnce() {
-    return new IOContext(context, mergeInfo, flushInfo, true, false);
+    return new IOContext(context, mergeInfo, flushInfo, true, false, randomAccess);
   }
 }

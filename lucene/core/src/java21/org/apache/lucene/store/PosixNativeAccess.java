@@ -142,13 +142,13 @@ final class PosixNativeAccess extends NativeAccess {
   private Integer mapIOContext(IOContext ctx) {
     // Merging always wins and implies sequential access, because kernel is advised to free pages
     // after use:
-    if (ctx.context == Context.MERGE) {
+    if (ctx.context() == Context.MERGE) {
       return POSIX_MADV_SEQUENTIAL;
     }
-    if (ctx.randomAccess) {
+    if (ctx.randomAccess()) {
       return POSIX_MADV_RANDOM;
     }
-    if (ctx.readOnce) {
+    if (ctx.readOnce()) {
       return POSIX_MADV_SEQUENTIAL;
     }
     return null;
