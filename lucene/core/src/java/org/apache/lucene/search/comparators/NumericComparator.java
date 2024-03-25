@@ -478,6 +478,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             int[] docs = new int[disiLength + 1];
             int index = 0;
             int maxDocLeaf = -1;
+            boolean sorted = true;
 
             @Override
             public void grow(int count) {
@@ -487,7 +488,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             @Override
             protected void consumeDoc(int doc) {
               docs[index++] = doc;
-              maxDocLeaf = Math.max(doc, maxDocLeaf);
+              if (doc > maxDocLeaf) {
+                maxDocLeaf = doc;
+              } else {
+                sorted = false;
+              }
             }
 
             @Override
@@ -498,8 +503,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                     reverse == false
                         ? Math.max(leafMinValue, minValueAsLong)
                         : Math.min(leafMaxValue, maxValueAsLong);
-
-                sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
+                if (!sorted) {
+                  sorter.sort(PackedInts.bitsRequired(maxDocLeaf), docs, index);
+                }
                 docs[index] = DocIdSetIterator.NO_MORE_DOCS;
                 adder.accept(
                     new DisiAndMostCompetitiveValue(
@@ -507,6 +513,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                 docs = new int[disiLength + 1];
                 index = 0;
                 maxDocLeaf = -1;
+                sorted = true;
               }
             }
           });
