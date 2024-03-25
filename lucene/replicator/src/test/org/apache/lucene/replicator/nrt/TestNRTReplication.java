@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -208,7 +209,8 @@ public class TestNRTReplication extends LuceneTestCase {
         primaryTCPPort == -1,
         initCommitVersion,
         initInfosVersion,
-        nodeClosing);
+        nodeClosing,
+        Optional.empty());
   }
 
   @Override

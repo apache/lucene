@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Objects;
+
 /**
  * IOContext holds additional details on the merge/search context. A IOContext object can never be
  * initialized as null as passed as a parameter to either {@link
@@ -118,13 +120,7 @@ public class IOContext {
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((context == null) ? 0 : context.hashCode());
-    result = prime * result + ((flushInfo == null) ? 0 : flushInfo.hashCode());
-    result = prime * result + ((mergeInfo == null) ? 0 : mergeInfo.hashCode());
-    result = prime * result + (readOnce ? 1231 : 1237);
-    return result;
+    return Objects.hash(context, flushInfo, mergeInfo, readOnce, load);
   }
 
   @Override
@@ -134,13 +130,10 @@ public class IOContext {
     if (getClass() != obj.getClass()) return false;
     IOContext other = (IOContext) obj;
     if (context != other.context) return false;
-    if (flushInfo == null) {
-      if (other.flushInfo != null) return false;
-    } else if (!flushInfo.equals(other.flushInfo)) return false;
-    if (mergeInfo == null) {
-      if (other.mergeInfo != null) return false;
-    } else if (!mergeInfo.equals(other.mergeInfo)) return false;
+    if (!Objects.equals(flushInfo, other.flushInfo)) return false;
+    if (!Objects.equals(mergeInfo, other.mergeInfo)) return false;
     if (readOnce != other.readOnce) return false;
+    if (load != other.load) return false;
     return true;
   }
 

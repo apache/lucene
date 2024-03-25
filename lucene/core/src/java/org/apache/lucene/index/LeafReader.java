@@ -246,6 +246,9 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public final TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
     FloatVectorValues floatVectorValues = getFloatVectorValues(fi.name);
     if (floatVectorValues == null) {
       return TopDocsCollector.EMPTY_TOPDOCS;
@@ -287,6 +290,9 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public final TopDocs searchNearestVectors(
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
     ByteVectorValues byteVectorValues = getByteVectorValues(fi.name);
     if (byteVectorValues == null) {
       return TopDocsCollector.EMPTY_TOPDOCS;

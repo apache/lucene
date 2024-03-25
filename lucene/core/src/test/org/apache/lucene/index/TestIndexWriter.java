@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -937,6 +938,7 @@ public class TestIndexWriter extends LuceneTestCase {
                     @Override
                     protected boolean isOK(Throwable th) {
                       return th instanceof AlreadyClosedException
+                          || th instanceof RejectedExecutionException
                           || (th instanceof IllegalStateException
                               && th.getMessage()
                                   .contains("this writer hit an unrecoverable error"));

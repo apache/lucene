@@ -32,8 +32,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -130,14 +132,6 @@ public class TestSimpleServer extends LuceneTestCase {
         node.message("socket.close done");
       }
     }
-  }
-
-  /** forcibly halt the JVM: similar to crashing */
-
-  // poached from TestIndexWriterOnJRECrash ... should we factor out to TestUtil?  seems dangerous
-  // to give it such "publicity"?
-  private static void crashJRE() {
-    Runtime.getRuntime().halt(1);
   }
 
   static void writeFilesMetaData(DataOutput out, Map<String, FileMetaData> files)
@@ -293,7 +287,9 @@ public class TestSimpleServer extends LuceneTestCase {
         if (doClose) {
           node.message("top: will close after " + (waitForMS / 1000.0) + " seconds");
         } else {
-          node.message("top: will crash after " + (waitForMS / 1000.0) + " seconds");
+          // This message is pattern-parsed in TestStressNRTReplication, don't change it.
+          node.message(
+              "top: " + TestStressNRTReplication.CRASH_MSG_PREFIX + waitForMS + " milliseconds");
         }
 
         Thread t =
@@ -327,8 +323,21 @@ public class TestSimpleServer extends LuceneTestCase {
                       throw new RuntimeException(ioe);
                     }
                   } else {
-                    node.message("top: now crash JVM after " + (waitForMS / 1000.0) + " seconds");
-                    crashJRE();
+                    node.message(
+                        String.format(
+                            Locale.ROOT,
+                            "Expecting this JVM (PID: %s) to crash about now (after %.2f seconds)",
+                            ProcessHandle.current().pid(),
+                            (waitForMS / 1000.0)));
+                    while (true) {
+                      try {
+                        new CountDownLatch(1).await();
+                      } catch (
+                          @SuppressWarnings("unused")
+                          InterruptedException e) {
+                        // We'll eventually be killed by an outside process, retry.
+                      }
+                    }
                   }
                 }
               }
