@@ -267,34 +267,39 @@ public class MergeState {
     return docMapBuilder.build();
   }
 
-  /**
-   * Creates a new state from an existing state with new fieldInfos and FieldsProducer.
-   *
-   * @param state the state to be copied
-   * @param mergeFieldInfos the new field infos of the merged segment
-   * @param fieldInfos the new field infos
-   * @param fieldsProducers the new field producers
-   */
+  /** Create a new merge instance. */
   public MergeState(
-      MergeState state,
+      DocMap[] docMaps,
+      SegmentInfo segmentInfo,
       FieldInfos mergeFieldInfos,
+      StoredFieldsReader[] storedFieldsReaders,
+      TermVectorsReader[] termVectorsReaders,
+      NormsProducer[] normsProducers,
+      DocValuesProducer[] docValuesProducers,
       FieldInfos[] fieldInfos,
-      FieldsProducer[] fieldsProducers) {
-    this.docMaps = state.docMaps;
-    this.segmentInfo = state.segmentInfo;
+      Bits[] liveDocs,
+      FieldsProducer[] fieldsProducers,
+      PointsReader[] pointsReaders,
+      KnnVectorsReader[] knnVectorsReaders,
+      int[] maxDocs,
+      InfoStream infoStream,
+      Executor intraMergeTaskExecutor,
+      boolean needsIndexSort) {
+    this.docMaps = docMaps;
+    this.segmentInfo = segmentInfo;
     this.mergeFieldInfos = mergeFieldInfos;
-    this.storedFieldsReaders = state.storedFieldsReaders;
-    this.termVectorsReaders = state.termVectorsReaders;
-    this.normsProducers = state.normsProducers;
-    this.docValuesProducers = state.docValuesProducers;
+    this.storedFieldsReaders = storedFieldsReaders;
+    this.termVectorsReaders = termVectorsReaders;
+    this.normsProducers = normsProducers;
+    this.docValuesProducers = docValuesProducers;
     this.fieldInfos = fieldInfos;
-    this.liveDocs = state.liveDocs;
+    this.liveDocs = liveDocs;
     this.fieldsProducers = fieldsProducers;
-    this.pointsReaders = state.pointsReaders;
-    this.knnVectorsReaders = state.knnVectorsReaders;
-    this.maxDocs = state.maxDocs;
-    this.infoStream = state.infoStream;
-    this.intraMergeTaskExecutor = state.intraMergeTaskExecutor;
-    this.needsIndexSort = state.needsIndexSort;
+    this.pointsReaders = pointsReaders;
+    this.knnVectorsReaders = knnVectorsReaders;
+    this.maxDocs = maxDocs;
+    this.infoStream = infoStream;
+    this.intraMergeTaskExecutor = intraMergeTaskExecutor;
+    this.needsIndexSort = needsIndexSort;
   }
 }

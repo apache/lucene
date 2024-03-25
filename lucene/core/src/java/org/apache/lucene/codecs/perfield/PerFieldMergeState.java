@@ -53,7 +53,23 @@ final class PerFieldMergeState {
               : new FilterFieldsProducer(in.fieldsProducers[i], fields);
     }
     var mergeFieldInfos = new FilterFieldInfos(in.mergeFieldInfos, fields);
-    return new MergeState(in, mergeFieldInfos, fieldInfos, fieldsProducers);
+    return new MergeState(
+        in.docMaps,
+        in.segmentInfo,
+        mergeFieldInfos,
+        in.storedFieldsReaders,
+        in.termVectorsReaders,
+        in.normsProducers,
+        in.docValuesProducers,
+        fieldInfos,
+        in.liveDocs,
+        fieldsProducers,
+        in.pointsReaders,
+        in.knnVectorsReaders,
+        in.maxDocs,
+        in.infoStream,
+        in.intraMergeTaskExecutor,
+        in.needsIndexSort);
   }
 
   private static class FilterFieldInfos extends FieldInfos {
