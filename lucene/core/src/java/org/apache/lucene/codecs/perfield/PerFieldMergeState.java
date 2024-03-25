@@ -33,36 +33,27 @@ import org.apache.lucene.index.Terms;
 
 /** Utility class to update the {@link MergeState} instance to be restricted to a set of fields. */
 final class PerFieldMergeState {
-  private final MergeState in;
-  private final MergeState copy;
-
-  PerFieldMergeState(MergeState in) {
-    this.in = in;
-    this.copy =
-        new MergeState(
-            in,
-            new FieldInfos[in.fieldInfos.length],
-            new FieldsProducer[in.fieldsProducers.length]);
-  }
 
   /**
-   * Update the input {@link MergeState} instance to restrict the fields to the given ones.
+   * Create a new MergeState from the given {@link MergeState} instance with restricted fields.
    *
-   * @param fields The fields to keep in the updated instance.
-   * @return The updated instance.
+   * @param fields The fields to keep in the new instance.
+   * @return The new MergeState with restricted fields
    */
-  MergeState apply(Collection<String> fields) {
-    copy.mergeFieldInfos = new FilterFieldInfos(in.mergeFieldInfos, fields);
+  static MergeState restrictFields(MergeState in, Collection<String> fields) {
+    var fieldInfos = new FieldInfos[in.fieldInfos.length];
     for (int i = 0; i < in.fieldInfos.length; i++) {
-      copy.fieldInfos[i] = new FilterFieldInfos(in.fieldInfos[i], fields);
+      fieldInfos[i] = new FilterFieldInfos(in.fieldInfos[i], fields);
     }
+    var fieldsProducers = new FieldsProducer[in.fieldsProducers.length];
     for (int i = 0; i < in.fieldsProducers.length; i++) {
-      copy.fieldsProducers[i] =
+      fieldsProducers[i] =
           in.fieldsProducers[i] == null
               ? null
               : new FilterFieldsProducer(in.fieldsProducers[i], fields);
     }
-    return copy;
+    var mergeFieldInfos = new FilterFieldInfos(in.mergeFieldInfos, fields);
+    return new MergeState(in, mergeFieldInfos, fieldInfos, fieldsProducers);
   }
 
   private static class FilterFieldInfos extends FieldInfos {

@@ -195,14 +195,13 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       // Merge postings
       boolean success = false;
       try {
-        PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
           final FieldsGroup group = ent.getValue();
 
           FieldsConsumer consumer = format.fieldsConsumer(group.state);
           toClose.add(consumer);
-          consumer.merge(pfMergeState.apply(group.fields), norms);
+          consumer.merge(PerFieldMergeState.restrictFields(mergeState, group.fields), norms);
         }
         success = true;
       } finally {

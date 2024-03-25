@@ -18,14 +18,25 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Locale;
-import java.util.concurrent.*;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.codecs.*;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
@@ -342,13 +353,14 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
       for (int d = 0; d < numDocs; d++) {
         Document doc = new Document();
         for (int f = 0; f < numFields * 2; f++) {
-          String field = "f-" + f;
+          String field = "f" + f;
           String value = "v-" + random().nextInt(100);
           if (f % 2 == 0) {
             doc.add(new StringField(field, value, Field.Store.NO));
           } else {
             doc.add(new BinaryDocValuesField(field, new BytesRef(value)));
           }
+          doc.add(new LongPoint("p" + f, random().nextInt(10000)));
         }
         writer.addDocument(doc);
         if (random().nextInt(100) < 10) {

@@ -23,7 +23,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.*;
+import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.PointsReader;
+import org.apache.lucene.codecs.StoredFieldsReader;
+import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
@@ -265,13 +271,18 @@ public class MergeState {
    * Creates a new state from an existing state with new fieldInfos and FieldsProducer.
    *
    * @param state the state to be copied
+   * @param mergeFieldInfos the new field infos of the merged segment
    * @param fieldInfos the new field infos
    * @param fieldsProducers the new field producers
    */
-  public MergeState(MergeState state, FieldInfos[] fieldInfos, FieldsProducer[] fieldsProducers) {
+  public MergeState(
+      MergeState state,
+      FieldInfos mergeFieldInfos,
+      FieldInfos[] fieldInfos,
+      FieldsProducer[] fieldsProducers) {
     this.docMaps = state.docMaps;
     this.segmentInfo = state.segmentInfo;
-    this.mergeFieldInfos = state.mergeFieldInfos;
+    this.mergeFieldInfos = mergeFieldInfos;
     this.storedFieldsReaders = state.storedFieldsReaders;
     this.termVectorsReaders = state.termVectorsReaders;
     this.normsProducers = state.normsProducers;
