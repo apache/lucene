@@ -21,7 +21,7 @@
 
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using and be running on Java 17.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
 
 ### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
 
@@ -100,7 +100,7 @@ determine the number of valid ordinals for the currently-positioned document up-
 illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
 for the currently-positioned document (doing so will result in undefined behavior).
 
-### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+### IOContext removed from Directory#openChecksumInput (GITHUB#12027)
 
 `Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
@@ -150,6 +150,18 @@ may throw `IOException` on index problems, bubbling up unexpectedly to the calle
 
 `(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
 offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
+
+### Removed Scorable#docID() (GITHUB#12407)
+
+This method has been removed in order to enable more search-time optimizations.
+Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
+collected.
+
+### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
+
+In order to adapt to the removal of `Scorable#docID()`,
+`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
+`Scorable`.
 
 ### Some classes converted to records classes (GITHUB#13207)
 
@@ -206,18 +218,6 @@ also when using the now deprecated ctors, so users are advised to upgrade to
 Lucene 9.2 or stay with 9.0.
 
 See LUCENE-10558 for more details and workarounds.
-
-### Removed Scorable#docID() (GITHUB#12407)
-
-This method has been removed in order to enable more search-time optimizations.
-Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
-collected.
-
-### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
-
-In order to adapt to the removal of `Scorable#docID()`,
-`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
-`Scorable`.
 
 ## Migration from Lucene 8.x to Lucene 9.0
 
