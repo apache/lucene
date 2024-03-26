@@ -114,7 +114,7 @@ final class PosixNativeAccess extends NativeAccess {
     if (segment.byteSize() == 0L) {
       return; // empty segments should be excluded, because they may have no address at all
     }
-    final Integer advice = mapIOContext(readAdvice);
+    final Integer advice = mapReadAdvice(readAdvice);
     if (advice == null) {
       return; // do nothing
     }
@@ -135,7 +135,7 @@ final class PosixNativeAccess extends NativeAccess {
     }
   }
 
-  private Integer mapIOContext(ReadAdvice readAdvice) {
+  private Integer mapReadAdvice(ReadAdvice readAdvice) {
     return switch (readAdvice) {
       case NORMAL -> null;
       case RANDOM -> POSIX_MADV_RANDOM;
