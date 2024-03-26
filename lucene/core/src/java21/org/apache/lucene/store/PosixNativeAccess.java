@@ -86,18 +86,15 @@ final class PosixNativeAccess extends NativeAccess {
   private static MethodHandle lookupMadvise() {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
-    final MethodHandle mh =
-        findFunction(
-            linker,
-            stdlib,
-            "posix_madvise",
-            FunctionDescriptor.of(
-                ValueLayout.JAVA_INT,
-                ValueLayout.ADDRESS,
-                ValueLayout.JAVA_LONG,
-                ValueLayout.JAVA_INT));
-    LOG.info("posix_madvise() available on this platform");
-    return mh;
+    return findFunction(
+        linker,
+        stdlib,
+        "posix_madvise",
+        FunctionDescriptor.of(
+            ValueLayout.JAVA_INT,
+            ValueLayout.ADDRESS,
+            ValueLayout.JAVA_LONG,
+            ValueLayout.JAVA_INT));
   }
 
   private static MethodHandle findFunction(
