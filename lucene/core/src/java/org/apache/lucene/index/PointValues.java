@@ -385,10 +385,14 @@ public abstract class PointValues {
 
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
-   * {@link IntersectVisitor}. The estimation will terminate when the point count exceeds the upper
-   * bound.
+   * {@link IntersectVisitor}. The estimation will terminate when the point count get greater than
+   * up bound. That said, if the return value is less than the upperBound, it is the accurate
+   * estimated point value, otherwise it means the number of points in the tree is greater than or
+   * equals to the upperBound.
    *
-   * <p>TODO: Broad-first will help extimation terminate earlier?
+   * <p>TODO: will broad-first help estimation terminate earlier?
+   *
+   * @lucene.internal
    */
   public static long estimatePointCount(
       IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
@@ -406,7 +410,7 @@ public abstract class PointValues {
           long cost = 0;
           do {
             cost += estimatePointCount(visitor, pointTree, upperBound - cost);
-          } while (cost <= upperBound && pointTree.moveToSibling());
+          } while (cost < upperBound && pointTree.moveToSibling());
           pointTree.moveToParent();
           return cost;
         } else {

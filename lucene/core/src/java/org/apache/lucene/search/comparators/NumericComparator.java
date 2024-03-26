@@ -269,9 +269,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         throws IOException {
       if (pointTree.moveToChild()) {
         long leftSize = thresholdToSize.apply(threshold);
-        if (leftSize > threshold) {
+        if (leftSize >= threshold) {
           return intersectL2R(pointTree, threshold, thresholdToSize);
-        } else if (leftSize < threshold) {
+        } else {
           pointTree.moveToSibling();
           return intersectL2R(pointTree, threshold - leftSize, thresholdToSize);
         }
