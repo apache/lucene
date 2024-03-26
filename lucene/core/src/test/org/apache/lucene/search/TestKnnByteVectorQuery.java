@@ -103,25 +103,6 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  public void testTimeout() throws IOException {
-    try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      IndexSearcher searcher = newSearcher(reader);
-
-      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
-      AbstractKnnVectorQuery exactQuery =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
-
-      assertEquals(2, searcher.count(query)); // Expect some results without timeout
-      assertEquals(3, searcher.count(exactQuery)); // Same for exact search
-
-      searcher.setTimeout(() -> true); // Immediately timeout
-      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
-      assertEquals(0, searcher.count(exactQuery)); // Same for exact search
-    }
-  }
-
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {

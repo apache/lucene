@@ -251,6 +251,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }
@@ -279,6 +282,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }

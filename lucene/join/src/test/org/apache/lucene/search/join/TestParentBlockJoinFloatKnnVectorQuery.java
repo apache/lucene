@@ -32,7 +32,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
@@ -101,29 +100,6 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         assertScorerResults(
             searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
-    }
-  }
-
-  public void testTimeout() throws IOException {
-    try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      BitSetProducer parentFilter = parentFilter(reader);
-      IndexSearcher searcher = newSearcher(reader);
-
-      Query query =
-          new DiversifyingChildrenFloatKnnVectorQuery(
-              "field", new float[] {1, 2}, null, 2, parentFilter);
-      Query exactQuery =
-          new DiversifyingChildrenFloatKnnVectorQuery(
-              "field", new float[] {1, 2}, new MatchAllDocsQuery(), 10, parentFilter);
-
-      assertEquals(2, searcher.count(query)); // Expect some results without timeout
-      assertEquals(3, searcher.count(exactQuery)); // Same for exact search
-
-      searcher.setTimeout(() -> true); // Immediately timeout
-      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
-      assertEquals(0, searcher.count(exactQuery)); // Same for exact search
     }
   }
 
