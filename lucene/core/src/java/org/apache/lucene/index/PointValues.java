@@ -384,11 +384,22 @@ public abstract class PointValues {
   }
 
   /**
-   * Estimate the number of documents that would be matched by {@link #intersect} with the given
-   * {@link IntersectVisitor}. The estimation will terminate when the point count exceeds the upper
-   * bound.
+   * Estimate if the point count that would be matched by {@link #intersect} with the given {@link
+   * IntersectVisitor} is greater than or equal to the upperBound.
    *
-   * <p>TODO: Broad-first will help extimation terminate earlier?
+   * @lucene.internal
+   */
+  public static boolean isEstimatedPointCountGreaterThanOrEqualTo(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
+    return estimatePointCount(visitor, pointTree, upperBound) >= upperBound;
+  }
+
+  /**
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {@link IntersectVisitor}. The estimation will terminate when the point count gets greater than
+   * or equal to the upper bound.
+   *
+   * <p>TODO: will broad-first help estimation terminate earlier?
    */
   public static long estimatePointCount(
       IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
@@ -406,7 +417,7 @@ public abstract class PointValues {
           long cost = 0;
           do {
             cost += estimatePointCount(visitor, pointTree, upperBound - cost);
-          } while (cost <= upperBound && pointTree.moveToSibling());
+          } while (cost < upperBound && pointTree.moveToSibling());
           pointTree.moveToParent();
           return cost;
         } else {
