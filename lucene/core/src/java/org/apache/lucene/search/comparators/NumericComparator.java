@@ -19,6 +19,7 @@ package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.Consumer;
 import java.util.function.Predicate;

@@ -26,14 +26,14 @@ import java.util.Arrays;
 public final class LSBRadixSorter {
 
   private static final int INSERTION_SORT_THRESHOLD = 30;
-  private static final int HISTOGRAM_SIZE = 256;
+  private static final int HISTOGRAM_SIZE = 4096;
 
   private final int[] histogram = new int[HISTOGRAM_SIZE];
   private int[] buffer = new int[0];
 
   private static void buildHistogram(int[] array, int len, int[] histogram, int shift) {
     for (int i = 0; i < len; ++i) {
-      final int b = (array[i] >>> shift) & 0xFF;
+      final int b = (array[i] >>> shift) & 0xFFF;
       histogram[b] += 1;
     }
   }
@@ -50,7 +50,7 @@ public final class LSBRadixSorter {
   private static void reorder(int[] array, int len, int[] histogram, int shift, int[] dest) {
     for (int i = 0; i < len; ++i) {
       final int v = array[i];
-      final int b = (v >>> shift) & 0xFF;
+      final int b = (v >>> shift) & 0xFFF;
       dest[histogram[b]++] = v;
     }
   }
@@ -98,7 +98,7 @@ public final class LSBRadixSorter {
 
     int[] buf = buffer;
 
-    for (int shift = 0; shift < numBits; shift += 8) {
+    for (int shift = 0; shift < numBits; shift += 12) {
       if (sort(arr, len, histogram, shift, buf)) {
         // swap arrays
         int[] tmp = arr;
