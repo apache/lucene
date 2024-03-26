@@ -103,7 +103,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     FieldsProducer postings = PostingsFormat.forName("Lucene99").fieldsProducer(state);
-    if (state.context.context != IOContext.Context.MERGE) {
+    if (state.context.context() != IOContext.Context.MERGE) {
       FieldsProducer loadedPostings;
       try {
         postings.checkIntegrity();

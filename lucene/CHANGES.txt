@@ -87,6 +87,8 @@ API Changes
 * GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
   for MMapDirectory.  (Uwe Schindler)
 
+* GITHUB#13205: Convert IOContext, MergeInfo, and FlushInfo to record classes.  (Uwe Schindler)
+
 New Features
 ---------------------
 

@@ -146,7 +146,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   // LUCENE-5724: things like NRTCachingDir rely upon IOContext being properly passed down
   public void testPassIOContext() throws IOException {
     final String testfile = "_123.test";
-    final IOContext myContext = new IOContext();
+    final IOContext myContext = IOContext.DEFAULT;
 
     Directory dir =
         new FilterDirectory(newDirectory()) {

@@ -151,6 +151,15 @@ may throw `IOException` on index problems, bubbling up unexpectedly to the calle
 `(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
 offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
+### Some classes converted to records classes (GITHUB#13207)
+
+Some classes with only final fields and no programming logic were converted to `record` classes.
+Those changes are mostly compatible with Lucene 9.x code (constructors, accessor methods), but
+record's fields are only available with accessor methods. Some code may need to be refactored to
+access the members using method calls instead of field accesses. Affected classes:
+
+- `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
