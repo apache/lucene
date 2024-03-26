@@ -14,12 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.util;
+
+import java.io.IOException;
 
 /**
- * A FlushInfo provides information required for a FLUSH context. It is used as part of an {@link
- * IOContext} in case of FLUSH context.
+ * A Runnable that may throw an IOException
  *
- * <p>These values are only estimates and are not the actual values.
+ * @see java.lang.Runnable
  */
-public record FlushInfo(int numDocs, long estimatedSegmentSize) {}
+@FunctionalInterface
+public interface IORunnable {
+  public abstract void run() throws IOException;
+}

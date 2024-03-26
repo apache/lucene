@@ -210,7 +210,6 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         IllegalArgumentException.class,
         () ->
             new Lucene99HnswScalarQuantizedVectorsFormat(20, 100, 0, (byte) 9, false, null, null));
-
     expectThrows(
         IllegalArgumentException.class,
         () ->

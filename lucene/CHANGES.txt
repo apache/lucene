@@ -87,6 +87,8 @@ API Changes
 * GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
   for MMapDirectory.  (Uwe Schindler)
 
+* GITHUB#13205: Convert IOContext, MergeInfo, and FlushInfo to record classes.  (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -190,7 +192,17 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#13125: Recursive graph bisection is now supported on indexes that have blocks, as long as
+  they configure a parent field via `IndexWriterConfig#setParentField`. (Adrien Grand)
+
+* GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
+  and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
+
+* GITHUB#13196: Add support for posix_madvise to MMapDirectory: If running on Linux/macOS and Java 21
+  or later, MMapDirectory uses IOContext to pass suitable MADV flags to kernel of operating system.
+  This may improve paging logic especially when large segments are merged under memory pressure.
+  (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
 Improvements
 ---------------------
@@ -206,6 +218,12 @@ Improvements
 
 * GITHUB#13156: Hunspell: don't proceed with other suggestions if we found good REP ones (Peter Gromov)
 
+* GITHUB#13066: Support getMaxScore of DisjunctionSumScorer for non top level scoring clause (Shintaro Murakami)
+
+* GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
+  implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
+  executor is provided. (Ben Trent)
+
 Optimizations
 ---------------------
 
@@ -217,6 +235,12 @@ Optimizations
 
 * GITHUB#13121: Speedup multi-segment HNSW graph search for diversifying child kNN queries. Builds on GITHUB#12962.
   (Ben Trent)
+
+* GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
+
+* GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
+
+* GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 
 Bug Fixes
 ---------------------
@@ -233,6 +257,13 @@ Bug Fixes
 * GITHUB#13162: Fix NPE when LeafReader return null VectorValues (Pan Guixin)
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
+
+* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.7 and ASM for APIJAR extraction to 9.7.  (Uwe Schindler)
 
 Other
 ---------------------
@@ -256,7 +287,6 @@ API Changes
 
 New Features
 ---------------------
-
 * GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
