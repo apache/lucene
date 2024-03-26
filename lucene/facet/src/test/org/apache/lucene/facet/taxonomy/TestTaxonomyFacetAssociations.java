@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
@@ -214,6 +215,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+    assertArrayEquals(
+        new Number[] {150, 200},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {new FacetLabel("int", "b"), new FacetLabel("int", "a")}));
 
     // test getAllDims and getTopDims
     List<FacetResult> topDims = facets.getTopDims(10, 10);
@@ -303,6 +308,23 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         10f,
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
+    assertEquals(
+        "Wrong count for category 'b'!",
+        -1f,
+        facets.getSpecificValue("float", "c").floatValue(),
+        0.00001);
+    assertArrayEquals(
+        new double[] {10., -1., 50.},
+        Arrays.stream(
+                facets.getBulkSpecificValues(
+                    new FacetLabel[] {
+                      new FacetLabel("float", "b"),
+                      new FacetLabel("float", "c"),
+                      new FacetLabel("float", "a")
+                    }))
+            .mapToDouble(Number::floatValue)
+            .toArray(),
+        0.00001);
 
     // test getAllDims and getTopDims
     List<FacetResult> topDims = facets.getTopDims(10, 10);
@@ -384,6 +406,14 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         10f,
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
+    assertArrayEquals(
+        new double[] {10., 50.},
+        Arrays.stream(
+                facets.getBulkSpecificValues(
+                    new FacetLabel[] {new FacetLabel("float", "b"), new FacetLabel("float", "a")}))
+            .mapToDouble(Number::floatValue)
+            .toArray(),
+        0.00001);
 
     facets =
         new TaxonomyFacetIntAssociations(
@@ -392,6 +422,12 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+    assertArrayEquals(
+        new Number[] {150, 200},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {
+              new FacetLabel("int", "b"), new FacetLabel("int", "a"),
+            }));
   }
 
   public void testWrongIndexFieldName() throws Exception {
@@ -409,6 +445,12 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
+          facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("float")});
+        });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
           facets.getTopChildren(10, "float");
         });
 
@@ -416,6 +458,56 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getAllChildren("float");
+        });
+  }
+
+  /** Test that arguments validation for getting specific values works as expected. */
+  public void testSpecificValueValidation() throws Exception {
+    IndexSearcher searcher = newSearcher(reader);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    final Facets floatFacets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    // Dim count is not available
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          floatFacets.getSpecificValue("float");
+        });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          floatFacets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("float")});
+        });
+
+    // Empty FacetLabel is not allowed
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          floatFacets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel()});
+        });
+
+    final Facets intFacets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    // Dim count is not available
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          intFacets.getSpecificValue("int");
+        });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          intFacets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("int")});
+        });
+
+    // Empty FacetLabel is not allowed
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          intFacets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel()});
         });
   }
 
@@ -512,6 +604,14 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+    assertEquals(
+        "Wrong count for category 'c'!", -1, facets.getSpecificValue("int", "c").intValue());
+    assertArrayEquals(
+        new Number[] {150, -1, 100},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {
+              new FacetLabel("int", "b"), new FacetLabel("int", "c"), new FacetLabel("int", "a"),
+            }));
   }
 
   private void validateInts(
@@ -522,11 +622,17 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       Facets facets)
       throws IOException {
     int aggregatedValue = 0;
+    Number[] expectedBulkResult = new Number[expected.size()];
+    FacetLabel[] labels = new FacetLabel[expected.size()];
+    int i = 0;
     for (Map.Entry<String, Integer> e : expected.entrySet()) {
       int value = e.getValue();
       assertEquals(value, facets.getSpecificValue(dim, e.getKey()).intValue());
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+      expectedBulkResult[i] = value;
+      labels[i++] = new FacetLabel(dim, e.getKey());
     }
+    assertArrayEquals(expectedBulkResult, facets.getBulkSpecificValues(labels));
 
     if (isMultiValued) {
       aggregatedValue = -1;
@@ -558,6 +664,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       Facets facets)
       throws IOException {
     float aggregatedValue = 0f;
+    Number[] expectedBulkResult = new Number[expected.size()];
+    FacetLabel[] labels = new FacetLabel[expected.size()];
+    int i = 0;
     for (Map.Entry<String, Float> e : expected.entrySet()) {
       float value = e.getValue();
       // We can expect the floats to be exactly equal here since we're ensuring that we sum them
@@ -565,7 +674,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       // LUCENE-10530:
       assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 0f);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+      expectedBulkResult[i] = value;
+      labels[i++] = new FacetLabel(dim, e.getKey());
     }
+    assertArrayEquals(expectedBulkResult, facets.getBulkSpecificValues(labels));
 
     if (isMultiValued) {
       aggregatedValue = -1;

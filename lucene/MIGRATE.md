@@ -172,6 +172,12 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 
+### `FacetLabel` class is moved to `org.apache.lucene.facet` package (GITHUB#12919)
+
+| Old Class Name                              | New Class Name                     |
+|---------------------------------------------|------------------------------------|
+| org.apache.lucene.facet.taxonomy.FacetLabel | org.apache.lucene.facet.FacetLabel |
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

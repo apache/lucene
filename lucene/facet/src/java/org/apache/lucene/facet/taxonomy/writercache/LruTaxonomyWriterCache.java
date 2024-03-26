@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
-import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.FacetLabel;
 
 /**
  * LRU {@link TaxonomyWriterCache} - good choice for huge taxonomies.

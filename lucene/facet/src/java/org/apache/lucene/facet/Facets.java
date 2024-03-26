@@ -26,6 +26,12 @@ import java.util.List;
  */
 public abstract class Facets {
 
+  /**
+   * The value returned by {@link #getSpecificValue(String, String...)} and {@link
+   * #getBulkSpecificValues(FacetLabel[])} when value for requested path is missing.
+   */
+  public static int MISSING_SPECIFIC_VALUE = -1;
+
   /** Default constructor. */
   public Facets() {}
 
@@ -44,10 +50,19 @@ public abstract class Facets {
       throws IOException;
 
   /**
-   * Return the count or value for a specific path. Returns -1 if this path doesn't exist, else the
-   * count.
+   * Return the count or value for a specific path. Returns {@link #MISSING_SPECIFIC_VALUE} if this
+   * path doesn't exist, else the count.
    */
   public abstract Number getSpecificValue(String dim, String... path) throws IOException;
+
+  /**
+   * Return the counts or values for specific paths. Returns {@link #MISSING_SPECIFIC_VALUE} if
+   * corresponding path doesn't exist, else the count.
+   *
+   * <p>{@link #getSpecificValue} for each path should produce identical results, but the bulk
+   * method implementations are generally faster.
+   */
+  public abstract Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException;
 
   /**
    * Returns topN labels for any dimension that had hits, sorted by the number of hits that

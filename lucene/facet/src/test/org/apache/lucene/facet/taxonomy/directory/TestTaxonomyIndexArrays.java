@@ -18,7 +18,7 @@
 package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
-import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;

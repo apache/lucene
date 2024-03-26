@@ -19,6 +19,7 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.TwoPhaseCommit;
 

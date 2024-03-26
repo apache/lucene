@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PrimitiveIterator;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
@@ -34,8 +35,12 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.DimTree;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.StringSorter;
 
 /** Base class for SSDV faceting implementations. */
 abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
@@ -108,18 +113,73 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
   }
 
-  @Override
-  public Number getSpecificValue(String dim, String... path) throws IOException {
-    if (stateConfig.getDimConfig(dim).hierarchical == false && path.length != 1) {
+  private void checkSpecificValueAvailable(String dim, int pathLength) {
+    if (stateConfig.getDimConfig(dim).hierarchical == false && pathLength != 1) {
       throw new IllegalArgumentException(
           dim + " is not configured as hierarchical, path must be length=1");
     }
+  }
+
+  @Override
+  public Number getSpecificValue(String dim, String... path) throws IOException {
+    checkSpecificValueAvailable(dim, path.length);
     int ord = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
     if (ord < 0) {
-      return -1;
+      return MISSING_SPECIFIC_VALUE;
     }
 
     return hasCounts() == false ? 0 : getCount(ord);
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
+    if (facetLabels.length == 0) {
+      return new Number[0];
+    }
+
+    int numberOfValues = facetLabels.length;
+    BytesRef[] termsToGet = new BytesRef[numberOfValues];
+    int[] sortedIndexes = new int[numberOfValues];
+    for (int i = 0; i < numberOfValues; i++) {
+      String[] components = facetLabels[i].components;
+      checkSpecificValueAvailable(components[0], components.length - 1);
+      termsToGet[i] = new BytesRef(FacetsConfig.pathToString(components));
+      sortedIndexes[i] = i;
+    }
+
+    new StringSorter(BytesRefComparator.NATURAL) {
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = sortedIndexes[i];
+        sortedIndexes[i] = sortedIndexes[j];
+        sortedIndexes[j] = tmp;
+        BytesRef tmpBytes = termsToGet[i];
+        termsToGet[i] = termsToGet[j];
+        termsToGet[j] = tmpBytes;
+      }
+
+      @Override
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = termsToGet[i];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
+      }
+    }.sort(0, numberOfValues);
+
+    TermsEnum te = dv.termsEnum();
+    Number[] result = new Number[facetLabels.length];
+    int index;
+    for (int i = 0; i < numberOfValues; i++) {
+      index = sortedIndexes[i];
+      if (te.seekExact(termsToGet[i])) {
+        result[index] = hasCounts() ? getCount((int) te.ord()) : 0;
+      } else {
+        result[index] = MISSING_SPECIFIC_VALUE;
+      }
+    }
+    return result;
   }
 
   @Override

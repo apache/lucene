@@ -33,6 +33,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
@@ -162,6 +163,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         facets.getTopChildren(10, "Author").toString());
 
     assertEquals(1, facets.getSpecificValue("Author", "Lisa"));
+
+    assertArrayEquals(
+        new Number[] {1, 1},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {new FacetLabel("Author", "Lisa"), new FacetLabel("Author", "Bob")}));
 
     assertNull(facets.getTopChildren(10, "Non exitent dim"));
 
@@ -308,7 +314,9 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(results, allTopDimsResults);
 
     expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("a"));
-
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("a")}));
     expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "a"));
     expectThrows(IllegalArgumentException.class, () -> facets.getAllChildren("a"));
 
@@ -407,6 +415,12 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("a"));
 
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("a")});
+        });
+
     FacetResult result = facets.getTopChildren(10, "a");
     assertEquals(1, result.labelValues.length);
     assertEquals(1, result.labelValues[0].value.intValue());
@@ -446,6 +460,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     assertEquals(1, facets.getSpecificValue("dim", "test\u001Fone"));
     assertEquals(1, facets.getSpecificValue("dim", "test\u001Etwo"));
+
+    assertArrayEquals(
+        new Number[] {1, 1},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {
+              new FacetLabel("dim", "test\u001Fone"), new FacetLabel("dim", "test\u001Etwo"),
+            }));
 
     // no hierarchy
     assertFalse(((TaxonomyFacets) facets).siblingsLoaded());
@@ -509,9 +530,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(1, facets.getTopChildren(10, "dim3").value);
     assertEquals(1, facets.getAllChildren("dim3").value);
     expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("dim"));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("dim")}));
 
     assertEquals(1, facets.getSpecificValue("dim2"));
     assertEquals(1, facets.getSpecificValue("dim3"));
+    assertArrayEquals(
+        new Number[] {1, 1},
+        facets.getBulkSpecificValues(
+            new FacetLabel[] {new FacetLabel("dim3"), new FacetLabel("dim2")}));
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }

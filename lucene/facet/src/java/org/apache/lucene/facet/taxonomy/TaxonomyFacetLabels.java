@@ -20,6 +20,7 @@ import static org.apache.lucene.facet.taxonomy.TaxonomyReader.INVALID_ORDINAL;
 import static org.apache.lucene.facet.taxonomy.TaxonomyReader.ROOT_ORDINAL;
 
 import java.io.IOException;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;

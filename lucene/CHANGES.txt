@@ -89,6 +89,8 @@ API Changes
 
 * GITHUB#13205: Convert IOContext, MergeInfo, and FlushInfo to record classes.  (Uwe Schindler)
 
+* GITHUB#12919: Add Facets#getBulkSpecificValues method to get specific values for multiple FacetLabels at once. (Egor Potemkin)
+
 New Features
 ---------------------
 

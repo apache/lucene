@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.document.BinaryRangeDocValues;
 import org.apache.lucene.document.RangeFieldQuery;
 import org.apache.lucene.facet.FacetCountsWithFilterQuery;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
@@ -180,6 +181,11 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
     throw new UnsupportedOperationException();
   }
 

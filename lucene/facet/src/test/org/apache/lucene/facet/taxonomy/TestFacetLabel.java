@@ -17,6 +17,7 @@
 package org.apache.lucene.facet.taxonomy;
 
 import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.tests.util.TestUtil;

@@ -17,8 +17,8 @@
 
 package org.apache.lucene.facet.taxonomy.writercache;
 
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetTestCase;
-import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.junit.Test;
 
 public class TestLruTaxonomyWriterCache extends FacetTestCase {

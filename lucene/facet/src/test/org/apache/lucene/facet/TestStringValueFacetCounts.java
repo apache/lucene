@@ -455,14 +455,38 @@ public class TestStringValueFacetCounts extends FacetTestCase {
             return cmp;
           });
 
-      for (int i = 0; i < Math.min(topN, maxTopN); i++) {
+      int minTopN = Math.min(topN, maxTopN);
+      FacetLabel[] bulkSpecificValueParam = new FacetLabel[minTopN + 1];
+      Number[] bulkSpecificValueExpectedResults = new Number[minTopN + 1];
+      for (int i = 0; i < minTopN; i++) {
         String expectedKey = expectedCountsSorted.get(i).getKey();
         int expectedValue = expectedCountsSorted.get(i).getValue();
         assertEquals(expectedKey, facetResult.labelValues[i].label);
         assertEquals(expectedValue, facetResult.labelValues[i].value);
         // make sure getSpecificValue reports the same count
         assertEquals(expectedValue, facets.getSpecificValue("field", expectedKey));
+        bulkSpecificValueParam[i] = new FacetLabel("field", expectedKey);
+        bulkSpecificValueExpectedResults[i] = expectedValue;
       }
+      assertEquals(-1, facets.getSpecificValue("field", "unexpected_key_value"));
+      bulkSpecificValueParam[bulkSpecificValueParam.length - 1] =
+          new FacetLabel("field", "unexpected_key_value");
+      bulkSpecificValueExpectedResults[bulkSpecificValueExpectedResults.length - 1] = -1;
+      // validate getBulkSpecificValues
+      assertArrayEquals(
+          bulkSpecificValueExpectedResults, facets.getBulkSpecificValues(bulkSpecificValueParam));
+      assertArrayEquals(new Number[0], facets.getBulkSpecificValues(new FacetLabel[0]));
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            facets.getBulkSpecificValues(
+                new FacetLabel[] {new FacetLabel("field", "illegal", "path", "length")});
+          });
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            facets.getBulkSpecificValues(new FacetLabel[] {new FacetLabel("illegalField")});
+          });
 
       // execute a "drill down" query on one of the values at random and make sure the total hits
       // match the expected count provided by faceting
@@ -514,6 +538,8 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         Comparator.comparing((LabelAndValue a) -> a.label)
             .thenComparingLong(a -> a.value.longValue()));
 
+    FacetLabel[] bulkSpecificValueParam = new FacetLabel[expectedCountsSortedByValue.size()];
+    Number[] bulkSpecificValueExpectedResults = new Number[expectedCountsSortedByValue.size()];
     for (int i = 0; i < expectedCountsSortedByValue.size(); i++) {
       String expectedKey = expectedCountsSortedByValue.get(i).getKey();
       int expectedValue = expectedCountsSortedByValue.get(i).getValue();
@@ -521,6 +547,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       assertEquals(expectedValue, facetResult.labelValues[i].value);
       // make sure getSpecificValue reports the same count
       assertEquals(expectedValue, facets.getSpecificValue("field", expectedKey));
+      bulkSpecificValueParam[i] = new FacetLabel("field", expectedKey);
+      bulkSpecificValueExpectedResults[i] = expectedValue;
     }
+    // make sure getBulkSpecificValues reports the same counts
+    assertArrayEquals(
+        bulkSpecificValueExpectedResults, facets.getBulkSpecificValues(bulkSpecificValueParam));
   }
 }

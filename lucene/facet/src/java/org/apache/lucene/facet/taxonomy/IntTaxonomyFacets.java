@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
@@ -165,22 +166,30 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
-    DimConfig dimConfig = verifyDim(dim);
-    if (path.length == 0) {
-      if (dimConfig.hierarchical && dimConfig.multiValued == false) {
-        // ok: rolled up at search time
-      } else if (dimConfig.requireDimCount && dimConfig.multiValued) {
-        // ok: we indexed all ords at index time
-      } else {
-        throw new IllegalArgumentException(
-            "cannot return dimension-level value alone; use getTopChildren instead");
-      }
-    }
-    int ord = taxoReader.getOrdinal(new FacetLabel(dim, path));
+    FacetLabel facetLabel = new FacetLabel(dim, path);
+    checkSpecificValueAvailable(facetLabel);
+    int ord = taxoReader.getOrdinal(facetLabel);
     if (ord < 0) {
-      return -1;
+      return MISSING_SPECIFIC_VALUE;
     }
     return initialized ? getValue(ord) : 0;
+  }
+
+  @Override
+  public Number[] getBulkSpecificValues(FacetLabel[] facetLabels) throws IOException {
+    for (FacetLabel label : facetLabels) {
+      checkSpecificValueAvailable(label);
+    }
+    Number[] result = new Number[facetLabels.length];
+    int[] ords = taxoReader.getBulkOrdinals(facetLabels);
+    for (int i = 0; i < ords.length; i++) {
+      if (ords[i] < 0) { // INVALID_ORDINAL
+        result[i] = MISSING_SPECIFIC_VALUE;
+      } else {
+        result[i] = initialized ? getValue(ords[i]) : 0;
+      }
+    }
+    return result;
   }
 
   @Override

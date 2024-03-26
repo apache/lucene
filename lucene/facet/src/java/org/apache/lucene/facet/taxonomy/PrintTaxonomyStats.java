@@ -19,6 +19,7 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
+import org.apache.lucene.facet.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader.ChildrenIterator;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.store.Directory;
