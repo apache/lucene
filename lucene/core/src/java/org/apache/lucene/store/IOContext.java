@@ -100,12 +100,4 @@ public record IOContext(
   public IOContext(MergeInfo mergeInfo) {
     this(Context.MERGE, mergeInfo, null, false, false, false);
   }
-
-  /**
-   * Return a copy of this IOContext with {@link #readOnce} set to {@code true}. The {@link #load}
-   * flag is set to {@code false}.
-   */
-  public IOContext toReadOnce() {
-    return new IOContext(context, mergeInfo, flushInfo, true, false, randomAccess);
-  }
 }
