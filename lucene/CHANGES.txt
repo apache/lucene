@@ -87,6 +87,8 @@ API Changes
 * GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
   for MMapDirectory.  (Uwe Schindler)
 
+* GITHUB#13205: Convert IOContext, MergeInfo, and FlushInfo to record classes.  (Uwe Schindler)
+
 New Features
 ---------------------
 
@@ -197,6 +199,11 @@ New Features
 * GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
   and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
+* GITHUB#13196: Add support for posix_madvise to MMapDirectory: If running on Linux/macOS and Java 21
+  or later, MMapDirectory uses IOContext to pass suitable MADV flags to kernel of operating system.
+  This may improve paging logic especially when large segments are merged under memory pressure.
+  (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
+
 Improvements
 ---------------------
 
@@ -231,6 +238,8 @@ Optimizations
 
 * GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
 
+* GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
+
 * GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 
 Bug Fixes
@@ -248,6 +257,13 @@ Bug Fixes
 * GITHUB#13162: Fix NPE when LeafReader return null VectorValues (Pan Guixin)
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
+
+* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.7 and ASM for APIJAR extraction to 9.7.  (Uwe Schindler)
 
 Other
 ---------------------

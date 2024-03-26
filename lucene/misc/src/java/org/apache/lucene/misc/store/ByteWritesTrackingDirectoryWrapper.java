@@ -48,14 +48,14 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
   @Override
   public IndexOutput createOutput(String name, IOContext ioContext) throws IOException {
     IndexOutput output = in.createOutput(name, ioContext);
-    return createByteTrackingOutput(output, ioContext.context);
+    return createByteTrackingOutput(output, ioContext.context());
   }
 
   @Override
   public IndexOutput createTempOutput(String prefix, String suffix, IOContext ioContext)
       throws IOException {
     IndexOutput output = in.createTempOutput(prefix, suffix, ioContext);
-    return trackTempOutput ? createByteTrackingOutput(output, ioContext.context) : output;
+    return trackTempOutput ? createByteTrackingOutput(output, ioContext.context()) : output;
   }
 
   private IndexOutput createByteTrackingOutput(IndexOutput output, IOContext.Context context) {
