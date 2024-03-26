@@ -73,7 +73,12 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           new SingleInstanceLockFactory(),
           ByteBuffersDataOutput::new,
           (fileName, content) -> {
-            if (!isCachedFile(fileName)) return null;
+            // Defensive check to handle the case the file has been deleted before this lambda
+            // is called when the IndexOutput is closed. Unsafe in the unlikely case the deletion
+            // happens concurrently on another thread.
+            if (isCachedFile(fileName) == false) {
+              return null;
+            }
             cacheSize.addAndGet(content.size());
             return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS.apply(fileName, content);
           });
@@ -121,7 +126,8 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     if (cacheDirectory.fileExists(name)) {
       long size = cacheDirectory.fileLength(name);
       cacheDirectory.deleteFile(name);
-      cacheSize.addAndGet(-size);
+      long newSize = cacheSize.addAndGet(-size);
+      assert newSize >= 0;
     } else {
       in.deleteFile(name);
     }
