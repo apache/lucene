@@ -216,6 +216,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (dense == false && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
       }
+
+      if (competitiveIterator instanceof CompetitiveIterator iter) {
+        // CompetitiveIterator already built, try to reduce clause.
+        tryReduceDisjunctionClause(iter);
+        return;
+      }
+
       if (thresholdAsLong == -1) {
         if (dense == false) {
           competitiveIterator = getNumericDocValues(context, field);
@@ -230,10 +237,23 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if ((reverse == false && bottomAsComparableLong() <= thresholdAsLong)
           || (reverse && bottomAsComparableLong() >= thresholdAsLong)) {
         encodeBottom();
-        if (update() == false) {
-          DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor();
-          competitiveIterator = visitor.generateCompetitiveIterator();
-        }
+        DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor();
+        competitiveIterator = visitor.generateCompetitiveIterator();
+      }
+    }
+
+    private void tryReduceDisjunctionClause(CompetitiveIterator iter) {
+      int originalSize = iter.disis.size();
+      Predicate<DisiAndMostCompetitiveValue> isCompetitive =
+          d -> d.mostCompetitiveValue <= maxValueAsLong && d.mostCompetitiveValue >= minValueAsLong;
+
+      while (iter.disis.isEmpty() == false && isCompetitive.test(iter.disis.getFirst()) == false) {
+        iter.disis.removeFirst();
+      }
+
+      if (originalSize != iter.disis.size()) {
+        iter.disjunction.clear();
+        iter.disjunction.addAll(iter.disis);
       }
     }
 
@@ -397,28 +417,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           return docID = competitiveIterator.advance(target);
         }
       };
-    }
-
-    private boolean update() {
-      if (competitiveIterator instanceof CompetitiveIterator iter) {
-        int originalSize = iter.disis.size();
-        Predicate<DisiAndMostCompetitiveValue> isCompetitive =
-            d ->
-                d.mostCompetitiveValue <= maxValueAsLong
-                    && d.mostCompetitiveValue >= minValueAsLong;
-
-        while (iter.disis.isEmpty() == false
-            && isCompetitive.test(iter.disis.getFirst()) == false) {
-          iter.disis.removeFirst();
-        }
-
-        if (originalSize != iter.disis.size()) {
-          iter.disjunction.clear();
-          iter.disjunction.addAll(iter.disis);
-        }
-        return true;
-      }
-      return false;
     }
 
     protected abstract long bottomAsComparableLong();
