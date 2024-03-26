@@ -55,6 +55,8 @@ Optimizations
   (Ben Trent)
 * GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
 
+* GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
+
 Bug Fixes
 ---------------------
 
