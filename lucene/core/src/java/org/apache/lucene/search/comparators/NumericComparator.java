@@ -218,6 +218,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
 
       if (competitiveIterator instanceof CompetitiveIterator iter) {
+        encodeBottom();
         // CompetitiveIterator already built, try to reduce clause.
         tryReduceDisjunctionClause(iter);
         return;
