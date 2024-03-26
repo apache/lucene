@@ -65,7 +65,8 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, (byte) 7, null, null);
+    this(
+        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, (byte) 7, true, null, null);
   }
 
   /**
@@ -75,7 +76,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, (byte) 7, null, null);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, (byte) 7, true, null, null);
   }
 
   /**
@@ -85,6 +86,11 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
    *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
+   * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
+   *     inclusive)
+   * @param compress whether to compress the vectors, if true, the vectors that are quantized with
+   *     lte 4 bits will be compressed into a single byte. If false, the vectors will be stored as
+   *     is. This provides a trade-off of memory usage and speed.
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
    *     it is calculated based on the vector field dimensions.
    * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
@@ -95,6 +101,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
       int beamWidth,
       int numMergeWorkers,
       byte bits,
+      boolean compress,
       Float confidenceInterval,
       ExecutorService mergeExec) {
     super("Lucene99HnswScalarQuantizedVectorsFormat");
@@ -128,7 +135,8 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat = new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits);
+    this.flatVectorsFormat =
+        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
 
   @Override

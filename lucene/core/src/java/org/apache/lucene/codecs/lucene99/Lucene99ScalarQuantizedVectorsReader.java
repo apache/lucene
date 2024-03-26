@@ -128,7 +128,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     final long quantizedVectorBytes;
-    if (fieldEntry.bits <= 4) {
+    if (fieldEntry.bits <= 4 && fieldEntry.compress) {
       quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
     } else {
       // int8 quantized and calculated stored offset.
@@ -216,6 +216,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.dimension,
             fieldEntry.size,
             fieldEntry.bits,
+            fieldEntry.compress,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
@@ -260,6 +261,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         fieldEntry.dimension,
         fieldEntry.size,
         fieldEntry.bits,
+        fieldEntry.compress,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
         quantizedVectorData);
@@ -285,6 +287,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     final ScalarQuantizer scalarQuantizer;
     final int size;
     final byte bits;
+    final boolean compress;
     final OrdToDocDISIReaderConfiguration ordToDoc;
 
     FieldEntry(
@@ -307,12 +310,14 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
                 "Missing confidence interval for scalar quantizer", input);
           }
           this.bits = (byte) 7;
+          this.compress = false;
           float minQuantile = Float.intBitsToFloat(input.readInt());
           float maxQuantile = Float.intBitsToFloat(input.readInt());
           scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, (byte) 7);
         } else {
           input.readInt(); // confidenceInterval, unused
           this.bits = input.readByte();
+          this.compress = input.readByte() == 1;
           float minQuantile = Float.intBitsToFloat(input.readInt());
           float maxQuantile = Float.intBitsToFloat(input.readInt());
           scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, bits);
@@ -320,6 +325,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       } else {
         scalarQuantizer = null;
         this.bits = (byte) 7;
+        this.compress = false;
       }
       ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
     }

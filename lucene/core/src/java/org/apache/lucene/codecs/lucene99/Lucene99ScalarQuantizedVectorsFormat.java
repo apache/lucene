@@ -57,19 +57,26 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   final Float confidenceInterval;
 
   final byte bits;
+  final boolean compress;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
-    this(null, 7);
+    this(null, 7, true);
   }
 
   /**
    * Constructs a format using the given graph construction parameters.
    *
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     the confidence interval is calculated dynamically.
+   *     it is calculated dynamically.
+   * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
+   *     inclusive)
+   * @param compress whether to compress the vectors, if true, the vectors that are quantized with
+   *     lte 4 bits will be compressed into a single byte. If false, the vectors will be stored as
+   *     is. This provides a trade-off of memory usage and speed.
    */
-  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval, int bits) {
+  public Lucene99ScalarQuantizedVectorsFormat(
+      Float confidenceInterval, int bits, boolean compress) {
     if (confidenceInterval != null
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
             || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
@@ -86,6 +93,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
     }
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
+    this.compress = compress;
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -101,6 +109,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
         + confidenceInterval
         + ", bits="
         + bits
+        + ", compress="
+        + compress
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -109,7 +119,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, bits, rawVectorFormat.fieldsWriter(state));
+        state, confidenceInterval, bits, compress, rawVectorFormat.fieldsWriter(state));
   }
 
   @Override
