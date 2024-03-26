@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
+/** A doc id set based on sorted int array. */
 public final class IntArrayDocIdSet extends DocIdSet {
 
   private static final long BASE_RAM_BYTES_USED =

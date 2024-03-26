@@ -457,6 +457,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                     bytesAsLong(pointTree.getMaxPackedValue()));
               }
             }
+            case CELL_OUTSIDE_QUERY -> {}
+            default -> throw new IllegalStateException("unreachable code");
           }
         }
 
@@ -641,7 +643,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       this.disi = disi;
       this.mostCompetitiveValue = mostCompetitiveValue;
     }
-
   }
 
   private static class CompetitiveIterator extends DocIdSetIterator {
