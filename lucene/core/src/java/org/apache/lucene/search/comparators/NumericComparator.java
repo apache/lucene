@@ -36,6 +36,7 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IntArrayDocIdSet;
 import org.apache.lucene.util.LSBRadixSorter;
 import org.apache.lucene.util.NumericUtils;
@@ -236,83 +237,65 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     /**
-     * Find out the value that {@param threshold} docs away from topValue/infinite. TODO: we are
-     * asserting binary tree
+     * Find out the value that {@param threshold} docs away from topValue/infinite.
+     *
+     * <p>TODO: we are assuming a binary tree
      */
     private long intersectThresholdValue(long threshold) throws IOException {
       PointValues.PointTree pointTree = pointValues.getPointTree();
-      if (reverse == false) {
-        if (leafTopSet) {
-          return intersectL2R(pointTree, threshold, topAsComparableLong());
+      if (topValueSet) {
+        long topValue = topAsComparableLong();
+        if (reverse == false) {
+          return intersectL2R(
+              pointTree,
+              threshold,
+              t ->
+                  PointValues.estimatePointCount(
+                      new RangeVisitor(topValue, Long.MAX_VALUE, -1), pointTree, t));
         } else {
-          return intersectL2R(pointTree, threshold);
+          return intersectR2L(
+              pointTree,
+              threshold,
+              t ->
+                  PointValues.estimatePointCount(
+                      new RangeVisitor(Long.MIN_VALUE, topValue, -1), pointTree, t));
         }
       } else {
-        if (leafTopSet) {
-          return intersectR2L(pointTree, threshold, topAsComparableLong());
+        if (reverse == false) {
+          return intersectL2R(pointTree, threshold, t -> pointTree.size());
         } else {
-          return intersectR2L(pointTree, threshold);
+          return intersectR2L(pointTree, threshold, t -> pointTree.size());
         }
       }
     }
 
-    private long intersectL2R(PointValues.PointTree pointTree, long threshold) throws IOException {
+    private long intersectL2R(
+        PointValues.PointTree pointTree, long threshold, IOFunction<Long, Long> thresholdToSize)
+        throws IOException {
       if (pointTree.moveToChild()) {
-        long leftSize = pointTree.size();
+        long leftSize = thresholdToSize.apply(threshold);
         if (leftSize > threshold) {
-          return intersectL2R(pointTree, threshold);
+          return intersectL2R(pointTree, threshold, thresholdToSize);
         } else if (leftSize < threshold) {
           pointTree.moveToSibling();
-          return intersectL2R(pointTree, threshold - leftSize);
+          return intersectL2R(pointTree, threshold - leftSize, thresholdToSize);
         }
       }
       return bytesAsLong(pointTree.getMaxPackedValue());
     }
 
-    private long intersectL2R(PointValues.PointTree pointTree, long threshold, long topValue)
-        throws IOException {
-      if (pointTree.moveToChild()) {
-        long leftSize =
-            PointValues.estimatePointCount(
-                new RangeVisitor(topValue, Long.MAX_VALUE, -1), pointTree, threshold);
-        if (leftSize > threshold) {
-          return intersectL2R(pointTree, threshold);
-        } else if (leftSize < threshold) {
-          pointTree.moveToSibling();
-          return intersectL2R(pointTree, threshold - leftSize);
-        }
-      }
-      return bytesAsLong(pointTree.getMaxPackedValue());
-    }
-
-    private long intersectR2L(PointValues.PointTree pointTree, long threshold) throws IOException {
-      if (pointTree.moveToChild()) {
-        pointTree.moveToSibling();
-        long rightSize = pointTree.size();
-        if (rightSize > threshold) {
-          return intersectR2L(pointTree, threshold);
-        } else if (rightSize < threshold) {
-          pointTree.moveToParent();
-          pointTree.moveToChild();
-          return intersectR2L(pointTree, threshold - rightSize);
-        }
-      }
-      return bytesAsLong(pointTree.getMinPackedValue());
-    }
-
-    private long intersectR2L(PointValues.PointTree pointTree, long threshold, long topValue)
+    private long intersectR2L(
+        PointValues.PointTree pointTree, long threshold, IOFunction<Long, Long> thresholdToSize)
         throws IOException {
       if (pointTree.moveToChild()) {
         pointTree.moveToSibling();
-        long rightSize =
-            PointValues.estimatePointCount(
-                new RangeVisitor(Long.MIN_VALUE, topValue, -1), pointTree, threshold);
+        long rightSize = thresholdToSize.apply(threshold);
         if (rightSize > threshold) {
-          return intersectR2L(pointTree, threshold);
+          return intersectR2L(pointTree, threshold, thresholdToSize);
         } else if (rightSize < threshold) {
           pointTree.moveToParent();
           pointTree.moveToChild();
-          return intersectR2L(pointTree, threshold - rightSize);
+          return intersectR2L(pointTree, threshold - rightSize, thresholdToSize);
         }
       }
       return bytesAsLong(pointTree.getMinPackedValue());
@@ -663,7 +646,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       throw new UnsupportedOperationException();
     }
 
-    void consumeDoc(int doc) throws IOException {
+    void consumeDoc(int doc) {
       throw new UnsupportedOperationException();
     }
   }
