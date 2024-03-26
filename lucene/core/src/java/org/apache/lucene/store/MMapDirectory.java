@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
-import org.apache.lucene.store.IOContext.ReadAdvice;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -86,10 +85,10 @@ public class MMapDirectory extends FSDirectory {
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link IOContext#LOAD} I/O context.
+   * opening them if they use the {@link IOContext#PRELOAD} I/O context.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.readAdvice() == ReadAdvice.LOAD;
+      (filename, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 

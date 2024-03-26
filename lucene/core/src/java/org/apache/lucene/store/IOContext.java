@@ -27,8 +27,7 @@ import java.util.Objects;
  * @param context An object of a enumerator Context type
  * @param mergeInfo must be given when {@code context == MERGE}
  * @param flushInfo must be given when {@code context == FLUSH}
- * @param readAdvice Advice regarding the read access pattern. Write operations should disregard
- *     this field.
+ * @param readAdvice Advice regarding the read access pattern
  */
 public record IOContext(
     Context context, MergeInfo mergeInfo, FlushInfo flushInfo, ReadAdvice readAdvice) {
@@ -43,30 +42,6 @@ public record IOContext(
     DEFAULT
   };
 
-  /** Advice regarding the read access pattern. */
-  public enum ReadAdvice {
-    /**
-     * Normal behavior. Data is expected to be read mostly sequentially. The system is expected to
-     * cache the hottest pages.
-     */
-    NORMAL,
-    /**
-     * Data is expected to be read in a random-access fashion, either by {@link
-     * IndexInput#seek(long) seeking} often and reading relatively short sequences of bytes at once,
-     * or by reading data through the {@link RandomAccessInput} abstraction in random order.
-     */
-    RANDOM,
-    /** Data is expected to be read sequentially with very little seeking at most. */
-    SEQUENTIAL,
-    /**
-     * Data is treated as random-access memory in practice. {@link Directory} implementations may
-     * explicitly load the content of the file in memory, or provide hints to the system so that it
-     * loads the content of the file into the page cache at open time. This should only be used on
-     * very small files that can be expected to fit in RAM with very high confidence.
-     */
-    LOAD
-  }
-
   public static final IOContext DEFAULT =
       new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
 
@@ -74,7 +49,7 @@ public record IOContext(
 
   public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
 
-  public static final IOContext LOAD = new IOContext(ReadAdvice.LOAD);
+  public static final IOContext PRELOAD = new IOContext(ReadAdvice.RANDOM_PRELOAD);
 
   public static final IOContext RANDOM = new IOContext(ReadAdvice.RANDOM);
 

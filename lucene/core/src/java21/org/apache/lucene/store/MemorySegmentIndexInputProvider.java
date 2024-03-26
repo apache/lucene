@@ -52,7 +52,14 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(arena, resourceDescription, fc, context, chunkSizePower, preload, fileSize),
+              map(
+                  arena,
+                  resourceDescription,
+                  fc,
+                  context.readAdvice(),
+                  chunkSizePower,
+                  preload,
+                  fileSize),
               fileSize,
               chunkSizePower);
       success = true;
@@ -78,7 +85,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       Arena arena,
       String resourceDescription,
       FileChannel fc,
-      IOContext context,
+      ReadAdvice readAdvice,
       int chunkSizePower,
       boolean preload,
       long length)
@@ -108,7 +115,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       if (preload) {
         segment.load();
       } else if (nativeAccess.isPresent() && chunkSizePower >= 21) {
-        nativeAccess.get().madvise(segment, context);
+        nativeAccess.get().madvise(segment, readAdvice);
       }
       segments[segNr] = segment;
       startOffset += segSize;

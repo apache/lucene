@@ -65,7 +65,7 @@ final class FieldsIndexReader extends FieldsIndex {
     maxPointer = metaIn.readLong();
 
     indexInput =
-        dir.openInput(IndexFileNames.segmentFileName(name, suffix, extension), IOContext.LOAD);
+        dir.openInput(IndexFileNames.segmentFileName(name, suffix, extension), IOContext.PRELOAD);
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(

@@ -109,12 +109,12 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   @Override
-  public void madvise(MemorySegment segment, IOContext context) throws IOException {
+  public void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException {
     // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
     if (segment.byteSize() == 0L) {
       return; // empty segments should be excluded, because they may have no address at all
     }
-    final Integer advice = mapIOContext(context);
+    final Integer advice = mapIOContext(readAdvice);
     if (advice == null) {
       return; // do nothing
     }
@@ -135,12 +135,12 @@ final class PosixNativeAccess extends NativeAccess {
     }
   }
 
-  private Integer mapIOContext(IOContext ctx) {
-    return switch (ctx.readAdvice()) {
+  private Integer mapIOContext(ReadAdvice readAdvice) {
+    return switch (readAdvice) {
       case NORMAL -> null;
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
-      case LOAD -> null;
+      case RANDOM_PRELOAD -> null;
     };
   }
 }
