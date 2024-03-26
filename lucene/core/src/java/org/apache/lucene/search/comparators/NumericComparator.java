@@ -231,7 +231,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           || (reverse && bottomAsComparableLong() >= thresholdAsLong)) {
         encodeBottom();
         if (update() == false) {
-          competitiveIterator = initIterator();
+          DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor();
+          competitiveIterator = visitor.generateCompetitiveIterator();
         }
       }
     }
@@ -397,145 +398,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       };
     }
 
-    protected abstract long bottomAsComparableLong();
-
-    protected abstract long topAsComparableLong();
-
-    private DocIdSetIterator initIterator() throws IOException {
-      Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>();
-      // most competitive entry stored last.
-      Consumer<DisiAndMostCompetitiveValue> adder =
-          reverse == false ? disis::addFirst : disis::addLast;
-
-      class DisjunctionBuildVisitor extends RangeVisitor {
-
-        final LSBRadixSorter sorter = new LSBRadixSorter();
-        int[] docs = IntsRef.EMPTY_INTS;
-        int index = 0;
-        int blockMaxDoc = -1;
-        boolean docsInOrder = true;
-        long blockMinValue = Long.MAX_VALUE;
-        long blockMaxValue = Long.MIN_VALUE;
-
-        private DisjunctionBuildVisitor(long minInclusive, long maxInclusive, int docLowerBound) {
-          super(minInclusive, maxInclusive, docLowerBound);
-        }
-
-        @Override
-        public void grow(int count) {
-          docs = ArrayUtil.grow(docs, index + count + 1);
-        }
-
-        @Override
-        protected void consumeDoc(int doc) {
-          docs[index++] = doc;
-          if (doc >= blockMaxDoc) {
-            blockMaxDoc = doc;
-          } else {
-            docsInOrder = false;
-          }
-        }
-
-        void intersectLeaves(PointValues.PointTree pointTree) throws IOException {
-          PointValues.Relation r =
-              compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
-          switch (r) {
-            case CELL_INSIDE_QUERY, CELL_CROSSES_QUERY -> {
-              if (pointTree.moveToChild()) {
-                do {
-                  intersectLeaves(pointTree);
-                } while (pointTree.moveToSibling());
-                pointTree.moveToParent();
-              } else {
-                if (r == PointValues.Relation.CELL_CROSSES_QUERY) {
-                  pointTree.visitDocValues(this);
-                } else {
-                  pointTree.visitDocIDs(this);
-                }
-                updateMinMax(
-                    bytesAsLong(pointTree.getMinPackedValue()),
-                    bytesAsLong(pointTree.getMaxPackedValue()));
-              }
-            }
-            case CELL_OUTSIDE_QUERY -> {}
-            default -> throw new IllegalStateException("unreachable code");
-          }
-        }
-
-        void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
-          this.blockMinValue = Math.min(blockMinValue, leafMinValue);
-          this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
-          if (index >= MIN_BLOCK_DISI_LENGTH) {
-            update();
-            this.blockMinValue = Long.MAX_VALUE;
-            this.blockMaxValue = Long.MIN_VALUE;
-          }
-        }
-
-        void update() throws IOException {
-          if (blockMinValue > blockMaxValue) {
-            return;
-          }
-          long mostCompetitiveValue =
-              reverse == false
-                  ? Math.max(blockMinValue, minValueAsLong)
-                  : Math.min(blockMaxValue, maxValueAsLong);
-
-          if (docsInOrder == false) {
-            sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
-          }
-          docs[index] = DocIdSetIterator.NO_MORE_DOCS;
-          DocIdSetIterator iter = new IntArrayDocIdSet(docs, index).iterator();
-          adder.accept(new DisiAndMostCompetitiveValue(iter, mostCompetitiveValue));
-          docs = IntsRef.EMPTY_INTS;
-          index = 0;
-          blockMaxDoc = -1;
-          docsInOrder = true;
-        }
-      }
-
-      DisjunctionBuildVisitor visitor =
-          new DisjunctionBuildVisitor(minValueAsLong, maxValueAsLong, maxDocVisited);
-      visitor.intersectLeaves(pointValues.getPointTree());
-      visitor.update();
-
-      if (disis.isEmpty()) {
-        return DocIdSetIterator.empty();
-      }
-      assert assertMostCompetitiveValuesSorted(disis);
-
-      PriorityQueue<DisiAndMostCompetitiveValue> disjunction =
-          new PriorityQueue<>(disis.size()) {
-            @Override
-            protected boolean lessThan(
-                DisiAndMostCompetitiveValue a, DisiAndMostCompetitiveValue b) {
-              return a.disi.docID() < b.disi.docID();
-            }
-          };
-      disjunction.addAll(disis);
-
-      return new CompetitiveIterator(maxDoc, disis, disjunction);
-    }
-
-    /**
-     * Used for assert. When reverse is false, smaller values are more competitive, so
-     * mostCompetitiveValues should be in desc order.
-     */
-    private boolean assertMostCompetitiveValuesSorted(Deque<DisiAndMostCompetitiveValue> deque) {
-      long lastValue = reverse == false ? Long.MAX_VALUE : Long.MIN_VALUE;
-      for (DisiAndMostCompetitiveValue value : deque) {
-        if (reverse == false) {
-          assert value.mostCompetitiveValue <= lastValue
-              : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
-        } else {
-          assert value.mostCompetitiveValue >= lastValue
-              : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
-        }
-        lastValue = value.mostCompetitiveValue;
-      }
-      return true;
-    }
-
     private boolean update() {
       if (competitiveIterator instanceof CompetitiveIterator iter) {
         int originalSize = iter.disis.size();
@@ -556,6 +418,143 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         return true;
       }
       return false;
+    }
+
+    protected abstract long bottomAsComparableLong();
+
+    protected abstract long topAsComparableLong();
+
+    class DisjunctionBuildVisitor extends RangeVisitor {
+
+      final Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>();
+      // most competitive entry stored last.
+      final Consumer<DisiAndMostCompetitiveValue> adder =
+          reverse == false ? disis::addFirst : disis::addLast;
+
+      final LSBRadixSorter sorter = new LSBRadixSorter();
+      int[] docs = IntsRef.EMPTY_INTS;
+      int index = 0;
+      int blockMaxDoc = -1;
+      boolean docsInOrder = true;
+      long blockMinValue = Long.MAX_VALUE;
+      long blockMaxValue = Long.MIN_VALUE;
+
+      private DisjunctionBuildVisitor() {
+        super(minValueAsLong, maxValueAsLong, maxDocVisited);
+      }
+
+      @Override
+      public void grow(int count) {
+        docs = ArrayUtil.grow(docs, index + count + 1);
+      }
+
+      @Override
+      protected void consumeDoc(int doc) {
+        docs[index++] = doc;
+        if (doc >= blockMaxDoc) {
+          blockMaxDoc = doc;
+        } else {
+          docsInOrder = false;
+        }
+      }
+
+      void intersectLeaves(PointValues.PointTree pointTree) throws IOException {
+        PointValues.Relation r =
+            compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+        switch (r) {
+          case CELL_INSIDE_QUERY, CELL_CROSSES_QUERY -> {
+            if (pointTree.moveToChild()) {
+              do {
+                intersectLeaves(pointTree);
+              } while (pointTree.moveToSibling());
+              pointTree.moveToParent();
+            } else {
+              if (r == PointValues.Relation.CELL_CROSSES_QUERY) {
+                pointTree.visitDocValues(this);
+              } else {
+                pointTree.visitDocIDs(this);
+              }
+              updateMinMax(
+                  bytesAsLong(pointTree.getMinPackedValue()),
+                  bytesAsLong(pointTree.getMaxPackedValue()));
+            }
+          }
+          case CELL_OUTSIDE_QUERY -> {}
+          default -> throw new IllegalStateException("unreachable code");
+        }
+      }
+
+      void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
+        this.blockMinValue = Math.min(blockMinValue, leafMinValue);
+        this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
+        if (index >= MIN_BLOCK_DISI_LENGTH) {
+          update();
+          this.blockMinValue = Long.MAX_VALUE;
+          this.blockMaxValue = Long.MIN_VALUE;
+        }
+      }
+
+      void update() throws IOException {
+        if (blockMinValue > blockMaxValue) {
+          return;
+        }
+        long mostCompetitiveValue =
+            reverse == false
+                ? Math.max(blockMinValue, minValueAsLong)
+                : Math.min(blockMaxValue, maxValueAsLong);
+
+        if (docsInOrder == false) {
+          sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
+        }
+        docs[index] = DocIdSetIterator.NO_MORE_DOCS;
+        DocIdSetIterator iter = new IntArrayDocIdSet(docs, index).iterator();
+        adder.accept(new DisiAndMostCompetitiveValue(iter, mostCompetitiveValue));
+        docs = IntsRef.EMPTY_INTS;
+        index = 0;
+        blockMaxDoc = -1;
+        docsInOrder = true;
+      }
+
+      DocIdSetIterator generateCompetitiveIterator() throws IOException {
+        intersectLeaves(pointValues.getPointTree());
+        update();
+
+        if (disis.isEmpty()) {
+          return DocIdSetIterator.empty();
+        }
+        assert assertMostCompetitiveValuesSorted(disis);
+
+        PriorityQueue<DisiAndMostCompetitiveValue> disjunction =
+            new PriorityQueue<>(disis.size()) {
+              @Override
+              protected boolean lessThan(
+                  DisiAndMostCompetitiveValue a, DisiAndMostCompetitiveValue b) {
+                return a.disi.docID() < b.disi.docID();
+              }
+            };
+        disjunction.addAll(disis);
+
+        return new CompetitiveIterator(maxDoc, disis, disjunction);
+      }
+
+      /**
+       * Used for assert. When reverse is false, smaller values are more competitive, so
+       * mostCompetitiveValues should be in desc order.
+       */
+      private boolean assertMostCompetitiveValuesSorted(Deque<DisiAndMostCompetitiveValue> deque) {
+        long lastValue = reverse == false ? Long.MAX_VALUE : Long.MIN_VALUE;
+        for (DisiAndMostCompetitiveValue value : deque) {
+          if (reverse == false) {
+            assert value.mostCompetitiveValue <= lastValue
+                : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
+          } else {
+            assert value.mostCompetitiveValue >= lastValue
+                : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
+          }
+          lastValue = value.mostCompetitiveValue;
+        }
+        return true;
+      }
     }
   }
 
@@ -594,7 +593,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       long l = bytesAsLong(packedValue);
       if (l >= minInclusive && l <= maxInclusive) {
-        int doc = iterator.advance(docLowerBound);
+        int doc = docLowerBound >= 0 ? iterator.advance(docLowerBound) : iterator.nextDoc();
         while (doc != DocIdSetIterator.NO_MORE_DOCS) {
           consumeDoc(doc);
           doc = iterator.nextDoc();
@@ -604,7 +603,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void visit(DocIdSetIterator iterator) throws IOException {
-      int doc = iterator.advance(docLowerBound);
+      int doc = docLowerBound >= 0 ? iterator.advance(docLowerBound) : iterator.nextDoc();
       while (doc != DocIdSetIterator.NO_MORE_DOCS) {
         consumeDoc(doc);
         doc = iterator.nextDoc();
