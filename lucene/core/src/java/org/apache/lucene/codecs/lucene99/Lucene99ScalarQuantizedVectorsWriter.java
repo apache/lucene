@@ -607,6 +607,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // merged
     // segment view
     if (mergedQuantiles == null
+        // For smaller `bits` values, we should always recalculate the quantiles
+        // TODO: this is very conservative, could we reuse information for even int4 quantization?
         || bits <= 4
         || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
       int numVectors = 0;
@@ -882,6 +884,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           // Or we have never been quantized.
           if (reader == null
               || reader.getQuantizationState(fieldInfo.name) == null
+              // For smaller `bits` values, we should always recalculate the quantiles
+              // TODO: this is very conservative, could we reuse information for even int4
+              // quantization?
               || scalarQuantizer.getBits() <= 4
               || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
             sub =
