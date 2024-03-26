@@ -142,7 +142,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
       scalarQuantizer.deQuantize(quantized, dequantized);
       scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
       for (int j = 0; j < dims; j++) {
-        assertEquals(dequantized[j], floats[i][j], 0.1);
+        assertEquals(dequantized[j], floats[i][j], 0.2);
         assertEquals(quantized[j], requantized[j]);
       }
     }

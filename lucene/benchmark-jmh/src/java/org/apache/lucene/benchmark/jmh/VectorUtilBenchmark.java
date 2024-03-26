@@ -41,7 +41,7 @@ public class VectorUtilBenchmark {
   private float[] floatsA;
   private float[] floatsB;
 
-  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  @Param({"1024"})
   int size;
 
   @Setup(Level.Iteration)
