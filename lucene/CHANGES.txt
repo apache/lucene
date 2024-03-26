@@ -119,6 +119,8 @@ Improvements
 
 * GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
 
+* GITHUB#13209: Upgrade snowball to 26db1ab9. (Robert Muir)
+
 Optimizations
 ---------------------
 
