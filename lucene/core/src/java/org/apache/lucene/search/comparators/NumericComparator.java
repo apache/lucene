@@ -237,7 +237,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     /**
-     * Find out the value that {@param threshold} docs away from topValue/infinite.
+     * Find out the value that threshold docs away from topValue/infinite.
      *
      * <p>TODO: we are assuming a binary tree
      */
