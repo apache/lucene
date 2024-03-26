@@ -23,6 +23,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
@@ -37,9 +38,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     this.nativeAccess = NativeAccess.getImplementation();
     var log = Logger.getLogger(getClass().getName());
     log.info(
-        "Using MemorySegmentIndexInput with Java 21 or later; to disable start with -D"
-            + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
-            + "=false");
+        String.format(
+            Locale.ENGLISH,
+            "Using MemorySegmentIndexInput%s with Java 21 or later; to disable start with -D%s=false",
+            nativeAccess.map(n -> " and native madvise support").orElse(""),
+            MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP));
   }
 
   @Override
