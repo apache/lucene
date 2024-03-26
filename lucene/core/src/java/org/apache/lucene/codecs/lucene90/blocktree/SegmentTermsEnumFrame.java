@@ -679,7 +679,6 @@ final class SegmentTermsEnumFrame {
       int mid = (start + end) / 2;
       nextEnt = mid + 1;
       startBytePos = mid * suffix;
-      suffixesReader.setPosition(startBytePos + suffix);
 
       // Binary search bytes in the suffix, comparing to the target
       cmp =
@@ -696,11 +695,10 @@ final class SegmentTermsEnumFrame {
         end = mid - 1;
       } else {
         // Exact match!
-
+        suffixesReader.setPosition(startBytePos + suffix);
         // This cannot be a sub-block because we
         // would have followed the index to this
         // sub-block from the start:
-
         assert ste.termExists;
         fillTerm();
         // if (DEBUG) System.out.println("        found!");
@@ -719,17 +717,21 @@ final class SegmentTermsEnumFrame {
     // bee fop).
     // if (DEBUG) System.out.println("      block end");
     SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
-    if (exactOnly || seekStatus == SeekStatus.NOT_FOUND) {
+    if (seekStatus == SeekStatus.NOT_FOUND) {
       // If binary search ended at the less term, and greater term exists.
       // We need to advance to the greater term.
-      if (cmp < 0 && seekStatus == SeekStatus.NOT_FOUND) {
+      if (cmp < 0) {
         startBytePos += suffix;
-        suffixesReader.skipBytes(suffix);
         nextEnt++;
       }
+      suffixesReader.setPosition(startBytePos + suffix);
       fillTerm();
+    } else {
+      suffixesReader.setPosition(startBytePos + suffix);
+      if (exactOnly) {
+        fillTerm();
+      }
     }
-
     // TODO: not consistent that in the
     // not-exact case we don't next() into the next
     // frame here
