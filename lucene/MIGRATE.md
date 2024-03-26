@@ -21,7 +21,7 @@
 
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using and be running on Java 17.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
 
 ### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
 
