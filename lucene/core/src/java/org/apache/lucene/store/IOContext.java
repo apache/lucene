@@ -27,22 +27,11 @@ import java.util.Objects;
  * @param context An object of a enumerator Context type
  * @param mergeInfo must be given when {@code context == MERGE}
  * @param flushInfo must be given when {@code context == FLUSH}
- * @param readOnce This flag indicates that the file will be opened, then fully read sequentially
- *     then closed.
- * @param load This flag is used for files that are a small fraction of the total index size and are
- *     expected to be heavily accessed in random-access fashion. Some {@link Directory}
- *     implementations may choose to load such files into physical memory (e.g. Java heap) as a way
- *     to provide stronger guarantees on query latency.
- * @param randomAccess This flag indicates that the file will be accessed randomly. If this flag is
- *     set, then readOnce will be false.
+ * @param readAdvice Advice regarding the read access pattern. Write operations should disregard
+ *     this field.
  */
 public record IOContext(
-    Context context,
-    MergeInfo mergeInfo,
-    FlushInfo flushInfo,
-    boolean readOnce,
-    boolean load,
-    boolean randomAccess) {
+    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, ReadAdvice readAdvice) {
 
   /**
    * Context is a enumerator which specifies the context in which the Directory is being used for.
@@ -54,58 +43,74 @@ public record IOContext(
     DEFAULT
   };
 
-  public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
+  /** Advice regarding the read access pattern. */
+  public enum ReadAdvice {
+    /**
+     * Normal behavior. Data is expected to be read mostly sequentially. The system is expected to
+     * cache the hottest pages.
+     */
+    NORMAL,
+    /**
+     * Data is expected to be read in a random-access fashion, either by {@link
+     * IndexInput#seek(long) seeking} often and reading relatively short sequences of bytes at once,
+     * or by reading data through the {@link RandomAccessInput} abstraction in random order.
+     */
+    RANDOM,
+    /** Data is expected to be read sequentially with very little seeking at most. */
+    SEQUENTIAL,
+    /**
+     * Data is treated as random-access memory in practice. {@link Directory} implementations may
+     * explicitly load the content of the file in memory, or provide hints to the system so that it
+     * loads the content of the file into the page cache at open time. This should only be used on
+     * very small files that can be expected to fit in RAM with very high confidence.
+     */
+    LOAD
+  }
 
-  public static final IOContext READONCE = new IOContext(true, false, false);
+  public static final IOContext DEFAULT =
+      new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
 
-  public static final IOContext READ = new IOContext(false, false, false);
+  public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
-  public static final IOContext LOAD = new IOContext(false, true, true);
+  public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
 
-  public static final IOContext RANDOM = new IOContext(false, false, true);
+  public static final IOContext LOAD = new IOContext(ReadAdvice.LOAD);
+
+  public static final IOContext RANDOM = new IOContext(ReadAdvice.RANDOM);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
+    Objects.requireNonNull(context, "context must not be null");
+    Objects.requireNonNull(readAdvice, "readAdvice must not be null");
     switch (context) {
       case MERGE -> Objects.requireNonNull(
           mergeInfo, "mergeInfo must not be null if context is MERGE");
       case FLUSH -> Objects.requireNonNull(
           flushInfo, "flushInfo must not be null if context is FLUSH");
     }
-    if (load && readOnce) {
-      throw new IllegalArgumentException("load and readOnce are mutually exclusive");
+    if (context == Context.MERGE && readAdvice != ReadAdvice.SEQUENTIAL) {
+      throw new IllegalArgumentException(
+          "The MERGE context must use the SEQUENTIAL read access advice");
     }
-    if (readOnce && randomAccess) {
-      throw new IllegalArgumentException("readOnce and randomAccess are mutually exclusive");
-    }
-    if (load && randomAccess == false) {
-      throw new IllegalArgumentException("cannot be load but not randomAccess");
+    if ((context == Context.FLUSH || context == Context.DEFAULT)
+        && readAdvice != ReadAdvice.NORMAL) {
+      throw new IllegalArgumentException(
+          "The FLUSH and DEFAULT contexts must use the NORMAL read access advice");
     }
   }
 
-  private IOContext(boolean readOnce, boolean load, boolean randomAccess) {
-    this(Context.READ, null, null, readOnce, load, randomAccess);
-  }
-
-  private IOContext(Context context) {
-    this(context, null, null, false, false, false);
+  private IOContext(ReadAdvice accessAdvice) {
+    this(Context.READ, null, null, accessAdvice);
   }
 
   /** Creates an IOContext for flushing. */
   public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, false, false, false);
+    this(Context.FLUSH, null, flushInfo, ReadAdvice.NORMAL);
   }
 
   /** Creates an IOContext for merging. */
   public IOContext(MergeInfo mergeInfo) {
-    this(Context.MERGE, mergeInfo, null, false, false, false);
-  }
-
-  /**
-   * Return a copy of this IOContext with {@link #readOnce} set to {@code true}. The {@link #load}
-   * flag is set to {@code false}.
-   */
-  public IOContext toReadOnce() {
-    return new IOContext(context, mergeInfo, flushInfo, true, false, randomAccess);
+    // Merges read input segments sequentially.
+    this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
   }
 }

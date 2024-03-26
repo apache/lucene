@@ -26,7 +26,6 @@ import java.lang.invoke.MethodHandle;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.logging.Logger;
-import org.apache.lucene.store.IOContext.Context;
 
 @SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
@@ -137,17 +136,11 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   private Integer mapIOContext(IOContext ctx) {
-    // Merging always wins and implies sequential access, because kernel is advised to free pages
-    // after use:
-    if (ctx.context() == Context.MERGE) {
-      return POSIX_MADV_SEQUENTIAL;
-    }
-    if (ctx.randomAccess()) {
-      return POSIX_MADV_RANDOM;
-    }
-    if (ctx.readOnce()) {
-      return POSIX_MADV_SEQUENTIAL;
-    }
-    return null;
+    return switch (ctx.readAdvice()) {
+      case NORMAL -> null;
+      case RANDOM -> POSIX_MADV_RANDOM;
+      case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
+      case LOAD -> null;
+    };
   }
 }

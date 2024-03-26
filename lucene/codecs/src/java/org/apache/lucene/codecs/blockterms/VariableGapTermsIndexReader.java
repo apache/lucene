@@ -27,6 +27,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
@@ -53,7 +54,7 @@ public class VariableGapTermsIndexReader extends TermsIndexReaderBase {
             state.segmentInfo.name,
             state.segmentSuffix,
             VariableGapTermsIndexWriter.TERMS_INDEX_EXTENSION);
-    final IndexInput in = state.directory.openInput(fileName, state.context.toReadOnce());
+    final IndexInput in = state.directory.openInput(fileName, IOContext.READONCE);
     boolean success = false;
 
     try {

@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
+import org.apache.lucene.store.IOContext.ReadAdvice;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -88,7 +89,7 @@ public class MMapDirectory extends FSDirectory {
    * opening them if they use the {@link IOContext#LOAD} I/O context.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.load();
+      (filename, context) -> context.readAdvice() == ReadAdvice.LOAD;
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
