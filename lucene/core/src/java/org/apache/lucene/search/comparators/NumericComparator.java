@@ -19,7 +19,6 @@ package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -38,6 +37,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IntArrayDocIdSet;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LSBRadixSorter;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
@@ -446,10 +446,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       class DisjunctionBuildVisitor extends RangeVisitor {
 
-        int[] docs = new int[MIN_BLOCK_DISI_LENGTH + 1];
+        int[] docs = IntsRef.EMPTY_INTS;
         int index = 0;
         int blockMaxDoc = -1;
-        boolean sorted = true;
+        boolean docsInOrder = true;
         long blockMinValue = Long.MAX_VALUE;
         long blockMaxValue = Long.MIN_VALUE;
 
@@ -468,7 +468,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           if (doc >= blockMaxDoc) {
             blockMaxDoc = doc;
           } else {
-            sorted = false;
+            docsInOrder = false;
           }
         }
 
@@ -481,16 +481,17 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   ? Math.max(blockMinValue, minValueAsLong)
                   : Math.min(blockMaxValue, maxValueAsLong);
 
-          if (sorted == false) {
+          if (docsInOrder == false) {
             sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
           }
           docs[index] = DocIdSetIterator.NO_MORE_DOCS;
           DocIdSetIterator iter = new IntArrayDocIdSet(docs, index).iterator();
           adder.accept(new DisiAndMostCompetitiveValue(iter, mostCompetitiveValue));
-          docs = new int[MIN_BLOCK_DISI_LENGTH + 1];
+          docs = IntsRef.EMPTY_INTS;
+          ;
           index = 0;
           blockMaxDoc = -1;
-          sorted = true;
+          docsInOrder = true;
         }
 
         @Override
