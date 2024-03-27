@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -113,7 +114,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     0,
                     VectorEncoding.FLOAT32,
-                    VectorSimilarityFunction.EUCLIDEAN,
+                    VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
                     false,
                     false));
       }

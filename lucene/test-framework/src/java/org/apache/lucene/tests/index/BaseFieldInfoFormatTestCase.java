@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
@@ -308,7 +309,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.pointNumBytes(),
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
-              fieldType.vectorSimilarityFunction(),
+              fieldType.vectorSimilarity(),
               field.equals(softDeletesField),
               field.equals(parentField));
       addAttributes(fi);
@@ -433,7 +434,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         VectorEncoding.FLOAT32,
-        VectorSimilarityFunction.EUCLIDEAN,
+        VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
         false,
         false);
   }

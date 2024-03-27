@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -143,7 +144,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -183,10 +184,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     }
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    assert similarityFunction == info.getVectorSimilarityFunction();
+    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarity());
   }
 
   @Override
@@ -287,7 +289,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static class FieldEntry implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
+    final VectorSimilarity similarityFunction;
     final VectorEncoding vectorEncoding;
     final int dimension;
     final long vectorDataOffset;
@@ -295,10 +297,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     final int size;
     final OrdToDocDISIReaderConfiguration ordToDoc;
 
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+    FieldEntry(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;

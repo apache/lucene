@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -257,7 +258,7 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               0,
               VectorEncoding.FLOAT32,
-              VectorSimilarityFunction.EUCLIDEAN,
+              VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
               false,
               false));
     }
@@ -278,7 +279,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 VectorEncoding.FLOAT32,
-                VectorSimilarityFunction.EUCLIDEAN,
+                VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
                 false,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
@@ -301,7 +302,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 VectorEncoding.FLOAT32,
-                VectorSimilarityFunction.EUCLIDEAN,
+                VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
                 false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);

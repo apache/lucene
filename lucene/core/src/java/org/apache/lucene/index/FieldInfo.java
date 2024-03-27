@@ -502,7 +502,7 @@ public final class FieldInfo {
   /** Returns {@link VectorSimilarityFunction} for the field */
   @Deprecated
   public VectorSimilarityFunction getVectorSimilarityFunction() {
-    return VectorSimilarity.fromVectorSimilarity(vectorSimilarity);
+    return VectorSimilarity.toVectorSimilarityFunction(vectorSimilarity);
   }
 
   /** Returns {@link VectorSimilarity} for the field */

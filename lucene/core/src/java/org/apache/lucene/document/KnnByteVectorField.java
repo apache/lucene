@@ -18,6 +18,7 @@
 package org.apache.lucene.document;
 
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -38,7 +39,7 @@ import org.apache.lucene.search.Query;
  */
 public class KnnByteVectorField extends Field {
 
-  private static FieldType createType(byte[] v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(byte[] v, VectorSimilarity similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -74,8 +75,7 @@ public class KnnByteVectorField extends Field {
    * @param similarityFunction a function defining vector proximity.
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
-  public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction) {
+  public static FieldType createFieldType(int dimension, VectorSimilarity similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, VectorEncoding.BYTE, similarityFunction);
     type.freeze();
@@ -94,10 +94,16 @@ public class KnnByteVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteVectorField(
-      String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
+  public KnnByteVectorField(String name, byte[] vector, VectorSimilarity similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector; // null-check done above
+  }
+
+  /** See {@link #KnnByteVectorField(String, byte[], VectorSimilarity)} */
+  @Deprecated
+  public KnnByteVectorField(
+      String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
+    this(name, vector, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
   }
 
   /**
@@ -111,7 +117,7 @@ public class KnnByteVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteVectorField(String name, byte[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    this(name, vector, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
   }
 
   /**

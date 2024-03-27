@@ -295,14 +295,6 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     return VectorEncoding.values()[b];
   }
 
-  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    try {
-      return distOrdToFunc(b);
-    } catch (IllegalArgumentException e) {
-      throw new CorruptIndexException("invalid distance function: " + b, input, e);
-    }
-  }
-
   // List of vector similarity functions. This list is defined here, in order
   // to avoid an undesirable dependency on the declaration and order of values
   // in VectorSimilarityFunction. The list values and order have been chosen to

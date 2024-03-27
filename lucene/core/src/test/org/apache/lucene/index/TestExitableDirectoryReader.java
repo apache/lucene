@@ -20,6 +20,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -424,7 +425,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         value[j] = random().nextFloat();
       }
       FieldType fieldType =
-          KnnFloatVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
+          KnnFloatVectorField.createFieldType(
+              dimension, VectorSimilarity.CosineSimilarity.INSTANCE);
       doc.add(new KnnFloatVectorField("vector", value, fieldType));
 
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
@@ -501,7 +503,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       Document doc = new Document();
       byte[] value = new byte[dimension];
       random().nextBytes(value);
-      doc.add(new KnnByteVectorField("vector", value, VectorSimilarityFunction.COSINE));
+      doc.add(new KnnByteVectorField("vector", value, VectorSimilarity.CosineSimilarity.INSTANCE));
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
       writer.addDocument(doc);
     }

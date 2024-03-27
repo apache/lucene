@@ -720,7 +720,7 @@ final class ReadersAndUpdates {
         fi.getPointNumBytes(),
         fi.getVectorDimension(),
         fi.getVectorEncoding(),
-        fi.getVectorSimilarityFunction(),
+        fi.getVectorSimilarity(),
         fi.isSoftDeletesField(),
         fi.isParentField());
   }

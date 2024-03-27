@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFrom;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.randSeed;
@@ -32,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -71,7 +73,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private Codec codec;
   private Codec float32Codec;
   private VectorEncoding vectorEncoding;
-  private VectorSimilarityFunction similarityFunction;
+  private VectorSimilarity similarityFunction;
 
   @Before
   public void setup() {
@@ -80,8 +82,14 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
-    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
-    similarityFunction = VectorSimilarityFunction.values()[similarity];
+    similarityFunction =
+        randomFrom(
+            new VectorSimilarity[] {
+              VectorSimilarity.CosineSimilarity.INSTANCE,
+              VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
+              VectorSimilarity.DotProductSimilarity.INSTANCE,
+              VectorSimilarity.MaxInnerProductSimilarity.INSTANCE
+            });
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
@@ -144,7 +152,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
-      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      if (similarityFunction.getName().equals(VectorSimilarity.DotProductSimilarity.NAME)) {
         VectorUtil.l2normalize(values[0]);
       }
       if (vectorEncoding == VectorEncoding.BYTE) {
@@ -242,7 +250,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
@@ -298,7 +306,7 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   public void testMultiThreadedSearch() throws Exception {
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     Directory dir = newDirectory();
@@ -549,8 +557,7 @@ public class TestKnnGraph extends LuceneTestCase {
     add(iw, id, vector, similarityFunction);
   }
 
-  private void add(
-      IndexWriter iw, int id, float[] vector, VectorSimilarityFunction similarityFunction)
+  private void add(IndexWriter iw, int id, float[] vector, VectorSimilarity similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {

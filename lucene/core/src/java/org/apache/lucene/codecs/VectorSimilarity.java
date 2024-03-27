@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.codecs;
 
 import static org.apache.lucene.util.VectorUtil.dotProduct;
@@ -38,7 +54,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   /** Returns the legacy vector similarity function from the given vector similarity. */
   @Deprecated
-  public static VectorSimilarityFunction fromVectorSimilarity(VectorSimilarity similarity) {
+  public static VectorSimilarityFunction toVectorSimilarityFunction(VectorSimilarity similarity) {
     if (similarity == null) {
       return null;
     }
@@ -78,6 +94,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   private final String name;
 
+  /** Creates a new vector similarity with the given name. */
   protected VectorSimilarity(String name) {
     NamedSPILoader.checkServiceName(name);
     this.name = name;
@@ -149,7 +166,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
    *
    * @param byteVectorProvider the byte vector provider for gathering stored vectors
    * @return a vector comparator for comparing two stored vectors given their ordinals
-   * @throws Exception if an error occurs
+   * @throws IOException if an error occurs
    */
   public abstract VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
       throws IOException;
@@ -179,10 +196,15 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   /** Dot product similarity function. */
   public static class DotProductSimilarity extends VectorSimilarity {
+    /** The name of the dot product similarity function. */
+    public static final String NAME = "dot_product";
+
+    /** The dot product similarity function instance. */
     public static final VectorSimilarity INSTANCE = new DotProductSimilarity();
 
+    /** Creates a new dot product similarity function. */
     public DotProductSimilarity() {
-      super("dot_product");
+      super(NAME);
     }
 
     @Override
@@ -219,10 +241,15 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   /** Cosine similarity function. */
   public static class CosineSimilarity extends VectorSimilarity {
+    /** The name of the cosine similarity function. */
+    public static final String NAME = "cosine";
+
+    /** The cosine similarity function instance. */
     public static final VectorSimilarity INSTANCE = new CosineSimilarity();
 
+    /** Creates a new cosine similarity function. */
     public CosineSimilarity() {
-      super("cosine");
+      super(NAME);
     }
 
     @Override
@@ -262,10 +289,15 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   /** Euclidean distance similarity function. */
   public static class EuclideanDistanceSimilarity extends VectorSimilarity {
+    /** The name of the Euclidean distance similarity function. */
+    public static final String NAME = "euclidean";
+
+    /** The Euclidean distance similarity function instance. */
     public static final VectorSimilarity INSTANCE = new EuclideanDistanceSimilarity();
 
+    /** Creates a new Euclidean distance similarity function. */
     public EuclideanDistanceSimilarity() {
-      super("euclidean");
+      super(NAME);
     }
 
     @Override
@@ -305,10 +337,15 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
   /** Max-inner product similarity function. */
   public static class MaxInnerProductSimilarity extends VectorSimilarity {
+    /** The name of the max-inner product similarity function. */
+    public static final String NAME = "max_inner_product";
+
+    /** The max-inner product similarity function instance. */
     public static final VectorSimilarity INSTANCE = new MaxInnerProductSimilarity();
 
+    /** Creates a new max-inner product similarity function. */
     public MaxInnerProductSimilarity() {
-      super("max_inner_product");
+      super(NAME);
     }
 
     @Override

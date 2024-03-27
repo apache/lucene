@@ -39,6 +39,7 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -841,9 +842,7 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.vectorDimension() != 0) {
       schema.setVectors(
-          fieldType.vectorEncoding(),
-          fieldType.vectorSimilarityFunction(),
-          fieldType.vectorDimension());
+          fieldType.vectorEncoding(), fieldType.vectorSimilarity(), fieldType.vectorDimension());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1437,7 +1436,8 @@ final class IndexingChain implements Accountable {
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
-    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    private VectorSimilarity vectorSimilarityFunction =
+        VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1460,6 +1460,12 @@ final class IndexingChain implements Accountable {
 
     private <T extends Enum<?>> void assertSame(String label, T expected, T given) {
       if (expected != given) {
+        raiseNotSame(label, expected, given);
+      }
+    }
+
+    private <T extends VectorSimilarity> void assertSame(String label, T expected, T given) {
+      if (Objects.equals(expected, given)) {
         raiseNotSame(label, expected, given);
       }
     }
@@ -1517,8 +1523,7 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(
-        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
+    void setVectors(VectorEncoding encoding, VectorSimilarity similarityFunction, int dimension) {
       if (vectorDimension == 0) {
         this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
@@ -1541,7 +1546,7 @@ final class IndexingChain implements Accountable {
       pointNumBytes = 0;
       vectorDimension = 0;
       vectorEncoding = VectorEncoding.FLOAT32;
-      vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+      vectorSimilarityFunction = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     }
 
     void assertSameSchema(FieldInfo fi) {
@@ -1549,8 +1554,7 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
-      assertSame(
-          "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
+      assertSame("vector similarity function", fi.getVectorSimilarity(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);

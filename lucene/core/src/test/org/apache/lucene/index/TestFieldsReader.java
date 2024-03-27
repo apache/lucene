@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.Field;
@@ -65,7 +66,7 @@ public class TestFieldsReader extends LuceneTestCase {
               0,
               0,
               VectorEncoding.FLOAT32,
-              VectorSimilarityFunction.EUCLIDEAN,
+              VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
               false,
               false));
     }

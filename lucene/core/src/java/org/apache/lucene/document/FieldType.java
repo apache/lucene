@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
@@ -45,7 +46,8 @@ public class FieldType implements IndexableFieldType {
   private int dimensionNumBytes;
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
-  private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+  private VectorSimilarity vectorSimilarityFunction =
+      VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -64,7 +66,7 @@ public class FieldType implements IndexableFieldType {
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
     this.vectorEncoding = ref.vectorEncoding();
-    this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
+    this.vectorSimilarityFunction = ref.vectorSimilarity();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -371,8 +373,22 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
+  @Deprecated
   public void setVectorAttributes(
       int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity) {
+    checkIfFrozen();
+    if (numDimensions <= 0) {
+      throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
+    }
+    this.vectorDimension = numDimensions;
+    this.vectorSimilarityFunction =
+        Objects.requireNonNull(VectorSimilarity.fromVectorSimilarityFunction(similarity));
+    this.vectorEncoding = Objects.requireNonNull(encoding);
+  }
+
+  /** Enable vector indexing, with the specified number of dimensions and distance function. */
+  public void setVectorAttributes(
+      int numDimensions, VectorEncoding encoding, VectorSimilarity similarity) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -393,7 +409,13 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
+  @Deprecated
   public VectorSimilarityFunction vectorSimilarityFunction() {
+    return VectorSimilarity.toVectorSimilarityFunction(vectorSimilarityFunction);
+  }
+
+  @Override
+  public VectorSimilarity vectorSimilarity() {
     return vectorSimilarityFunction;
   }
 

@@ -18,6 +18,7 @@
 package org.apache.lucene.document;
 
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -39,7 +40,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 public class KnnFloatVectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(float[] v, VectorSimilarity similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -63,8 +64,7 @@ public class KnnFloatVectorField extends Field {
    * @param similarityFunction a function defining vector proximity.
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
-  public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction) {
+  public static FieldType createFieldType(int dimension, VectorSimilarity similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
@@ -86,8 +86,9 @@ public class KnnFloatVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
-   * be unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   * some vector similarities (like {@link
+   * org.apache.lucene.codecs.VectorSimilarity.DotProductSimilarity}) require values to be
+   * unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
    *
    * @param name field name
    * @param vector value
@@ -95,8 +96,7 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  public KnnFloatVectorField(String name, float[] vector, VectorSimilarity similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = VectorUtil.checkFinite(vector); // null check done above
   }
@@ -112,7 +112,7 @@ public class KnnFloatVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatVectorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    this(name, vector, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
   }
 
   /**
@@ -140,6 +140,13 @@ public class KnnFloatVectorField extends Field {
           "The number of vector dimensions does not match the field type");
     }
     fieldsData = VectorUtil.checkFinite(vector);
+  }
+
+  /** See {@link #KnnFloatVectorField(String, float[], VectorSimilarity)} */
+  @Deprecated
+  public KnnFloatVectorField(
+      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+    this(name, vector, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
   }
 
   /** Return the vector value of this field */
