@@ -71,14 +71,6 @@ for file in ${WWWSRCDIR}/algorithms/*/stop.txt; do
  |
  | NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
 EOF
-  case "$language" in
-    danish)
-      # clear up some slight mojibake on the website. TODO: fix this file!
-      cat $file | sed 's/Ã¥/å/g' | sed 's/Ã¦/æ/g' >> ${WWWDSTDIR}/${language}_stop.txt
-      ;;
-    *)
-      # try to confirm its really UTF-8
-      iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt
-      ;;
-  esac
+# try to confirm its really UTF-8
+iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt
 done
