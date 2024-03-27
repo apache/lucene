@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("", -1, 25),
@@ -1123,7 +1121,7 @@ public class GreekStemmer extends org.tartarus.snowball.SnowballStemmer {
   private boolean B_test1;
 
   private boolean r_has_min_length() {
-    return limit >= 3;
+    return length >= 3;
   }
 
   private boolean r_tolower() {

@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("\u0640", -1, 1),
@@ -559,7 +557,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     ket = cursor;
     switch (among_var) {
       case 1:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         B_is_noun = true;
@@ -567,7 +565,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
         B_is_defined = true;
         break;
       case 2:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         B_is_noun = true;
@@ -588,25 +586,25 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     ket = cursor;
     switch (among_var) {
       case 1:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0623");
         break;
       case 2:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0622");
         break;
       case 3:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0627");
         break;
       case 4:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0625");
@@ -621,7 +619,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     ket = cursor;
-    if (limit <= 3) {
+    if (length <= 3) {
       return false;
     }
     {
@@ -649,13 +647,13 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     ket = cursor;
     switch (among_var) {
       case 1:
-        if (limit <= 5) {
+        if (length <= 5) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         slice_del();
@@ -674,19 +672,19 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     ket = cursor;
     switch (among_var) {
       case 1:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0628");
         break;
       case 3:
-        if (limit <= 3) {
+        if (length <= 3) {
           return false;
         }
         slice_from("\u0643");
@@ -705,25 +703,25 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     ket = cursor;
     switch (among_var) {
       case 1:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         slice_from("\u064A");
         break;
       case 2:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         slice_from("\u062A");
         break;
       case 3:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         slice_from("\u0646");
         break;
       case 4:
-        if (limit <= 4) {
+        if (length <= 4) {
           return false;
         }
         slice_from("\u0623");
@@ -738,7 +736,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     ket = cursor;
-    if (limit <= 4) {
+    if (length <= 4) {
       return false;
     }
     B_is_verb = true;
@@ -757,19 +755,19 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     bra = cursor;
     switch (among_var) {
       case 1:
-        if (limit < 4) {
+        if (length < 4) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit < 5) {
+        if (length < 5) {
           return false;
         }
         slice_del();
         break;
       case 3:
-        if (limit < 6) {
+        if (length < 6) {
           return false;
         }
         slice_del();
@@ -784,7 +782,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit <= 5) {
+    if (length <= 5) {
       return false;
     }
     slice_del();
@@ -797,7 +795,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit <= 4) {
+    if (length <= 4) {
       return false;
     }
     slice_del();
@@ -810,7 +808,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit < 5) {
+    if (length < 5) {
       return false;
     }
     slice_del();
@@ -823,7 +821,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit < 4) {
+    if (length < 4) {
       return false;
     }
     slice_del();
@@ -836,7 +834,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit < 4) {
+    if (length < 4) {
       return false;
     }
     slice_del();
@@ -849,7 +847,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit < 3) {
+    if (length < 3) {
       return false;
     }
     slice_del();
@@ -866,19 +864,19 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     bra = cursor;
     switch (among_var) {
       case 1:
-        if (limit < 4) {
+        if (length < 4) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit < 5) {
+        if (length < 5) {
           return false;
         }
         slice_del();
         break;
       case 3:
-        if (limit < 6) {
+        if (length < 6) {
           return false;
         }
         slice_del();
@@ -897,25 +895,25 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     bra = cursor;
     switch (among_var) {
       case 1:
-        if (limit < 4) {
+        if (length < 4) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit < 5) {
+        if (length < 5) {
           return false;
         }
         slice_del();
         break;
       case 3:
-        if (limit <= 5) {
+        if (length <= 5) {
           return false;
         }
         slice_del();
         break;
       case 4:
-        if (limit < 6) {
+        if (length < 6) {
           return false;
         }
         slice_del();
@@ -930,7 +928,7 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
       return false;
     }
     bra = cursor;
-    if (limit < 5) {
+    if (length < 5) {
       return false;
     }
     slice_del();
@@ -947,13 +945,13 @@ public class ArabicStemmer extends org.tartarus.snowball.SnowballStemmer {
     bra = cursor;
     switch (among_var) {
       case 1:
-        if (limit < 4) {
+        if (length < 4) {
           return false;
         }
         slice_del();
         break;
       case 2:
-        if (limit < 6) {
+        if (length < 6) {
           return false;
         }
         slice_del();

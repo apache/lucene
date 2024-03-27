@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class SwedishStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("a", -1, 1),
