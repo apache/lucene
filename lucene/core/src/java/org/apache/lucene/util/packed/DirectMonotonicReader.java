@@ -39,6 +39,9 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
    * from disk.
    */
   public static class Meta implements Accountable {
+
+    private static final Meta SINGLE_ZERO_BLOCK = new Meta(1L, 16);
+
     private static final long BASE_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(Meta.class);
 
@@ -85,6 +88,15 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
       meta.avgs[i] = Float.intBitsToFloat(metaIn.readInt());
       meta.offsets[i] = metaIn.readLong();
       meta.bpvs[i] = metaIn.readByte();
+    }
+    if (meta.numBlocks == Meta.SINGLE_ZERO_BLOCK.numBlocks
+        && meta.blockShift == Meta.SINGLE_ZERO_BLOCK.blockShift
+        && meta.mins[0] == 0L
+        && meta.avgs[0] == 0.0
+        && meta.offsets[0] == 0L
+        && meta.bpvs[0] == 0) {
+      // save heap in case we only have a single block
+      return Meta.SINGLE_ZERO_BLOCK;
     }
     return meta;
   }
