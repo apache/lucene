@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class PorterStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("s", -1, 3), new Among("ies", 0, 2), new Among("sses", 0, 1), new Among("ss", 0, -1)

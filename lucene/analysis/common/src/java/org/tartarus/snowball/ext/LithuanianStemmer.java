@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class LithuanianStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("a", -1, -1),
@@ -437,7 +435,7 @@ public class LithuanianStemmer extends org.tartarus.snowball.SnowballStemmer {
           break lab1;
         }
         cursor = v_3;
-        if (limit <= 6) {
+        if (length <= 6) {
           cursor = v_2;
           break lab1;
         }

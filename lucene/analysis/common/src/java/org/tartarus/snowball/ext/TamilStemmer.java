@@ -13,8 +13,6 @@ import org.tartarus.snowball.Among;
 public class TamilStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private static final long serialVersionUID = 1L;
-  private static final java.lang.invoke.MethodHandles.Lookup methodObject =
-      java.lang.invoke.MethodHandles.lookup();
 
   private static final Among a_0[] = {
     new Among("\u0BB5\u0BC1", -1, 3),
@@ -353,7 +351,7 @@ public class TamilStemmer extends org.tartarus.snowball.SnowballStemmer {
   private boolean B_found_a_match;
 
   private boolean r_has_min_length() {
-    return limit > 4;
+    return length > 4;
   }
 
   private boolean r_fix_va_start() {
@@ -423,7 +421,7 @@ public class TamilStemmer extends org.tartarus.snowball.SnowballStemmer {
 
   private boolean r_fix_ending() {
     int among_var;
-    if (limit <= 3) {
+    if (length <= 3) {
       return false;
     }
     limit_backward = cursor;
@@ -763,7 +761,7 @@ public class TamilStemmer extends org.tartarus.snowball.SnowballStemmer {
             slice_from("\u0BCD");
             break;
           case 4:
-            if (limit < 7) {
+            if (length < 7) {
               break lab1;
             }
             slice_from("\u0BCD");
