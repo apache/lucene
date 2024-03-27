@@ -3,7 +3,6 @@ dutch
 english
 finnish
 german
-german2
 hungarian
 irish
 italian
