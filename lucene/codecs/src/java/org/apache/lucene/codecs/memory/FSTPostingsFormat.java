@@ -28,10 +28,10 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
 
-/** FST term dict + Lucene50PBF */
+/** FST term dict + Lucene99PBF */
 public final class FSTPostingsFormat extends PostingsFormat {
   public FSTPostingsFormat() {
-    super("FST50");
+    super("FST99");
   }
 
   @Override

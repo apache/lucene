@@ -107,42 +107,61 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsWriter extends FieldsConsumer {
-  static final String TERMS_EXTENSION = "tfp";
+  static final String TERMS_META_EXTENSION = "tfp.meta";
+  static final String TERMS_DATA_EXTENSION = "tfp.data";
   static final String TERMS_CODEC_NAME = "FSTTerms";
   public static final int TERMS_VERSION_START = 2;
   public static final int TERMS_VERSION_CURRENT = TERMS_VERSION_START;
 
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
-  IndexOutput out;
+  // IndexOutput for FST metadata
+  IndexOutput metaOut;
+  // IndexOutput for FST data
+  IndexOutput dataOut;
   final int maxDoc;
   final List<FieldMetaData> fields = new ArrayList<>();
 
   public FSTTermsWriter(SegmentWriteState state, PostingsWriterBase postingsWriter)
       throws IOException {
-    final String termsFileName =
+    final String termsMetaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, TERMS_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, TERMS_META_EXTENSION);
+    final String termsDataFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, TERMS_DATA_EXTENSION);
 
     this.postingsWriter = postingsWriter;
     this.fieldInfos = state.fieldInfos;
-    this.out = state.directory.createOutput(termsFileName, state.context);
     this.maxDoc = state.segmentInfo.maxDoc();
 
+    IndexOutput metaOut = null, dataOut = null;
     boolean success = false;
     try {
+      metaOut = state.directory.createOutput(termsMetaFileName, state.context);
+      dataOut = state.directory.createOutput(termsDataFileName, state.context);
+
       CodecUtil.writeIndexHeader(
-          out,
+          metaOut,
           TERMS_CODEC_NAME,
           TERMS_VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
 
-      this.postingsWriter.init(out, state);
+      CodecUtil.writeIndexHeader(
+          dataOut,
+          TERMS_CODEC_NAME,
+          TERMS_VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+
+      this.postingsWriter.init(metaOut, state);
+      this.metaOut = metaOut;
+      this.dataOut = dataOut;
       success = true;
     } finally {
       if (!success) {
-        IOUtils.closeWhileHandlingException(out);
+        IOUtils.closeWhileHandlingException(metaOut, dataOut);
       }
     }
   }
@@ -187,33 +206,36 @@ public class FSTTermsWriter extends FieldsConsumer {
 
   @Override
   public void close() throws IOException {
-    if (out != null) {
+    if (metaOut != null) {
+      assert dataOut != null;
       boolean success = false;
       try {
         // write field summary
-        final long dirStart = out.getFilePointer();
+        final long dirStart = metaOut.getFilePointer();
 
-        out.writeVInt(fields.size());
+        metaOut.writeVInt(fields.size());
         for (FieldMetaData field : fields) {
-          out.writeVInt(field.fieldInfo.number);
-          out.writeVLong(field.numTerms);
+          metaOut.writeVInt(field.fieldInfo.number);
+          metaOut.writeVLong(field.numTerms);
           if (field.fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
-            out.writeVLong(field.sumTotalTermFreq);
+            metaOut.writeVLong(field.sumTotalTermFreq);
           }
-          out.writeVLong(field.sumDocFreq);
-          out.writeVInt(field.docCount);
-          field.dict.save(out, out);
+          metaOut.writeVLong(field.sumDocFreq);
+          metaOut.writeVInt(field.docCount);
+          field.dict.saveMetadata(metaOut);
         }
-        writeTrailer(out, dirStart);
-        CodecUtil.writeFooter(out);
+        writeTrailer(metaOut, dirStart);
+        CodecUtil.writeFooter(metaOut);
+        CodecUtil.writeFooter(dataOut);
         success = true;
       } finally {
         if (success) {
-          IOUtils.close(out, postingsWriter);
+          IOUtils.close(metaOut, dataOut, postingsWriter);
         } else {
-          IOUtils.closeWhileHandlingException(out, postingsWriter);
+          IOUtils.closeWhileHandlingException(metaOut, dataOut, postingsWriter);
         }
-        out = null;
+        metaOut = null;
+        dataOut = null;
       }
     }
   }
@@ -256,7 +278,8 @@ public class FSTTermsWriter extends FieldsConsumer {
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);
       this.outputs = new FSTTermOutputs(fieldInfo);
-      this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
+      this.fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(dataOut).build();
     }
 
     public void finishTerm(BytesRef text, BlockTermState state) throws IOException {
