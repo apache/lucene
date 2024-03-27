@@ -24,6 +24,3 @@ java.io.RandomAccessFile
 java.nio.file.Path#toFile()
 java.util.jar.JarFile
 java.util.zip.ZipFile
-
-java.util.Arrays#copyOfRange(**) @ Prefer using ArrayUtil as Arrays#copyOfRange fills zeros for bad bounds
-java.util.Arrays#copyOf(**) @ Prefer using ArrayUtil as Arrays#copyOf fills zeros for bad bounds
