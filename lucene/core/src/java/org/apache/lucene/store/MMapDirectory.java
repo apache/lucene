@@ -43,10 +43,9 @@ import org.apache.lucene.util.Constants;
  * readahead can hurt performance on indexes that exceed the size of the page cache, by triggering
  * more page cache trashing as well as more contention on the page cache. For typical workloads
  * involving Lucene indexes, it is recommended to update the default readahead of mmap to the same
- * readahead that is used by regular read() operations. This can be done by calling
- * <code>sudo blockdev --setra 32 &lt;filesystem&gt;</code>, where 32 is the number of 512 byte
- * sectors to read ahead, ie. 16kB, and &lt;filesystem&gt; is the filesystem where Lucene indexes
- * are stored.
+ * readahead that is used by regular read() operations. This can be done by calling <code>
+ * sudo blockdev --setra 32 &lt;filesystem&gt;</code>, where 32 is the number of 512 byte sectors to
+ * read ahead, ie. 16kB, and &lt;filesystem&gt; is the filesystem where Lucene indexes are stored.
  *
  * <p>This class supports preloading files into physical memory upon opening. This can help improve
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
