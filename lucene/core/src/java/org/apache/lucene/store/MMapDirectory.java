@@ -38,6 +38,16 @@ import org.apache.lucene.util.Constants;
  * fragmented address space. If you get an {@link IOException} about mapping failed, it is
  * recommended to reduce the chunk size, until it works.
  *
+ * <p><b>NOTE</b>: On some platforms like Linux, mmap comes with a higher readahead than regular
+ * read() operations, e.g. 128kB for mmap reads and 16kB for regular reads. Such a high default
+ * readahead can hurt performance on indexes that exceed the size of the page cache, by triggering
+ * more page cache trashing as well as more contention on the page cache. For typical workloads
+ * involving Lucene indexes, it is recommended to update the default readahead of mmap to the same
+ * readahead that is used by regular read() operations. This can be done by calling
+ * <code>sudo blockdev --setra 32 &lt;filesystem&gt;</code>, where 32 is the number of 512 byte
+ * sectors to read ahead, ie. 16kB, and &lt;filesystem&gt; is the filesystem where Lucene indexes
+ * are stored.
+ *
  * <p>This class supports preloading files into physical memory upon opening. This can help improve
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
