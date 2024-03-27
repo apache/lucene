@@ -643,15 +643,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
   }
 
-  private static class DisiAndMostCompetitiveValue {
-    private final DocIdSetIterator disi;
-    private final long mostCompetitiveValue;
-
-    private DisiAndMostCompetitiveValue(DocIdSetIterator disi, long mostCompetitiveValue) {
-      this.disi = disi;
-      this.mostCompetitiveValue = mostCompetitiveValue;
-    }
-  }
+  private record DisiAndMostCompetitiveValue(DocIdSetIterator disi, long mostCompetitiveValue) {}
 
   private static class CompetitiveIterator extends DocIdSetIterator {
 
