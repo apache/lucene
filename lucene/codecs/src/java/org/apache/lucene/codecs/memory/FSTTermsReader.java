@@ -74,7 +74,7 @@ public class FSTTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_EXTENSION);
 
     this.postingsReader = postingsReader;
-    this.fstTermsInput = state.directory.openInput(termsFileName, IOContext.LOAD);
+    this.fstTermsInput = state.directory.openInput(termsFileName, IOContext.PRELOAD);
 
     IndexInput in = this.fstTermsInput;
 

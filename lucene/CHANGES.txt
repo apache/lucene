@@ -89,6 +89,9 @@ API Changes
 
 * GITHUB#13205: Convert IOContext, MergeInfo, and FlushInfo to record classes.  (Uwe Schindler)
 
+* GITHUB#13219: The `readOnce`, `load` and `random` flags on `IOContext` have
+  been replaced with a new `ReadAdvice` enum. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -120,6 +123,8 @@ Improvements
   "Dynamic Class-File Constants" to implement Javascript expressions. (Uwe Schindler)
 
 * GITHUB#11657, LUCENE-10621: Upgrade to OpenNLP 2.3.2. (Christine Poerschke, Eric Pugh)
+
+* GITHUB#13209: Upgrade snowball to 26db1ab9. (Robert Muir)
 
 Optimizations
 ---------------------
@@ -235,9 +240,12 @@ Optimizations
 
 * GITHUB#13121: Speedup multi-segment HNSW graph search for diversifying child kNN queries. Builds on GITHUB#12962.
   (Ben Trent)
+
 * GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
 
 * GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
+
+* GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 
 Bug Fixes
 ---------------------

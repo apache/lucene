@@ -24,11 +24,11 @@ apply plugin: "de.undercouch.download"
 configure(project(":lucene:analysis:common")) {
   ext {
     // git commit hash of source code https://github.com/snowballstem/snowball/
-    snowballStemmerCommit = "d8cf01ddf37a9c74a78ada44531c08f7952f2a39"
+    snowballStemmerCommit = "26db1ab9adbf437f37a6facd3ee2aad1da9eba03"
     // git commit hash of stopwords https://github.com/snowballstem/snowball-website
-    snowballWebsiteCommit = "ee7cee9bc52f22802f21e94f42d887b0dfa7d2a8"
+    snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
     // git commit hash of test data https://github.com/snowballstem/snowball-data
-    snowballDataCommit    = "35461050d8f81e8aeac26e38f8a8dbf1afb82721"
+    snowballDataCommit    = "f08c4d63b9bc223aa7a1e706f4e8db8dd4ced28a"
 
     snowballWorkDir    = file("${buildDir}/snowball")
 
