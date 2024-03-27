@@ -45,12 +45,12 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
     private static final long BASE_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(Meta.class);
 
-    final int blockShift;
-    final int numBlocks;
-    final long[] mins;
-    final float[] avgs;
-    final byte[] bpvs;
-    final long[] offsets;
+    private final int blockShift;
+    private final int numBlocks;
+    private final long[] mins;
+    private final float[] avgs;
+    private final byte[] bpvs;
+    private final long[] offsets;
 
     Meta(long numValues, int blockShift) {
       this.blockShift = blockShift;
