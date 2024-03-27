@@ -30,6 +30,10 @@ import org.apache.lucene.index.SegmentWriteState;
  * @lucene.experimental
  */
 public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+
+  // The bits that are allowed for scalar quantization
+  // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
+  private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
@@ -88,8 +92,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
               + "; confidenceInterval="
               + confidenceInterval);
     }
-    if (bits < 1 || bits > 8) {
-      throw new IllegalArgumentException("bits must be between 1 and 8; bits=" + bits);
+    if (bits < 1 || bits > 8 || (ALLOWED_BITS & (1 << bits)) == 0) {
+      throw new IllegalArgumentException("bits must be one of: 4, 7, 8; bits=" + bits);
     }
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;

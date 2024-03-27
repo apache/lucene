@@ -65,8 +65,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(
-        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, (byte) 7, true, null, null);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
   }
 
   /**
@@ -76,7 +75,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, (byte) 7, true, null, null);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
   }
 
   /**
@@ -100,7 +99,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
-      byte bits,
+      int bits,
       boolean compress,
       Float confidenceInterval,
       ExecutorService mergeExec) {
