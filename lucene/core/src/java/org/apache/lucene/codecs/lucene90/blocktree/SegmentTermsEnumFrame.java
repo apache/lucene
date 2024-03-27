@@ -526,9 +526,15 @@ final class SegmentTermsEnumFrame {
 
   // NOTE: sets startBytePos/suffix as a side effect
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
-    return isLeafBlock
-        ? allEqual ? binarySearchTermLeaf(target, exactOnly) : scanToTermLeaf(target, exactOnly)
-        : scanToTermNonLeaf(target, exactOnly);
+    if (isLeafBlock) {
+      if (allEqual) {
+        return binarySearchTermLeaf(target, exactOnly);
+      } else {
+        return scanToTermLeaf(target, exactOnly);
+      }
+    } else {
+      return scanToTermNonLeaf(target, exactOnly);
+    }
   }
 
   private int startBytePos;
