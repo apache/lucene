@@ -172,6 +172,15 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 
+### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+
+The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
+enum.
+
+### IOContext.LOAD renamed to IOContext.PRELOAD
+
+`IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
