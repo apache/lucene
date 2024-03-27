@@ -956,8 +956,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
-      KnnVectorsFormat format1 = new Lucene99HnswVectorsFormat();
-      KnnVectorsFormat format2 = new Lucene99HnswScalarQuantizedVectorsFormat();
+      KnnVectorsFormat format1 = randomVectorFormat();
+      KnnVectorsFormat format2 = randomVectorFormat();
       iwc.setCodec(
           new AssertingCodec() {
             @Override
