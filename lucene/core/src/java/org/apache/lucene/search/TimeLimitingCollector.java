@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -27,8 +28,10 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * maximum allowed search time limit. After this time is exceeded, the search thread is stopped by
  * throwing a {@link TimeExceededException}.
  *
+ * @deprecated Use {@link IndexSearcher#setTimeout(QueryTimeout)} to time out queries.
  * @see org.apache.lucene.index.ExitableDirectoryReader
  */
+@Deprecated
 public class TimeLimitingCollector implements Collector {
 
   /** Thrown when elapsed search time exceeds allowed search time. */
