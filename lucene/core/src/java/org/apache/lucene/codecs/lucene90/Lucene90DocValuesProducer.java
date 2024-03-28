@@ -489,6 +489,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long longValue() throws IOException {
             return entry.minValue;
           }
+
+          @Override
+          public long[] uniqueValues() {
+            return new long[] {entry.minValue};
+          }
         };
       } else {
         final RandomAccessInput slice =
@@ -549,6 +554,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           @Override
           public long longValue() throws IOException {
             return entry.minValue;
+          }
+
+          @Override
+          public long[] uniqueValues() {
+            return new long[] {entry.minValue};
           }
         };
       } else {

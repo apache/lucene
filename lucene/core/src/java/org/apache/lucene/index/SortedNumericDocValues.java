@@ -35,4 +35,24 @@ public abstract class SortedNumericDocValues extends DocValuesIterator {
    * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
    */
   public abstract int docValueCount();
+
+  /**
+   * An optional attribute for low cardinality: the table[] or minValue if all values are the same,
+   * otherwise return null. Currently only used by {@link SingletonSortedNumericDocValues}.
+   *
+   * @return dictionary for low cardinality or null
+   */
+  public long[] uniqueValues() {
+    return null;
+  }
+
+  /**
+   * Return if all the doc values has same value. This is An optional method(unimplemented by all
+   * subclasses.) Currently only used by {@link SingletonSortedNumericDocValues}.
+   *
+   * @return true if the doc values has single value
+   */
+  public boolean hasSingleValue() {
+    return false;
+  }
 }

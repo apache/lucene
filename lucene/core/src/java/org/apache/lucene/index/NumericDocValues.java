@@ -32,4 +32,24 @@ public abstract class NumericDocValues extends DocValuesIterator {
    * @return numeric value
    */
   public abstract long longValue() throws IOException;
+
+  /**
+   * An optional attribute for low cardinality: the table[] or minValue if all values are the same,
+   * otherwise return null
+   *
+   * @return dictionary for low cardinality or null
+   */
+  public long[] uniqueValues() {
+    return null;
+  }
+
+  /**
+   * Return if all the doc values has same value. This is An optional method(unimplemented by all
+   * subclasses.)
+   *
+   * @return true if the doc values has single value
+   */
+  public boolean hasSingleValue() {
+    return false;
+  }
 }
