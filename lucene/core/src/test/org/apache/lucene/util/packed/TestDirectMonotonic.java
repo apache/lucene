@@ -154,6 +154,47 @@ public class TestDirectMonotonic extends LuceneTestCase {
     dir.close();
   }
 
+  public void testZeroValuesSmallBlobShift() throws IOException {
+    Directory dir = newDirectory();
+    final int numValues = TestUtil.nextInt(random(), 8, 1 << 20);
+    // use blockShift < log2(numValues)
+    final int blockShift =
+        TestUtil.nextInt(
+            random(),
+            DirectMonotonicWriter.MIN_BLOCK_SHIFT,
+            Math.toIntExact(Math.round(Math.log(numValues) / Math.log(2))) - 1);
+
+    final long dataLength;
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+      DirectMonotonicWriter w =
+          DirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
+      for (int i = 0; i < numValues; i++) {
+        w.add(0);
+      }
+      w.finish();
+      dataLength = dataOut.getFilePointer();
+    }
+
+    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
+        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+      DirectMonotonicReader.Meta meta =
+          DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
+      assertEquals(metaIn.length(), metaIn.getFilePointer());
+      // read meta again and assert singleton Meta#SINGLE_ZERO_BLOCK instance is read every time
+      metaIn.seek(0L);
+      assertSame(meta, DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift));
+      LongValues values =
+          DirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
+      for (int i = 0; i < numValues; ++i) {
+        assertEquals(0, values.get(i));
+      }
+      assertEquals(0, dataIn.getFilePointer());
+    }
+
+    dir.close();
+  }
+
   public void testRandom() throws IOException {
     doTestRandom(false);
   }
