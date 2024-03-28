@@ -682,11 +682,11 @@ final class SegmentTermsEnumFrame {
     // Binary search the entries (terms) in this leaf block:
     int cmp = 0;
     while (start <= end) {
-      int mid = (start + end) / 2;
+      int mid = (start + end) >>> 1;
       nextEnt = mid + 1;
       startBytePos = mid * suffix;
 
-      // Binary search bytes in the suffix, comparing to the target
+      // Binary search bytes in the suffix, comparing to the target.
       cmp =
           Arrays.compareUnsigned(
               suffixBytes,
