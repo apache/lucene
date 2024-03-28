@@ -702,10 +702,6 @@ final class SegmentTermsEnumFrame {
       } else {
         // Exact match!
         suffixesReader.setPosition(startBytePos + suffix);
-        // This cannot be a sub-block because we
-        // would have followed the index to this
-        // sub-block from the start:
-        assert ste.termExists;
         fillTerm();
         // if (DEBUG) System.out.println("        found!");
         return SeekStatus.FOUND;
