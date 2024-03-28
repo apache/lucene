@@ -23,8 +23,11 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -236,10 +239,19 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return size;
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    VectorSimilarity similarity = VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
+    if (Objects.equals(similarity, info.getVectorSimilarity()) == false) {
+      throw new IllegalStateException(
+        "Inconsistent vector similarity function for field=\""
+          + info.name
+          + "\"; "
+          + similarity.getName()
+          + " != "
+          + info.getVectorSimilarity().getName());
+    }
+    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarity());
   }
 
   @Override
@@ -269,7 +281,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private static class FieldEntry implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
+    final VectorSimilarity similarityFunction;
     final VectorEncoding vectorEncoding;
     final int dimension;
     final long vectorDataOffset;
@@ -281,7 +293,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     FieldEntry(
         IndexInput input,
         VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
