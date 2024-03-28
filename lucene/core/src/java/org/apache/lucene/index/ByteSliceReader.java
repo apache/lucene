@@ -22,11 +22,11 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 
-/* IndexInput that knows how to read the byte slices written
- * by Posting and PostingVector.  We read the bytes in
- * each slice until we hit the end of that slice at which
- * point we read the forwarding address of the next slice
- * and then jump to it.*/
+/**
+ * IndexInput that knows how to read the byte slices written by Posting and PostingVector. We read
+ * the bytes in each slice until we hit the end of that slice at which point we read the forwarding
+ * address of the next slice and then jump to it.
+ */
 final class ByteSliceReader extends DataInput {
   ByteBlockPool pool;
   int bufferUpto;
@@ -50,10 +50,10 @@ final class ByteSliceReader extends DataInput {
     level = 0;
     bufferUpto = startIndex / ByteBlockPool.BYTE_BLOCK_SIZE;
     bufferOffset = bufferUpto * ByteBlockPool.BYTE_BLOCK_SIZE;
-    buffer = pool.buffers[bufferUpto];
+    buffer = pool.getBuffer(bufferUpto);
     upto = startIndex & ByteBlockPool.BYTE_BLOCK_MASK;
 
-    final int firstSize = ByteBlockPool.LEVEL_SIZE_ARRAY[0];
+    final int firstSize = ByteSlicePool.LEVEL_SIZE_ARRAY[0];
 
     if (startIndex + firstSize >= endIndex) {
       // There is only this one slice to read
@@ -97,13 +97,13 @@ final class ByteSliceReader extends DataInput {
     // Skip to our next slice
     final int nextIndex = (int) BitUtil.VH_LE_INT.get(buffer, limit);
 
-    level = ByteBlockPool.NEXT_LEVEL_ARRAY[level];
-    final int newSize = ByteBlockPool.LEVEL_SIZE_ARRAY[level];
+    level = ByteSlicePool.NEXT_LEVEL_ARRAY[level];
+    final int newSize = ByteSlicePool.LEVEL_SIZE_ARRAY[level];
 
     bufferUpto = nextIndex / ByteBlockPool.BYTE_BLOCK_SIZE;
     bufferOffset = bufferUpto * ByteBlockPool.BYTE_BLOCK_SIZE;
 
-    buffer = pool.buffers[bufferUpto];
+    buffer = pool.getBuffer(bufferUpto);
     upto = nextIndex & ByteBlockPool.BYTE_BLOCK_MASK;
 
     if (nextIndex + newSize >= endIndex) {

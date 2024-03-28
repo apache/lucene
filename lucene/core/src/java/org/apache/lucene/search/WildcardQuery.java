@@ -31,7 +31,7 @@ import org.apache.lucene.util.automaton.Operations;
  * <p>Note this query can be slow, as it needs to iterate over many terms. In order to prevent
  * extremely slow WildcardQueries, a Wildcard term should not start with the wildcard <code>*</code>
  *
- * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} rewrite method.
+ * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} rewrite method.
  *
  * @see AutomatonQuery
  */
@@ -59,7 +59,7 @@ public class WildcardQuery extends AutomatonQuery {
    *     otherwise know what to specify.
    */
   public WildcardQuery(Term term, int determinizeWorkLimit) {
-    this(term, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
+    this(term, determinizeWorkLimit, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**

@@ -31,7 +31,7 @@ public interface IndexPackageAccess {
 
   void setIndexWriterMaxDocs(int limit);
 
-  FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName);
+  FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName, String parentFieldName);
 
   void checkImpacts(Impacts impacts, int max);
 

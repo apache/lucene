@@ -28,10 +28,8 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
@@ -72,55 +70,52 @@ class GeneratingSuggester {
     IntPredicate isSuggestible = formId -> !flagLookup.hasAnyFlag(formId, excludeFlags);
 
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
-    TrigramAutomaton automaton =
-        new TrigramAutomaton(word) {
-          @Override
-          char transformChar(char c) {
-            return dictionary.caseFold(c);
-          }
-        };
+    TrigramAutomaton automaton = new TrigramAutomaton(word);
 
     processSuggestibleWords(
         Math.max(1, word.length() - MAX_ROOT_LENGTH_DIFF),
         word.length() + MAX_ROOT_LENGTH_DIFF,
-        (rootChars, formSupplier) -> {
-          if (ignoreTitleCaseRoots
-              && Character.isUpperCase(rootChars.charAt(0))
-              && WordCase.caseOf(rootChars) == WordCase.TITLE) {
+        (entry) -> {
+          if (ignoreTitleCaseRoots && entry.hasTitleCase()) {
             return;
           }
 
-          int sc = automaton.ngramScore(rootChars);
+          int sc = automaton.ngramScore(entry.lowerCaseRoot());
           if (sc == 0) {
             return; // no common characters at all, don't suggest this root
           }
 
+          CharsRef rootChars = entry.root();
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
-          boolean overflow = roots.size() == MAX_ROOTS;
-          if (overflow && sc <= roots.peek().score) {
+          if (roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.peek())) {
             return;
           }
 
           speller.checkCanceled.run();
 
           String root = rootChars.toString();
-          IntsRef forms = formSupplier.get();
+          IntsRef forms = entry.forms();
           for (int i = 0; i < forms.length; i++) {
             if (isSuggestible.test(forms.ints[forms.offset + i])) {
               roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
-              if (overflow) {
+              if (roots.size() == MAX_ROOTS) {
                 roots.poll();
               }
             }
           }
         });
 
-    return roots.stream().sorted().collect(Collectors.toList());
+    return roots.stream().sorted().toList();
+  }
+
+  private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
+    return score < root.score
+        || score == root.score && CharSequence.compare(candidate, root.word.word) > 0;
   }
 
   private void processSuggestibleWords(
-      int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+      int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
     if (entryCache != null) {
       entryCache.processSuggestibleWords(minLength, maxLength, processor);
     } else {
@@ -144,7 +139,7 @@ class GeneratingSuggester {
         }
       }
     }
-    return expanded.stream().limit(MAX_GUESSES).collect(Collectors.toList());
+    return expanded.stream().limit(MAX_GUESSES).toList();
   }
 
   // find minimum threshold for a passable suggestion
@@ -226,7 +221,7 @@ class GeneratingSuggester {
           }
         });
 
-    return result.stream().limit(MAX_WORDS).collect(Collectors.toList());
+    return result.stream().limit(MAX_WORDS).toList();
   }
 
   private void processAffixes(boolean prefixes, String word, AffixProcessor processor) {

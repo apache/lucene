@@ -27,19 +27,21 @@ abstract class BaseGlobalOrdinalScorer extends Scorer {
 
   final SortedDocValues values;
   final DocIdSetIterator approximation;
+  final float boost;
 
   float score;
 
   public BaseGlobalOrdinalScorer(
-      Weight weight, SortedDocValues values, DocIdSetIterator approximationScorer) {
+      Weight weight, SortedDocValues values, DocIdSetIterator approximationScorer, float boost) {
     super(weight);
     this.values = values;
     this.approximation = approximationScorer;
+    this.boost = boost;
   }
 
   @Override
   public float score() throws IOException {
-    return score;
+    return score * boost;
   }
 
   @Override

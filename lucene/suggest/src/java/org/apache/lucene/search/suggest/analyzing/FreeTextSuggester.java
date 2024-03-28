@@ -20,6 +20,8 @@ package org.apache.lucene.search.suggest.analyzing;
 //   - test w/ syns
 //   - add pruning of low-freq ngrams?
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -295,7 +297,8 @@ public class FreeTextSuggester extends Lookup {
       TermsEnum termsEnum = terms.iterator();
 
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-      FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      FSTCompiler<Long> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
       IntsRefBuilder scratchInts = new IntsRefBuilder();
       while (true) {
@@ -320,7 +323,7 @@ public class FreeTextSuggester extends Lookup {
         fstCompiler.add(Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
       }
 
-      final FST<Long> newFst = fstCompiler.compile();
+      final FST<Long> newFst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (newFst == null) {
         throw new IllegalArgumentException("need at least one suggestion");
       }
@@ -383,7 +386,7 @@ public class FreeTextSuggester extends Lookup {
     }
     totTokens = input.readVLong();
 
-    fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
 
     return true;
   }

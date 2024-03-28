@@ -301,10 +301,10 @@
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("_score * ln(popularity)");
  *
- *   // SimpleBindings just maps variables to SortField instances
+ *   // SimpleBindings just maps variables to DoubleValuesSource instances
  *   SimpleBindings bindings = new SimpleBindings();
- *   bindings.add(new SortField("_score", SortField.Type.SCORE));
- *   bindings.add(new SortField("popularity", SortField.Type.INT));
+ *   bindings.add("_score", DoubleValuesSource.SCORES);
+ *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
  *
  *   // create a query that matches based on 'originalQuery' but
  *   // scores using expr

@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -51,6 +50,7 @@ public class FSTCompletion {
   public static final class Completion implements Comparable<Completion> {
     /** UTF-8 bytes of the suggestion */
     public final BytesRef utf8;
+
     /** source bucket (weight) of the suggestion */
     public final int bucket;
 
@@ -92,12 +92,12 @@ public class FSTCompletion {
   /**
    * @see #FSTCompletion(FST, boolean, boolean)
    */
-  private boolean exactFirst;
+  private final boolean exactFirst;
 
   /**
    * @see #FSTCompletion(FST, boolean, boolean)
    */
-  private boolean higherWeightsFirst;
+  private final boolean higherWeightsFirst;
 
   /**
    * Constructs an FSTCompletion, specifying higherWeightsFirst and exactFirst.
@@ -145,7 +145,7 @@ public class FSTCompletion {
       }
 
       Collections.reverse(rootArcs); // we want highest weights first.
-      return rootArcs.toArray(new Arc[rootArcs.size()]);
+      return rootArcs.toArray(new Arc[0]);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -195,19 +195,17 @@ public class FSTCompletion {
    *     then alphabetically (UTF-8 codepoint order).
    */
   public List<Completion> lookup(CharSequence key, int num) {
-    if (key.length() == 0 || automaton == null) {
+    if (key.isEmpty() || automaton == null) {
       return EMPTY_RESULT;
     }
 
     if (!higherWeightsFirst && rootArcs.length > 1) {
-      // We could emit a warning here (?). An optimal strategy for
-      // alphabetically sorted
+      // We could emit a warning here (?). An optimal strategy for alphabetically sorted
       // suggestions would be to add them with a constant weight -- this saves
-      // unnecessary
-      // traversals and sorting.
-      return lookup(key).sorted().limit(num).collect(Collectors.toList());
+      // unnecessary traversals and sorting.
+      return lookup(key).sorted().limit(num).toList();
     } else {
-      return lookup(key).limit(num).collect(Collectors.toList());
+      return lookup(key).limit(num).toList();
     }
   }
 
@@ -220,7 +218,7 @@ public class FSTCompletion {
    * @return Returns the suggestions
    */
   public Stream<Completion> lookup(CharSequence key) {
-    if (key.length() == 0 || automaton == null) {
+    if (key.isEmpty() || automaton == null) {
       return Stream.empty();
     }
 
@@ -291,8 +289,8 @@ public class FSTCompletion {
     FST.BytesReader fstReader = automaton.getBytesReader();
 
     class State {
-      Arc<Object> arc;
-      int outputLength;
+      final Arc<Object> arc;
+      final int outputLength;
 
       State(Arc<Object> arc, int outputLength) throws IOException {
         this.arc = automaton.readFirstTargetArc(arc, new Arc<>(), fstReader);

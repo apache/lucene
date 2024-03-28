@@ -37,7 +37,9 @@ public class TestCheckJoinIndex extends LuceneTestCase {
 
   public void testNoParent() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     final int numDocs = TestUtil.nextInt(random(), 1, 3);
     for (int i = 0; i < numDocs; ++i) {
       w.addDocument(new Document());
@@ -55,7 +57,9 @@ public class TestCheckJoinIndex extends LuceneTestCase {
 
   public void testOrphans() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     {
       // Add a first valid block

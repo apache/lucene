@@ -29,6 +29,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 public class TestMergePolicy extends LuceneTestCase {
@@ -82,6 +83,7 @@ public class TestMergePolicy extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testTimeoutLargeNumberOfMerges() throws IOException, InterruptedException {
     try (Directory dir = newDirectory()) {
       MergePolicy.MergeSpecification ms = createRandomMergeSpecification(dir, 10000);
@@ -149,6 +151,7 @@ public class TestMergePolicy extends LuceneTestCase {
               TestUtil.randomSimpleString(random()), // name
               random().nextInt(1000), // maxDoc
               random().nextBoolean(), // isCompoundFile
+              false,
               null, // codec
               Collections.emptyMap(), // diagnostics
               TestUtil.randomSimpleString( // id

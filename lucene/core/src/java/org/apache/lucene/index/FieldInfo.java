@@ -28,10 +28,11 @@ import java.util.Objects;
 public final class FieldInfo {
   /** Field's name */
   public final String name;
+
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType = DocValuesType.NONE;
+  private DocValuesType docValuesType;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -62,6 +63,8 @@ public final class FieldInfo {
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
 
+  private final boolean isParentField;
+
   /**
    * Sole constructor.
    *
@@ -83,7 +86,8 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean softDeletesField) {
+      boolean softDeletesField,
+      boolean isParentField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
@@ -110,6 +114,7 @@ public final class FieldInfo {
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
+    this.isParentField = isParentField;
     this.checkConsistency();
   }
 
@@ -204,6 +209,13 @@ public final class FieldInfo {
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
+    }
+
+    if (softDeletesField && isParentField) {
+      throw new IllegalArgumentException(
+          "field can't be used as soft-deletes field and parent document field (field: '"
+              + name
+              + "')");
     }
   }
 
@@ -631,5 +643,13 @@ public final class FieldInfo {
    */
   public boolean isSoftDeletesField() {
     return softDeletesField;
+  }
+
+  /**
+   * Returns true if this field is configured and used as the parent document field field. See
+   * {@link IndexWriterConfig#setParentField(String)}
+   */
+  public boolean isParentField() {
+    return isParentField;
   }
 }

@@ -26,6 +26,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.NumericUtils;
 
 // e.g. run like this: ant test -Dtestcase=Test4BBKDPoints -Dtests.nightly=true -Dtests.verbose=true
@@ -66,7 +67,7 @@ public class Test4BBKDPoints extends LuceneTestCase {
       }
     }
     IndexOutput out = dir.createOutput("1d.bkd", IOContext.DEFAULT);
-    Runnable finalizer = w.finish(out, out, out);
+    IORunnable finalizer = w.finish(out, out, out);
     long indexFP = out.getFilePointer();
     finalizer.run();
     out.close();
@@ -115,7 +116,7 @@ public class Test4BBKDPoints extends LuceneTestCase {
       }
     }
     IndexOutput out = dir.createOutput("2d.bkd", IOContext.DEFAULT);
-    Runnable finalizer = w.finish(out, out, out);
+    IORunnable finalizer = w.finish(out, out, out);
     long indexFP = out.getFilePointer();
     finalizer.run();
     out.close();

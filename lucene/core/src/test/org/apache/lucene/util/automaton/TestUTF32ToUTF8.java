@@ -107,7 +107,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
           code = x;
         }
         if ((code >= UnicodeUtil.UNI_SUR_HIGH_START && code <= UnicodeUtil.UNI_SUR_HIGH_END)
-            | (code >= UnicodeUtil.UNI_SUR_LOW_START && code <= UnicodeUtil.UNI_SUR_LOW_END)) {
+            || (code >= UnicodeUtil.UNI_SUR_LOW_START && code <= UnicodeUtil.UNI_SUR_LOW_END)) {
           iter--;
           continue;
         }

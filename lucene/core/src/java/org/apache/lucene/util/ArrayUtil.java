@@ -331,14 +331,35 @@ public final class ArrayUtil {
   }
 
   /**
+   * Returns an array whose size is at least {@code minLength}, generally over-allocating
+   * exponentially, but never allocating more than {@code maxLength} elements.
+   */
+  public static int[] growInRange(int[] array, int minLength, int maxLength) {
+    assert minLength >= 0
+        : "length must be positive (got " + minLength + "): likely integer overflow?";
+
+    if (minLength > maxLength) {
+      throw new IllegalArgumentException(
+          "requested minimum array length "
+              + minLength
+              + " is larger than requested maximum array length "
+              + maxLength);
+    }
+
+    if (array.length >= minLength) {
+      return array;
+    }
+
+    int potentialLength = oversize(minLength, Integer.BYTES);
+    return growExact(array, Math.min(maxLength, potentialLength));
+  }
+
+  /**
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially
    */
   public static int[] grow(int[] array, int minSize) {
-    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
-    if (array.length < minSize) {
-      return growExact(array, oversize(minSize, Integer.BYTES));
-    } else return array;
+    return growInRange(array, minSize, Integer.MAX_VALUE);
   }
 
   /**
@@ -714,7 +735,7 @@ public final class ArrayUtil {
 
   /** Comparator for a fixed number of bytes. */
   @FunctionalInterface
-  public static interface ByteArrayComparator {
+  public interface ByteArrayComparator {
 
     /**
      * Compare bytes starting from the given offsets. The return value has the same contract as

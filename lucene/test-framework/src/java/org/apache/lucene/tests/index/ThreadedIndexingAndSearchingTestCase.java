@@ -65,6 +65,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.PrintStreamInfoStream;
+import org.apache.lucene.util.SuppressForbidden;
 
 // TODO
 //   - mix in forceMerge, addIndexes
@@ -146,6 +147,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     for (int thread = 0; thread < numThreads; thread++) {
       threads[thread] =
           new Thread() {
+            @SuppressForbidden(reason = "Thread sleep")
             @Override
             public void run() {
               // TODO: would be better if this were cross thread, so that we make sure one thread
@@ -451,9 +453,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                           // System.out.println(Thread.currentThread().getName() + " now search
                           // body:" + term.utf8ToString());
                           // }
-                          totHits.addAndGet(
-                              runQuery(
-                                  s, new TermQuery(new Term("body", BytesRef.deepCopyOf(term)))));
+                          totHits.addAndGet(runQuery(s, new TermQuery(new Term("body", term))));
                         }
                       }
                       // if (VERBOSE) {
@@ -492,6 +492,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
   private final Map<Object, Boolean> warmed = Collections.synchronizedMap(new WeakHashMap<>());
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void runTest(String testName) throws Exception {
 
     failed.set(false);

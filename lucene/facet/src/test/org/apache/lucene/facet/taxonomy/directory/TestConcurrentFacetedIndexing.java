@@ -25,6 +25,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
 import org.apache.lucene.index.IndexWriter;
@@ -153,7 +154,7 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
       }
       fail("mismatch number of categories");
     }
-    int[] parents = tr.getParallelTaxonomyArrays().parents();
+    ParallelTaxonomyArrays.IntArray parents = tr.getParallelTaxonomyArrays().parents();
     for (String cat : values.keySet()) {
       FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(cat));
       assertTrue("category not found " + cp, tr.getOrdinal(cp) > 0);
@@ -163,7 +164,7 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
       for (int i = 0; i < level; i++) {
         path = cp.subpath(i + 1);
         int ord = tr.getOrdinal(path);
-        assertEquals("invalid parent for cp=" + path, parentOrd, parents[ord]);
+        assertEquals("invalid parent for cp=" + path, parentOrd, parents.get(ord));
         parentOrd = ord; // next level should have this parent
       }
     }

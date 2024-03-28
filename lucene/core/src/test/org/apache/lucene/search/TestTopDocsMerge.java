@@ -271,11 +271,11 @@ public class TestTopDocsMerge extends LuceneTestCase {
       final TopDocs topHits;
       if (sort == null) {
         if (useFrom) {
-          TopScoreDocCollector c = TopScoreDocCollector.create(numHits, Integer.MAX_VALUE);
-          searcher.search(query, c);
+
           from = TestUtil.nextInt(random(), 0, numHits - 1);
           size = numHits - from;
-          TopDocs tempTopHits = c.topDocs();
+          TopDocs tempTopHits =
+              searcher.search(query, new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE));
           if (from < tempTopHits.scoreDocs.length) {
             // Can't use TopDocs#topDocs(start, howMany), since it has different behaviour when
             // start >= hitCount

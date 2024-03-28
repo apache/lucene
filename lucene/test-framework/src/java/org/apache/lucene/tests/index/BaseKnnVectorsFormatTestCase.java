@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
@@ -27,7 +28,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -43,6 +43,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -56,7 +57,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.junit.Before;
 
@@ -82,8 +82,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(new KnnFloatVectorField("v2", randomVector(30), similarityFunction));
+      case FLOAT32 -> doc.add(
+          new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
+  }
+
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
 
   public void testFieldConstructor() {
@@ -101,14 +106,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IllegalArgumentException.class,
         () -> new KnnFloatVectorField("f", new float[1], (VectorSimilarityFunction) null));
     expectThrows(IllegalArgumentException.class, () -> new KnnFloatVectorField("f", new float[0]));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new KnnFloatVectorField("f", new float[FloatVectorValues.MAX_DIMENSIONS + 1]));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            new KnnFloatVectorField(
-                "f", new float[FloatVectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
@@ -478,18 +475,45 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      expectThrows(
-          IllegalArgumentException.class,
-          () ->
-              doc.add(
-                  new KnnFloatVectorField(
-                      "f",
-                      new float[FloatVectorValues.MAX_DIMENSIONS + 1],
-                      VectorSimilarityFunction.DOT_PRODUCT)));
+      doc.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      Exception exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+      assertTrue(
+          exc.getMessage()
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[1], VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField("f", new float[1], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc2);
+
+      Document doc3 = new Document();
+      doc3.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc3));
+      assertTrue(
+          exc.getMessage()
+                  .contains("Inconsistency of field data structures across documents for field [f]")
+              || exc.getMessage()
+                  .contains(
+                      "vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
+      w.flush();
+
+      Document doc4 = new Document();
+      doc4.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc4));
+      assertTrue(
+          exc.getMessage()
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
     }
   }
 
@@ -531,7 +555,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  // Write vectors, one segment with with SimpleText, another with default codec, then forceMerge
+  // Write vectors, one segment with SimpleText, another with default codec, then forceMerge
   public void testDifferentCodecs2() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     iwc.setCodec(Codec.forName("SimpleText"));
@@ -589,7 +613,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v", randomVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
+                "v", randomNormalizedVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -642,7 +666,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 fieldTotals[field] += b[0];
               }
               case FLOAT32 -> {
-                float[] v = randomVector(fieldDims[field]);
+                float[] v = randomNormalizedVector(fieldDims[field]);
                 doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
                 fieldTotals[field] += v[0];
               }
@@ -690,7 +714,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  private VectorSimilarityFunction randomSimilarity() {
+  protected VectorSimilarityFunction randomSimilarity() {
     return VectorSimilarityFunction.values()[
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
@@ -709,7 +733,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     String fieldName = "field";
     float[] v = {0};
     try (Directory dir = newDirectory();
-        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter iw =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setMergePolicy(NoMergePolicy.INSTANCE)
+                    .setMaxBufferedDocs(3)
+                    .setRAMBufferSizeMB(-1))) {
       Document doc1 = new Document();
       doc1.add(new KnnFloatVectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
       v[0] = 1;
@@ -725,6 +755,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader r = getOnlyLeafReader(reader);
         FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
+        assertEquals(3, vectorValues.size());
         vectorValues.nextDoc();
         assertEquals(1, vectorValues.vectorValue()[0], 0);
         vectorValues.nextDoc();
@@ -795,7 +826,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   public void testIndexMultipleKnnVectorFields() throws Exception {
     try (Directory dir = newDirectory();
-        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter iw =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
       Document doc = new Document();
       float[] v = new float[] {1};
       doc.add(new KnnFloatVectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
@@ -863,7 +895,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (int i = 0; i < numDoc; i++) {
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          values[i] = randomVector(dimension);
+          values[i] = randomNormalizedVector(dimension);
           ++numValues;
         }
         if (random().nextBoolean() && values[i] != null) {
@@ -1011,7 +1043,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          value = randomVector(dimension);
+          value = randomNormalizedVector(dimension);
         } else {
           value = null;
         }
@@ -1039,7 +1071,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
           assertEquals(visitedLimit, results.totalHits.value);
 
@@ -1049,7 +1081,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
           assertTrue(results.totalHits.value <= visitedLimit);
         }
@@ -1059,7 +1091,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   /**
    * Index random vectors, sometimes skipping documents, sometimes updating a document, sometimes
-   * merging, sometimes sorting the index, using an HNSW similarity function so as to also produce a
+   * merging, sometimes sorting the index, using an HNSW similarity function to also produce a
    * graph, and verify that the expected values can be read back consistently.
    */
   public void testRandomWithUpdatesAndGraph() throws Exception {
@@ -1075,7 +1107,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          value = randomVector(dimension);
+          value = randomNormalizedVector(dimension);
         } else {
           value = null;
         }
@@ -1125,7 +1157,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomVector(dimension), k, liveDocs, Integer.MAX_VALUE);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1199,17 +1231,30 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-  private float[] randomVector(int dim) {
+  protected float[] randomVector(int dim) {
+    assert dim > 0;
     float[] v = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      v[i] = random().nextFloat();
+    double squareSum = 0.0;
+    // keep generating until we don't get a zero-length vector
+    while (squareSum == 0.0) {
+      squareSum = 0.0;
+      for (int i = 0; i < dim; i++) {
+        v[i] = random().nextFloat();
+        squareSum += v[i] * v[i];
+      }
     }
+    return v;
+  }
+
+  protected float[] randomNormalizedVector(int dim) {
+    float[] v = randomVector(dim);
     VectorUtil.l2normalize(v);
     return v;
   }
 
   private byte[] randomVector8(int dim) {
-    float[] v = randomVector(dim);
+    assert dim > 0;
+    float[] v = randomNormalizedVector(dim);
     byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
       b[i] = (byte) (v[i] * 127);
@@ -1221,15 +1266,21 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("v1", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField(
+                "v1", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
 
-        doc.add(new KnnFloatVectorField("v2", randomVector(3), VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField(
+                "v2", randomNormalizedVector(3), VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
+      CheckIndex.Status status =
+          TestUtil.checkIndex(
+              dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, output);
       assertEquals(1, status.segmentInfos.size());
       CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
       // total 3 vector values were indexed:
@@ -1238,7 +1289,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       assertEquals(2, segStatus.vectorValuesStatus.totalKnnVectorFields);
 
       // Make sure CheckIndex in fact declares that it is testing vectors!
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors..."));
+      assertTrue(output.toString(UTF_8).contains("test: vectors..."));
     }
   }
 
@@ -1248,7 +1299,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
     assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
-    assertEquals(3, VectorSimilarityFunction.values().length);
+    assertEquals(3, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.ordinal());
+    assertEquals(4, VectorSimilarityFunction.values().length);
   }
 
   public void testVectorEncodingOrdinals() {
@@ -1291,8 +1343,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           for (int i = 0; i < numdocs; i++) {
             // randomly advance to i
             if (random().nextInt(4) == 3) {
-              while (vectorDocs[++cur] < i)
-                ;
+              while (vectorDocs[++cur] < i) {}
               assertEquals(vectorDocs[cur], vectorValues.advance(i));
               assertEquals(vectorDocs[cur], vectorValues.docID());
               if (vectorValues.docID() == NO_MORE_DOCS) {
@@ -1328,7 +1379,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               doc.add(new KnnByteVectorField("knn_vector", b, similarityFunction));
             }
             case FLOAT32 -> {
-              float[] v = randomVector(dim);
+              float[] v = randomNormalizedVector(dim);
               fieldValuesCheckSum += v[0];
               doc.add(new KnnFloatVectorField("knn_vector", v, similarityFunction));
             }
@@ -1378,6 +1429,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
         }
         assertEquals(
+            "encoding=" + vectorEncoding,
             fieldValuesCheckSum,
             checksum,
             vectorEncoding == VectorEncoding.BYTE ? numDocs * 0.2 : 1e-5);

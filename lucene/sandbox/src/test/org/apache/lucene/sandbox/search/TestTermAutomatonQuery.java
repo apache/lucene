@@ -43,6 +43,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -263,14 +264,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TokenStream ts =
         new CannedTokenStream(
-            new Token[] {
-              token("fast", 1, 1),
-              token("speedy", 0, 1),
-              token("wi", 1, 1),
-              token("wifi", 0, 2),
-              token("fi", 1, 1),
-              token("network", 1, 1)
-            });
+            token("fast", 1, 1),
+            token("speedy", 0, 1),
+            token("wi", 1, 1),
+            token("wifi", 0, 2),
+            token("fi", 1, 1),
+            token("network", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -321,11 +320,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s2, true);
     q.addAnyTransition(s0, s1);
     q.addTransition(s1, s2, "b");
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          q.finish();
-        });
+    expectThrows(IllegalStateException.class, q::finish);
   }
 
   public void testInvalidTrailWithAny() throws Exception {
@@ -336,11 +331,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s2, true);
     q.addTransition(s0, s1, "b");
     q.addAnyTransition(s1, s2);
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          q.finish();
-        });
+    expectThrows(IllegalStateException.class, q::finish);
   }
 
   public void testAnyFromTokenStream() throws Exception {
@@ -368,13 +359,11 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TokenStream ts =
         new CannedTokenStream(
-            new Token[] {
-              token("comes", 1, 1),
-              token("comes", 0, 2),
-              token("*", 1, 1),
-              token("sun", 1, 1),
-              token("moon", 0, 1)
-            });
+            token("comes", 1, 1),
+            token("comes", 0, 2),
+            token("*", 1, 1),
+            token("sun", 1, 1),
+            token("moon", 0, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -442,9 +431,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
           public TokenStreamComponents createComponents(String fieldName) {
             MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true, 100);
             tokenizer.setEnableChecks(true);
-            TokenFilter filt = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
-            filt = new RandomSynonymFilter(filt);
-            return new TokenStreamComponents(tokenizer, filt);
+            TokenFilter filter = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
+            filter = new RandomSynonymFilter(filter);
+            return new TokenStreamComponents(tokenizer, filter);
           }
         };
 
@@ -569,14 +558,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
         System.out.println("FAILED:");
         for (String id : hits1Docs) {
           if (hits2Docs.contains(id) == false) {
-            System.out.println(
-                String.format(Locale.ROOT, "  id=%3s matched but should not have", id));
+            System.out.printf(Locale.ROOT, "  id=%3s matched but should not have%n", id);
           }
         }
         for (String id : hits2Docs) {
           if (hits1Docs.contains(id) == false) {
-            System.out.println(
-                String.format(Locale.ROOT, "  id=%3s did not match but should have", id));
+            System.out.printf(Locale.ROOT, "  id=%3s did not match but should have%n", id);
           }
         }
         throw ae;
@@ -597,7 +584,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   private static class RandomQuery extends Query {
     private final long seed;
-    private float density;
+    private final float density;
 
     // density should be 0.0 ... 1.0
     public RandomQuery(long seed, float density) {
@@ -730,11 +717,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher s = newSearcher(r);
 
-    TokenStream ts =
-        new CannedTokenStream(
-            new Token[] {
-              token("a", 1, 1),
-            });
+    TokenStream ts = new CannedTokenStream(token("a", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -755,11 +738,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher s = newSearcher(r);
 
-    TokenStream ts =
-        new CannedTokenStream(
-            new Token[] {
-              token("a", 1, 1), token("x", 1, 1),
-            });
+    TokenStream ts = new CannedTokenStream(token("a", 1, 1), token("x", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -838,6 +817,97 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     int[] positions = ((PhraseQuery) rewrite).getPositions();
     assertEquals(0, positions[0]);
     assertEquals(1, positions[1]);
+
+    IOUtils.close(w, r, dir);
+  }
+
+  /* Implement a custom term automaton query to ensure that rewritten queries
+   *  do not get rewritten to primitive queries. The custom extension will allow
+   *  the following explain tests to evaluate Explain for the query we intend to
+   *  test, TermAutomatonQuery.
+   * */
+
+  private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
+    public CustomTermAutomatonQuery(String field) {
+      super(field);
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher searcher) throws IOException {
+      return this;
+    }
+  }
+
+  public void testExplainNoMatchingDocument() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+    int initState = q.createState();
+    int s1 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.setAccept(s1, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(newTextField("field", "protobuf", Field.Store.NO));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(searcher);
+    assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
+
+    TopDocs topDocs = searcher.search(rewrittenQuery, 10);
+    assertEquals(0, topDocs.totalHits.value);
+
+    Explanation explanation = searcher.explain(rewrittenQuery, 0);
+    assertFalse("Explanation should indicate no match", explanation.isMatch());
+
+    IOUtils.close(w, r, dir);
+  }
+
+  // TODO: improve experience of working with explain
+  public void testExplainMatchingDocuments() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+
+    int initState = q.createState();
+    int s1 = q.createState();
+    int s2 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.addTransition(s1, s2, "json");
+    q.addTransition(s1, s2, "protobuf");
+    q.setAccept(s2, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    Document doc1 = new Document();
+    doc1.add(newTextField("field", "xml json", Field.Store.NO));
+    w.addDocument(doc1);
+
+    Document doc2 = new Document();
+    doc2.add(newTextField("field", "xml protobuf", Field.Store.NO));
+    w.addDocument(doc2);
+
+    Document doc3 = new Document();
+    doc3.add(newTextField("field", "xml qux", Field.Store.NO));
+    w.addDocument(doc3);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(searcher);
+    assertTrue(
+        "Rewritten query should be an instance of TermAutomatonQuery",
+        rewrittenQuery instanceof TermAutomatonQuery);
+    TopDocs topDocs = searcher.search(q, 10);
+    assertEquals(2, topDocs.totalHits.value);
+
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(q, scoreDoc.doc);
+      assertNotNull("Explanation should not be null", explanation);
+      assertTrue("Explanation should indicate a match", explanation.isMatch());
+    }
 
     IOUtils.close(w, r, dir);
   }

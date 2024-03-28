@@ -29,7 +29,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.BytesRef;
 import org.w3c.dom.Element;
 
 /**
@@ -55,7 +54,7 @@ public class TermsQueryBuilder implements QueryBuilder {
       Term term = null;
       ts.reset();
       while (ts.incrementToken()) {
-        term = new Term(fieldName, BytesRef.deepCopyOf(termAtt.getBytesRef()));
+        term = new Term(fieldName, termAtt.getBytesRef());
         bq.add(new BooleanClause(new TermQuery(term), BooleanClause.Occur.SHOULD));
       }
       ts.end();

@@ -17,7 +17,11 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -32,11 +36,15 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.mockfile.HandleLimitFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOFunction;
 
 @HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 2)
 // Some of these tests are too intense for SimpleText
@@ -394,14 +402,13 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
 
     DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy);
@@ -410,8 +417,8 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      assertEquals(6, reader.numDocs());
-      assertEquals(6, searcher.count(new MatchAllDocsQuery()));
+      assertEquals(5, reader.numDocs());
+      assertEquals(5, searcher.count(new MatchAllDocsQuery()));
     }
 
     writerWithMergePolicy.close();
@@ -445,16 +452,14 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
             .setIndexWriterEventListener(eventListener);
 
     IndexWriter writerWithMergePolicy = new IndexWriter(dir, iwc);
-    writerWithMergePolicy.commit(); // No changes. Commit doesn't trigger a merge.
 
+    // No changes. Refresh doesn't trigger a merge.
     DirectoryReader unmergedReader = DirectoryReader.open(writerWithMergePolicy);
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    TestIndexWriter.addDoc(writerWithMergePolicy);
-
     assertFalse(eventListener.isEventsRecorded());
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
     assertTrue(eventListener.isEventsRecorded());
 
@@ -892,5 +897,495 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
       }
       return null;
     }
+  }
+
+  public void testSetDiagnostics() throws IOException {
+    MergePolicy myMergePolicy =
+        new FilterMergePolicy(newLogMergePolicy(4)) {
+          @Override
+          public MergeSpecification findMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(super.findMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          @Override
+          public MergeSpecification findFullFlushMerges(
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+              throws IOException {
+            return wrapSpecification(
+                super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
+          }
+
+          private MergeSpecification wrapSpecification(MergeSpecification spec) {
+            if (spec == null) {
+              return null;
+            }
+            MergeSpecification newSpec = new MergeSpecification();
+            for (OneMerge merge : spec.merges) {
+              newSpec.add(
+                  new OneMerge(merge) {
+                    @Override
+                    public void setMergeInfo(SegmentCommitInfo info) {
+                      super.setMergeInfo(info);
+                      info.info.addDiagnostics(
+                          Collections.singletonMap("merge_policy", "my_merge_policy"));
+                    }
+                  });
+            }
+            return newSpec;
+          }
+        };
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir, newIndexWriterConfig().setMergePolicy(myMergePolicy).setMaxBufferedDocs(2));
+    Document doc = new Document();
+    for (int i = 0; i < 20; ++i) {
+      w.addDocument(doc);
+    }
+    w.close();
+    SegmentInfos si = SegmentInfos.readLatestCommit(dir);
+    boolean hasOneMergedSegment = false;
+    for (SegmentCommitInfo sci : si) {
+      if (IndexWriter.SOURCE_MERGE.equals(sci.info.getDiagnostics().get(IndexWriter.SOURCE))) {
+        assertEquals("my_merge_policy", sci.info.getDiagnostics().get("merge_policy"));
+        hasOneMergedSegment = true;
+      }
+    }
+    assertTrue(hasOneMergedSegment);
+    w.close();
+    dir.close();
+  }
+
+  private static final class MockAssertFileExistIndexInput extends IndexInput {
+    private final String name;
+    private final IndexInput delegate;
+    private final Path filePath;
+
+    public MockAssertFileExistIndexInput(String name, IndexInput delegate, Path filePath) {
+      super("MockAssertFileExistIndexInput(name=" + name + " delegate=" + delegate + ")");
+      this.name = name;
+      this.delegate = delegate;
+      this.filePath = filePath;
+    }
+
+    private void checkFileExist() throws IOException {
+      if (Files.exists(filePath) == false) {
+        throw new NoSuchFileException(filePath.toString());
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
+
+    @Override
+    public MockAssertFileExistIndexInput clone() {
+      return new MockAssertFileExistIndexInput(name, delegate.clone(), filePath);
+    }
+
+    @Override
+    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+      checkFileExist();
+      IndexInput slice = delegate.slice(sliceDescription, offset, length);
+      return new MockAssertFileExistIndexInput(sliceDescription, slice, filePath);
+    }
+
+    @Override
+    public long getFilePointer() {
+      return delegate.getFilePointer();
+    }
+
+    @Override
+    public void seek(long pos) throws IOException {
+      checkFileExist();
+      delegate.seek(pos);
+    }
+
+    @Override
+    public long length() {
+      return delegate.length();
+    }
+
+    @Override
+    public byte readByte() throws IOException {
+      checkFileExist();
+      return delegate.readByte();
+    }
+
+    @Override
+    public void readBytes(byte[] b, int offset, int len) throws IOException {
+      checkFileExist();
+      delegate.readBytes(b, offset, len);
+    }
+  }
+
+  public void testForceMergeDVUpdateFileWithConcurrentFlush() throws Exception {
+    CountDownLatch waitForInitMergeReader = new CountDownLatch(1);
+    CountDownLatch waitForDVUpdate = new CountDownLatch(1);
+    CountDownLatch waitForMergeFinished = new CountDownLatch(1);
+
+    Path path = createTempDir("testForceMergeDVUpdateFileWithConcurrentFlush");
+    Directory mockDirectory =
+        new FilterDirectory(newFSDirectory(path)) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            IndexInput indexInput = super.openInput(name, context);
+            return new MockAssertFileExistIndexInput(name, indexInput, path.resolve(name));
+          }
+        };
+
+    MergePolicy mockMergePolicy =
+        new OneMergeWrappingMergePolicy(
+            new SoftDeletesRetentionMergePolicy(
+                "soft_delete",
+                MatchAllDocsQuery::new,
+                new LogDocMergePolicy() {
+                  @Override
+                  public MergeSpecification findMerges(
+                      MergeTrigger mergeTrigger,
+                      SegmentInfos segmentInfos,
+                      MergeContext mergeContext)
+                      throws IOException {
+                    // only allow force merge
+                    return null;
+                  }
+                }),
+            merge ->
+                new MergePolicy.OneMerge(merge.segments) {
+                  @Override
+                  void initMergeReaders(
+                      IOFunction<SegmentCommitInfo, MergePolicy.MergeReader> readerFactory)
+                      throws IOException {
+                    super.initMergeReaders(readerFactory);
+                    waitForInitMergeReader.countDown();
+                  }
+
+                  @Override
+                  public CodecReader wrapForMerge(CodecReader reader) throws IOException {
+                    try {
+                      waitForDVUpdate.await();
+                    } catch (InterruptedException e) {
+                      throw new AssertionError(e);
+                    }
+                    return super.wrapForMerge(reader);
+                  }
+                });
+
+    IndexWriter writer =
+        new IndexWriter(
+            mockDirectory,
+            newIndexWriterConfig()
+                .setMergePolicy(mockMergePolicy)
+                .setSoftDeletesField("soft_delete"));
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.flush();
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    Field field = new NumericDocValuesField("soft_delete", 1);
+    writer.softUpdateDocument(new Term("id", "2"), doc, field);
+    writer.flush();
+
+    Thread t =
+        new Thread(
+            () -> {
+              try {
+                writer.forceMerge(1);
+              } catch (Throwable e) {
+                throw new AssertionError(e);
+              } finally {
+                waitForMergeFinished.countDown();
+              }
+            });
+    t.start();
+    waitForInitMergeReader.await();
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "3", Field.Store.YES));
+    field = new NumericDocValuesField("soft_delete", 1);
+    writer.softUpdateDocument(new Term("id", "2"), doc, field);
+    writer.flush();
+
+    waitForDVUpdate.countDown();
+    waitForMergeFinished.await();
+
+    writer.close();
+    mockDirectory.close();
+  }
+
+  public void testMergeDVUpdateFileOnGetReaderWithConcurrentFlush() throws Exception {
+    CountDownLatch waitForInitMergeReader = new CountDownLatch(1);
+    CountDownLatch waitForDVUpdate = new CountDownLatch(1);
+
+    Path path = createTempDir("testMergeDVUpdateFileOnGetReaderWithConcurrentFlush");
+    Directory mockDirectory =
+        new FilterDirectory(newFSDirectory(path)) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            IndexInput indexInput = super.openInput(name, context);
+            return new MockAssertFileExistIndexInput(name, indexInput, path.resolve(name));
+          }
+        };
+
+    IndexWriter firstWriter =
+        new IndexWriter(
+            mockDirectory,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    firstWriter.addDocument(doc);
+    firstWriter.flush();
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    firstWriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    Field field = new NumericDocValuesField("soft_delete", 1);
+    firstWriter.softUpdateDocument(new Term("id", "2"), doc, field);
+    firstWriter.flush();
+    DirectoryReader firstReader = DirectoryReader.open(firstWriter);
+    assertEquals(2, firstReader.leaves().size());
+    firstReader.close();
+    firstWriter.close();
+
+    ConcurrentMergeScheduler mockConcurrentMergeScheduler =
+        new ConcurrentMergeScheduler() {
+          @Override
+          public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+            waitForInitMergeReader.countDown();
+            try {
+              waitForDVUpdate.await();
+            } catch (InterruptedException e) {
+              throw new AssertionError(e);
+            }
+            super.merge(mergeSource, trigger);
+          }
+        };
+
+    IndexWriterConfig iwc =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            .setMergePolicy(new MergeOnXMergePolicy(newMergePolicy(), MergeTrigger.GET_READER))
+            .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE)
+            .setMergeScheduler(mockConcurrentMergeScheduler);
+
+    IndexWriter writerWithMergePolicy = new IndexWriter(mockDirectory, iwc);
+
+    Thread t =
+        new Thread(
+            () -> {
+              try {
+                waitForInitMergeReader.await();
+
+                Document updateDoc = new Document();
+                updateDoc.add(new StringField("id", "2", Field.Store.YES));
+                updateDoc.add(new StringField("version", "3", Field.Store.YES));
+                Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
+                writerWithMergePolicy.softUpdateDocument(
+                    new Term("id", "2"), updateDoc, softDeleteField);
+                DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
+                reader.close();
+
+                waitForDVUpdate.countDown();
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+            });
+    t.start();
+
+    try (DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy)) {
+      assertEquals(1, mergedReader.leaves().size());
+    }
+
+    writerWithMergePolicy.close();
+    mockDirectory.close();
+  }
+
+  public void testMergeDVUpdateFileOnCommitWithConcurrentFlush() throws Exception {
+    CountDownLatch waitForInitMergeReader = new CountDownLatch(1);
+    CountDownLatch waitForDVUpdate = new CountDownLatch(1);
+
+    Path path = createTempDir("testMergeDVUpdateFileOnCommitWithConcurrentFlush");
+    Directory mockDirectory =
+        new FilterDirectory(newFSDirectory(path)) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            IndexInput indexInput = super.openInput(name, context);
+            return new MockAssertFileExistIndexInput(name, indexInput, path.resolve(name));
+          }
+        };
+
+    IndexWriter firstWriter =
+        new IndexWriter(
+            mockDirectory,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    firstWriter.addDocument(doc);
+    firstWriter.flush();
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    firstWriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    Field field = new NumericDocValuesField("soft_delete", 1);
+    firstWriter.softUpdateDocument(new Term("id", "2"), doc, field);
+    firstWriter.flush();
+    DirectoryReader firstReader = DirectoryReader.open(firstWriter);
+    assertEquals(2, firstReader.leaves().size());
+    firstReader.close();
+    firstWriter.close();
+
+    ConcurrentMergeScheduler mockConcurrentMergeScheduler =
+        new ConcurrentMergeScheduler() {
+          @Override
+          public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+            waitForInitMergeReader.countDown();
+            try {
+              waitForDVUpdate.await();
+            } catch (InterruptedException e) {
+              throw new AssertionError(e);
+            }
+            super.merge(mergeSource, trigger);
+          }
+        };
+
+    IndexWriterConfig iwc =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            .setMergePolicy(new MergeOnXMergePolicy(newMergePolicy(), MergeTrigger.COMMIT))
+            .setMaxFullFlushMergeWaitMillis(Integer.MAX_VALUE)
+            .setMergeScheduler(mockConcurrentMergeScheduler);
+
+    IndexWriter writerWithMergePolicy = new IndexWriter(mockDirectory, iwc);
+
+    Thread t =
+        new Thread(
+            () -> {
+              try {
+                waitForInitMergeReader.await();
+
+                Document updateDoc = new Document();
+                updateDoc.add(new StringField("id", "2", Field.Store.YES));
+                updateDoc.add(new StringField("version", "3", Field.Store.YES));
+                Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
+                writerWithMergePolicy.softUpdateDocument(
+                    new Term("id", "2"), updateDoc, softDeleteField);
+                DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
+                reader.close();
+
+                waitForDVUpdate.countDown();
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+            });
+    t.start();
+
+    writerWithMergePolicy.commit();
+    assertEquals(2, writerWithMergePolicy.getSegmentCount());
+
+    writerWithMergePolicy.close();
+    mockDirectory.close();
+  }
+
+  public void testForceMergeWithPendingHardAndSoftDeleteFile() throws Exception {
+    Path path = createTempDir("testForceMergeWithPendingHardAndSoftDeleteFile");
+    Directory mockDirectory =
+        new FilterDirectory(newFSDirectory(path)) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            IndexInput indexInput = super.openInput(name, context);
+            return new MockAssertFileExistIndexInput(name, indexInput, path.resolve(name));
+          }
+        };
+
+    MergePolicy mockMergePolicy =
+        new OneMergeWrappingMergePolicy(
+            new TieredMergePolicy() {
+              @Override
+              public MergeSpecification findMerges(
+                  MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+                  throws IOException {
+                // only allow force merge
+                return null;
+              }
+            },
+            merge -> new MergePolicy.OneMerge(merge.segments) {});
+
+    IndexWriter writer =
+        new IndexWriter(mockDirectory, newIndexWriterConfig().setMergePolicy(mockMergePolicy));
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "3", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "4", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "5", Field.Store.YES));
+    doc.add(new StringField("version", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    writer.updateDocument(new Term("id", "2"), doc);
+    writer.commit();
+
+    doc = new Document();
+    doc.add(new StringField("id", "3", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    writer.updateDocument(new Term("id", "3"), doc);
+
+    doc = new Document();
+    doc.add(new StringField("id", "4", Field.Store.YES));
+    doc.add(new StringField("version", "2", Field.Store.YES));
+    Field field = new NumericDocValuesField("soft_delete", 1);
+    writer.softUpdateDocument(new Term("id", "4"), doc, field);
+
+    DirectoryReader reader = writer.getReader(true, false);
+    reader.close();
+    writer.commit();
+
+    writer.forceMerge(1);
+
+    writer.close();
+    mockDirectory.close();
   }
 }

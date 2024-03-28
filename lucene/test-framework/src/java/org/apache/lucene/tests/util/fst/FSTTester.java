@@ -29,7 +29,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -156,7 +155,7 @@ public class FSTTester<T> {
   }
 
   static IntsRef toIntsRef(BytesRef br, IntsRefBuilder ir) {
-    ir.grow(br.length);
+    ir.growNoCopy(br.length);
     ir.clear();
     for (int i = 0; i < br.length; i++) {
       ir.append(br.bytes[br.offset + i] & 0xFF);
@@ -177,19 +176,6 @@ public class FSTTester<T> {
     @Override
     public int compareTo(InputOutput<T> other) {
       return input.compareTo(other.input);
-    }
-  }
-
-  public void doTest(boolean testPruning) throws IOException {
-    // no pruning
-    doTest(0, 0, true);
-
-    if (testPruning) {
-      // simple pruning
-      doTest(TestUtil.nextInt(random, 1, 1 + pairs.size()), 0, true);
-
-      // leafy pruning
-      doTest(0, TestUtil.nextInt(random, 1, 1 + pairs.size()), true);
     }
   }
 
@@ -267,22 +253,21 @@ public class FSTTester<T> {
     return output;
   }
 
-  public FST<T> doTest(int prune1, int prune2, boolean allowRandomSuffixSharing)
-      throws IOException {
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("\nTEST: prune1=" + prune1 + " prune2=" + prune2);
+  public FST<T> doTest() throws IOException {
+
+    final FSTCompiler.Builder<T> fstCompilerBuilder =
+        new FSTCompiler.Builder<>(
+            inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs);
+
+    IndexOutput indexOutput = null;
+    boolean useOffHeap = random.nextBoolean();
+
+    if (useOffHeap) {
+      indexOutput = dir.createOutput("fstOffHeap.bin", IOContext.DEFAULT);
+      fstCompilerBuilder.dataOutput(indexOutput);
     }
 
-    final FSTCompiler<T> fstCompiler =
-        new FSTCompiler.Builder<>(
-                inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-            .minSuffixCount1(prune1)
-            .minSuffixCount2(prune2)
-            .shouldShareSuffix(prune1 == 0 && prune2 == 0)
-            .shouldShareNonSingletonNodes(allowRandomSuffixSharing ? random.nextBoolean() : true)
-            .shareMaxTailLength(
-                allowRandomSuffixSharing ? TestUtil.nextInt(random, 1, 10) : Integer.MAX_VALUE)
-            .build();
+    final FSTCompiler<T> fstCompiler = fstCompilerBuilder.build();
 
     for (InputOutput<T> pair : pairs) {
       if (pair.output instanceof List) {
@@ -297,17 +282,33 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = fstCompiler.compile();
 
-    if (random.nextBoolean() && fst != null) {
-      IOContext context = LuceneTestCase.newIOContext(random);
-      try (IndexOutput out = dir.createOutput("fst.bin", context)) {
-        fst.save(out, out);
+    FST<T> fst = null;
+    FST.FSTMetadata<T> fstMetadata = fstCompiler.compile();
+
+    if (useOffHeap) {
+      indexOutput.close();
+      if (fstMetadata == null) {
+        dir.deleteFile("fstOffHeap.bin");
+      } else {
+        try (IndexInput in = dir.openInput("fstOffHeap.bin", IOContext.DEFAULT)) {
+          fst = new FST<>(fstMetadata, in);
+        } finally {
+          dir.deleteFile("fstOffHeap.bin");
+        }
       }
-      try (IndexInput in = dir.openInput("fst.bin", context)) {
-        fst = new FST<>(in, in, outputs);
-      } finally {
-        dir.deleteFile("fst.bin");
+    } else if (fstMetadata != null) {
+      fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+      if (random.nextBoolean()) {
+        IOContext context = LuceneTestCase.newIOContext(random);
+        try (IndexOutput out = dir.createOutput("fst.bin", context)) {
+          fst.save(out, out);
+        }
+        try (IndexInput in = dir.openInput("fst.bin", context)) {
+          fst = new FST<>(FST.readMetadata(in, outputs), in);
+        } finally {
+          dir.deleteFile("fst.bin");
+        }
       }
     }
 
@@ -332,11 +333,7 @@ public class FSTTester<T> {
       }
     }
 
-    if (prune1 == 0 && prune2 == 0) {
-      verifyUnPruned(inputMode, fst);
-    } else {
-      verifyPruned(inputMode, fst, prune1, prune2);
-    }
+    verifyUnPruned(inputMode, fst);
 
     nodeCount = fstCompiler.getNodeCount();
     arcCount = fstCompiler.getArcCount();
@@ -643,209 +640,6 @@ public class FSTTester<T> {
             }
           */
         }
-      }
-    }
-  }
-
-  private static class CountMinOutput<T> {
-    int count;
-    T output;
-    T finalOutput;
-    boolean isLeaf = true;
-    boolean isFinal;
-  }
-
-  // FST is pruned
-  private void verifyPruned(int inputMode, FST<T> fst, int prune1, int prune2) throws IOException {
-
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("TEST: now verify pruned " + pairs.size() + " terms; outputs=" + outputs);
-      for (InputOutput<T> pair : pairs) {
-        System.out.println(
-            "  "
-                + inputToString(inputMode, pair.input)
-                + ": "
-                + outputs.outputToString(pair.output));
-      }
-    }
-
-    // To validate the FST, we brute-force compute all prefixes
-    // in the terms, matched to their "common" outputs, prune that
-    // set according to the prune thresholds, then assert the FST
-    // matches that same set.
-
-    // NOTE: Crazy RAM intensive!!
-
-    // System.out.println("TEST: tally prefixes");
-
-    // build all prefixes
-    final Map<IntsRef, CountMinOutput<T>> prefixes = new HashMap<>();
-    final IntsRefBuilder scratch = new IntsRefBuilder();
-    for (InputOutput<T> pair : pairs) {
-      scratch.copyInts(pair.input);
-      for (int idx = 0; idx <= pair.input.length; idx++) {
-        scratch.setLength(idx);
-        CountMinOutput<T> cmo = prefixes.get(scratch.get());
-        if (cmo == null) {
-          cmo = new CountMinOutput<>();
-          cmo.count = 1;
-          cmo.output = pair.output;
-          prefixes.put(scratch.toIntsRef(), cmo);
-        } else {
-          cmo.count++;
-          T output1 = cmo.output;
-          if (output1.equals(outputs.getNoOutput())) {
-            output1 = outputs.getNoOutput();
-          }
-          T output2 = pair.output;
-          if (output2.equals(outputs.getNoOutput())) {
-            output2 = outputs.getNoOutput();
-          }
-          cmo.output = outputs.common(output1, output2);
-        }
-        if (idx == pair.input.length) {
-          cmo.isFinal = true;
-          cmo.finalOutput = cmo.output;
-        }
-      }
-    }
-
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("TEST: now prune");
-    }
-
-    // prune 'em
-    final Iterator<Map.Entry<IntsRef, CountMinOutput<T>>> it = prefixes.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry<IntsRef, CountMinOutput<T>> ent = it.next();
-      final IntsRef prefix = ent.getKey();
-      final CountMinOutput<T> cmo = ent.getValue();
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println(
-            "  term prefix="
-                + inputToString(inputMode, prefix, false)
-                + " count="
-                + cmo.count
-                + " isLeaf="
-                + cmo.isLeaf
-                + " output="
-                + outputs.outputToString(cmo.output)
-                + " isFinal="
-                + cmo.isFinal);
-      }
-      final boolean keep;
-      if (prune1 > 0) {
-        keep = cmo.count >= prune1;
-      } else {
-        assert prune2 > 0;
-        if (prune2 > 1 && cmo.count >= prune2) {
-          keep = true;
-        } else if (prefix.length > 0) {
-          // consult our parent
-          scratch.setLength(prefix.length - 1);
-          System.arraycopy(prefix.ints, prefix.offset, scratch.ints(), 0, scratch.length());
-          final CountMinOutput<T> cmo2 = prefixes.get(scratch.get());
-          // System.out.println("    parent count = " + (cmo2 == null ? -1 : cmo2.count));
-          keep =
-              cmo2 != null
-                  && ((prune2 > 1 && cmo2.count >= prune2)
-                      || (prune2 == 1 && (cmo2.count >= 2 || prefix.length <= 1)));
-        } else {
-          keep = cmo.count >= prune2;
-        }
-      }
-
-      if (!keep) {
-        it.remove();
-        // System.out.println("    remove");
-      } else {
-        // clear isLeaf for all ancestors
-        // System.out.println("    keep");
-        scratch.copyInts(prefix);
-        scratch.setLength(scratch.length() - 1);
-        while (scratch.length() >= 0) {
-          final CountMinOutput<T> cmo2 = prefixes.get(scratch.get());
-          if (cmo2 != null) {
-            // System.out.println("    clear isLeaf " + inputToString(inputMode, scratch));
-            cmo2.isLeaf = false;
-          }
-          scratch.setLength(scratch.length() - 1);
-        }
-      }
-    }
-
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("TEST: after prune");
-      for (Map.Entry<IntsRef, CountMinOutput<T>> ent : prefixes.entrySet()) {
-        System.out.println(
-            "  "
-                + inputToString(inputMode, ent.getKey(), false)
-                + ": isLeaf="
-                + ent.getValue().isLeaf
-                + " isFinal="
-                + ent.getValue().isFinal);
-        if (ent.getValue().isFinal) {
-          System.out.println(
-              "    finalOutput=" + outputs.outputToString(ent.getValue().finalOutput));
-        }
-      }
-    }
-
-    if (prefixes.size() <= 1) {
-      assertNull(fst);
-      return;
-    }
-
-    assertNotNull(fst);
-
-    // make sure FST only enums valid prefixes
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("TEST: check pruned enum");
-    }
-    IntsRefFSTEnum<T> fstEnum = new IntsRefFSTEnum<>(fst);
-    IntsRefFSTEnum.InputOutput<T> current;
-    while ((current = fstEnum.next()) != null) {
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println(
-            "  fstEnum.next prefix="
-                + inputToString(inputMode, current.input, false)
-                + " output="
-                + outputs.outputToString(current.output));
-      }
-      final CountMinOutput<T> cmo = prefixes.get(current.input);
-      assertNotNull(cmo);
-      assertTrue(cmo.isLeaf || cmo.isFinal);
-      // if (cmo.isFinal && !cmo.isLeaf) {
-      if (cmo.isFinal) {
-        assertEquals(cmo.finalOutput, current.output);
-      } else {
-        assertEquals(cmo.output, current.output);
-      }
-    }
-
-    // make sure all non-pruned prefixes are present in the FST
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("TEST: verify all prefixes");
-    }
-    final int[] stopNode = new int[1];
-    for (Map.Entry<IntsRef, CountMinOutput<T>> ent : prefixes.entrySet()) {
-      if (ent.getKey().length > 0) {
-        final CountMinOutput<T> cmo = ent.getValue();
-        final T output = run(fst, ent.getKey(), stopNode);
-        if (LuceneTestCase.VERBOSE) {
-          System.out.println(
-              "TEST: verify prefix="
-                  + inputToString(inputMode, ent.getKey(), false)
-                  + " output="
-                  + outputs.outputToString(cmo.output));
-        }
-        // if (cmo.isFinal && !cmo.isLeaf) {
-        if (cmo.isFinal) {
-          assertEquals(cmo.finalOutput, output);
-        } else {
-          assertEquals(cmo.output, output);
-        }
-        assertEquals(ent.getKey().length, stopNode[0]);
       }
     }
   }

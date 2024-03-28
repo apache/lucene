@@ -24,7 +24,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestWordlistLoader extends LuceneTestCase {
 
   public void testWordlistLoading() throws IOException {
-    String s = "ONE\n  two \nthree";
+    String s = "ONE\n  two \nthree\n\n";
     CharArraySet wordSet1 = WordlistLoader.getWordSet(new StringReader(s));
     checkSet(wordSet1);
     CharArraySet wordSet2 = WordlistLoader.getWordSet(new BufferedReader(new StringReader(s)));

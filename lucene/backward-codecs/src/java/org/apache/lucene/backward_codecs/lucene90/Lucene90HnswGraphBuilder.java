@@ -37,6 +37,7 @@ public final class Lucene90HnswGraphBuilder {
 
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
+
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -183,10 +184,10 @@ public final class Lucene90HnswGraphBuilder {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node()[i];
-      Lucene90NeighborArray nbrNbr = hnsw.getNeighbors(nbr);
-      nbrNbr.add(node, neighbors.score()[i]);
-      if (nbrNbr.size() > maxConn) {
-        diversityUpdate(nbrNbr);
+      Lucene90NeighborArray nbrsOfNbr = hnsw.getNeighbors(nbr);
+      nbrsOfNbr.add(node, neighbors.score()[i]);
+      if (nbrsOfNbr.size() > maxConn) {
+        diversityUpdate(nbrsOfNbr);
       }
     }
   }

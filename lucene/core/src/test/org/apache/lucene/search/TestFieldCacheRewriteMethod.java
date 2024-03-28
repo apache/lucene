@@ -47,10 +47,21 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
+    RegexpQuery filter2 =
+        new RegexpQuery(
+            new Term(fieldName, regexp),
+            RegExp.NONE,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+
     TopDocs fieldCacheDocs = searcher1.search(fieldCache, 25);
     TopDocs filterDocs = searcher2.search(filter, 25);
+    TopDocs filter2Docs = searcher2.search(filter2, 25);
 
     CheckHits.checkEqual(fieldCache, fieldCacheDocs.scoreDocs, filterDocs.scoreDocs);
+    CheckHits.checkEqual(fieldCache, fieldCacheDocs.scoreDocs, filter2Docs.scoreDocs);
   }
 
   public void testEquals() throws Exception {

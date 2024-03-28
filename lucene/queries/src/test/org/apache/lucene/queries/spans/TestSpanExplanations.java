@@ -261,7 +261,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(new TermQuery(new Term(FIELD, "QQ")));
 
     BooleanQuery.Builder xxYYZZ = new BooleanQuery.Builder();
-    ;
+
     xxYYZZ.add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "yy")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "zz")), Occur.MUST_NOT);
@@ -269,7 +269,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(xxYYZZ.build());
 
     BooleanQuery.Builder xxW1 = new BooleanQuery.Builder();
-    ;
+
     xxW1.add(new TermQuery(new Term(FIELD, "xx")), Occur.MUST_NOT);
     xxW1.add(new TermQuery(new Term(FIELD, "w1")), Occur.MUST_NOT);
 
@@ -284,7 +284,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     q.add(new DisjunctionMaxQuery(disjuncts, 0.2f), Occur.SHOULD);
 
     BooleanQuery.Builder b = new BooleanQuery.Builder();
-    ;
+
     b.setMinimumNumberShouldMatch(2);
     b.add(snear("w1", "w2", 1, true), Occur.SHOULD);
     b.add(snear("w2", "w3", 1, true), Occur.SHOULD);
@@ -319,7 +319,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(new TermQuery(new Term(FIELD, "QQ")));
 
     BooleanQuery.Builder xxYYZZ = new BooleanQuery.Builder();
-    ;
+
     xxYYZZ.add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "yy")), Occur.SHOULD);
     xxYYZZ.add(new TermQuery(new Term(FIELD, "zz")), Occur.MUST_NOT);
@@ -327,7 +327,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     disjuncts.add(xxYYZZ.build());
 
     BooleanQuery.Builder xxW1 = new BooleanQuery.Builder();
-    ;
+
     xxW1.add(new TermQuery(new Term(FIELD, "xx")), Occur.MUST_NOT);
     xxW1.add(new TermQuery(new Term(FIELD, "w1")), Occur.MUST_NOT);
 
@@ -345,7 +345,7 @@ public class TestSpanExplanations extends BaseSpanExplanationTestCase {
     q.add(new DisjunctionMaxQuery(disjuncts, 0.2f), Occur.SHOULD);
 
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    ;
+
     builder.setMinimumNumberShouldMatch(2);
     builder.add(snear("w1", "w2", 1, true), Occur.SHOULD);
     builder.add(snear("w2", "w3", 1, true), Occur.SHOULD);

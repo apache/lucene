@@ -224,10 +224,7 @@ public class FuzzyLikeThisQuery extends Query {
             float score = boostAtt.getBoost();
             if (variantsQ.size() < MAX_VARIANTS_PER_TERM || score > minScore) {
               ScoreTerm st =
-                  new ScoreTerm(
-                      new Term(startTerm.field(), BytesRef.deepCopyOf(possibleMatch)),
-                      score,
-                      startTerm);
+                  new ScoreTerm(new Term(startTerm.field(), possibleMatch), score, startTerm);
               variantsQ.insertWithOverflow(st);
               minScore = variantsQ.top().score; // maintain minScore
             }

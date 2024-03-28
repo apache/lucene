@@ -31,7 +31,7 @@ import org.apache.lucene.util.IntsRef;
  */
 public class LimitedFiniteStringsIterator extends FiniteStringsIterator {
   /** Maximum number of finite strings to create. */
-  private int limit = Integer.MAX_VALUE;
+  private final int limit;
 
   /** Number of generated finite strings. */
   private int count = 0;

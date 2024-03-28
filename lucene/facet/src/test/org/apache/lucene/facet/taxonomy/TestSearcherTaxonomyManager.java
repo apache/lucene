@@ -44,6 +44,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestSearcherTaxonomyManager extends FacetTestCase {
@@ -124,6 +125,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -151,6 +153,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
 
     Thread reopener =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             while (!stop.get()) {

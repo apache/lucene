@@ -103,13 +103,6 @@ public class FacetsCollector extends SimpleCollector {
 
   /** Returns the documents matched by the query, one {@link MatchingDocs} per visited segment. */
   public List<MatchingDocs> getMatchingDocs() {
-    if (docsBuilder != null) {
-      matchingDocs.add(new MatchingDocs(this.context, docsBuilder.build(), totalHits, scores));
-      docsBuilder = null;
-      scores = null;
-      context = null;
-    }
-
     return matchingDocs;
   }
 
@@ -139,15 +132,27 @@ public class FacetsCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    if (docsBuilder != null) {
-      matchingDocs.add(new MatchingDocs(this.context, docsBuilder.build(), totalHits, scores));
-    }
+    assert docsBuilder == null;
     docsBuilder = new DocIdSetBuilder(context.reader().maxDoc());
     totalHits = 0;
     if (keepScores) {
       scores = new float[64]; // some initial size
     }
     this.context = context;
+  }
+
+  @Override
+  public void finish() throws IOException {
+    DocIdSet bits;
+    if (docsBuilder != null) {
+      bits = docsBuilder.build();
+      docsBuilder = null;
+    } else {
+      bits = DocIdSet.EMPTY;
+    }
+    matchingDocs.add(new MatchingDocs(this.context, bits, totalHits, scores));
+    scores = null;
+    context = null;
   }
 
   /** Utility method, to search and also collect all hits into the provided {@link Collector}. */

@@ -19,6 +19,27 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### OpenNLP dependency upgrade
+
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
+
+### Snowball dependency upgrade
+
+Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
+
+### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
+
+For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
+IndexWriter#addDocuments or IndexWriter#updateDocuments when index sorting is configured. Document blocks are maintained
+alongside their parent documents during sort and merge. The internally used parent field must be configured in 
+IndexWriterConfig only if index sorting is used together with documents blocks. See `IndexWriterConfig#setParendField`
+for reference. 
+
+### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
+
+The API of interfaces for accepting highlights has changed to allow performance improvements. Look at the issue and the PR diff to get
+a sense of what's changed (changes are minor).
+
 ### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
 
 The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
@@ -83,11 +104,86 @@ determine the number of valid ordinals for the currently-positioned document up-
 illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
 for the currently-positioned document (doing so will result in undefined behavior).
 
-### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+### IOContext removed from Directory#openChecksumInput (GITHUB#12027)
 
 `Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
 Callers should remove the parameter when calling this method.
+
+
+### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
+
+The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
+Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
+
+### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580) 
+
+The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors 
+has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
+that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
+
+### CheckIndex params -slow and -fast are deprecated, replaced by -level X (GITHUB#11023)
+
+The `CheckIndex` former `-fast` behaviour of performing checksum checks only, is now the default.
+Added a new parameter: `-level X`, to set the detail level of the index check. The higher the value, the more checks are performed.
+Sample `-level` usage: `1` (Default) - Checksum checks only, `2` - all level 1 checks as well as logical integrity checks, `3` - all
+level 2 checks as well as slow checks.
+
+### Expressions module now uses `MethodHandle` and hidden classes (GITHUB#12873)
+
+Custom functions in the expressions module must now be passed in a `Map` using `MethodHandle` as values.
+To convert legacy code using maps of reflective `java.lang.reflect.Method`, use the converter method
+`JavascriptCompiler#convertLegacyFunctions`. This should make the mapping mostly compatible.
+The use of `MethodHandle` and [Dynamic Class-File Constants (JEP 309)](https://openjdk.org/jeps/309)
+now also allows to pass private methods or methods from different classloaders. It is also possible
+to adapt guards or filters using the `MethodHandles` class.
+
+The new implementation of the Javascript expressions compiler no longer supports use of custom
+`ClassLoader`, because it uses the new JDK 15 feature [hidden classes (JEP 371)](https://openjdk.org/jeps/371).
+Due to the use of `MethodHandle`, classloader isolation is no longer needed, because JS code can only call
+MHs that were resolved by the application before using the expressions module.
+
+### `Expression#evaluate()` declares to throw IOException (GITHUB#12878)
+
+The expressions module has changed the `Expression#evaluate()` method signature:
+It now declares that it may throw `IOException`. This was an oversight because
+compiled expressions call `DoubleValues#doubleValue` behind the scenes, which
+may throw `IOException` on index problems, bubbling up unexpectedly to the caller.
+
+### PathHierarchyTokenizer and ReversePathHierarchyTokenizer do not produce overlapping tokens
+
+`(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
+offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
+
+### Removed Scorable#docID() (GITHUB#12407)
+
+This method has been removed in order to enable more search-time optimizations.
+Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
+collected.
+
+### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
+
+In order to adapt to the removal of `Scorable#docID()`,
+`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
+`Scorable`.
+
+### Some classes converted to records classes (GITHUB#13207)
+
+Some classes with only final fields and no programming logic were converted to `record` classes.
+Those changes are mostly compatible with Lucene 9.x code (constructors, accessor methods), but
+record's fields are only available with accessor methods. Some code may need to be refactored to
+access the members using method calls instead of field accesses. Affected classes:
+
+- `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
+
+### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+
+The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
+enum.
+
+### IOContext.LOAD renamed to IOContext.PRELOAD
+
+`IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

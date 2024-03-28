@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -108,7 +110,8 @@ public class WFSTCompletionLookup extends Lookup {
     IntsRefBuilder scratchInts = new IntsRefBuilder();
     BytesRefBuilder previous = null;
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     while ((scratch = iter.next()) != null) {
       long cost = iter.weight();
 
@@ -123,7 +126,7 @@ public class WFSTCompletionLookup extends Lookup {
       previous.copyBytes(scratch);
       newCount++;
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     count = newCount;
   }
 
@@ -140,7 +143,7 @@ public class WFSTCompletionLookup extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    this.fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
     return true;
   }
 

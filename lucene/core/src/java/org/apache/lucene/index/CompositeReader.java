@@ -44,7 +44,7 @@ import org.apache.lucene.store.Directory;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract class CompositeReader extends IndexReader {
+public abstract non-sealed class CompositeReader extends IndexReader {
 
   private volatile CompositeReaderContext readerContext = null; // lazy init
 

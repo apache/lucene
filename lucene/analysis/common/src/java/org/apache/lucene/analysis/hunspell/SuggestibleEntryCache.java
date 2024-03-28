@@ -16,8 +16,9 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
@@ -28,74 +29,149 @@ import org.apache.lucene.util.IntsRef;
  * compression.
  */
 class SuggestibleEntryCache {
-  private final short[] lengths;
-  private final char[] roots;
-  private final int[] formData;
+  private static final short LOWER_CASE = (short) WordCase.LOWER.ordinal();
+  private static final short NEUTRAL_CASE = (short) WordCase.NEUTRAL.ordinal();
+  private static final short TITLE_CASE = (short) WordCase.TITLE.ordinal();
 
-  private SuggestibleEntryCache(short[] lengths, char[] roots, int[] formData) {
-    this.lengths = lengths;
-    this.roots = roots;
-    this.formData = formData;
+  private final Section[] sections;
+
+  private SuggestibleEntryCache(Map<Integer, SectionBuilder> builders) {
+    int maxLength =
+        builders.isEmpty() ? 0 : builders.keySet().stream().max(Integer::compare).orElseThrow();
+    sections = new Section[maxLength + 1];
+    for (int i = 0; i < sections.length; i++) {
+      SectionBuilder builder = builders.get(i);
+      sections[i] = builder == null ? null : builder.build(i);
+    }
   }
 
   static SuggestibleEntryCache buildCache(WordStorage storage) {
     var consumer =
-        new BiConsumer<CharsRef, Supplier<IntsRef>>() {
-          short[] lengths = new short[10];
-          final StringBuilder roots = new StringBuilder();
-          int[] formData = new int[10];
-          int lenOffset = 0;
-          int formDataOffset = 0;
+        new Consumer<FlyweightEntry>() {
+          final Map<Integer, SectionBuilder> builders = new HashMap<>();
 
           @Override
-          public void accept(CharsRef root, Supplier<IntsRef> formSupplier) {
+          public void accept(FlyweightEntry entry) {
+            CharsRef root = entry.root();
             if (root.length > Short.MAX_VALUE) {
               throw new UnsupportedOperationException(
                   "Too long dictionary entry, please report this to dev@lucene.apache.org");
             }
 
-            IntsRef forms = formSupplier.get();
-
-            lengths = ArrayUtil.grow(lengths, lenOffset + 2);
-            lengths[lenOffset] = (short) root.length;
-            lengths[lenOffset + 1] = (short) forms.length;
-            lenOffset += 2;
-
-            roots.append(root.chars, root.offset, root.length);
-
-            formData = ArrayUtil.grow(formData, formDataOffset + forms.length);
-            System.arraycopy(forms.ints, forms.offset, formData, formDataOffset, forms.length);
-            formDataOffset += forms.length;
+            builders.computeIfAbsent(root.length, __ -> new SectionBuilder()).add(entry);
           }
         };
-
     storage.processSuggestibleWords(1, Integer.MAX_VALUE, consumer);
 
-    return new SuggestibleEntryCache(
-        ArrayUtil.copyOfSubArray(consumer.lengths, 0, consumer.lenOffset),
-        consumer.roots.toString().toCharArray(),
-        ArrayUtil.copyOfSubArray(consumer.formData, 0, consumer.formDataOffset));
+    return new SuggestibleEntryCache(consumer.builders);
   }
 
-  void processSuggestibleWords(
-      int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
-    CharsRef chars = new CharsRef(roots, 0, 0);
-    IntsRef forms = new IntsRef(formData, 0, 0);
-    Supplier<IntsRef> formSupplier = () -> forms;
-    int rootOffset = 0;
-    int formDataOffset = 0;
-    for (int i = 0; i < lengths.length; i += 2) {
-      int rootLength = lengths[i];
-      short formDataLength = lengths[i + 1];
-      if (rootLength >= minLength && rootLength <= maxLength) {
-        chars.offset = rootOffset;
-        chars.length = rootLength;
-        forms.offset = formDataOffset;
-        forms.length = formDataLength;
-        processor.accept(chars, formSupplier);
+  private static class SectionBuilder {
+    final StringBuilder roots = new StringBuilder(), lowRoots = new StringBuilder();
+    short[] meta = new short[10];
+    int[] formData = new int[10];
+    int metaOffset, formDataOffset;
+
+    void add(FlyweightEntry entry) {
+      CharsRef root = entry.root();
+      if (root.length > Short.MAX_VALUE) {
+        throw new UnsupportedOperationException(
+            "Too long dictionary entry, please report this to dev@lucene.apache.org");
       }
-      rootOffset += rootLength;
-      formDataOffset += formDataLength;
+
+      IntsRef forms = entry.forms();
+
+      short rootCase = (short) WordCase.caseOf(root).ordinal();
+
+      meta = ArrayUtil.grow(meta, metaOffset + 2);
+      meta[metaOffset] = (short) forms.length;
+      meta[metaOffset + 1] = rootCase;
+      metaOffset += 2;
+
+      lowRoots.append(entry.lowerCaseRoot());
+      if (hasUpperCase(rootCase)) {
+        roots.append(root.chars, root.offset, root.length);
+      }
+
+      formData = ArrayUtil.grow(formData, formDataOffset + forms.length);
+      System.arraycopy(forms.ints, forms.offset, formData, formDataOffset, forms.length);
+      formDataOffset += forms.length;
+    }
+
+    Section build(int rootLength) {
+      return new Section(
+          rootLength,
+          ArrayUtil.copyOfSubArray(meta, 0, metaOffset),
+          roots.toString().toCharArray(),
+          lowRoots.toString().toCharArray(),
+          ArrayUtil.copyOfSubArray(formData, 0, formDataOffset));
+    }
+  }
+
+  private static boolean hasUpperCase(short rootCase) {
+    return rootCase != LOWER_CASE && rootCase != NEUTRAL_CASE;
+  }
+
+  void processSuggestibleWords(int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
+    maxLength = Math.min(maxLength, sections.length - 1);
+    for (int i = Math.min(minLength, sections.length); i <= maxLength; i++) {
+      Section section = sections[i];
+      if (section != null) {
+        section.processWords(processor);
+      }
+    }
+  }
+
+  /**
+   * @param meta The lengths of the entry sub-arrays in formData plus the case information
+   * @param roots original roots if they're not all-lowercase
+   */
+  private record Section(
+      int rootLength, short[] meta, char[] roots, char[] lowRoots, int[] formData) {
+
+    void processWords(Consumer<FlyweightEntry> processor) {
+      CharsRef chars = new CharsRef(roots, 0, Math.min(rootLength, roots.length));
+      CharsRef lowerChars = new CharsRef(lowRoots, 0, rootLength);
+      IntsRef forms = new IntsRef(formData, 0, 0);
+
+      var entry =
+          new FlyweightEntry() {
+            short wordCase;
+
+            @Override
+            CharsRef root() {
+              return hasUpperCase(wordCase) ? chars : lowerChars;
+            }
+
+            @Override
+            boolean hasTitleCase() {
+              return wordCase == TITLE_CASE;
+            }
+
+            @Override
+            CharSequence lowerCaseRoot() {
+              return lowerChars;
+            }
+
+            @Override
+            IntsRef forms() {
+              return forms;
+            }
+          };
+
+      for (int i = 0; i < meta.length; i += 2) {
+        short formDataLength = meta[i];
+        short wordCase = meta[i + 1];
+        forms.length = formDataLength;
+        entry.wordCase = wordCase;
+        processor.accept(entry);
+
+        lowerChars.offset += rootLength;
+        if (hasUpperCase(wordCase)) {
+          chars.offset += rootLength;
+        }
+        forms.offset += formDataLength;
+      }
     }
   }
 }

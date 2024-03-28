@@ -1094,7 +1094,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
         new WildcardQuery(
             new Term(FIELD_NAME, "ken*"),
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_REWRITE);
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     searcher = newSearcher(reader);
     // can't rewrite ConstantScore if you want to highlight it -
     // it rewrites to ConstantScoreQuery which cannot be highlighted

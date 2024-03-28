@@ -849,11 +849,10 @@ public class TestSort extends LuceneTestCase {
   }
 
   public void testRewrite() throws IOException {
-    try (Directory dir = newDirectory()) {
-      RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-      IndexSearcher searcher = newSearcher(writer.getReader());
-      writer.close();
-
+    try (Directory dir = newDirectory();
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+        DirectoryReader reader = writer.getReader()) {
+      IndexSearcher searcher = newSearcher(reader);
       LongValuesSource longSource = LongValuesSource.constant(1L);
       Sort sort = new Sort(longSource.getSortField(false));
 

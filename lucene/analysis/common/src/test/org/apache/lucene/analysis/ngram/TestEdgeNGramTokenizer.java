@@ -69,7 +69,6 @@ public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
   public void testOversizedNgrams() throws Exception {
     EdgeNGramTokenizer tokenizer = new EdgeNGramTokenizer(6, 6);
     tokenizer.setReader(input);
-    ;
     assertTokenStreamContents(tokenizer, new String[0], new int[0], new int[0], 5 /* abcde */);
   }
 

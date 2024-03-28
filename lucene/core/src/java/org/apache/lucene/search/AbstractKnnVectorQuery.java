@@ -19,13 +19,18 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -51,7 +56,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   private final Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
-    this.field = field;
+    this.field = Objects.requireNonNull(field, "field");
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
@@ -62,9 +67,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
-    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
-    Weight filterWeight = null;
+    final Weight filterWeight;
     if (filter != null) {
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
@@ -73,31 +77,47 @@ abstract class AbstractKnnVectorQuery extends Query {
               .build();
       Query rewritten = indexSearcher.rewrite(booleanQuery);
       filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    } else {
+      filterWeight = null;
     }
 
-    for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, filterWeight);
-      if (ctx.docBase > 0) {
-        for (ScoreDoc scoreDoc : results.scoreDocs) {
-          scoreDoc.doc += ctx.docBase;
-        }
-      }
-      perLeafResults[ctx.ord] = results;
+    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
+    TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
+    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
     }
+    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
+
     // Merge sort the results
-    TopDocs topK = TopDocs.merge(k, perLeafResults);
+    TopDocs topK = mergeLeafResults(perLeafResults);
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+  private TopDocs searchLeaf(
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
+      throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight, knnCollectorManager);
+    if (ctx.docBase > 0) {
+      for (ScoreDoc scoreDoc : results.scoreDocs) {
+        scoreDoc.doc += ctx.docBase;
+      }
+    }
+    return results;
+  }
+
+  private TopDocs getLeafResults(
+      LeafReaderContext ctx, Weight filterWeight, KnnCollectorManager knnCollectorManager)
+      throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, knnCollectorManager);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -106,7 +126,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    int cost = acceptDocs.cardinality();
+    final int cost = acceptDocs.cardinality();
 
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
@@ -115,7 +135,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
+    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, knnCollectorManager);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
@@ -142,8 +163,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new TopKnnCollectorManager(k, searcher);
+  }
+
   protected abstract TopDocs approximateSearch(
-      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
+      throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
@@ -158,7 +187,11 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
-    HitQueue queue = new HitQueue(k, true);
+    if (vectorScorer == null) {
+      return NO_RESULTS;
+    }
+    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
+    HitQueue queue = new HitQueue(queueSize, true);
     ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -185,6 +218,22 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
     return new TopDocs(totalHits, topScoreDocs);
+  }
+
+  /**
+   * Merges all segment-level kNN results to get the index-level kNN results.
+   *
+   * <p>The default implementation delegates to {@link TopDocs#merge(int, TopDocs[])} to find the
+   * overall top {@link #k}, which requires input results to be sorted.
+   *
+   * <p>This method is useful for reading and / or modifying the final results as needed.
+   *
+   * @param perLeafResults array of segment-level kNN results.
+   * @return index-level kNN results (no constraint on their ordering).
+   * @lucene.experimental
+   */
+  protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+    return TopDocs.merge(k, perLeafResults);
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
@@ -397,7 +446,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]";
+      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]," + maxScore;
     }
 
     @Override

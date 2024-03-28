@@ -34,7 +34,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -78,6 +78,11 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new FieldsReader(state);
+  }
+
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return getKnnVectorsFormatForField(fieldName).getMaxDimensions(fieldName);
   }
 
   /**
@@ -266,15 +271,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
+      fields.get(field).search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
-    public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
+      fields.get(field).search(field, target, knnCollector, acceptDocs);
     }
 
     @Override

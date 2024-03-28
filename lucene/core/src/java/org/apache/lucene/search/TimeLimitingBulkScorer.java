@@ -41,6 +41,12 @@ final class TimeLimitingBulkScorer extends BulkScorer {
     private TimeExceededException() {
       super("TimeLimit Exceeded");
     }
+
+    @Override
+    public Throwable fillInStackTrace() {
+      // never re-thrown so we can save the expensive stacktrace
+      return this;
+    }
   }
 
   private final BulkScorer in;

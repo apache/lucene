@@ -28,6 +28,8 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.util.Bits;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be
@@ -68,6 +70,18 @@ public class MismatchedLeafReader extends FilterLeafReader {
     return in.getReaderCacheHelper();
   }
 
+  @Override
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
   static FieldInfos shuffleInfos(FieldInfos infos, Random random) {
     // first, shuffle the order
     List<FieldInfo> shuffled = new ArrayList<>();
@@ -98,7 +112,8 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.getVectorEncoding(), // numeric type of vector samples
               // distance function for calculating similarity of the field's vector
               oldInfo.getVectorSimilarityFunction(),
-              oldInfo.isSoftDeletesField()); // used as soft-deletes field
+              oldInfo.isSoftDeletesField(), // used as soft-deletes field
+              oldInfo.isParentField());
       shuffled.set(i, newInfo);
     }
 

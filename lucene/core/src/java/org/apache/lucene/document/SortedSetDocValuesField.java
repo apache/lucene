@@ -16,9 +16,12 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -98,10 +101,10 @@ public class SortedSetDocValuesField extends Field {
    *
    * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
-   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
-   * {@link BinaryPoint#newSetQuery}.
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on postings, such as
+   * {@link TermInSetQuery}.
    */
-  public static Query newSlowSetQuery(String field, BytesRef... values) {
-    return new SortedSetDocValuesSetQuery(field, values.clone());
+  public static Query newSlowSetQuery(String field, Collection<BytesRef> values) {
+    return new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
   }
 }

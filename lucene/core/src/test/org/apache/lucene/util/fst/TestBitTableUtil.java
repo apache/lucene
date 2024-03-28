@@ -155,11 +155,6 @@ public class TestBitTableUtil extends LuceneTestCase {
     }
 
     @Override
-    public boolean reversed() {
-      return false;
-    }
-
-    @Override
     public byte readByte() {
       return bits[position++];
     }

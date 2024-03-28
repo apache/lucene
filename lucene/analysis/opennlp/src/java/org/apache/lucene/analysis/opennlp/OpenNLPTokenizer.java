@@ -44,7 +44,7 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
   private int sentenceStart = 0;
   private int sentenceIndex = -1;
 
-  private NLPTokenizerOp tokenizerOp = null;
+  private final NLPTokenizerOp tokenizerOp;
 
   public OpenNLPTokenizer(
       AttributeFactory factory, NLPSentenceDetectorOp sentenceOp, NLPTokenizerOp tokenizerOp)
