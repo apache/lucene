@@ -107,6 +107,8 @@ New Features
   maintained alongside their parent documents during sort and merge. IndexWriterConfig now requires a parent field to be
   specified if index sorting is used together with document blocks. (Simon Willnauer)
 
+* GITHUB#13233: Add RomanianNormalizationFilter (Trey Jones, Robert Muir)
+
 Improvements
 ---------------------
 
