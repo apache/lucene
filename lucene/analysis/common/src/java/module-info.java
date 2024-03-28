@@ -247,6 +247,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.pt.PortugueseMinimalStemFilterFactory,
       org.apache.lucene.analysis.pt.PortugueseStemFilterFactory,
       org.apache.lucene.analysis.reverse.ReverseStringFilterFactory,
+      org.apache.lucene.analysis.ro.RomanianNormalizationFilterFactory,
       org.apache.lucene.analysis.ru.RussianLightStemFilterFactory,
       org.apache.lucene.analysis.shingle.ShingleFilterFactory,
       org.apache.lucene.analysis.shingle.FixedShingleFilterFactory,
