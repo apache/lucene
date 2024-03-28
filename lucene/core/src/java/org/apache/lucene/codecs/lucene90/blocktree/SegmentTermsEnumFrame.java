@@ -718,8 +718,9 @@ final class SegmentTermsEnumFrame {
     // was fooz (and, eg, first term in the next block will
     // bee fop).
     // if (DEBUG) System.out.println("      block end");
-    SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
-    if (seekStatus == SeekStatus.NOT_FOUND) {
+    SeekStatus seekStatus;
+    if (end < entCount - 1) {
+      seekStatus = SeekStatus.NOT_FOUND;
       // If binary search ended at the less term, and greater term exists.
       // We need to advance to the greater term.
       if (cmp < 0) {
@@ -729,6 +730,7 @@ final class SegmentTermsEnumFrame {
       suffixesReader.setPosition(startBytePos + suffix);
       fillTerm();
     } else {
+      seekStatus = SeekStatus.END;
       suffixesReader.setPosition(startBytePos + suffix);
       if (exactOnly) {
         fillTerm();
