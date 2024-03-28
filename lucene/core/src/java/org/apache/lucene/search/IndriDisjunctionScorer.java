@@ -24,7 +24,7 @@ import java.util.List;
  * queries. The score and smoothingScore methods use the list of all subscorers and not just the
  * matches so that a smoothingScore can be calculated if there is not an exact match.
  */
-public abstract class IndriDisjunctionScorer extends IndriScorer {
+public abstract class IndriDisjunctionScorer extends Scorer {
 
   private final List<Scorer> subScorersList;
   private final DisiPriorityQueue subScorers;
@@ -32,7 +32,7 @@ public abstract class IndriDisjunctionScorer extends IndriScorer {
 
   protected IndriDisjunctionScorer(
       Weight weight, List<Scorer> subScorersList, ScoreMode scoreMode, float boost) {
-    super(weight, boost);
+    super(weight);
     this.subScorersList = subScorersList;
     this.subScorers = new DisiPriorityQueue(subScorersList.size());
     for (Scorer scorer : subScorersList) {
