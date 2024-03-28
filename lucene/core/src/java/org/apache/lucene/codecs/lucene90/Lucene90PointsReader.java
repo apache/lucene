@@ -62,7 +62,7 @@ public class Lucene90PointsReader extends PointsReader {
     try {
       indexIn =
           readState.directory.openInput(
-              indexFileName, readState.context.toReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+              indexFileName, readState.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,

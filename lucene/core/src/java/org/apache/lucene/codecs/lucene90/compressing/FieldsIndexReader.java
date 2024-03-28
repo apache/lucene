@@ -69,7 +69,7 @@ final class FieldsIndexReader extends FieldsIndex {
     indexInput =
         dir.openInput(
             IndexFileNames.segmentFileName(name, suffix, extension),
-            context.toReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+            context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(

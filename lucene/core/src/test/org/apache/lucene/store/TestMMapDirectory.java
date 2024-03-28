@@ -110,7 +110,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       }
 
       try (final IndexInput in =
-          dir.openInput("test", IOContext.READ.toReadAdvice(ReadAdvice.RANDOM))) {
+          dir.openInput("test", IOContext.READ.withReadAdvice(ReadAdvice.RANDOM))) {
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);

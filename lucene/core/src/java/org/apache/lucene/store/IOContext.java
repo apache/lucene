@@ -91,7 +91,7 @@ public record IOContext(
    * preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right choice,
    * while allowing {@link IndexInput}s open for searching to use arbitrary {@link ReadAdvice}s.
    */
-  public IOContext toReadAdvice(ReadAdvice advice) {
+  public IOContext withReadAdvice(ReadAdvice advice) {
     if (context == Context.READ) {
       return new IOContext(advice);
     } else {
