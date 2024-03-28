@@ -49,10 +49,6 @@ public record IOContext(
 
   public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
 
-  public static final IOContext PRELOAD = new IOContext(ReadAdvice.RANDOM_PRELOAD);
-
-  public static final IOContext RANDOM = new IOContext(ReadAdvice.RANDOM);
-
   @SuppressWarnings("incomplete-switch")
   public IOContext {
     Objects.requireNonNull(context, "context must not be null");
@@ -87,5 +83,19 @@ public record IOContext(
   public IOContext(MergeInfo mergeInfo) {
     // Merges read input segments sequentially.
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
+  }
+
+  /**
+   * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
+   * Context} is a {@link Context#READ} context, otherwise return this existing instance. This helps
+   * preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right choice,
+   * while allowing {@link IndexInput}s open for searching to use arbitrary {@link ReadAdvice}s.
+   */
+  public IOContext withReadAdvice(ReadAdvice advice) {
+    if (context == Context.READ) {
+      return new IOContext(advice);
+    } else {
+      return this;
+    }
   }
 }

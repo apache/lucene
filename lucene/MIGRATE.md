@@ -181,9 +181,10 @@ access the members using method calls instead of field accesses. Affected classe
 The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
 enum.
 
-### IOContext.LOAD renamed to IOContext.PRELOAD
+### IOContext.LOAD removed
 
-`IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
+`IOContext#LOAD` has been removed, it should be replaced with
+`ioContext.toReadAdvice(ReadAdvice.RANDOM_PRELOAD)`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 
