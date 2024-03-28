@@ -40,6 +40,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
@@ -102,7 +103,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               state,
               versionMeta,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+              IOContext.RANDOM);
       success = true;
     } finally {
       if (success == false) {
@@ -112,11 +114,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
+      SegmentReadState state,
+      int versionMeta,
+      String fileExtension,
+      String codecName,
+      IOContext context)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
+    IndexInput in = state.directory.openInput(fileName, context);
     boolean success = false;
     try {
       int versionVectorData =

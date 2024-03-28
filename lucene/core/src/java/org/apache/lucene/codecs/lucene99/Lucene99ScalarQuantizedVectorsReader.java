@@ -36,6 +36,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
@@ -93,7 +94,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               state,
               versionMeta,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+              // graph.
+              IOContext.RANDOM);
       success = true;
     } finally {
       if (success == false) {
@@ -160,11 +164,15 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
+      SegmentReadState state,
+      int versionMeta,
+      String fileExtension,
+      String codecName,
+      IOContext context)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
+    IndexInput in = state.directory.openInput(fileName, context);
     boolean success = false;
     try {
       int versionVectorData =

@@ -44,6 +44,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -283,10 +284,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
-      // copy the temporary file vectors to the actual data file
+      // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
       vectorDataInput =
-          segmentWriteState.directory.openInput(
-              tempVectorData.getName(), segmentWriteState.context);
+          segmentWriteState.directory.openInput(tempVectorData.getName(), IOContext.RANDOM);
+      // copy the temporary file vectors to the actual data file
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
