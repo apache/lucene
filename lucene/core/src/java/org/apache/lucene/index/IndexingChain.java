@@ -1465,8 +1465,8 @@ final class IndexingChain implements Accountable {
     }
 
     private <T extends VectorSimilarity> void assertSame(String label, T expected, T given) {
-      if (Objects.equals(expected, given)) {
-        raiseNotSame(label, expected, given);
+      if (Objects.equals(expected, given) == false) {
+        raiseNotSame(label, expected.getName(), given.getName());
       }
     }
 

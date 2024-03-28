@@ -38,6 +38,9 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
    * Returns the new vector similarity function from the legacy given vector similarity function.
    */
   public static VectorSimilarity fromVectorSimilarityFunction(VectorSimilarityFunction function) {
+    if (function == null) {
+      return null;
+    }
     switch (function) {
       case DOT_PRODUCT:
         return DotProductSimilarity.INSTANCE;
@@ -197,7 +200,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   /** Dot product similarity function. */
   public static class DotProductSimilarity extends VectorSimilarity {
     /** The name of the dot product similarity function. */
-    public static final String NAME = "dot_product";
+    public static final String NAME = "dotProduct";
 
     /** The dot product similarity function instance. */
     public static final VectorSimilarity INSTANCE = new DotProductSimilarity();
@@ -338,7 +341,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   /** Max-inner product similarity function. */
   public static class MaxInnerProductSimilarity extends VectorSimilarity {
     /** The name of the max-inner product similarity function. */
-    public static final String NAME = "max_inner_product";
+    public static final String NAME = "maxInnerProduct";
 
     /** The max-inner product similarity function instance. */
     public static final VectorSimilarity INSTANCE = new MaxInnerProductSimilarity();

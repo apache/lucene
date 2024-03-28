@@ -211,6 +211,16 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
+    if (vectorDimension > 0 && vectorSimilarity.supportsVectorEncoding(vectorEncoding) == false) {
+      throw new IllegalArgumentException(
+          "vector similarity function '"
+              + vectorSimilarity
+              + "' does not support vector encoding '"
+              + vectorEncoding
+              + "' (field: '"
+              + name
+              + "')");
+    }
 
     if (softDeletesField && isParentField) {
       throw new IllegalArgumentException(
@@ -370,7 +380,7 @@ public final class FieldInfo {
       int vd2,
       VectorEncoding ve2,
       VectorSimilarity vsf2) {
-    if (vd1 != vd2 || Objects.equals(vsf1, vsf2) || ve1 != ve2) {
+    if (vd1 != vd2 || Objects.equals(vsf1, vsf2) == false || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -379,13 +389,13 @@ public final class FieldInfo {
               + ", vector encoding="
               + ve1
               + ", vector similarity function="
-              + vsf1
+              + vsf1.getName()
               + " to inconsistent vector dimension="
               + vd2
               + ", vector encoding="
               + ve2
               + ", vector similarity function="
-              + vsf2);
+              + vsf2.getName());
     }
   }
 
