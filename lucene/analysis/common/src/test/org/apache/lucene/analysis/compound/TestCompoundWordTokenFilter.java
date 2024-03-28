@@ -251,7 +251,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            true);
+            true,
+            0);
 
     assertTokenStreamContents(
         tf,
@@ -275,7 +276,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false);
+            false,
+            0);
 
     assertTokenStreamContents(
         tf,
@@ -297,7 +299,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false);
+            false,
+            0);
 
     // since "d" is shorter than the minimum subword size, it should not be added to the token
     // stream
@@ -323,7 +326,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false);
+            false,
+            0);
 
     CharTermAttribute termAtt = tf.getAttribute(CharTermAttribute.class);
     tf.reset();
@@ -351,7 +355,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false);
+            false,
+            0);
     MockRetainAttribute retAtt = stream.addAttribute(MockRetainAttribute.class);
     stream.reset();
     while (stream.incrementToken()) {
