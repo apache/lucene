@@ -39,7 +39,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     final int nInts = 8 * 1024 * 1024;
 
     try (Directory dir = getDirectory(createTempDir("testAceWithThreads"))) {
-      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.WRITE)) {
         final Random random = random();
         for (int i = 0; i < nInts; i++) {
           out.writeInt(random.nextInt());
@@ -48,7 +48,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
       final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
       for (int iter = 0; iter < iters; iter++) {
-        final IndexInput in = dir.openInput("test", IOContext.DEFAULT);
+        final IndexInput in = dir.openInput("test", IOContext.READ);
         final IndexInput clone = in.clone();
         final byte[] accum = new byte[nInts * Integer.BYTES];
         final CountDownLatch shotgun = new CountDownLatch(1);
@@ -80,10 +80,10 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   public void testNullParamsIndexInput() throws Exception {
     try (Directory mmapDir = getDirectory(createTempDir("testNullParamsIndexInput"))) {
-      try (IndexOutput out = mmapDir.createOutput("bytes", newIOContext(random()))) {
+      try (IndexOutput out = mmapDir.createOutput("bytes", newWriteIOContext(random()))) {
         out.alignFilePointer(16);
       }
-      try (IndexInput in = mmapDir.openInput("bytes", IOContext.DEFAULT)) {
+      try (IndexInput in = mmapDir.openInput("bytes", IOContext.READ)) {
         assertThrows(NullPointerException.class, () -> in.readBytes(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
@@ -105,7 +105,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     random().nextBytes(bytes);
 
     try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
-      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.WRITE)) {
         out.writeBytes(bytes, 0, bytes.length);
       }
 

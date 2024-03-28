@@ -247,7 +247,7 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
             info.info
                 .getCodec()
                 .compoundFormat()
-                .getCompoundReader(dir, info.info, IOContext.DEFAULT)) {
+                .getCompoundReader(dir, info.info, IOContext.READ)) {
           for (String file : cfs.listAll()) {
             sb.append(
                 String.format(

@@ -356,7 +356,7 @@ final class IndexingChain implements Accountable {
     indexWriterConfig
         .getCodec()
         .fieldInfosFormat()
-        .write(state.directory, state.segmentInfo, "", state.fieldInfos, IOContext.DEFAULT);
+        .write(state.directory, state.segmentInfo, "", state.fieldInfos, state.context);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
           "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write fieldInfos");

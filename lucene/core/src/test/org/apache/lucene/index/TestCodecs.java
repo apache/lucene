@@ -257,7 +257,7 @@ public class TestCodecs extends LuceneTestCase {
     final FieldsProducer reader =
         codec
             .postingsFormat()
-            .fieldsProducer(new SegmentReadState(dir, si, fieldInfos, newIOContext(random())));
+            .fieldsProducer(new SegmentReadState(dir, si, fieldInfos, newReadIOContext(random())));
 
     final Iterator<String> fieldsEnum = reader.iterator();
     String fieldName = fieldsEnum.next();
@@ -340,7 +340,7 @@ public class TestCodecs extends LuceneTestCase {
     final FieldsProducer terms =
         codec
             .postingsFormat()
-            .fieldsProducer(new SegmentReadState(dir, si, fieldInfos, newIOContext(random())));
+            .fieldsProducer(new SegmentReadState(dir, si, fieldInfos, newReadIOContext(random())));
 
     final Verify[] threads = new Verify[NUM_TEST_THREADS - 1];
     for (int i = 0; i < NUM_TEST_THREADS - 1; i++) {
@@ -849,7 +849,7 @@ public class TestCodecs extends LuceneTestCase {
     final Codec codec = si.getCodec();
     final SegmentWriteState state =
         new SegmentWriteState(
-            InfoStream.getDefault(), dir, si, fieldInfos, null, newIOContext(random()));
+            InfoStream.getDefault(), dir, si, fieldInfos, null, newWriteIOContext(random()));
 
     Arrays.sort(fields);
     FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(state);

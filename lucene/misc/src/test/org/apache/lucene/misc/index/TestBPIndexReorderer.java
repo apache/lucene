@@ -405,7 +405,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
         List<Entry> entryList = new ArrayList<>();
         String fileName;
         try (IndexOutput out =
-            directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.DEFAULT)) {
+            directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.WRITE)) {
           for (int termId = 0; termId < termNum; termId++) {
             int docNum = 0;
             int doc = 0;

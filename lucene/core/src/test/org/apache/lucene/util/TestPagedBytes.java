@@ -47,7 +47,7 @@ public class TestPagedBytes extends LuceneTestCase {
       final int blockBits = TestUtil.nextInt(random, 1, 20);
       final int blockSize = 1 << blockBits;
       final PagedBytes p = new PagedBytes(blockBits);
-      final IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+      final IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
       final int numBytes;
       if (TEST_NIGHTLY) {
         numBytes = TestUtil.nextInt(random(), 2, 10_000_000);
@@ -69,7 +69,7 @@ public class TestPagedBytes extends LuceneTestCase {
       }
 
       out.close();
-      final IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+      final IndexInput input = dir.openInput("foo", IOContext.READ);
       final DataInput in = input.clone();
 
       p.copy(input, input.length());
@@ -189,7 +189,7 @@ public class TestPagedBytes extends LuceneTestCase {
     }
     final long numBytes = (1L << 31) + TestUtil.nextInt(random(), 1, blockSize * 3);
     final PagedBytes p = new PagedBytes(blockBits);
-    final IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+    final IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
     for (long i = 0; i < numBytes; ) {
       assertEquals(i, out.getFilePointer());
       final int len = (int) Math.min(arr.length, numBytes - i);
@@ -198,7 +198,7 @@ public class TestPagedBytes extends LuceneTestCase {
     }
     assertEquals(numBytes, out.getFilePointer());
     out.close();
-    final IndexInput in = dir.openInput("foo", IOContext.DEFAULT);
+    final IndexInput in = dir.openInput("foo", IOContext.READ);
     p.copy(in, numBytes);
     final PagedBytes.Reader reader = p.freeze(random().nextBoolean());
 

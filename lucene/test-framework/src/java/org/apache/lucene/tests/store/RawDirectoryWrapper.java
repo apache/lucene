@@ -19,7 +19,6 @@ package org.apache.lucene.tests.store;
 import java.io.IOException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 
 /**
  * Delegates all operations, even optional ones, to the wrapped directory.
@@ -34,9 +33,8 @@ public final class RawDirectoryWrapper extends BaseDirectoryWrapper {
   }
 
   @Override
-  public void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
-    in.copyFrom(from, src, dest, context);
+  public void copyFrom(Directory from, String src, String dest) throws IOException {
+    in.copyFrom(from, src, dest);
   }
 
   @Override

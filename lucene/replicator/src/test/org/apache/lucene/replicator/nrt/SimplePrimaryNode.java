@@ -447,7 +447,7 @@ class SimplePrimaryNode extends PrimaryNode {
         // Starting offset in the file we should start sending bytes from:
         long fpStart = destIn.readVLong();
 
-        try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        try (IndexInput in = dir.openInput(fileName, IOContext.READONCE)) {
           long len = in.length();
           // message("fetch " + fileName + ": send len=" + len);
           destOut.writeVLong(len);

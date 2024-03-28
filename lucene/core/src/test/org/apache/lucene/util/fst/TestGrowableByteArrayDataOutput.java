@@ -104,10 +104,10 @@ public class TestGrowableByteArrayDataOutput extends LuceneTestCase {
           System.out.println("TEST: save/load final bytes");
         }
         Directory dir = newDirectory();
-        IndexOutput out = dir.createOutput("bytes", IOContext.DEFAULT);
+        IndexOutput out = dir.createOutput("bytes", IOContext.WRITE);
         bytes.writeTo(out);
         out.close();
-        IndexInput in = dir.openInput("bytes", IOContext.DEFAULT);
+        IndexInput in = dir.openInput("bytes", IOContext.READ);
         bytesToVerify = new GrowableByteArrayDataOutput();
         bytesToVerify.copyBytes(in, numBytes);
         in.close();

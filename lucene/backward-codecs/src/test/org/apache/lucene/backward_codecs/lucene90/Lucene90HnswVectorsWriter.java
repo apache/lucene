@@ -31,6 +31,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -125,8 +126,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
       // copy the temporary file vectors to the actual data file
       vectorDataInput =
-          segmentWriteState.directory.openInput(
-              tempVectorData.getName(), segmentWriteState.context);
+          segmentWriteState.directory.openInput(tempVectorData.getName(), IOContext.READ);
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
 

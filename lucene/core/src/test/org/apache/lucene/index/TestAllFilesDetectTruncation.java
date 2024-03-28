@@ -136,7 +136,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
 
       for (String name : dir.listAll()) {
         if (name.equals(victim) == false) {
-          dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
+          dirCopy.copyFrom(dir, name, name);
         } else {
           try (ChecksumIndexInput in = dir.openChecksumInput(name)) {
             try {
@@ -151,8 +151,8 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
             }
           }
 
-          try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+          try (IndexOutput out = dirCopy.createOutput(name, IOContext.WRITE);
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }

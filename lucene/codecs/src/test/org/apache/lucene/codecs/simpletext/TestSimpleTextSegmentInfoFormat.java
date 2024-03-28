@@ -63,7 +63,7 @@ public class TestSimpleTextSegmentInfoFormat extends BaseSegmentInfoFormatTestCa
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     String segFileName =
         IndexFileNames.segmentFileName("_123", "", SimpleTextSegmentInfoFormat.SI_EXTENSION);
     try (ChecksumIndexInput input = dir.openChecksumInput(segFileName)) {

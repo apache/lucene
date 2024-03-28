@@ -42,7 +42,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     // jdk supports it, let's check that the filesystem does too
     Path path = createTempDir("directIOProbe");
     try (Directory dir = open(path);
-        IndexOutput out = dir.createOutput("out", IOContext.DEFAULT)) {
+        IndexOutput out = dir.createOutput("out", IOContext.WRITE)) {
       out.writeString("test");
     } catch (IOException e) {
       assumeNoException("test requires filesystem that supports Direct IO", e);
@@ -86,11 +86,11 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     final int fileSize = Math.toIntExact(Files.getFileStore(path).getBlockSize()) * 2;
 
     try (Directory dir = getDirectory(path)) {
-      IndexOutput o = dir.createOutput("out", newIOContext(random()));
+      IndexOutput o = dir.createOutput("out", newWriteIOContext(random()));
       byte[] b = new byte[fileSize];
       o.writeBytes(b, 0, fileSize);
       o.close();
-      IndexInput i = dir.openInput("out", newIOContext(random()));
+      IndexInput i = dir.openInput("out", newReadIOContext(random()));
       i.seek(fileSize);
 
       // Seeking past EOF should always throw EOFException
@@ -107,28 +107,28 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     // fileSize needs to be 0 to test this condition. Do not randomized.
     final int fileSize = 0;
     try (Directory dir = getDirectory(createTempDir("testReadPastEOF"))) {
-      try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {
+      try (IndexOutput o = dir.createOutput("out", newWriteIOContext(random()))) {
         o.writeBytes(new byte[fileSize], 0, fileSize);
       }
 
-      try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
+      try (IndexInput i = dir.openInput("out", newReadIOContext(random()))) {
         i.seek(fileSize);
         expectThrows(EOFException.class, () -> i.readByte());
         expectThrows(EOFException.class, () -> i.readBytes(new byte[1], 0, 1));
       }
 
-      try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
+      try (IndexInput i = dir.openInput("out", newReadIOContext(random()))) {
         expectThrows(
             EOFException.class, () -> i.seek(fileSize + RandomizedTest.randomIntBetween(1, 2048)));
         expectThrows(EOFException.class, () -> i.readByte());
         expectThrows(EOFException.class, () -> i.readBytes(new byte[1], 0, 1));
       }
 
-      try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
+      try (IndexInput i = dir.openInput("out", newReadIOContext(random()))) {
         expectThrows(EOFException.class, () -> i.readByte());
       }
 
-      try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
+      try (IndexInput i = dir.openInput("out", newReadIOContext(random()))) {
         expectThrows(EOFException.class, () -> i.readBytes(new byte[1], 0, 1));
       }
     }
@@ -138,12 +138,12 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     try (Directory dir = getDirectory(createTempDir("testSeekPastEOF"))) {
       final int len = random().nextInt(2048);
 
-      try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {
+      try (IndexOutput o = dir.createOutput("out", newWriteIOContext(random()))) {
         byte[] b = new byte[len];
         o.writeBytes(b, 0, len);
       }
 
-      try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
+      try (IndexInput i = dir.openInput("out", newReadIOContext(random()))) {
         // Seeking past EOF should always throw EOFException
         expectThrows(
             EOFException.class, () -> i.seek(len + RandomizedTest.randomIntBetween(1, 2048)));
@@ -162,7 +162,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
           random().nextInt(Math.toIntExact(DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT));
       int numDocs = random().nextInt(1000);
 
-      assertFalse(dir.useDirectIO("dummy", IOContext.DEFAULT, OptionalLong.empty()));
+      assertFalse(dir.useDirectIO("dummy", IOContext.WRITE, OptionalLong.empty()));
 
       assertTrue(
           dir.useDirectIO(

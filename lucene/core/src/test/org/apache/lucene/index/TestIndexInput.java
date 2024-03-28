@@ -267,18 +267,18 @@ public class TestIndexInput extends LuceneTestCase {
     for (int i = 0; i < 10; i++) {
       Random random = random();
       final Directory dir = newDirectory();
-      IndexOutput os = dir.createOutput("foo", newIOContext(random));
+      IndexOutput os = dir.createOutput("foo", newWriteIOContext(random));
       os.writeBytes(READ_TEST_BYTES, READ_TEST_BYTES.length);
       os.close();
-      IndexInput is = dir.openInput("foo", newIOContext(random));
+      IndexInput is = dir.openInput("foo", newReadIOContext(random));
       checkReads(is, IOException.class);
       checkSeeksAndSkips(is, random);
       is.close();
 
-      os = dir.createOutput("bar", newIOContext(random));
+      os = dir.createOutput("bar", newWriteIOContext(random));
       os.writeBytes(RANDOM_TEST_BYTES, RANDOM_TEST_BYTES.length);
       os.close();
-      is = dir.openInput("bar", newIOContext(random));
+      is = dir.openInput("bar", newReadIOContext(random));
       checkRandomReads(is);
       checkSeeksAndSkips(is, random);
       is.close();

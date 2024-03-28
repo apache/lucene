@@ -32,7 +32,7 @@ public class TestDirectPacked extends LuceneTestCase {
   public void testSimple() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = DirectWriter.bitsRequired(2);
-    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput output = dir.createOutput("foo", IOContext.WRITE);
     DirectWriter writer = DirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -41,7 +41,7 @@ public class TestDirectPacked extends LuceneTestCase {
     writer.add(2);
     writer.finish();
     output.close();
-    IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+    IndexInput input = dir.openInput("foo", IOContext.READ);
     LongValues reader =
         DirectReader.getInstance(input.randomAccessSlice(0, input.length()), bitsPerValue, 0);
     assertEquals(1, reader.get(0));
@@ -57,7 +57,7 @@ public class TestDirectPacked extends LuceneTestCase {
   public void testNotEnoughValues() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = DirectWriter.bitsRequired(2);
-    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput output = dir.createOutput("foo", IOContext.WRITE);
     DirectWriter writer = DirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -117,7 +117,7 @@ public class TestDirectPacked extends LuceneTestCase {
       long[] original = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : DirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
-      IndexOutput output = directory.createOutput(name, IOContext.DEFAULT);
+      IndexOutput output = directory.createOutput(name, IOContext.WRITE);
       for (long j = 0; j < offset; ++j) {
         output.writeByte((byte) random.nextInt());
       }
@@ -127,7 +127,7 @@ public class TestDirectPacked extends LuceneTestCase {
       }
       writer.finish();
       output.close();
-      IndexInput input = directory.openInput(name, IOContext.DEFAULT);
+      IndexInput input = directory.openInput(name, IOContext.READ);
       LongValues reader;
       if (merge) {
         reader =

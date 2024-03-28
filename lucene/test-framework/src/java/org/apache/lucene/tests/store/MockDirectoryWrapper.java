@@ -50,6 +50,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IOContext.Context;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
@@ -373,7 +374,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
 
           byte[] zeroes = new byte[256];
           long upto = 0;
-          try (IndexOutput out = in.createOutput(name, LuceneTestCase.newIOContext(randomState))) {
+          try (IndexOutput out =
+              in.createOutput(name, LuceneTestCase.newWriteIOContext(randomState))) {
             while (upto < length) {
               final int limit = (int) Math.min(length - upto, zeroes.length);
               out.writeBytes(zeroes, 0, limit);
@@ -395,8 +397,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
             String tempFileName = null;
             try (IndexOutput tempOut =
                     in.createTempOutput(
-                        "name", "mdw_corrupt", LuceneTestCase.newIOContext(randomState));
-                IndexInput ii = in.openInput(name, LuceneTestCase.newIOContext(randomState))) {
+                        "name", "mdw_corrupt", LuceneTestCase.newWriteIOContext(randomState));
+                IndexInput ii = in.openInput(name, LuceneTestCase.newReadIOContext(randomState))) {
               tempFileName = tempOut.getName();
               tempOut.copyBytes(ii, ii.length() / 2);
             } catch (IOException ioe) {
@@ -407,9 +409,10 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
             // Delete original and copy bytes back:
             deleteFile(name);
 
-            try (IndexOutput out = in.createOutput(name, LuceneTestCase.newIOContext(randomState));
+            try (IndexOutput out =
+                    in.createOutput(name, LuceneTestCase.newWriteIOContext(randomState));
                 IndexInput ii =
-                    in.openInput(tempFileName, LuceneTestCase.newIOContext(randomState))) {
+                    in.openInput(tempFileName, LuceneTestCase.newReadIOContext(randomState))) {
               out.copyBytes(ii, ii.length());
             } catch (IOException ioe) {
               throw new RuntimeException(
@@ -431,8 +434,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
             String tempFileName = null;
             try (IndexOutput tempOut =
                     in.createTempOutput(
-                        "name", "mdw_corrupt", LuceneTestCase.newIOContext(randomState));
-                IndexInput ii = in.openInput(name, LuceneTestCase.newIOContext(randomState))) {
+                        "name", "mdw_corrupt", LuceneTestCase.newWriteIOContext(randomState));
+                IndexInput ii = in.openInput(name, LuceneTestCase.newReadIOContext(randomState))) {
               tempFileName = tempOut.getName();
               if (ii.length() > 0) {
                 // Copy first part unchanged:
@@ -472,9 +475,10 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
             // Delete original and copy bytes back:
             deleteFile(name);
 
-            try (IndexOutput out = in.createOutput(name, LuceneTestCase.newIOContext(randomState));
+            try (IndexOutput out =
+                    in.createOutput(name, LuceneTestCase.newWriteIOContext(randomState));
                 IndexInput ii =
-                    in.openInput(tempFileName, LuceneTestCase.newIOContext(randomState))) {
+                    in.openInput(tempFileName, LuceneTestCase.newReadIOContext(randomState))) {
               out.copyBytes(ii, ii.length());
             } catch (IOException ioe) {
               throw new RuntimeException(
@@ -490,7 +494,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // Totally truncate the file to zero bytes
           deleteFile(name);
 
-          try (IndexOutput out = in.createOutput(name, LuceneTestCase.newIOContext(randomState))) {
+          try (IndexOutput out =
+              in.createOutput(name, LuceneTestCase.newWriteIOContext(randomState))) {
             out.getFilePointer(); // just fake access to prevent compiler warning
           } catch (IOException ioe) {
             throw new RuntimeException(
@@ -689,6 +694,10 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
 
   @Override
   public synchronized IndexOutput createOutput(String name, IOContext context) throws IOException {
+    if (context.context() == Context.READ) {
+      throw new IllegalArgumentException("Cannot use the READ context for writing");
+    }
+
     maybeThrowDeterministicException();
     maybeThrowIOExceptionOnOpen(name);
     maybeYield();
@@ -791,6 +800,10 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
 
   @Override
   public synchronized IndexInput openInput(String name, IOContext context) throws IOException {
+    if (context.context() == Context.FLUSH || context.context() == Context.WRITE) {
+      throw new IllegalArgumentException("Cannot use the FLUSH and WRITE contexts for reading");
+    }
+
     maybeThrowDeterministicException();
     maybeThrowIOExceptionOnOpen(name);
     maybeYield();
@@ -1121,9 +1134,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
   }
 
   @Override
-  public final void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
-    super.copyFrom(from, src, dest, context);
+  public final void copyFrom(Directory from, String src, String dest) throws IOException {
+    super.copyFrom(from, src, dest);
   }
 
   @Override

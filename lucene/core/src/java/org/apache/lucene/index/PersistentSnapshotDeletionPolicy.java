@@ -171,7 +171,7 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
   private synchronized void persist() throws IOException {
     String fileName = SNAPSHOTS_PREFIX + nextWriteGen;
     boolean success = false;
-    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.WRITE)) {
       CodecUtil.writeHeader(out, CODEC_NAME, VERSION_CURRENT);
       out.writeVInt(refCounts.size());
       for (Entry<Long, Integer> ent : refCounts.entrySet()) {
@@ -231,7 +231,7 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
         if (genLoaded == -1 || gen > genLoaded) {
           snapshotFiles.add(file);
           Map<Long, Integer> m = new HashMap<>();
-          IndexInput in = dir.openInput(file, IOContext.DEFAULT);
+          IndexInput in = dir.openInput(file, IOContext.READONCE);
           try {
             CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_START);
             int count = in.readVInt();

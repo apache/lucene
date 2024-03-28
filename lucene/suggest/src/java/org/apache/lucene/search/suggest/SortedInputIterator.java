@@ -178,7 +178,7 @@ public class SortedInputIterator implements InputIterator {
   private ByteSequencesReader sort() throws IOException {
 
     OfflineSorter sorter = new OfflineSorter(tempDir, tempFileNamePrefix, tieBreakByCostComparator);
-    tempInput = tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.DEFAULT);
+    tempInput = tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.WRITE);
 
     try (OfflineSorter.ByteSequencesWriter writer =
         new OfflineSorter.ByteSequencesWriter(tempInput)) {

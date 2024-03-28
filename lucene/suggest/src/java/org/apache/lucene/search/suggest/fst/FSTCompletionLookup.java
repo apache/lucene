@@ -164,8 +164,7 @@ public class FSTCompletionLookup extends Lookup {
 
     OfflineSorter sorter = new OfflineSorter(tempDir, tempFileNamePrefix);
     ExternalRefSorter externalSorter = new ExternalRefSorter(sorter);
-    IndexOutput tempInput =
-        tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.DEFAULT);
+    IndexOutput tempInput = tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.WRITE);
     String tempSortedFileName = null;
 
     OfflineSorter.ByteSequencesWriter writer = new OfflineSorter.ByteSequencesWriter(tempInput);

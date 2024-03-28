@@ -118,10 +118,10 @@ public class TestBlockPostingsFormat extends BasePostingsFormatTestCase {
       acc.add(impact.freq, impact.norm);
     }
     try (Directory dir = newDirectory()) {
-      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.WRITE)) {
         Lucene50SkipWriter.writeImpacts(acc, out);
       }
-      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
+      try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.READ)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
         List<Impact> impacts2 =

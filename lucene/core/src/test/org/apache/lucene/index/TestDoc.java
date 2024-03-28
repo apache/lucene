@@ -259,7 +259,7 @@ public class TestDoc extends LuceneTestCase {
   }
 
   private void printSegment(PrintWriter out, SegmentCommitInfo si) throws Exception {
-    SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
+    SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newReadIOContext(random()));
 
     StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < reader.numDocs(); i++) {

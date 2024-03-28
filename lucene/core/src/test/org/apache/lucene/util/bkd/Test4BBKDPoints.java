@@ -66,13 +66,13 @@ public class Test4BBKDPoints extends LuceneTestCase {
         System.out.println(docID + " of " + numDocs + "...");
       }
     }
-    IndexOutput out = dir.createOutput("1d.bkd", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("1d.bkd", IOContext.WRITE);
     IORunnable finalizer = w.finish(out, out, out);
     long indexFP = out.getFilePointer();
     finalizer.run();
     out.close();
 
-    IndexInput in = dir.openInput("1d.bkd", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("1d.bkd", IOContext.READ);
     in.seek(indexFP);
     PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("1d", numDocs, r);
@@ -115,13 +115,13 @@ public class Test4BBKDPoints extends LuceneTestCase {
         System.out.println(docID + " of " + numDocs + "...");
       }
     }
-    IndexOutput out = dir.createOutput("2d.bkd", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("2d.bkd", IOContext.WRITE);
     IORunnable finalizer = w.finish(out, out, out);
     long indexFP = out.getFilePointer();
     finalizer.run();
     out.close();
 
-    IndexInput in = dir.openInput("2d.bkd", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("2d.bkd", IOContext.READ);
     in.seek(indexFP);
     PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("2d", numDocs, r);

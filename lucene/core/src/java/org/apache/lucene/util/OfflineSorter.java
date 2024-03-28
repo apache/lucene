@@ -337,7 +337,7 @@ public class OfflineSorter {
       String result;
       if (segments.isEmpty()) {
         try (IndexOutput out =
-            trackingDir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT)) {
+            trackingDir.createTempOutput(tempFileNamePrefix, "sort", IOContext.WRITE)) {
           // Write empty file footer
           CodecUtil.writeFooter(out);
           result = out.getName();
@@ -628,7 +628,7 @@ public class OfflineSorter {
     @Override
     public Partition call() throws IOException {
       try (IndexOutput tempFile =
-              dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT);
+              dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.WRITE);
           ByteSequencesWriter out = getWriter(tempFile, part.buffer.size())) {
 
         BytesRef spare;
@@ -701,7 +701,7 @@ public class OfflineSorter {
       long startMS = System.currentTimeMillis();
       try (ByteSequencesWriter writer =
           getWriter(
-              dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT), totalCount)) {
+              dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.WRITE), totalCount)) {
 
         newSegmentName = writer.out.getName();
 

@@ -594,7 +594,7 @@ public class TestFSTs extends LuceneTestCase {
         }
 
         Directory dir = FSDirectory.open(dirOut);
-        IndexOutput out = dir.createOutput("fst.bin", IOContext.DEFAULT);
+        IndexOutput out = dir.createOutput("fst.bin", IOContext.WRITE);
         fst.save(out, out);
         out.close();
         System.out.println("Saved FST to fst.bin.");
@@ -1296,11 +1296,11 @@ public class TestFSTs extends LuceneTestCase {
 
     // Make sure it still works after save/load:
     Directory dir = newDirectory();
-    IndexOutput out = dir.createOutput("fst", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("fst", IOContext.WRITE);
     fst.save(out, out);
     out.close();
 
-    IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("fst", IOContext.READ);
     final FST<Long> fst2 = new FST<>(FST.readMetadata(in, outputs), in);
     checkStopNodes(fst2, outputs);
     in.close();

@@ -46,7 +46,7 @@ public final class OfflinePointWriter implements PointWriter {
       String desc,
       long expectedCount)
       throws IOException {
-    this.out = tempDir.createTempOutput(tempFileNamePrefix, "bkd_" + desc, IOContext.DEFAULT);
+    this.out = tempDir.createTempOutput(tempFileNamePrefix, "bkd_" + desc, IOContext.WRITE);
     this.name = out.getName();
     this.tempDir = tempDir;
     this.config = config;

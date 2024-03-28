@@ -199,7 +199,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     TermVectorsReader reader =
         Codec.getDefault()
             .termVectorsFormat()
-            .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
+            .vectorsReader(dir, seg.info, fieldInfos, newReadIOContext(random()));
     for (int j = 0; j < 5; j++) {
       Terms vector = reader.get(j).terms(testFields[0]);
       assertNotNull(vector);
@@ -221,7 +221,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     TermVectorsReader reader =
         Codec.getDefault()
             .termVectorsFormat()
-            .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
+            .vectorsReader(dir, seg.info, fieldInfos, newReadIOContext(random()));
     for (int j = 0; j < 5; j++) {
       Terms vector = reader.get(j).terms(testFields[0]);
       assertNotNull(vector);
@@ -251,7 +251,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     TermVectorsReader reader =
         Codec.getDefault()
             .termVectorsFormat()
-            .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
+            .vectorsReader(dir, seg.info, fieldInfos, newReadIOContext(random()));
     Terms vector = reader.get(0).terms(testFields[0]);
     assertNotNull(vector);
     assertEquals(testTerms.length, vector.size());
@@ -310,7 +310,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     TermVectorsReader reader =
         Codec.getDefault()
             .termVectorsFormat()
-            .vectorsReader(dir, seg.info, fieldInfos, newIOContext(random()));
+            .vectorsReader(dir, seg.info, fieldInfos, newReadIOContext(random()));
     Terms vector = reader.get(0).terms(testFields[0]);
     assertNotNull(vector);
     TermsEnum termsEnum = vector.iterator();

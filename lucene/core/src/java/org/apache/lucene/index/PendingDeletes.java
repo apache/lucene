@@ -192,7 +192,7 @@ class PendingDeletes {
       Codec codec = info.info.getCodec();
       codec
           .liveDocsFormat()
-          .writeLiveDocs(liveDocs, trackingDir, info, pendingDeleteCount, IOContext.DEFAULT);
+          .writeLiveDocs(liveDocs, trackingDir, info, pendingDeleteCount, IOContext.WRITE);
       success = true;
     } finally {
       if (!success) {

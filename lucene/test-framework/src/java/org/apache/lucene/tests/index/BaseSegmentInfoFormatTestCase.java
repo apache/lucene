@@ -74,8 +74,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertEquals(info.files(), info2.files());
     dir.close();
   }
@@ -101,8 +101,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertEquals(info.getHasBlocks(), info2.getHasBlocks());
     dir.close();
   }
@@ -128,14 +128,14 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             null);
     Set<String> originalFiles = Collections.singleton("_123.a");
     info.setFiles(originalFiles);
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
 
     Set<String> modifiedFiles = info.files();
     assertTrue(modifiedFiles.containsAll(originalFiles));
     assertTrue(
         "did you forget to add yourself to files()", modifiedFiles.size() > originalFiles.size());
 
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertEquals(info.files(), info2.files());
 
     // files set should be immutable
@@ -171,8 +171,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertEquals(diagnostics, info2.getDiagnostics());
 
     // diagnostics map should be immutable
@@ -208,8 +208,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             attributes,
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertEquals(attributes, info2.getAttributes());
 
     // attributes map should be immutable
@@ -242,8 +242,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
     assertArrayEquals(id, info2.getId());
     dir.close();
   }
@@ -270,8 +270,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
                 Collections.emptyMap(),
                 null);
         info.setFiles(Collections.<String>emptySet());
-        codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-        SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+        codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+        SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
         assertEquals(info2.getVersion(), v);
         if (supportsMinVersion()) {
           assertEquals(info2.getMinVersion(), minV);
@@ -416,8 +416,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               Collections.emptyMap(),
               sort);
       info.setFiles(Collections.<String>emptySet());
-      codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-      SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+      codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+      SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
       assertEquals(sort, info2.getIndexSort());
       dir.close();
     }
@@ -462,7 +462,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+          codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -508,7 +508,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+          codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -549,13 +549,13 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
 
     fail.setDoFail();
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -596,13 +596,13 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             Collections.emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
 
     fail.setDoFail();
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(dir, "_123", id, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -634,7 +634,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
       for (int j = 0; j < numFiles; j++) {
         String file = IndexFileNames.segmentFileName(name, "", Integer.toString(j));
         files.add(file);
-        dir.createOutput(file, IOContext.DEFAULT).close();
+        dir.createOutput(file, IOContext.WRITE).close();
       }
       Map<String, String> diagnostics = new HashMap<>();
       int numDiags = random().nextInt(10);
@@ -667,8 +667,8 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               attributes,
               null);
       info.setFiles(files);
-      codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-      SegmentInfo info2 = codec.segmentInfoFormat().read(dir, name, id, IOContext.DEFAULT);
+      codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
+      SegmentInfo info2 = codec.segmentInfoFormat().read(dir, name, id, IOContext.WRITE);
       assertEquals(info, info2);
 
       dir.close();

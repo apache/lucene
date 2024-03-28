@@ -56,8 +56,8 @@ public class CorruptingIndexOutput extends FilterIndexOutput {
   protected void corruptFile() throws IOException {
     // Now corrupt the specfied byte:
     String newTempName;
-    try (IndexOutput tmpOut = dir.createTempOutput("tmp", "tmp", IOContext.DEFAULT);
-        IndexInput in = dir.openInput(out.getName(), IOContext.DEFAULT)) {
+    try (IndexOutput tmpOut = dir.createTempOutput("tmp", "tmp", IOContext.WRITE);
+        IndexInput in = dir.openInput(out.getName(), IOContext.READ)) {
       newTempName = tmpOut.getName();
 
       if (byteToCorrupt >= in.length()) {
@@ -78,7 +78,7 @@ public class CorruptingIndexOutput extends FilterIndexOutput {
 
     // Delete original and copy corrupt version back:
     dir.deleteFile(out.getName());
-    dir.copyFrom(dir, newTempName, out.getName(), IOContext.DEFAULT);
+    dir.copyFrom(dir, newTempName, out.getName());
     dir.deleteFile(newTempName);
   }
 

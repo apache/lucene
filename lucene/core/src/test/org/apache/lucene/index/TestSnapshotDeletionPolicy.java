@@ -230,7 +230,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
 
   @SuppressForbidden(reason = "Thread sleep")
   private void readFile(Directory dir, String name) throws Exception {
-    IndexInput input = dir.openInput(name, newIOContext(random()));
+    IndexInput input = dir.openInput(name, newReadIOContext(random()));
     try {
       long size = dir.fileLength(name);
       long bytesLeft = size;

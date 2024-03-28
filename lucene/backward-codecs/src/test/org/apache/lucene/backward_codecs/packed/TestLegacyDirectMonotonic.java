@@ -67,8 +67,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
             LegacyDirectMonotonicWriter.MAX_BLOCK_SHIFT);
 
     final long dataLength;
-    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.DEFAULT);
-        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.WRITE);
+        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.WRITE)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, 0, blockShift);
       w.finish();
@@ -76,7 +76,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
+        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, 0, blockShift);
       LegacyDirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
@@ -94,8 +94,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     final int numValues = actualValues.size();
 
     final long dataLength;
-    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.DEFAULT);
-        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.WRITE);
+        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.WRITE)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -106,7 +106,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
+        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -137,8 +137,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     final long dataLength;
-    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.DEFAULT);
-        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.WRITE);
+        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.WRITE)) {
       LegacyDirectMonotonicWriter w =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -149,7 +149,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
+        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -194,10 +194,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       }
 
       final long dataLength;
-      try (IndexOutput metaOut =
-              EndiannessReverserUtil.createOutput(dir, "meta", IOContext.DEFAULT);
-          IndexOutput dataOut =
-              EndiannessReverserUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
+      try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.WRITE);
+          IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.WRITE)) {
         LegacyDirectMonotonicWriter w =
             LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
         for (long v : actualValues) {
@@ -208,7 +206,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
       }
 
       try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-          IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
+          IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
         LegacyDirectMonotonicReader.Meta meta =
             LegacyDirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
         LongValues values =
@@ -248,8 +246,8 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
 
   private void doTestMonotonicBinarySearchAgainstLongArray(
       Directory dir, long[] array, int blockShift) throws IOException {
-    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.DEFAULT);
-        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = EndiannessReverserUtil.createOutput(dir, "meta", IOContext.WRITE);
+        IndexOutput dataOut = EndiannessReverserUtil.createOutput(dir, "data", IOContext.WRITE)) {
       LegacyDirectMonotonicWriter writer =
           LegacyDirectMonotonicWriter.getInstance(metaOut, dataOut, array.length, blockShift);
       for (long l : array) {

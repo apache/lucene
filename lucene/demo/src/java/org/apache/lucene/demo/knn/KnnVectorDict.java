@@ -149,8 +149,8 @@ public class KnnVectorDict implements Closeable {
 
     void build(Path gloveInput, Directory directory, String dictName) throws IOException {
       try (BufferedReader in = Files.newBufferedReader(gloveInput);
-          IndexOutput binOut = directory.createOutput(dictName + ".bin", IOContext.DEFAULT);
-          IndexOutput fstOut = directory.createOutput(dictName + ".fst", IOContext.DEFAULT)) {
+          IndexOutput binOut = directory.createOutput(dictName + ".bin", IOContext.WRITE);
+          IndexOutput fstOut = directory.createOutput(dictName + ".fst", IOContext.WRITE)) {
         writeFirstLine(in, binOut);
         while (addOneLine(in, binOut)) {
           // continue;

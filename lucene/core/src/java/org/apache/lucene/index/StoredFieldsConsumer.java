@@ -47,7 +47,7 @@ class StoredFieldsConsumer {
     if (writer
         == null) { // TODO can we allocate this in the ctor? we call start document for every doc
       // anyway
-      this.writer = codec.storedFieldsFormat().fieldsWriter(directory, info, IOContext.DEFAULT);
+      this.writer = codec.storedFieldsFormat().fieldsWriter(directory, info, IOContext.WRITE);
       accountable = writer;
     }
   }

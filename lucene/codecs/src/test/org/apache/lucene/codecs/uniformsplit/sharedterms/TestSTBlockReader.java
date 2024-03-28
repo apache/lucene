@@ -78,7 +78,7 @@ public class TestSTBlockReader extends LuceneTestCase {
     blockLines = generateBlockLines(vocab);
     directory = new ByteBuffersDirectory();
     try (IndexOutput blockOutput =
-        directory.createOutput(MOCK_BLOCK_OUTPUT_NAME, IOContext.DEFAULT)) {
+        directory.createOutput(MOCK_BLOCK_OUTPUT_NAME, IOContext.WRITE)) {
       blockOutput.writeVInt(5);
     }
     IndexDictionary.Builder builder = new FSTDictionary.Builder();
@@ -264,7 +264,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         throws IOException {
       super(
           supplier,
-          directory.openInput(MOCK_BLOCK_OUTPUT_NAME, IOContext.DEFAULT),
+          directory.openInput(MOCK_BLOCK_OUTPUT_NAME, IOContext.WRITE),
           getMockPostingReaderBase(),
           mockFieldMetadata(fieldInfo, getLastTermForField(lines, fieldInfo.name)),
           null,

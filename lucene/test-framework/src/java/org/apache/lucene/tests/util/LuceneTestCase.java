@@ -165,6 +165,7 @@ import org.apache.lucene.store.FSLockFactory;
 import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IOContext.Context;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
@@ -1395,7 +1396,7 @@ public abstract class LuceneTestCase extends Assert {
     for (String file : d.listAll()) {
       if (file.startsWith(IndexFileNames.SEGMENTS)
           || IndexFileNames.CODEC_FILE_PATTERN.matcher(file).matches()) {
-        impl.copyFrom(d, file, file, newIOContext(r));
+        impl.copyFrom(d, file, file);
       }
     }
     return wrapDirectory(r, impl, rarely(r), false);
@@ -1769,9 +1770,14 @@ public abstract class LuceneTestCase extends Assert {
     return r;
   }
 
-  /** TODO: javadoc */
-  public static IOContext newIOContext(Random random) {
-    return newIOContext(random, IOContext.DEFAULT);
+  /** Return a new {@link IOContext} for writing. */
+  public static IOContext newWriteIOContext(Random random) {
+    return newIOContext(random, IOContext.WRITE);
+  }
+
+  /** Return a new {@link IOContext} for reading. */
+  public static IOContext newReadIOContext(Random random) {
+    return newIOContext(random, IOContext.READ);
   }
 
   /** TODO: javadoc */
@@ -1793,30 +1799,21 @@ public abstract class LuceneTestCase extends Assert {
               Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
-    } else {
-      // Make a totally random IOContext:
-      final IOContext context;
-      switch (random.nextInt(5)) {
-        case 0:
-          context = IOContext.DEFAULT;
-          break;
-        case 1:
-          context = IOContext.READ;
-          break;
-        case 2:
-          context = IOContext.READONCE;
-          break;
-        case 3:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
-          break;
-        case 4:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
-          break;
-        default:
-          context = IOContext.DEFAULT;
-      }
-      return context;
+    } else if (oldContext.context() == Context.WRITE) {
+      // randomly make it a merging or flushing context
+      return switch (random.nextInt(3)) {
+        case 0 -> new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
+        case 1 -> new IOContext(new FlushInfo(randomNumDocs, size));
+        default -> oldContext;
+      };
+    } else if (oldContext.context() == Context.READ) {
+      return switch (random.nextInt(3)) {
+        case 0 -> IOContext.READ;
+        case 1 -> IOContext.RANDOM;
+        default -> IOContext.READONCE;
+      };
     }
+    throw new AssertionError("Should not get here: " + oldContext);
   }
 
   private static final QueryCache DEFAULT_QUERY_CACHE = IndexSearcher.getDefaultQueryCache();
@@ -2988,7 +2985,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static boolean slowFileExists(Directory dir, String fileName) throws IOException {
     try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
+      dir.openInput(fileName, IOContext.READ).close();
       return true;
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;

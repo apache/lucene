@@ -35,7 +35,7 @@ public class Test2BPagedBytes extends LuceneTestCase {
       ((MockDirectoryWrapper) dir).setThrottling(MockDirectoryWrapper.Throttling.NEVER);
     }
     PagedBytes pb = new PagedBytes(15);
-    IndexOutput dataOutput = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput dataOutput = dir.createOutput("foo", IOContext.WRITE);
     long netBytes = 0;
     long seed = random().nextLong();
     long lastFP = 0;
@@ -51,7 +51,7 @@ public class Test2BPagedBytes extends LuceneTestCase {
       netBytes += numBytes;
     }
     dataOutput.close();
-    IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+    IndexInput input = dir.openInput("foo", IOContext.READ);
     pb.copy(input, input.length());
     input.close();
     PagedBytes.Reader reader = pb.freeze(true);

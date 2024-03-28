@@ -185,6 +185,16 @@ enum.
 
 `IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
 
+### IOContext.DEFAULT removed
+
+`IOContext.LOAD` has been removed. You should use `IOContext.READ` instead for read operations, or
+`IOContext.WRITE` for write operations.
+
+### Directory#copyFrom no longer takes an IOContext
+
+For implementers, the appropriate `IOContext` should be figured out internally. For callers, you
+should simply remove the `IOContext` from calls to `copyFrom`.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

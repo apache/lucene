@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
@@ -100,9 +99,9 @@ public class TestSwappedIndexFiles extends LuceneTestCase {
       // Copy all files from dir1 to dirCopy, except victim which we copy from dir2:
       for (String name : dir1.listAll()) {
         if (name.equals(victim) == false) {
-          dirCopy.copyFrom(dir1, name, name, IOContext.DEFAULT);
+          dirCopy.copyFrom(dir1, name, name);
         } else {
-          dirCopy.copyFrom(dir2, name, name, IOContext.DEFAULT);
+          dirCopy.copyFrom(dir2, name, name);
         }
         dirCopy.sync(Collections.singleton(name));
       }

@@ -40,9 +40,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     final Directory directory = newDirectory();
     final IndexOutput output;
     if (random().nextBoolean()) {
-      output = getEndiannessReverserOutput(directory, "endianness", IOContext.DEFAULT);
+      output = getEndiannessReverserOutput(directory, "endianness", IOContext.WRITE);
     } else {
-      output = directory.createOutput("endianness", IOContext.DEFAULT);
+      output = directory.createOutput("endianness", IOContext.WRITE);
     }
     int values = atLeast(30);
     for (int i = 0; i < values; i++) {
@@ -51,8 +51,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     long len = output.getFilePointer();
     output.close();
     {
-      IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+      IndexInput input = directory.openInput("endianness", IOContext.READ);
+      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
       for (int i = 0; i < values; i++) {
         assertEquals(input.readShort(), Short.reverseBytes(wrapped.readShort()));
       }
@@ -61,8 +61,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     }
     if (supportSlice()) {
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         IndexInput slice = wrapped.slice("slice", 0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(input.readShort(), Short.reverseBytes(slice.readShort()));
@@ -72,9 +72,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
         wrapped.close();
       }
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
         RandomAccessInput randomAccessInput = input.randomAccessSlice(0, len);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         RandomAccessInput randomAccessWrapped = wrapped.randomAccessSlice(0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(
@@ -92,9 +92,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     Directory directory = newDirectory();
     IndexOutput output;
     if (random().nextBoolean()) {
-      output = getEndiannessReverserOutput(directory, "endianness", IOContext.DEFAULT);
+      output = getEndiannessReverserOutput(directory, "endianness", IOContext.WRITE);
     } else {
-      output = directory.createOutput("endianness", IOContext.DEFAULT);
+      output = directory.createOutput("endianness", IOContext.WRITE);
     }
     int values = atLeast(30);
     for (int i = 0; i < values; i++) {
@@ -103,8 +103,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     long len = output.getFilePointer();
     output.close();
     {
-      IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+      IndexInput input = directory.openInput("endianness", IOContext.READ);
+      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
       for (int i = 0; i < values; i++) {
         assertEquals(input.readInt(), Integer.reverseBytes(wrapped.readInt()));
       }
@@ -113,8 +113,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     }
     if (supportSlice()) {
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         IndexInput slice = wrapped.slice("slice", 0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(input.readInt(), Integer.reverseBytes(slice.readInt()));
@@ -124,9 +124,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
         wrapped.close();
       }
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
         RandomAccessInput randomAccessInput = input.randomAccessSlice(0, len);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         RandomAccessInput randomAccessWrapped = wrapped.randomAccessSlice(0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(
@@ -144,9 +144,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     Directory directory = newDirectory();
     IndexOutput output;
     if (random().nextBoolean()) {
-      output = getEndiannessReverserOutput(directory, "endianness", IOContext.DEFAULT);
+      output = getEndiannessReverserOutput(directory, "endianness", IOContext.WRITE);
     } else {
-      output = directory.createOutput("endianness", IOContext.DEFAULT);
+      output = directory.createOutput("endianness", IOContext.WRITE);
     }
     int values = atLeast(30);
     for (int i = 0; i < values; i++) {
@@ -155,8 +155,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     long len = output.getFilePointer();
     output.close();
     {
-      IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+      IndexInput input = directory.openInput("endianness", IOContext.READ);
+      IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
       for (int i = 0; i < values; i++) {
         assertEquals(input.readLong(), Long.reverseBytes(wrapped.readLong()));
       }
@@ -165,8 +165,8 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
     }
     if (supportSlice()) {
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         IndexInput slice = wrapped.slice("slice", 0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(input.readLong(), Long.reverseBytes(slice.readLong()));
@@ -176,9 +176,9 @@ public abstract class EndiannessReverserTestCase extends LuceneTestCase {
         wrapped.close();
       }
       {
-        IndexInput input = directory.openInput("endianness", IOContext.DEFAULT);
+        IndexInput input = directory.openInput("endianness", IOContext.READ);
         RandomAccessInput randomAccessInput = input.randomAccessSlice(0, len);
-        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.DEFAULT);
+        IndexInput wrapped = getEndiannessReverserInput(directory, "endianness", IOContext.READ);
         RandomAccessInput randomAccessWrapped = wrapped.randomAccessSlice(0, len);
         for (int i = 0; i < values; i++) {
           assertEquals(

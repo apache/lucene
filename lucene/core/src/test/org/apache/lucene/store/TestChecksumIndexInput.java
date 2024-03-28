@@ -26,11 +26,11 @@ public class TestChecksumIndexInput extends LuceneTestCase {
     int numTestBytes = TestUtil.nextInt(random(), 100, 1000);
     byte[] testBytes = new byte[numTestBytes];
     final Directory dir = newDirectory();
-    IndexOutput os = dir.createOutput("foo", newIOContext(random()));
+    IndexOutput os = dir.createOutput("foo", newWriteIOContext(random()));
     os.writeBytes(testBytes, numTestBytes);
     os.close();
 
-    IndexInput is = dir.openInput("foo", newIOContext(random()));
+    IndexInput is = dir.openInput("foo", newReadIOContext(random()));
     final InterceptingChecksumIndexInput checksumIndexInput =
         new InterceptingChecksumIndexInput(is, numTestBytes);
 

@@ -50,7 +50,7 @@ public class TestForDeltaUtil extends LuceneTestCase {
 
     {
       // encode
-      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.DEFAULT);
+      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.WRITE);
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
 
       for (int i = 0; i < iterations; ++i) {

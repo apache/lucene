@@ -62,15 +62,15 @@ public class TestDirectMonotonic extends LuceneTestCase {
             random(), DirectMonotonicWriter.MIN_BLOCK_SHIFT, DirectMonotonicWriter.MAX_BLOCK_SHIFT);
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.WRITE);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.WRITE)) {
       DirectMonotonicWriter w = DirectMonotonicWriter.getInstance(metaOut, dataOut, 0, blockShift);
       w.finish();
       dataLength = dataOut.getFilePointer();
     }
 
     try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+        IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
       DirectMonotonicReader.Meta meta = DirectMonotonicReader.loadMeta(metaIn, 0, blockShift);
       DirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
       // no exception
@@ -87,8 +87,8 @@ public class TestDirectMonotonic extends LuceneTestCase {
     final int numValues = actualValues.size();
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.WRITE);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.WRITE)) {
       DirectMonotonicWriter w =
           DirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -99,7 +99,7 @@ public class TestDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+        IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
       DirectMonotonicReader.Meta meta =
           DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -128,8 +128,8 @@ public class TestDirectMonotonic extends LuceneTestCase {
     }
 
     final long dataLength;
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.WRITE);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.WRITE)) {
       DirectMonotonicWriter w =
           DirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
       for (long v : actualValues) {
@@ -140,7 +140,7 @@ public class TestDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+        IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
       DirectMonotonicReader.Meta meta =
           DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
       LongValues values =
@@ -191,8 +191,8 @@ public class TestDirectMonotonic extends LuceneTestCase {
       }
 
       final long dataLength;
-      try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-          IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+      try (IndexOutput metaOut = dir.createOutput("meta", IOContext.WRITE);
+          IndexOutput dataOut = dir.createOutput("data", IOContext.WRITE)) {
         DirectMonotonicWriter w =
             DirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift);
         for (long v : actualValues) {
@@ -203,7 +203,7 @@ public class TestDirectMonotonic extends LuceneTestCase {
       }
 
       try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-          IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+          IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
         DirectMonotonicReader.Meta meta =
             DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
         LongValues values =
@@ -244,8 +244,8 @@ public class TestDirectMonotonic extends LuceneTestCase {
 
   private void doTestMonotonicBinarySearchAgainstLongArray(
       Directory dir, long[] array, int blockShift) throws IOException {
-    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
-        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.WRITE);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.WRITE)) {
       DirectMonotonicWriter writer =
           DirectMonotonicWriter.getInstance(metaOut, dataOut, array.length, blockShift);
       for (long l : array) {

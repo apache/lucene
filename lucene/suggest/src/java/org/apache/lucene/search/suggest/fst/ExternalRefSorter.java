@@ -47,7 +47,7 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
     this.tempOutput =
         sorter
             .getDirectory()
-            .createTempOutput(sorter.getTempFileNamePrefix(), "RefSorterRaw", IOContext.DEFAULT);
+            .createTempOutput(sorter.getTempFileNamePrefix(), "RefSorterRaw", IOContext.WRITE);
     this.writer = new OfflineSorter.ByteSequencesWriter(this.tempOutput);
   }
 

@@ -62,13 +62,13 @@ public class TestBKD extends LuceneTestCase {
       }
 
       long indexFP;
-      try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
         IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
 
-      try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("bkd", IOContext.READ)) {
         in.seek(indexFP);
         PointValues r = getPointValues(in);
 
@@ -133,13 +133,13 @@ public class TestBKD extends LuceneTestCase {
       }
 
       long indexFP;
-      try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
         IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
 
-      try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("bkd", IOContext.READ)) {
         in.seek(indexFP);
         PointValues r = getPointValues(in);
 
@@ -228,13 +228,13 @@ public class TestBKD extends LuceneTestCase {
       }
 
       long indexFP;
-      try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
         IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
 
-      try (IndexInput in = dir.openInput("bkd", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("bkd", IOContext.READ)) {
         in.seek(indexFP);
         PointValues pointValues = getPointValues(in);
 
@@ -688,7 +688,7 @@ public class TestBKD extends LuceneTestCase {
             new BKDConfig(numDataDims, numIndexDims, numBytesPerDim, maxPointsInLeafNode),
             maxMB,
             maxDocs);
-    IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("bkd", IOContext.WRITE);
     IndexInput in = null;
 
     boolean success = false;
@@ -768,7 +768,7 @@ public class TestBKD extends LuceneTestCase {
           docMaps.add(docID -> curDocIDBase + docID);
         }
         out.close();
-        in = dir.openInput("bkd", IOContext.DEFAULT);
+        in = dir.openInput("bkd", IOContext.READ);
         seg++;
         w =
             new BKDWriter(
@@ -783,19 +783,19 @@ public class TestBKD extends LuceneTestCase {
           in.seek(fp);
           readers.add(getPointValues(in));
         }
-        out = dir.createOutput("bkd2", IOContext.DEFAULT);
+        out = dir.createOutput("bkd2", IOContext.WRITE);
         IORunnable finalizer = w.merge(out, out, out, docMaps, readers);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
         in.close();
-        in = dir.openInput("bkd2", IOContext.DEFAULT);
+        in = dir.openInput("bkd2", IOContext.READ);
       } else {
         IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
-        in = dir.openInput("bkd", IOContext.DEFAULT);
+        in = dir.openInput("bkd", IOContext.READ);
       }
 
       in.seek(indexFP);
@@ -1204,13 +1204,13 @@ public class TestBKD extends LuceneTestCase {
         w.add(new byte[Integer.BYTES], i);
       }
 
-      IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
+      IndexOutput out = dir.createOutput("bkd", IOContext.WRITE);
       IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
 
-      IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
+      IndexInput in = dir.openInput("bkd", IOContext.READ);
       in.seek(fp);
       PointValues r = getPointValues(in);
       r.intersect(
@@ -1270,14 +1270,14 @@ public class TestBKD extends LuceneTestCase {
       w.add(pointValue2, i);
     }
     final long indexFP;
-    try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
       IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();
     }
 
-    IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
+    IndexInput pointsIn = dir.openInput("bkd", IOContext.READ);
     pointsIn.seek(indexFP);
     PointValues points = getPointValues(pointsIn);
 
@@ -1332,13 +1332,13 @@ public class TestBKD extends LuceneTestCase {
         w.add(buffer, i);
       }
 
-      IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
+      IndexOutput out = dir.createOutput("bkd", IOContext.WRITE);
       IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
 
-      IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
+      IndexInput in = dir.openInput("bkd", IOContext.READ);
       in.seek(fp);
       PointValues r = getPointValues(in);
       int[] count = new int[1];
@@ -1399,13 +1399,13 @@ public class TestBKD extends LuceneTestCase {
       w.add(buffer, i);
     }
 
-    IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("bkd", IOContext.WRITE);
     IORunnable finalizer = w.finish(out, out, out);
     long fp = out.getFilePointer();
     finalizer.run();
     out.close();
 
-    IndexInput in = dir.openInput("bkd", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("bkd", IOContext.READ);
     in.seek(fp);
     PointValues r = getPointValues(in);
     int[] count = new int[1];
@@ -1467,14 +1467,14 @@ public class TestBKD extends LuceneTestCase {
       }
     }
     final long indexFP;
-    try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
       IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();
     }
 
-    IndexInput pointsIn = dir.openInput("bkd", IOContext.DEFAULT);
+    IndexInput pointsIn = dir.openInput("bkd", IOContext.READ);
     pointsIn.seek(indexFP);
     PointValues points = getPointValues(pointsIn);
 
@@ -1618,7 +1618,7 @@ public class TestBKD extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+          try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
             w.writeField(out, out, out, "test_field_name", reader);
           } finally {
             w.close();
@@ -1733,7 +1733,7 @@ public class TestBKD extends LuceneTestCase {
             }
           }
         };
-    try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("bkd", IOContext.WRITE)) {
       IllegalStateException ex =
           expectThrows(
               IllegalStateException.class,

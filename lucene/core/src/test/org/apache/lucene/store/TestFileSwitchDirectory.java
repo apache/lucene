@@ -119,7 +119,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
   public void testRenameTmpFile() throws IOException {
     try (Directory directory = getDirectory(createTempDir())) {
       final String name;
-      try (IndexOutput out = directory.createTempOutput("foo.cfs", "", IOContext.DEFAULT)) {
+      try (IndexOutput out = directory.createTempOutput("foo.cfs", "", IOContext.WRITE)) {
         out.writeInt(1);
         name = out.getName();
       }
@@ -132,7 +132,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 
     try (Directory directory = newFSSwitchDirectory(Collections.singleton("bar"))) {
       String brokenName;
-      try (IndexOutput out = directory.createTempOutput("foo", "bar", IOContext.DEFAULT)) {
+      try (IndexOutput out = directory.createTempOutput("foo", "bar", IOContext.WRITE)) {
         out.writeInt(1);
         brokenName = out.getName();
       }
@@ -181,10 +181,10 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
             new NIOFSDirectory(indexPath),
             new NIOFSDirectory(indexPath),
             true)) {
-      dir.createOutput("foo.tim", IOContext.DEFAULT).close();
+      dir.createOutput("foo.tim", IOContext.WRITE).close();
       Function<String[], Long> stripExtra =
           array -> Arrays.stream(array).filter(f -> f.startsWith("extra") == false).count();
-      try (IndexInput indexInput = dir.openInput("foo.tim", IOContext.DEFAULT)) {
+      try (IndexInput indexInput = dir.openInput("foo.tim", IOContext.READ)) {
         assert indexInput != null;
         dir.deleteFile("foo.tim");
         assertEquals(1, dir.getPrimaryDir().getPendingDeletions().size());

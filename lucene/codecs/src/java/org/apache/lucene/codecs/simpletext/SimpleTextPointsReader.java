@@ -45,7 +45,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -89,7 +88,7 @@ class SimpleTextPointsReader extends PointsReader {
             readState.segmentInfo.name,
             readState.segmentSuffix,
             SimpleTextPointsFormat.POINT_EXTENSION);
-    dataIn = readState.directory.openInput(fileName, IOContext.DEFAULT);
+    dataIn = readState.directory.openInput(fileName, readState.context);
     try {
       for (Map.Entry<String, Long> ent : fieldToFileOffset.entrySet()) {
         readers.put(ent.getKey(), initReader(ent.getValue()));

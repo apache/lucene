@@ -72,7 +72,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
             si.info
                 .getCodec()
                 .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+                .getCompoundReader(dir, si.info, newReadIOContext(random()))) {
           for (String cfsFile : cfsDir.listAll()) {
             checkHeader(cfsDir, cfsFile, namesToExtensions, si.info.getId());
           }
@@ -84,7 +84,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
   private void checkHeader(
       Directory dir, String file, Map<String, String> namesToExtensions, byte[] id)
       throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, newReadIOContext(random()))) {
       int val = CodecUtil.readBEInt(in);
       assertEquals(
           file + " has no codec header, instead found: " + val, CodecUtil.CODEC_MAGIC, val);

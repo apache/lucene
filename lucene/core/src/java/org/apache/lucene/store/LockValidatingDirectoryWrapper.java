@@ -44,10 +44,9 @@ public final class LockValidatingDirectoryWrapper extends FilterDirectory {
   }
 
   @Override
-  public void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
+  public void copyFrom(Directory from, String src, String dest) throws IOException {
     writeLock.ensureValid();
-    in.copyFrom(from, src, dest, context);
+    in.copyFrom(from, src, dest);
   }
 
   @Override

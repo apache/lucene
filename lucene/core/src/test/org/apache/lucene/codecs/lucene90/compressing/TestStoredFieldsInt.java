@@ -51,7 +51,7 @@ public class TestStoredFieldsInt extends LuceneTestCase {
 
   private void test(Directory dir, int[] ints) throws Exception {
     final long len;
-    try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("tmp", IOContext.WRITE)) {
       StoredFieldsInts.writeInts(ints, 0, ints.length, out);
       len = out.getFilePointer();
       if (random().nextBoolean()) {

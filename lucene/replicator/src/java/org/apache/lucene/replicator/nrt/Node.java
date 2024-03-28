@@ -210,7 +210,7 @@ public abstract class Node implements Closeable {
       long length;
       byte[] header;
       byte[] footer;
-      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput(fileName, IOContext.READONCE)) {
         try {
           length = in.length();
           header = CodecUtil.readIndexHeader(in);
