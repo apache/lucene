@@ -146,8 +146,8 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
   protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {
     // 10004a matched block's entries: [100001, 100003, ..., 100049].
     // if target greater than the last entry of the matched block,
-    // termsEnum.term should be the last entry.
-    assertFalse(termsEnum.seekExact(new BytesRef("10004a")));
-    assertEquals(termsEnum.term(), new BytesRef("100049"));
+    // termsEnum.term should be the next leaf block's first entry.
+    assertEquals(TermsEnum.SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef("10004a")));
+    assertEquals(termsEnum.term(), new BytesRef("100051"));
   }
 }
