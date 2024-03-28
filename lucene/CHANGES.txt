@@ -92,6 +92,9 @@ API Changes
 * GITHUB#13219: The `readOnce`, `load` and `random` flags on `IOContext` have
   been replaced with a new `ReadAdvice` enum. (Adrien Grand)
 
+* GITHUB#13236: IOContext#DEFAULT has been split into IOContext#READ and
+  IOContext#WRITE. (Adrien Grand)
+
 New Features
 ---------------------
 
