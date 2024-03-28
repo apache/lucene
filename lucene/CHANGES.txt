@@ -160,6 +160,9 @@ Changes in Backwards Compatibility Policy
 * GITHUB#12829: IndexWriter#addDocuments or IndexWriter#updateDocuments now require a parent field name to be
   specified in IndexWriterConfig is documents blocks are indexed and index time sorting is configured. (Simon Willnauer)
 
+* GITHUB#13230: Remove the Kp and Lovins snowball algorithms which are not supported
+  or intended for general use. (Robert Muir)
+
 Other
 ---------------------
 
