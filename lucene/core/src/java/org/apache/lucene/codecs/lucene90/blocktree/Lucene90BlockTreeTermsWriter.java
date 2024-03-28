@@ -39,6 +39,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -54,6 +55,7 @@ import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
+import org.apache.lucene.util.fst.OffHeapFSTStore;
 import org.apache.lucene.util.fst.Util;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -228,6 +230,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
    */
   public static final int DEFAULT_MAX_BLOCK_SIZE = 48;
 
+  /** Suggested default value for the {@code blockHeapSizeLimitBytes} parameter. */
+  public static final long DEFAULT_BLOCK_HEAP_LIMIT_BYTES = 512 * 1024; // 512KB
+
   // public static boolean DEBUG = false;
   // public static boolean DEBUG2 = false;
 
@@ -245,6 +250,18 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   final FieldInfos fieldInfos;
 
   private final List<ByteBuffersDataOutput> fields = new ArrayList<>();
+
+  // keep track of the temp IndexInput to close them
+  private final List<IndexInput> tempIndexInputs = new ArrayList<>();
+
+  // keep track of the temp IndexInput name to delete them
+  private final List<String> tempInputNames = new ArrayList<>();
+
+  // if the {@link PendingBlock} size is more than this, we will use off-heap FST
+  // setting to 0 means we will always use off-heap FST
+  private final long blockHeapSizeLimitBytes;
+
+  private final SegmentWriteState state;
 
   /**
    * Create a new writer. The number of items (terms or sub-blocks) per block will aim to be between
@@ -273,10 +290,32 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       int maxItemsInBlock,
       int version)
       throws IOException {
+    this(
+        state,
+        postingsWriter,
+        minItemsInBlock,
+        maxItemsInBlock,
+        version,
+        DEFAULT_BLOCK_HEAP_LIMIT_BYTES);
+  }
+
+  /**
+   * Expert constructor that allows configuring the version, used for bw tests. It also allows
+   * configuring of block heap max size
+   */
+  public Lucene90BlockTreeTermsWriter(
+      SegmentWriteState state,
+      PostingsWriterBase postingsWriter,
+      int minItemsInBlock,
+      int maxItemsInBlock,
+      int version,
+      long blockHeapSizeLimitBytes)
+      throws IOException {
     validateSettings(minItemsInBlock, maxItemsInBlock);
 
     this.minItemsInBlock = minItemsInBlock;
     this.maxItemsInBlock = maxItemsInBlock;
+    this.blockHeapSizeLimitBytes = blockHeapSizeLimitBytes;
     if (version < Lucene90BlockTreeTermsReader.VERSION_START
         || version > Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
       throw new IllegalArgumentException(
@@ -288,6 +327,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
               + version);
     }
     this.version = version;
+    this.state = state;
 
     this.maxDoc = state.segmentInfo.maxDoc();
     this.fieldInfos = state.fieldInfos;
@@ -439,6 +479,26 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   }
 
   /**
+   * Create temp IndexOutput to write FST off-heap. The file name will be tracked to clean up later.
+   */
+  private IndexOutput createTempOutput(String prefix) throws IOException {
+    IndexOutput tempOut = state.directory.createTempOutput(prefix, "temp", state.context);
+    tempInputNames.add(tempOut.getName());
+    return tempOut;
+  }
+
+  /**
+   * Close the temp IndexOutput and open IndexInput to read from. The IndexInput will be tracked to
+   * clean up later.
+   */
+  private IndexInput openTempInput(IndexOutput fstDataOutput) throws IOException {
+    IOUtils.close(fstDataOutput); // we need to close the DataOutput before reading from DataInput
+    IndexInput tempIn = state.directory.openInput(fstDataOutput.getName(), state.context);
+    tempIndexInputs.add(tempIn);
+    return tempIn;
+  }
+
+  /**
    * Encodes long value to variable length byte[], in MSB order. Use {@link
    * FieldReader#readMSBVLong} to decode.
    *
@@ -460,7 +520,10 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   private final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
-    public FST<BytesRef> index;
+    // the index's FST
+    public FST<BytesRef> indexFST;
+    // the index's FST metadata
+    public FST.FSTMetadata<BytesRef> indexMetadata;
     public List<FST<BytesRef>> subIndices;
     public final boolean hasTerms;
     public final boolean isFloor;
@@ -490,7 +553,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     public void compileIndex(
         List<PendingBlock> blocks,
         ByteBuffersDataOutput scratchBytes,
-        IntsRefBuilder scratchIntsRef)
+        IntsRefBuilder scratchIntsRef,
+        DataOutput fstDataOutput)
         throws IOException {
 
       assert (isFloor && blocks.size() > 1) || (isFloor == false && blocks.size() == 1)
@@ -520,17 +584,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      long estimateSize = prefix.length;
-      for (PendingBlock block : blocks) {
-        if (block.subIndices != null) {
-          for (FST<BytesRef> subIndex : block.subIndices) {
-            estimateSize += subIndex.numBytes();
-          }
-        }
-      }
-      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
-      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
-
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final int fstVersion;
       if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
@@ -543,7 +596,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
               // Disable suffixes sharing for block tree index because suffixes are mostly dropped
               // from the FST index and left in the term blocks.
               .suffixRAMLimitMB(0d)
-              .dataOutput(getOnHeapReaderWriter(pageBits))
+              .dataOutput(fstDataOutput)
               .setVersion(fstVersion)
               .build();
       // if (DEBUG) {
@@ -565,7 +618,19 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+      indexMetadata = fstCompiler.compile();
+
+      if (fstDataOutput == indexOut) {
+        // this is the root block, we don't need to read from it and Lucene doesn't allow to read
+        // from still-writing DataOutput either, hence we only store the FST metadata to save it
+        // later
+      } else if (fstDataOutput instanceof IndexOutput) {
+        // if we write to IndexOutput then we should open and read from IndexInput
+        IndexInput indexInput = openTempInput((IndexOutput) fstDataOutput);
+        indexFST = new FST<>(indexMetadata, indexInput, new OffHeapFSTStore());
+      } else {
+        indexFST = FST.fromFSTReader(indexMetadata, fstCompiler.getFSTReader());
+      }
 
       assert subIndices == null;
 
@@ -597,8 +662,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
   private final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
-
-  static final BytesRef EMPTY_BYTES_REF = new BytesRef();
 
   private static class StatsWriter {
 
@@ -659,8 +722,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     private PendingTerm firstPendingTerm;
     private PendingTerm lastPendingTerm;
 
-    /** Writes the top count entries in pending, using prevTerm to compute the prefix. */
-    void writeBlocks(int prefixLength, int count) throws IOException {
+    /**
+     * Writes the top count entries in pending, using prevTerm to compute the prefix.
+     *
+     * <p>For root block, we will write the FST directly to the IndexOutput, for others they will
+     * use on-heap FST
+     */
+    void writeBlocks(int prefixLength, int count, boolean isRootBlock) throws IOException {
 
       assert count > 0;
 
@@ -773,7 +841,12 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);
+      // Create a proper DataOutput for the FST. For root block, we will write to the IndexOut
+      // directly. For sub blocks, if the size is smaller than blockHeapSizeLimitBytes then we
+      // will use the on-heap ReadWriteDataOutput, otherwise create a temp output
+      DataOutput fstDataOutput = getFSTDataOutput(newBlocks, firstBlock.prefix.length, isRootBlock);
+
+      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef, fstDataOutput);
 
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
@@ -782,6 +855,31 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       pending.add(firstBlock);
 
       newBlocks.clear();
+    }
+
+    private DataOutput getFSTDataOutput(
+        List<PendingBlock> blocks, int prefixLength, boolean isRootBlock) throws IOException {
+      if (isRootBlock) {
+        return indexOut;
+      }
+      long estimateSize = prefixLength;
+      for (PendingBlock block : blocks) {
+        if (block.subIndices != null) {
+          for (FST<BytesRef> subIndex : block.subIndices) {
+            estimateSize += subIndex.numBytes();
+          }
+        }
+      }
+
+      // the size is larger than heap size limit, use off-heap writing instead
+      if (estimateSize > blockHeapSizeLimitBytes) {
+        return createTempOutput(fieldInfo.getName());
+      }
+
+      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
+      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
+
+      return getOnHeapReaderWriter(pageBits);
     }
 
     private boolean allEqual(byte[] b, int startOffset, int endOffset, byte value) {
@@ -965,7 +1063,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             assert block.fp < startFP;
 
             suffixLengthsWriter.writeVLong(startFP - block.fp);
-            subIndices.add(block.index);
+            subIndices.add(block.indexFST);
           }
         }
         statsWriter.finish();
@@ -1128,9 +1226,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // we are closing:
         int prefixTopSize = pending.size() - prefixStarts[i];
         if (prefixTopSize >= minItemsInBlock) {
-          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize +
-          // " minItemsInBlock=" + minItemsInBlock);
-          writeBlocks(i + 1, prefixTopSize);
+          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize + "
+          // minItemsInBlock=" + minItemsInBlock);
+          writeBlocks(i + 1, prefixTopSize, false);
           prefixStarts[i] -= prefixTopSize - 1;
         }
       }
@@ -1160,14 +1258,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
-        writeBlocks(0, pending.size());
+        writeBlocks(0, pending.size(), true);
 
         // We better have one final "root" block:
         assert pending.size() == 1 && !pending.get(0).isTerm
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-        final BytesRef rootCode = root.index.getEmptyOutput();
+        final BytesRef rootCode = root.indexMetadata.getEmptyOutput();
         assert rootCode != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
@@ -1185,9 +1283,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         metaOut.writeVInt(docsSeen.cardinality());
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
-        metaOut.writeVLong(indexOut.getFilePointer());
+        // Write the address to the beginning of the FST. Note that the FST is already written to
+        // indexOut by this point
+        metaOut.writeVLong(indexOut.getFilePointer() - root.indexMetadata.getNumBytes());
         // Write FST to index
-        root.index.save(metaOut, indexOut);
+        root.indexMetadata.save(metaOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 
         /*
@@ -1242,9 +1342,12 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     } finally {
       if (success) {
         IOUtils.close(metaOut, termsOut, indexOut, postingsWriter);
+        IOUtils.close(tempIndexInputs);
       } else {
         IOUtils.closeWhileHandlingException(metaOut, termsOut, indexOut, postingsWriter);
+        IOUtils.closeWhileHandlingException(tempIndexInputs);
       }
+      IOUtils.deleteFilesIgnoringExceptions(state.directory, tempInputNames);
     }
   }
 

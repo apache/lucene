@@ -48,19 +48,23 @@ public final class Lucene90RWPostingsFormat extends PostingsFormat {
 
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
+  private long blockHeapSizeLimitBytes;
 
   /** Creates {@code Lucene90RWPostingsFormat} with default settings. */
   public Lucene90RWPostingsFormat() {
     this(
         Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
-        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE,
+        Lucene90BlockTreeTermsWriter.DEFAULT_BLOCK_HEAP_LIMIT_BYTES);
   }
 
-  public Lucene90RWPostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+  public Lucene90RWPostingsFormat(
+      int minTermBlockSize, int maxTermBlockSize, long blockHeapSizeLimitBytes) {
     super("Lucene90");
     Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
     this.minTermBlockSize = minTermBlockSize;
     this.maxTermBlockSize = maxTermBlockSize;
+    this.blockHeapSizeLimitBytes = blockHeapSizeLimitBytes;
   }
 
   @Override
@@ -79,7 +83,8 @@ public final class Lucene90RWPostingsFormat extends PostingsFormat {
               postingsWriter,
               minTermBlockSize,
               maxTermBlockSize,
-              Lucene90BlockTreeTermsReader.VERSION_START);
+              Lucene90BlockTreeTermsReader.VERSION_START,
+              blockHeapSizeLimitBytes);
       success = true;
       return ret;
     } finally {
