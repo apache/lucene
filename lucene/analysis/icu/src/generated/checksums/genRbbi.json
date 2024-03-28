@@ -1,7 +1,7 @@
 {
     "lucene/analysis/icu/src/data/uax29/Default.rbbi": "71bfaee5e81ac272aff828d1e44d0612be1b8363",
     "lucene/analysis/icu/src/data/uax29/MyanmarSyllable.rbbi": "4c6817658b454add5ec1f9ac8c0015ce8eb3b5f2",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "50fa00b5e1f40da5dfe3f0b9e49ab5612dfd4a0e",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "1034111656380fbeb08e80ad98983f575a6f07fd",
-    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "7b356677143d55a5d26a18ed2b09a96e2850f6ac",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "0aaa71b6fdc3d5547f279071edaca8cc6e645065",
+    "property:icuConfig": "com.ibm.icu:icu4j:74.2"
 }
