@@ -180,6 +180,10 @@ public class TestDirectMonotonic extends LuceneTestCase {
         IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
       DirectMonotonicReader.Meta meta =
           DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
+      assertEquals(metaIn.length(), metaIn.getFilePointer());
+      // read meta again and assert singleton Meta#SINGLE_ZERO_BLOCK instance is read every time
+      metaIn.seek(0L);
+      assertSame(meta, DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift));
       LongValues values =
           DirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
       for (int i = 0; i < numValues; ++i) {
