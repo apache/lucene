@@ -263,7 +263,7 @@ Bug Fixes
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
 
-* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+* GITHUB#13204: Fix equals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
 
 * GITHUB#13206: Subtract deleted file size from the cache size of NRTCachingDirectory. (Jean-François Boeuf)
 
