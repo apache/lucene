@@ -140,6 +140,10 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (collector == null) {
       return NO_RESULTS;
     }
+    if (context.reader().getFloatVectorValues(field) == null) {
+      FloatVectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
+    }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }

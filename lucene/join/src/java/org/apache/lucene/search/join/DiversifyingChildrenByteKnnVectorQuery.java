@@ -140,6 +140,10 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (collector == null) {
       return NO_RESULTS;
     }
+    if (context.reader().getByteVectorValues(field) == null) {
+      ByteVectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
+    }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }
