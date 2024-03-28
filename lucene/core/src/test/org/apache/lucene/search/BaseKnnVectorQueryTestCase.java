@@ -25,6 +25,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -42,6 +43,8 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -947,6 +950,60 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     @Override
     public int hashCode() {
       return 31 * classHash() + docs.hashCode();
+    }
+  }
+
+  public void testSameFieldDifferentFormats() throws IOException {
+    try (Directory directory = newDirectory()) {
+      MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+      IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
+      KnnVectorsFormat format1 = randomVectorFormat();
+      KnnVectorsFormat format2 = randomVectorFormat();
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return format1;
+            }
+          });
+
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(getKnnVectorField("field1", new float[] {1, 1, 1}));
+        iwriter.addDocument(doc);
+
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {1, 2, 3}));
+        iwriter.addDocument(doc);
+        iwriter.commit();
+      }
+
+      iwc = newIndexWriterConfig(mockAnalyzer);
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return format2;
+            }
+          });
+
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {1, 1, 2}));
+        iwriter.addDocument(doc);
+
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {4, 5, 6}));
+        iwriter.addDocument(doc);
+        iwriter.commit();
+      }
+
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        AbstractKnnVectorQuery vectorQuery = getKnnVectorQuery("field1", new float[] {1, 2, 3}, 10);
+        TopDocs hits1 = new IndexSearcher(ireader).search(vectorQuery, 4);
+        assertEquals(4, hits1.scoreDocs.length);
+      }
     }
   }
 }
