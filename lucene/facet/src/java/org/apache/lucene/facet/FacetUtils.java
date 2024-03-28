@@ -18,7 +18,25 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.Objects;
+
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -80,5 +98,103 @@ public final class FacetUtils {
         return it.cost();
       }
     };
+  }
+
+  public static <T> Pair<TopDocs, T> search(IndexSearcher searcher, Query query, int numHits, CollectorManager<Collector, T> collectorManager) throws IOException {
+    return (Pair<TopDocs, T>) doSearch(searcher, null, query, numHits, null, false, collectorManager);
+  }
+
+  public static <T> Pair<TopFieldDocs, T> search(IndexSearcher searcher, Query query, int numHits, Sort sort, CollectorManager<Collector, T> collectorManager)
+          throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return (Pair<TopFieldDocs, T>) doSearch(searcher, null, query, numHits, sort, false, collectorManager);
+  }
+
+  public static <T> Pair<TopFieldDocs, T> search(IndexSearcher searcher, Query query, int numHits, Sort sort, boolean doDocScores, CollectorManager<Collector, T> collectorManager)
+          throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return (Pair<TopFieldDocs, T>) doSearch(searcher, null, query, numHits, sort, false, collectorManager);
+  }
+
+  private static <T> Pair<? extends TopDocs, T> doSearch(
+          IndexSearcher searcher,
+          ScoreDoc after,
+          Query q,
+          int n,
+          Sort sort,
+          boolean doDocScores,
+          CollectorManager<Collector, T> collectorManager)
+          throws IOException {
+
+    int limit = searcher.getIndexReader().maxDoc();
+    if (limit == 0) {
+      limit = 1;
+    }
+
+    n = Math.min(n, limit);
+
+    if (after != null && after.doc >= limit) {
+      throw new IllegalArgumentException(
+              "after.doc exceeds the number of documents in the reader: after.doc="
+                      + after.doc
+                      + " limit="
+                      + limit);
+
+    }
+
+    TopDocs topDocs = null;
+    Object[] results = null;
+    if (n == 0) {
+      MultiCollectorManager mcm = new MultiCollectorManager(new TotalHitCountCollectorManager(), collectorManager);
+      results = searcher.search(q, mcm);
+      // TotalHitCountCollectorManager's reduce method returns an Integer object
+      assert results[0].getClass() == Integer.class;
+      topDocs =
+              new TopDocs(
+                      new TotalHits((Integer) results[0], TotalHits.Relation.EQUAL_TO),
+                      new ScoreDoc[0]);
+
+    } else {
+      CollectorManager hitsCollectorManager;
+      if (sort != null) {
+        if (after != null && !(after instanceof FieldDoc)) {
+          // TODO: if we fix type safety of TopFieldDocs we can
+          // remove this
+          throw new IllegalArgumentException("after must be a FieldDoc; got " + after);
+        }
+
+        hitsCollectorManager = new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE);
+      } else {
+        hitsCollectorManager = new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE);
+      }
+
+      MultiCollectorManager mcm = new MultiCollectorManager(hitsCollectorManager, collectorManager);
+
+      results = searcher.search(q, mcm);
+      assert results[0].getClass() == TopDocs.class;
+      topDocs = ((TopDocs) results[0]);
+      if (doDocScores) {
+        TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, q);
+      }
+
+    }
+    return new Pair(topDocs, results[1]);
+  }
+
+
+  /** Holds a single pair of two outputs. */
+  public static class Pair<TopDocs, T> {
+    public final TopDocs output1;
+    public final T output2;
+
+    // use newPair
+    private Pair(TopDocs output1, T output2) {
+      this.output1 = output1;
+      this.output2 = output2;
+    }
   }
 }
