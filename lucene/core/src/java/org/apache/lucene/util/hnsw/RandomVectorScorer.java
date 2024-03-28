@@ -18,19 +18,12 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
-public interface RandomVectorScorer {
-  /**
-   * Returns the score between the query and the provided node.
-   *
-   * @param node a random node in the graph
-   * @return the computed score
-   */
-  float score(int node) throws IOException;
-
+public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
   /**
    * @return the maximum possible ordinal for this scorer
    */
@@ -70,8 +63,9 @@ public interface RandomVectorScorer {
    */
   static RandomVectorScorer createFloats(
       final RandomAccessVectorValues<float[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final float[] query) {
+      final VectorSimilarity similarityFunction,
+      final float[] query)
+      throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -79,12 +73,28 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
+    VectorSimilarity.VectorScorer scorer =
+        similarityFunction.getVectorScorer(vectors::vectorValue, query);
     return new AbstractRandomVectorScorer<>(vectors) {
       @Override
       public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
+        return scorer.score(node);
       }
     };
+  }
+
+  /**
+   * Creates a default scorer for float vectors. See {@link #createFloats(RandomAccessVectorValues,
+   * VectorSimilarity, float[])}.
+   */
+  @Deprecated
+  static RandomVectorScorer createFloats(
+      final RandomAccessVectorValues<float[]> vectors,
+      final VectorSimilarityFunction similarityFunction,
+      final float[] query)
+      throws IOException {
+    return createFloats(
+        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction), query);
   }
 
   /**
@@ -101,8 +111,9 @@ public interface RandomVectorScorer {
    */
   static RandomVectorScorer createBytes(
       final RandomAccessVectorValues<byte[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final byte[] query) {
+      final VectorSimilarity similarityFunction,
+      final byte[] query)
+      throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -110,12 +121,28 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
+    VectorSimilarity.VectorScorer scorer =
+        similarityFunction.getVectorScorer(vectors::vectorValue, query);
     return new AbstractRandomVectorScorer<>(vectors) {
       @Override
       public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
+        return scorer.score(node);
       }
     };
+  }
+
+  /**
+   * Creates a default scorer for byte vectors. See {@link #createBytes(RandomAccessVectorValues,
+   * VectorSimilarity, byte[])}.
+   */
+  @Deprecated
+  static RandomVectorScorer createBytes(
+      final RandomAccessVectorValues<byte[]> vectors,
+      final VectorSimilarityFunction similarityFunction,
+      final byte[] query)
+      throws IOException {
+    return createBytes(
+        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction), query);
   }
 
   /**

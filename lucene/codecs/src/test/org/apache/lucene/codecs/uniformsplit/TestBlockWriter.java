@@ -19,12 +19,12 @@ package org.apache.lucene.codecs.uniformsplit;
 
 import java.io.IOException;
 import java.util.Collections;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -118,7 +118,7 @@ public class TestBlockWriter extends LuceneTestCase {
         0,
         0,
         VectorEncoding.FLOAT32,
-        VectorSimilarityFunction.EUCLIDEAN,
+        VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
         true,
         false);
   }

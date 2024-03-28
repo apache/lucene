@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -166,7 +167,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_SIMILARITY);
         String scoreFunction = readString(VECTOR_SIMILARITY.length, scratch);
-        VectorSimilarityFunction vectorDistFunc = distanceFunction(scoreFunction);
+        VectorSimilarity vectorDistFunc = distanceFunction(scoreFunction);
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SOFT_DELETES);
@@ -218,8 +219,9 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
     return VectorEncoding.valueOf(vectorEncoding);
   }
 
-  public VectorSimilarityFunction distanceFunction(String scoreFunction) {
-    return VectorSimilarityFunction.valueOf(scoreFunction);
+  public VectorSimilarity distanceFunction(String scoreFunction) {
+    return VectorSimilarity.fromVectorSimilarityFunction(
+        VectorSimilarityFunction.valueOf(scoreFunction));
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {

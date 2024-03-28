@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -198,7 +199,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
             true,
             false);
     List<Integer> docsDeleted = Arrays.asList(1, 3, 7, 8, DocIdSetIterator.NO_MORE_DOCS);
@@ -237,7 +238,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
             true,
             false);
     for (DocValuesFieldUpdates update : updates) {
@@ -302,7 +303,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
             true,
             false);
     List<Integer> docsDeleted = Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS);
@@ -372,7 +373,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
             true,
             false);
     List<DocValuesFieldUpdates> updates =
@@ -410,7 +411,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
             true,
             false);
     updates = Arrays.asList(singleUpdate(Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS), 3, true));

@@ -23,7 +23,7 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_MAX_CONN;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
@@ -40,8 +40,8 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public class Word2VecSynonymProvider {
 
-  private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
-      VectorSimilarityFunction.DOT_PRODUCT;
+  private static final VectorSimilarity SIMILARITY_FUNCTION =
+      VectorSimilarity.DotProductSimilarity.INSTANCE;
   private final Word2VecModel word2VecModel;
   private final OnHeapHnswGraph hnswGraph;
 

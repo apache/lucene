@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -196,7 +197,15 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           }
           final int vectorDimension = input.readVInt();
           final VectorEncoding vectorEncoding = getVectorEncoding(input, input.readByte());
-          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final VectorSimilarity vectorDistFunc;
+          if (format < FORMAT_PLUGGABLE_SIMILARITY) {
+            final byte distanceFunction = input.readByte();
+            final VectorSimilarityFunction legacyFunction = distOrdToFunc(distanceFunction);
+            vectorDistFunc = VectorSimilarity.fromVectorSimilarityFunction(legacyFunction);
+          } else {
+            final String similarityName = input.readString();
+            vectorDistFunc = VectorSimilarity.forName(similarityName);
+          }
 
           try {
             infos[i] =
@@ -284,14 +293,6 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
       throw new CorruptIndexException("invalid vector encoding: " + b, input);
     }
     return VectorEncoding.values()[b];
-  }
-
-  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    try {
-      return distOrdToFunc(b);
-    } catch (IllegalArgumentException e) {
-      throw new CorruptIndexException("invalid distance function: " + b, input, e);
-    }
   }
 
   // List of vector similarity functions. This list is defined here, in order
@@ -409,7 +410,11 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
+        if (fi.getVectorSimilarity() == null) {
+          output.writeByte(distFuncToOrd(VectorSimilarityFunction.EUCLIDEAN));
+        } else {
+          output.writeString(fi.getVectorSimilarity().getName());
+        }
       }
       CodecUtil.writeFooter(output);
     }
@@ -423,7 +428,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final int FORMAT_START = 0;
   // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
-  static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
+  static final int FORMAT_PLUGGABLE_SIMILARITY = 2;
+  static final int FORMAT_CURRENT = FORMAT_PLUGGABLE_SIMILARITY;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;

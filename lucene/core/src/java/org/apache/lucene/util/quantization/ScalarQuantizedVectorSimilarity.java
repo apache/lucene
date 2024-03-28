@@ -18,6 +18,7 @@ package org.apache.lucene.util.quantization;
 
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
@@ -36,7 +37,7 @@ public interface ScalarQuantizedVectorSimilarity {
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-      VectorSimilarityFunction sim, float constMultiplier) {
+    VectorSimilarity sim, float constMultiplier) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);

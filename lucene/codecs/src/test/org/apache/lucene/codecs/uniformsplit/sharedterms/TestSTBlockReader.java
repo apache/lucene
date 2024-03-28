@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.PostingsReaderBase;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
 import org.apache.lucene.codecs.uniformsplit.BlockHeader;
 import org.apache.lucene.codecs.uniformsplit.BlockLine;
@@ -42,7 +43,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
@@ -205,7 +205,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         0,
         VectorEncoding.FLOAT32,
-        VectorSimilarityFunction.EUCLIDEAN,
+        VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
         false,
         false);
   }

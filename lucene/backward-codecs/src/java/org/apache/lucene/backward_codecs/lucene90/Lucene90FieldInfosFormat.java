@@ -22,6 +22,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -193,7 +194,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     pointNumBytes,
                     vectorDimension,
                     VectorEncoding.FLOAT32,
-                    vectorDistFunc,
+                    VectorSimilarity.fromVectorSimilarityFunction(vectorDistFunc),
                     isSoftDeletesField,
                     false);
             infos[i].checkConsistency();

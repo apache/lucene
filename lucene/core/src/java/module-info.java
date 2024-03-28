@@ -61,6 +61,8 @@ module org.apache.lucene.core {
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
+  opens org.apache.lucene.codecs to
+      org.apache.lucene.test_framework;
 
   exports org.apache.lucene.util.quantization;
 
@@ -79,6 +81,11 @@ module org.apache.lucene.core {
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;
+  provides org.apache.lucene.codecs.VectorSimilarity with
+      org.apache.lucene.codecs.VectorSimilarity.CosineSimilarity,
+      org.apache.lucene.codecs.VectorSimilarity.DotProductSimilarity,
+      org.apache.lucene.codecs.VectorSimilarity.EuclideanDistanceSimilarity,
+      org.apache.lucene.codecs.VectorSimilarity.MaxInnerProductSimilarity;
 
   uses org.apache.lucene.analysis.CharFilterFactory;
   uses org.apache.lucene.analysis.TokenFilterFactory;
@@ -87,5 +94,6 @@ module org.apache.lucene.core {
   uses org.apache.lucene.codecs.DocValuesFormat;
   uses org.apache.lucene.codecs.KnnVectorsFormat;
   uses org.apache.lucene.codecs.PostingsFormat;
+  uses org.apache.lucene.codecs.VectorSimilarity;
   uses org.apache.lucene.index.SortFieldProvider;
 }

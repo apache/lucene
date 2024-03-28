@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.lang.reflect.Method;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PointValues;
@@ -94,6 +95,15 @@ public class TestFieldType extends LuceneTestCase {
       return random().nextBoolean();
     } else if (clazz == int.class) {
       return 1 + random().nextInt(100);
+    } else if (clazz == VectorSimilarity.class) {
+      return RandomPicks.randomFrom(
+          random(),
+          new VectorSimilarity[] {
+            VectorSimilarity.CosineSimilarity.INSTANCE,
+            VectorSimilarity.DotProductSimilarity.INSTANCE,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
+            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE
+          });
     }
     throw new AssertionError("Don't know how to generate a " + clazz);
   }

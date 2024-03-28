@@ -735,7 +735,7 @@ public class MemoryIndex {
         fieldType.pointNumBytes(),
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
-        fieldType.vectorSimilarityFunction(),
+        fieldType.vectorSimilarity(),
         false,
         false);
   }
@@ -789,7 +789,7 @@ public class MemoryIndex {
               info.fieldInfo.getPointNumBytes(),
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
-              info.fieldInfo.getVectorSimilarityFunction(),
+              info.fieldInfo.getVectorSimilarity(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {

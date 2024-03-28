@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -51,7 +52,6 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -1296,7 +1296,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 0,
                 VectorEncoding.FLOAT32,
-                VectorSimilarityFunction.DOT_PRODUCT,
+                VectorSimilarity.DotProductSimilarity.INSTANCE,
                 fi.isSoftDeletesField(),
                 fi.isParentField());
         newInfos[i] = noIndexFI;
