@@ -33,14 +33,17 @@ public interface ScalarQuantizedVectorSimilarity {
    *
    * @param sim similarity function
    * @param constMultiplier constant multiplier used for quantization
+   * @param bits number of bits used for quantization
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-      VectorSimilarityFunction sim, float constMultiplier) {
+      VectorSimilarityFunction sim, float constMultiplier, byte bits) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
-      case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
+      case COSINE, DOT_PRODUCT -> new DotProduct(
+          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
+          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
     };
   }
 
@@ -66,15 +69,17 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates dot product on quantized vectors, applying the appropriate corrections */
   class DotProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
+    private final ByteVectorComparator comparator;
 
-    public DotProduct(float constMultiplier) {
+    public DotProduct(float constMultiplier, ByteVectorComparator comparator) {
       this.constMultiplier = constMultiplier;
+      this.comparator = comparator;
     }
 
     @Override
     public float score(
         byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      int dotProduct = comparator.compare(storedVector, queryVector);
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return (1 + adjustedDistance) / 2;
     }
@@ -83,17 +88,24 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates max inner product on quantized vectors, applying the appropriate corrections */
   class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
+    private final ByteVectorComparator comparator;
 
-    public MaximumInnerProduct(float constMultiplier) {
+    public MaximumInnerProduct(float constMultiplier, ByteVectorComparator comparator) {
       this.constMultiplier = constMultiplier;
+      this.comparator = comparator;
     }
 
     @Override
     public float score(
         byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      int dotProduct = comparator.compare(storedVector, queryVector);
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return scaleMaxInnerProductScore(adjustedDistance);
     }
+  }
+
+  /** Compares two byte vectors */
+  interface ByteVectorComparator {
+    int compare(byte[] v1, byte[] v2);
   }
 }

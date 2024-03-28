@@ -36,6 +36,8 @@ public class VectorUtilBenchmark {
 
   private byte[] bytesA;
   private byte[] bytesB;
+  private byte[] halfBytesA;
+  private byte[] halfBytesB;
   private float[] floatsA;
   private float[] floatsB;
 
@@ -51,6 +53,14 @@ public class VectorUtilBenchmark {
     bytesB = new byte[size];
     random.nextBytes(bytesA);
     random.nextBytes(bytesB);
+    // random half byte arrays for binary methods
+    // this means that all values must be between 0 and 15
+    halfBytesA = new byte[size];
+    halfBytesB = new byte[size];
+    for (int i = 0; i < size; ++i) {
+      halfBytesA[i] = (byte) random.nextInt(16);
+      halfBytesB[i] = (byte) random.nextInt(16);
+    }
 
     // random float arrays for float methods
     floatsA = new float[size];
@@ -92,6 +102,17 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareVector() {
     return VectorUtil.squareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binaryHalfByteScalar() {
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteVector() {
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark

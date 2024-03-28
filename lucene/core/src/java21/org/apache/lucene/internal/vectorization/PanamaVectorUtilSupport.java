@@ -390,6 +390,53 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
+    int i = 0;
+    int res = 0;
+    if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
+      return dotProduct(a, b);
+    } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
+      i += ByteVector.SPECIES_128.loopBound(a.length);
+      res += int4DotProductBody128(a, b, i);
+    }
+    // scalar tail
+    for (; i < a.length; i++) {
+      res += b[i] * a[i];
+    }
+    return res;
+  }
+
+  private int int4DotProductBody128(byte[] a, byte[] b, int limit) {
+    int sum = 0;
+    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += 1024) {
+      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_128);
+      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
+      int innerLimit = Math.min(limit - i, 1024);
+      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
+        ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j);
+        ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j);
+        ByteVector prod8 = va8.mul(vb8);
+        ShortVector prod16 =
+            prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.and((short) 0xFF));
+
+        va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j + 8);
+        vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j + 8);
+        prod8 = va8.mul(vb8);
+        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc1 = acc1.add(prod16.and((short) 0xFF));
+      }
+      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
+      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
+      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
+      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+    }
+    return sum;
+  }
+
+  @Override
   public float cosine(byte[] a, byte[] b) {
     int i = 0;
     int sum = 0;

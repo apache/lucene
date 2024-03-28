@@ -30,12 +30,17 @@ import org.apache.lucene.index.SegmentWriteState;
  * @lucene.experimental
  */
 public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+
+  // The bits that are allowed for scalar quantization
+  // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
+  private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_ADD_BITS = 1;
+  static final int VERSION_CURRENT = VERSION_ADD_BITS;
   static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
@@ -55,18 +60,27 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    */
   final Float confidenceInterval;
 
+  final byte bits;
+  final boolean compress;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
-    this(null);
+    this(null, 7, true);
   }
 
   /**
    * Constructs a format using the given graph construction parameters.
    *
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     it is calculated based on the vector field dimensions.
+   *     it is calculated dynamically.
+   * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
+   *     inclusive)
+   * @param compress whether to compress the vectors, if true, the vectors that are quantized with
+   *     lte 4 bits will be compressed into a single byte. If false, the vectors will be stored as
+   *     is. This provides a trade-off of memory usage and speed.
    */
-  public Lucene99ScalarQuantizedVectorsFormat(Float confidenceInterval) {
+  public Lucene99ScalarQuantizedVectorsFormat(
+      Float confidenceInterval, int bits, boolean compress) {
     if (confidenceInterval != null
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
             || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
@@ -78,7 +92,12 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
               + "; confidenceInterval="
               + confidenceInterval);
     }
+    if (bits < 1 || bits > 8 || (ALLOWED_BITS & (1 << bits)) == 0) {
+      throw new IllegalArgumentException("bits must be one of: 4, 7, 8; bits=" + bits);
+    }
+    this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
+    this.compress = compress;
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -92,6 +111,10 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
         + NAME
         + ", confidenceInterval="
         + confidenceInterval
+        + ", bits="
+        + bits
+        + ", compress="
+        + compress
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -100,7 +123,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, rawVectorFormat.fieldsWriter(state));
+        state, confidenceInterval, bits, compress, rawVectorFormat.fieldsWriter(state));
   }
 
   @Override

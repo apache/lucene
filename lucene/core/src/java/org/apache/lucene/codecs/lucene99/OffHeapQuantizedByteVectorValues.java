@@ -36,6 +36,10 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
   protected final int dimension;
   protected final int size;
+  protected final int numBytes;
+  protected final byte bits;
+  protected final boolean compress;
+
   protected final IndexInput slice;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
@@ -43,11 +47,52 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   protected int lastOrd = -1;
   protected final float[] scoreCorrectionConstant = new float[1];
 
-  OffHeapQuantizedByteVectorValues(int dimension, int size, IndexInput slice) {
+  static void decompressBytes(byte[] compressed, int numBytes) {
+    if (numBytes == compressed.length) {
+      return;
+    }
+    if (numBytes << 1 != compressed.length) {
+      throw new IllegalArgumentException(
+          "numBytes: " + numBytes + " does not match compressed length: " + compressed.length);
+    }
+    for (int i = 0; i < numBytes; ++i) {
+      compressed[numBytes + i] = (byte) (compressed[i] & 0x0F);
+      compressed[i] = (byte) ((compressed[i] & 0xFF) >> 4);
+    }
+  }
+
+  static byte[] compressedArray(int dimension, byte bits) {
+    if (bits <= 4) {
+      return new byte[(dimension + 1) >> 1];
+    } else {
+      return null;
+    }
+  }
+
+  static void compressBytes(byte[] raw, byte[] compressed) {
+    if (compressed.length != ((raw.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "compressed length: " + compressed.length + " does not match raw length: " + raw.length);
+    }
+    for (int i = 0; i < compressed.length; ++i) {
+      int v = (raw[i] << 4) | raw[compressed.length + i];
+      compressed[i] = (byte) v;
+    }
+  }
+
+  OffHeapQuantizedByteVectorValues(
+      int dimension, int size, byte bits, boolean compress, IndexInput slice) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    this.byteSize = dimension + Float.BYTES;
+    this.bits = bits;
+    this.compress = compress;
+    if (bits <= 4 && compress) {
+      this.numBytes = (dimension + 1) >> 1;
+    } else {
+      this.numBytes = dimension;
+    }
+    this.byteSize = this.numBytes + Float.BYTES;
     byteBuffer = ByteBuffer.allocate(dimension);
     binaryValue = byteBuffer.array();
   }
@@ -68,8 +113,9 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       return binaryValue;
     }
     slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
+    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
     slice.readFloats(scoreCorrectionConstant, 0, 1);
+    decompressBytes(binaryValue, numBytes);
     lastOrd = targetOrd;
     return binaryValue;
   }
@@ -83,6 +129,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
+      byte bits,
+      boolean compress,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
       IndexInput vectorData)
@@ -94,9 +142,10 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
     if (configuration.isDense()) {
-      return new DenseOffHeapVectorValues(dimension, size, bytesSlice);
+      return new DenseOffHeapVectorValues(dimension, size, bits, compress, bytesSlice);
     } else {
-      return new SparseOffHeapVectorValues(configuration, dimension, size, vectorData, bytesSlice);
+      return new SparseOffHeapVectorValues(
+          configuration, dimension, size, bits, compress, vectorData, bytesSlice);
     }
   }
 
@@ -108,8 +157,9 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     private int doc = -1;
 
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
-      super(dimension, size, slice);
+    public DenseOffHeapVectorValues(
+        int dimension, int size, byte bits, boolean compress, IndexInput slice) {
+      super(dimension, size, bits, compress, slice);
     }
 
     @Override
@@ -138,7 +188,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone());
+      return new DenseOffHeapVectorValues(dimension, size, bits, compress, slice.clone());
     }
 
     @Override
@@ -158,10 +208,12 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
+        byte bits,
+        boolean compress,
         IndexInput dataIn,
         IndexInput slice)
         throws IOException {
-      super(dimension, size, slice);
+      super(dimension, size, bits, compress, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -191,7 +243,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
-      return new SparseOffHeapVectorValues(configuration, dimension, size, dataIn, slice.clone());
+      return new SparseOffHeapVectorValues(
+          configuration, dimension, size, bits, compress, dataIn, slice.clone());
     }
 
     @Override
@@ -221,7 +274,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   private static class EmptyOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null);
+      super(dimension, 0, (byte) 7, false, null);
     }
 
     private int doc = -1;

@@ -39,14 +39,17 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, floats.length);
+          ScalarQuantizer.fromVectors(
+              floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.EUCLIDEAN);
       float[] query = ArrayUtil.copyOfSubArray(floats[0], 0, dims);
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              VectorSimilarityFunction.EUCLIDEAN, scalarQuantizer.getConstantMultiplier());
+              VectorSimilarityFunction.EUCLIDEAN,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
       assertQuantizedScores(
           floats,
           quantized,
@@ -69,7 +72,8 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloatsNormalized(floats, null);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, floats.length);
+          ScalarQuantizer.fromVectors(
+              floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectorsNormalized(
@@ -78,7 +82,9 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       VectorUtil.l2normalize(query);
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              VectorSimilarityFunction.COSINE, scalarQuantizer.getConstantMultiplier());
+              VectorSimilarityFunction.COSINE,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
       assertQuantizedScores(
           floats,
           quantized,
@@ -103,7 +109,8 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, floats.length);
+          ScalarQuantizer.fromVectors(
+              floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(scalarQuantizer, floats, quantized, VectorSimilarityFunction.DOT_PRODUCT);
@@ -111,7 +118,9 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       VectorUtil.l2normalize(query);
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              VectorSimilarityFunction.DOT_PRODUCT, scalarQuantizer.getConstantMultiplier());
+              VectorSimilarityFunction.DOT_PRODUCT,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
       assertQuantizedScores(
           floats,
           quantized,
@@ -133,7 +142,8 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float error = Math.max((100 - confidenceInterval) * 0.5f, 0.5f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer =
-          ScalarQuantizer.fromVectors(floatVectorValues, confidenceInterval, floats.length);
+          ScalarQuantizer.fromVectors(
+              floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
       float[] offsets =
           quantizeVectors(
@@ -142,7 +152,8 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
-              scalarQuantizer.getConstantMultiplier());
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
       assertQuantizedScores(
           floats,
           quantized,
