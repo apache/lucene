@@ -276,7 +276,7 @@ public class PackedLongValues extends LongValues implements Accountable {
 
       // build a new packed reader
       if (minValue == 0 && maxValue == 0) {
-        this.values[block] = new PackedInts.NullReader(numValues);
+        this.values[block] = PackedInts.NullReader.forCount(numValues);
       } else {
         final int bitsRequired = minValue < 0 ? 64 : PackedInts.bitsRequired(maxValue);
         final PackedInts.Mutable mutable =
