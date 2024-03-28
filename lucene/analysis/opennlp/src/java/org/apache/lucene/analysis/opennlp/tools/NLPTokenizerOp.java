@@ -37,7 +37,7 @@ public class NLPTokenizerOp {
     tokenizer = null;
   }
 
-  public synchronized Span[] getTerms(String sentence) {
+  public Span[] getTerms(String sentence) {
     if (tokenizer == null) {
       Span[] span1 = new Span[1];
       span1[0] = new Span(0, sentence.length());
