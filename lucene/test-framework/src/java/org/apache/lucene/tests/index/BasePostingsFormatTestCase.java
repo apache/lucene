@@ -58,9 +58,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
@@ -365,6 +363,151 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       }
     }
     ir.close();
+    iw.close();
+    dir.close();
+  }
+
+  protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {}
+
+  //  public void testSubBlock() throws Exception {
+  //    Directory dir = newDirectory();
+  //    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
+  //    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+  //
+  //    IndexWriter iw =
+  //        new IndexWriter(dir,
+  // newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+  //    String[] categories = new String[] {"regular", "request", "rest", "teacher", "team"};
+  //
+  //    for (String category : categories) {
+  //      Document doc = new Document();
+  //      doc.add(newStringField("category", category, Field.Store.YES));
+  //      iw.addDocument(doc);
+  //    }
+  //
+  //    IndexReader reader = DirectoryReader.open(iw);
+  //    iw.commit();
+  //    iw.forceMerge(1);
+  //
+  //    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("category").iterator();
+  //
+  //    // test seekExact.
+  //    for (String category : categories) {
+  //      BytesRef target = newBytesRef(category);
+  //      assertTrue(termsEnum.seekExact(target));
+  //      assertEquals(termsEnum.term(), target);
+  //    }
+  //
+  //    // test seekCeil.
+  //    for (String category : categories) {
+  //      BytesRef target = newBytesRef(category);
+  //      assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+  //      assertEquals(termsEnum.term(), target);
+  //    }
+  //
+  //    iw.close();
+  //    reader.close();
+  //    dir.close();
+  //  }
+
+  //  public void testDeepSubBlock() throws Exception {
+  //    Directory dir = newDirectory();
+  //    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+  //    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+  //
+  //    IndexWriter iw =
+  //        new IndexWriter(dir,
+  // newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+  //    String[] categories =
+  //        new String[] {
+  //          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
+  //        };
+  //
+  //    for (String category : categories) {
+  //      Document doc = new Document();
+  //      doc.add(newStringField("category", category, Field.Store.YES));
+  //      iw.addDocument(doc);
+  //    }
+  //
+  //    IndexReader reader = DirectoryReader.open(iw);
+  //    iw.commit();
+  //    iw.forceMerge(1);
+  //
+  //    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("category").iterator();
+  //
+  //    BytesRef target = newBytesRef("reques");
+  //    assertFalse(termsEnum.seekExact(target));
+  //    assertEquals(termsEnum.term(), new BytesRef("request"));
+  //    assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
+  //
+  //    // test seekExact.
+  //    for (String category : categories) {
+  //      target = newBytesRef(category);
+  //      assertTrue(termsEnum.seekExact(target));
+  //      assertEquals(termsEnum.term(), target);
+  //    }
+  //
+  //    // test seekCeil.
+  //    for (String category : categories) {
+  //      target = newBytesRef(category);
+  //      assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+  //      assertEquals(termsEnum.term(), target);
+  //    }
+  //
+  //    iw.close();
+  //    reader.close();
+  //    dir.close();
+  //  }
+
+  public void testBinarySearchTermLeaf() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 100000; i <= 100400; i++) {
+      // only add odd number
+      if (i % 2 == 1) {
+        Document document = new Document();
+        document.add(new StringField("id", i + "", Field.Store.NO));
+        iw.addDocument(document);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+    // test seekExact
+    for (int i = 100000; i <= 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertTrue(termsEnum.seekExact(target));
+        assertEquals(termsEnum.term(), target);
+      } else {
+        assertFalse(termsEnum.seekExact(target));
+      }
+    }
+
+    subCheckBinarySearch(termsEnum);
+    // test seekCeil
+    for (int i = 100000; i < 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+        assertEquals(termsEnum.term(), target);
+        if (i <= 100397) {
+          assertEquals(new BytesRef(i + 2 + ""), termsEnum.next());
+        }
+      } else {
+        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
+        assertEquals(new BytesRef(i + 1 + ""), termsEnum.term());
+      }
+    }
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
+    reader.close();
     iw.close();
     dir.close();
   }

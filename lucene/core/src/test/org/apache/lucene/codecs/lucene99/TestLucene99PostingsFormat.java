@@ -29,10 +29,7 @@ import org.apache.lucene.codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Impact;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -41,6 +38,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
   private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99PostingsFormat());
@@ -142,5 +140,14 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
         assertEquals(impacts, impacts2);
       }
     }
+  }
+
+  @Override
+  protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {
+    // 10004a matched block's entries: [100001, 100003, ..., 100049].
+    // if target greater than the last entry of the matched block,
+    // termsEnum.term should be the last entry.
+    assertFalse(termsEnum.seekExact(new BytesRef("10004a")));
+    assertEquals(termsEnum.term(), new BytesRef("100049"));
   }
 }
