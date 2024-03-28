@@ -126,6 +126,8 @@ Improvements
 
 * GITHUB#13209: Upgrade snowball to 26db1ab9. (Robert Muir)
 
+* GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
+
 Optimizations
 ---------------------
 
