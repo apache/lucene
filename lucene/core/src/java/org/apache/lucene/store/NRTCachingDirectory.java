@@ -73,6 +73,12 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           new SingleInstanceLockFactory(),
           ByteBuffersDataOutput::new,
           (fileName, content) -> {
+            // Defensive check to handle the case the file has been deleted before this lambda
+            // is called when the IndexOutput is closed. Unsafe in the unlikely case the deletion
+            // happens concurrently on another thread.
+            if (isCachedFile(fileName) == false) {
+              return null;
+            }
             cacheSize.addAndGet(content.size());
             return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS.apply(fileName, content);
           });
@@ -118,7 +124,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
       System.out.println("nrtdir.deleteFile name=" + name);
     }
     if (cacheDirectory.fileExists(name)) {
+      long size = cacheDirectory.fileLength(name);
       cacheDirectory.deleteFile(name);
+      long newSize = cacheSize.addAndGet(-size);
+      assert newSize >= 0;
     } else {
       in.deleteFile(name);
     }
@@ -293,6 +302,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
     }
+  }
+
+  private synchronized boolean isCachedFile(String fileName) {
+    return cacheDirectory.fileExists(fileName);
   }
 
   private void unCache(String fileName) throws IOException {

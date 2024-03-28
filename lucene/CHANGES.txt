@@ -126,6 +126,8 @@ Improvements
 
 * GITHUB#13209: Upgrade snowball to 26db1ab9. (Robert Muir)
 
+* GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
+
 Optimizations
 ---------------------
 
@@ -151,7 +153,7 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
-
+  
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
@@ -263,7 +265,9 @@ Bug Fixes
 
 * GITHUB#13169: Fix potential race condition in DocumentsWriter & DocumentsWriterDeleteQueue (Ben Trent)
 
-* GITHUB#13204: Fix euals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+* GITHUB#13204: Fix equals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
+
+* GITHUB#13206: Subtract deleted file size from the cache size of NRTCachingDirectory. (Jean-François Boeuf)
 
 Build
 ---------------------
