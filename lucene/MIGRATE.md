@@ -185,6 +185,34 @@ enum.
 
 `IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
 
+### IndexSearch#search(Query, Collector) being deprecated in favor of IndexSearcher#search(Query, CollectorManager) (LUCENE-10002)
+
+`IndexSearch#search(Query, Collector)` is now being deprecated in favor of `IndexSearcher#search(Query, CollectorManager)`,
+as `CollectorManager` implementation would allow taking advantage of intra-query concurrency via its map-reduce API design.
+To migrate, use a provided `CollectorManager` implementation that suits your use cases, or change your `Collector` implementation
+to follow the new API pattern. The straight forward approach would be to wrap the single-threaded `Collector` into a degenerate `CollectorManager`.
+
+For example
+```java
+public class WrappingCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
+    @Override
+    public CustomCollector newCollector() throws IOException {
+      return new CustomCollector();
+    }
+
+    @Override
+    public List<Object> reduce(Collection<CustomCollector> collectors) throws IOException {
+      List<Object> all = new ArrayList<>();
+      for (CustomCollector c : collectors) {
+        all.addAll(c.getResult());
+      }
+
+      return all;
+    }
+}
+
+List<Object> results = searcher.search(query, new WrappingCollectorManager());
+```
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
