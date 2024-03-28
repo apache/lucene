@@ -31,7 +31,7 @@ set -eEuo pipefail
 
 # generate stuff with existing makefile, just 'make' will try to do crazy stuff with e.g. python
 # and likely fail. so only ask for our specific target.
-(cd ${SRCDIR} && chmod a+x libstemmer/mkalgorithms.pl && make dist_libstemmer_java)
+(cd ${SRCDIR} && make dist_libstemmer_java)
 
 for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
   # add license header to files since they have none, otherwise rat will flip the fuck out
