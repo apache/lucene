@@ -74,7 +74,6 @@ import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -485,10 +484,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     for (int i = 0; i < nDoc; i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
-      int[] nnodes = neighbors.nodes();
       for (int j = 0; j < neighbors.size(); j++) {
         // all neighbors should be valid node ids.
-        assertTrue(nnodes[j] < nDoc);
+        assertTrue(neighbors.scoreNodes[j].node < nDoc);
       }
     }
   }
@@ -757,7 +755,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
     long actual = ramUsed(hnsw);
-
     assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
   }
 
@@ -882,7 +879,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   private void assertLevel0Neighbors(OnHeapHnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
     NeighborArray nn = graph.getNeighbors(0, node);
-    int[] actual = ArrayUtil.copyOfSubArray(nn.nodes(), 0, nn.size());
+    int[] actual = nn.nodesCopy();
     Arrays.sort(actual);
     assertArrayEquals(
         "expected: " + Arrays.toString(expected) + " actual: " + Arrays.toString(actual),
