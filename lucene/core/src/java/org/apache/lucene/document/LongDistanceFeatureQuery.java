@@ -436,10 +436,12 @@ final class LongDistanceFeatureQuery extends Query {
           };
 
       final long currentQueryCost = Math.min(leadCost, it.cost());
-      // TODO: what is the right factor compared to the current disi? Is 8 optimal?
       final long threshold = currentQueryCost >>> 3;
-      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(
-          visitor, pointValues.getPointTree(), threshold)) {
+      long estimatedNumberOfMatches =
+          PointValues.estimatePointCount(
+              visitor, pointValues.getPointTree(), threshold); // runs in O(log(numPoints))
+      // TODO: what is the right factor compared to the current disi? Is 8 optimal?
+      if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing
         return;
       }

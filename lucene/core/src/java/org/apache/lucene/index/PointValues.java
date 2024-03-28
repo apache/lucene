@@ -384,24 +384,17 @@ public abstract class PointValues {
   }
 
   /**
-   * Estimate if the point count that would be matched by {@link #intersect} with the given {@link
-   * IntersectVisitor} is greater than or equal to the upperBound.
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {@link IntersectVisitor}. The estimation will terminate when the point count get greater than
+   * up bound. That said, if the return value is less than the upperBound, it is the accurate
+   * estimated point value, otherwise it means the number of points in the tree is greater than or
+   * equals to the upperBound.
+   *
+   * <p>TODO: will broad-first help estimation terminate earlier?
    *
    * @lucene.internal
    */
-  public static boolean isEstimatedPointCountGreaterThanOrEqualTo(
-      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
-    return estimatePointCount(visitor, pointTree, upperBound) >= upperBound;
-  }
-
-  /**
-   * Estimate the number of documents that would be matched by {@link #intersect} with the given
-   * {@link IntersectVisitor}. The estimation will terminate when the point count gets greater than
-   * or equal to the upper bound.
-   *
-   * <p>TODO: will broad-first help estimation terminate earlier?
-   */
-  private static long estimatePointCount(
+  public static long estimatePointCount(
       IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
     Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {

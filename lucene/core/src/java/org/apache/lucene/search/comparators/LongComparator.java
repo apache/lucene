@@ -18,7 +18,6 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
@@ -52,6 +51,11 @@ public class LongComparator extends NumericComparator<Long> {
   @Override
   public Long value(int slot) {
     return Long.valueOf(values[slot]);
+  }
+
+  @Override
+  protected long missingValueAsComparableLong() {
+    return missingValue;
   }
 
   @Override
@@ -97,23 +101,13 @@ public class LongComparator extends NumericComparator<Long> {
     }
 
     @Override
-    protected int compareMissingValueWithBottomValue() {
-      return Long.compare(missingValue, bottom);
+    protected long bottomAsComparableLong() {
+      return bottom;
     }
 
     @Override
-    protected int compareMissingValueWithTopValue() {
-      return Long.compare(missingValue, topValue);
-    }
-
-    @Override
-    protected void encodeBottom(byte[] packedValue) {
-      LongPoint.encodeDimension(bottom, packedValue, 0);
-    }
-
-    @Override
-    protected void encodeTop(byte[] packedValue) {
-      LongPoint.encodeDimension(topValue, packedValue, 0);
+    protected long topAsComparableLong() {
+      return topValue;
     }
   }
 }
