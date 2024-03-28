@@ -18,14 +18,13 @@
 # remove this script when problems are fixed
 SRCDIR=$1
 WWWSRCDIR=$2
-TESTSRCDIR=$3
-PROJECTDIR=$4
+PROJECTDIR=$3
 DESTDIR="${PROJECTDIR}/src/java/org/tartarus/snowball"
 WWWDSTDIR="${PROJECTDIR}/src/resources/org/apache/lucene/analysis/snowball"
 TESTDSTDIR="${PROJECTDIR}/src/test/org/apache/lucene/analysis/snowball"
 
-trap 'echo "usage: ./snowball.sh <snowball> <snowball-website> <snowball-data> <analysis-common>" && exit 2' ERR
-test $# -eq 4
+trap 'echo "usage: ./snowball.sh <snowball> <snowball-website> <analysis-common>" && exit 2' ERR
+test $# -eq 3
 
 trap 'echo "*** BUILD FAILED ***" $BASH_SOURCE:$LINENO: error: "$BASH_COMMAND" returned $?' ERR
 set -eEuo pipefail
@@ -56,34 +55,6 @@ for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
   fi
   echo ${newclazz} | sed -e 's/Stemmer//' >> ${TESTDSTDIR}/languages.txt
   cat $file | sed "s/${oldclazz}/${newclazz}/g" > ${DESTDIR}/ext/${newclazz}.java
-done
-
-# regenerate test data
-rm -f ${TESTDSTDIR}/test_languages.txt
-rm -f ${TESTDSTDIR}/*.zip
-for file in ${TESTSRCDIR}/*; do
-  # look for input (voc.txt) and expected output (output.txt) without any special licenses (COPYING)
-  if [ -f "${file}/voc.txt" ] && [ -f "${file}/output.txt" ] && [ ! -f "${file}/COPYING" ]; then
-    language=$(basename ${file})
-    if [ "${language}" == "kraaij_pohlmann" ]; then
-      language="kp"
-    fi
-    # make the .zip reproducible if data hasn't changed.
-    arbitrary_timestamp="200001010000"
-    # some test files are yuge, randomly sample up to this amount
-    row_limit="2000"
-    tmpdir=$(mktemp -d)
-    myrandom="openssl enc -aes-256-ctr -k ${arbitrary_timestamp} -nosalt -iv 0 -md md5"
-    for data in "voc.txt" "output.txt"; do
-      shuf -n ${row_limit} --random-source=<(${myrandom} < /dev/zero 2>/dev/null) ${file}/${data} > ${tmpdir}/${data} \
-        && touch -t ${arbitrary_timestamp} ${tmpdir}/${data}
-    done
-    # explicitly set permissions in case someone has a crazy umask (otherwise zip will differ)
-    chmod 644 ${tmpdir}/voc.txt ${tmpdir}/output.txt
-    zip --quiet --junk-paths -X -9 ${TESTDSTDIR}/${language}.zip ${tmpdir}/voc.txt ${tmpdir}/output.txt
-    echo "${language}" >> ${TESTDSTDIR}/test_languages.txt
-    rm -r ${tmpdir}
-  fi
 done
 
 # regenerate stopwords data

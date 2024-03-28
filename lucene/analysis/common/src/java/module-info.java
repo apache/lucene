@@ -115,8 +115,6 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.fa to
       org.apache.lucene.core;
-  opens org.apache.lucene.analysis.ga to
-      org.apache.lucene.core;
   opens org.apache.lucene.analysis.gl to
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.hi to
