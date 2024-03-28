@@ -1588,6 +1588,12 @@ public class MemoryIndex {
     }
 
     @Override
+    public DataInputDocValues getDataInputDocValues(String field) {
+      BinaryDocValues binaryDocValues = getBinaryDocValues(field);
+      return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+    }
+
+    @Override
     public SortedDocValues getSortedDocValues(String field) {
       return getSortedDocValues(field, DocValuesType.SORTED);
     }

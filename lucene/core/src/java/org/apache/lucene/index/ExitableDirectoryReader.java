@@ -189,6 +189,47 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+      final DataInputDocValues dataInputDocValues = super.getDataInputDocValues(field);
+      if (dataInputDocValues == null) {
+        return null;
+      }
+      return new FilterDataInputDocValues(dataInputDocValues) {
+        private int docToCheck = 0;
+
+        @Override
+        public int advance(int target) throws IOException {
+          final int advance = super.advance(target);
+          if (target >= docToCheck) {
+            checkAndThrow(in);
+            docToCheck = target + DOCS_BETWEEN_TIMEOUT_CHECK;
+          }
+          return advance;
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          final boolean advanceExact = super.advanceExact(target);
+          if (target >= docToCheck) {
+            checkAndThrow(in);
+            docToCheck = target + DOCS_BETWEEN_TIMEOUT_CHECK;
+          }
+          return advanceExact;
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          final int nextDoc = super.nextDoc();
+          if (nextDoc >= docToCheck) {
+            checkAndThrow(in);
+            docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+          }
+          return nextDoc;
+        }
+      };
+    }
+
+    @Override
     public SortedDocValues getSortedDocValues(String field) throws IOException {
       final SortedDocValues sortedDocValues = super.getSortedDocValues(field);
       if (sortedDocValues == null) {
