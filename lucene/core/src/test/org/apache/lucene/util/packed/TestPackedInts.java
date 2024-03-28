@@ -1019,7 +1019,13 @@ public class TestPackedInts extends LuceneTestCase {
           if (rarely() && !TEST_NIGHTLY) {
             final long expectedBytesUsed = RamUsageTester.ramUsed(buf);
             final long computedBytesUsed = buf.ramBytesUsed();
-            assertEquals(expectedBytesUsed, computedBytesUsed);
+            if (pageSize == PackedLongValues.DEFAULT_PAGE_SIZE) {
+              // special case singleton optimization in PackedInts.NullReader for
+              // PackedLongValues.DEFAULT_PAGE_SIZE
+              assertTrue(computedBytesUsed <= expectedBytesUsed);
+            } else {
+              assertEquals(expectedBytesUsed, computedBytesUsed);
+            }
           }
         }
         assertEquals(arr.length, buf.size());
@@ -1046,7 +1052,13 @@ public class TestPackedInts extends LuceneTestCase {
 
         final long expectedBytesUsed = RamUsageTester.ramUsed(values);
         final long computedBytesUsed = values.ramBytesUsed();
-        assertEquals(expectedBytesUsed, computedBytesUsed);
+        if (pageSize == PackedLongValues.DEFAULT_PAGE_SIZE) {
+          // special case singleton optimization in PackedInts.NullReader for
+          // PackedLongValues.DEFAULT_PAGE_SIZE
+          assertTrue(computedBytesUsed <= expectedBytesUsed);
+        } else {
+          assertEquals(expectedBytesUsed, computedBytesUsed);
+        }
       }
     }
   }
