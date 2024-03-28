@@ -247,6 +247,8 @@ Optimizations
 
 * GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 
+* GITHUB#13232 : Introduce singleton for PackedInts.NullReader of size 256 (Armin Braun)
+
 Bug Fixes
 ---------------------
 

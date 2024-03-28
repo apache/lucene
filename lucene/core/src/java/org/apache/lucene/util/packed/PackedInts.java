@@ -566,14 +566,14 @@ public class PackedInts {
   /** A {@link Reader} which has all its values equal to 0 (bitsPerValue = 0). */
   public static final class NullReader extends Reader {
 
-    private static final NullReader DEFAULT_MONOTONIC_LONG_VALUES_PAGE_SIZE =
-        new NullReader(MonotonicLongValues.DEFAULT_PAGE_SIZE);
+    private static final NullReader DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE =
+        new NullReader(PackedLongValues.DEFAULT_PAGE_SIZE);
 
     private final int valueCount;
 
     public static NullReader forCount(int valueCount) {
-      if (valueCount == MonotonicLongValues.DEFAULT_PAGE_SIZE) {
-        return DEFAULT_MONOTONIC_LONG_VALUES_PAGE_SIZE;
+      if (valueCount == PackedLongValues.DEFAULT_PAGE_SIZE) {
+        return DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE;
       }
       return new NullReader(valueCount);
     }
@@ -604,8 +604,11 @@ public class PackedInts {
 
     @Override
     public long ramBytesUsed() {
-      return RamUsageEstimator.alignObjectSize(
-          RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
+      // this is always a singleton for valueCount == PackedLongValues.DEFAULT_PAGE_SIZE
+      return valueCount == PackedLongValues.DEFAULT_PAGE_SIZE
+          ? 0
+          : RamUsageEstimator.alignObjectSize(
+              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
     }
   }
 
