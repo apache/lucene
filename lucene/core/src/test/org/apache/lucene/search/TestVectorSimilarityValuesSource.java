@@ -17,6 +17,9 @@
 
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.function.BiFunction;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -383,5 +386,87 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         dv.doubleValue(),
         VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
             new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+  }
+
+  public void testNonDefaultSimilarity() throws IOException {
+    float[] floatQueryVector = new float[] {9.f, 1.f, -10.f};
+    DoubleValues dv =
+        DoubleValuesSource.similarityToQueryVector(
+            searcher.reader.leaves().get(0),
+            floatQueryVector,
+            "knnFloatField5",
+            VectorSimilarityFunction.DOT_PRODUCT::compare);
+    assertTrue(dv.advanceExact(0));
+    assertNotEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.EUCLIDEAN.compare(
+            new float[] {-6.7f, -1.0f, -0.9f}, floatQueryVector),
+        0.0);
+    assertEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.DOT_PRODUCT.compare(
+            new float[] {-6.7f, -1.0f, -0.9f}, floatQueryVector),
+        0.0);
+
+    assertTrue(dv.advanceExact(1));
+    assertNotEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+            new float[] {2.f, 13.2f, 9.1f}, floatQueryVector),
+        0.0);
+    assertEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.DOT_PRODUCT.compare(
+            new float[] {2.f, 13.2f, 9.1f}, floatQueryVector),
+        0.0);
+    assertTrue(dv.advanceExact(2));
+    assertNotEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.EUCLIDEAN.compare(
+            new float[] {5.2f, 3.2f, 3.1f}, floatQueryVector),
+        0.0);
+    assertEquals(
+        dv.doubleValue(),
+        VectorSimilarityFunction.DOT_PRODUCT.compare(
+            new float[] {5.2f, 3.2f, 3.1f}, floatQueryVector),
+        0.0);
+  }
+
+  public void testCustomSimilarity() throws IOException {
+    float[] floatQueryVector = new float[] {2.f, 13.2f, 9.1f};
+    BiFunction<float[], float[], Float> function =
+        (floats, floats2) -> {
+          if (Arrays.equals(floats, floats2)) {
+            return 1.0F;
+          }
+          return 0.0F;
+        };
+    DoubleValues dv =
+        DoubleValuesSource.similarityToQueryVector(
+            searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField5", function);
+    assertTrue(dv.advanceExact(0));
+    assertEquals(0.0, dv.doubleValue(), 0.0);
+    assertTrue(dv.advanceExact(1));
+    assertEquals(1.0, dv.doubleValue(), 0.0);
+    assertTrue(dv.advanceExact(2));
+    assertEquals(0.0, dv.doubleValue(), 0.0);
+
+    byte[] byteQueryVector = new byte[] {-1, -2, -3};
+    BiFunction<byte[], byte[], Float> byteFunction =
+        (bytes, bytes2) -> {
+          if (Arrays.equals(bytes, bytes2)) {
+            return 0.0F;
+          }
+          return 1.0F;
+        };
+    dv =
+        DoubleValuesSource.similarityToQueryVector(
+            searcher.reader.leaves().get(0), byteQueryVector, "knnByteField2", byteFunction);
+    assertTrue(dv.advanceExact(0));
+    assertEquals(1.0, dv.doubleValue(), 0.0);
+    assertTrue(dv.advanceExact(1));
+    assertEquals(1.0, dv.doubleValue(), 0.0);
+    assertTrue(dv.advanceExact(2));
+    assertEquals(0.0, dv.doubleValue(), 0.0);
   }
 }
