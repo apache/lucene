@@ -43,10 +43,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.Version;
+import org.apache.lucene.util.*;
 
 /**
  * A collection of segmentInfo objects with methods for operating on those segments in relation to
@@ -389,13 +386,25 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
+    SegmentInfo info;
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
-      SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READ);
+      try {
+        info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READ);
+      } catch (ThreadInterruptedException e) {
+        throw e;
+      } catch (Exception e) {
+        if (infoStream != null) {
+          message(e.getMessage());
+        }
+        throw new CorruptSegmentInfoException(
+            segName,
+            "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
+            input);
+      }
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);

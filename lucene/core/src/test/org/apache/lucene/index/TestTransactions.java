@@ -217,7 +217,10 @@ public class TestTransactions extends LuceneTestCase {
         } catch (Exception e) {
           // can be rethrown as RuntimeException if it happens during a close listener
           if (!e.getMessage().contains("on purpose")) {
-            throw e;
+            // Caught "on-purpose" IOException can be rethrown as CorruptSegmentInfoException
+            if (!(e instanceof CorruptSegmentInfoException)) {
+              throw e;
+            }
           }
           // release resources
           IOUtils.closeWhileHandlingException(r1, r2);

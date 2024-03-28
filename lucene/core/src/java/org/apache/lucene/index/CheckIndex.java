@@ -947,7 +947,7 @@ public final class CheckIndex implements Closeable {
 
     final Version version = info.info.getVersion();
     if (info.info.maxDoc() <= 0) {
-      throw new CheckIndexException(" illegal number of documents: maxDoc=" + info.info.maxDoc());
+      throw new CheckIndexException("illegal number of documents: maxDoc=" + info.info.maxDoc());
     }
 
     int toLoseDocCount = info.info.maxDoc();
