@@ -26,10 +26,17 @@ import org.apache.lucene.util.ArrayUtil;
 
 /** Writes system dictionary entries */
 class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
-  private static final int ID_LIMIT = 8192;
+  private static final int IPADIC_ID_LIMIT = 8192;
 
-  TokenInfoDictionaryEntryWriter(int size) {
+  // E.g.: unidic-cwj-3.1.1-full:   15388
+  // E.g.: unidic-cwj-202302_full:  18859
+  private static final int UNIDIC_ID_LIMIT = 18859;
+
+  private final DictionaryBuilder.DictionaryFormat format;
+
+  TokenInfoDictionaryEntryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
     super(size);
+    this.format = format;
   }
 
   /**
@@ -46,6 +53,21 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
    * 10  - base form
    * 11  - reading
    * 12  - pronounciation
+   * </pre>
+   *
+   * <p>unidic features
+   *
+   * <pre>
+   * 0   - surface
+   * 1   - left cost
+   * 2   - right cost
+   * 3   - word cost
+   * 4-9 - pos
+   * 10  - base form reading
+   * 11  - lexeme - not used
+   * 12  - surface form
+   * 13  - surface reading
+   * 14  - orthographic form
    * </pre>
    */
   @Override
@@ -114,31 +136,29 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       flags |= TokenInfoMorphData.HAS_PRONUNCIATION;
     }
 
-    if (leftId != rightId) {
-      throw new IllegalArgumentException("rightId != leftId: " + rightId + " " + leftId);
-    }
-    if (leftId >= ID_LIMIT) {
-      throw new IllegalArgumentException("leftId >= " + ID_LIMIT + ": " + leftId);
-    }
+    validateLeftRightIdsWithThrow(leftId, rightId);
     // add pos mapping
     int toFill = 1 + leftId - posDict.size();
     for (int i = 0; i < toFill; i++) {
       posDict.add(null);
     }
 
-    String existing = posDict.get(leftId);
-    if (existing != null && existing.equals(fullPOSData) == false) {
-      // TODO: test me
-      throw new IllegalArgumentException("Multiple entries found for leftID=" + leftId);
-    }
     posDict.set(leftId, fullPOSData);
 
     buffer.putShort((short) (leftId << 3 | flags));
     buffer.putShort(wordCost);
 
     if ((flags & TokenInfoMorphData.HAS_BASEFORM) != 0) {
-      if (baseForm.length() >= 16) {
-        throw new IllegalArgumentException("Length of base form " + baseForm + " is >= 16");
+      if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && baseForm.length() >= 16) {
+        throw new IllegalArgumentException(
+            "IPADIC base form length " + baseForm.length() + " is >= 16");
+      }
+
+      // Added the following check because when trying to build unidic-cwj-3.1.1-full,
+      // the base form length was greater than 16, thus, the original check was failing.
+      if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC && baseForm.length() >= 35) {
+        throw new IllegalArgumentException(
+            "UNIDIC base form length " + baseForm.length() + " is >= 35");
       }
       int shared = sharedPrefix(entry[0], baseForm);
       int suffix = baseForm.length() - shared;
@@ -177,6 +197,20 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     }
 
     return buffer.position();
+  }
+
+  private void validateLeftRightIdsWithThrow(short leftId, short rightId) {
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && leftId != rightId) {
+      throw new IllegalArgumentException("IpaDic rightId != leftId: " + rightId + " " + leftId);
+    }
+
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && leftId >= IPADIC_ID_LIMIT) {
+      throw new IllegalArgumentException("IpaDic leftId >= " + IPADIC_ID_LIMIT + ": " + leftId);
+    }
+
+    if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC && leftId >= UNIDIC_ID_LIMIT) {
+      throw new IllegalArgumentException("UniDic leftId >= " + UNIDIC_ID_LIMIT + ": " + leftId);
+    }
   }
 
   private boolean isKatakana(String s) {

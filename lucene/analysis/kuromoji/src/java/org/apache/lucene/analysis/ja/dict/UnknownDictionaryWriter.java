@@ -29,8 +29,8 @@ class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> 
           CharacterDefinition.CLASS_COUNT,
           CharacterDefinition::lookupCharacterClass);
 
-  public UnknownDictionaryWriter(int size) {
-    super(UnknownDictionary.class, new TokenInfoDictionaryEntryWriter(size));
+  public UnknownDictionaryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
+    super(UnknownDictionary.class, new TokenInfoDictionaryEntryWriter(format, size));
   }
 
   @Override

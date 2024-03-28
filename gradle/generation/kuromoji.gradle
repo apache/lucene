@@ -132,6 +132,42 @@ configure(project(":lucene:analysis:kuromoji")) {
       }
     }
 
+    task compileUnidic(type: Download) {
+      description "Recompile dictionaries from UniDic data from https://clrd.ninjal.ac.jp/unidic_archive"
+      group "generation"
+
+      dependsOn deleteDictionaryData
+      dependsOn sourceSets.main.runtimeClasspath
+
+      def dictionaryName = "unidic-cwj-3.1.1-full"
+      def dictionarySource = "https://clrd.ninjal.ac.jp/unidic_archive/cwj/3.1.1/${dictionaryName}.zip"
+      def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.zip")
+      def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
+
+      src dictionarySource
+      dest dictionaryFile
+      onlyIfModified true
+
+      doLast {
+        // Unpack the downloaded archive.
+        delete unpackedDir
+        ant.unzip(src: dictionaryFile, dest: unpackedDir) {
+          ant.cutdirsmapper(dirs: "1")
+        }
+
+        // Compile the dictionary
+        recompileDictionary(project, dictionaryName, {
+          args += [
+                  "unidic",
+                  unpackedDir,
+                  targetDir,
+                  "UTF-8",
+                  false
+          ]
+        })
+      }
+    }
+
     regenerate.dependsOn compileMecab
   }
 }
