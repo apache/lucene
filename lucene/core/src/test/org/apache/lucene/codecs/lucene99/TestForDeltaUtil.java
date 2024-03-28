@@ -65,10 +65,11 @@ public class TestForDeltaUtil extends LuceneTestCase {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
+      PostingBits bits = new PostingBits(1);
       for (int i = 0; i < iterations; ++i) {
         long base = 0;
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forDeltaUtil.decodeAndPrefixSum(in, base, restored);
+        int headByte = forDeltaUtil.decodeAndPrefixSum(in, base, restored, bits);
         final long[] expected = new long[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
@@ -78,6 +79,12 @@ public class TestForDeltaUtil extends LuceneTestCase {
             expected[j] += base;
           }
         }
+        if ((headByte & 0x80) != 0) {
+          // System.out.println("dense " + (headByte & 0x7f));
+          decodeBits(bits, base, restored);
+        } else {
+          // System.out.println("packed " + (headByte & 0x7f));
+        }
         assertArrayEquals(Arrays.toString(restored), expected, restored);
       }
       assertEquals(endPointer, in.getFilePointer());
@@ -85,5 +92,17 @@ public class TestForDeltaUtil extends LuceneTestCase {
     }
 
     d.close();
+  }
+
+  static void decodeBits(PostingBits bits, long base, long[] longs) {
+    int bitIndex = bits.nextSetBit(0);
+    int bufferUpto = 0;
+    for (; ; ) {
+      longs[bufferUpto++] = bitIndex + base;
+      if (bufferUpto == ForUtil.BLOCK_SIZE) {
+        break;
+      }
+      bitIndex = bits.nextSetBit(bitIndex + 1);
+    }
   }
 }

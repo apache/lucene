@@ -636,4 +636,34 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     set.set(5);
     assertTrue(bits.get(5));
   }
+
+  public void testCount() {
+    int size = random().nextInt(1, 1000);
+    int numSet = random().nextInt(2000);
+    FixedBitSet bitset = new FixedBitSet(size);
+    int countSet = 0;
+    for (int i = 0; i < numSet; i++) {
+      int bitIndex = random().nextInt(size);
+      if (bitset.get(bitIndex) == false) {
+        countSet += 1;
+        bitset.set(bitIndex);
+      }
+    }
+    assertEquals(countSet, bitset.count(0, size));
+    assertEquals(0, bitset.count(0, 0));
+    if (size > 1) {
+      assertEquals(0, bitset.count(size - 1, size - 2));
+    }
+    for (int i = 0; i < 20; i++) {
+      int startIndex = random().nextInt(size);
+      int endIndex = random().nextInt(startIndex, size);
+      int count = 0;
+      for (int j = startIndex; j < endIndex; j++) {
+        if (bitset.get(j)) {
+          count += 1;
+        }
+      }
+      assertEquals(count, bitset.count(startIndex, endIndex));
+    }
+  }
 }

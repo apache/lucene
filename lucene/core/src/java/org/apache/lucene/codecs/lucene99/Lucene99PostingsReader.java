@@ -336,6 +336,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private int doc; // doc we last read
     private long accum; // accumulator for doc deltas
 
+    // docID of first doc in the block; only used/valid when blockFormat is dense
+    private int denseBlockBaseDoc;
+    private int bitIndex; // tracks nextDoc() iteration through dense bits
+    private final PostingBits denseDocs = new PostingBits();
+
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
 
@@ -409,6 +414,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      bitIndex = -1;
+      denseBlockBaseDoc = -1;
       return this;
     }
 
@@ -418,6 +425,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         pforUtil.decode(docIn, freqBuffer); // read freqBuffer for this block
         isFreqsRead = true;
       }
+      // System.out.println(" freq(" + docBufferUpto + " - 1) = " + freqBuffer[docBufferUpto - 1]);
       return (int) freqBuffer[docBufferUpto - 1];
     }
 
@@ -456,10 +464,17 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
       final int left = docFreq - blockUpto;
       assert left >= 0;
-
+      denseBlockBaseDoc = -1;
+      // System.out.println(getClass().getSimpleName() + "refillDocs");
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
-
+        int headerByte = forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer, denseDocs);
+        // System.out.println(getClass().getSimpleName() + " refillDocs " + ((headerByte & 0x80) !=
+        // 0 ? "dense " : "packed ") + (headerByte & 0x7f));
+        if ((headerByte & 0x80) != 0) {
+          bitIndex = -1;
+          // the docid of the first doc position in a dense block
+          denseBlockBaseDoc = (int) accum;
+        }
         if (indexHasFreq) {
           if (needsFreq) {
             isFreqsRead = false;
@@ -480,20 +495,42 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
-      docBufferUpto = 0;
+      if (denseBlockBaseDoc >= 0) {
+        // what docid range is encoded?
+        accum += denseDocs.prevSetBit(denseDocs.length() - 1);
+      } else {
+        accum = docBuffer[BLOCK_SIZE - 1];
+        bitIndex = -1; // not really needed?, but helps with assertions
+      }
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      docBufferUpto = 0;
     }
+
+    // refill is controlled by docBufferUpto -- once we have read BLOCK_SIZE docs we must refill
+    // it's not necessary to advance the bit pointer beyond the current doc because
+    // nextDoc will always succeed in finding another bit so long as docBufferUpto < BLOCK_SIZE.
+    // so -- after reading the first doc, docBufferUpto will be set to 1 and the bitIndex
+    // (should we rename it to currentBit) will be at bit position (docid - base).
+    //
+    // However advance may advance beyond the current block .. therefore we must be prepared to
+    // refill *after* failing to get a next bit in advance. We also must correctly set docBufferUpto
+    // in advance
 
     @Override
     public int nextDoc() throws IOException {
+      // System.out.println("  enter nextDoc i=" + bitIndex + " [" + docBufferUpto + "]");
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs(); // we don't need to load freqBuffer for now (will be loaded later if
         // necessary)
       }
-
-      doc = (int) docBuffer[docBufferUpto];
+      if (denseBlockBaseDoc >= 0) {
+        bitIndex = denseDocs.nextSetBit(bitIndex + 1);
+        doc = denseBlockBaseDoc + bitIndex;
+      } else {
+        doc = (int) docBuffer[docBufferUpto];
+      }
       docBufferUpto++;
+      // System.out.println("  exit nextDoc " + doc + " [" + docBufferUpto + "]");
       return doc;
     }
 
@@ -543,21 +580,39 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
-
-      // Now scan... this is an inlined/pared down version
-      // of nextDoc():
-      long doc;
-      while (true) {
-        doc = docBuffer[docBufferUpto];
-
-        if (doc >= target) {
-          break;
+      if (denseBlockBaseDoc >= 0) {
+        // NOTE: the loop below encodes the assumption that this block has docids
+        // >= target; otherwise we would have skipped ahead already. So we don't
+        // need to check for overflow here
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
+        if (next == NO_MORE_DOCS) {
+          this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
+        } else {
+          this.doc = denseBlockBaseDoc + next;
+          // count all the set bits between here and there
+          // TODO: could we combine this with nextSetBit??
+          docBufferUpto += denseDocs.count(bitIndex + 1, next) + 1;
+          bitIndex = next;
         }
-        ++docBufferUpto;
-      }
+        // System.out.println("  advance " + target + "->" + doc + " [" + docBufferUpto + "]");
+        return doc;
+      } else {
+        // Now scan... this is an inlined/pared down version
+        // of nextDoc():
+        long doc;
+        while (true) {
+          doc = docBuffer[docBufferUpto];
 
-      docBufferUpto++;
-      return this.doc = (int) doc;
+          if (doc >= target) {
+            break;
+          }
+          ++docBufferUpto;
+        }
+
+        docBufferUpto++;
+        return this.doc = (int) doc;
+      }
     }
 
     @Override
@@ -591,6 +646,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private int docBufferUpto;
     private int posBufferUpto;
+
+    // docID of first doc in the block; only used/valid when blockFormat is dense
+    private int denseBlockBaseDoc;
+    private int bitIndex; // tracks nextDoc() iteration through dense bits
+    private final PostingBits denseDocs = new PostingBits();
 
     private Lucene99SkipReader skipper;
     private boolean skipped;
@@ -741,6 +801,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      bitIndex = -1;
+      denseBlockBaseDoc = -1;
       return this;
     }
 
@@ -758,8 +820,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       final int left = docFreq - blockUpto;
       assert left >= 0;
 
+      denseBlockBaseDoc = -1;
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        int headerByte = forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer, denseDocs);
+        if ((headerByte & 0x80) != 0) {
+          bitIndex = -1;
+          denseBlockBaseDoc = (int) accum;
+        }
         pforUtil.decode(docIn, freqBuffer);
         blockUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
@@ -773,9 +840,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
-      docBufferUpto = 0;
+      if (denseBlockBaseDoc >= 0) {
+        accum += denseDocs.prevSetBit(denseDocs.length() - 1);
+      } else {
+        accum = docBuffer[BLOCK_SIZE - 1];
+      }
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      docBufferUpto = 0;
     }
 
     private void refillPositions() throws IOException {
@@ -851,17 +922,33 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
+      // if (denseBlockBaseDoc >= 0) {
+      // System.out.println("  enter nextDoc i=" + bitIndex + " [" + docBufferUpto + "]");
+      // }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
+        if (denseBlockBaseDoc >= 0) {
+          // System.out.println("  refilled: nextDoc i=" + bitIndex + " [" + docBufferUpto + "] : "
+          // + Arrays.toString(denseDocs.getBits()));
+        }
       }
 
-      doc = (int) docBuffer[docBufferUpto];
+      if (denseBlockBaseDoc >= 0) {
+        bitIndex = denseDocs.nextSetBit(bitIndex + 1);
+        doc = denseBlockBaseDoc + bitIndex;
+      } else {
+        doc = (int) docBuffer[docBufferUpto];
+      }
       freq = (int) freqBuffer[docBufferUpto];
       posPendingCount += freq;
       docBufferUpto++;
 
       position = 0;
       lastStartOffset = 0;
+      // if (denseBlockBaseDoc >= 0) {
+      // System.out.println("  exit nextDoc " + doc + " i=" + bitIndex + " [" + docBufferUpto + "]
+      // freq=" + freq);
+      // }
       return doc;
     }
 
@@ -907,22 +994,44 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      // Now scan:
-      long doc;
-      while (true) {
-        doc = docBuffer[docBufferUpto];
-        freq = (int) freqBuffer[docBufferUpto];
-        posPendingCount += freq;
-        docBufferUpto++;
-
-        if (doc >= target) {
-          break;
+      if (denseBlockBaseDoc >= 0) {
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
+        if (next == NO_MORE_DOCS) {
+          this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
+        } else {
+          this.doc = denseBlockBaseDoc + next;
+          // count bits to know how many docs in this block we advanced
+          int advanceTo = docBufferUpto + denseDocs.count(bitIndex + 1, next);
+          assert advanceTo < BLOCK_SIZE;
+          while (docBufferUpto <= advanceTo) {
+            freq = (int) freqBuffer[docBufferUpto++];
+            posPendingCount += freq;
+          }
+          bitIndex = next;
         }
-      }
+        // System.out.println("  advance " + target + "->" + doc + " [" + docBufferUpto + "] freq="+
+        // freq);
+      } else {
 
+        // Now scan... this is an inlined/pared down version
+        // of nextDoc():
+        long doc;
+        while (true) {
+          doc = docBuffer[docBufferUpto];
+          freq = (int) freqBuffer[docBufferUpto];
+          posPendingCount += freq;
+          docBufferUpto++;
+
+          if (doc >= target) {
+            break;
+          }
+        }
+        this.doc = (int) doc;
+      }
       position = 0;
       lastStartOffset = 0;
-      return this.doc = (int) doc;
+      return this.doc;
     }
 
     // TODO: in theory we could avoid loading frq block
@@ -1064,6 +1173,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private int docBufferUpto;
 
+    // docID of first doc in the block; only used/valid when blockFormat is dense
+    private int denseBlockBaseDoc;
+    private int bitIndex; // tracks nextDoc() iteration through dense bits
+    private final PostingBits denseDocs = new PostingBits();
+
     private final Lucene99ScoreSkipReader skipper;
 
     final IndexInput docIn;
@@ -1148,8 +1262,16 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       final int left = docFreq - blockUpto;
       assert left >= 0;
 
+      // System.out.println(getClass().getSimpleName() + " refillDocs");
+      denseBlockBaseDoc = -1;
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        int headerByte = forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer, denseDocs);
+        // System.out.println(getClass().getSimpleName() + " refillDocs " + ((headerByte & 0x80) !=
+        // 0 ? "dense " : "packed ") + (headerByte & 0x7f));
+        if ((headerByte & 0x80) != 0) {
+          bitIndex = -1;
+          denseBlockBaseDoc = (int) accum;
+        }
         if (indexHasFreqs) {
           isFreqsRead = false;
         }
@@ -1160,9 +1282,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
-      docBufferUpto = 0;
+      if (denseBlockBaseDoc >= 0) {
+        // what docid range is encoded?
+        accum += denseDocs.prevSetBit(denseDocs.length() - 1);
+      } else {
+        accum = docBuffer[BLOCK_SIZE - 1];
+      }
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      docBufferUpto = 0;
     }
 
     @Override
@@ -1200,24 +1327,48 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
+      // System.out.println("  enter nextDoc i=" + bitIndex + " [" + docBufferUpto + "]");
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
-      return this.doc = (int) docBuffer[docBufferUpto++];
+      if (denseBlockBaseDoc >= 0) {
+        bitIndex = denseDocs.nextSetBit(bitIndex + 1);
+        doc = denseBlockBaseDoc + bitIndex;
+      } else {
+        doc = (int) docBuffer[docBufferUpto];
+      }
+      docBufferUpto++;
+      // System.out.println("  exit nextDoc " + doc + " [" + docBufferUpto + "]");
+      return doc;
     }
 
     @Override
     public int advance(int target) throws IOException {
+
+      // System.out.println("  enter advance " + target + " [" + docBufferUpto + "] nextSkipDoc=" +
+      // nextSkipDoc);
       if (target > nextSkipDoc) {
         advanceShallow(target);
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
       }
-
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
-      this.doc = (int) docBuffer[next];
-      docBufferUpto = next + 1;
+      if (denseBlockBaseDoc >= 0) {
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
+        if (next == NO_MORE_DOCS) {
+          doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
+        } else {
+          doc = denseBlockBaseDoc + next;
+          docBufferUpto += denseDocs.count(bitIndex + 1, next) + 1;
+          bitIndex = next;
+        }
+      } else {
+        int next = findFirstGreater(docBuffer, target, docBufferUpto);
+        doc = (int) docBuffer[next];
+        docBufferUpto = next + 1;
+      }
+      // System.out.println("  exit advance " + target + "->" + doc + " [" + docBufferUpto + "]");
       return doc;
     }
 
@@ -1259,6 +1410,10 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private int docBufferUpto;
     private int posBufferUpto;
 
+    // docID of first doc in the block; only used/valid when blockFormat is dense
+    private int denseBlockBaseDoc;
+    private int bitIndex; // tracks nextDoc() iteration through dense bits
+    private final PostingBits denseDocs = new PostingBits();
     private final Lucene99ScoreSkipReader skipper;
 
     final IndexInput docIn;
@@ -1359,15 +1514,25 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       final int left = docFreq - docUpto;
       assert left >= 0;
 
+      denseBlockBaseDoc = -1;
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        int headerByte = forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer, denseDocs);
+        if ((headerByte & 0x80) != 0) {
+          bitIndex = -1;
+          denseBlockBaseDoc = (int) accum;
+        }
         pforUtil.decode(docIn, freqBuffer);
       } else {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+      if (denseBlockBaseDoc >= 0) {
+        // what docid range is encoded?
+        accum += denseDocs.prevSetBit(denseDocs.length() - 1);
+      } else {
+        accum = docBuffer[BLOCK_SIZE - 1];
+      }
       docBufferUpto = 0;
     }
 
@@ -1446,19 +1611,39 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
-      if (next == BLOCK_SIZE) {
-        return doc = NO_MORE_DOCS;
+      if (denseBlockBaseDoc >= 0) {
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
+        if (next == NO_MORE_DOCS) {
+          this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
+        } else {
+          this.doc = denseBlockBaseDoc + next;
+          int numAdvance = denseDocs.count(bitIndex + 1, next);
+          int advanceTo = docBufferUpto + numAdvance;
+          while (docBufferUpto <= advanceTo) {
+            freq = (int) freqBuffer[docBufferUpto++];
+            posPendingCount += freq;
+          }
+          docUpto += numAdvance;
+          position = 0;
+          bitIndex = next;
+        }
+        return this.doc;
+      } else {
+        int next = findFirstGreater(docBuffer, target, docBufferUpto);
+        if (next == BLOCK_SIZE) {
+          return doc = NO_MORE_DOCS;
+        }
+        this.doc = (int) docBuffer[next];
+        this.freq = (int) freqBuffer[next];
+        for (int i = docBufferUpto; i <= next; ++i) {
+          posPendingCount += freqBuffer[i];
+        }
+        docUpto += next - docBufferUpto + 1;
+        docBufferUpto = next + 1;
+        position = 0;
+        return doc;
       }
-      this.doc = (int) docBuffer[next];
-      this.freq = (int) freqBuffer[next];
-      for (int i = docBufferUpto; i <= next; ++i) {
-        posPendingCount += freqBuffer[i];
-      }
-      docUpto += next - docBufferUpto + 1;
-      docBufferUpto = next + 1;
-      position = 0;
-      return doc;
     }
 
     // TODO: in theory we could avoid loading frq block
@@ -1558,6 +1743,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private int docBufferUpto;
     private int posBufferUpto;
+
+    // docID of first doc in the block; only used/valid when blockFormat is dense
+    private int denseBlockBaseDoc;
+    private int bitIndex; // tracks nextDoc() iteration through dense bits
+    private final PostingBits denseDocs = new PostingBits();
 
     private final Lucene99ScoreSkipReader skipper;
 
@@ -1746,8 +1936,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       final int left = docFreq - docUpto;
       assert left >= 0;
 
+      denseBlockBaseDoc = -1;
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        int headerByte = forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer, denseDocs);
+        if ((headerByte & 0x80) != 0) {
+          bitIndex = -1;
+          denseBlockBaseDoc = (int) accum;
+        }
         if (indexHasFreq) {
           isFreqsRead =
               false; // freq block will be loaded lazily when necessary, we don't load it here
@@ -1757,7 +1952,11 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+      if (denseBlockBaseDoc >= 0) {
+        accum += denseDocs.prevSetBit(denseDocs.length() - 1);
+      } else {
+        accum = docBuffer[BLOCK_SIZE - 1];
+      }
       docBufferUpto = 0;
     }
 
@@ -1887,25 +2086,39 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      // Now scan:
-      long doc;
-      while (true) {
-        doc = docBuffer[docBufferUpto];
-        docBufferUpto++;
-        docUpto++;
-
-        if (doc >= target) {
-          break;
+      if (denseBlockBaseDoc >= 0) {
+        int next = denseDocs.checkNextSetBit(target - denseBlockBaseDoc);
+        if (next == NO_MORE_DOCS) {
+          this.doc = NO_MORE_DOCS;
+          docBufferUpto = BLOCK_SIZE;
+        } else {
+          this.doc = denseBlockBaseDoc + next;
+          int numAdvanced = denseDocs.count(bitIndex + 1, next) + 1;
+          docBufferUpto += numAdvanced;
+          docUpto += numAdvanced;
+          bitIndex = next;
         }
+      } else {
+        // Now scan:
+        long doc;
+        while (true) {
+          doc = docBuffer[docBufferUpto];
+          docBufferUpto++;
+          docUpto++;
 
-        if (docBufferUpto == BLOCK_SIZE) {
-          return this.doc = NO_MORE_DOCS;
+          if (doc >= target) {
+            break;
+          }
+
+          if (docBufferUpto == BLOCK_SIZE) {
+            return this.doc = NO_MORE_DOCS;
+          }
         }
+        this.doc = (int) doc;
       }
       position = 0;
       lastStartOffset = 0;
-
-      return this.doc = (int) doc;
+      return this.doc;
     }
 
     // TODO: in theory we could avoid loading frq block
