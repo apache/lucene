@@ -181,6 +181,53 @@ final class LatLonPointDistanceQuery extends Query {
         };
       }
 
+      private int matchesWithState(byte[] packedValue, int sortedDim) {
+        if (sortedDim == 0) {
+          int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
+          // bounding box check
+          if (lat > maxLat) {
+            // latitude out of bounding box range
+            return PointValues.MatchState.HIGH_IN_SORTED_DIM;
+          } else if (lat < minLat) {
+            return PointValues.MatchState.LOW;
+          }
+          int lon = NumericUtils.sortableBytesToInt(packedValue, Integer.BYTES);
+          if ((lon > maxLon || lon < minLon) && lon < minLon2) {
+            // longitude out of bounding box range
+            return PointValues.MatchState.NOT_MATCH;
+          }
+          return distancePredicate.test(lat, lon)
+              ? PointValues.MatchState.MATCH
+              : PointValues.MatchState.NOT_MATCH;
+        } else {
+          int lon = NumericUtils.sortableBytesToInt(packedValue, Integer.BYTES);
+          //        // cross
+          //          if (lon > maxLon && lon < minLon2) {}
+          //        // disable
+          //          if (lon > maxLon || lon < minLon) {}
+          if (box.crossesDateline()) {
+            if (lon > maxLon && lon < minLon2) {
+              return PointValues.MatchState.NOT_MATCH;
+            }
+          } else {
+            if (lon > maxLon) {
+              return PointValues.MatchState.HIGH_IN_SORTED_DIM;
+            } else if (lon < minLon) {
+              return PointValues.MatchState.NOT_MATCH;
+            }
+          }
+          int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
+          // bounding box check
+          if (lat > maxLat || lat < minLat) {
+            // latitude out of bounding box range
+            return PointValues.MatchState.NOT_MATCH;
+          }
+          return distancePredicate.test(lat, lon)
+              ? PointValues.MatchState.MATCH
+              : PointValues.MatchState.NOT_MATCH;
+        }
+      }
+
       private boolean matches(byte[] packedValue) {
         int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
         // bounding box check
@@ -193,6 +240,7 @@ final class LatLonPointDistanceQuery extends Query {
           // longitude out of bounding box range
           return false;
         }
+
         return distancePredicate.test(lat, lon);
       }
 
@@ -256,10 +304,33 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
+          public boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              visit(docID);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return false;
+            }
+            return true;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue)) {
               adder.add(iterator);
             }
+          }
+
+          @Override
+          public boolean visitWithSortedDim(
+              DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              adder.add(iterator);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return false;
+            }
+            return true;
           }
 
           @Override

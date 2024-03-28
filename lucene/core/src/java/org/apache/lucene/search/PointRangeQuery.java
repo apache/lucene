@@ -141,6 +141,32 @@ public abstract class PointRangeQuery extends Query {
         return true;
       }
 
+      private int matchesWithState(byte[] packedValue, int sortedDim) {
+        int offset = sortedDim * bytesPerDim;
+        if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+          // Doc's value is too low, in sorted dimension
+          return PointValues.MatchState.LOW;
+        }
+        if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+          // Doc's value is too high, in sorted dimension, early terminate.
+          return PointValues.MatchState.HIGH_IN_SORTED_DIM;
+        }
+
+        for (int dim = 0; dim < numDims; dim++) {
+          if (dim == sortedDim) continue;
+          offset = dim * bytesPerDim;
+          if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+            // Doc's value is too low, in non-sorted dimension
+            return PointValues.MatchState.LOW;
+          }
+          if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+            // Doc's value is too high, in non-sorted dimension
+            return PointValues.MatchState.HIGH_IN_NON_SORTED_DIM;
+          }
+        }
+        return PointValues.MatchState.MATCH;
+      }
+
       private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
 
         boolean crosses = false;
@@ -193,10 +219,33 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
+          public boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              visit(docID);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return false;
+            }
+            return true;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue)) {
               adder.add(iterator);
             }
+          }
+
+          @Override
+          public boolean visitWithSortedDim(
+              DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              adder.add(iterator);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return false;
+            }
+            return true;
           }
 
           @Override
