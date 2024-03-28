@@ -47,12 +47,7 @@ for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
   # title-case the classes (fooStemmer -> FooStemmer) so they obey normal java conventions
   base=$(basename $file)
   oldclazz="${base%.*}"
-  # one-off
-  if [ "${oldclazz}" == "kraaij_pohlmannStemmer" ]; then
-    newclazz="KpStemmer"
-  else
-    newclazz=${oldclazz^}
-  fi
+  newclazz=${oldclazz^}
   echo ${newclazz} | sed -e 's/Stemmer//' >> ${TESTDSTDIR}/languages.txt
   cat $file | sed "s/${oldclazz}/${newclazz}/g" > ${DESTDIR}/ext/${newclazz}.java
 done
