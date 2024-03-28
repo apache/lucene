@@ -52,11 +52,11 @@ public class TestNIOFSDirectory extends BaseDirectoryTestCase {
         };
     Path wrapped = leakFS.wrapPath(path);
     try (Directory dir = new NIOFSDirectory(wrapped)) {
-      try (IndexOutput out = dir.createOutput("test.bin", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("test.bin", IOContext.WRITE)) {
         out.writeString("hello");
       }
       final IOException error =
-          expectThrows(IOException.class, () -> dir.openInput("test.bin", IOContext.DEFAULT));
+          expectThrows(IOException.class, () -> dir.openInput("test.bin", IOContext.READ));
       assertEquals("simulated", error.getMessage());
     }
   }

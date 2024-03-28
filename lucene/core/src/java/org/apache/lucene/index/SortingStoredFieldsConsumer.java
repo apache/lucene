@@ -88,7 +88,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
   protected void initStoredFieldsWriter() throws IOException {
     if (writer == null) {
       this.tmpDirectory = new TrackingTmpOutputDirectoryWrapper(directory);
-      this.writer = TEMP_STORED_FIELDS_FORMAT.fieldsWriter(tmpDirectory, info, IOContext.DEFAULT);
+      this.writer = TEMP_STORED_FIELDS_FORMAT.fieldsWriter(tmpDirectory, info, IOContext.WRITE);
     }
   }
 
@@ -97,13 +97,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     super.flush(state, sortMap);
     StoredFieldsReader reader =
         TEMP_STORED_FIELDS_FORMAT.fieldsReader(
-            tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
+            tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.READ);
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =
-        codec
-            .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+        codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
       CopyVisitor visitor = new CopyVisitor(sortWriter);

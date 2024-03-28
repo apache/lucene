@@ -68,7 +68,7 @@ public abstract class SortingStrategy {
     return new SortingStrategy() {
       @Override
       EntryAccumulator start() throws IOException {
-        IndexOutput output = tempDir.createTempOutput(tempFileNamePrefix, "dat", IOContext.DEFAULT);
+        IndexOutput output = tempDir.createTempOutput(tempFileNamePrefix, "dat", IOContext.WRITE);
         ByteSequencesWriter writer = new ByteSequencesWriter(output);
         return new EntryAccumulator() {
           int wordCount = 0;

@@ -30,7 +30,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
@@ -75,7 +74,7 @@ public class TestBoolean2 extends LuceneTestCase {
       if (name.startsWith("extra")) {
         continue;
       }
-      copy.copyFrom(dir, name, name, IOContext.DEFAULT);
+      copy.copyFrom(dir, name, name);
       copy.sync(Collections.singleton(name));
     }
     return copy;
@@ -139,7 +138,7 @@ public class TestBoolean2 extends LuceneTestCase {
       if (fileName.startsWith("extra")) {
         continue;
       }
-      singleSegmentDirectory.copyFrom(directory, fileName, fileName, IOContext.DEFAULT);
+      singleSegmentDirectory.copyFrom(directory, fileName, fileName);
       singleSegmentDirectory.sync(Collections.singleton(fileName));
     }
 

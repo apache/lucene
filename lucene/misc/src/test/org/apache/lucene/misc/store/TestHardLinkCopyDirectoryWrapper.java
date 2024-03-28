@@ -62,7 +62,7 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
     Directory luceneDir_1 = newFSDirectory(dir_1);
     Directory luceneDir_2 = newFSDirectory(dir_2);
     try {
-      try (IndexOutput output = luceneDir_1.createOutput("foo.bar", IOContext.DEFAULT)) {
+      try (IndexOutput output = luceneDir_1.createOutput("foo.bar", IOContext.WRITE)) {
         CodecUtil.writeHeader(output, "foo", 0);
         output.writeString("hey man, nice shot!");
         CodecUtil.writeFooter(output);
@@ -85,7 +85,7 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
       }
 
       HardlinkCopyDirectoryWrapper wrapper = new HardlinkCopyDirectoryWrapper(luceneDir_2);
-      wrapper.copyFrom(luceneDir_1, "foo.bar", "bar.foo", IOContext.DEFAULT);
+      wrapper.copyFrom(luceneDir_1, "foo.bar", "bar.foo");
       assertTrue(Files.exists(dir_2.resolve("bar.foo")));
       BasicFileAttributes destAttr =
           Files.readAttributes(dir_2.resolve("bar.foo"), BasicFileAttributes.class);
@@ -111,23 +111,23 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
     Directory dir1 = new NIOFSDirectory(provider.wrapPath(path));
     Directory dir2 = new NIOFSDirectory(provider.wrapPath(path.resolve("link")));
 
-    IndexOutput target = dir1.createOutput("target.txt", IOContext.DEFAULT);
+    IndexOutput target = dir1.createOutput("target.txt", IOContext.WRITE);
     target.writeInt(1);
     target.close();
 
     HardlinkCopyDirectoryWrapper wrapper = new HardlinkCopyDirectoryWrapper(dir2);
-    wrapper.copyFrom(dir1, "target.txt", "link.txt", IOContext.DEFAULT);
+    wrapper.copyFrom(dir1, "target.txt", "link.txt");
 
-    IndexOutput source = dir1.createOutput("source.txt", IOContext.DEFAULT);
+    IndexOutput source = dir1.createOutput("source.txt", IOContext.WRITE);
     source.writeInt(2);
     source.close();
 
-    IndexInput link = dir2.openInput("link.txt", IOContext.DEFAULT);
+    IndexInput link = dir2.openInput("link.txt", IOContext.WRITE);
     // Rename while opening a hard-link file
     dir1.rename("source.txt", "target.txt");
     link.close();
 
-    IndexInput in = dir1.openInput("target.txt", IOContext.DEFAULT);
+    IndexInput in = dir1.openInput("target.txt", IOContext.WRITE);
     assertEquals(2, in.readInt());
     in.close();
 

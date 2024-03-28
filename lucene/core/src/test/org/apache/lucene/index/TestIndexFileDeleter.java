@@ -211,8 +211,8 @@ public class TestIndexFileDeleter extends LuceneTestCase {
   }
 
   public void copyFile(Directory dir, String src, String dest) throws IOException {
-    IndexInput in = dir.openInput(src, newIOContext(random()));
-    IndexOutput out = dir.createOutput(dest, newIOContext(random()));
+    IndexInput in = dir.openInput(src, newReadIOContext(random()));
+    IndexOutput out = dir.createOutput(dest, newWriteIOContext(random()));
     byte[] b = new byte[1024];
     long remainder = in.length();
     while (remainder > 0) {
@@ -240,7 +240,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     // add empty commit
     new IndexWriter(dir, new IndexWriterConfig(null)).close();
     // add a trash unreferenced file
-    dir.createOutput("_0.si", IOContext.DEFAULT).close();
+    dir.createOutput("_0.si", IOContext.WRITE).close();
 
     // start virus scanner
     TestUtil.enableVirusChecker(dir);
@@ -281,14 +281,14 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(1, sis.getGeneration());
 
     // add trash commit
-    dir.createOutput(IndexFileNames.SEGMENTS + "_2", IOContext.DEFAULT).close();
+    dir.createOutput(IndexFileNames.SEGMENTS + "_2", IOContext.WRITE).close();
 
     // ensure inflation
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());
     assertEquals(2, sis.getGeneration());
 
     // add another trash commit
-    dir.createOutput(IndexFileNames.SEGMENTS + "_4", IOContext.DEFAULT).close();
+    dir.createOutput(IndexFileNames.SEGMENTS + "_4", IOContext.WRITE).close();
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());
     assertEquals(4, sis.getGeneration());
 
@@ -309,14 +309,14 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(0, sis.counter);
 
     // add trash per-segment file
-    dir.createOutput(IndexFileNames.segmentFileName("_0", "", "foo"), IOContext.DEFAULT).close();
+    dir.createOutput(IndexFileNames.segmentFileName("_0", "", "foo"), IOContext.WRITE).close();
 
     // ensure inflation
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());
     assertEquals(1, sis.counter);
 
     // add trash per-segment file
-    dir.createOutput(IndexFileNames.segmentFileName("_3", "", "foo"), IOContext.DEFAULT).close();
+    dir.createOutput(IndexFileNames.segmentFileName("_3", "", "foo"), IOContext.WRITE).close();
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());
     assertEquals(4, sis.counter);
 
@@ -350,7 +350,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(1, sis.info(0).getNextDelGen());
 
     // add trash per-segment deletes file
-    dir.createOutput(IndexFileNames.fileNameFromGeneration("_0", "del", 2), IOContext.DEFAULT)
+    dir.createOutput(IndexFileNames.fileNameFromGeneration("_0", "del", 2), IOContext.WRITE)
         .close();
 
     // ensure inflation
@@ -371,7 +371,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(1, sis.getGeneration());
 
     // add trash file
-    dir.createOutput(IndexFileNames.SEGMENTS + "_", IOContext.DEFAULT).close();
+    dir.createOutput(IndexFileNames.SEGMENTS + "_", IOContext.WRITE).close();
 
     // no inflation
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());
@@ -394,7 +394,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(1, sis.info(0).getNextDelGen());
 
     // add trash file
-    dir.createOutput("_1_A", IOContext.DEFAULT).close();
+    dir.createOutput("_1_A", IOContext.WRITE).close();
 
     // no inflation
     inflateGens(sis, Arrays.asList(dir.listAll()), InfoStream.getDefault());

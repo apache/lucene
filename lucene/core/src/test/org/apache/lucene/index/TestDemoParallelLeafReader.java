@@ -469,7 +469,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
               // Marker file, telling us this index is in fact done.  This way if we crash while
               // doing the reindexing for a given segment, we will
               // later try again:
-              dir.createOutput("done", IOContext.DEFAULT).close();
+              dir.createOutput("done", IOContext.WRITE).close();
             } else {
               if (DEBUG)
                 System.out.println(
@@ -492,7 +492,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
             SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
             assert infos.size() == 1;
             final LeafReader parLeafReader =
-                new SegmentReader(infos.info(0), Version.LATEST.major, IOContext.DEFAULT);
+                new SegmentReader(infos.info(0), Version.LATEST.major, IOContext.READ);
 
             // checkParallelReader(leaf, parLeafReader, schemaGen);
 

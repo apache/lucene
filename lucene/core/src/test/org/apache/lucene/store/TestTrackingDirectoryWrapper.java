@@ -35,13 +35,13 @@ public class TestTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testTrackCreate() throws IOException {
     TrackingDirectoryWrapper dir = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
-    dir.createOutput("foo", newIOContext(random())).close();
+    dir.createOutput("foo", newWriteIOContext(random())).close();
     assertEquals(asSet("foo"), dir.getCreatedFiles());
   }
 
   public void testTrackDelete() throws IOException {
     TrackingDirectoryWrapper dir = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
-    dir.createOutput("foo", newIOContext(random())).close();
+    dir.createOutput("foo", newWriteIOContext(random())).close();
     assertEquals(asSet("foo"), dir.getCreatedFiles());
     dir.deleteFile("foo");
     assertEquals(Collections.emptySet(), dir.getCreatedFiles());
@@ -49,7 +49,7 @@ public class TestTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testTrackRename() throws IOException {
     TrackingDirectoryWrapper dir = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
-    dir.createOutput("foo", newIOContext(random())).close();
+    dir.createOutput("foo", newWriteIOContext(random())).close();
     assertEquals(asSet("foo"), dir.getCreatedFiles());
     dir.rename("foo", "bar");
     assertEquals(asSet("bar"), dir.getCreatedFiles());
@@ -58,9 +58,9 @@ public class TestTrackingDirectoryWrapper extends BaseDirectoryTestCase {
   public void testTrackCopyFrom() throws IOException {
     TrackingDirectoryWrapper source = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
     TrackingDirectoryWrapper dest = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
-    source.createOutput("foo", newIOContext(random())).close();
+    source.createOutput("foo", newWriteIOContext(random())).close();
     assertEquals(asSet("foo"), source.getCreatedFiles());
-    dest.copyFrom(source, "foo", "bar", newIOContext(random()));
+    dest.copyFrom(source, "foo", "bar");
     assertEquals(asSet("bar"), dest.getCreatedFiles());
     assertEquals(asSet("foo"), source.getCreatedFiles());
   }

@@ -48,7 +48,7 @@ public class CopyOneFile implements Closeable {
     this.dest = dest;
     this.buffer = buffer;
     // TODO: pass correct IOCtx, e.g. seg total size
-    out = dest.createTempOutput(name, "copy", IOContext.DEFAULT);
+    out = dest.createTempOutput(name, "copy", IOContext.WRITE);
     tmpName = out.getName();
 
     // last 8 bytes are checksum, which we write ourselves after copying all bytes and confirming

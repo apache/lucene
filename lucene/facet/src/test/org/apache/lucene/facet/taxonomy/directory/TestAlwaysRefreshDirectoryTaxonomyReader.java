@@ -31,7 +31,6 @@ import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Ignore;
@@ -67,7 +66,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     for (String file : dir1.listAll()) {
       if (isExtra(file) == false) {
         // the test framework creates these devious extra files just to chaos test the edge cases
-        commit1.copyFrom(dir1, file, file, IOContext.READ);
+        commit1.copyFrom(dir1, file, file);
       }
     }
 
@@ -103,7 +102,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     // copy all index files from commit1
     for (String file : commit1.listAll()) {
       if (isExtra(file) == false) {
-        dir1.copyFrom(commit1, file, file, IOContext.READ);
+        dir1.copyFrom(commit1, file, file);
       }
     }
 

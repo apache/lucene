@@ -48,7 +48,7 @@ public class TestForUtil extends LuceneTestCase {
 
     {
       // encode
-      IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
+      IndexOutput out = d.createOutput("test.bin", IOContext.WRITE);
       final ForUtil forUtil = new ForUtil();
 
       for (int i = 0; i < iterations; ++i) {

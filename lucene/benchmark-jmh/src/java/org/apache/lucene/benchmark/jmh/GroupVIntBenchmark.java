@@ -118,10 +118,10 @@ public class GroupVIntBenchmark {
 
   void initNioInput(long[] docs) throws Exception {
     Directory dir = new NIOFSDirectory(Files.createTempDirectory("groupvintdata"));
-    IndexOutput out = dir.createOutput("gvint", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("gvint", IOContext.WRITE);
     out.writeGroupVInts(docs, docs.length);
     out.close();
-    nioGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
+    nioGVIntIn = dir.openInput("gvint", IOContext.WRITE);
   }
 
   void initByteBuffersInput(long[] docs) throws Exception {
@@ -132,8 +132,8 @@ public class GroupVIntBenchmark {
 
   void initByteBufferInput(long[] docs) throws Exception {
     Directory dir = new MMapDirectory(Files.createTempDirectory("groupvintdata"));
-    IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
-    IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
+    IndexOutput vintOut = dir.createOutput("vint", IOContext.WRITE);
+    IndexOutput gvintOut = dir.createOutput("gvint", IOContext.WRITE);
 
     gvintOut.writeGroupVInts(docs, docs.length);
     for (long v : docs) {
@@ -141,8 +141,8 @@ public class GroupVIntBenchmark {
     }
     vintOut.close();
     gvintOut.close();
-    byteBufferGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
-    byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
+    byteBufferGVIntIn = dir.openInput("gvint", IOContext.WRITE);
+    byteBufferVIntIn = dir.openInput("vint", IOContext.WRITE);
   }
 
   private void readGroupVIntsBaseline(DataInput in, long[] dst, int limit) throws IOException {

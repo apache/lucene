@@ -40,7 +40,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -102,7 +101,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
       SimpleTextUtil.checkFooter(in);
 
-      dataIn = readState.directory.openInput(vectorFileName, IOContext.DEFAULT);
+      dataIn = readState.directory.openInput(vectorFileName, readState.context);
       success = true;
     } finally {
       if (success == false) {

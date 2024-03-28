@@ -127,9 +127,9 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
     Directory fsDir = FSDirectory.open(createTempDir("verify"));
     NRTCachingDirectory nrtDir = new NRTCachingDirectory(fsDir, 2.0, 25.0);
     String name = "foo_bar_0.tmp";
-    nrtDir.createOutput(name, IOContext.DEFAULT).close();
+    nrtDir.createOutput(name, IOContext.WRITE).close();
 
-    IndexOutput out = nrtDir.createTempOutput("foo", "bar", IOContext.DEFAULT);
+    IndexOutput out = nrtDir.createTempOutput("foo", "bar", IOContext.WRITE);
     assertFalse(name.equals(out.getName()));
     out.close();
     nrtDir.close();
@@ -161,7 +161,7 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
             return cache;
           }
         };
-    ioContext = IOContext.DEFAULT;
+    ioContext = IOContext.WRITE;
     nrtDir2.createOutput("foo", ioContext).close();
     nrtDir2.createTempOutput("bar", "baz", ioContext).close();
 

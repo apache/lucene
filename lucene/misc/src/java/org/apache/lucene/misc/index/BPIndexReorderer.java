@@ -764,9 +764,8 @@ public final class BPIndexReorderer {
 
     String termIDsFileName;
     String startOffsetsFileName;
-    try (IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
-        IndexOutput startOffsets =
-            tempDir.createTempOutput("start-offsets", "", IOContext.DEFAULT)) {
+    try (IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.WRITE);
+        IndexOutput startOffsets = tempDir.createTempOutput("start-offsets", "", IOContext.WRITE)) {
       termIDsFileName = termIDs.getName();
       startOffsetsFileName = startOffsets.getName();
       int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
@@ -896,7 +895,7 @@ public final class BPIndexReorderer {
     IndexOutput postingsOutput = null;
     boolean success = false;
     try {
-      postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT);
+      postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.WRITE);
       int numTerms = writePostings(reader, fields, trackingDir, postingsOutput);
       CodecUtil.writeFooter(postingsOutput);
       postingsOutput.close();
@@ -1192,7 +1191,7 @@ public final class BPIndexReorderer {
       String sourceFileName = fileName;
       long indexFP = -1;
       for (int shift = 0; shift < bitsRequired; shift += 8) {
-        try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.DEFAULT)) {
+        try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.WRITE)) {
           Arrays.stream(buckets).forEach(b -> b.reset(output));
           if (shift == 0) {
             consume(sourceFileName, consumer(shift));

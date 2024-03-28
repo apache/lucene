@@ -134,10 +134,10 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
       acc.add(impact.freq, impact.norm);
     }
     try (Directory dir = newDirectory()) {
-      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("foo", IOContext.WRITE)) {
         Lucene99SkipWriter.writeImpacts(acc, out);
       }
-      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("foo", IOContext.READ)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
         List<Impact> impacts2 = readImpacts(new ByteArrayDataInput(b), new MutableImpactList());

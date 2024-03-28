@@ -119,10 +119,10 @@ public class TestAllFilesDetectMismatchedChecksum extends LuceneTestCase {
 
       for (String name : dir.listAll()) {
         if (name.equals(victim) == false) {
-          dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
+          dirCopy.copyFrom(dir, name, name);
         } else {
-          try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+          try (IndexOutput out = dirCopy.createOutput(name, IOContext.WRITE);
+              IndexInput in = dir.openInput(name, IOContext.READ)) {
             out.copyBytes(in, flipOffset);
             out.writeByte((byte) (in.readByte() + TestUtil.nextInt(random(), 0x01, 0xFF)));
             out.copyBytes(in, victimLength - flipOffset - 1);

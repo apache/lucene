@@ -368,11 +368,11 @@ public class TestCodecUtil extends LuceneTestCase {
 
   public void testRetrieveChecksum() throws IOException {
     Directory dir = newDirectory();
-    try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("foo", IOContext.WRITE)) {
       out.writeByte((byte) 42);
       CodecUtil.writeFooter(out);
     }
-    try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+    try (IndexInput in = dir.openInput("foo", IOContext.READ)) {
       CodecUtil.retrieveChecksum(in, in.length()); // no exception
 
       CorruptIndexException exception =
@@ -388,12 +388,12 @@ public class TestCodecUtil extends LuceneTestCase {
       assertArrayEquals(new Throwable[0], exception.getSuppressed());
     }
 
-    try (IndexOutput out = dir.createOutput("bar", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("bar", IOContext.WRITE)) {
       for (int i = 0; i <= CodecUtil.footerLength(); ++i) {
         out.writeByte((byte) i);
       }
     }
-    try (IndexInput in = dir.openInput("bar", IOContext.DEFAULT)) {
+    try (IndexInput in = dir.openInput("bar", IOContext.READ)) {
       CorruptIndexException exception =
           expectThrows(
               CorruptIndexException.class, () -> CodecUtil.retrieveChecksum(in, in.length()));

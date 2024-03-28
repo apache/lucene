@@ -51,7 +51,7 @@ public class TestDirectory extends LuceneTestCase {
       dir.ensureOpen();
       String fname = "foo." + i;
       String lockname = "foo" + i + ".lck";
-      IndexOutput out = dir.createOutput(fname, newIOContext(random()));
+      IndexOutput out = dir.createOutput(fname, newWriteIOContext(random()));
       out.writeByte((byte) i);
       out.writeBytes(largeBuffer, largeBuffer.length);
       out.close();
@@ -61,7 +61,7 @@ public class TestDirectory extends LuceneTestCase {
         assertTrue(slowFileExists(d2, fname));
         assertEquals(1 + largeBuffer.length, d2.fileLength(fname));
 
-        IndexInput input = d2.openInput(fname, newIOContext(random()));
+        IndexInput input = d2.openInput(fname, newReadIOContext(random()));
         assertEquals((byte) i, input.readByte());
         // read array with buffering enabled
         Arrays.fill(largeReadBuffer, (byte) 0);
@@ -106,7 +106,7 @@ public class TestDirectory extends LuceneTestCase {
   public void testNotDirectory() throws Throwable {
     Path path = createTempDir("testnotdir");
     try (Directory fsDir = new NIOFSDirectory(path)) {
-      IndexOutput out = fsDir.createOutput("afile", newIOContext(random()));
+      IndexOutput out = fsDir.createOutput("afile", newWriteIOContext(random()));
       out.close();
       assertTrue(slowFileExists(fsDir, "afile"));
       expectThrows(IOException.class, () -> new NIOFSDirectory(path.resolve("afile")));

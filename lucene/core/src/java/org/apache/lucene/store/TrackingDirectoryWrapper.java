@@ -52,9 +52,8 @@ public final class TrackingDirectoryWrapper extends FilterDirectory {
   }
 
   @Override
-  public void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
-    in.copyFrom(from, src, dest, context);
+  public void copyFrom(Directory from, String src, String dest) throws IOException {
+    in.copyFrom(from, src, dest);
     createdFileNames.add(dest);
   }
 

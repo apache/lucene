@@ -56,7 +56,7 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
 
   public void testUnwrap() throws IOException {
     Directory dir = FSDirectory.open(createTempDir());
-    IndexOutput output = dir.createOutput("test", IOContext.DEFAULT);
+    IndexOutput output = dir.createOutput("test", IOContext.WRITE);
     FilterIndexOutput filterIndexOutput =
         new FilterIndexOutput("wrapper of test", "FilterDirectory{test}", output);
     assertEquals(output, filterIndexOutput.getDelegate());

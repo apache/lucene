@@ -1893,7 +1893,7 @@ public class TestIndexWriter extends LuceneTestCase {
     iw.close();
     try {
       // Create my own random file:
-      IndexOutput out = dir.createOutput("myrandomfile", newIOContext(random()));
+      IndexOutput out = dir.createOutput("myrandomfile", newWriteIOContext(random()));
       out.writeByte((byte) 42);
       out.close();
 
@@ -2348,7 +2348,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // Create a corrupt first commit:
       dir.createOutput(
               IndexFileNames.fileNameFromGeneration(IndexFileNames.PENDING_SEGMENTS, "", 0),
-              IOContext.DEFAULT)
+              IOContext.WRITE)
           .close();
 
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -2931,7 +2931,7 @@ public class TestIndexWriter extends LuceneTestCase {
         List<String> newFiles = new ArrayList<>(Arrays.asList(dir.listAll()));
         newFiles.removeAll(files);
         String randomFile = RandomPicks.randomFrom(random(), newFiles);
-        toClose.add(dir.openInput(randomFile, IOContext.DEFAULT));
+        toClose.add(dir.openInput(randomFile, IOContext.READ));
         w.rollback();
         iwc =
             new IndexWriterConfig(new MockAnalyzer(random()))
@@ -3015,7 +3015,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
       w.addDocument(new Document());
       w.close();
-      IndexInput in = dir.openInput("segments_2", IOContext.DEFAULT);
+      IndexInput in = dir.openInput("segments_2", IOContext.READ);
       dir.deleteFile("segments_2");
       assertTrue(dir.getPendingDeletions().size() > 0);
 
@@ -3049,7 +3049,7 @@ public class TestIndexWriter extends LuceneTestCase {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       IndexWriter w = new IndexWriter(dir, iwc);
       w.commit();
-      IndexInput in = dir.openInput("segments_1", IOContext.DEFAULT);
+      IndexInput in = dir.openInput("segments_1", IOContext.READ);
       w.addDocument(new Document());
       w.close();
 
@@ -3068,7 +3068,7 @@ public class TestIndexWriter extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, iwc);
     w.close();
 
-    IndexOutput out = dir.createTempOutput("_0", "bkd", IOContext.DEFAULT);
+    IndexOutput out = dir.createTempOutput("_0", "bkd", IOContext.WRITE);
     String tempName = out.getName();
     out.close();
     iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -3076,7 +3076,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // Make sure IW deleted the unref'd file:
     try {
-      dir.openInput(tempName, IOContext.DEFAULT);
+      dir.openInput(tempName, IOContext.READ);
       fail("did not hit exception");
     } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
       // expected

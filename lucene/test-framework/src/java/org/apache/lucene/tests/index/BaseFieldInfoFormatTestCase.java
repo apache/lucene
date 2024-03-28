@@ -70,9 +70,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
-    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
 
-    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.WRITE);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
     assertTrue(infos2.fieldInfo("field").getIndexOptions() != IndexOptions.NONE);
@@ -98,9 +98,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
-    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
 
-    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.WRITE);
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
     Map<String, String> attributes = infos2.fieldInfo("field").attributes();
@@ -142,7 +142,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -177,7 +177,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+          codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -208,13 +208,13 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
-    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
 
     fail.setDoFail();
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -245,13 +245,13 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
-    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
+    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
 
     fail.setDoFail();
     expectThrows(
         FakeIOException.class,
         () -> {
-          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+          codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.WRITE);
         });
     fail.clearDoFail();
 
@@ -315,8 +315,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       builder.add(fi);
     }
     FieldInfos infos = builder.finish();
-    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+    codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.WRITE);
+    FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.WRITE);
     assertEquals(infos, infos2);
     dir.close();
   }

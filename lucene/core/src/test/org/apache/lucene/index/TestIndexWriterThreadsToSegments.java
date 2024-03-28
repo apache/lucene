@@ -369,11 +369,11 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
               SegmentInfo si =
                   TestUtil.getDefaultCodec()
                       .segmentInfoFormat()
-                      .read(dir, segName, id, IOContext.DEFAULT);
+                      .read(dir, segName, id, IOContext.READ);
               si.setCodec(codec);
               SegmentCommitInfo sci =
                   new SegmentCommitInfo(si, 0, 0, -1, -1, -1, StringHelper.randomId());
-              SegmentReader sr = new SegmentReader(sci, Version.LATEST.major, IOContext.DEFAULT);
+              SegmentReader sr = new SegmentReader(sci, Version.LATEST.major, IOContext.READ);
               try {
                 thread0Count += sr.docFreq(new Term("field", "threadID0"));
                 thread1Count += sr.docFreq(new Term("field", "threadID1"));
@@ -396,7 +396,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
   // TODO: remove this hack and fix this test to be better?
   // the whole thing relies on default codec too...
   byte[] readSegmentInfoID(Directory dir, String file) throws IOException {
-    try (IndexInput in = dir.openInput(file, IOContext.DEFAULT)) {
+    try (IndexInput in = dir.openInput(file, IOContext.READ)) {
       in.readInt(); // magic
       in.readString(); // codec name
       in.readInt(); // version

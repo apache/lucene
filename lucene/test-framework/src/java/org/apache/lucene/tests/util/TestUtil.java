@@ -98,7 +98,6 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
@@ -1670,7 +1669,7 @@ public final class TestUtil {
     for (String file : dir.listAll()) {
       if (file.startsWith(IndexFileNames.SEGMENTS)
           || IndexFileNames.CODEC_FILE_PATTERN.matcher(file).matches()) {
-        ram.copyFrom(dir, file, file, IOContext.DEFAULT);
+        ram.copyFrom(dir, file, file);
       }
     }
     return ram;

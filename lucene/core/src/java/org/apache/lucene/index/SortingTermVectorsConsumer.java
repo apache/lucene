@@ -61,14 +61,14 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
     if (tmpDirectory != null) {
       TermVectorsReader reader =
           TEMP_TERM_VECTORS_FORMAT.vectorsReader(
-              tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
+              tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.READ);
       // Don't pull a merge instance, since merge instances optimize for
       // sequential access while term vectors will likely be accessed in random
       // order here.
       TermVectorsWriter writer =
           codec
               .termVectorsFormat()
-              .vectorsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+              .vectorsWriter(state.directory, state.segmentInfo, state.context);
       try {
         reader.checkIntegrity();
         for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {

@@ -396,8 +396,7 @@ public class AnalyzingSuggester extends Lookup {
     OfflineSorter sorter =
         new OfflineSorter(tempDir, tempFileNamePrefix, new AnalyzingComparator(hasPayloads));
 
-    IndexOutput tempInput =
-        tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.DEFAULT);
+    IndexOutput tempInput = tempDir.createTempOutput(tempFileNamePrefix, "input", IOContext.WRITE);
 
     OfflineSorter.ByteSequencesWriter writer = new OfflineSorter.ByteSequencesWriter(tempInput);
     OfflineSorter.ByteSequencesReader reader = null;

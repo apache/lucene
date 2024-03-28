@@ -57,7 +57,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     List<String> shuffledFiles = new ArrayList<>(orderedFiles);
     Collections.shuffle(shuffledFiles, random());
     si.setFiles(shuffledFiles);
-    si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
+    si.getCodec().compoundFormat().write(dir, si, IOContext.WRITE);
 
     // entries file should contain files ordered by their size
     String entriesFileName =

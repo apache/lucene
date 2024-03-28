@@ -309,7 +309,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
       assert slowFileExists(in, fileName) == false
           : "fileName=" + fileName + " exists both in cache and in delegate";
 
-      in.copyFrom(cacheDirectory, fileName, fileName, IOContext.DEFAULT);
+      in.copyFrom(cacheDirectory, fileName, fileName);
       cacheSize.addAndGet(-cacheDirectory.fileLength(fileName));
       cacheDirectory.deleteFile(fileName);
     }

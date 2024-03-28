@@ -552,7 +552,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     boolean success = false;
 
     try {
-      segnOutput = directory.createOutput(segmentFileName, IOContext.DEFAULT);
+      segnOutput = directory.createOutput(segmentFileName, IOContext.WRITE);
       write(segnOutput);
       segnOutput.close();
       directory.sync(Collections.singleton(segmentFileName));

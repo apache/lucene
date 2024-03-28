@@ -41,12 +41,12 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     final int sliceSize = 128;
     try (Directory dir = getDirectory(createTempDir(), sliceSize)) {
       final int size = 128 + 63;
-      try (IndexOutput out = dir.createOutput("a", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("a", IOContext.WRITE)) {
         for (int i = 0; i < size; ++i) {
           out.writeByte((byte) 0);
         }
       }
-      try (IndexInput in = dir.openInput("a", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("a", IOContext.READ)) {
         final long negativePos = -1234;
         var e =
             expectThrowsAnyOf(
@@ -79,10 +79,10 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
 
   public void testCloneSafety() throws Exception {
     Directory mmapDir = getDirectory(createTempDir("testCloneSafety"));
-    IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
+    IndexOutput io = mmapDir.createOutput("bytes", newWriteIOContext(random()));
     io.writeVInt(5);
     io.close();
-    IndexInput one = mmapDir.openInput("bytes", IOContext.DEFAULT);
+    IndexInput one = mmapDir.openInput("bytes", IOContext.READ);
     IndexInput two = one.clone();
     IndexInput three = two.clone(); // clone of clone
     one.close();
@@ -111,11 +111,11 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
 
   public void testCloneSliceSafety() throws Exception {
     Directory mmapDir = getDirectory(createTempDir("testCloneSliceSafety"));
-    IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
+    IndexOutput io = mmapDir.createOutput("bytes", newWriteIOContext(random()));
     io.writeInt(1);
     io.writeInt(2);
     io.close();
-    IndexInput slicer = mmapDir.openInput("bytes", newIOContext(random()));
+    IndexInput slicer = mmapDir.openInput("bytes", newReadIOContext(random()));
     IndexInput one = slicer.slice("first int", 0, 4);
     IndexInput two = slicer.slice("second int", 4, 4);
     IndexInput three = one.clone(); // clone of clone
@@ -156,13 +156,13 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     for (int i = 2; i < 12; i++) {
       final int chunkSize = 1 << i;
       Directory mmapDir = getDirectory(createTempDir("testImplementations"), chunkSize);
-      IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = mmapDir.createOutput("bytes", newWriteIOContext(random()));
       int size = random().nextInt(chunkSize * 2) + 3; // add some buffer of 3 for slice tests
       byte[] bytes = new byte[size];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
+      IndexInput ii = mmapDir.openInput("bytes", newReadIOContext(random()));
       byte[] actual = new byte[size]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));

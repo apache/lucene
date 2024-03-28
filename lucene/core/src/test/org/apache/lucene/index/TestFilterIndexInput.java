@@ -39,19 +39,19 @@ public class TestFilterIndexInput extends TestIndexInput {
     for (int i = 0; i < 10; i++) {
       Random random = random();
       final Directory dir = newDirectory();
-      IndexOutput os = dir.createOutput("foo", newIOContext(random));
+      IndexOutput os = dir.createOutput("foo", newWriteIOContext(random));
       os.writeBytes(READ_TEST_BYTES, READ_TEST_BYTES.length);
       os.close();
       IndexInput is =
-          new FilterIndexInput("wrapped foo", dir.openInput("foo", newIOContext(random)));
+          new FilterIndexInput("wrapped foo", dir.openInput("foo", newReadIOContext(random)));
       checkReads(is, IOException.class);
       checkSeeksAndSkips(is, random);
       is.close();
 
-      os = dir.createOutput("bar", newIOContext(random));
+      os = dir.createOutput("bar", newWriteIOContext(random));
       os.writeBytes(RANDOM_TEST_BYTES, RANDOM_TEST_BYTES.length);
       os.close();
-      is = new FilterIndexInput("wrapped bar", dir.openInput("bar", newIOContext(random)));
+      is = new FilterIndexInput("wrapped bar", dir.openInput("bar", newReadIOContext(random)));
       checkRandomReads(is);
       checkSeeksAndSkips(is, random);
       is.close();
@@ -83,8 +83,8 @@ public class TestFilterIndexInput extends TestIndexInput {
 
   public void testUnwrap() throws IOException {
     Directory dir = FSDirectory.open(createTempDir());
-    IndexOutput ignored = dir.createOutput("test", IOContext.DEFAULT);
-    IndexInput indexInput = dir.openInput("test", IOContext.DEFAULT);
+    IndexOutput ignored = dir.createOutput("test", IOContext.WRITE);
+    IndexInput indexInput = dir.openInput("test", IOContext.READ);
     FilterIndexInput filterIndexInput = new FilterIndexInput("wrapper of test", indexInput);
     assertEquals(indexInput, filterIndexInput.getDelegate());
     assertEquals(indexInput, FilterIndexInput.unwrap(filterIndexInput));

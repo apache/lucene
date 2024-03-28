@@ -56,7 +56,7 @@ public class TestTermBytesComparator extends LuceneTestCase {
         };
     List<BlockLine> lines = generateBlockLines(vocab);
     Directory directory = new ByteBuffersDirectory();
-    try (IndexOutput indexOutput = directory.createOutput("temp.bin", IOContext.DEFAULT)) {
+    try (IndexOutput indexOutput = directory.createOutput("temp.bin", IOContext.WRITE)) {
       indexOutput.writeVInt(5);
     }
 
@@ -107,7 +107,7 @@ public class TestTermBytesComparator extends LuceneTestCase {
     MockBlockReader(List<BlockLine> lines, Directory directory) throws IOException {
       super(
           null,
-          directory.openInput("temp.bin", IOContext.DEFAULT),
+          directory.openInput("temp.bin", IOContext.WRITE),
           createMockPostingReaderBase(),
           new FieldMetadata(null, 1),
           null);

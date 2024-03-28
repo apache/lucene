@@ -36,7 +36,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
   public void testSimple() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = LegacyDirectWriter.bitsRequired(2);
-    IndexOutput output = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT);
+    IndexOutput output = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.WRITE);
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -45,7 +45,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
     writer.add(2);
     writer.finish();
     output.close();
-    IndexInput input = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT);
+    IndexInput input = EndiannessReverserUtil.openInput(dir, "foo", IOContext.READ);
     LongValues reader =
         LegacyDirectReader.getInstance(input.randomAccessSlice(0, input.length()), bitsPerValue, 0);
     assertEquals(1, reader.get(0));
@@ -61,7 +61,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
   public void testNotEnoughValues() throws Exception {
     Directory dir = newDirectory();
     int bitsPerValue = LegacyDirectWriter.bitsRequired(2);
-    IndexOutput output = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.DEFAULT);
+    IndexOutput output = EndiannessReverserUtil.createOutput(dir, "foo", IOContext.WRITE);
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(output, 5, bitsPerValue);
     writer.add(1);
     writer.add(0);
@@ -103,7 +103,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
       long[] original = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : LegacyDirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
-      IndexOutput output = EndiannessReverserUtil.createOutput(directory, name, IOContext.DEFAULT);
+      IndexOutput output = EndiannessReverserUtil.createOutput(directory, name, IOContext.WRITE);
       for (long j = 0; j < offset; ++j) {
         output.writeByte((byte) random.nextInt());
       }
@@ -114,7 +114,7 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
       }
       writer.finish();
       output.close();
-      IndexInput input = EndiannessReverserUtil.openInput(directory, name, IOContext.DEFAULT);
+      IndexInput input = EndiannessReverserUtil.openInput(directory, name, IOContext.READ);
       LongValues reader =
           LegacyDirectReader.getInstance(
               input.randomAccessSlice(0, input.length()), bitsRequired, offset);

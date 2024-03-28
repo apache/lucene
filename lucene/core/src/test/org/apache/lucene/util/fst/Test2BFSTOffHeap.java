@@ -55,7 +55,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
       System.out.println("\nTEST: ~2.2B nodes; output=NO_OUTPUTS");
       Outputs<Object> outputs = NoOutputs.getSingleton();
       Object NO_OUTPUT = outputs.getNoOutput();
-      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.WRITE);
       final FSTCompiler<Object> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(indexOutput).build();
 
@@ -92,7 +92,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
 
       FST.FSTMetadata<Object> fstMetadata = fstCompiler.compile();
       indexOutput.close();
-      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.READ)) {
         FST<Object> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
 
         for (int verify = 0; verify < 2; verify++) {
@@ -151,7 +151,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
     // size = 3GB
     {
       System.out.println("\nTEST: 3 GB size; outputs=bytes");
-      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.WRITE);
       Outputs<BytesRef> outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(indexOutput).build();
@@ -180,7 +180,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
 
       FST.FSTMetadata<BytesRef> fstMetadata = fstCompiler.compile();
       indexOutput.close();
-      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.READ)) {
         FST<BytesRef> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
         for (int verify = 0; verify < 2; verify++) {
 
@@ -235,7 +235,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
     // Build FST w/ PositiveIntOutputs and stop when FST
     // size = 3GB
     {
-      IndexOutput indexOutput = dir.createOutput("fst", IOContext.DEFAULT);
+      IndexOutput indexOutput = dir.createOutput("fst", IOContext.WRITE);
       System.out.println("\nTEST: 3 GB size; outputs=long");
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
       final FSTCompiler<Long> fstCompiler =
@@ -265,7 +265,7 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
 
       FST.FSTMetadata<Long> fstMetadata = fstCompiler.compile();
       indexOutput.close();
-      try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
+      try (IndexInput indexInput = dir.openInput("fst", IOContext.READ)) {
         FST<Long> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
 
         for (int verify = 0; verify < 2; verify++) {

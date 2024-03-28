@@ -83,7 +83,7 @@ public class TestSegmentInfos extends LuceneTestCase {
             Collections.<String, String>emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     SegmentCommitInfo commitInfo =
         new SegmentCommitInfo(info, 0, 0, -1, -1, -1, StringHelper.randomId());
 
@@ -118,7 +118,7 @@ public class TestSegmentInfos extends LuceneTestCase {
             Collections.<String, String>emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     SegmentCommitInfo commitInfo =
         new SegmentCommitInfo(info, 0, 0, -1, -1, -1, StringHelper.randomId());
     sis.add(commitInfo);
@@ -138,7 +138,7 @@ public class TestSegmentInfos extends LuceneTestCase {
             Collections.<String, String>emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     commitInfo = new SegmentCommitInfo(info, 0, 0, -1, -1, -1, StringHelper.randomId());
     sis.add(commitInfo);
 
@@ -336,7 +336,7 @@ public class TestSegmentInfos extends LuceneTestCase {
             Collections.<String, String>emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     SegmentCommitInfo commitInfo =
         new SegmentCommitInfo(info, 0, 0, -1, -1, -1, StringHelper.randomId());
     sis.add(commitInfo);
@@ -356,7 +356,7 @@ public class TestSegmentInfos extends LuceneTestCase {
             Collections.<String, String>emptyMap(),
             null);
     info.setFiles(Collections.<String>emptySet());
-    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    codec.segmentInfoFormat().write(dir, info, IOContext.WRITE);
     commitInfo = new SegmentCommitInfo(info, 0, 0, -1, -1, -1, StringHelper.randomId());
     sis.add(commitInfo);
 
@@ -367,15 +367,15 @@ public class TestSegmentInfos extends LuceneTestCase {
     boolean corrupt = false;
     for (String file : dir.listAll()) {
       if (file.startsWith(IndexFileNames.SEGMENTS)) {
-        try (IndexInput in = dir.openInput(file, IOContext.DEFAULT);
-            IndexOutput out = corruptDir.createOutput(file, IOContext.DEFAULT)) {
+        try (IndexInput in = dir.openInput(file, IOContext.READ);
+            IndexOutput out = corruptDir.createOutput(file, IOContext.WRITE)) {
           final long corruptIndex = TestUtil.nextLong(random(), 0, in.length() - 1);
           out.copyBytes(in, corruptIndex);
           final int b = Byte.toUnsignedInt(in.readByte()) + TestUtil.nextInt(random(), 0x01, 0xff);
           out.writeByte((byte) b);
           out.copyBytes(in, in.length() - in.getFilePointer());
         }
-        try (IndexInput in = corruptDir.openInput(file, IOContext.DEFAULT)) {
+        try (IndexInput in = corruptDir.openInput(file, IOContext.READ)) {
           CodecUtil.checksumEntireFile(in);
           if (VERBOSE) {
             System.out.println("TEST: Altering the file did not update the checksum, aborting...");
@@ -388,7 +388,7 @@ public class TestSegmentInfos extends LuceneTestCase {
         }
         corrupt = true;
       } else if (ExtrasFS.isExtra(file) == false) {
-        corruptDir.copyFrom(dir, file, file, IOContext.DEFAULT);
+        corruptDir.copyFrom(dir, file, file);
       }
     }
     assertTrue("No segments file found", corrupt);

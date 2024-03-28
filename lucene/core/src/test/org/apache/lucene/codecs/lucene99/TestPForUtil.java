@@ -86,7 +86,7 @@ public class TestPForUtil extends LuceneTestCase {
   }
 
   private long encodeTestData(int iterations, int[] values, Directory d) throws IOException {
-    IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
+    IndexOutput out = d.createOutput("test.bin", IOContext.WRITE);
     final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     for (int i = 0; i < iterations; ++i) {

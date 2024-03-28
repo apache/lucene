@@ -1252,7 +1252,7 @@ public class IndexWriter
     } else if (si.info.getUseCompoundFile()) {
       // cfs
       try (Directory cfs =
-          codec.compoundFormat().getCompoundReader(si.info.dir, si.info, IOContext.DEFAULT)) {
+          codec.compoundFormat().getCompoundReader(si.info.dir, si.info, IOContext.READONCE)) {
         return reader.read(cfs, si.info, "", IOContext.READONCE);
       }
     } else {
@@ -3538,7 +3538,7 @@ public class IndexWriter
       // Copy the segment's files
       for (String file : info.files()) {
         final String newFileName = newInfo.namedForThisSegment(file);
-        directory.copyFrom(info.info.dir, file, newFileName, context);
+        directory.copyFrom(info.info.dir, file, newFileName);
         copiedFiles.add(newFileName);
       }
       success = true;

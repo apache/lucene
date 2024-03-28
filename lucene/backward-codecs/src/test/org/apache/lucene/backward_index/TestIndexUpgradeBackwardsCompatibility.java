@@ -37,7 +37,6 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
@@ -197,7 +196,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
         Set<String> extraFiles = Set.of(fsDir.listAll());
         for (String file : origDir.listAll()) {
           if (extraFiles.contains(file) == false) {
-            fsDir.copyFrom(origDir, file, file, IOContext.DEFAULT);
+            fsDir.copyFrom(origDir, file, file);
           }
         }
       }

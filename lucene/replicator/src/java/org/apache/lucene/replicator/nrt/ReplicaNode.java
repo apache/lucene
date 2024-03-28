@@ -829,7 +829,7 @@ public abstract class ReplicaNode extends Node {
 
   public IndexOutput createTempOutput(String prefix, String suffix, IOContext ioContext)
       throws IOException {
-    return dir.createTempOutput(prefix, suffix, IOContext.DEFAULT);
+    return dir.createTempOutput(prefix, suffix, IOContext.WRITE);
   }
 
   /**

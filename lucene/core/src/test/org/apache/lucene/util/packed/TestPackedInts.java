@@ -100,7 +100,7 @@ public class TestPackedInts extends LuceneTestCase {
                 : TestUtil.nextInt(random(), 0, 4096);
         final Directory d = newDirectory();
 
-        IndexOutput out = d.createOutput("out.bin", newIOContext(random()));
+        IndexOutput out = d.createOutput("out.bin", newWriteIOContext(random()));
         final int mem = random().nextInt(2 * PackedInts.DEFAULT_BUFFER_SIZE);
         PackedInts.Writer w =
             PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, valueCount, nbits, mem);
@@ -127,7 +127,7 @@ public class TestPackedInts extends LuceneTestCase {
         assertEquals(bytes, fp - startFp);
 
         { // test reader iterator next
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
+          IndexInput in = d.openInput("out.bin", newReadIOContext(random()));
           PackedInts.ReaderIterator r =
               PackedInts.getReaderIteratorNoHeader(
                   in,
@@ -155,7 +155,7 @@ public class TestPackedInts extends LuceneTestCase {
         }
 
         { // test reader iterator bulk next
-          IndexInput in = d.openInput("out.bin", newIOContext(random()));
+          IndexInput in = d.openInput("out.bin", newReadIOContext(random()));
           PackedInts.ReaderIterator r =
               PackedInts.getReaderIteratorNoHeader(
                   in,
@@ -194,12 +194,12 @@ public class TestPackedInts extends LuceneTestCase {
   public void testEndPointer() throws IOException {
     final Directory dir = newDirectory();
     final int valueCount = RandomNumbers.randomIntBetween(random(), 1, 1000);
-    final IndexOutput out = dir.createOutput("tests.bin", newIOContext(random()));
+    final IndexOutput out = dir.createOutput("tests.bin", newWriteIOContext(random()));
     for (int i = 0; i < valueCount; ++i) {
       out.writeLong(0);
     }
     out.close();
-    final IndexInput in = dir.openInput("tests.bin", newIOContext(random()));
+    final IndexInput in = dir.openInput("tests.bin", newReadIOContext(random()));
     for (int version = PackedInts.VERSION_START; version <= PackedInts.VERSION_CURRENT; ++version) {
       for (int bpv = 1; bpv <= 64; ++bpv) {
         for (PackedInts.Format format : PackedInts.Format.values()) {
@@ -1067,7 +1067,7 @@ public class TestPackedInts extends LuceneTestCase {
     }
 
     final Directory dir = newDirectory();
-    final IndexOutput out = dir.createOutput("out.bin", IOContext.DEFAULT);
+    final IndexOutput out = dir.createOutput("out.bin", IOContext.WRITE);
     PackedDataOutput pout = new PackedDataOutput(out);
     long totalBits = 0;
     for (int i = 0; i < longs.length; ++i) {
@@ -1123,7 +1123,7 @@ public class TestPackedInts extends LuceneTestCase {
       }
 
       final Directory dir = newDirectory();
-      final IndexOutput out = dir.createOutput("out.bin", IOContext.DEFAULT);
+      final IndexOutput out = dir.createOutput("out.bin", IOContext.WRITE);
       final BlockPackedWriter writer = new BlockPackedWriter(out, blockSize);
       for (int i = 0; i < valueCount; ++i) {
         assertEquals(i, writer.ord());
@@ -1135,7 +1135,7 @@ public class TestPackedInts extends LuceneTestCase {
       final long fp = out.getFilePointer();
       out.close();
 
-      IndexInput in1 = dir.openInput("out.bin", IOContext.DEFAULT);
+      IndexInput in1 = dir.openInput("out.bin", IOContext.READ);
       byte[] buf = new byte[(int) fp];
       in1.readBytes(buf, 0, (int) fp);
       in1.seek(0L);
@@ -1221,7 +1221,7 @@ public class TestPackedInts extends LuceneTestCase {
       }
 
       final Directory dir = newDirectory();
-      final IndexOutput out = dir.createOutput("out.bin", IOContext.DEFAULT);
+      final IndexOutput out = dir.createOutput("out.bin", IOContext.WRITE);
       final MonotonicBlockPackedWriter writer = new MonotonicBlockPackedWriter(out, blockSize);
       for (int i = 0; i < valueCount; ++i) {
         assertEquals(i, writer.ord());
@@ -1233,7 +1233,7 @@ public class TestPackedInts extends LuceneTestCase {
       final long fp = out.getFilePointer();
       out.close();
 
-      final IndexInput in = dir.openInput("out.bin", IOContext.DEFAULT);
+      final IndexInput in = dir.openInput("out.bin", IOContext.READ);
       final MonotonicBlockPackedReader reader =
           MonotonicBlockPackedReader.of(in, PackedInts.VERSION_CURRENT, blockSize, valueCount);
       assertEquals(fp, in.getFilePointer());
@@ -1251,7 +1251,7 @@ public class TestPackedInts extends LuceneTestCase {
         TestUtil.nextLong(random(), 1L + Integer.MAX_VALUE, (long) Integer.MAX_VALUE * 2);
     final int blockSize = 1 << TestUtil.nextInt(random(), 20, 22);
     final Directory dir = newDirectory();
-    final IndexOutput out = dir.createOutput("out.bin", IOContext.DEFAULT);
+    final IndexOutput out = dir.createOutput("out.bin", IOContext.WRITE);
     final BlockPackedWriter writer = new BlockPackedWriter(out, blockSize);
     long value = random().nextInt() & 0xFFFFFFFFL;
     long valueOffset = TestUtil.nextLong(random(), 0, valueCount - 1);
@@ -1271,7 +1271,7 @@ public class TestPackedInts extends LuceneTestCase {
     }
     writer.finish();
     out.close();
-    final IndexInput in = dir.openInput("out.bin", IOContext.DEFAULT);
+    final IndexInput in = dir.openInput("out.bin", IOContext.READ);
     final BlockPackedReaderIterator it =
         new BlockPackedReaderIterator(in, PackedInts.VERSION_CURRENT, blockSize, valueCount);
     it.skip(valueOffset);

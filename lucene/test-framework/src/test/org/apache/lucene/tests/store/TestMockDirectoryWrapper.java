@@ -58,13 +58,13 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
     dir.setMaxSizeInBytes(3);
     final byte[] bytes = new byte[] {1, 2};
-    IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
     out.writeBytes(bytes, bytes.length); // first write should succeed
     // close() to ensure the written bytes are not buffered and counted
     // against the directory size
     out.close();
 
-    IndexOutput out2 = dir.createOutput("bar", IOContext.DEFAULT);
+    IndexOutput out2 = dir.createOutput("bar", IOContext.WRITE);
     expectThrows(IOException.class, () -> out2.writeBytes(bytes, bytes.length));
     out2.close();
     dir.close();
@@ -72,13 +72,13 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
     // test copyBytes
     dir = newMockDirectory();
     dir.setMaxSizeInBytes(3);
-    out = dir.createOutput("foo", IOContext.DEFAULT);
+    out = dir.createOutput("foo", IOContext.WRITE);
     out.copyBytes(new ByteArrayDataInput(bytes), bytes.length); // first copy should succeed
     // close() to ensure the written bytes are not buffered and counted
     // against the directory size
     out.close();
 
-    IndexOutput out3 = dir.createOutput("bar", IOContext.DEFAULT);
+    IndexOutput out3 = dir.createOutput("bar", IOContext.WRITE);
     expectThrows(
         IOException.class, () -> out3.copyBytes(new ByteArrayDataInput(bytes), bytes.length));
     out3.close();
@@ -135,7 +135,7 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
       iw.close();
 
       // not sync'd!
-      try (IndexOutput out = wrapped.createOutput("foo", IOContext.DEFAULT)) {
+      try (IndexOutput out = wrapped.createOutput("foo", IOContext.WRITE)) {
         for (int i = 0; i < 100; i++) {
           out.writeInt(i);
         }
@@ -147,7 +147,7 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
     boolean changed = false;
     IndexInput in = null;
     try {
-      in = dir.openInput("foo", IOContext.DEFAULT);
+      in = dir.openInput("foo", IOContext.READ);
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException fnfe) {
       // ok
       changed = true;
@@ -178,10 +178,10 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testAbuseClosedIndexInput() throws Exception {
     MockDirectoryWrapper dir = newMockDirectory();
-    IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
     out.writeByte((byte) 42);
     out.close();
-    final IndexInput in = dir.openInput("foo", IOContext.DEFAULT);
+    final IndexInput in = dir.openInput("foo", IOContext.READ);
     in.close();
     expectThrows(RuntimeException.class, in::readByte);
     dir.close();
@@ -189,10 +189,10 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testAbuseCloneAfterParentClosed() throws Exception {
     MockDirectoryWrapper dir = newMockDirectory();
-    IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
     out.writeByte((byte) 42);
     out.close();
-    IndexInput in = dir.openInput("foo", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("foo", IOContext.READ);
     final IndexInput clone = in.clone();
     in.close();
     expectThrows(RuntimeException.class, clone::readByte);
@@ -201,10 +201,10 @@ public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testAbuseCloneOfCloneAfterParentClosed() throws Exception {
     MockDirectoryWrapper dir = newMockDirectory();
-    IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT);
+    IndexOutput out = dir.createOutput("foo", IOContext.WRITE);
     out.writeByte((byte) 42);
     out.close();
-    IndexInput in = dir.openInput("foo", IOContext.DEFAULT);
+    IndexInput in = dir.openInput("foo", IOContext.READ);
     IndexInput clone1 = in.clone();
     IndexInput clone2 = clone1.clone();
     in.close();

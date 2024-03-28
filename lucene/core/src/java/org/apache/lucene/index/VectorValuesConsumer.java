@@ -59,7 +59,7 @@ class VectorValuesConsumer {
                 + "\" was indexed as vectors but codec does not support vectors");
       }
       SegmentWriteState initialWriteState =
-          new SegmentWriteState(infoStream, directory, segmentInfo, null, null, IOContext.DEFAULT);
+          new SegmentWriteState(infoStream, directory, segmentInfo, null, null, IOContext.WRITE);
       writer = fmt.fieldsWriter(initialWriteState);
       accountable = writer;
     }

@@ -67,7 +67,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
             si.info
                 .getCodec()
                 .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+                .getCompoundReader(dir, si.info, newReadIOContext(random()))) {
           for (String cfsFile : cfsDir.listAll()) {
             checkFooter(cfsDir, cfsFile);
           }
@@ -77,7 +77,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
   }
 
   private void checkFooter(Directory dir, String file) throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, newReadIOContext(random()))) {
       CodecUtil.checksumEntireFile(in);
     }
   }

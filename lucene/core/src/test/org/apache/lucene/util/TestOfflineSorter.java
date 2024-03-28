@@ -215,10 +215,10 @@ public class TestOfflineSorter extends LuceneTestCase {
   private SortInfo checkSort(Directory dir, OfflineSorter sorter, byte[][] data)
       throws IOException {
 
-    IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+    IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
     writeAll(unsorted, data);
 
-    IndexOutput golden = dir.createTempOutput("golden", "tmp", IOContext.DEFAULT);
+    IndexOutput golden = dir.createTempOutput("golden", "tmp", IOContext.WRITE);
     Arrays.sort(data, unsignedByteOrderComparator);
     writeAll(golden, data);
 
@@ -346,7 +346,7 @@ public class TestOfflineSorter extends LuceneTestCase {
             }
           };
 
-      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
       writeAll(unsorted, generateFixed(10 * 1024));
 
       CorruptIndexException e =
@@ -378,9 +378,8 @@ public class TestOfflineSorter extends LuceneTestCase {
                   @Override
                   protected void corruptFile() throws IOException {
                     String newTempName;
-                    try (IndexOutput tmpOut =
-                            dir0.createTempOutput("tmp", "tmp", IOContext.DEFAULT);
-                        IndexInput in = dir0.openInput(out.getName(), IOContext.DEFAULT)) {
+                    try (IndexOutput tmpOut = dir0.createTempOutput("tmp", "tmp", IOContext.WRITE);
+                        IndexInput in = dir0.openInput(out.getName(), IOContext.READ)) {
                       newTempName = tmpOut.getName();
                       // Replace length at the end with a too-long value:
                       short v = in.readShort();
@@ -391,7 +390,7 @@ public class TestOfflineSorter extends LuceneTestCase {
 
                     // Delete original and copy corrupt version back:
                     dir0.deleteFile(out.getName());
-                    dir0.copyFrom(dir0, newTempName, out.getName(), IOContext.DEFAULT);
+                    dir0.copyFrom(dir0, newTempName, out.getName());
                     dir0.deleteFile(newTempName);
                   }
                 };
@@ -401,7 +400,7 @@ public class TestOfflineSorter extends LuceneTestCase {
             }
           };
 
-      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
       writeAll(unsorted, generateFixed(5 * 1024));
 
       // This corruption made OfflineSorter fail with its own exception, but we verify and throw a
@@ -443,7 +442,7 @@ public class TestOfflineSorter extends LuceneTestCase {
             }
           };
 
-      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
       writeAll(unsorted, generateFixed((int) (OfflineSorter.MB * 3)));
 
       CorruptIndexException e =
@@ -488,9 +487,8 @@ public class TestOfflineSorter extends LuceneTestCase {
                   @Override
                   protected void corruptFile() throws IOException {
                     String newTempName;
-                    try (IndexOutput tmpOut =
-                            dir0.createTempOutput("tmp", "tmp", IOContext.DEFAULT);
-                        IndexInput in = dir0.openInput(out.getName(), IOContext.DEFAULT)) {
+                    try (IndexOutput tmpOut = dir0.createTempOutput("tmp", "tmp", IOContext.WRITE);
+                        IndexInput in = dir0.openInput(out.getName(), IOContext.READ)) {
                       newTempName = tmpOut.getName();
                       tmpOut.copyBytes(in, 1025905);
                       short v = in.readShort();
@@ -501,7 +499,7 @@ public class TestOfflineSorter extends LuceneTestCase {
 
                     // Delete original and copy corrupt version back:
                     dir0.deleteFile(out.getName());
-                    dir0.copyFrom(dir0, newTempName, out.getName(), IOContext.DEFAULT);
+                    dir0.copyFrom(dir0, newTempName, out.getName());
                     dir0.deleteFile(newTempName);
                   }
                 };
@@ -511,7 +509,7 @@ public class TestOfflineSorter extends LuceneTestCase {
             }
           };
 
-      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+      IndexOutput unsorted = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
       writeAll(unsorted, generateFixed((int) (OfflineSorter.MB * 3)));
 
       CorruptIndexException e =
@@ -538,7 +536,7 @@ public class TestOfflineSorter extends LuceneTestCase {
     // Make sure the RAM accounting is correct, i.e. if we are sorting fixed width
     // ints (4 bytes) then the heap used is really only 4 bytes per value:
     Directory dir = newDirectory();
-    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
     try (ByteSequencesWriter w = new OfflineSorter.ByteSequencesWriter(out)) {
       byte[] bytes = new byte[Integer.BYTES];
       for (int i = 0; i < 1024 * 1024; i++) {
@@ -571,7 +569,7 @@ public class TestOfflineSorter extends LuceneTestCase {
   public void testFixedLengthLiesLiesLies() throws Exception {
     // Make sure OfflineSorter catches me if I lie about the fixed value length:
     Directory dir = newDirectory();
-    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
     try (ByteSequencesWriter w = new OfflineSorter.ByteSequencesWriter(out)) {
       byte[] bytes = new byte[Integer.BYTES];
       random().nextBytes(bytes);
@@ -603,7 +601,7 @@ public class TestOfflineSorter extends LuceneTestCase {
   // null:
   public void testOverNexting() throws Exception {
     Directory dir = newDirectory();
-    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
+    IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.WRITE);
     try (ByteSequencesWriter w = new OfflineSorter.ByteSequencesWriter(out)) {
       byte[] bytes = new byte[Integer.BYTES];
       random().nextBytes(bytes);

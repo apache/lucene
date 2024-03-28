@@ -82,7 +82,8 @@ public class TestDocumentWriter extends LuceneTestCase {
     SegmentCommitInfo info = writer.newestSegment();
     writer.close();
     // After adding the document, we should be able to read it back in
-    SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
+    SegmentReader reader =
+        new SegmentReader(info, Version.LATEST.major, newReadIOContext(random()));
     assertTrue(reader != null);
     Document doc = reader.storedFields().document(0);
     assertTrue(doc != null);
@@ -144,7 +145,8 @@ public class TestDocumentWriter extends LuceneTestCase {
     writer.commit();
     SegmentCommitInfo info = writer.newestSegment();
     writer.close();
-    SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
+    SegmentReader reader =
+        new SegmentReader(info, Version.LATEST.major, newReadIOContext(random()));
 
     PostingsEnum termPositions =
         MultiTerms.getTermPostingsEnum(reader, "repeated", new BytesRef("repeated"));
@@ -219,7 +221,8 @@ public class TestDocumentWriter extends LuceneTestCase {
     writer.commit();
     SegmentCommitInfo info = writer.newestSegment();
     writer.close();
-    SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
+    SegmentReader reader =
+        new SegmentReader(info, Version.LATEST.major, newReadIOContext(random()));
 
     PostingsEnum termPositions = MultiTerms.getTermPostingsEnum(reader, "f1", new BytesRef("a"));
     assertTrue(termPositions.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
@@ -263,7 +266,8 @@ public class TestDocumentWriter extends LuceneTestCase {
     writer.commit();
     SegmentCommitInfo info = writer.newestSegment();
     writer.close();
-    SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
+    SegmentReader reader =
+        new SegmentReader(info, Version.LATEST.major, newReadIOContext(random()));
 
     PostingsEnum termPositions =
         reader.postings(new Term("preanalyzed", "term1"), PostingsEnum.ALL);

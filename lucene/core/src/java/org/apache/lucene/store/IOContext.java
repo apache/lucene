@@ -36,14 +36,22 @@ public record IOContext(
    * Context is a enumerator which specifies the context in which the Directory is being used for.
    */
   public enum Context {
+    /**
+     * Context that is used for both reading segments that are getting merged and writing the merged
+     * segment.
+     */
     MERGE,
+    /**
+     * Context that is used for all read operations except reading segments that are getting merged.
+     */
     READ,
+    /** Context that is used for flushing segments. */
     FLUSH,
-    DEFAULT
+    /** Context that is used for write operations that are neither a segment flush nor a merge. */
+    WRITE
   };
 
-  public static final IOContext DEFAULT =
-      new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
+  public static final IOContext WRITE = new IOContext(Context.WRITE, null, null, ReadAdvice.NORMAL);
 
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
@@ -67,8 +75,7 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The MERGE context must use the SEQUENTIAL read access advice");
     }
-    if ((context == Context.FLUSH || context == Context.DEFAULT)
-        && readAdvice != ReadAdvice.NORMAL) {
+    if ((context == Context.FLUSH || context == Context.WRITE) && readAdvice != ReadAdvice.NORMAL) {
       throw new IllegalArgumentException(
           "The FLUSH and DEFAULT contexts must use the NORMAL read access advice");
     }

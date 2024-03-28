@@ -59,12 +59,12 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
 
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
-    IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
     final long[] values = new long[] {0, 7, 11, 9};
     io.writeVInt(5);
     io.writeGroupVInts(values, values.length);
     io.close();
-    IndexInput one = dir.openInput("bytes", IOContext.DEFAULT);
+    IndexInput one = dir.openInput("bytes", IOContext.READ);
     IndexInput two = one.clone();
     IndexInput three = two.clone(); // clone of clone
     two.close();
@@ -87,13 +87,13 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
 
   public void testCloneSliceClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneSliceClose"));
-    IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
     final long[] values = new long[] {0, 7, 11, 9};
     io.writeInt(1);
     io.writeInt(2);
     io.writeGroupVInts(values, values.length); // will write 5 bytes
     io.close();
-    IndexInput slicer = dir.openInput("bytes", newIOContext(random()));
+    IndexInput slicer = dir.openInput("bytes", newReadIOContext(random()));
     IndexInput one = slicer.slice("first int", 0, 4 + 5);
     IndexInput two = slicer.slice("second int", 4, 4);
     one.close();
@@ -121,9 +121,9 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     int upto = TEST_NIGHTLY ? 31 : 3;
     for (int i = 0; i < upto; i++) {
       Directory dir = getDirectory(createTempDir("testSeekZero"), 1 << i);
-      IndexOutput io = dir.createOutput("zeroBytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("zeroBytes", newWriteIOContext(random()));
       io.close();
-      IndexInput ii = dir.openInput("zeroBytes", newIOContext(random()));
+      IndexInput ii = dir.openInput("zeroBytes", newReadIOContext(random()));
       ii.seek(0L);
       ii.close();
       dir.close();
@@ -134,9 +134,9 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     int upto = TEST_NIGHTLY ? 31 : 3;
     for (int i = 0; i < upto; i++) {
       Directory dir = getDirectory(createTempDir("testSeekSliceZero"), 1 << i);
-      IndexOutput io = dir.createOutput("zeroBytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("zeroBytes", newWriteIOContext(random()));
       io.close();
-      IndexInput slicer = dir.openInput("zeroBytes", newIOContext(random()));
+      IndexInput slicer = dir.openInput("zeroBytes", newReadIOContext(random()));
       IndexInput ii = slicer.slice("zero-length slice", 0, 0);
       ii.seek(0L);
       ii.close();
@@ -148,12 +148,12 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testSeekEnd() throws Exception {
     for (int i = 0; i < 17; i++) {
       Directory dir = getDirectory(createTempDir("testSeekEnd"), 1 << i);
-      IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
       byte[] bytes = new byte[1 << i];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput ii = dir.openInput("bytes", newIOContext(random()));
+      IndexInput ii = dir.openInput("bytes", newReadIOContext(random()));
       byte[] actual = new byte[1 << i];
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
@@ -166,12 +166,12 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testSeekSliceEnd() throws Exception {
     for (int i = 0; i < 17; i++) {
       Directory dir = getDirectory(createTempDir("testSeekSliceEnd"), 1 << i);
-      IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
       byte[] bytes = new byte[1 << i];
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput slicer = dir.openInput("bytes", newIOContext(random()));
+      IndexInput slicer = dir.openInput("bytes", newReadIOContext(random()));
       IndexInput ii = slicer.slice("full slice", 0, bytes.length);
       byte[] actual = new byte[1 << i];
       ii.readBytes(actual, 0, actual.length);
@@ -187,12 +187,12 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     int numIters = TEST_NIGHTLY ? 10 : 1;
     for (int i = 0; i < numIters; i++) {
       Directory dir = getDirectory(createTempDir("testSeeking"), 1 << i);
-      IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
       byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput ii = dir.openInput("bytes", newIOContext(random()));
+      IndexInput ii = dir.openInput("bytes", newReadIOContext(random()));
       byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
@@ -215,17 +215,17 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     int numIters = TEST_NIGHTLY ? 10 : 1;
     for (int i = 0; i < numIters; i++) {
       Directory dir = getDirectory(createTempDir("testSlicedSeeking"), 1 << i);
-      IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
       byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput ii = dir.openInput("bytes", newIOContext(random()));
+      IndexInput ii = dir.openInput("bytes", newReadIOContext(random()));
       byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       ii.close();
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
-      IndexInput slicer = dir.openInput("bytes", newIOContext(random()));
+      IndexInput slicer = dir.openInput("bytes", newReadIOContext(random()));
       for (int sliceStart = 0; sliceStart < bytes.length; sliceStart++) {
         for (int sliceLength = 0; sliceLength < bytes.length - sliceStart; sliceLength++) {
           assertSlice(bytes, slicer, 0, sliceStart, sliceLength);
@@ -241,17 +241,17 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     int upto = TEST_NIGHTLY ? 10 : 8;
     for (int i = 0; i < upto; i++) {
       Directory dir = getDirectory(createTempDir("testSliceOfSlice"), 1 << i);
-      IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+      IndexOutput io = dir.createOutput("bytes", newWriteIOContext(random()));
       byte[] bytes = new byte[1 << (i + 1)]; // make sure we switch buffers
       random().nextBytes(bytes);
       io.writeBytes(bytes, bytes.length);
       io.close();
-      IndexInput ii = dir.openInput("bytes", newIOContext(random()));
+      IndexInput ii = dir.openInput("bytes", newReadIOContext(random()));
       byte[] actual = new byte[1 << (i + 1)]; // first read all bytes
       ii.readBytes(actual, 0, actual.length);
       ii.close();
       assertEquals(new BytesRef(bytes), new BytesRef(actual));
-      IndexInput outerSlicer = dir.openInput("bytes", newIOContext(random()));
+      IndexInput outerSlicer = dir.openInput("bytes", newReadIOContext(random()));
       final int outerSliceStart = random().nextInt(bytes.length / 2);
       final int outerSliceLength = random().nextInt(bytes.length - outerSliceStart);
       IndexInput innerSlicer =
@@ -325,10 +325,10 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     byte[] bytes = new byte[num];
     random().nextBytes(bytes);
     try (Directory dir = getDirectory(createTempDir("testBytesCrossBoundary"), 16)) {
-      try (IndexOutput out = dir.createOutput("bytesCrossBoundary", newIOContext(random()))) {
+      try (IndexOutput out = dir.createOutput("bytesCrossBoundary", newWriteIOContext(random()))) {
         out.writeBytes(bytes, bytes.length);
       }
-      try (IndexInput input = dir.openInput("bytesCrossBoundary", newIOContext(random()))) {
+      try (IndexInput input = dir.openInput("bytesCrossBoundary", newReadIOContext(random()))) {
         RandomAccessInput slice = input.randomAccessSlice(0, input.length());
         assertEquals(input.length(), slice.length());
         assertBytes(slice, bytes, 0);
@@ -343,14 +343,14 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
         // with padding
         for (int i = 1; i < 7; i++) {
           String name = "bytes-" + i;
-          IndexOutput o = dir.createOutput(name, newIOContext(random()));
+          IndexOutput o = dir.createOutput(name, newWriteIOContext(random()));
           byte[] junk = new byte[i];
           random().nextBytes(junk);
           o.writeBytes(junk, junk.length);
           input.seek(0);
           o.copyBytes(input, input.length());
           o.close();
-          IndexInput padded = dir.openInput(name, newIOContext(random()));
+          IndexInput padded = dir.openInput(name, newReadIOContext(random()));
           RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
           assertEquals(padded.length() - i, whole.length());
           assertBytes(whole, bytes, 0);
@@ -362,13 +362,13 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
 
   public void testLittleEndianLongsCrossBoundary() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testLittleEndianLongsCrossBoundary"), 16)) {
-      try (IndexOutput out = dir.createOutput("littleEndianLongs", newIOContext(random()))) {
+      try (IndexOutput out = dir.createOutput("littleEndianLongs", newWriteIOContext(random()))) {
         out.writeByte((byte) 2);
         out.writeLong(3L);
         out.writeLong(Long.MAX_VALUE);
         out.writeLong(-3L);
       }
-      try (IndexInput input = dir.openInput("littleEndianLongs", newIOContext(random()))) {
+      try (IndexInput input = dir.openInput("littleEndianLongs", newReadIOContext(random()))) {
         assertEquals(25, input.length());
         assertEquals(2, input.readByte());
         long[] l = new long[4];
@@ -381,13 +381,13 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
 
   public void testLittleEndianFloatsCrossBoundary() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testFloatsCrossBoundary"), 8)) {
-      try (IndexOutput out = dir.createOutput("Floats", newIOContext(random()))) {
+      try (IndexOutput out = dir.createOutput("Floats", newWriteIOContext(random()))) {
         out.writeByte((byte) 2);
         out.writeInt(Float.floatToIntBits(3f));
         out.writeInt(Float.floatToIntBits(Float.MAX_VALUE));
         out.writeInt(Float.floatToIntBits(-3f));
       }
-      try (IndexInput input = dir.openInput("Floats", newIOContext(random()))) {
+      try (IndexInput input = dir.openInput("Floats", newReadIOContext(random()))) {
         assertEquals(13, input.length());
         assertEquals(2, input.readByte());
         float[] ff = new float[4];

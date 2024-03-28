@@ -60,7 +60,7 @@ public class TestPForUtil extends LuceneTestCase {
 
     {
       // encode
-      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.DEFAULT);
+      IndexOutput out = EndiannessReverserUtil.createOutput(d, "test.bin", IOContext.WRITE);
       final PForUtil pforUtil = new PForUtil(new ForUtil());
 
       for (int i = 0; i < iterations; ++i) {

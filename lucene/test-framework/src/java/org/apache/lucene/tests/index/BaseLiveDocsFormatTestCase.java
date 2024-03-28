@@ -138,7 +138,7 @@ public abstract class BaseLiveDocsFormatTestCase extends LuceneTestCase {
             Collections.emptyMap(),
             null);
     SegmentCommitInfo sci = new SegmentCommitInfo(si, 0, 0, 0, -1, -1, StringHelper.randomId());
-    format.writeLiveDocs(bits, dir, sci, maxDoc - numLiveDocs, IOContext.DEFAULT);
+    format.writeLiveDocs(bits, dir, sci, maxDoc - numLiveDocs, IOContext.WRITE);
 
     sci = new SegmentCommitInfo(si, maxDoc - numLiveDocs, 0, 1, -1, -1, StringHelper.randomId());
     final Bits bits2 = format.readLiveDocs(dir, sci, IOContext.READONCE);

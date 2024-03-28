@@ -43,7 +43,7 @@ public class TestFailIfUnreferencedFiles extends WithNestedTests {
       IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
       iw.addDocument(new Document());
       iw.close();
-      IndexOutput output = dir.createOutput("_hello.world", IOContext.DEFAULT);
+      IndexOutput output = dir.createOutput("_hello.world", IOContext.WRITE);
       output.writeString("i am unreferenced!");
       output.close();
       dir.sync(Collections.singleton("_hello.world"));
