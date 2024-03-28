@@ -30,12 +30,14 @@ public class TestStoredFieldsInt extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
+        boolean allSame = true;
         int[] values = new int[random().nextInt(5000) + 1];
         final int bpv = TestUtil.nextInt(random(), 1, 31);
         for (int i = 0; i < values.length; ++i) {
           values[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
+          allSame &= (values[i] == values[Math.max(0, i - 1)]);
         }
-        test(dir, values);
+        test(dir, values, allSame);
       }
     }
   }
@@ -45,14 +47,14 @@ public class TestStoredFieldsInt extends LuceneTestCase {
       int[] docIDs = new int[random().nextInt(5000) + 1];
       final int bpv = TestUtil.nextInt(random(), 1, 31);
       Arrays.fill(docIDs, TestUtil.nextInt(random(), 0, (1 << bpv) - 1));
-      test(dir, docIDs);
+      test(dir, docIDs, true);
     }
   }
 
-  private void test(Directory dir, int[] ints) throws Exception {
+  private void test(Directory dir, int[] ints, boolean allSame) throws Exception {
     final long len;
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      StoredFieldsInts.writeInts(ints, 0, ints.length, out);
+      StoredFieldsInts.writeInts(ints, 0, ints.length, out, allSame);
       len = out.getFilePointer();
       if (random().nextBoolean()) {
         out.writeLong(0); // garbage
