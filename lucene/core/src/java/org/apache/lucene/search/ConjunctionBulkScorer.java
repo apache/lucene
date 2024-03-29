@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 
@@ -30,12 +32,14 @@ import org.apache.lucene.util.Bits;
  */
 final class ConjunctionBulkScorer extends BulkScorer {
 
+  private static final int WINDOW_SIZE = 8_196;
+
+  private final int maxDoc;
   private final Scorer[] scoringScorers;
-  private final DocIdSetIterator lead1, lead2;
-  private final List<DocIdSetIterator> others;
+  private final List<DocIdSetIterator> iterators;
   private final Scorable scorable;
 
-  ConjunctionBulkScorer(List<Scorer> requiredScoring, List<Scorer> requiredNoScoring)
+  ConjunctionBulkScorer(int maxDoc, List<Scorer> requiredScoring, List<Scorer> requiredNoScoring)
       throws IOException {
     final int numClauses = requiredScoring.size() + requiredNoScoring.size();
     if (numClauses <= 1) {
@@ -45,15 +49,13 @@ final class ConjunctionBulkScorer extends BulkScorer {
     allScorers.addAll(requiredScoring);
     allScorers.addAll(requiredNoScoring);
 
+    this.maxDoc = maxDoc;
     this.scoringScorers = requiredScoring.toArray(Scorer[]::new);
-    List<DocIdSetIterator> iterators = new ArrayList<>();
+    iterators = new ArrayList<>();
     for (Scorer scorer : allScorers) {
       iterators.add(scorer.iterator());
     }
     Collections.sort(iterators, Comparator.comparingLong(DocIdSetIterator::cost));
-    lead1 = iterators.get(0);
-    lead2 = iterators.get(1);
-    others = List.copyOf(iterators.subList(2, iterators.size()));
     scorable =
         new Scorable() {
           @Override
@@ -78,42 +80,104 @@ final class ConjunctionBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    assert lead1.docID() >= lead2.docID();
+    collector.setScorer(scorable);
+
+    for (long windowMin = min; windowMin < max; windowMin += WINDOW_SIZE) {
+      final int windowMax = (int) Math.min(max, windowMin + WINDOW_SIZE);
+      scoreWindow(collector, acceptDocs, (int) windowMin, windowMax);
+    }
+
+    if (max >= maxDoc) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    } else {
+      int next = max;
+      for (DocIdSetIterator it : iterators) {
+        if (it.docID() > next) {
+          next = it.docID();
+        }
+      }
+      return next;
+    }
+  }
+
+  private void scoreWindow(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException {
+    List<DocIdSetIterator> iterators = new LinkedList<>(this.iterators);
+    DocIdSetIterator collectorIterator = collector.competitiveIterator();
+    if (collectorIterator != null) {
+      iterators.add(collectorIterator);
+    }
+
+    if (scoringScorers.length == 0) {
+      // For simplicity, we only skip using peekNextNonMatchingDocID when not scoring.
+      for (Iterator<DocIdSetIterator> it = iterators.iterator(); it.hasNext(); ) {
+        DocIdSetIterator next = it.next();
+
+        if (next.docID() < min && next.peekNextNonMatchingDocID() <= min) {
+          // peekNextNonMatchingDocID may return a doc ID before the window only because it's not
+          // advanced enough
+          next.advance(min);
+        }
+
+        if (next.docID() <= min && next.peekNextNonMatchingDocID() >= max) {
+          // This conjunction matches all docs in the window, we don't need to evaluate it.
+          it.remove();
+        }
+      }
+    }
+
+    if (iterators.isEmpty()) {
+      // All clauses match the whole window.
+      for (int doc = min; doc < max; ++doc) {
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          collector.collect(doc);
+        }
+      }
+      return;
+    } else if (iterators.size() == 1) {
+      // A single clause doesn't match the whole window.
+      DocIdSetIterator iterator = iterators.getFirst();
+      if (iterator.docID() < min) {
+        iterator.advance(min);
+      }
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          collector.collect(doc);
+        }
+      }
+      return;
+    }
+
+    final DocIdSetIterator lead1 = iterators.get(0);
+    final DocIdSetIterator lead2 = iterators.get(1);
+    final DocIdSetIterator[] others =
+        iterators.subList(2, iterators.size()).toArray(DocIdSetIterator[]::new);
 
     if (lead1.docID() < min) {
       lead1.advance(min);
     }
-
-    if (lead1.docID() >= max) {
-      return lead1.docID();
+    if (lead1.docID() >= max || lead2.docID() >= max) {
+      return;
     }
 
-    collector.setScorer(scorable);
-
-    List<DocIdSetIterator> otherIterators = this.others;
-    DocIdSetIterator collectorIterator = collector.competitiveIterator();
-    if (collectorIterator != null) {
-      otherIterators = new ArrayList<>(otherIterators);
-      otherIterators.add(collectorIterator);
+    // In the main for loop, we want to be able to rely on the invariant that lead1.docID() is
+    // greater than any other doc ID. So fix it now if necessary.
+    if (lead1.docID() < lead2.docID()) {
+      lead1.advance(lead2.docID());
     }
-
-    final DocIdSetIterator[] others = otherIterators.toArray(DocIdSetIterator[]::new);
-
-    // In the main for loop, we want to be able to rely on the invariant that lead1.docID() >
-    // lead2.doc(). However it's possible that these two are equal on the first document in a
-    // scoring window. So we treat this case separately here.
     if (lead1.docID() == lead2.docID()) {
-      final int doc = lead1.docID();
+      int doc = lead1.docID();
       if (acceptDocs == null || acceptDocs.get(doc)) {
         boolean match = true;
         for (DocIdSetIterator it : others) {
-          if (it.docID() < doc) {
-            int next = it.advance(doc);
-            if (next != doc) {
-              lead1.advance(next);
-              match = false;
-              break;
-            }
+          int next = it.docID();
+          if (next < doc) {
+            next = it.advance(doc);
+          }
+          if (next != doc) {
+            lead1.advance(next);
+            match = false;
+            break;
           }
           assert it.docID() == doc;
         }
@@ -166,12 +230,10 @@ final class ConjunctionBulkScorer extends BulkScorer {
       collector.collect(doc);
       doc = lead1.nextDoc();
     }
-
-    return lead1.docID();
   }
 
   @Override
   public long cost() {
-    return lead1.cost();
+    return iterators.get(0).cost();
   }
 }

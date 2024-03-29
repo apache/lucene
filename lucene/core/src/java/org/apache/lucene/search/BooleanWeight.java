@@ -321,7 +321,8 @@ final class BooleanWeight extends Weight {
         && requiredScoring.size() + requiredNoScoring.size() >= 2
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
         && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
-      return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
+      return new ConjunctionBulkScorer(
+          context.reader().maxDoc(), requiredScoring, requiredNoScoring);
     }
     if (scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() > 1) {
       requiredScoring =
