@@ -3430,7 +3430,17 @@ public class IndexWriter
       readers.add(reader);
     }
 
-    if (config.getIndexSort() == null && readers.isEmpty() == false) {
+    // Don't reorder if an explicit sort is configured.
+    final boolean hasIndexSort = config.getIndexSort() != null;
+    // Don't reorder if blocks can't be identified using the parent field.
+    final boolean hasBlocksButNoParentField =
+        readers.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+            && readers.stream()
+                .map(CodecReader::getFieldInfos)
+                .map(FieldInfos::getParentField)
+                .anyMatch(Objects::isNull);
+
+    if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
       DocMap docMap = merge.reorder(mergedReader, directory);
       if (docMap != null) {
@@ -5208,7 +5218,17 @@ public class IndexWriter
       }
 
       MergeState.DocMap[] reorderDocMaps = null;
-      if (config.getIndexSort() == null) {
+      // Don't reorder if an explicit sort is configured.
+      final boolean hasIndexSort = config.getIndexSort() != null;
+      // Don't reorder if blocks can't be identified using the parent field.
+      final boolean hasBlocksButNoParentField =
+          mergeReaders.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+              && mergeReaders.stream()
+                  .map(CodecReader::getFieldInfos)
+                  .map(FieldInfos::getParentField)
+                  .anyMatch(Objects::isNull);
+
+      if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
         CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
         Sorter.DocMap docMap = merge.reorder(mergedView, directory);
