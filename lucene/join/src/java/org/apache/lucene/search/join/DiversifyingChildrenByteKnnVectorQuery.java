@@ -136,12 +136,9 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
+    ByteVectorValues.checkField(context.reader(), field);
     KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
     if (collector == null) {
-      return NO_RESULTS;
-    }
-    if (context.reader().getByteVectorValues(field) == null) {
-      ByteVectorValues.checkField(context.reader(), field);
       return NO_RESULTS;
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
