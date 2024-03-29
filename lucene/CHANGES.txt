@@ -60,6 +60,8 @@ Optimizations
 
 * GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 
+* GITHUB#13224: Use singleton for all-zeros DirectMonotonicReader.Meta (Armin Braun)
+
 Bug Fixes
 ---------------------
 
