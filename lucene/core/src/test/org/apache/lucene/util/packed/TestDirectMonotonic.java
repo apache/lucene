@@ -296,7 +296,7 @@ public class TestDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
-        IndexInput dataIn = dir.openInput("data", IOContext.READ)) {
+        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
       DirectMonotonicReader.Meta meta =
           DirectMonotonicReader.loadMeta(metaIn, array.length, blockShift);
       DirectMonotonicReader reader =

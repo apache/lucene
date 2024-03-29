@@ -1798,20 +1798,17 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       // Make a totally random IOContext:
       final IOContext context;
-      switch (random.nextInt(5)) {
+      switch (random.nextInt(4)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = IOContext.READ;
-          break;
-        case 2:
           context = IOContext.READONCE;
           break;
-        case 3:
+        case 2:
           context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
           break;
-        case 4:
+        case 3:
           context = new IOContext(new FlushInfo(randomNumDocs, size));
           break;
         default:

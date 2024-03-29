@@ -65,7 +65,6 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
       case MERGE:
         return new ByteTrackingIndexOutput(output, mergedBytes);
       case DEFAULT:
-      case READ:
       default:
         return output;
     }

@@ -132,7 +132,7 @@ final class SegmentMerger {
             directory,
             mergeState.segmentInfo,
             mergeState.mergeFieldInfos,
-            IOContext.READ,
+            IOContext.DEFAULT,
             segmentWriteState.segmentSuffix);
 
     TaskExecutor taskExecutor = new TaskExecutor(mergeState.intraMergeTaskExecutor);

@@ -374,7 +374,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }

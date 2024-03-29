@@ -36,9 +36,11 @@ public record IOContext(
    * Context is a enumerator which specifies the context in which the Directory is being used for.
    */
   public enum Context {
+    /** Context for reads and writes that are associated with a merge. */
     MERGE,
-    READ,
+    /** Context for writes that are associated with a segment flush. */
     FLUSH,
+    /** Default context, can be used for reading or writing. */
     DEFAULT
   };
 
@@ -46,8 +48,6 @@ public record IOContext(
       new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
 
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
-
-  public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -63,15 +63,14 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The MERGE context must use the SEQUENTIAL read access advice");
     }
-    if ((context == Context.FLUSH || context == Context.DEFAULT)
-        && readAdvice != ReadAdvice.NORMAL) {
+    if (context == Context.FLUSH && readAdvice != ReadAdvice.NORMAL) {
       throw new IllegalArgumentException(
-          "The FLUSH and DEFAULT contexts must use the NORMAL read access advice");
+          "The FLUSH context must use the NORMAL read access advice");
     }
   }
 
   private IOContext(ReadAdvice accessAdvice) {
-    this(Context.READ, null, null, accessAdvice);
+    this(Context.DEFAULT, null, null, accessAdvice);
   }
 
   /** Creates an IOContext for flushing. */
@@ -87,12 +86,13 @@ public record IOContext(
 
   /**
    * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
-   * Context} is a {@link Context#READ} context, otherwise return this existing instance. This helps
-   * preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right choice,
-   * while allowing {@link IndexInput}s open for searching to use arbitrary {@link ReadAdvice}s.
+   * Context} is a {@link Context#DEFAULT} context, otherwise return this existing instance. This
+   * helps preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right
+   * choice, while allowing {@link IndexInput}s open for searching to use arbitrary {@link
+   * ReadAdvice}s.
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
-    if (context == Context.READ) {
+    if (context == Context.DEFAULT) {
       return new IOContext(advice);
     } else {
       return this;
