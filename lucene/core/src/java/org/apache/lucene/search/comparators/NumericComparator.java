@@ -85,6 +85,14 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   protected abstract long missingValueAsComparableLong();
 
+  private static long sortableBytesAsLong(byte[] bytes) {
+    return switch (bytes.length) {
+      case 4 -> NumericUtils.sortableBytesToInt(bytes, 0);
+      case 8 -> NumericUtils.sortableBytesToLong(bytes, 0);
+      default -> throw new IllegalStateException("bytes count should be 4 or 8");
+    };
+  }
+
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
     private final LeafReaderContext context;
@@ -236,7 +244,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
               if (docID <= maxDocVisited) {
                 return; // already visited or skipped
               }
-              long l = bytesAsLong(packedValue);
+              long l = sortableBytesAsLong(packedValue);
               if (l >= minValueAsLong && l <= maxValueAsLong) {
                 adder.add(docID); // doc is competitive
               }
@@ -244,8 +252,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
             @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              long min = bytesAsLong(minPackedValue);
-              long max = bytesAsLong(maxPackedValue);
+              long min = sortableBytesAsLong(minPackedValue);
+              long max = sortableBytesAsLong(maxPackedValue);
 
               if (min > maxValueAsLong || max < minValueAsLong) {
                 // 1. cmp ==0 and pruning==Pruning.GREATER_THAN_OR_EQUAL_TO : if the sort is
@@ -259,14 +267,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                 return PointValues.Relation.CELL_CROSSES_QUERY;
               }
               return PointValues.Relation.CELL_INSIDE_QUERY;
-            }
-
-            private static long bytesAsLong(byte[] bytes) {
-              return switch (bytes.length) {
-                case 4 -> NumericUtils.sortableBytesToInt(bytes, 0);
-                case 8 -> NumericUtils.sortableBytesToLong(bytes, 0);
-                default -> throw new IllegalStateException("bytes count should be 4 or 8");
-              };
             }
           };
 
