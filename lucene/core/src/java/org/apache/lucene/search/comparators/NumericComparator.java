@@ -90,7 +90,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
-    private PointValues.PointTree pointTree;
+    private final PointValues.PointTree pointTree;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
@@ -134,11 +134,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   + " expected "
                   + bytesCount);
         }
+        this.pointTree = pointValues.getPointTree();
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
         encodeTop();
       } else {
+        this.pointTree = null;
         this.enableSkipping = false;
         this.maxDoc = 0;
       }
@@ -269,10 +271,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           };
 
       final long threshold = iteratorCost >>> 3;
-      long estimatedNumberOfMatches =
-          PointValues.estimatePointCount(
-              visitor, pointTree(), threshold); // runs in O(log(numPoints))
-      if (estimatedNumberOfMatches >= threshold) {
+
+      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(visitor, pointTree, threshold)) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
         updateSkipInterval(false);
@@ -287,14 +287,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
-    }
-
-    private PointValues.PointTree pointTree() throws IOException {
-      if (pointTree == null) {
-        pointTree = pointValues.getPointTree();
-      }
-      assert !pointTree.moveToParent();
-      return pointTree;
     }
 
     private void updateSkipInterval(boolean success) {
