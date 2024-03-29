@@ -35,7 +35,6 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IntArrayDocIdSet;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LSBRadixSorter;
@@ -258,64 +257,44 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
-    /**
-     * Find out the value that threshold docs away from topValue/infinite.
-     *
-     * <p>TODO: we are assuming a binary tree
-     */
+    /** Find out the value that threshold docs away from topValue/infinite. */
     private long intersectThresholdValue(long threshold) throws IOException {
-      PointValues.PointTree pointTree = pointValues.getPointTree();
+      long thresholdValuePos;
       if (leafTopSet) {
         long topValue = topAsComparableLong();
-        if (reverse == false) {
-          PointValues.IntersectVisitor visitor = new RangeVisitor(topValue, Long.MAX_VALUE, -1);
-          // t + 1 here to make the (size == threshold) real.
-          return intersectL2R(
-              pointTree, threshold, t -> PointValues.estimatePointCount(visitor, pointTree, t + 1));
-        } else {
-          PointValues.IntersectVisitor visitor = new RangeVisitor(Long.MIN_VALUE, topValue, -1);
-          return intersectR2L(
-              pointTree, threshold, t -> PointValues.estimatePointCount(visitor, pointTree, t + 1));
-        }
+        PointValues.IntersectVisitor visitor = new RangeVisitor(Long.MIN_VALUE, topValue, -1);
+        long topValuePos = pointValues.estimatePointCount(visitor);
+        thresholdValuePos = reverse == false ? topValuePos + threshold : topValuePos - threshold;
       } else {
-        if (reverse == false) {
-          return intersectL2R(pointTree, threshold, t -> pointTree.size());
-        } else {
-          return intersectR2L(pointTree, threshold, t -> pointTree.size());
-        }
+        thresholdValuePos = reverse == false ? threshold : pointValues.size() - threshold;
+      }
+      if (thresholdValuePos <= 0) {
+        return bytesAsLong(pointValues.getMinPackedValue());
+      } else if (thresholdValuePos >= pointValues.size()) {
+        return bytesAsLong(pointValues.getMaxPackedValue());
+      } else {
+        return intersectValueByPos(pointValues.getPointTree(), thresholdValuePos);
       }
     }
 
-    private long intersectL2R(
-        PointValues.PointTree pointTree, long threshold, IOFunction<Long, Long> thresholdToSize)
+    /** Get the point value by a left-to-right position. */
+    private static long intersectValueByPos(PointValues.PointTree pointTree, long pos)
         throws IOException {
-      if (pointTree.moveToChild()) {
-        long leftSize = thresholdToSize.apply(threshold);
-        if (leftSize > threshold) {
-          return intersectL2R(pointTree, threshold, thresholdToSize);
-        } else {
-          pointTree.moveToSibling();
-          return intersectL2R(pointTree, threshold - leftSize, thresholdToSize);
-        }
-      }
-      return bytesAsLong(pointTree.getMaxPackedValue());
-    }
-
-    private long intersectR2L(
-        PointValues.PointTree pointTree, long threshold, IOFunction<Long, Long> thresholdToSize)
-        throws IOException {
-      if (pointTree.moveToChild()) {
+      assert pos > 0 : pos;
+      while (pointTree.size() < pos) {
+        pos -= pointTree.size();
         pointTree.moveToSibling();
-        long rightSize = thresholdToSize.apply(threshold);
-        if (rightSize > threshold) {
-          return intersectR2L(pointTree, threshold, thresholdToSize);
-        } else if (rightSize < threshold) {
-          pointTree.moveToParent();
-          pointTree.moveToChild();
-          return intersectR2L(pointTree, threshold - rightSize, thresholdToSize);
-        }
       }
-      return bytesAsLong(pointTree.getMinPackedValue());
+      if (pointTree.size() == pos) {
+        return bytesAsLong(pointTree.getMaxPackedValue());
+      } else if (pos == 0) {
+        return bytesAsLong(pointTree.getMinPackedValue());
+      } else if (pointTree.moveToChild()) {
+        return intersectValueByPos(pointTree, pos);
+      } else {
+        return bytesAsLong(pointTree.getMinPackedValue()) / 2
+            + bytesAsLong(pointTree.getMaxPackedValue()) / 2;
+      }
     }
 
     /**
