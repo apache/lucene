@@ -158,8 +158,8 @@ public class DirectIODirectory extends FilterDirectory {
    *     requested from delegate directory.
    */
   protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
-    return context.context == Context.MERGE
-        && context.mergeInfo.estimatedMergeBytes >= minBytesDirect
+    return context.context() == Context.MERGE
+        && context.mergeInfo().estimatedMergeBytes() >= minBytesDirect
         && fileLength.orElse(minBytesDirect) >= minBytesDirect;
   }
 

@@ -28,6 +28,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 final class FieldsIndexReader extends FieldsIndex {
@@ -52,7 +53,8 @@ final class FieldsIndexReader extends FieldsIndex {
       String extension,
       String codecName,
       byte[] id,
-      IndexInput metaIn)
+      IndexInput metaIn,
+      IOContext context)
       throws IOException {
     maxDoc = metaIn.readInt();
     blockShift = metaIn.readInt();
@@ -65,7 +67,9 @@ final class FieldsIndexReader extends FieldsIndex {
     maxPointer = metaIn.readLong();
 
     indexInput =
-        dir.openInput(IndexFileNames.segmentFileName(name, suffix, extension), IOContext.LOAD);
+        dir.openInput(
+            IndexFileNames.segmentFileName(name, suffix, extension),
+            context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(

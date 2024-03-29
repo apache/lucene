@@ -237,6 +237,7 @@ public class MissingDoclet extends StandardDoclet {
       case CLASS:
       case INTERFACE:
       case ENUM:
+      case RECORD:
       case ANNOTATION_TYPE:
         if (level(element) >= CLASS) {
           checkComment(element);

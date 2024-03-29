@@ -243,6 +243,9 @@ public class MockRandomMergePolicy extends MergePolicy {
     @Override
     public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
       if (r.nextBoolean()) {
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("NOTE: MockRandomMergePolicy now reverses reader=" + reader);
+        }
         // Reverse the doc ID order
         return reverse(reader);
       }

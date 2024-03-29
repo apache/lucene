@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.demo.knn.DemoEmbeddings;
@@ -175,7 +176,8 @@ public class IndexFiles implements AutoCloseable {
                 + " documents in "
                 + (end.getTime() - start.getTime())
                 + " ms");
-        if (reader.numDocs() > 100
+        if (Objects.isNull(vectorDictSource) == false
+            && reader.numDocs() > 100
             && vectorDictSize < 1_000_000
             && System.getProperty("smoketester") == null) {
           throw new RuntimeException(

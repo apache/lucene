@@ -75,4 +75,9 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
     return new TopDocs(
         new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
   }
+
+  @Override
+  public int numCollected() {
+    return scoreDocList.size();
+  }
 }

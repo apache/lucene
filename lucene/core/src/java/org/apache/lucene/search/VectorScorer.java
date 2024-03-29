@@ -41,6 +41,10 @@ abstract class VectorScorer {
   static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
       throws IOException {
     FloatVectorValues values = context.reader().getFloatVectorValues(fi.name);
+    if (values == null) {
+      FloatVectorValues.checkField(context.reader(), fi.name);
+      return null;
+    }
     final VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
     return new FloatVectorScorer(values, query, similarity);
   }
@@ -48,6 +52,10 @@ abstract class VectorScorer {
   static ByteVectorScorer create(LeafReaderContext context, FieldInfo fi, byte[] query)
       throws IOException {
     ByteVectorValues values = context.reader().getByteVectorValues(fi.name);
+    if (values == null) {
+      ByteVectorValues.checkField(context.reader(), fi.name);
+      return null;
+    }
     VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
     return new ByteVectorScorer(values, query, similarity);
   }

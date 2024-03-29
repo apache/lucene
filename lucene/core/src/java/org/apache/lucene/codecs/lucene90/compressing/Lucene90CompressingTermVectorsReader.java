@@ -169,7 +169,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
               VECTORS_INDEX_EXTENSION,
               VECTORS_INDEX_CODEC_NAME,
               si.getId(),
-              metaIn);
+              metaIn,
+              context);
 
       this.indexReader = fieldsIndexReader;
       this.maxPointer = fieldsIndexReader.getMaxPointer();
