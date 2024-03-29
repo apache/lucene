@@ -139,7 +139,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
-        encodeTop();
+        if (leafTopSet) {
+          encodeTop();
+        }
       } else {
         this.pointTree = null;
         this.enableSkipping = false;
@@ -212,7 +214,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         return;
       }
 
-      encodeBottom();
+      if (queueFull) {
+        encodeBottom();
+      }
 
       DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
       PointValues.IntersectVisitor visitor =
@@ -305,9 +309,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * value is 5, we will use a range on [MIN_VALUE, 4].
      */
     private void encodeBottom() {
-      if (queueFull == false) {
-        return;
-      }
       if (reverse == false) {
         maxValueAsLong = bottomAsComparableLong();
         if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && maxValueAsLong != Long.MIN_VALUE) {
@@ -328,9 +329,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * is 3, we will use a range on [4, MAX_VALUE].
      */
     private void encodeTop() {
-      if (leafTopSet == false) {
-        return;
-      }
       if (reverse == false) {
         minValueAsLong = topAsComparableLong();
         if (singleSort
