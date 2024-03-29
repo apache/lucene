@@ -20,8 +20,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * IOContext holds additional details on the merge/search context. A IOContext object can never be
- * initialized as null as passed as a parameter to either {@link
+ * IOContext holds additional details on the merge/search context. An IOContext object can never be
+ * passed as a {@code null} parameter to either {@link
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
  *
@@ -45,9 +45,13 @@ public record IOContext(
     DEFAULT
   };
 
-  public static final IOContext DEFAULT =
-      new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
+  /**
+   * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
+   * another {@link ReadAdvice}.
+   */
+  public static final IOContext DEFAULT = new IOContext(ReadAdvice.NORMAL);
 
+  /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
   private static final IOContext[] DEFAULT_READADVICE_CACHE =
@@ -73,16 +77,17 @@ public record IOContext(
     }
   }
 
+  /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
   private IOContext(ReadAdvice accessAdvice) {
     this(Context.DEFAULT, null, null, accessAdvice);
   }
 
-  /** Creates an IOContext for flushing. */
+  /** Creates an {@link IOContext} for flushing. */
   public IOContext(FlushInfo flushInfo) {
     this(Context.FLUSH, null, flushInfo, ReadAdvice.NORMAL);
   }
 
-  /** Creates an IOContext for merging. */
+  /** Creates an {@link IOContext} for merging. */
   public IOContext(MergeInfo mergeInfo) {
     // Merges read input segments sequentially.
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
