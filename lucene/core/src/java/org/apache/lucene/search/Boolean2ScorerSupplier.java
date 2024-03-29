@@ -222,6 +222,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
         }
         scoringScorers = Collections.singletonList(blockMaxScorer);
       }
+      requiredScorers.addAll(scoringScorers);
       return new ConjunctionScorer(weight, requiredScorers, scoringScorers);
     }
   }

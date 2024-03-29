@@ -218,36 +218,6 @@ final class ConjunctionDISI extends DocIdSetIterator {
   }
 
   @Override
-  public int peekNextNonMatchingDocID() throws IOException {
-    int curDoc = lead1.docID();
-    int nonMatchingDocID = lead1.peekNextNonMatchingDocID();
-    if (lead2.docID() < curDoc) {
-      lead2.advance(curDoc);
-    }
-
-    if (curDoc < lead2.docID()) {
-      return curDoc + 1;
-    } else {
-      nonMatchingDocID = Math.min(nonMatchingDocID, lead2.peekNextNonMatchingDocID());
-
-      for (int i = 0; i < others.length; i++) {
-        if (others[i].docID() < curDoc) {
-          others[i].advance(curDoc);
-        }
-
-        if (curDoc < others[i].docID()) {
-          return curDoc + 1;
-        } else {
-          nonMatchingDocID = Math.min(nonMatchingDocID, others[i].peekNextNonMatchingDocID());
-        }
-      }
-
-      assert assertItersOnSameDoc();
-      return nonMatchingDocID;
-    }
-  }
-
-  @Override
   public long cost() {
     return lead1.cost(); // overestimate
   }
