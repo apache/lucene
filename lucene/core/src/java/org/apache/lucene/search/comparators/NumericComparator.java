@@ -29,7 +29,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
@@ -102,7 +101,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
-    private static final int MIN_BLOCK_DISI_LENGTH = 512;
+    private static final int MAX_DISJUNCTION_CLAUSE = 128;
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
@@ -228,9 +227,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           competitiveIterator = getNumericDocValues(context, field);
           leadCost = Math.min(leadCost, competitiveIterator.cost());
         }
-        long threshold =
-            Math.min(
-                leadCost >> 3, (long) IndexSearcher.getMaxClauseCount() * MIN_BLOCK_DISI_LENGTH);
+        long threshold = Math.min(leadCost >> 3, maxDoc >> 5);
         thresholdAsLong = intersectThresholdValue(threshold);
       }
 
@@ -410,6 +407,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       final Consumer<DisiAndMostCompetitiveValue> adder =
           reverse == false ? disis::addFirst : disis::addLast;
 
+      final int minBlockLength = minBlockLength();
+
       final LSBRadixSorter sorter = new LSBRadixSorter();
       int[] docs = IntsRef.EMPTY_INTS;
       int index = 0;
@@ -466,7 +465,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
         this.blockMinValue = Math.min(blockMinValue, leafMinValue);
         this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
-        if (index >= MIN_BLOCK_DISI_LENGTH) {
+        if (index >= minBlockLength) {
           update();
           this.blockMinValue = Long.MAX_VALUE;
           this.blockMaxValue = Long.MIN_VALUE;
@@ -533,6 +532,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           lastValue = value.mostCompetitiveValue;
         }
         return true;
+      }
+
+      private int minBlockLength() {
+        // bottom value can be much more competitive than thresholdAsLong, recompute the cost.
+        int cost =
+            Math.toIntExact(
+                pointValues.estimatePointCount(
+                    new RangeVisitor(minValueAsLong, maxValueAsLong, -1)));
+        int disjunctionClause = Math.min(MAX_DISJUNCTION_CLAUSE, cost / 512 + 1);
+        return cost / disjunctionClause;
       }
     }
   }
@@ -613,15 +622,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
   }
 
-  private static class DisiAndMostCompetitiveValue {
-    private final DocIdSetIterator disi;
-    private final long mostCompetitiveValue;
-
-    private DisiAndMostCompetitiveValue(DocIdSetIterator disi, long mostCompetitiveValue) {
-      this.disi = disi;
-      this.mostCompetitiveValue = mostCompetitiveValue;
-    }
-  }
+  private record DisiAndMostCompetitiveValue(DocIdSetIterator disi, long mostCompetitiveValue) {}
 
   private static class CompetitiveIterator extends DocIdSetIterator {
 
