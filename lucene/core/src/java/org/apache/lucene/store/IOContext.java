@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -48,6 +49,9 @@ public record IOContext(
       new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
 
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
+
+  private static final IOContext[] DEFAULT_READADVICE_CACHE =
+      Arrays.stream(ReadAdvice.values()).map(IOContext::new).toArray(IOContext[]::new);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -93,7 +97,7 @@ public record IOContext(
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
     if (context == Context.DEFAULT) {
-      return new IOContext(advice);
+      return DEFAULT_READADVICE_CACHE[advice.ordinal()];
     } else {
       return this;
     }
