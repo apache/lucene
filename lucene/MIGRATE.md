@@ -190,11 +190,11 @@ enum.
 `IndexSearch#search(Query, Collector)` is now being deprecated in favor of `IndexSearcher#search(Query, CollectorManager)`,
 as `CollectorManager` implementation would allow taking advantage of intra-query concurrency via its map-reduce API design.
 To migrate, use a provided `CollectorManager` implementation that suits your use cases, or change your `Collector` implementation
-to follow the new API pattern. The straight forward approach would be to wrap the single-threaded `Collector` into a degenerate `CollectorManager`.
+to follow the new API pattern. The straight forward approach would be to instantiate the single-threaded `Collector` in a wrapper `CollectorManager`.
 
 For example
 ```java
-public class WrappingCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
+public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
     public CustomCollector newCollector() throws IOException {
       return new CustomCollector();
@@ -211,7 +211,7 @@ public class WrappingCollectorManager implements CollectorManager<CustomCollecto
     }
 }
 
-List<Object> results = searcher.search(query, new WrappingCollectorManager());
+List<Object> results = searcher.search(query, new CustomCollectorManager());
 ```
 ## Migration from Lucene 9.0 to Lucene 9.1
 
