@@ -604,8 +604,10 @@ public class PackedInts {
 
     @Override
     public long ramBytesUsed() {
-      return RamUsageEstimator.alignObjectSize(
-          RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
+      return valueCount == PackedLongValues.DEFAULT_PAGE_SIZE
+          ? 0
+          : RamUsageEstimator.alignObjectSize(
+              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
     }
   }
 
