@@ -62,6 +62,8 @@ Optimizations
 
 * GITHUB#13224: Use singleton for all-zeros DirectMonotonicReader.Meta (Armin Braun)
 
+* GITHUB#13232 : Introduce singleton for PackedInts.NullReader of size 256 (Armin Braun)
+
 Bug Fixes
 ---------------------
 

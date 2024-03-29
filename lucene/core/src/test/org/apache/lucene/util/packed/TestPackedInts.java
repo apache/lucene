@@ -502,7 +502,7 @@ public class TestPackedInts extends LuceneTestCase {
   public void testPackedIntsNull() {
     // must be > 10 for the bulk reads below
     int size = TestUtil.nextInt(random(), 11, 256);
-    Reader packedInts = new PackedInts.NullReader(size);
+    Reader packedInts = PackedInts.NullReader.forCount(size);
     assertEquals(0, packedInts.get(TestUtil.nextInt(random(), 0, size - 1)));
     long[] arr = new long[size + 10];
     int r;
