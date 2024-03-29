@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.backward_index;
 
+import static org.apache.lucene.backward_index.TestBasicBackwardsCompatibility.assertKNNSearch;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
@@ -25,43 +28,19 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.Random;
-
-import static org.apache.lucene.backward_index.TestBasicBackwardsCompatibility.assertKNNSearch;
 
 public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
@@ -71,7 +50,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final int DOC_COUNT = 30;
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-    KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public TestInt8HnswBackwardsCompatibility(Version version, String pattern) {
@@ -89,8 +68,8 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene99HnswScalarQuantizedVectorsFormat(
-          Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-          Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
       }
     };
   }
@@ -136,10 +115,10 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   @Override
   protected void createIndex(Directory dir) throws IOException {
     IndexWriterConfig conf =
-      new IndexWriterConfig(new MockAnalyzer(random()))
-        .setMaxBufferedDocs(10)
-        .setCodec(TestUtil.getDefaultCodec())
-        .setMergePolicy(NoMergePolicy.INSTANCE);
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxBufferedDocs(10)
+            .setCodec(TestUtil.getDefaultCodec())
+            .setMergePolicy(NoMergePolicy.INSTANCE);
     try (IndexWriter writer = new IndexWriter(dir, conf)) {
       for (int i = 0; i < DOC_COUNT; i++) {
         writer.addDocument(knnDocument(i));
@@ -162,10 +141,10 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   }
 
   public void testReadOldIndices() throws Exception {
-      try (DirectoryReader reader = DirectoryReader.open(directory)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        assertKNNSearch(searcher, KNN_VECTOR, 1000, DOC_COUNT, "0");
-        assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
-      }
+    try (DirectoryReader reader = DirectoryReader.open(directory)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      assertKNNSearch(searcher, KNN_VECTOR, 1000, DOC_COUNT, "0");
+      assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
+    }
   }
 }

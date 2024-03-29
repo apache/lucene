@@ -244,7 +244,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return size;
   }
 
-  private FieldEntry readField(IndexInput input,  int versionMeta, FieldInfo info) throws IOException {
+  private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
+      throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     if (similarityFunction != info.getVectorSimilarityFunction()) {

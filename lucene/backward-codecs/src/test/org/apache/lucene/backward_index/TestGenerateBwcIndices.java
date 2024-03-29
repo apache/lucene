@@ -84,11 +84,11 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
 
   public void testCreateInt8HNSWIndices() throws IOException {
     TestInt8HnswBackwardsCompatibility int8HnswBackwardsCompatibility =
-      new TestInt8HnswBackwardsCompatibility(
-        Version.LATEST,
-        createPattern(
-          TestInt8HnswBackwardsCompatibility.INDEX_NAME,
-          TestInt8HnswBackwardsCompatibility.SUFFIX));
+        new TestInt8HnswBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestInt8HnswBackwardsCompatibility.INDEX_NAME,
+                TestInt8HnswBackwardsCompatibility.SUFFIX));
     int8HnswBackwardsCompatibility.createBWCIndex();
   }
 
