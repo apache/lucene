@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.ByteVectorProvider;
+import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
@@ -91,23 +93,21 @@ public interface RandomVectorScorerSupplier {
   /** RandomVectorScorerSupplier for bytes vector */
   final class ByteScoringSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessVectorValues<byte[]> vectors;
-    private final RandomAccessVectorValues<byte[]> vectors1;
-    private final RandomAccessVectorValues<byte[]> vectors2;
+    private final ByteVectorProvider byteVectorProvider;
     private final VectorSimilarity similarityFunction;
 
     private ByteScoringSupplier(
         RandomAccessVectorValues<byte[]> vectors, VectorSimilarity similarityFunction)
         throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
+      this.byteVectorProvider = ByteVectorProvider.fromRandomAccessVectorValues(vectors.copy());
       this.similarityFunction = similarityFunction;
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       VectorSimilarity.VectorScorer scorer =
-          similarityFunction.getVectorScorer(vectors1::vectorValue, vectors2.vectorValue(ord));
+          similarityFunction.getVectorScorer(byteVectorProvider, vectors2.vectorValue(ord));
       return new RandomVectorScorer.AbstractRandomVectorScorer<>(vectors) {
         @Override
         public float score(int cand) throws IOException {
@@ -125,16 +125,14 @@ public interface RandomVectorScorerSupplier {
   /** RandomVectorScorerSupplier for Float vector */
   final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessVectorValues<float[]> vectors;
-    private final RandomAccessVectorValues<float[]> vectors1;
-    private final RandomAccessVectorValues<float[]> vectors2;
+    private final FloatVectorProvider floatVectorProvider;
     private final VectorSimilarity similarityFunction;
 
     private FloatScoringSupplier(
         RandomAccessVectorValues<float[]> vectors, VectorSimilarity similarityFunction)
         throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
+      floatVectorProvider = FloatVectorProvider.fromRandomAccessVectorValues(vectors.copy());
       this.similarityFunction = similarityFunction;
     }
 

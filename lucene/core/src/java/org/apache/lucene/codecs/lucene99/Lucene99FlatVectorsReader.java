@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
 import org.apache.lucene.codecs.VectorSimilarity;
@@ -39,7 +38,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -188,7 +186,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarity similarity = VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
+    VectorSimilarity similarity =
+        VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
     if (Objects.equals(similarity, info.getVectorSimilarity()) == false) {
       throw new IllegalStateException(
           "Inconsistent vector similarity function for field=\""

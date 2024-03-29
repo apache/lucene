@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
@@ -74,7 +75,8 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
               + vectors.dimension());
     }
     VectorSimilarity.VectorScorer scorer =
-        similarityFunction.getVectorScorer(vectors::vectorValue, query);
+        similarityFunction.getVectorScorer(
+            FloatVectorProvider.fromRandomAccessVectorValues(vectors), query);
     return new AbstractRandomVectorScorer<>(vectors) {
       @Override
       public float score(int node) throws IOException {
@@ -152,14 +154,17 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    */
   abstract class AbstractRandomVectorScorer<T> implements RandomVectorScorer {
     private final RandomAccessVectorValues<T> values;
+    private final VectorSimilarity.VectorScorer scorer;
 
     /**
      * Creates a new scorer for the given vector values.
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(RandomAccessVectorValues<T> values) {
+    public AbstractRandomVectorScorer(
+        RandomAccessVectorValues<T> values, VectorSimilarity.VectorScorer scorer) {
       this.values = values;
+      this.scorer = scorer;
     }
 
     @Override
@@ -175,6 +180,16 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      return scorer.score(node);
+    }
+
+    @Override
+    public float compare(int node) throws IOException {
+      return scorer.compare(node);
     }
   }
 }

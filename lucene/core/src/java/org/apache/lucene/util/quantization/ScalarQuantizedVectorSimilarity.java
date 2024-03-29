@@ -37,7 +37,7 @@ public interface ScalarQuantizedVectorSimilarity {
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-    VectorSimilarity sim, float constMultiplier) {
+      VectorSimilarity sim, float constMultiplier) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);

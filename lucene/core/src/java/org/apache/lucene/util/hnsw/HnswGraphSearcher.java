@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
@@ -62,7 +63,10 @@ public class HnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      VectorSimilarity.VectorScorer scorer,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      Bits acceptOrds)
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
@@ -83,7 +87,11 @@ public class HnswGraphSearcher {
    * @return a set of collected vectors holding the nearest neighbors found
    */
   public static KnnCollector search(
-      RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
+      VectorSimilarity.VectorScorer scorer,
+      int topK,
+      OnHeapHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
       throws IOException {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher graphSearcher =
@@ -94,7 +102,7 @@ public class HnswGraphSearcher {
   }
 
   private static void search(
-      RandomVectorScorer scorer,
+      VectorSimilarity.VectorScorer scorer,
       KnnCollector knnCollector,
       HnswGraph graph,
       HnswGraphSearcher graphSearcher,
@@ -121,7 +129,7 @@ public class HnswGraphSearcher {
    */
   public HnswGraphBuilder.GraphBuilderKnnCollector searchLevel(
       // Note: this is only public because Lucene91HnswGraphBuilder needs it
-      RandomVectorScorer scorer, int topK, int level, final int[] eps, HnswGraph graph)
+      VectorSimilarity.VectorScorer scorer, int topK, int level, final int[] eps, HnswGraph graph)
       throws IOException {
     HnswGraphBuilder.GraphBuilderKnnCollector results =
         new HnswGraphBuilder.GraphBuilderKnnCollector(topK);
@@ -139,7 +147,8 @@ public class HnswGraphSearcher {
    *     exceeded
    * @throws IOException When accessing the vector fails
    */
-  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
+  private int findBestEntryPoint(
+      VectorSimilarity.VectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
@@ -187,7 +196,7 @@ public class HnswGraphSearcher {
    */
   void searchLevel(
       KnnCollector results,
-      RandomVectorScorer scorer,
+      VectorSimilarity.VectorScorer scorer,
       int level,
       final int[] eps,
       HnswGraph graph,

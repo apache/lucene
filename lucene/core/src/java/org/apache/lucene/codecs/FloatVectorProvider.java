@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Provides access to a float vector value.
@@ -31,4 +32,28 @@ public interface FloatVectorProvider {
    * @return the float vector value
    */
   float[] vectorValue(int targetOrd) throws IOException;
+
+  /**
+   * Returns the copy of the float vector provider. This is useful for on-heap caching of the float
+   * vector provider if on heap calculations are required
+   *
+   * @return the copy of the float vector provider
+   * @throws IOException if an I/O error occurs
+   */
+  FloatVectorProvider copy() throws IOException;
+
+  static FloatVectorProvider fromRandomAccessVectorValues(
+      final RandomAccessVectorValues<float[]> vectors) {
+    return new FloatVectorProvider() {
+      @Override
+      public float[] vectorValue(int targetOrd) throws IOException {
+        return vectors.vectorValue(targetOrd);
+      }
+
+      @Override
+      public FloatVectorProvider copy() throws IOException {
+        return fromRandomAccessVectorValues(vectors.copy());
+      }
+    };
+  }
 }

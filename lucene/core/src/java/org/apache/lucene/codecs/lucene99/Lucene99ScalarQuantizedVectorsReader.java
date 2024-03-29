@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
 import org.apache.lucene.codecs.VectorSimilarity;
@@ -37,7 +36,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -241,15 +239,16 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarity similarity = VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
+    VectorSimilarity similarity =
+        VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
     if (Objects.equals(similarity, info.getVectorSimilarity()) == false) {
       throw new IllegalStateException(
-        "Inconsistent vector similarity function for field=\""
-          + info.name
-          + "\"; "
-          + similarity.getName()
-          + " != "
-          + info.getVectorSimilarity().getName());
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarity.getName()
+              + " != "
+              + info.getVectorSimilarity().getName());
     }
     return new FieldEntry(input, vectorEncoding, info.getVectorSimilarity());
   }
@@ -290,10 +289,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     final int size;
     final OrdToDocDISIReaderConfiguration ordToDoc;
 
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarity similarityFunction)
+    FieldEntry(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;

@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Provides access to a byte vector value.
@@ -32,4 +33,28 @@ public interface ByteVectorProvider {
    * @return the byte vector value
    */
   byte[] vectorValue(int targetOrd) throws IOException;
+
+  /**
+   * Returns the copy of the byte vector provider. This is useful for on-heap caching of the float
+   * vector provider if on heap calculations are required
+   *
+   * @return the copy of the float vector provider
+   * @throws IOException if an I/O error occurs
+   */
+  ByteVectorProvider copy() throws IOException;
+
+  static ByteVectorProvider fromRandomAccessVectorValues(
+      final RandomAccessVectorValues<byte[]> vectors) {
+    return new ByteVectorProvider() {
+      @Override
+      public byte[] vectorValue(int targetOrd) throws IOException {
+        return vectors.vectorValue(targetOrd);
+      }
+
+      @Override
+      public ByteVectorProvider copy() throws IOException {
+        return fromRandomAccessVectorValues(vectors.copy());
+      }
+    };
+  }
 }

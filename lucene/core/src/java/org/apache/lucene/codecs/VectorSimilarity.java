@@ -177,12 +177,22 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   /** Vector scorer interface. Used to score a provided query vector with a given target vector. */
   public interface VectorScorer {
     /**
-     * Scores the target vector with the query vector.
+     * Scores the given vector ordinal, the nuance here is that scores may be scaled differently
+     * than the compare method.
      *
      * @param targetVectorOrd the ordinal of the target vector
      * @return a similarity score between the two vectors
      */
     float score(int targetVectorOrd) throws IOException;
+
+    /**
+     * Compares the two vectors
+     *
+     * @param targetVectorOrd the ordinal of the target vector
+     * @return
+     * @throws IOException
+     */
+    float compare(int targetVectorOrd) throws IOException;
   }
 
   /** Vector comparator interface. Used to compare two vectors. */
@@ -195,6 +205,31 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
      * @return a similarity score between the two vectors
      */
     float compare(int vectorOrd1, int vectorOrd2) throws IOException;
+
+    /**
+     * Scores the two vectors, the nuance here is that scores may be scaled differently than the
+     * compare method.
+     *
+     * @param vectorOrd1 the ordinal of the first vector
+     * @param vectorOrd2 the ordinal of the second vector
+     * @return a similarity score between the two vectors
+     * @throws IOException if an error occurs
+     */
+    float score(int vectorOrd1, int vectorOrd2) throws IOException;
+
+    default VectorScorer asScorer(int leftOrd) throws IOException {
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return VectorComparator.this.score(leftOrd, targetVectorOrd);
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return VectorComparator.this.compare(leftOrd, targetVectorOrd);
+        }
+      };
+    }
   }
 
   /** Dot product similarity function. */
@@ -212,33 +247,71 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
-      return targetVectorOrd ->
-          Math.max((1 + dotProduct(target, vectorProvider.vectorValue(targetVectorOrd))) / 2, 0);
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return Math.max((1 + compare(targetVectorOrd)) / 2, 0);
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return dotProduct(target, vectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider) {
-      return (vectorOrd1, vectorOrd2) ->
-          Math.max(
-              (1
-                      + dotProduct(
-                          vectorProvider.vectorValue(vectorOrd1),
-                          vectorProvider.vectorValue(vectorOrd2)))
-                  / 2,
-              0);
+    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+
+        @Override
+        public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+          return dotProduct(
+              vectorProviderCopy.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2));
+        }
+
+        @Override
+        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
+          return Math.max((1 + compare(vectorOrd1, vectorOrd2)) / 2, 0);
+        }
+      };
     }
 
     @Override
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
-      return targetVectorOrd ->
-          dotProductScore(target, byteVectorProvider.vectorValue(targetVectorOrd));
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return dotProductScore(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return dotProduct(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider) {
-      return (ord1, ord2) ->
-          dotProductScore(
-              byteVectorProvider.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+
+        @Override
+        public float compare(int ord1, int ord2) throws IOException {
+          return dotProduct(
+              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        }
+
+        @Override
+        public float score(int ord1, int ord2) throws IOException {
+          return dotProductScore(
+              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        }
+      };
     }
   }
 
@@ -257,36 +330,70 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
-      return targetVectorOrd ->
-          Math.max(
-              (1 + VectorUtil.cosine(target, vectorProvider.vectorValue(targetVectorOrd))) / 2, 0);
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return (1 + compare(targetVectorOrd)) / 2;
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return VectorUtil.cosine(target, vectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider) {
-      return (vectorOrd1, vectorOrd2) ->
-          Math.max(
-              (1
-                      + VectorUtil.cosine(
-                          vectorProvider.vectorValue(vectorOrd1),
-                          vectorProvider.vectorValue(vectorOrd2)))
-                  / 2,
-              0);
+    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+
+        @Override
+        public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+          return VectorUtil.cosine(
+              vectorProviderCopy.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2));
+        }
+
+        @Override
+        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
+          return (1 + compare(vectorOrd1, vectorOrd2)) / 2;
+        }
+      };
     }
 
     @Override
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
-      return targetVectorOrd ->
-          (1 + VectorUtil.cosine(target, byteVectorProvider.vectorValue(targetVectorOrd))) / 2;
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return (1 + compare(targetVectorOrd)) / 2;
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return VectorUtil.cosine(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider) {
-      return (ord1, ord2) ->
-          (1
-                  + VectorUtil.cosine(
-                      byteVectorProvider.vectorValue(ord1), byteVectorProvider.vectorValue(ord2)))
-              / 2;
+    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+
+        @Override
+        public float compare(int ord1, int ord2) throws IOException {
+          return VectorUtil.cosine(
+              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        }
+
+        @Override
+        public float score(int ord1, int ord2) throws IOException {
+          return (1 + compare(ord1, ord2)) / 2;
+        }
+      };
     }
   }
 
@@ -305,36 +412,70 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
-      return targetVectorOrd ->
-          1 / (1 + VectorUtil.squareDistance(target, vectorProvider.vectorValue(targetVectorOrd)));
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return 1 / (1 + compare(targetVectorOrd));
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return VectorUtil.squareDistance(target, vectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider) {
-      return (vectorOrd1, vectorOrd2) ->
-          1
-              / (1
-                  + VectorUtil.squareDistance(
-                      vectorProvider.vectorValue(vectorOrd1),
-                      vectorProvider.vectorValue(vectorOrd2)));
+    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        private final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+
+        @Override
+        public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+          return VectorUtil.squareDistance(
+              vectorProviderCopy.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2));
+        }
+
+        @Override
+        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
+          return 1 / (1 + compare(vectorOrd1, vectorOrd2));
+        }
+      };
     }
 
     @Override
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
-      return targetVectorOrd ->
-          1
-              / (1f
-                  + VectorUtil.squareDistance(
-                      target, byteVectorProvider.vectorValue(targetVectorOrd)));
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return 1f / (1f + compare(targetVectorOrd));
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return VectorUtil.squareDistance(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider) {
-      return (ord1, ord2) ->
-          1
-              / (1f
-                  + VectorUtil.squareDistance(
-                      byteVectorProvider.vectorValue(ord1), byteVectorProvider.vectorValue(ord2)));
+    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        private final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+
+        @Override
+        public float compare(int ord1, int ord2) throws IOException {
+          return VectorUtil.squareDistance(
+              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        }
+
+        @Override
+        public float score(int ord1, int ord2) throws IOException {
+          return 1f / (1f + compare(ord1, ord2));
+        }
+      };
     }
   }
 
@@ -353,32 +494,68 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
-      return targetVectorOrd ->
-          scaleMaxInnerProductScore(
-              dotProduct(target, vectorProvider.vectorValue(targetVectorOrd)));
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return scaleMaxInnerProductScore(compare(targetVectorOrd));
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return dotProduct(target, vectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
     public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider) {
-      return (vectorOrd1, vectorOrd2) ->
-          scaleMaxInnerProductScore(
-              dotProduct(
-                  vectorProvider.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2)));
+      return new VectorComparator() {
+        private final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+
+        @Override
+        public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+          return dotProduct(
+              vectorProviderCopy.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2));
+        }
+
+        @Override
+        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
+          return scaleMaxInnerProductScore(compare(vectorOrd1, vectorOrd2));
+        }
+      };
     }
 
     @Override
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
-      return targetVectorOrd ->
-          scaleMaxInnerProductScore(
-              dotProduct(target, byteVectorProvider.vectorValue(targetVectorOrd)));
+      return new VectorScorer() {
+        @Override
+        public float score(int targetVectorOrd) throws IOException {
+          return scaleMaxInnerProductScore(compare(targetVectorOrd));
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          return dotProduct(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        }
+      };
     }
 
     @Override
     public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider) {
-      return (ord1, ord2) ->
-          scaleMaxInnerProductScore(
-              dotProduct(
-                  byteVectorProvider.vectorValue(ord1), byteVectorProvider.vectorValue(ord2)));
+      return new VectorComparator() {
+        private final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+
+        @Override
+        public float compare(int ord1, int ord2) throws IOException {
+          return dotProduct(
+              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        }
+
+        @Override
+        public float score(int ord1, int ord2) throws IOException {
+          return scaleMaxInnerProductScore(compare(ord1, ord2));
+        }
+      };
     }
   }
 }

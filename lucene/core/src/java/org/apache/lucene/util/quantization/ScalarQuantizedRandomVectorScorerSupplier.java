@@ -17,9 +17,7 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
-
 import org.apache.lucene.codecs.VectorSimilarity;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
