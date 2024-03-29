@@ -61,7 +61,7 @@ public class IntComparator extends NumericComparator<Integer> {
 
   @Override
   protected long sortableBytesToLong(byte[] bytes) {
-    return NumericUtils.sortableBytesToLong(bytes, 0);
+    return NumericUtils.sortableBytesToInt(bytes, 0);
   }
 
   @Override

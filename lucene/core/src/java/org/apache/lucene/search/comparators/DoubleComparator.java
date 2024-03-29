@@ -61,7 +61,7 @@ public class DoubleComparator extends NumericComparator<Double> {
 
   @Override
   protected long sortableBytesToLong(byte[] bytes) {
-    return NumericUtils.sortableBytesToInt(bytes, 0);
+    return NumericUtils.sortableBytesToLong(bytes, 0);
   }
 
   @Override
