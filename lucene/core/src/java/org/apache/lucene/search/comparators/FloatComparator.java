@@ -60,6 +60,11 @@ public class FloatComparator extends NumericComparator<Float> {
   }
 
   @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToInt(bytes, 0);
+  }
+
+  @Override
   public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
     return new FloatLeafComparator(context);
   }

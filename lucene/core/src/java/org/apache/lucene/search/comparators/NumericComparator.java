@@ -30,7 +30,6 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -85,13 +84,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   protected abstract long missingValueAsComparableLong();
 
-  private static long sortableBytesAsLong(byte[] bytes) {
-    return switch (bytes.length) {
-      case 4 -> NumericUtils.sortableBytesToInt(bytes, 0);
-      case 8 -> NumericUtils.sortableBytesToLong(bytes, 0);
-      default -> throw new IllegalStateException("bytes count should be 4 or 8");
-    };
-  }
+  protected abstract long sortableBytesToLong(byte[] bytes);
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
@@ -244,7 +237,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
               if (docID <= maxDocVisited) {
                 return; // already visited or skipped
               }
-              long l = sortableBytesAsLong(packedValue);
+              long l = sortableBytesToLong(packedValue);
               if (l >= minValueAsLong && l <= maxValueAsLong) {
                 adder.add(docID); // doc is competitive
               }
@@ -252,8 +245,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
             @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              long min = sortableBytesAsLong(minPackedValue);
-              long max = sortableBytesAsLong(maxPackedValue);
+              long min = sortableBytesToLong(minPackedValue);
+              long max = sortableBytesToLong(maxPackedValue);
 
               if (min > maxValueAsLong || max < minValueAsLong) {
                 // 1. cmp ==0 and pruning==Pruning.GREATER_THAN_OR_EQUAL_TO : if the sort is
