@@ -14,26 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.analysis.ro;
 
 import java.io.IOException;
-import java.lang.foreign.MemorySegment;
-import java.util.Optional;
-import org.apache.lucene.util.Constants;
+import org.apache.lucene.analysis.TokenFilter;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-@SuppressWarnings("preview")
-abstract class NativeAccess {
+/** TokenFilter that normalizes cedilla forms to comma forms. */
+public final class RomanianNormalizationFilter extends TokenFilter {
+  private final RomanianNormalizer normalizer = new RomanianNormalizer();
+  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
-  /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
-  public abstract void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException;
+  public RomanianNormalizationFilter(TokenStream input) {
+    super(input);
+  }
 
-  /**
-   * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
-   */
-  public static Optional<NativeAccess> getImplementation() {
-    if (Constants.LINUX || Constants.MAC_OS_X) {
-      return PosixNativeAccess.getInstance();
+  @Override
+  public final boolean incrementToken() throws IOException {
+    if (input.incrementToken()) {
+      int newlen = normalizer.normalize(termAtt.buffer(), termAtt.length());
+      termAtt.setLength(newlen);
+      return true;
     }
-    return Optional.empty();
+    return false;
   }
 }

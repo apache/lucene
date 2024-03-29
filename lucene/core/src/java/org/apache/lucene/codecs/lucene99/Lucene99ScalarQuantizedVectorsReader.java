@@ -109,7 +109,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta, versionMeta);
+      FieldEntry fieldEntry = readField(meta, versionMeta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -244,10 +244,19 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return size;
   }
 
-  private FieldEntry readField(IndexInput input, int versionMeta) throws IOException {
+  private FieldEntry readField(IndexInput input,  int versionMeta, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, versionMeta, vectorEncoding, similarityFunction);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
+    }
+    return new FieldEntry(input, versionMeta, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
