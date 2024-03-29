@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -55,7 +56,9 @@ public record IOContext(
 
   private static final Map<ReadAdvice, IOContext> DEFAULT_READADVICE_CACHE =
       Arrays.stream(ReadAdvice.values())
-          .collect(Collectors.toUnmodifiableMap(Function.identity(), IOContext::new));
+          .collect(
+              Collectors.collectingAndThen(
+                  Collectors.toMap(Function.identity(), IOContext::new), EnumMap::new));
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
