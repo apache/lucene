@@ -33,7 +33,6 @@ configure(project(":lucene:analysis:common")) {
     snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
     snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
 
-    snowballPatchFile  = file("${resources}/snowball.patch")
     snowballScript     = file("${resources}/snowball.sh")
   }
 
@@ -50,7 +49,6 @@ configure(project(":lucene:analysis:common")) {
 
   // downloads snowball stemmers (or use cached copy)
   task downloadSnowballStemmers(type: Download) {
-    inputs.file(snowballPatchFile)
     src "https://github.com/snowballstem/snowball/archive/${snowballStemmerCommit}.zip"
     dest file("${snowballStemmerDir}.zip")
     overwrite false
@@ -58,7 +56,6 @@ configure(project(":lucene:analysis:common")) {
 
     doLast {
       unpackFromZip(dest, snowballStemmerDir)
-      ant.patch(patchfile: snowballPatchFile, dir: snowballStemmerDir, strip: "1", failonerror: true)
     }
   }
 
@@ -97,7 +94,7 @@ configure(project(":lucene:analysis:common")) {
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
       doFirst {
         // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
-        throw new GradleException("Snowball generation does not work on Windows (patch and bash must be available).")
+        throw new GradleException("Snowball generation does not work on Windows (bash must be available).")
       }
     } else {
       dependsOn downloadSnowballStemmers

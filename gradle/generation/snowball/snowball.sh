@@ -31,7 +31,7 @@ set -eEuo pipefail
 
 # generate stuff with existing makefile, just 'make' will try to do crazy stuff with e.g. python
 # and likely fail. so only ask for our specific target.
-(cd ${SRCDIR} && chmod a+x libstemmer/mkalgorithms.pl && make dist_libstemmer_java)
+(cd ${SRCDIR} && make dist_libstemmer_java)
 
 for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
   # add license header to files since they have none, otherwise rat will flip the fuck out
@@ -47,12 +47,7 @@ for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
   # title-case the classes (fooStemmer -> FooStemmer) so they obey normal java conventions
   base=$(basename $file)
   oldclazz="${base%.*}"
-  # one-off
-  if [ "${oldclazz}" == "kraaij_pohlmannStemmer" ]; then
-    newclazz="KpStemmer"
-  else
-    newclazz=${oldclazz^}
-  fi
+  newclazz=${oldclazz^}
   echo ${newclazz} | sed -e 's/Stemmer//' >> ${TESTDSTDIR}/languages.txt
   cat $file | sed "s/${oldclazz}/${newclazz}/g" > ${DESTDIR}/ext/${newclazz}.java
 done
@@ -71,14 +66,6 @@ for file in ${WWWSRCDIR}/algorithms/*/stop.txt; do
  |
  | NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
 EOF
-  case "$language" in
-    danish)
-      # clear up some slight mojibake on the website. TODO: fix this file!
-      cat $file | sed 's/Ã¥/å/g' | sed 's/Ã¦/æ/g' >> ${WWWDSTDIR}/${language}_stop.txt
-      ;;
-    *)
-      # try to confirm its really UTF-8
-      iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt
-      ;;
-  esac
+# try to confirm its really UTF-8
+iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt
 done
