@@ -43,11 +43,11 @@ public record IOContext(
   };
 
   public static final IOContext DEFAULT =
-      new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
+      new IOContext(Context.DEFAULT, null, null, ReadAdvice.RANDOM);
 
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
-  public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
+  public static final IOContext READ = new IOContext(ReadAdvice.RANDOM);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -59,14 +59,10 @@ public record IOContext(
       case FLUSH -> Objects.requireNonNull(
           flushInfo, "flushInfo must not be null if context is FLUSH");
     }
-    if (context == Context.MERGE && readAdvice != ReadAdvice.SEQUENTIAL) {
+    if ((context == Context.FLUSH || context == Context.MERGE)
+        && readAdvice != ReadAdvice.SEQUENTIAL) {
       throw new IllegalArgumentException(
-          "The MERGE context must use the SEQUENTIAL read access advice");
-    }
-    if ((context == Context.FLUSH || context == Context.DEFAULT)
-        && readAdvice != ReadAdvice.NORMAL) {
-      throw new IllegalArgumentException(
-          "The FLUSH and DEFAULT contexts must use the NORMAL read access advice");
+          "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
     }
   }
 
@@ -76,7 +72,7 @@ public record IOContext(
 
   /** Creates an IOContext for flushing. */
   public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, ReadAdvice.NORMAL);
+    this(Context.FLUSH, null, flushInfo, ReadAdvice.SEQUENTIAL);
   }
 
   /** Creates an IOContext for merging. */
