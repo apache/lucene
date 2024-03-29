@@ -72,7 +72,22 @@ public class TermQuery extends Query {
       if (termStats == null) {
         this.simScorer = null; // term doesn't exist in any segment, we won't use similarity at all
       } else {
-        this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+        // Assigning a dummy simScorer in case score is not needed to avoid unnecessary float[]
+        // allocations in case default BM25Scorer is used.
+        // See: https://github.com/apache/lucene/issues/12297
+        if (scoreMode.needsScores()) {
+          this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+        } else {
+          // Assigning a dummy scorer as this is not expected to be called since scores are not
+          // needed.
+          this.simScorer =
+              new Similarity.SimScorer() {
+                @Override
+                public float score(float freq, long norm) {
+                  return 0f;
+                }
+              };
+        }
       }
     }
 
@@ -99,26 +114,59 @@ public class TermQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       assert termStates == null || termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
-      ;
+
       final TermsEnum termsEnum = getTermsEnum(context);
       if (termsEnum == null) {
         return null;
       }
-      LeafSimScorer scorer =
-          new LeafSimScorer(simScorer, context.reader(), term.field(), scoreMode.needsScores());
-      if (scoreMode == ScoreMode.TOP_SCORES) {
-        return new TermScorer(this, termsEnum.impacts(PostingsEnum.FREQS), scorer);
-      } else {
-        return new TermScorer(
-            this,
-            termsEnum.postings(
-                null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
-            scorer);
+      final int docFreq = termsEnum.docFreq();
+
+      return new ScorerSupplier() {
+
+        private boolean topLevelScoringClause = false;
+
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          LeafSimScorer scorer =
+              new LeafSimScorer(simScorer, context.reader(), term.field(), scoreMode.needsScores());
+          if (scoreMode == ScoreMode.TOP_SCORES) {
+            return new TermScorer(
+                TermWeight.this,
+                termsEnum.impacts(PostingsEnum.FREQS),
+                scorer,
+                topLevelScoringClause);
+          } else {
+            return new TermScorer(
+                TermWeight.this,
+                termsEnum.postings(
+                    null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
+                scorer);
+          }
+        }
+
+        @Override
+        public long cost() {
+          return docFreq;
+        }
+
+        @Override
+        public void setTopLevelScoringClause() throws IOException {
+          topLevelScoringClause = true;
+        }
+      };
+    }
+
+    @Override
+    public Scorer scorer(LeafReaderContext context) throws IOException {
+      ScorerSupplier supplier = scorerSupplier(context);
+      if (supplier == null) {
+        return null;
       }
+      return supplier.get(Long.MAX_VALUE);
     }
 
     @Override
@@ -224,7 +272,7 @@ public class TermQuery extends Query {
     final IndexReaderContext context = searcher.getTopReaderContext();
     final TermStates termState;
     if (perReaderTermState == null || perReaderTermState.wasBuiltFor(context) == false) {
-      termState = TermStates.build(context, term, scoreMode.needsScores());
+      termState = TermStates.build(searcher, term, scoreMode.needsScores());
     } else {
       // PRTS was pre-build for this IS
       termState = this.perReaderTermState;

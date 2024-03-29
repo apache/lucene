@@ -44,8 +44,8 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for si format. NOTE: This test focuses on the si impl, nothing
  * else. The [stretch] goal is for this test to be so thorough in testing a new si format that if
- * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
- * given si Format that this test fails to catch then this test needs to be improved!
+ * this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a given si
+ * Format that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -67,6 +67,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             id,
@@ -76,6 +77,33 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
     assertEquals(info.files(), info2.files());
+    dir.close();
+  }
+
+  public void testHasBlocks() throws IOException {
+    assumeTrue("test requires a codec that can read/write hasBlocks", supportsHasBlocks());
+
+    Directory dir = newDirectory();
+    Codec codec = getCodec();
+    byte[] id = StringHelper.randomId();
+    SegmentInfo info =
+        new SegmentInfo(
+            dir,
+            getVersions()[0],
+            getVersions()[0],
+            "_123",
+            1,
+            false,
+            random().nextBoolean(),
+            codec,
+            Collections.emptyMap(),
+            id,
+            Collections.emptyMap(),
+            null);
+    info.setFiles(Collections.<String>emptySet());
+    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    assertEquals(info.getHasBlocks(), info2.getHasBlocks());
     dir.close();
   }
 
@@ -91,6 +119,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -135,6 +164,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             diagnostics,
             id,
@@ -171,6 +201,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             id,
@@ -204,6 +235,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -231,6 +263,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
                 "_123",
                 1,
                 false,
+                false,
                 codec,
                 Collections.<String, String>emptyMap(),
                 id,
@@ -251,6 +284,10 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
   }
 
   protected boolean supportsIndexSort() {
+    return true;
+  }
+
+  protected boolean supportsHasBlocks() {
     return true;
   }
 
@@ -354,7 +391,11 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
         for (int j = 0; j < numSortFields; ++j) {
           sortFields[j] = randomIndexSortField();
         }
-        sort = new Sort(sortFields);
+        if (supportsHasBlocks()) {
+          sort = new Sort(sortFields);
+        } else {
+          sort = new Sort(sortFields);
+        }
       }
 
       Directory dir = newDirectory();
@@ -367,6 +408,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               getVersions()[0],
               "_123",
               1,
+              false,
               false,
               codec,
               Collections.<String, String>emptyMap(),
@@ -407,6 +449,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -453,6 +496,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -497,6 +541,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -543,6 +588,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -614,6 +660,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               name,
               docCount,
               isCompoundFile,
+              false,
               codec,
               diagnostics,
               id,

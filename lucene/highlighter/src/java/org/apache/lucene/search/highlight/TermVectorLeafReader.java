@@ -40,7 +40,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -103,6 +103,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -171,16 +172,12 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-    return null;
-  }
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
-  public TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
-    return null;
-  }
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}
@@ -219,7 +216,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public LeafMetaData getMetaData() {
-    return new LeafMetaData(Version.LATEST.major, null, null);
+    return new LeafMetaData(Version.LATEST.major, null, null, false);
   }
 
   @Override

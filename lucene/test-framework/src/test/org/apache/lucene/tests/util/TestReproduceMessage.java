@@ -16,10 +16,11 @@
  */
 package org.apache.lucene.tests.util;
 
-import org.hamcrest.Matchers;
+import static org.hamcrest.Matchers.*;
+
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -89,7 +90,7 @@ public class TestReproduceMessage extends WithNestedTests {
           case ERROR:
             throw new RuntimeException(pt.toString());
           case FAILURE:
-            Assert.assertTrue(pt.toString(), false);
+            fail(pt.toString());
             throw new RuntimeException("unreachable");
         }
       }
@@ -108,49 +109,49 @@ public class TestReproduceMessage extends WithNestedTests {
   public void testAssumeBeforeClass() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.BEFORE_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeInitializer() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.INITIALIZER;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeRule() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.RULE;
-    Assert.assertEquals("", runAndReturnSyserr());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeBefore() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.BEFORE;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeTest() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.TEST;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeAfter() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.AFTER;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   @Test
   public void testAssumeAfterClass() throws Exception {
     type = SoreType.ASSUMPTION;
     where = SorePoint.AFTER_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().isEmpty());
+    MatcherAssert.assertThat(runAndReturnSyserr(), is(emptyString()));
   }
 
   /*
@@ -161,19 +162,19 @@ public class TestReproduceMessage extends WithNestedTests {
   public void testFailureBeforeClass() throws Exception {
     type = SoreType.FAILURE;
     where = SorePoint.BEFORE_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   @Test
   public void testFailureInitializer() throws Exception {
     type = SoreType.FAILURE;
     where = SorePoint.INITIALIZER;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   static void checkTestName(String syserr, String expectedName) {
-    Assert.assertTrue(syserr.contains("NOTE: reproduce with:"));
-    Assert.assertThat(syserr, Matchers.containsString(" --tests " + expectedName));
+    MatcherAssert.assertThat(syserr, containsString("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(syserr, containsString(" --tests " + expectedName));
   }
 
   @Test
@@ -208,7 +209,7 @@ public class TestReproduceMessage extends WithNestedTests {
   public void testFailureAfterClass() throws Exception {
     type = SoreType.FAILURE;
     where = SorePoint.AFTER_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   /*
@@ -219,14 +220,14 @@ public class TestReproduceMessage extends WithNestedTests {
   public void testErrorBeforeClass() throws Exception {
     type = SoreType.ERROR;
     where = SorePoint.BEFORE_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   @Test
   public void testErrorInitializer() throws Exception {
     type = SoreType.ERROR;
     where = SorePoint.INITIALIZER;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   @Test
@@ -261,7 +262,7 @@ public class TestReproduceMessage extends WithNestedTests {
   public void testErrorAfterClass() throws Exception {
     type = SoreType.ERROR;
     where = SorePoint.AFTER_CLASS;
-    Assert.assertTrue(runAndReturnSyserr().contains("NOTE: reproduce with:"));
+    MatcherAssert.assertThat(runAndReturnSyserr(), containsString("NOTE: reproduce with:"));
   }
 
   private String runAndReturnSyserr() {

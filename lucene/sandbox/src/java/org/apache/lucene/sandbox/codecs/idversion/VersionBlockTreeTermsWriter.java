@@ -42,6 +42,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -292,27 +293,8 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return brToString(termBytes);
+      return ToStringUtils.bytesRefToString(termBytes);
     }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(byte[] b) {
-    return brToString(new BytesRef(b));
   }
 
   private static final class PendingBlock extends PendingEntry {
@@ -323,6 +305,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
+
     /** Max version for all terms in this block. */
     private final long maxVersion;
 
@@ -346,7 +329,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
 
     @Override
     public String toString() {
-      return "BLOCK: " + brToString(prefix);
+      return "BLOCK: " + ToStringUtils.bytesRefToString(prefix);
     }
 
     public void compileIndex(
@@ -383,9 +366,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       }
 
       final FSTCompiler<Pair<BytesRef, Long>> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, FST_OUTPUTS)
-              .shouldShareNonSingletonNodes(false)
-              .build();
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, FST_OUTPUTS).build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
       // }
@@ -408,7 +389,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      index = fstCompiler.compile();
+      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
       assert subIndices == null;
 
@@ -611,8 +592,8 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
 
       long startFP = out.getFilePointer();
 
-      // if (DEBUG) System.out.println("    writeBlock fp=" + startFP + " isFloor=" + isFloor + "
-      // floorLeadLabel=" + floorLeadLabel + " start=" + start + " end=" + end + " hasTerms=" +
+      // if (DEBUG) System.out.println("    writeBlock fp=" + startFP + " isFloor=" + isFloor +
+      // " floorLeadLabel=" + floorLeadLabel + " start=" + start + " end=" + end + " hasTerms=" +
       // hasTerms + " hasSubBlocks=" + hasSubBlocks);
 
       boolean hasFloorLeadLabel = isFloor && floorLeadLabel != -1;
@@ -631,11 +612,11 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       out.writeVInt(code);
 
       // if (DEBUG) {
-      //   System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment + "
-      // pending.size()=" + pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" +
-      // brToString(prefix) + " entCount=" + length + " startFP=" + startFP + (isFloor ? ("
-      // floorLeadByte=" + Integer.toHexString(floorLeadByte&0xff)) : "") + " isLastInFloor=" +
-      // isLastInFloor);
+      //   System.out.println("  writeBlock " + (isFloor ? "(floor) " : "") + "seg=" + segment +
+      // " pending.size()=" + pending.size() + " prefixLength=" + prefixLength + " indexPrefix=" +
+      // ToStringUtils.bytesRefToString(prefix) + " entCount=" + length + " startFP=" + startFP +
+      // (isFloor ? (" floorLeadByte=" + Integer.toHexString(floorLeadByte&0xff)) : "") +
+      // " isLastInFloor=" + isLastInFloor);
       // }
 
       // 1st pass: pack term suffix bytes into byte[] blob
@@ -738,7 +719,8 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
               BytesRef suffixBytes = new BytesRef(suffix);
               System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0, suffix);
               suffixBytes.length = suffix;
-              System.out.println("    write sub-block suffix=" + brToString(suffixBytes) + " subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" + block.isFloor);
+              System.out.println("    write sub-block suffix=" + ToStringUtils.bytesRefToString(suffixBytes) +
+              " subFP=" + block.fp + " subCode=" + (startFP-block.fp) + " floor=" + block.isFloor);
             }
             */
 
@@ -825,8 +807,8 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
         // we are closing:
         int prefixTopSize = pending.size() - prefixStarts[i];
         if (prefixTopSize >= minItemsInBlock) {
-          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize + "
-          // minItemsInBlock=" + minItemsInBlock);
+          // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize +
+          // " minItemsInBlock=" + minItemsInBlock);
           writeBlocks(i + 1, prefixTopSize);
           prefixStarts[i] -= prefixTopSize - 1;
         }

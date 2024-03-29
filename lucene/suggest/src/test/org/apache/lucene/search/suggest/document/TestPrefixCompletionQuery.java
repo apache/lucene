@@ -20,7 +20,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.Entry;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.assertSuggestions;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.iwcWithSuggestField;
-import static org.hamcrest.core.IsEqual.equalTo;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -195,8 +194,8 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     // the search should be admissible for a single segment
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
     assertTrue(suggest.totalHits.value >= 1);
-    assertThat(suggest.scoreLookupDocs()[0].key.toString(), equalTo("abc_" + topScore));
-    assertThat(suggest.scoreLookupDocs()[0].score, equalTo((float) topScore));
+    assertEquals("abc_" + topScore, suggest.scoreLookupDocs()[0].key.toString());
+    assertEquals((float) topScore, suggest.scoreLookupDocs()[0].score, 0);
 
     filter = new NumericRangeBitsProducer("filter_int_fld", 0, 0);
     query = new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"), filter);

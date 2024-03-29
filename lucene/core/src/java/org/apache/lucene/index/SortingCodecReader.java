@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -31,9 +32,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -77,7 +78,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     private final Sorter.DocMap docMap;
 
     SortingPointValues(final PointValues in, Sorter.DocMap docMap) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.docMap = docMap;
     }
 
@@ -333,10 +334,14 @@ public final class SortingCodecReader extends FilterCodecReader {
    * Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly
    * on a {@link Sorter.DocMap}.
    */
-  static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
+  public static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
-        new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
+        new LeafMetaData(
+            metaData.getCreatedVersionMajor(),
+            metaData.getMinVersion(),
+            sort,
+            metaData.hasBlocks());
     if (docMap == null) {
       // the reader is already sorted
       return new FilterCodecReader(reader) {
@@ -363,7 +368,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     if (reader.maxDoc() != docMap.size()) {
       throw new IllegalArgumentException(
-          "reader.maxDoc() should be equal to docMap.size(), got"
+          "reader.maxDoc() should be equal to docMap.size(), got "
               + reader.maxDoc()
               + " != "
               + docMap.size());
@@ -468,6 +473,10 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public PointValues getValues(String field) throws IOException {
+        var values = delegate.getValues(field);
+        if (values == null) {
+          return null;
+        }
         return new SortingPointValues(delegate.getValues(field), docMap);
       }
 
@@ -498,13 +507,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
@@ -713,8 +721,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   private boolean assertCreatedOnlyOnce(String field, boolean norms) {
     assert Thread.holdsLock(this);
     // this is mainly there to make sure we change anything in the way we merge we realize it early
-    Integer timesCached =
-        cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i.intValue() + 1);
+    int timesCached = cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i + 1);
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;

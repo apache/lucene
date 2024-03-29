@@ -68,6 +68,7 @@ public final class Lucene50RWCompoundFormat extends CompoundFormat {
 
   /** Extension of compound file */
   static final String DATA_EXTENSION = "cfs";
+
   /** Extension of compound file entries */
   static final String ENTRIES_EXTENSION = "cfe";
 

@@ -52,6 +52,7 @@ public class DocumentDictionary implements Dictionary {
 
   /** Field to read payload from */
   protected final String payloadField;
+
   /** Field to read contexts from */
   protected final String contextsField;
 

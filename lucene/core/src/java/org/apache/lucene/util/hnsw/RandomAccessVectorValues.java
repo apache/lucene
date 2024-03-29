@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
 /**
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
@@ -46,4 +47,24 @@ public interface RandomAccessVectorValues<T> {
    * {@link RandomAccessVectorValues#vectorValue}.
    */
   RandomAccessVectorValues<T> copy() throws IOException;
+
+  /**
+   * Translates vector ordinal to the correct document ID. By default, this is an identity function.
+   *
+   * @param ord the vector ordinal
+   * @return the document Id for that vector ordinal
+   */
+  default int ordToDoc(int ord) {
+    return ord;
+  }
+
+  /**
+   * Returns the {@link Bits} representing live documents. By default, this is an identity function.
+   *
+   * @param acceptDocs the accept docs
+   * @return the accept docs
+   */
+  default Bits getAcceptOrds(Bits acceptDocs) {
+    return acceptDocs;
+  }
 }

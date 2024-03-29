@@ -239,7 +239,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
   }
 
   // Test data - format is artist, song, weeks at top of charts
-  private static String[] hitsOfThe60s = {
+  private static final String[] hitsOfThe60s = {
     "1966\tSPENCER DAVIS GROUP\tKEEP ON RUNNING\t1",
     "1966\tOVERLANDERS\tMICHELLE\t3",
     "1966\tNANCY SINATRA\tTHESE BOOTS ARE MADE FOR WALKIN'\t4",
@@ -317,7 +317,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     "1969\tARCHIES\tSUGAR, SUGAR\t4"
   };
 
-  private static final Map<String, Record> parsedRecords = new HashMap<String, Record>();
+  private static final Map<String, Record> parsedRecords = new HashMap<>();
   private Directory dir;
   private IndexReader reader;
   private IndexSearcher searcher;
@@ -452,7 +452,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
   private int getMaxNumRecordsPerArtist(ScoreDoc[] sd) throws IOException {
     int result = 0;
-    HashMap<String, Integer> artistCounts = new HashMap<String, Integer>();
+    HashMap<String, Integer> artistCounts = new HashMap<>();
     for (int i = 0; i < sd.length; i++) {
       Document doc = reader.storedFields().document(sd[i].doc);
       Record record = parsedRecords.get(doc.get("id"));

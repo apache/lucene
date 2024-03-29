@@ -1,0 +1,67 @@
+name: "Run checks: all modules"
+
+on: 
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_9x'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+# We split the workflow into two parallel jobs for efficiency:
+# one is running all validation checks without tests,
+# the other runs all tests without other validation checks.
+
+jobs:
+
+  # This runs all validation checks without tests.
+  checks:
+    name: checks without tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java: [ '21' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run gradle check (without tests)
+        run: ./gradlew check -x test -Ptask.times=true --max-workers 2
+
+
+  # This runs all tests without any other validation checks.
+  tests:
+    name: tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        # Operating systems to run on.
+        # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
+        # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
+        os: [ ubuntu-latest ]
+        java: [ '21' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run gradle tests
+        run: ./gradlew test "-Ptask.times=true" --max-workers 2
+
+      - name: List automatically-initialized gradle.properties
+        run: cat gradle.properties

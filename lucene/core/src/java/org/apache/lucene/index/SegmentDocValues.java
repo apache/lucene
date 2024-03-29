@@ -46,7 +46,7 @@ final class SegmentDocValues {
 
     // set SegmentReadState to list only the fields that are relevant to that gen
     SegmentReadState srs =
-        new SegmentReadState(dvDir, si.info, infos, IOContext.READ, segmentSuffix);
+        new SegmentReadState(dvDir, si.info, infos, IOContext.DEFAULT, segmentSuffix);
     DocValuesFormat dvFormat = si.info.getCodec().docValuesFormat();
     return new RefCount<DocValuesProducer>(dvFormat.fieldsProducer(srs)) {
       @SuppressWarnings("synthetic-access")

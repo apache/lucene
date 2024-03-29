@@ -142,7 +142,7 @@ public class PatternParser extends DefaultHandler {
         break;
       }
     }
-    token.append(chars.toString().substring(0, i));
+    token.append(chars, 0, i);
     // chars.delete(0,i);
     for (int countr = i; countr < chars.length(); countr++) {
       chars.setCharAt(countr - i, chars.charAt(countr));

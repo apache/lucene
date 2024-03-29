@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -50,6 +52,7 @@ public final class FieldReader extends Terms {
   final Lucene40BlockTreeTermsReader parent;
 
   final FST<BytesRef> index;
+
   // private boolean DEBUG;
 
   FieldReader(
@@ -88,9 +91,17 @@ public final class FieldReader extends Terms {
     final IndexInput clone = indexIn.clone();
     clone.seek(indexStartFP);
     if (metaIn == indexIn) { // Only true before Lucene 8.6
-      index = new FST<>(clone, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      index =
+          new FST<>(
+              readMetadata(clone, ByteSequenceOutputs.getSingleton()),
+              clone,
+              new OffHeapFSTStore());
     } else {
-      index = new FST<>(metaIn, clone, ByteSequenceOutputs.getSingleton(), new OffHeapFSTStore());
+      index =
+          new FST<>(
+              readMetadata(metaIn, ByteSequenceOutputs.getSingleton()),
+              clone,
+              new OffHeapFSTStore());
     }
     /*
      if (false) {
@@ -180,7 +191,7 @@ public final class FieldReader extends Terms {
   @Override
   public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
     // if (DEBUG) System.out.println("  FieldReader.intersect startTerm=" +
-    // BlockTreeTermsWriter.brToString(startTerm));
+    // ToStringUtils.bytesRefToString(startTerm));
     // System.out.println("intersect: " + compiled.type + " a=" + compiled.automaton);
     // TODO: we could push "it's a range" or "it's a prefix" down into IntersectTermsEnum?
     // can we optimize knowing that...?

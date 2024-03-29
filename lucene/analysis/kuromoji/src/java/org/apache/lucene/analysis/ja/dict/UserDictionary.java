@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -92,7 +93,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     List<int[]> segmentations = new ArrayList<>(featureEntries.size());
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     long ord = 0;
 
@@ -136,7 +138,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       }
       // add mapping to FST
       String token = values[0];
-      scratch.grow(token.length());
+      scratch.growNoCopy(token.length());
       scratch.setLength(token.length());
       for (int i = 0; i < token.length(); i++) {
         scratch.setIntAt(i, (int) token.charAt(i));
@@ -145,7 +147,9 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       segmentations.add(wordIdAndLength);
       ord++;
     }
-    this.fst = new TokenInfoFST(fstCompiler.compile(), false);
+    this.fst =
+        new TokenInfoFST(
+            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()), false);
     this.morphAtts = new UserMorphData(data.toArray(new String[0]));
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
   }

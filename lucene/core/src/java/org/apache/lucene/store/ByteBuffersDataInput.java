@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -42,7 +43,7 @@ public final class ByteBuffersDataInput extends DataInput
   private final LongBuffer[] longBuffers;
   private final int blockBits;
   private final int blockMask;
-  private final long size;
+  private final long length;
   private final long offset;
 
   private long pos;
@@ -55,10 +56,10 @@ public final class ByteBuffersDataInput extends DataInput
   public ByteBuffersDataInput(List<ByteBuffer> buffers) {
     ensureAssumptions(buffers);
 
-    this.blocks =
-        buffers.stream()
-            .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
-            .toArray(ByteBuffer[]::new);
+    this.blocks = buffers.toArray(ByteBuffer[]::new);
+    for (int i = 0; i < blocks.length; ++i) {
+      blocks[i] = blocks[i].asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+    }
     // pre-allocate these arrays and create the view buffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
     this.longBuffers = new LongBuffer[blocks.length * Long.BYTES];
@@ -71,15 +72,25 @@ public final class ByteBuffersDataInput extends DataInput
       this.blockMask = (1 << blockBits) - 1;
     }
 
-    this.size = Arrays.stream(blocks).mapToLong(block -> block.remaining()).sum();
+    long length = 0;
+    for (ByteBuffer block : blocks) {
+      length += block.remaining();
+    }
+    this.length = length;
 
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
   }
 
+  /**
+   * Returns the total number of bytes in this stream.
+   *
+   * @deprecated Use {@link #length()} instead.
+   */
+  @Deprecated
   public long size() {
-    return size;
+    return length();
   }
 
   @Override
@@ -98,7 +109,7 @@ public final class ByteBuffersDataInput extends DataInput
       pos++;
       return v;
     } catch (IndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -131,7 +142,7 @@ public final class ByteBuffersDataInput extends DataInput
         len -= chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -158,7 +169,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -203,9 +214,61 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    final ByteBuffer block = blocks[blockIndex(pos)];
+    final int blockOffset = blockOffset(pos);
+    // We MUST save the return value to local variable, could not use pos += readGroupVInt(...).
+    // because `pos +=` in java will move current value(not address) of pos to register first,
+    // then call the function, but we will update pos value in function via readByte(), then
+    // `pos +=` will use an old pos value plus return value, thereby missing 1 byte.
+    final int len =
+        GroupVIntUtil.readGroupVInt(
+            this,
+            block.limit() - blockOffset,
+            p -> block.getInt((int) p),
+            blockOffset,
+            dst,
+            offset);
+    pos += len;
+  }
+
+  @Override
+  public long length() {
+    return length;
+  }
+
+  @Override
   public byte readByte(long pos) {
     pos += offset;
     return blocks[blockIndex(pos)].get(blockOffset(pos));
+  }
+
+  @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    long absPos = this.offset + pos;
+    try {
+      while (len > 0) {
+        ByteBuffer block = blocks[blockIndex(absPos)];
+        int blockPosition = blockOffset(absPos);
+        int chunk = Math.min(len, block.capacity() - blockPosition);
+        if (chunk == 0) {
+          throw new EOFException();
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        block.get(blockPosition, bytes, offset, chunk);
+
+        absPos += chunk;
+        len -= chunk;
+        offset += chunk;
+      }
+    } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
+      if (absPos >= length()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
   }
 
   @Override
@@ -283,7 +346,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
-      if (pos - offset + Float.BYTES > size()) {
+      if (pos - offset + Float.BYTES > length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -315,7 +378,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
-      if (pos - offset + Long.BYTES > size()) {
+      if (pos - offset + Long.BYTES > length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -355,8 +418,8 @@ public final class ByteBuffersDataInput extends DataInput
 
   public void seek(long position) throws EOFException {
     this.pos = position + offset;
-    if (position > size()) {
-      this.pos = size();
+    if (position > length()) {
+      this.pos = length();
       throw new EOFException();
     }
   }
@@ -371,7 +434,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   public ByteBuffersDataInput slice(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.size) {
+    if (offset < 0 || length < 0 || offset + length > this.length) {
       throw new IllegalArgumentException(
           String.format(
               Locale.ROOT,
@@ -389,7 +452,7 @@ public final class ByteBuffersDataInput extends DataInput
     return String.format(
         Locale.ROOT,
         "%,d bytes, block size: %,d, blocks: %,d, position: %,d%s",
-        size(),
+        length(),
         blockSize(),
         blocks.length,
         position(),
@@ -457,7 +520,6 @@ public final class ByteBuffersDataInput extends DataInput
 
     if (buffers.size() == 1) {
       ByteBuffer cloned = buffers.get(0).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-      ;
       cloned.position(Math.toIntExact(cloned.position() + offset));
       cloned.limit(Math.toIntExact(cloned.position() + length));
       return Arrays.asList(cloned);

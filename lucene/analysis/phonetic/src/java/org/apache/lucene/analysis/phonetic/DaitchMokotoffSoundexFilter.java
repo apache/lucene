@@ -32,9 +32,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
  */
 public final class DaitchMokotoffSoundexFilter extends TokenFilter {
   /** true if encoded tokens should be added as synonyms */
-  protected boolean inject = true;
+  private final boolean inject;
+
   /** phonetic encoder */
-  protected DaitchMokotoffSoundex encoder = new DaitchMokotoffSoundex();
+  private final DaitchMokotoffSoundex encoder = new DaitchMokotoffSoundex();
 
   // output is a string such as ab|ac|...
   private static final Pattern pattern = Pattern.compile("([^|]+)");

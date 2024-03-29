@@ -59,6 +59,7 @@ import org.apache.lucene.util.FixedBitSet;
 abstract class SpatialQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation disjoint: {@link QueryRelation#DISJOINT}, intersects: {@link
    * QueryRelation#INTERSECTS}, within: {@link QueryRelation#DISJOINT}, contains: {@link
@@ -693,7 +694,7 @@ abstract class SpatialQuery extends Query {
       final SpatialVisitor spatialVisitor, QueryRelation queryRelation, final FixedBitSet result) {
     final BiFunction<byte[], byte[], Relation> innerFunction =
         spatialVisitor.getInnerFunction(queryRelation);
-    ;
+
     return new IntersectVisitor() {
 
       @Override

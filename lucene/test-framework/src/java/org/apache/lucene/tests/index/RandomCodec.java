@@ -53,6 +53,7 @@ import org.apache.lucene.tests.codecs.bloom.TestBloomFilteredLucenePostings;
 import org.apache.lucene.tests.codecs.mockrandom.MockRandomPostingsFormat;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
 
@@ -90,7 +91,7 @@ public class RandomCodec extends AssertingCodec {
   private final int perFieldSeed;
 
   // a little messy: randomize the default codec's parameters here.
-  // with the default values, we have e,g, 1024 points in leaf nodes,
+  // with the default values, we have e,g, 512 points in leaf nodes,
   // which is less effective for testing.
   // TODO: improve how we randomize this...
   private final int maxPointsInLeafNode;
@@ -149,7 +150,7 @@ public class RandomCodec extends AssertingCodec {
 
                   // We could have 0 points on merge since all docs with dimensional fields may be
                   // deleted:
-                  Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
+                  IORunnable finalizer = writer.finish(metaOut, indexOut, dataOut);
                   if (finalizer != null) {
                     metaOut.writeInt(fieldInfo.number);
                     finalizer.run();

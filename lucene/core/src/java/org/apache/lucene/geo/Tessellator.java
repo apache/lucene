@@ -1090,17 +1090,22 @@ public final class Tessellator {
    * Determines whether a diagonal between two polygon nodes lies within a polygon interior. (This
    * determines the validity of the ray.) *
    */
-  private static final boolean isValidDiagonal(final Node a, final Node b) {
-    if (isVertexEquals(a, b)) {
-      // If points are equal then use it if they are valid polygons
-      return isCWPolygon(a, b);
+  private static boolean isValidDiagonal(final Node a, final Node b) {
+    if (a.next.idx == b.idx
+        || a.previous.idx == b.idx
+        // check next edges are locally visible
+        || isLocallyInside(a.previous, b) == false
+        || isLocallyInside(b.next, a) == false
+        // check polygons are CCW in both sides
+        || isCWPolygon(a, b) == false
+        || isCWPolygon(b, a) == false) {
+      return false;
     }
-    return a.next.idx != b.idx
-        && a.previous.idx != b.idx
-        && isLocallyInside(a, b)
+    if (isVertexEquals(a, b)) {
+      return true;
+    }
+    return isLocallyInside(a, b)
         && isLocallyInside(b, a)
-        && isLocallyInside(a.previous, b)
-        && isLocallyInside(b.next, a)
         && middleInsert(a, a.getX(), a.getY(), b.getX(), b.getY())
         // make sure we don't introduce collinear lines
         && area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
@@ -1114,7 +1119,7 @@ public final class Tessellator {
   /** Determine whether the polygon defined between node start and node end is CW */
   private static boolean isCWPolygon(final Node start, final Node end) {
     // The polygon must be CW
-    return (signedArea(start, end) < 0) ? true : false;
+    return signedArea(start, end) < 0;
   }
 
   /** Determine the signed area between node start and node end */
@@ -1249,8 +1254,7 @@ public final class Tessellator {
         ++numMerges;
         // step 'insize' places along from p
         q = p;
-        for (i = 0, pSize = 0; i < inSize && q != null; ++i, ++pSize, q = q.nextZ)
-          ;
+        for (i = 0, pSize = 0; i < inSize && q != null; ++i, ++pSize, q = q.nextZ) {}
         // if q hasn't fallen off end, we have two lists to merge
         qSize = inSize;
 
@@ -1436,21 +1440,6 @@ public final class Tessellator {
     } else {
       return false;
     }
-  }
-
-  /**
-   * Brute force compute if a point is in the polygon by traversing entire triangulation todo: speed
-   * this up using either binary tree or prefix coding (filtering by bounding box of triangle)
-   */
-  public static final boolean pointInPolygon(
-      final List<Triangle> tessellation, double lat, double lon) {
-    // each triangle
-    for (int i = 0; i < tessellation.size(); ++i) {
-      if (tessellation.get(i).containsPoint(lat, lon)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

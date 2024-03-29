@@ -32,8 +32,8 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
@@ -81,8 +81,16 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   /** Initial terms format. */
   public static final int VERSION_START = 0;
 
+  /**
+   * Version that encode output as MSB VLong for better outputs sharing in FST, see GITHUB#12620.
+   */
+  public static final int VERSION_MSB_VLONG_OUTPUT = 1;
+
+  /** The version that specialize arc store for continuous label in FST. */
+  public static final int VERSION_FST_CONTINUOUS_ARCS = 2;
+
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";
@@ -135,7 +143,9 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = state.directory.openInput(indexName, IOContext.LOAD);
+      indexIn =
+          state.directory.openInput(
+              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -297,24 +307,6 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   @Override
   public int size() {
     return fieldMap.size();
-  }
-
-  // for debugging
-  String brToString(BytesRef b) {
-    if (b == null) {
-      return "null";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
   }
 
   @Override

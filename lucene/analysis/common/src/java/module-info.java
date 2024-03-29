@@ -79,6 +79,7 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.sr;
   exports org.apache.lucene.analysis.sv;
   exports org.apache.lucene.analysis.synonym;
+  exports org.apache.lucene.analysis.synonym.word2vec;
   exports org.apache.lucene.analysis.ta;
   exports org.apache.lucene.analysis.te;
   exports org.apache.lucene.analysis.th;
@@ -113,8 +114,6 @@ module org.apache.lucene.analysis.common {
   opens org.apache.lucene.analysis.eu to
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.fa to
-      org.apache.lucene.core;
-  opens org.apache.lucene.analysis.ga to
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.gl to
       org.apache.lucene.core;
@@ -248,6 +247,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.pt.PortugueseMinimalStemFilterFactory,
       org.apache.lucene.analysis.pt.PortugueseStemFilterFactory,
       org.apache.lucene.analysis.reverse.ReverseStringFilterFactory,
+      org.apache.lucene.analysis.ro.RomanianNormalizationFilterFactory,
       org.apache.lucene.analysis.ru.RussianLightStemFilterFactory,
       org.apache.lucene.analysis.shingle.ShingleFilterFactory,
       org.apache.lucene.analysis.shingle.FixedShingleFilterFactory,
@@ -257,6 +257,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.sv.SwedishMinimalStemFilterFactory,
       org.apache.lucene.analysis.synonym.SynonymFilterFactory,
       org.apache.lucene.analysis.synonym.SynonymGraphFilterFactory,
+      org.apache.lucene.analysis.synonym.word2vec.Word2VecSynonymFilterFactory,
       org.apache.lucene.analysis.core.FlattenGraphFilterFactory,
       org.apache.lucene.analysis.te.TeluguNormalizationFilterFactory,
       org.apache.lucene.analysis.te.TeluguStemFilterFactory,

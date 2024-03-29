@@ -76,8 +76,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0, 1}, 10);
       assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
-      Query rewritten = query.rewrite(newSearcher(reader));
-      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
     }
   }
 
@@ -86,6 +85,21 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     KnnByteVectorQuery q1 = new KnnByteVectorQuery("f1", queryVectorBytes, 10);
     assertArrayEquals(queryVectorBytes, q1.getTargetCopy());
     assertNotSame(queryVectorBytes, q1.getTargetCopy());
+  }
+
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = new MatchAllDocsQuery();
+      }
+      AbstractKnnVectorQuery query =
+          new KnnFloatVectorQuery("field", new float[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
+    }
   }
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {

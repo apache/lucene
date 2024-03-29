@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -33,7 +35,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.IOUtils;
 
 /** Base class for CheckIndex tests. */
 public class BaseTestCheckIndex extends LuceneTestCase {
@@ -58,12 +59,13 @@ public class BaseTestCheckIndex extends LuceneTestCase {
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8));
+    checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
     if (VERBOSE) checker.setInfoStream(System.out);
     CheckIndex.Status indexStatus = checker.checkIndex();
     if (indexStatus.clean == false) {
       System.out.println("CheckIndex failed");
-      System.out.println(bos.toString(IOUtils.UTF_8));
+      System.out.println(bos.toString(UTF_8));
       fail();
     }
 
@@ -98,7 +100,7 @@ public class BaseTestCheckIndex extends LuceneTestCase {
     final List<String> onlySegments = new ArrayList<>();
     onlySegments.add("_0");
 
-    assertTrue(checker.checkIndex(onlySegments).clean == true);
+    assertTrue(checker.checkIndex(onlySegments).clean);
     checker.close();
   }
 
@@ -117,7 +119,7 @@ public class BaseTestCheckIndex extends LuceneTestCase {
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8));
     if (VERBOSE) checker.setInfoStream(System.out);
     CheckIndex.Status indexStatus = checker.checkIndex();
     assertTrue(indexStatus.clean);
@@ -140,7 +142,7 @@ public class BaseTestCheckIndex extends LuceneTestCase {
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, true, IOUtils.UTF_8));
+    checker.setInfoStream(new PrintStream(bos, true, UTF_8));
     if (VERBOSE) checker.setInfoStream(System.out);
     CheckIndex.Status indexStatus = checker.checkIndex();
     assertTrue(indexStatus.clean);
@@ -154,11 +156,7 @@ public class BaseTestCheckIndex extends LuceneTestCase {
     iw.commit();
 
     // keep IW open... should not be able to obtain write lock
-    expectThrows(
-        LockObtainFailedException.class,
-        () -> {
-          new CheckIndex(dir);
-        });
+    expectThrows(LockObtainFailedException.class, () -> new CheckIndex(dir));
 
     iw.close();
   }

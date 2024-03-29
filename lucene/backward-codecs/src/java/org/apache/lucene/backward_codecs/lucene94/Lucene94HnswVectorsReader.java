@@ -34,9 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
@@ -45,7 +43,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -151,7 +150,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -209,10 +208,19 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     return VectorEncoding.values()[encodingId];
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
+    }
+    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -255,89 +263,47 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(fieldEntry, vectorData);
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      return;
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-
-    NeighborQueue results =
-        HnswGraphSearcher.search(
-            target,
-            k,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+    HnswGraphSearcher.search(
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      return;
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
-
-    NeighborQueue results =
-        HnswGraphSearcher.search(
-            target,
-            k,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
+    HnswGraphSearcher.search(
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {

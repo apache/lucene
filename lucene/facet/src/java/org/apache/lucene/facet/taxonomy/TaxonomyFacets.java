@@ -19,11 +19,13 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
@@ -53,21 +55,26 @@ abstract class TaxonomyFacets extends Facets {
   /** {@code FacetsConfig} provided to the constructor. */
   final FacetsConfig config;
 
+  /** {@code FacetsCollector} provided to the constructor. */
+  final FacetsCollector fc;
+
   /** Maps parent ordinal to its child, or -1 if the parent is childless. */
-  private int[] children;
+  private ParallelTaxonomyArrays.IntArray children;
 
   /** Maps an ordinal to its sibling, or -1 if there is no sibling. */
-  private int[] siblings;
+  private ParallelTaxonomyArrays.IntArray siblings;
 
   /** Maps an ordinal to its parent, or -1 if there is no parent (root node). */
-  final int[] parents;
+  final ParallelTaxonomyArrays.IntArray parents;
 
   /** Sole constructor. */
-  TaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
+  TaxonomyFacets(
+      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
     this.indexFieldName = indexFieldName;
     this.taxoReader = taxoReader;
     this.config = config;
+    this.fc = fc;
     parents = taxoReader.getParallelTaxonomyArrays().parents();
   }
 
@@ -75,7 +82,7 @@ abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its first child; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  int[] getChildren() throws IOException {
+  ParallelTaxonomyArrays.IntArray getChildren() throws IOException {
     if (children == null) {
       children = taxoReader.getParallelTaxonomyArrays().children();
     }
@@ -86,7 +93,7 @@ abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its next sibling; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  int[] getSiblings() throws IOException {
+  ParallelTaxonomyArrays.IntArray getSiblings() throws IOException {
     if (siblings == null) {
       siblings = taxoReader.getParallelTaxonomyArrays().siblings();
     }
@@ -138,9 +145,14 @@ abstract class TaxonomyFacets extends Facets {
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
     validateTopN(topN);
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-    int ord = children[TaxonomyReader.ROOT_ORDINAL];
+
+    if (hasValues() == false) {
+      return Collections.emptyList();
+    }
+
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+    int ord = children.get(TaxonomyReader.ROOT_ORDINAL);
     List<FacetResult> results = new ArrayList<>();
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       String dim = taxoReader.getPath(ord).components[0];
@@ -151,11 +163,14 @@ abstract class TaxonomyFacets extends Facets {
           results.add(result);
         }
       }
-      ord = siblings[ord];
+      ord = siblings.get(ord);
     }
 
     // Sort by highest value, tie break by dim:
     results.sort(BY_VALUE_THEN_DIM);
     return results;
   }
+
+  /** Were any values actually aggregated during counting? */
+  abstract boolean hasValues();
 }

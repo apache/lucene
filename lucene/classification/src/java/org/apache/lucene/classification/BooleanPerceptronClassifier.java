@@ -207,7 +207,8 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
 
   private void updateFST(SortedMap<String, Double> weights) throws IOException {
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     BytesRefBuilder scratchBytes = new BytesRefBuilder();
     IntsRefBuilder scratchInts = new IntsRefBuilder();
     for (Map.Entry<String, Double> entry : weights.entrySet()) {
@@ -215,7 +216,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       fstCompiler.add(
           Util.toIntsRef(scratchBytes.get(), scratchInts), entry.getValue().longValue());
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   @Override

@@ -32,6 +32,7 @@ public class TestSetOnce extends LuceneTestCase {
       RAND = new Random(random.nextLong());
     }
 
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void run() {
       try {

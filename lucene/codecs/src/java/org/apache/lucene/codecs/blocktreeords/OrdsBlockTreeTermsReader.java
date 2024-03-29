@@ -230,24 +230,6 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
     return fields.size();
   }
 
-  // for debugging
-  String brToString(BytesRef b) {
-    if (b == null) {
-      return "null";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
-  }
-
   @Override
   public void checkIntegrity() throws IOException {
     // term dictionary

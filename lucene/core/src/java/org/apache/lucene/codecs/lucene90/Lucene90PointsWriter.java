@@ -32,6 +32,7 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
@@ -105,7 +106,7 @@ public class Lucene90PointsWriter extends PointsWriter {
   }
 
   /**
-   * Uses the defaults values for {@code maxPointsInLeafNode} (1024) and {@code maxMBSortInHeap}
+   * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
    */
   public Lucene90PointsWriter(SegmentWriteState writeState) throws IOException {
@@ -137,7 +138,7 @@ public class Lucene90PointsWriter extends PointsWriter {
             values.size())) {
 
       if (values instanceof MutablePointTree) {
-        Runnable finalizer =
+        IORunnable finalizer =
             writer.writeField(
                 metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
         if (finalizer != null) {
@@ -166,7 +167,7 @@ public class Lucene90PointsWriter extends PointsWriter {
           });
 
       // We could have 0 points on merge since all docs with dimensional fields may be deleted:
-      Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
+      IORunnable finalizer = writer.finish(metaOut, indexOut, dataOut);
       if (finalizer != null) {
         metaOut.writeInt(fieldInfo.number);
         finalizer.run();
@@ -261,7 +262,7 @@ public class Lucene90PointsWriter extends PointsWriter {
               }
             }
 
-            Runnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
+            IORunnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
             if (finalizer != null) {
               metaOut.writeInt(fieldInfo.number);
               finalizer.run();

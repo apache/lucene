@@ -57,6 +57,7 @@ public abstract class MultiTermQuery extends Query {
   public abstract static class RewriteMethod {
     public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
         throws IOException;
+
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *
@@ -106,6 +107,19 @@ public abstract class MultiTermQuery extends Query {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
+
+  /**
+   * A rewrite method that uses {@link org.apache.lucene.index.DocValuesType#SORTED} / {@link
+   * org.apache.lucene.index.DocValuesType#SORTED_SET} doc values to find matching docs through a
+   * post-filtering type approach. This will be very slow if used in isolation, but will likely be
+   * the most performant option when combined with a sparse query clause. All matching docs are
+   * assigned a constant score equal to the query's boost.
+   *
+   * <p>If you don't have doc values indexed, see the other rewrite methods that rely on postings
+   * alone (e.g., {@link #CONSTANT_SCORE_BLENDED_REWRITE}, {@link #SCORING_BOOLEAN_REWRITE}, etc.
+   * depending on scoring needs).
+   */
+  public static final RewriteMethod DOC_VALUES_REWRITE = new DocValuesRewriteMethod();
 
   /**
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
@@ -293,6 +307,14 @@ public abstract class MultiTermQuery extends Query {
    */
   public final TermsEnum getTermsEnum(Terms terms) throws IOException {
     return getTermsEnum(terms, new AttributeSource());
+  }
+
+  /**
+   * Return the number of unique terms contained in this query, if known up-front. If not known, -1
+   * will be returned.
+   */
+  public long getTermsCount() throws IOException {
+    return -1;
   }
 
   /**

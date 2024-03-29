@@ -33,17 +33,17 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -261,11 +261,10 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-        meta.writeInt(nodesOnLevel.size()); // number of nodes on a level
+        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
+        meta.writeInt(sortedNodes.length); // number of nodes on a level
         if (level > 0) {
-          while (nodesOnLevel.hasNext()) {
-            int node = nodesOnLevel.nextInt();
+          for (int node : sortedNodes) {
             meta.writeInt(node); // list of nodes on a level
           }
         }
@@ -278,29 +277,25 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
 
     // build graph
-    HnswGraphBuilder<float[]> hnswGraphBuilder =
-        HnswGraphBuilder.create(
-            vectorValues,
-            VectorEncoding.FLOAT32,
-            similarityFunction,
-            M,
-            beamWidth,
-            HnswGraphBuilder.randSeed);
+    RandomVectorScorerSupplier scorerSupplier =
+        RandomVectorScorerSupplier.createFloats(vectorValues, similarityFunction);
+    HnswGraphBuilder hnswGraphBuilder =
+        HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
+
+    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.size());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext()) {
-        int node = nodesOnLevel.nextInt();
+      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
+      for (int node : sortedNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         for (int i = 0; i < size; i++) {
           int nnode = nnodes[i];

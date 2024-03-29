@@ -325,7 +325,6 @@ public abstract class PointValues {
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
@@ -376,7 +375,7 @@ public abstract class PointValues {
   public final long estimatePointCount(IntersectVisitor visitor) {
     try {
       final PointTree pointTree = getPointTree();
-      final long count = estimatePointCount(visitor, pointTree);
+      final long count = estimatePointCount(visitor, pointTree, Long.MAX_VALUE);
       assert pointTree.moveToParent() == false;
       return count;
     } catch (IOException ioe) {
@@ -384,8 +383,26 @@ public abstract class PointValues {
     }
   }
 
-  private long estimatePointCount(IntersectVisitor visitor, PointTree pointTree)
-      throws IOException {
+  /**
+   * Estimate if the point count that would be matched by {@link #intersect} with the given {@link
+   * IntersectVisitor} is greater than or equal to the upperBound.
+   *
+   * @lucene.internal
+   */
+  public static boolean isEstimatedPointCountGreaterThanOrEqualTo(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
+    return estimatePointCount(visitor, pointTree, upperBound) >= upperBound;
+  }
+
+  /**
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {@link IntersectVisitor}. The estimation will terminate when the point count gets greater than
+   * or equal to the upper bound.
+   *
+   * <p>TODO: will broad-first help estimation terminate earlier?
+   */
+  private static long estimatePointCount(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
     Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {
       case CELL_OUTSIDE_QUERY:
@@ -399,8 +416,8 @@ public abstract class PointValues {
         if (pointTree.moveToChild()) {
           long cost = 0;
           do {
-            cost += estimatePointCount(visitor, pointTree);
-          } while (pointTree.moveToSibling());
+            cost += estimatePointCount(visitor, pointTree, upperBound - cost);
+          } while (cost < upperBound && pointTree.moveToSibling());
           pointTree.moveToParent();
           return cost;
         } else {

@@ -89,6 +89,8 @@ import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.stempel.StempelStemmer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.analysis.synonym.word2vec.Word2VecModel;
+import org.apache.lucene.analysis.synonym.word2vec.Word2VecSynonymProvider;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
@@ -99,8 +101,10 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IgnoreRandomChains;
+import org.apache.lucene.util.TermAndVector;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
@@ -164,7 +168,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
 
   private static final Map<Class<?>, Function<Random, Object>> argProducers =
       Collections.unmodifiableMap(
-          new IdentityHashMap<Class<?>, Function<Random, Object>>() {
+          new IdentityHashMap<>() {
             {
               put(
                   int.class,
@@ -172,7 +176,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     // TODO: could cause huge ram usage to use full int range for some filters
                     // (e.g. allocate enormous arrays)
                     // return Integer.valueOf(random.nextInt());
-                    return Integer.valueOf(TestUtil.nextInt(random, -50, 50));
+                    return TestUtil.nextInt(random, -50, 50);
                   });
               put(
                   char.class,
@@ -183,7 +187,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     while (true) {
                       char c = (char) random.nextInt(65536);
                       if (c < '\uD800' || c > '\uDFFF') {
-                        return Character.valueOf(c);
+                        return c;
                       }
                     }
                   });
@@ -378,7 +382,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   SynonymMap.class,
-                  new Function<Random, Object>() {
+                  new Function<>() {
                     @Override
                     public Object apply(Random random) {
                       SynonymMap.Builder b = new SynonymMap.Builder(random.nextBoolean());
@@ -416,6 +420,27 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     }
                   });
               put(
+                  Word2VecSynonymProvider.class,
+                  random -> {
+                    final int numEntries = atLeast(10);
+                    final int vectorDimension = random.nextInt(99) + 1;
+                    Word2VecModel model = new Word2VecModel(numEntries, vectorDimension);
+                    for (int j = 0; j < numEntries; j++) {
+                      String s = TestUtil.randomSimpleString(random, 10, 20);
+                      float[] vec = new float[vectorDimension];
+                      for (int i = 0; i < vectorDimension; i++) {
+                        vec[i] = random.nextFloat();
+                      }
+                      model.addTermAndVector(new TermAndVector(new BytesRef(s), vec));
+                    }
+                    try {
+                      return new Word2VecSynonymProvider(model);
+                    } catch (IOException e) {
+                      Rethrow.rethrow(e);
+                      return null; // unreachable code
+                    }
+                  });
+              put(
                   DateFormat.class,
                   random -> {
                     if (random.nextBoolean()) return null;
@@ -423,12 +448,11 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   Automaton.class,
-                  random -> {
-                    return Operations.determinize(
-                        new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
-                            .toAutomaton(),
-                        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-                  });
+                  random ->
+                      Operations.determinize(
+                          new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
+                              .toAutomaton(),
+                          Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
               put(
                   PatternTypingFilter.PatternTypingRule[].class,
                   random -> {
@@ -600,9 +624,9 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     }
 
     final Comparator<Constructor<?>> ctorComp = Comparator.comparing(Constructor::toGenericString);
-    Collections.sort(tokenizers, ctorComp);
-    Collections.sort(tokenfilters, ctorComp);
-    Collections.sort(charfilters, ctorComp);
+    tokenizers.sort(ctorComp);
+    tokenfilters.sort(ctorComp);
+    charfilters.sort(ctorComp);
     if (VERBOSE) {
       System.out.println("tokenizers = " + tokenizers);
       System.out.println("tokenfilters = " + tokenfilters);
@@ -617,7 +641,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
             .filter(c -> c.getName().endsWith("Stemmer"))
             .map(stemmerCast)
             .sorted(Comparator.comparing(Class::getName))
-            .collect(Collectors.toList());
+            .toList();
     if (VERBOSE) {
       System.out.println("snowballStemmers = " + snowballStemmers);
     }
@@ -761,7 +785,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
         if (cause instanceof IllegalArgumentException
             || (cause instanceof NullPointerException && Stream.of(args).anyMatch(Objects::isNull))
             || cause instanceof UnsupportedOperationException) {
-          // thats ok, ignore
+          // that's ok, ignore
           if (VERBOSE) {
             System.err.println("Ignoring IAE/UOE/NPE from ctor:");
             cause.printStackTrace(System.err);

@@ -161,21 +161,22 @@ class ConjunctionScorer extends Scorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    // This scorer is only used for TOP_SCORES when there is at most one scoring clause
-    switch (scoringScorers.size()) {
-      case 0:
-        return 0;
-      case 1:
-        return scoringScorers.iterator().next().getMaxScore(upTo);
-      default:
-        return Float.POSITIVE_INFINITY;
+    double maxScore = 0;
+    for (Scorer s : scoringScorers) {
+      if (s.docID() <= upTo) {
+        maxScore += s.getMaxScore(upTo);
+      }
     }
+    return (float) maxScore;
   }
 
   @Override
   public int advanceShallow(int target) throws IOException {
     if (scoringScorers.size() == 1) {
       return scoringScorers.iterator().next().advanceShallow(target);
+    }
+    for (Scorer scorer : scoringScorers) {
+      scorer.advanceShallow(target);
     }
     return super.advanceShallow(target);
   }

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
 import java.util.Random;
@@ -24,7 +24,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -37,7 +36,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
+import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
 public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCase {
@@ -122,25 +121,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     assertEquals("foo:[3 TO 5]", q1.toString());
     assertEquals("[3 TO 5]", q1.toString("foo"));
     assertEquals("foo:[3 TO 5]", q1.toString("bar"));
-
-    Query q2 =
-        SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), true, true);
-    assertEquals("foo:[[62 61 72] TO [62 61 7a]]", q2.toString());
-    q2 =
-        SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), false, true);
-    assertEquals("foo:{[62 61 72] TO [62 61 7a]]", q2.toString());
-    q2 =
-        SortedSetDocValuesField.newSlowRangeQuery(
-            "foo", new BytesRef("bar"), new BytesRef("baz"), false, false);
-    assertEquals("foo:{[62 61 72] TO [62 61 7a]}", q2.toString());
-    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", new BytesRef("bar"), null, true, true);
-    assertEquals("foo:[[62 61 72] TO *}", q2.toString());
-    q2 = SortedSetDocValuesField.newSlowRangeQuery("foo", null, new BytesRef("baz"), true, true);
-    assertEquals("foo:{* TO [62 61 7a]]", q2.toString());
-    assertEquals("{* TO [62 61 7a]]", q2.toString("foo"));
-    assertEquals("foo:{* TO [62 61 7a]]", q2.toString("bar"));
   }
 
   public void testIndexSortDocValuesWithEvenLength() throws Exception {
@@ -380,7 +360,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
-    assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
+    MatcherAssert.assertThat(
+        rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;

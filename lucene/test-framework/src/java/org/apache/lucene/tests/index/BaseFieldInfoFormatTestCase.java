@@ -32,7 +32,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
@@ -53,8 +52,8 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for fis format. NOTE: This test focuses on the fis impl, nothing
  * else. The [stretch] goal is for this test to be so thorough in testing a new fis format that if
- * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
- * given fis Format that this test fails to catch then this test needs to be improved!
+ * this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a given fis
+ * Format that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -69,7 +68,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -97,7 +96,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     fi.putAttribute("foo", "bar");
     fi.putAttribute("bar", "baz");
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -137,7 +136,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -172,7 +171,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -207,7 +206,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -244,7 +243,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -277,10 +276,12 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     String softDeletesField =
         random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
 
-    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
+    String parentField = random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
+
+    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField, parentField);
 
     for (String field : fieldNames) {
-      IndexableFieldType fieldType = randomFieldType(random());
+      IndexableFieldType fieldType = randomFieldType(random(), field);
       boolean storeTermVectors = false;
       boolean storePayloads = false;
       boolean omitNorms = false;
@@ -308,7 +309,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              field.equals(softDeletesField));
+              field.equals(softDeletesField),
+              field.equals(parentField));
       addAttributes(fi);
       builder.add(fi);
     }
@@ -319,7 +321,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.close();
   }
 
-  private IndexableFieldType randomFieldType(Random r) {
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
+  }
+
+  private IndexableFieldType randomFieldType(Random r, String fieldName) {
     FieldType type = new FieldType();
 
     if (r.nextBoolean()) {
@@ -351,8 +357,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       type.setDimensions(dimension, indexDimension, dimensionNumBytes);
     }
 
-    if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(FloatVectorValues.MAX_DIMENSIONS);
+    if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
+      int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
@@ -398,6 +404,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         name,
         10000,
         false,
+        false,
         Codec.getDefault(),
         Collections.emptyMap(),
         StringHelper.randomId(),
@@ -427,6 +434,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        false,
         false);
   }
 }

@@ -64,21 +64,22 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
             };
 
         // Handle the already-collected terms:
+        PostingsEnum reuse = null;
         if (collectedTerms.isEmpty() == false) {
           TermsEnum termsEnum2 = terms.iterator();
           for (TermAndState t : collectedTerms) {
             termsEnum2.seekExact(t.term, t.state);
-            PostingsEnum postings = termsEnum2.postings(null, PostingsEnum.NONE);
+            reuse = termsEnum2.postings(reuse, PostingsEnum.NONE);
             if (t.docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
-              otherTerms.add(postings);
+              otherTerms.add(reuse);
             } else {
-              highFrequencyTerms.add(postings);
+              highFrequencyTerms.add(reuse);
+              reuse = null; // can't reuse since we haven't processed the postings
             }
           }
         }
 
         // Then collect remaining terms:
-        PostingsEnum reuse = null;
         do {
           reuse = termsEnum.postings(reuse, PostingsEnum.NONE);
           // If a term contains all docs with a value for the specified field, we can discard the

@@ -75,8 +75,21 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
       assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
-      Query rewritten = query.rewrite(newSearcher(reader));
-      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+    }
+  }
+
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = new MatchAllDocsQuery();
+      }
+      AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
     }
   }
 
@@ -201,11 +214,12 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           scores[i] = scoreDocs[i].score;
           maxScore = Math.max(maxScore, scores[i]);
         }
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(reader, docs);
+        IndexReader indexReader = searcher.getIndexReader();
+        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader, docs);
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
             new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, maxScore, segments, reader.getContext().id());
+                docs, scores, maxScore, segments, indexReader.getContext().id());
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
         assertEquals(scoreDocs.length, topDocs.totalHits.value);
