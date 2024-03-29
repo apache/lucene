@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -308,6 +309,37 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     return new BlockImpactsEverythingEnum(fieldInfo, (IntBlockTermState) state, flags);
   }
 
+  private int doPeekNextNonMatchingDocID(
+      int doc, long[] docBuffer, int docBufferUpto, Lucene99SkipReader skipper) {
+    if (docBufferUpto >= BLOCK_SIZE
+        || docBufferUpto == BLOCK_SIZE - 1
+        || docBuffer[docBufferUpto] - doc > 1) {
+      return doc + 1;
+    }
+
+    int lastDocInBlock = (int) docBuffer[BLOCK_SIZE - 1];
+    if (BLOCK_SIZE - docBufferUpto == lastDocInBlock - docBuffer[docBufferUpto] + 1) {
+      // continuous match for the rest of block
+      if (skipper != null) {
+        int furthestSkipEntryDoc = skipper.furthestContinuousMatchingSkipEntry();
+        assert furthestSkipEntryDoc != DocIdSetIterator.NO_MORE_DOCS;
+
+        // docBuffer may contain doc ids beyond skipData's range, hence choosing the larger one
+        return Math.max(furthestSkipEntryDoc, lastDocInBlock) + 1;
+      } else {
+        return lastDocInBlock + 1;
+      }
+    }
+
+    for (int i = docBufferUpto; i < BLOCK_SIZE; i++) {
+      if (docBuffer[i] - docBuffer[i - 1] > 1) { // consecutive matching docs
+        return (int) docBuffer[i - 1] + 1;
+      }
+    }
+
+    throw new IllegalStateException("Doc buffer or skip data does not contain valid data.");
+  }
+
   final class BlockDocsEnum extends PostingsEnum {
 
     final ForUtil forUtil = new ForUtil();
@@ -335,6 +367,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     private int blockUpto; // number of docs in or before the current block
     private int doc; // doc we last read
     private long accum; // accumulator for doc deltas
+    private int lastNonMatchingDoc;
 
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
@@ -409,6 +442,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      lastNonMatchingDoc = -1;
       return this;
     }
 
@@ -478,6 +512,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
         blockUpto += left;
       }
       accum = docBuffer[BLOCK_SIZE - 1];
@@ -486,22 +523,29 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      if (docBufferUpto == BLOCK_SIZE) {
-        refillDocs(); // we don't need to load freqBuffer for now (will be loaded later if
-        // necessary)
+    public int peekNextNonMatchingDocID() throws IOException {
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
       }
+    }
 
-      doc = (int) docBuffer[docBufferUpto];
-      docBufferUpto++;
-      return doc;
+    @Override
+    public int nextDoc() throws IOException {
+      // needs to re-init skipData
+      return advance(doc + 1);
     }
 
     @Override
     public int advance(int target) throws IOException {
       // current skip docID < docIDs generated from current buffer <= next skip docID
       // we don't need to skip if target is buffered already
-      if (docFreq > BLOCK_SIZE && target > nextSkipDoc) {
+      // skipped might have been set to false due to reset() was called. Re-init skipper also when
+      // that's the case. This is needed for disi#oeekNextNonMatchingDocID() to leverage skipper
+      // data.
+      if (docFreq > BLOCK_SIZE && target > nextSkipDoc || (skipped == false && skipOffset != -1)) {
 
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
