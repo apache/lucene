@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * IOContext holds additional details on the merge/search context. A IOContext object can never be
@@ -48,6 +52,10 @@ public record IOContext(
       new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
 
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
+
+  private static final Map<ReadAdvice, IOContext> DEFAULT_READADVICE_CACHE =
+      Arrays.stream(ReadAdvice.values())
+          .collect(Collectors.toUnmodifiableMap(Function.identity(), IOContext::new));
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -93,7 +101,7 @@ public record IOContext(
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
     if (context == Context.DEFAULT) {
-      return new IOContext(advice);
+      return DEFAULT_READADVICE_CACHE.get(advice);
     } else {
       return this;
     }
