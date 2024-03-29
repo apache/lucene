@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeTrigger;
@@ -34,6 +35,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 
 /** MergePolicy that makes random decisions for testing. */
 public class MockRandomMergePolicy extends MergePolicy {
@@ -245,26 +247,50 @@ public class MockRandomMergePolicy extends MergePolicy {
           System.out.println("NOTE: MockRandomMergePolicy now reverses reader=" + reader);
         }
         // Reverse the doc ID order
-        final int maxDoc = reader.maxDoc();
-        return new Sorter.DocMap() {
-
-          @Override
-          public int size() {
-            return maxDoc;
-          }
-
-          @Override
-          public int oldToNew(int docID) {
-            return maxDoc - 1 - docID;
-          }
-
-          @Override
-          public int newToOld(int docID) {
-            return maxDoc - 1 - docID;
-          }
-        };
+        return reverse(reader);
       }
       return null;
     }
+  }
+
+  static Sorter.DocMap reverse(CodecReader reader) throws IOException {
+    final int maxDoc = reader.maxDoc();
+    final BitSet parents;
+    if (reader.getFieldInfos().getParentField() == null) {
+      parents = null;
+    } else {
+      parents =
+          BitSet.of(DocValues.getNumeric(reader, reader.getFieldInfos().getParentField()), maxDoc);
+    }
+    return new Sorter.DocMap() {
+
+      @Override
+      public int size() {
+        return maxDoc;
+      }
+
+      @Override
+      public int oldToNew(int docID) {
+        if (parents == null) {
+          return maxDoc - 1 - docID;
+        } else {
+          final int oldBlockStart = docID == 0 ? 0 : parents.prevSetBit(docID - 1) + 1;
+          final int oldBlockEnd = parents.nextSetBit(docID);
+          final int newBlockEnd = maxDoc - 1 - oldBlockStart;
+          return newBlockEnd - (oldBlockEnd - docID);
+        }
+      }
+
+      @Override
+      public int newToOld(int docID) {
+        if (parents == null) {
+          return maxDoc - 1 - docID;
+        } else {
+          final int oldBlockEnd = parents.nextSetBit(maxDoc - 1 - docID);
+          final int newBlockEnd = oldToNew(oldBlockEnd);
+          return oldBlockEnd - (newBlockEnd - docID);
+        }
+      }
+    };
   }
 }
