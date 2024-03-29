@@ -653,7 +653,7 @@ final class SegmentTermsEnumFrame {
 
   // Target's prefix matches this block's prefix;
   // And all suffixes have the same length in this block,
-  // we binary search the entries check if the suffix matches.
+  // we binary search the entries to check if the suffix matches.
   public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
     // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
     // prefix + "
