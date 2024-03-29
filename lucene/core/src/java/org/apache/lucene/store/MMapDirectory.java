@@ -85,7 +85,7 @@ public class MMapDirectory extends FSDirectory {
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link IOContext#PRELOAD} I/O context.
+   * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
       (filename, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
