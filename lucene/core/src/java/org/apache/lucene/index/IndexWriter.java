@@ -3425,9 +3425,11 @@ public class IndexWriter
     final boolean hasIndexSort = config.getIndexSort() != null;
     // Don't reorder if blocks can't be identified using the parent field.
     final boolean hasBlocksButNoParentField =
-        readers.stream()
-            .anyMatch(
-                r -> r.getMetaData().hasBlocks() && r.getFieldInfos().getParentField() == null);
+        readers.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+            && readers.stream()
+                .map(CodecReader::getFieldInfos)
+                .map(FieldInfos::getParentField)
+                .anyMatch(Objects::isNull);
 
     if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
@@ -5211,9 +5213,11 @@ public class IndexWriter
       final boolean hasIndexSort = config.getIndexSort() != null;
       // Don't reorder if blocks can't be identified using the parent field.
       final boolean hasBlocksButNoParentField =
-          mergeReaders.stream()
-              .anyMatch(
-                  r -> r.getMetaData().hasBlocks() && r.getFieldInfos().getParentField() == null);
+          mergeReaders.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+              && mergeReaders.stream()
+                  .map(CodecReader::getFieldInfos)
+                  .map(FieldInfos::getParentField)
+                  .anyMatch(Objects::isNull);
 
       if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
