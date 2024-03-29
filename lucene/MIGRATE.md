@@ -192,6 +192,10 @@ enum.
 
 `IOContext.READ` has been removed, it should be replaced with `IOContext.DEFAULT`.
 
+### TimeLimitingCollector removed (GITHUB#13243)
+
+`TimeLimitingCollector` has been removed, use `IndexSearcher#setTimeout(QueryTimeout)` to time out queries instead.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
