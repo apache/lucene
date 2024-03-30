@@ -275,8 +275,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     /** Get the point value by a left-to-right position. */
-    private static long intersectValueByPos(PointValues.PointTree pointTree, long pos)
-        throws IOException {
+    private long intersectValueByPos(PointValues.PointTree pointTree, long pos) throws IOException {
       assert pos > 0 : pos;
       while (pointTree.size() < pos) {
         pos -= pointTree.size();
@@ -289,8 +288,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       } else if (pointTree.moveToChild()) {
         return intersectValueByPos(pointTree, pos);
       } else {
-        return bytesAsLong(pointTree.getMinPackedValue()) / 2
-            + bytesAsLong(pointTree.getMaxPackedValue()) / 2;
+        return reverse == false
+            ? bytesAsLong(pointTree.getMaxPackedValue())
+            : bytesAsLong(pointTree.getMinPackedValue());
       }
     }
 
