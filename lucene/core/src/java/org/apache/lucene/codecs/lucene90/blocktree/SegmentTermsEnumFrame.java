@@ -284,6 +284,61 @@ final class SegmentTermsEnumFrame {
     */
   }
 
+  // Only rewind, don't force reload block.
+  // Reset reader position, don't read, decompress.
+  // Current term greater than target, reduce endCount.
+  void rewind2() {
+
+    // Force reload:
+    fp = fpOrig;
+    // TODO: Reset entCount after this seek.
+    entCount = nextEnt;
+    nextEnt = 0;
+    hasTerms = hasTermsOrig;
+    if (isFloor) {
+      floorDataReader.setPosition(rewindPos);
+      numFollowFloorBlocks = floorDataReader.readVInt();
+      assert numFollowFloorBlocks > 0;
+      nextFloorLabel = floorDataReader.readByte() & 0xff;
+    }
+
+    suffixesReader.setPosition(0);
+    suffixLengthsReader.setPosition(0);
+    /*
+    //System.out.println("rewind");
+    // Keeps the block loaded, but rewinds its state:
+    if (nextEnt > 0 || fp != fpOrig) {
+    if (DEBUG) {
+    System.out.println("      rewind frame ord=" + ord + " fpOrig=" + fpOrig + " fp=" + fp + " hasTerms?=" + hasTerms + " isFloor?=" + isFloor + " nextEnt=" + nextEnt + " prefixLen=" + prefix);
+    }
+    if (fp != fpOrig) {
+    fp = fpOrig;
+    nextEnt = -1;
+    } else {
+    nextEnt = 0;
+    }
+    hasTerms = hasTermsOrig;
+    if (isFloor) {
+    floorDataReader.rewind();
+    numFollowFloorBlocks = floorDataReader.readVInt();
+    nextFloorLabel = floorDataReader.readByte() & 0xff;
+    }
+    assert suffixBytes != null;
+    suffixesReader.rewind();
+    assert statBytes != null;
+    statsReader.rewind();
+    metaDataUpto = 0;
+    state.termBlockOrd = 0;
+    // TODO: skip this if !hasTerms?  Then postings
+    // impl wouldn't have to write useless 0 byte
+    postingsReader.resetTermsBlock(fieldInfo, state);
+    lastSubFP = -1;
+    } else if (DEBUG) {
+    System.out.println("      skip rewind fp=" + fp + " fpOrig=" + fpOrig + " nextEnt=" + nextEnt + " ord=" + ord);
+    }
+    */
+  }
+
   // Decodes next entry; returns true if it's a sub-block
   public boolean next() throws IOException {
     if (isLeafBlock) {

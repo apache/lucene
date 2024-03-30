@@ -309,6 +309,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
 
+    int originEndCount = -1;
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
     }
@@ -435,7 +436,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
         currentFrame = lastFrame;
-        currentFrame.rewind();
+        originEndCount = currentFrame.entCount;
+        currentFrame.rewind2();
+
       } else {
         // Target is exactly the same as current term
         assert term.length() == target.length;
@@ -519,6 +522,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         currentFrame.loadBlock();
 
         final SeekStatus result = currentFrame.scanToTerm(target, true);
+        if (originEndCount != -1) {
+          currentFrame.entCount = originEndCount;
+        }
         if (result == SeekStatus.FOUND) {
           // if (DEBUG) {
           //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
@@ -574,6 +580,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     currentFrame.loadBlock();
 
     final SeekStatus result = currentFrame.scanToTerm(target, true);
+    if (originEndCount != -1) {
+      currentFrame.entCount = originEndCount;
+    }
     if (result == SeekStatus.FOUND) {
       // if (DEBUG) {
       //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
