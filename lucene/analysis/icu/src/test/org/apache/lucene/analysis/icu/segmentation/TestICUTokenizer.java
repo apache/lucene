@@ -582,4 +582,9 @@ public class TestICUTokenizer extends BaseTokenStreamTestCase {
       threads[i].join();
     }
   }
+
+  /** test use of http://www.unicode.org/reports/tr24/#Script_Extensions */
+  public void testScriptExtensions() throws Exception {
+    assertAnalyzesTo(a, "𑅗०", new String[] {"𑅗०"});
+  }
 }

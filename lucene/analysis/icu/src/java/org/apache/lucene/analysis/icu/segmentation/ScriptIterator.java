@@ -118,7 +118,7 @@ final class ScriptIterator {
        * similar sorts of processing, a non-spacing mark — whatever its script
        * value — should inherit the script value of its base character.
        */
-      if (isSameScript(scriptCode, sc)
+      if (isSameScript(scriptCode, sc, ch)
           || UCharacter.getType(ch) == ECharacterCategory.NON_SPACING_MARK) {
         index += UTF16.getCharCount(ch);
 
@@ -139,10 +139,14 @@ final class ScriptIterator {
   }
 
   /** Determine if two scripts are compatible. */
-  private static boolean isSameScript(int scriptOne, int scriptTwo) {
-    return scriptOne <= UScript.INHERITED
-        || scriptTwo <= UScript.INHERITED
-        || scriptOne == scriptTwo;
+  private static boolean isSameScript(int currentScript, int script, int codepoint) {
+    // same scripts match
+    // inherited/common are compatible with any script
+    // codepoints with the current script in Script_Extensions match
+    return currentScript == script
+        || currentScript <= UScript.INHERITED
+        || script <= UScript.INHERITED
+        || UScript.hasScript(codepoint, currentScript);
   }
 
   /**
