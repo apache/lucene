@@ -587,4 +587,14 @@ public class TestICUTokenizer extends BaseTokenStreamTestCase {
   public void testScriptExtensions() throws Exception {
     assertAnalyzesTo(a, "𑅗०", new String[] {"𑅗०"});
   }
+
+  /** don't change scripts for category Mc */
+  public void testScriptSpacingMark() throws Exception {
+    assertAnalyzesTo(a, "𑅗ा", new String[] {"𑅗ा"});
+  }
+
+  /** don't change scripts for category Me */
+  public void testScriptEnclosingMark() throws Exception {
+    assertAnalyzesTo(a, "𑅗᪾", new String[] {"𑅗᪾"});
+  }
 }
