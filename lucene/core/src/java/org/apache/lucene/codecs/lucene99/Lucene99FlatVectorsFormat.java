@@ -72,7 +72,8 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "vec";
 
   public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_PLUGGABLE_SIMILARITIES = 1;
+  public static final int VERSION_CURRENT = VERSION_PLUGGABLE_SIMILARITIES;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 

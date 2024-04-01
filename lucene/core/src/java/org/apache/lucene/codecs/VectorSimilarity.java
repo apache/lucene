@@ -58,19 +58,9 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   @Deprecated
   public static VectorSimilarityFunction toVectorSimilarityFunction(VectorSimilarity similarity) {
     if (similarity == null) {
-      return null;
+      throw new IllegalArgumentException("VectorSimilarity cannot be null");
     }
-    if (similarity instanceof DotProductSimilarity) {
-      return VectorSimilarityFunction.DOT_PRODUCT;
-    } else if (similarity instanceof CosineSimilarity) {
-      return VectorSimilarityFunction.COSINE;
-    } else if (similarity instanceof EuclideanDistanceSimilarity) {
-      return VectorSimilarityFunction.EUCLIDEAN;
-    } else if (similarity instanceof MaxInnerProductSimilarity) {
-      return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
-    } else {
-      return null;
-    }
+    return similarity.toLegacyVectorSimilarityFunction();
   }
 
   private static final class Holder {
@@ -106,6 +96,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   @Override
   public String getName() {
     return name;
+  }
+
+  /** Returns the legacy vector similarity function from the given vector similarity. */
+  protected VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
+    return null;
   }
 
   /**
@@ -284,6 +279,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
+      return VectorSimilarityFunction.DOT_PRODUCT;
+    }
+
+    @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
@@ -380,6 +380,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
+      return VectorSimilarityFunction.COSINE;
+    }
+
+    @Override
     public float scaleVectorScore(float comparisonResult) {
       return (1f + comparisonResult) / 2f;
     }
@@ -464,6 +469,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     /** Creates a new Euclidean distance similarity function. */
     public EuclideanDistanceSimilarity() {
       super(NAME);
+    }
+
+    @Override
+    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
+      return VectorSimilarityFunction.EUCLIDEAN;
     }
 
     @Override
@@ -557,6 +567,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     /** Creates a new max-inner product similarity function. */
     public MaxInnerProductSimilarity() {
       super(NAME);
+    }
+
+    @Override
+    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
+      return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
     }
 
     @Override

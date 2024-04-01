@@ -35,7 +35,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_PLUGGABLE_SIMILARITIES = 1;
+  public static final int VERSION_CURRENT = VERSION_PLUGGABLE_SIMILARITIES;
   static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";

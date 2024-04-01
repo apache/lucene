@@ -93,7 +93,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
   public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_PLUGGABLE_SIMILARITIES = 1;
+  public static final int VERSION_CURRENT = VERSION_PLUGGABLE_SIMILARITIES;
 
   /**
    * A maximum configurable maximum max conn.

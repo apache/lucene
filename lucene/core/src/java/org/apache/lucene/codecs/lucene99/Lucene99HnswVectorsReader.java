@@ -24,10 +24,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -91,7 +93,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta, versionMeta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -147,13 +149,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta, int versionMeta, FieldInfos infos)
+      throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, versionMeta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -200,10 +203,26 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorEncoding.values()[encodingId];
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
+      throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    VectorSimilarity fieldInfoSimilarity = info.getVectorSimilarity();
+    if (versionMeta < Lucene99HnswVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES) {
+      VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      VectorSimilarityFunction bwcSimilarity =
+          VectorSimilarity.toVectorSimilarityFunction(fieldInfoSimilarity);
+      // Ensure, if there is a comparable legacy similarity, it matches the field's similarity
+      if (Objects.equals(similarityFunction, bwcSimilarity) == false) {
+        throw new IllegalStateException(
+            "Inconsistent vector similarity function for field=\""
+                + info.name
+                + "\"; "
+                + similarityFunction
+                + " != "
+                + bwcSimilarity);
+      }
+    }
+    return new FieldEntry(input, vectorEncoding, fieldInfoSimilarity);
   }
 
   @Override
@@ -328,7 +347,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   static class FieldEntry implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
+    final VectorSimilarity similarityFunction;
     final VectorEncoding vectorEncoding;
     final long vectorIndexOffset;
     final long vectorIndexLength;
@@ -343,10 +362,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final int offsetsBlockShift;
     final long offsetsLength;
 
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+    FieldEntry(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;

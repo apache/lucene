@@ -36,6 +36,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -83,7 +84,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
                 Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta, versionMeta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -103,13 +104,14 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta, int versionMeta, FieldInfos infos)
+      throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta, info);
+      FieldEntry fieldEntry = readField(meta, versionMeta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -246,20 +248,26 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return size;
   }
 
-  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
+  private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
+      throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarity similarity =
-        VectorSimilarity.fromVectorSimilarityFunction(readSimilarityFunction(input));
-    if (Objects.equals(similarity, info.getVectorSimilarity()) == false) {
-      throw new IllegalStateException(
-          "Inconsistent vector similarity function for field=\""
-              + info.name
-              + "\"; "
-              + similarity.getName()
-              + " != "
-              + info.getVectorSimilarity().getName());
+    VectorSimilarity fieldInfoSimilarity = info.getVectorSimilarity();
+    if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES) {
+      VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      VectorSimilarityFunction bwcSimilarity =
+          VectorSimilarity.toVectorSimilarityFunction(fieldInfoSimilarity);
+      // Ensure, if there is a comparable legacy similarity, it matches the field's similarity
+      if (Objects.equals(similarityFunction, bwcSimilarity) == false) {
+        throw new IllegalStateException(
+            "Inconsistent vector similarity function for field=\""
+                + info.name
+                + "\"; "
+                + similarityFunction
+                + " != "
+                + bwcSimilarity);
+      }
     }
-    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarity());
+    return new FieldEntry(input, vectorEncoding, fieldInfoSimilarity);
   }
 
   @Override
