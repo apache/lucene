@@ -63,9 +63,9 @@ final class SegmentMerger {
       IOContext context,
       Executor intraMergeTaskExecutor)
       throws IOException {
-    if (context.context != IOContext.Context.MERGE) {
+    if (context.context() != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
-          "IOContext.context should be MERGE; got: " + context.context);
+          "IOContext.context should be MERGE; got: " + context.context());
     }
     mergeState = new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor);
     directory = dir;
@@ -132,7 +132,7 @@ final class SegmentMerger {
             directory,
             mergeState.segmentInfo,
             mergeState.mergeFieldInfos,
-            IOContext.READ,
+            IOContext.DEFAULT,
             segmentWriteState.segmentSuffix);
 
     TaskExecutor taskExecutor = new TaskExecutor(mergeState.intraMergeTaskExecutor);
