@@ -107,26 +107,30 @@ public final class CompetitiveImpactAccumulator {
 
   /** Get the set of competitive freq and norm pairs, ordered by increasing freq and norm. */
   public Collection<Impact> getCompetitiveFreqNormPairs() {
-    List<Impact> impacts = new ArrayList<>();
-    int maxFreqForLowerNorms = 0;
-    for (int i = 0; i < maxFreqs.length; ++i) {
-      int maxFreq = maxFreqs[i];
-      if (maxFreq > maxFreqForLowerNorms) {
-        impacts.add(new Impact(maxFreq, (byte) i));
-        maxFreqForLowerNorms = maxFreq;
-      }
-    }
-
     if (otherFreqNormPairs.isEmpty()) {
+      List<Impact> impacts = new ArrayList<>();
+      int maxFreqForLowerNorms = 0;
+      for (int i = 0; i < maxFreqs.length; ++i) {
+        int maxFreq = maxFreqs[i];
+        if (maxFreq > maxFreqForLowerNorms) {
+          impacts.add(new Impact(maxFreq, (byte) i));
+          maxFreqForLowerNorms = maxFreq;
+        }
+      }
       // Common case: all norms are bytes
       return impacts;
+    } else {
+      TreeSet<Impact> freqNormPairs = new TreeSet<>(this.otherFreqNormPairs);
+      int maxFreqForLowerNorms = 0;
+      for (int i = 0; i < maxFreqs.length; ++i) {
+        int maxFreq = maxFreqs[i];
+        if (maxFreq > maxFreqForLowerNorms) {
+          add(new Impact(maxFreq, (byte) i), freqNormPairs);
+          maxFreqForLowerNorms = maxFreq;
+        }
+      }
+      return Collections.unmodifiableSet(freqNormPairs);
     }
-
-    TreeSet<Impact> freqNormPairs = new TreeSet<>(this.otherFreqNormPairs);
-    for (Impact impact : impacts) {
-      add(impact, freqNormPairs);
-    }
-    return Collections.unmodifiableSet(freqNormPairs);
   }
 
   private void add(Impact newEntry, TreeSet<Impact> freqNormPairs) {
