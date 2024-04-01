@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -25,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -34,7 +34,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -58,8 +57,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
-  Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  Field getKnnVectorField(String name, float[] vector, VectorSimilarity similarityFunction) {
     return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
@@ -105,10 +103,14 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {-1, 0}, DOT_PRODUCT));
+        doc.add(
+            getKnnVectorField(
+                "field", new float[] {-1, 0}, VectorSimilarity.DotProductSimilarity.INSTANCE));
         w.addDocument(doc);
         doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 0}, DOT_PRODUCT));
+        doc.add(
+            getKnnVectorField(
+                "field", new float[] {1, 0}, VectorSimilarity.DotProductSimilarity.INSTANCE));
         w.addDocument(doc);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
@@ -137,7 +139,9 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           Document doc = new Document();
           doc.add(
               getKnnVectorField(
-                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), DOT_PRODUCT));
+                  "field",
+                  VectorUtil.l2normalize(new float[] {j, j * j}),
+                  VectorSimilarity.DotProductSimilarity.INSTANCE));
           w.addDocument(doc);
         }
       }

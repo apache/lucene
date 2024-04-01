@@ -17,11 +17,13 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.ByteVectorProvider;
+import org.apache.lucene.codecs.FloatVectorProvider;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -29,7 +31,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * vectors.
  */
 abstract class VectorScorer {
-  protected final VectorSimilarityFunction similarity;
 
   /**
    * Create a new vector scorer instance.
@@ -40,13 +41,15 @@ abstract class VectorScorer {
    */
   static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
       throws IOException {
+    FloatVectorValues.checkField(context.reader(), fi.name);
     FloatVectorValues values = context.reader().getFloatVectorValues(fi.name);
     if (values == null) {
-      FloatVectorValues.checkField(context.reader(), fi.name);
       return null;
     }
-    final VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
-    return new FloatVectorScorer(values, query, similarity);
+    VectorSimilarity similarity = fi.getVectorSimilarity();
+    VectorSimilarity.VectorScorer scorer =
+        similarity.getVectorScorer(fromFloatVectorValues(values), query);
+    return new FloatVectorScorer(values, scorer);
   }
 
   static ByteVectorScorer create(LeafReaderContext context, FieldInfo fi, byte[] query)
@@ -56,12 +59,10 @@ abstract class VectorScorer {
       ByteVectorValues.checkField(context.reader(), fi.name);
       return null;
     }
-    VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
-    return new ByteVectorScorer(values, query, similarity);
-  }
-
-  VectorScorer(VectorSimilarityFunction similarity) {
-    this.similarity = similarity;
+    VectorSimilarity similarity = fi.getVectorSimilarity();
+    VectorSimilarity.VectorScorer scorer =
+        similarity.getVectorScorer(fromByteVectorValues(values), query);
+    return new ByteVectorScorer(values, scorer);
   }
 
   /** Compute the similarity score for the current document. */
@@ -70,14 +71,12 @@ abstract class VectorScorer {
   abstract boolean advanceExact(int doc) throws IOException;
 
   private static class ByteVectorScorer extends VectorScorer {
-    private final byte[] query;
     private final ByteVectorValues values;
+    private final VectorSimilarity.VectorScorer scorer;
 
-    protected ByteVectorScorer(
-        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarity) {
-      super(similarity);
+    protected ByteVectorScorer(ByteVectorValues values, VectorSimilarity.VectorScorer scorer) {
       this.values = values;
-      this.query = query;
+      this.scorer = scorer;
     }
 
     /**
@@ -96,19 +95,17 @@ abstract class VectorScorer {
     @Override
     public float score() throws IOException {
       assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
-      return similarity.compare(query, values.vectorValue());
+      return scorer.score(values.docID());
     }
   }
 
   private static class FloatVectorScorer extends VectorScorer {
-    private final float[] query;
     private final FloatVectorValues values;
+    private final VectorSimilarity.VectorScorer scorer;
 
-    protected FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      super(similarity);
-      this.query = query;
+    protected FloatVectorScorer(FloatVectorValues values, VectorSimilarity.VectorScorer scorer) {
       this.values = values;
+      this.scorer = scorer;
     }
 
     /**
@@ -127,7 +124,53 @@ abstract class VectorScorer {
     @Override
     public float score() throws IOException {
       assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
-      return similarity.compare(query, values.vectorValue());
+      return scorer.score(values.docID());
     }
+  }
+
+  private static ByteVectorProvider fromByteVectorValues(ByteVectorValues values) {
+    return new ByteVectorProvider() {
+      @Override
+      public byte[] vectorValue(int targetOrd) throws IOException {
+        assert values.docID() == targetOrd;
+        if (values.docID() < targetOrd) {
+          values.advance(targetOrd);
+        }
+        return values.vectorValue();
+      }
+
+      @Override
+      public ByteVectorProvider copy() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int dimension() {
+        return values.dimension();
+      }
+    };
+  }
+
+  private static FloatVectorProvider fromFloatVectorValues(FloatVectorValues values) {
+    return new FloatVectorProvider() {
+      @Override
+      public float[] vectorValue(int targetOrd) throws IOException {
+        assert values.docID() == targetOrd;
+        if (values.docID() < targetOrd) {
+          values.advance(targetOrd);
+        }
+        return values.vectorValue();
+      }
+
+      @Override
+      public FloatVectorProvider copy() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int dimension() {
+        return values.dimension();
+      }
+    };
   }
 }

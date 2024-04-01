@@ -21,12 +21,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -41,7 +41,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    similarityFunction = RandomizedTest.randomFrom(BUILT_IN_SIMILARITIES);
   }
 
   @Override
@@ -112,7 +112,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  Field knnVectorField(String name, float[] vector, VectorSimilarity similarityFunction) {
     return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
@@ -128,7 +128,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());

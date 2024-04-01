@@ -21,7 +21,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /** A supplier that creates {@link RandomVectorScorer} from an ordinal. */
 public interface RandomVectorScorerSupplier {
@@ -55,16 +54,6 @@ public interface RandomVectorScorerSupplier {
     return new FloatScoringSupplier(vectors, similarityFunction);
   }
 
-  /** See {@link #createFloats(RandomAccessVectorValues, VectorSimilarity)} */
-  @Deprecated
-  static RandomVectorScorerSupplier createFloats(
-      final RandomAccessVectorValues<float[]> vectors,
-      final VectorSimilarityFunction similarityFunction)
-      throws IOException {
-    return new FloatScoringSupplier(
-        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
-  }
-
   /**
    * Creates a {@link RandomVectorScorerSupplier} to compare byte vectors. The vectorValues passed
    * in will be copied and the original copy will not be used.
@@ -78,16 +67,6 @@ public interface RandomVectorScorerSupplier {
     // We copy the provided random accessor only during the supplier's initialization
     // and then reuse it consistently across all scorers for conducting vector comparisons.
     return new ByteScoringSupplier(vectors, similarityFunction);
-  }
-
-  /** See {@link #createBytes(RandomAccessVectorValues, VectorSimilarity)} */
-  @Deprecated
-  static RandomVectorScorerSupplier createBytes(
-      final RandomAccessVectorValues<byte[]> vectors,
-      final VectorSimilarityFunction similarityFunction)
-      throws IOException {
-    return new ByteScoringSupplier(
-        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
   }
 
   /** RandomVectorScorerSupplier for bytes vector */

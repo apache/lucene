@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -33,7 +34,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -149,7 +149,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
-              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
+              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarity());
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
@@ -273,7 +273,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarity similarityFunction)
       throws IOException {
 
     // build graph

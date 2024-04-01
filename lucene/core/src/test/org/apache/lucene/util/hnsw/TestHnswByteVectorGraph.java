@@ -21,12 +21,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
@@ -37,7 +37,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
 
   @Before
   public void setup() {
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    similarityFunction = RandomizedTest.randomFrom(BUILT_IN_SIMILARITIES);
   }
 
   @Override
@@ -127,7 +127,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  Field knnVectorField(String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
+  Field knnVectorField(String name, byte[] vector, VectorSimilarity similarityFunction) {
     return new KnnByteVectorField(name, vector, similarityFunction);
   }
 

@@ -422,7 +422,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         byteSize);
                 RandomVectorScorerSupplier scorerSupplier =
                     RandomVectorScorerSupplier.createBytes(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                        vectorValues, fieldInfo.getVectorSimilarity());
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -438,7 +438,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         byteSize);
                 RandomVectorScorerSupplier scorerSupplier =
                     RandomVectorScorerSupplier.createFloats(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                        vectorValues, fieldInfo.getVectorSimilarity());
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -660,11 +660,9 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerSupplier.createBytes(
-                (RandomAccessVectorValues<byte[]>) raVectors,
-                fieldInfo.getVectorSimilarityFunction());
+                (RandomAccessVectorValues<byte[]>) raVectors, fieldInfo.getVectorSimilarity());
             case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-                (RandomAccessVectorValues<float[]>) raVectors,
-                fieldInfo.getVectorSimilarityFunction());
+                (RandomAccessVectorValues<float[]>) raVectors, fieldInfo.getVectorSimilarity());
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
