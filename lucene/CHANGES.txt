@@ -260,6 +260,9 @@ Optimizations
 
 * GITHUB#13232 : Introduce singleton for PackedInts.NullReader of size 256 (Armin Braun)
 
+* GITHUB#11722: Binary search the BlockTree terms dictionary entries when all suffixes have the same length
+  in a leaf block, speeding up cases like primary key lookup on an id field when all ids are the same length. (zhouhui)
+
 Bug Fixes
 ---------------------
 
