@@ -21,8 +21,8 @@ import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestScalarQuantizer extends LuceneTestCase {
@@ -30,7 +30,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
   public void testQuantizeAndDeQuantize() throws IOException {
     int dims = 128;
     int numVecs = 100;
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    VectorSimilarity similarityFunction = VectorSimilarity.DotProductSimilarity.INSTANCE;
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);

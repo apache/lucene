@@ -18,17 +18,35 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.function.Function;
+import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
-public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
+public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
+
+  private final VectorSimilarity.VectorScorer scorer;
+  private final int size;
+  private final IntToIntFunction ordToDoc;
+  private final Function<Bits, Bits> acceptOrds;
+
+  public RandomVectorScorer(
+      RandomAccessVectorValues<?> values, VectorSimilarity.VectorScorer scorer) {
+    this.scorer = scorer;
+    this.size = values.size();
+    this.ordToDoc = values::ordToDoc;
+    this.acceptOrds = values::getAcceptOrds;
+  }
+
   /**
    * @return the maximum possible ordinal for this scorer
    */
-  int maxOrd();
+  public int maxOrd() {
+    return size;
+  }
 
   /**
    * Translates vector ordinal to the correct document ID. By default, this is an identity function.
@@ -36,8 +54,8 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * @param ord the vector ordinal
    * @return the document Id for that vector ordinal
    */
-  default int ordToDoc(int ord) {
-    return ord;
+  public int ordToDoc(int ord) {
+    return ordToDoc.apply(ord);
   }
 
   /**
@@ -46,8 +64,18 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * @param acceptDocs the accept docs
    * @return the accept docs
    */
-  default Bits getAcceptOrds(Bits acceptDocs) {
-    return acceptDocs;
+  public Bits getAcceptOrds(Bits acceptDocs) {
+    return acceptOrds.apply(acceptDocs);
+  }
+
+  @Override
+  public float scaleScore(float comparisonResult) {
+    return scorer.scaleScore(comparisonResult);
+  }
+
+  @Override
+  public float compare(int node) throws IOException {
+    return scorer.compare(node);
   }
 
   /**
@@ -62,7 +90,7 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * @param similarityFunction the similarity function to score vectors
    * @param query the actual query
    */
-  static RandomVectorScorer createFloats(
+  public static RandomVectorScorer createFloats(
       final RandomAccessVectorValues<float[]> vectors,
       final VectorSimilarity similarityFunction,
       final float[] query)
@@ -77,12 +105,7 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
     VectorSimilarity.VectorScorer scorer =
         similarityFunction.getVectorScorer(
             FloatVectorProvider.fromRandomAccessVectorValues(vectors), query);
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return scorer.score(node);
-      }
-    };
+    return new RandomVectorScorer(vectors, scorer);
   }
 
   /**
@@ -90,7 +113,7 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * VectorSimilarity, float[])}.
    */
   @Deprecated
-  static RandomVectorScorer createFloats(
+  public static RandomVectorScorer createFloats(
       final RandomAccessVectorValues<float[]> vectors,
       final VectorSimilarityFunction similarityFunction,
       final float[] query)
@@ -111,7 +134,7 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * @param similarityFunction the similarity function to use to score vectors
    * @param query the actual query
    */
-  static RandomVectorScorer createBytes(
+  public static RandomVectorScorer createBytes(
       final RandomAccessVectorValues<byte[]> vectors,
       final VectorSimilarity similarityFunction,
       final byte[] query)
@@ -124,13 +147,9 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
               + vectors.dimension());
     }
     VectorSimilarity.VectorScorer scorer =
-        similarityFunction.getVectorScorer(vectors::vectorValue, query);
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return scorer.score(node);
-      }
-    };
+        similarityFunction.getVectorScorer(
+            ByteVectorProvider.fromRandomAccessVectorValues(vectors), query);
+    return new RandomVectorScorer(vectors, scorer);
   }
 
   /**
@@ -138,58 +157,12 @@ public interface RandomVectorScorer extends VectorSimilarity.VectorScorer {
    * VectorSimilarity, byte[])}.
    */
   @Deprecated
-  static RandomVectorScorer createBytes(
+  public static RandomVectorScorer createBytes(
       final RandomAccessVectorValues<byte[]> vectors,
       final VectorSimilarityFunction similarityFunction,
       final byte[] query)
       throws IOException {
     return createBytes(
         vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction), query);
-  }
-
-  /**
-   * Creates a default scorer for random access vectors.
-   *
-   * @param <T> the type of the vector values
-   */
-  abstract class AbstractRandomVectorScorer<T> implements RandomVectorScorer {
-    private final RandomAccessVectorValues<T> values;
-    private final VectorSimilarity.VectorScorer scorer;
-
-    /**
-     * Creates a new scorer for the given vector values.
-     *
-     * @param values the vector values
-     */
-    public AbstractRandomVectorScorer(
-        RandomAccessVectorValues<T> values, VectorSimilarity.VectorScorer scorer) {
-      this.values = values;
-      this.scorer = scorer;
-    }
-
-    @Override
-    public int maxOrd() {
-      return values.size();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
-    }
-
-    @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return values.getAcceptOrds(acceptDocs);
-    }
-
-    @Override
-    public float score(int node) throws IOException {
-      return scorer.score(node);
-    }
-
-    @Override
-    public float compare(int node) throws IOException {
-      return scorer.compare(node);
-    }
   }
 }

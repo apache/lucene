@@ -28,31 +28,29 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
 
-  private final RandomAccessQuantizedByteVectorValues values;
+  private final QuantizedByteVectorProvider values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
   public ScalarQuantizedRandomVectorScorerSupplier(
       VectorSimilarity similarityFunction,
       ScalarQuantizer scalarQuantizer,
-      RandomAccessQuantizedByteVectorValues values) {
+      QuantizedByteVectorProvider values) {
     this.similarity =
-        ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
+        new ScalarQuantizedVectorSimilarity(
             similarityFunction, scalarQuantizer.getConstantMultiplier());
     this.values = values;
   }
 
   private ScalarQuantizedRandomVectorScorerSupplier(
-      ScalarQuantizedVectorSimilarity similarity, RandomAccessQuantizedByteVectorValues values) {
+      ScalarQuantizedVectorSimilarity similarity, QuantizedByteVectorProvider values) {
     this.similarity = similarity;
     this.values = values;
   }
 
   @Override
   public RandomVectorScorer scorer(int ord) throws IOException {
-    final RandomAccessQuantizedByteVectorValues vectorsCopy = values.copy();
-    final byte[] queryVector = values.vectorValue(ord);
-    final float queryOffset = values.getScoreCorrectionConstant();
-    return new ScalarQuantizedRandomVectorScorer(similarity, vectorsCopy, queryVector, queryOffset);
+    VectorSimilarity.VectorComparator comparator = similarity.getByteVectorComparator(values);
+    return new RandomVectorScorer(values, comparator.asScorer(ord));
   }
 
   @Override

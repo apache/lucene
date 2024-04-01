@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.Selector;
 
@@ -98,7 +98,7 @@ public class ScalarQuantizer {
    * @param similarityFunction the similarity function used to calculate the quantile
    * @return the corrective offset that needs to be applied to the score
    */
-  public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
+  public float quantize(float[] src, byte[] dest, VectorSimilarity similarityFunction) {
     assert src.length == dest.length;
     float correctiveOffset = 0f;
     for (int i = 0; i < src.length; i++) {
@@ -121,7 +121,7 @@ public class ScalarQuantizer {
       correctiveOffset += minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
       dest[i] = (byte) Math.round(dxs);
     }
-    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+    if (similarityFunction.requiresQuantizationOffsetCorrection() == false) {
       return 0;
     }
     return correctiveOffset;
@@ -136,10 +136,8 @@ public class ScalarQuantizer {
    * @return the new offset
    */
   public float recalculateCorrectiveOffset(
-      byte[] quantizedVector,
-      ScalarQuantizer oldQuantizer,
-      VectorSimilarityFunction similarityFunction) {
-    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+      byte[] quantizedVector, ScalarQuantizer oldQuantizer, VectorSimilarity similarityFunction) {
+    if (similarityFunction.requiresQuantizationOffsetCorrection() == false) {
       return 0f;
     }
     float correctiveOffset = 0f;

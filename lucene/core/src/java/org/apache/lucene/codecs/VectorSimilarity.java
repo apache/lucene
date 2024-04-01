@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs;
 
 import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
 import java.io.IOException;
@@ -70,7 +69,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     } else if (similarity instanceof MaxInnerProductSimilarity) {
       return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
     } else {
-      throw new IllegalArgumentException("Unknown vector similarity: " + similarity);
+      return null;
     }
   }
 
@@ -118,6 +117,19 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   public boolean supportsVectorEncoding(VectorEncoding encoding) {
     return true;
   }
+
+  /** Returns true if the vector similarity requires normalization if scalar quantized */
+  public boolean requiresQuantizationNormalization() {
+    return false;
+  }
+
+  /** Returns true if the vector similarity requires offset normalization if scalar quantized */
+  public boolean requiresQuantizationOffsetCorrection() {
+    return true;
+  }
+
+  /** Scales the score of a vector comparison. */
+  public abstract float scaleVectorScore(float score);
 
   @Override
   public boolean equals(Object o) {
@@ -183,15 +195,19 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
      * @param targetVectorOrd the ordinal of the target vector
      * @return a similarity score between the two vectors
      */
-    float score(int targetVectorOrd) throws IOException;
+    default float score(int targetVectorOrd) throws IOException {
+      return scaleScore(compare(targetVectorOrd));
+    }
 
     /**
-     * Compares the two vectors
+     * Scales the comparison result to a score.
      *
-     * @param targetVectorOrd the ordinal of the target vector
-     * @return
-     * @throws IOException
+     * @param comparisonResult the comparison result
+     * @return the scaled score
      */
+    float scaleScore(float comparisonResult);
+
+    /** Compares the two vectors */
     float compare(int targetVectorOrd) throws IOException;
   }
 
@@ -207,6 +223,14 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     float compare(int vectorOrd1, int vectorOrd2) throws IOException;
 
     /**
+     * Scales the comparison result to a score.
+     *
+     * @param comparisonResult the comparison result
+     * @return the scaled score
+     */
+    float scaleScore(float comparisonResult);
+
+    /**
      * Scores the two vectors, the nuance here is that scores may be scaled differently than the
      * compare method.
      *
@@ -215,13 +239,22 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
      * @return a similarity score between the two vectors
      * @throws IOException if an error occurs
      */
-    float score(int vectorOrd1, int vectorOrd2) throws IOException;
+    default float score(int vectorOrd1, int vectorOrd2) throws IOException {
+      return scaleScore(compare(vectorOrd1, vectorOrd2));
+    }
 
+    /**
+     * Returns a vector scorer for the given target vector ordinal.
+     *
+     * @param leftOrd the ordinal of the "query" vector
+     * @return a vector scorer where `leftOrd` is the query vector
+     * @throws IOException if an error occurs
+     */
     default VectorScorer asScorer(int leftOrd) throws IOException {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return VectorComparator.this.score(leftOrd, targetVectorOrd);
+        public float scaleScore(float comparisonResult) {
+          return VectorComparator.this.scaleScore(comparisonResult);
         }
 
         @Override
@@ -246,11 +279,16 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public float scaleVectorScore(float comparisonResult) {
+      return Math.max((1 + comparisonResult) / 2, 0);
+    }
+
+    @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return Math.max((1 + compare(targetVectorOrd)) / 2, 0);
+        public float scaleScore(float comparisonResult) {
+          return DotProductSimilarity.this.scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -273,8 +311,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
-          return Math.max((1 + compare(vectorOrd1, vectorOrd2)) / 2, 0);
+        public float scaleScore(float comparisonResult) {
+          return DotProductSimilarity.this.scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -282,9 +320,14 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     @Override
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
       return new VectorScorer() {
+        // TODO: this is only needed because of the weird way the legacy similarity function works
+        // for byte
+        // vectors. We should fix this.
+        private final float denom = (float) (byteVectorProvider.dimension() * (1 << 15));
+
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return dotProductScore(target, byteVectorProvider.vectorValue(targetVectorOrd));
+        public float scaleScore(float comparisonResult) {
+          return 0.5f + comparisonResult / denom;
         }
 
         @Override
@@ -299,6 +342,10 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         throws IOException {
       return new VectorComparator() {
         final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+        // TODO: this is only needed because of the weird way the legacy similarity function works
+        // for byte
+        // vectors. We should fix this.
+        private final float denom = (float) (byteVectorProvider.dimension() * (1 << 15));
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
@@ -307,9 +354,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int ord1, int ord2) throws IOException {
-          return dotProductScore(
-              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+        public float scaleScore(float comparisonResult) {
+          return 0.5f + comparisonResult / denom;
         }
       };
     }
@@ -329,11 +375,21 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public boolean requiresQuantizationNormalization() {
+      return true;
+    }
+
+    @Override
+    public float scaleVectorScore(float comparisonResult) {
+      return (1f + comparisonResult) / 2f;
+    }
+
+    @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return (1 + compare(targetVectorOrd)) / 2;
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -356,8 +412,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
-          return (1 + compare(vectorOrd1, vectorOrd2)) / 2;
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -366,8 +422,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return (1 + compare(targetVectorOrd)) / 2;
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -390,8 +446,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int ord1, int ord2) throws IOException {
-          return (1 + compare(ord1, ord2)) / 2;
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -411,11 +467,22 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public float scaleVectorScore(float comparisonResult) {
+      return 1 / (1 + comparisonResult);
+    }
+
+    @Override
+    public boolean requiresQuantizationOffsetCorrection() {
+      return false;
+    }
+
+    @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
+
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return 1 / (1 + compare(targetVectorOrd));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -438,8 +505,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
-          return 1 / (1 + compare(vectorOrd1, vectorOrd2));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -448,8 +515,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return 1f / (1f + compare(targetVectorOrd));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -472,8 +539,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int ord1, int ord2) throws IOException {
-          return 1f / (1f + compare(ord1, ord2));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -493,11 +560,16 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
+    public float scaleVectorScore(float comparisonResult) {
+      return scaleMaxInnerProductScore(comparisonResult);
+    }
+
+    @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return scaleMaxInnerProductScore(compare(targetVectorOrd));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -508,7 +580,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider) {
+    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
+        throws IOException {
       return new VectorComparator() {
         private final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
 
@@ -519,8 +592,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int vectorOrd1, int vectorOrd2) throws IOException {
-          return scaleMaxInnerProductScore(compare(vectorOrd1, vectorOrd2));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }
@@ -529,8 +602,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
       return new VectorScorer() {
         @Override
-        public float score(int targetVectorOrd) throws IOException {
-          return scaleMaxInnerProductScore(compare(targetVectorOrd));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
 
         @Override
@@ -541,7 +614,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider) {
+    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+        throws IOException {
       return new VectorComparator() {
         private final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
 
@@ -552,8 +626,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public float score(int ord1, int ord2) throws IOException {
-          return scaleMaxInnerProductScore(compare(ord1, ord2));
+        public float scaleScore(float comparisonResult) {
+          return scaleVectorScore(comparisonResult);
         }
       };
     }

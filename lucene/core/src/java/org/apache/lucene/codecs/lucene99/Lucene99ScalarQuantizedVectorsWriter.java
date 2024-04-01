@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocIDMerger;
@@ -306,7 +307,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       }
 
       float offsetCorrection =
-          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarity());
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -366,7 +367,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         v = copy;
       }
       float offsetCorrection =
-          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+          scalarQuantizer.quantize(v, vector, fieldData.fieldInfo.getVectorSimilarity());
       quantizedVectorData.writeBytes(vector, vector.length);
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
@@ -433,7 +434,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           },
           docsWithField.cardinality(),
           new ScalarQuantizedRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(),
+              fieldInfo.getVectorSimilarity(),
               mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
@@ -805,7 +806,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                     mergeState.docMaps[i],
                     new QuantizedFloatVectorValues(
                         mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name),
-                        fieldInfo.getVectorSimilarityFunction(),
+                        fieldInfo.getVectorSimilarity(),
                         scalarQuantizer));
           } else {
             sub =
@@ -813,7 +814,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                     mergeState.docMaps[i],
                     new OffsetCorrectedQuantizedByteVectorValues(
                         reader.getQuantizedVectorValues(fieldInfo.name),
-                        fieldInfo.getVectorSimilarityFunction(),
+                        fieldInfo.getVectorSimilarity(),
                         scalarQuantizer,
                         reader.getQuantizationState(fieldInfo.name)));
           }
@@ -891,17 +892,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private final float[] normalizedVector;
     private float offsetValue = 0f;
 
-    private final VectorSimilarityFunction vectorSimilarityFunction;
+    private final VectorSimilarity vectorSimilarityFunction;
 
     public QuantizedFloatVectorValues(
         FloatVectorValues values,
-        VectorSimilarityFunction vectorSimilarityFunction,
+        VectorSimilarity vectorSimilarityFunction,
         ScalarQuantizer quantizer) {
       this.values = values;
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+      if (vectorSimilarityFunction.requiresQuantizationNormalization()) {
         this.normalizedVector = new float[values.dimension()];
       } else {
         this.normalizedVector = null;
@@ -952,7 +953,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     private void quantize() throws IOException {
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+      if (normalizedVector != null) {
         System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
         VectorUtil.l2normalize(normalizedVector);
         offsetValue =
@@ -1003,12 +1004,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       extends QuantizedByteVectorValues {
 
     private final QuantizedByteVectorValues in;
-    private final VectorSimilarityFunction vectorSimilarityFunction;
+    private final VectorSimilarity vectorSimilarityFunction;
     private final ScalarQuantizer scalarQuantizer, oldScalarQuantizer;
 
     private OffsetCorrectedQuantizedByteVectorValues(
         QuantizedByteVectorValues in,
-        VectorSimilarityFunction vectorSimilarityFunction,
+        VectorSimilarity vectorSimilarityFunction,
         ScalarQuantizer scalarQuantizer,
         ScalarQuantizer oldScalarQuantizer) {
       this.in = in;

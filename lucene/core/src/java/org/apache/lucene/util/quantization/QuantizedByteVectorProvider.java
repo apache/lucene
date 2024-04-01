@@ -17,6 +17,7 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
@@ -25,9 +26,10 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  *
  * @lucene.experimental
  */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
+public interface QuantizedByteVectorProvider
+    extends RandomAccessVectorValues<byte[]>, ByteVectorProvider {
   float getScoreCorrectionConstant();
 
   @Override
-  RandomAccessQuantizedByteVectorValues copy() throws IOException;
+  QuantizedByteVectorProvider copy() throws IOException;
 }

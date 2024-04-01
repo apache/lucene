@@ -25,6 +25,14 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  * @lucene.experimental
  */
 public interface FloatVectorProvider {
+
+  /**
+   * Returns the dimension of the float vector.
+   *
+   * @return the dimension of the float vector
+   */
+  int dimension() throws IOException;
+
   /**
    * Returns the float vector value for the given target ordinal.
    *
@@ -42,6 +50,7 @@ public interface FloatVectorProvider {
    */
   FloatVectorProvider copy() throws IOException;
 
+  /** Returns a {@link FloatVectorProvider} from the given {@link RandomAccessVectorValues}. */
   static FloatVectorProvider fromRandomAccessVectorValues(
       final RandomAccessVectorValues<float[]> vectors) {
     return new FloatVectorProvider() {
@@ -53,6 +62,11 @@ public interface FloatVectorProvider {
       @Override
       public FloatVectorProvider copy() throws IOException {
         return fromRandomAccessVectorValues(vectors.copy());
+      }
+
+      @Override
+      public int dimension() {
+        return vectors.dimension();
       }
     };
   }

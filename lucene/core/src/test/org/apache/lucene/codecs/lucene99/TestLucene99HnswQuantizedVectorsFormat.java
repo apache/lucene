@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -60,8 +61,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
-    VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
+    VectorSimilarity similarityFunction = randomSimilarity();
     int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
     for (int i = 0; i < numVectors; i++) {
@@ -71,14 +71,15 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectors(
-            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
+            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(
+                vectors, similarityFunction.requiresQuantizationNormalization()),
             confidenceInterval,
             numVectors);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
       float[] vector = vectors.get(i);
-      if (normalize) {
+      if (similarityFunction.requiresQuantizationNormalization()) {
         float[] copy = new float[vector.length];
         System.arraycopy(vector, 0, copy, 0, copy.length);
         VectorUtil.l2normalize(copy);

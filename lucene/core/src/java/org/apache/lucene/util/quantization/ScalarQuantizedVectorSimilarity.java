@@ -16,85 +16,113 @@
  */
 package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
-
+import java.io.IOException;
 import org.apache.lucene.codecs.VectorSimilarity;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Calculates and adjust the scores correctly for quantized vectors given the scalar quantization
- * parameters
+ * Quantized vector similarity
+ *
+ * @lucene.experimental
  */
-public interface ScalarQuantizedVectorSimilarity {
+public class ScalarQuantizedVectorSimilarity {
 
-  /**
-   * Creates a {@link ScalarQuantizedVectorSimilarity} from a {@link VectorSimilarityFunction} and
-   * the constant multiplier used for quantization.
-   *
-   * @param sim similarity function
-   * @param constMultiplier constant multiplier used for quantization
-   * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
-   */
-  static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-      VectorSimilarity sim, float constMultiplier) {
-    return switch (sim) {
-      case EUCLIDEAN -> new Euclidean(constMultiplier);
-      case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
+  public static float quantizeQuery(
+      float[] query,
+      byte[] quantizedQuery,
+      VectorSimilarity similarity,
+      ScalarQuantizer scalarQuantizer) {
+    float[] processedQuery = query;
+    if (similarity.requiresQuantizationNormalization()) {
+      processedQuery = ArrayUtil.copyOfSubArray(query, 0, query.length);
+      VectorUtil.l2normalize(processedQuery);
+    }
+    return scalarQuantizer.quantize(processedQuery, quantizedQuery, similarity);
+  }
+
+  private final VectorSimilarity configuredScorer;
+  private final float multiplier;
+
+  public ScalarQuantizedVectorSimilarity(VectorSimilarity configuredScorer, float multiplier) {
+    // This is a hack to avoid adding a new method to VectorSimilarity
+    // Cosine is an exception as all quantization comparisons are dot products assuming normalized
+    // vectors
+    if (configuredScorer.getName().equals(VectorSimilarity.CosineSimilarity.NAME)) {
+      this.configuredScorer = VectorSimilarity.DotProductSimilarity.INSTANCE;
+    } else {
+      this.configuredScorer = configuredScorer;
+    }
+    this.multiplier = multiplier;
+  }
+
+  public VectorSimilarity.VectorComparator getByteVectorComparator(
+      QuantizedByteVectorProvider quantizedByteVectorProvider) throws IOException {
+    return new VectorSimilarity.VectorComparator() {
+      private final QuantizedByteVectorProvider provider = quantizedByteVectorProvider.copy();
+      private final VectorSimilarity.VectorComparator rawComparator =
+          configuredScorer.getByteVectorComparator(quantizedByteVectorProvider);
+
+      @Override
+      public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+        float comparisonResult = rawComparator.compare(vectorOrd1, vectorOrd2);
+        provider.vectorValue(vectorOrd1);
+        quantizedByteVectorProvider.vectorValue(vectorOrd2);
+        float correction1 = provider.getScoreCorrectionConstant();
+        float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant();
+        return correction1 + correction2 + comparisonResult * multiplier;
+      }
+
+      @Override
+      public float scaleScore(float comparisonResult) {
+        return configuredScorer.scaleVectorScore(comparisonResult);
+      }
+
+      @Override
+      public VectorSimilarity.VectorScorer asScorer(int vectorOrd) throws IOException {
+        VectorSimilarity.VectorScorer scorer = rawComparator.asScorer(vectorOrd);
+        provider.vectorValue(vectorOrd);
+        float correction = provider.getScoreCorrectionConstant();
+
+        return new VectorSimilarity.VectorScorer() {
+          @Override
+          public float compare(int vectorOrd) throws IOException {
+            float rawScore = scorer.compare(vectorOrd);
+            quantizedByteVectorProvider.vectorValue(vectorOrd);
+            float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant();
+            return correction + correction2 + rawScore * multiplier;
+          }
+
+          @Override
+          public float scaleScore(float comparisonResult) {
+            return configuredScorer.scaleVectorScore(comparisonResult);
+          }
+        };
+      }
     };
   }
 
-  float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset);
+  public VectorSimilarity.VectorScorer getVectorScorer(
+      QuantizedByteVectorProvider quantizedByteVectorProvider,
+      byte[] quantizedQuery,
+      float queryCorrection)
+      throws IOException {
+    final QuantizedByteVectorProvider providerCopy = quantizedByteVectorProvider.copy();
+    final VectorSimilarity.VectorScorer rawComparator =
+        configuredScorer.getVectorScorer(providerCopy, quantizedQuery);
+    return new VectorSimilarity.VectorScorer() {
+      @Override
+      public float compare(int vectorOrd) throws IOException {
+        float comparisonResult = rawComparator.compare(vectorOrd);
+        providerCopy.vectorValue(vectorOrd);
+        float correction = providerCopy.getScoreCorrectionConstant();
+        return queryCorrection + correction + comparisonResult * multiplier;
+      }
 
-  /** Calculates euclidean distance on quantized vectors, applying the appropriate corrections */
-  class Euclidean implements ScalarQuantizedVectorSimilarity {
-    private final float constMultiplier;
-
-    public Euclidean(float constMultiplier) {
-      this.constMultiplier = constMultiplier;
-    }
-
-    @Override
-    public float score(
-        byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset) {
-      int squareDistance = VectorUtil.squareDistance(storedVector, queryVector);
-      float adjustedDistance = squareDistance * constMultiplier;
-      return 1 / (1f + adjustedDistance);
-    }
-  }
-
-  /** Calculates dot product on quantized vectors, applying the appropriate corrections */
-  class DotProduct implements ScalarQuantizedVectorSimilarity {
-    private final float constMultiplier;
-
-    public DotProduct(float constMultiplier) {
-      this.constMultiplier = constMultiplier;
-    }
-
-    @Override
-    public float score(
-        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
-      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
-      return (1 + adjustedDistance) / 2;
-    }
-  }
-
-  /** Calculates max inner product on quantized vectors, applying the appropriate corrections */
-  class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
-    private final float constMultiplier;
-
-    public MaximumInnerProduct(float constMultiplier) {
-      this.constMultiplier = constMultiplier;
-    }
-
-    @Override
-    public float score(
-        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
-      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
-      return scaleMaxInnerProductScore(adjustedDistance);
-    }
+      @Override
+      public float scaleScore(float comparisonResult) {
+        return configuredScorer.scaleVectorScore(comparisonResult);
+      }
+    };
   }
 }

@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 
@@ -191,7 +192,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, Float.NaN);
     neighbors.addOutOfOrder(6, Float.NaN);
     neighbors.addOutOfOrder(4, Float.NaN);
-    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 1);
+    int[] unchecked = neighbors.sort(new TestRandomVectorScorer(nodeId -> 7 - nodeId + 1));
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
@@ -207,7 +208,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(17, Float.NaN);
     neighbors.addOutOfOrder(16, Float.NaN);
     neighbors.addOutOfOrder(14, Float.NaN);
-    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 11);
+    int[] unchecked = neighbors.sort(new TestRandomVectorScorer(nodeId -> 7 - nodeId + 11));
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {11, 12, 13, 14, 15, 16, 17}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
@@ -225,20 +226,65 @@ public class TestNeighborArray extends LuceneTestCase {
     }
   }
 
-  interface TestRandomVectorScorer extends RandomVectorScorer {
+  private static class TestVectorScorer implements VectorSimilarity.VectorScorer {
+    private final IntToIntFunction scorer;
+
+    TestVectorScorer(IntToIntFunction scorer) {
+      this.scorer = scorer;
+    }
+
     @Override
-    default int maxOrd() {
+    public float scaleScore(float comparisonResult) {
+      return comparisonResult;
+    }
+
+    @Override
+    public float compare(int node) throws IOException {
+      return scorer.apply(node);
+    }
+  }
+
+  private static class TestRandomVectorScorer extends RandomVectorScorer {
+
+    public TestRandomVectorScorer(IntToIntFunction scorer) {
+      super(new TestRandomAccessVectorValues(), new TestVectorScorer(scorer));
+    }
+
+    @Override
+    public int maxOrd() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    default int ordToDoc(int ord) {
+    public int ordToDoc(int ord) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    default Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  static class TestRandomAccessVectorValues implements RandomAccessVectorValues<float[]> {
+    @Override
+    public int size() {
+      return 10;
+    }
+
+    @Override
+    public int dimension() {
+      return 0;
+    }
+
+    @Override
+    public float[] vectorValue(int targetOrd) throws IOException {
+      return new float[0];
+    }
+
+    @Override
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
+      return null;
     }
   }
 }

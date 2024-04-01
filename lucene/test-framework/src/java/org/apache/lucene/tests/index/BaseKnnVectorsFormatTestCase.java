@@ -19,6 +19,7 @@ package org.apache.lucene.tests.index;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -70,7 +72,7 @@ import org.junit.Before;
 public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTestCase {
 
   private VectorEncoding vectorEncoding;
-  private VectorSimilarityFunction similarityFunction;
+  private VectorSimilarity similarityFunction;
 
   @Before
   public void init() {
@@ -645,7 +647,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     int[] fieldDocCounts = new int[numFields];
     double[] fieldTotals = new double[numFields];
     int[] fieldDims = new int[numFields];
-    VectorSimilarityFunction[] fieldSimilarityFunctions = new VectorSimilarityFunction[numFields];
+    VectorSimilarity[] fieldSimilarityFunctions = new VectorSimilarity[numFields];
     VectorEncoding[] fieldVectorEncodings = new VectorEncoding[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
@@ -714,9 +716,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  protected VectorSimilarityFunction randomSimilarity() {
-    return VectorSimilarityFunction.values()[
-        random().nextInt(VectorSimilarityFunction.values().length)];
+  protected VectorSimilarity randomSimilarity() {
+    return RandomPicks.randomFrom(
+        random(),
+        new VectorSimilarity[] {
+          VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
+          VectorSimilarity.CosineSimilarity.INSTANCE,
+          VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
+          VectorSimilarity.DotProductSimilarity.INSTANCE
+        });
   }
 
   /**
@@ -1047,7 +1055,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         } else {
           value = null;
         }
-        add(iw, fieldName, i, value, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, i, value, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
       }
       iw.forceMerge(1);
 
@@ -1112,7 +1120,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           value = null;
         }
         id2value[id] = value;
-        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, id, value, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
       }
       try (IndexReader reader = DirectoryReader.open(iw)) {
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -1168,24 +1176,19 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   private void add(
-      IndexWriter iw,
-      String field,
-      int id,
-      float[] vector,
-      VectorSimilarityFunction similarityFunction)
+      IndexWriter iw, String field, int id, float[] vector, VectorSimilarity similarityFunction)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, similarityFunction);
   }
 
-  private void add(
-      IndexWriter iw, String field, int id, byte[] vector, VectorSimilarityFunction similarity)
+  private void add(IndexWriter iw, String field, int id, byte[] vector, VectorSimilarity similarity)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, similarity);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortKey, byte[] vector)
       throws IOException {
-    add(iw, field, id, sortKey, vector, VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortKey, vector, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
   }
 
   private void add(
@@ -1194,7 +1197,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int id,
       int sortKey,
       byte[] vector,
-      VectorSimilarityFunction similarityFunction)
+      VectorSimilarity similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
@@ -1209,7 +1212,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortkey, vector, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
   }
 
   private void add(
@@ -1218,7 +1221,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int id,
       int sortkey,
       float[] vector,
-      VectorSimilarityFunction similarityFunction)
+      VectorSimilarity similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {

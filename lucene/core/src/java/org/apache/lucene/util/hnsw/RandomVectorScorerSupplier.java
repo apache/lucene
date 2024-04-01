@@ -107,13 +107,8 @@ public interface RandomVectorScorerSupplier {
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       VectorSimilarity.VectorScorer scorer =
-          similarityFunction.getVectorScorer(byteVectorProvider, vectors2.vectorValue(ord));
-      return new RandomVectorScorer.AbstractRandomVectorScorer<>(vectors) {
-        @Override
-        public float score(int cand) throws IOException {
-          return scorer.score(cand);
-        }
-      };
+          similarityFunction.getByteVectorComparator(byteVectorProvider).asScorer(ord);
+      return new RandomVectorScorer(vectors, scorer);
     }
 
     @Override
@@ -132,20 +127,15 @@ public interface RandomVectorScorerSupplier {
         RandomAccessVectorValues<float[]> vectors, VectorSimilarity similarityFunction)
         throws IOException {
       this.vectors = vectors;
-      floatVectorProvider = FloatVectorProvider.fromRandomAccessVectorValues(vectors.copy());
+      this.floatVectorProvider = FloatVectorProvider.fromRandomAccessVectorValues(vectors.copy());
       this.similarityFunction = similarityFunction;
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       VectorSimilarity.VectorScorer scorer =
-          similarityFunction.getVectorScorer(vectors1::vectorValue, vectors2.vectorValue(ord));
-      return new RandomVectorScorer.AbstractRandomVectorScorer<>(vectors) {
-        @Override
-        public float score(int cand) throws IOException {
-          return scorer.score(cand);
-        }
-      };
+          similarityFunction.getFloatVectorComparator(floatVectorProvider).asScorer(ord);
+      return new RandomVectorScorer(vectors, scorer);
     }
 
     @Override

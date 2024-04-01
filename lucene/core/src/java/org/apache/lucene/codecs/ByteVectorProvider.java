@@ -27,6 +27,13 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 public interface ByteVectorProvider {
 
   /**
+   * Returns the dimension of the byte vector.
+   *
+   * @return the dimension of the byte vector
+   */
+  int dimension();
+
+  /**
    * Returns the byte vector value for the given target ordinal.
    *
    * @param targetOrd the ordinal of the target vector
@@ -43,6 +50,7 @@ public interface ByteVectorProvider {
    */
   ByteVectorProvider copy() throws IOException;
 
+  /** Returns a {@link ByteVectorProvider} from the given {@link RandomAccessVectorValues}. */
   static ByteVectorProvider fromRandomAccessVectorValues(
       final RandomAccessVectorValues<byte[]> vectors) {
     return new ByteVectorProvider() {
@@ -54,6 +62,11 @@ public interface ByteVectorProvider {
       @Override
       public ByteVectorProvider copy() throws IOException {
         return fromRandomAccessVectorValues(vectors.copy());
+      }
+
+      @Override
+      public int dimension() {
+        return vectors.dimension();
       }
     };
   }

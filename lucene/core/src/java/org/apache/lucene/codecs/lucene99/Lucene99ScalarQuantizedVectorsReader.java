@@ -44,7 +44,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
-import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -109,7 +109,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -213,8 +213,17 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
-    return new ScalarQuantizedRandomVectorScorer(
-        fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, vectorValues, target);
+    VectorSimilarity similarity = fieldEntry.similarityFunction;
+    byte[] quantized = new byte[target.length];
+    float queryCorrection =
+        ScalarQuantizedVectorSimilarity.quantizeQuery(
+            target, quantized, similarity, fieldEntry.scalarQuantizer);
+    ScalarQuantizedVectorSimilarity quantizedSimilarity =
+        new ScalarQuantizedVectorSimilarity(
+            similarity, fieldEntry.scalarQuantizer.getConstantMultiplier());
+    VectorSimilarity.VectorScorer scorer =
+        quantizedSimilarity.getVectorScorer(vectorValues, quantized, queryCorrection);
+    return new RandomVectorScorer(vectorValues, scorer);
   }
 
   @Override
