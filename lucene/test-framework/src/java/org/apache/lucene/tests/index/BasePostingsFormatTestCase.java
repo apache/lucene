@@ -465,7 +465,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
                   public void write(Fields fields, NormsProducer norms) throws IOException {
                     fieldsConsumer.write(fields, norms);
 
-                    boolean isMerge = state.context.context == IOContext.Context.MERGE;
+                    boolean isMerge = state.context.context() == IOContext.Context.MERGE;
 
                     // We only use one thread for flushing
                     // in this test:
