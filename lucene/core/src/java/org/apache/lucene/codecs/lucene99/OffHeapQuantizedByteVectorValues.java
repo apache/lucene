@@ -79,6 +79,16 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     return scoreCorrectionConstant[0];
   }
 
+  @Override
+  public float getScoreCorrectionConstant(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return scoreCorrectionConstant[0];
+    }
+    slice.seek((long) targetOrd * byteSize + dimension);
+    slice.readFloats(scoreCorrectionConstant, 0, 1);
+    return scoreCorrectionConstant[0];
+  }
+
   public static OffHeapQuantizedByteVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,

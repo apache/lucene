@@ -242,7 +242,6 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
   private static class TestQuantizedByteVectorProvider implements QuantizedByteVectorProvider {
     private final byte[][] quantized;
     private final float[] offsets;
-    private int currentTargetOrd = -1;
 
     TestQuantizedByteVectorProvider(byte[][] quantized, float[] offsets) {
       this.quantized = quantized;
@@ -250,13 +249,12 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     }
 
     @Override
-    public float getScoreCorrectionConstant() {
-      return offsets[currentTargetOrd];
+    public float getScoreCorrectionConstant(int targetOrd) {
+      return offsets[targetOrd];
     }
 
     @Override
     public byte[] vectorValue(int targetOrd) {
-      currentTargetOrd = targetOrd;
       return quantized[targetOrd];
     }
 

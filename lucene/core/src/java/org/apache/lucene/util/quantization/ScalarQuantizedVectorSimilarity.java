@@ -66,10 +66,8 @@ public class ScalarQuantizedVectorSimilarity {
       @Override
       public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
         float comparisonResult = rawComparator.compare(vectorOrd1, vectorOrd2);
-        provider.vectorValue(vectorOrd1);
-        quantizedByteVectorProvider.vectorValue(vectorOrd2);
-        float correction1 = provider.getScoreCorrectionConstant();
-        float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant();
+        float correction1 = provider.getScoreCorrectionConstant(vectorOrd1);
+        float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant(vectorOrd2);
         return correction1 + correction2 + comparisonResult * multiplier;
       }
 
@@ -81,15 +79,13 @@ public class ScalarQuantizedVectorSimilarity {
       @Override
       public VectorSimilarity.VectorScorer asScorer(int vectorOrd) throws IOException {
         VectorSimilarity.VectorScorer scorer = rawComparator.asScorer(vectorOrd);
-        provider.vectorValue(vectorOrd);
-        float correction = provider.getScoreCorrectionConstant();
+        float correction = provider.getScoreCorrectionConstant(vectorOrd);
 
         return new VectorSimilarity.VectorScorer() {
           @Override
           public float compare(int vectorOrd) throws IOException {
             float rawScore = scorer.compare(vectorOrd);
-            quantizedByteVectorProvider.vectorValue(vectorOrd);
-            float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant();
+            float correction2 = quantizedByteVectorProvider.getScoreCorrectionConstant(vectorOrd);
             return correction + correction2 + rawScore * multiplier;
           }
 
@@ -114,8 +110,7 @@ public class ScalarQuantizedVectorSimilarity {
       @Override
       public float compare(int vectorOrd) throws IOException {
         float comparisonResult = rawComparator.compare(vectorOrd);
-        providerCopy.vectorValue(vectorOrd);
-        float correction = providerCopy.getScoreCorrectionConstant();
+        float correction = providerCopy.getScoreCorrectionConstant(vectorOrd);
         return queryCorrection + correction + comparisonResult * multiplier;
       }
 

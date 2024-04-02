@@ -21,14 +21,14 @@ import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
- * Random access values for <code>byte[]</code>, but also includes accessing the score correction
- * constant for the current vector in the buffer.
+ * Random access values for <code>byte[]</code>, but also includes random access for correction
+ * constant
  *
  * @lucene.experimental
  */
 public interface QuantizedByteVectorProvider
     extends RandomAccessVectorValues<byte[]>, ByteVectorProvider {
-  float getScoreCorrectionConstant();
+  float getScoreCorrectionConstant(int vectorOrdinal) throws IOException;
 
   @Override
   QuantizedByteVectorProvider copy() throws IOException;
