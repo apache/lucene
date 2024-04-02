@@ -136,6 +136,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
+    FloatVectorValues.checkField(context.reader(), field);
     KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
     if (collector == null) {
       return NO_RESULTS;
