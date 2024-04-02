@@ -168,10 +168,5 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       delegate.close();
       delegate.close();
     }
-
-    @Override
-    public long ramBytesUsed() {
-      return delegate.ramBytesUsed();
-    }
   }
 }
