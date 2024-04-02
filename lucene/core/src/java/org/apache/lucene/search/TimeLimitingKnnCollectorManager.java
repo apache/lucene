@@ -31,7 +31,7 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
     this.queryTimeout = timeout;
   }
 
-  /** Get the {@link QueryTimeout} for terminating graph searches. */
+  /** Get the configured {@link QueryTimeout} for terminating graph and exact searches. */
   public QueryTimeout getQueryTimeout() {
     return queryTimeout;
   }
