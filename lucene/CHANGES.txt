@@ -147,9 +147,6 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
-* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
-  IntersectVisitor::visit(int). (Anton Hägerstrand)
-
 Bug Fixes
 ---------------------
 
@@ -265,6 +262,9 @@ Optimizations
 
 * GITHUB#11888: Binary search the BlockTree terms dictionary entries when all suffixes have the same length
   in a leaf block, speeding up cases like primary key lookup on an id field when all ids are the same length. (zhouhui)
+
+* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
+  IntersectVisitor::visit(int). (Anton Hägerstrand)
 
 Bug Fixes
 ---------------------
