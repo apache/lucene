@@ -218,6 +218,9 @@ New Features
   This may improve paging logic especially when large segments are merged under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
+* GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
+  to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
 Improvements
 ---------------------
 
