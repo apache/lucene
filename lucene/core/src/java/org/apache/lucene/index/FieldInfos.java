@@ -156,7 +156,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
-    List<FieldInfo> valuesTemp = new ArrayList<>();
+    List<FieldInfo> valuesTemp = new ArrayList<>(infos.length);
     byNumber = new FieldInfo[size];
     for (int i = 0; i < size; i++) {
       byNumber[i] = byNumberTemp[i];
