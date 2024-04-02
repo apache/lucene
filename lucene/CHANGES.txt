@@ -147,6 +147,9 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
+  IntersectVisitor::visit(int). (Anton Hägerstrand)
+
 Bug Fixes
 ---------------------
 
