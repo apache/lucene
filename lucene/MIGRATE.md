@@ -196,6 +196,11 @@ enum.
 
 `TimeLimitingCollector` has been removed, use `IndexSearcher#setTimeout(QueryTimeout)` to time out queries instead.
 
+### Accountable interface removed from KnnVectorsReader (GITHUB#13255)
+
+`KnnVectorsReader` objects use small heap memory, so it's not worth maintaining heap usage for them hence removed
+`Accountable` interface from `KnnVectorsReader`.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

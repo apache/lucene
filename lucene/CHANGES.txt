@@ -94,6 +94,8 @@ API Changes
 
 * GITHUB#13242: Replace `IOContext.READ` with `IOContext.DEFAULT`. (Adrien Grand)
 
+* GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
+
 New Features
 ---------------------
 
