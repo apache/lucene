@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -385,7 +386,7 @@ public class TestDocumentWriter extends LuceneTestCase {
     doTestRAMUsage(
         field ->
             new KnnFloatVectorField(
-                field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
+                field, new float[] {1, 2, 3, 4}, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE));
   }
 
   private static class MockIndexableField implements IndexableField {

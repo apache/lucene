@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
@@ -264,7 +265,7 @@ public class IndexFiles implements AutoCloseable {
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
               new KnnFloatVectorField(
-                  "contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
+                  "contents-vector", vector, VectorSimilarity.DotProductSimilarity.INSTANCE));
         }
       }
 

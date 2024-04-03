@@ -520,15 +520,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     IOUtils.close(meta, vectorIndex, flatVectorWriter);
   }
 
-  static int distFuncToOrd(VectorSimilarityFunction func) {
-    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
-      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
-        return (byte) i;
-      }
-    }
-    throw new IllegalArgumentException("invalid distance function: " + func);
-  }
-
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
 
     private static final long SHALLOW_SIZE =

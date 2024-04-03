@@ -142,13 +142,6 @@ public class KnnFloatVectorField extends Field {
     fieldsData = VectorUtil.checkFinite(vector);
   }
 
-  /** See {@link #KnnFloatVectorField(String, float[], VectorSimilarity)} */
-  @Deprecated
-  public KnnFloatVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    this(name, vector, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
-  }
-
   /** Return the vector value of this field */
   public float[] vectorValue() {
     return (float[]) fieldsData;

@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.Arrays;
+
+import org.apache.lucene.codecs.ByteVectorProvider;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -31,7 +35,7 @@ public class TestByteVectorSimilarityQuery
   public void setup() {
     vectorField = getClass().getSimpleName() + ":VectorField";
     idField = getClass().getSimpleName() + ":IdField";
-    function = VectorSimilarityFunction.EUCLIDEAN;
+    function = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     numDocs = atLeast(100);
     dim = atLeast(5);
   }
@@ -42,8 +46,8 @@ public class TestByteVectorSimilarityQuery
   }
 
   @Override
-  float compare(byte[] vector1, byte[] vector2) {
-    return function.compare(vector1, vector2);
+  VectorSimilarity.VectorScorer compare(byte[] queryVector, byte[][] vectors) throws IOException {
+    return function.getVectorScorer(fromByteArrays(vectors), queryVector);
   }
 
   @Override
@@ -52,7 +56,7 @@ public class TestByteVectorSimilarityQuery
   }
 
   @Override
-  KnnByteVectorField getVectorField(String name, byte[] vector, VectorSimilarityFunction function) {
+  KnnByteVectorField getVectorField(String name, byte[] vector, VectorSimilarity function) {
     return new KnnByteVectorField(name, vector, function);
   }
 
@@ -79,6 +83,25 @@ public class TestByteVectorSimilarityQuery
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();
+      }
+    };
+  }
+
+  static ByteVectorProvider fromByteArrays(byte[][] vectors) {
+    return new ByteVectorProvider() {
+      @Override
+      public int dimension() {
+        return vectors[0].length;
+      }
+
+      @Override
+      public byte[] vectorValue(int targetOrd) throws IOException {
+        return vectors[targetOrd];
+      }
+
+      @Override
+      public ByteVectorProvider copy() throws IOException {
+        return this;
       }
     };
   }

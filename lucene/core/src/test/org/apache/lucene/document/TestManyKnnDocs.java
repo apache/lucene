@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -47,7 +48,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
     mp.setSegmentsPerTier(256); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
     String fieldName = "field";
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    VectorSimilarity similarityFunction = VectorSimilarity.DotProductSimilarity.INSTANCE;
 
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {

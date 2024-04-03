@@ -221,7 +221,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
   public VectorSimilarity distanceFunction(String scoreFunction) {
     return VectorSimilarity.fromVectorSimilarityFunction(
-        VectorSimilarityFunction.valueOf(scoreFunction));
+      (byte) VectorSimilarityFunction.valueOf(scoreFunction).ordinal());
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {

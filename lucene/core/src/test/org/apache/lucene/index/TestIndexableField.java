@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -121,8 +122,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public VectorSimilarityFunction vectorSimilarityFunction() {
-            return VectorSimilarityFunction.EUCLIDEAN;
+          public VectorSimilarity vectorSimilarity() {
+            return VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
           }
 
           @Override

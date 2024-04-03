@@ -16,10 +16,15 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Random;
-import org.apache.lucene.index.VectorSimilarityFunction;
+
+import org.apache.lucene.codecs.FloatVectorProvider;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 public class TestVectorUtil extends LuceneTestCase {
 
@@ -116,15 +121,23 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
-  public void testExtremeNumerics() {
+  public void testExtremeNumerics() throws IOException {
     float[] v1 = new float[1536];
     float[] v2 = new float[1536];
     for (int i = 0; i < 1536; i++) {
       v1[i] = 0.888888f;
       v2[i] = -0.777777f;
     }
-    for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
-      float v = vectorSimilarityFunction.compare(v1, v2);
+    FloatVectorProvider fvp = FloatVectorProvider.fromRandomAccessVectorValues(
+      RandomAccessVectorValues.fromFloatVectorList(List.of(v1, v2)));
+    for (VectorSimilarity.VectorComparator vectorSimilarityFunction : new VectorSimilarity.VectorComparator[] {
+      VectorSimilarity.DotProductSimilarity.INSTANCE.getFloatVectorComparator(fvp),
+      VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.getFloatVectorComparator(fvp),
+      VectorSimilarity.CosineSimilarity.INSTANCE.getFloatVectorComparator(fvp),
+      VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.getFloatVectorComparator(fvp)
+    }) {
+
+      float v = vectorSimilarityFunction.compare(0, 1);
       assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
     }
   }

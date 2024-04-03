@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
@@ -698,7 +699,7 @@ public class TestField extends LuceneTestCase {
       Document doc = new Document();
       byte[] b = new byte[5];
       KnnByteVectorField field =
-          new KnnByteVectorField("binary", b, VectorSimilarityFunction.EUCLIDEAN);
+          new KnnByteVectorField("binary", b, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
       assertNull(field.binaryValue());
       assertArrayEquals(b, field.vectorValue());
       expectThrows(

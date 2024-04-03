@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.VectorSimilarityFunction;
+
+import org.apache.lucene.codecs.FloatVectorProvider;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -75,7 +77,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       int topK,
       int numSeed,
       RandomAccessVectorValues<float[]> vectors,
-      VectorSimilarityFunction similarityFunction,
+      VectorSimilarity similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,
       long visitedLimit,
@@ -87,6 +89,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes
     NeighborQueue candidates = new NeighborQueue(numSeed, true);
+    VectorSimilarity.VectorScorer scorer = similarityFunction.getVectorScorer(FloatVectorProvider.fromRandomAccessVectorValues(vectors), query);
 
     int numVisited = 0;
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
@@ -101,7 +104,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
         // explore the topK starting points of some random numSeed probes
-        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        float score = scorer.score(entryPoint);
         candidates.add(entryPoint, score);
         if (acceptOrds == null || acceptOrds.get(entryPoint)) {
           results.add(entryPoint, score);
@@ -137,7 +140,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
 
-        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float friendSimilarity = scorer.score(friendOrd);
         if (results.size() < numSeed || bound.check(friendSimilarity) == false) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {

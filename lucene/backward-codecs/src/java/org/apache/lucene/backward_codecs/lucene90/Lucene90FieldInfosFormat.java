@@ -175,7 +175,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final VectorSimilarity vectorDistFunc = getDistFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -194,7 +194,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     pointNumBytes,
                     vectorDimension,
                     VectorEncoding.FLOAT32,
-                    VectorSimilarity.fromVectorSimilarityFunction(vectorDistFunc),
+                    vectorDistFunc,
                     isSoftDeletesField,
                     false);
             infos[i].checkConsistency();
@@ -258,11 +258,11 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
+  private static VectorSimilarity getDistFunc(IndexInput input, byte b) throws IOException {
+    if (b < 0 || b >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
       throw new CorruptIndexException("invalid distance function: " + b, input);
     }
-    return VectorSimilarityFunction.values()[b];
+    return VectorSimilarity.fromVectorSimilarityFunction(b);
   }
 
   static {

@@ -22,7 +22,6 @@ import java.util.function.Function;
 import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
@@ -109,20 +108,6 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
   }
 
   /**
-   * Creates a default scorer for float vectors. See {@link #createFloats(RandomAccessVectorValues,
-   * VectorSimilarity, float[])}.
-   */
-  @Deprecated
-  public static RandomVectorScorer createFloats(
-      final RandomAccessVectorValues<float[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final float[] query)
-      throws IOException {
-    return createFloats(
-        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction), query);
-  }
-
-  /**
    * Creates a default scorer for byte vectors.
    *
    * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
@@ -150,19 +135,5 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
         similarityFunction.getVectorScorer(
             ByteVectorProvider.fromRandomAccessVectorValues(vectors), query);
     return new RandomVectorScorer(vectors, scorer);
-  }
-
-  /**
-   * Creates a default scorer for byte vectors. See {@link #createBytes(RandomAccessVectorValues,
-   * VectorSimilarity, byte[])}.
-   */
-  @Deprecated
-  public static RandomVectorScorer createBytes(
-      final RandomAccessVectorValues<byte[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final byte[] query)
-      throws IOException {
-    return createBytes(
-        vectors, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction), query);
   }
 }

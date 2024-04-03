@@ -721,7 +721,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.confidenceInterval = confidenceInterval;
       this.bits = bits;
       this.fieldInfo = fieldInfo;
-      this.normalize = fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE;
+      this.normalize = fieldInfo.getVectorSimilarity().requiresQuantizationNormalization();
       this.floatVectors = new ArrayList<>();
       this.infoStream = infoStream;
       this.docsWithField = new DocsWithFieldSet();

@@ -26,6 +26,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -33,7 +35,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -43,16 +44,16 @@ abstract class BaseVectorSimilarityQueryTestCase<
         V, F extends Field, Q extends AbstractVectorSimilarityQuery>
     extends LuceneTestCase {
   String vectorField, idField;
-  VectorSimilarityFunction function;
+  VectorSimilarity function;
   int numDocs, dim;
 
   abstract V getRandomVector(int dim);
 
-  abstract float compare(V vector1, V vector2);
+  abstract VectorSimilarity.VectorScorer compare(V vector1, V[] vector2) throws IOException;
 
   abstract boolean checkEquals(V vector1, V vector2);
 
-  abstract F getVectorField(String name, V vector, VectorSimilarityFunction function);
+  abstract F getVectorField(String name, V vector, VectorSimilarity function);
 
   abstract Q getVectorQuery(
       String field, V vector, float traversalSimilarity, float resultSimilarity, Query filter);

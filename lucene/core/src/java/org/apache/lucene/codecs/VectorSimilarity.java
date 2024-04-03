@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.codecs;
 
+import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
+import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -33,24 +35,23 @@ import org.apache.lucene.util.VectorUtil;
  */
 public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
+  public static final int LEGACY_VALUE_LENGTH = 4;
+
   /**
    * Returns the new vector similarity function from the legacy given vector similarity function.
    */
-  public static VectorSimilarity fromVectorSimilarityFunction(VectorSimilarityFunction function) {
-    if (function == null) {
-      return null;
-    }
-    switch (function) {
-      case DOT_PRODUCT:
-        return DotProductSimilarity.INSTANCE;
-      case COSINE:
-        return CosineSimilarity.INSTANCE;
-      case EUCLIDEAN:
+  public static VectorSimilarity fromVectorSimilarityFunction(byte vectorSimilarityOrdinal) {
+    switch (vectorSimilarityOrdinal) {
+      case 0:
         return EuclideanDistanceSimilarity.INSTANCE;
-      case MAXIMUM_INNER_PRODUCT:
+      case 1:
+        return DotProductSimilarity.INSTANCE;
+      case 2:
+        return CosineSimilarity.INSTANCE;
+      case 3:
         return MaxInnerProductSimilarity.INSTANCE;
       default:
-        throw new IllegalArgumentException("Unknown vector similarity function: " + function);
+        throw new IllegalArgumentException("Unknown vector similarity function ordinal " + vectorSimilarityOrdinal);
     }
   }
 
@@ -283,6 +284,21 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return VectorSimilarityFunction.DOT_PRODUCT;
     }
 
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(byte[] v1, byte[] v2) {
+      float denom = (float) (v1.length * (1 << 15));
+      return 0.5f + dotProduct(v1, v2) / denom;
+    }
+
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(float[] v1, float[] v2) {
+      return scaleVectorScore(dotProduct(v1, v2));
+    }
+
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
@@ -389,6 +405,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return (1f + comparisonResult) / 2f;
     }
 
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(byte[] v1, byte[] v2) {
+      return scaleVectorScore(cosine(v1, v2));
+    }
+
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(float[] v1, float[] v2) {
+      return scaleVectorScore(cosine(v1, v2));
+    }
+
     @Override
     public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
       return new VectorScorer() {
@@ -481,6 +511,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return 1 / (1 + comparisonResult);
     }
 
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(byte[] v1, byte[] v2) {
+      return scaleVectorScore(squareDistance(v1, v2));
+    }
+
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(float[] v1, float[] v2) {
+      return scaleVectorScore(squareDistance(v1, v2));
+    }
+
     @Override
     public boolean requiresQuantizationOffsetCorrection() {
       return false;
@@ -497,7 +541,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return VectorUtil.squareDistance(target, vectorProvider.vectorValue(targetVectorOrd));
+          return squareDistance(target, vectorProvider.vectorValue(targetVectorOrd));
         }
       };
     }
@@ -510,7 +554,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
-          return VectorUtil.squareDistance(
+          return squareDistance(
               vectorProviderCopy.vectorValue(vectorOrd1), vectorProvider.vectorValue(vectorOrd2));
         }
 
@@ -531,7 +575,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return VectorUtil.squareDistance(target, byteVectorProvider.vectorValue(targetVectorOrd));
+          return squareDistance(target, byteVectorProvider.vectorValue(targetVectorOrd));
         }
       };
     }
@@ -544,7 +588,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
-          return VectorUtil.squareDistance(
+          return squareDistance(
               byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
         }
 
@@ -572,6 +616,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     @Override
     public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
       return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
+    }
+
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(byte[] v1, byte[] v2) {
+      return scaleVectorScore(dotProduct(v1, v2));
+    }
+
+    /**
+     * Allow direct comparison of byte vectors. This is only used for testing purposes.
+     */
+    public float score(float[] v1, float[] v2) {
+      return scaleVectorScore(dotProduct(v1, v2));
     }
 
     @Override

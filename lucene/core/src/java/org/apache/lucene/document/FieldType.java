@@ -382,7 +382,7 @@ public class FieldType implements IndexableFieldType {
     }
     this.vectorDimension = numDimensions;
     this.vectorSimilarityFunction =
-        Objects.requireNonNull(VectorSimilarity.fromVectorSimilarityFunction(similarity));
+        Objects.requireNonNull(VectorSimilarity.fromVectorSimilarityFunction((byte)similarity.ordinal()));
     this.vectorEncoding = Objects.requireNonNull(encoding);
   }
 

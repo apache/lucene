@@ -16,7 +16,12 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.Arrays;
+
+import org.apache.lucene.codecs.ByteVectorProvider;
+import org.apache.lucene.codecs.FloatVectorProvider;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -31,7 +36,7 @@ public class TestFloatVectorSimilarityQuery
   public void setup() {
     vectorField = getClass().getSimpleName() + ":VectorField";
     idField = getClass().getSimpleName() + ":IdField";
-    function = VectorSimilarityFunction.EUCLIDEAN;
+    function = VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE;
     numDocs = atLeast(100);
     dim = atLeast(5);
   }
@@ -42,8 +47,8 @@ public class TestFloatVectorSimilarityQuery
   }
 
   @Override
-  float compare(float[] vector1, float[] vector2) {
-    return function.compare(vector1, vector2);
+  VectorSimilarity.VectorScorer compare(float[] queryVector, float[][] vectors) throws IOException {
+    return function.getVectorScorer(fromFloatArrays(vectors), queryVector);
   }
 
   @Override
@@ -53,7 +58,7 @@ public class TestFloatVectorSimilarityQuery
 
   @Override
   KnnFloatVectorField getVectorField(
-      String name, float[] vector, VectorSimilarityFunction function) {
+      String name, float[] vector, VectorSimilarity function) {
     return new KnnFloatVectorField(name, vector, function);
   }
 
@@ -80,6 +85,25 @@ public class TestFloatVectorSimilarityQuery
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();
+      }
+    };
+  }
+
+  static FloatVectorProvider fromFloatArrays(float[][] vectors) {
+    return new FloatVectorProvider() {
+      @Override
+      public int dimension() {
+        return vectors[0].length;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) throws IOException {
+        return vectors[targetOrd];
+      }
+
+      @Override
+      public FloatVectorProvider copy() throws IOException {
+        return this;
       }
     };
   }

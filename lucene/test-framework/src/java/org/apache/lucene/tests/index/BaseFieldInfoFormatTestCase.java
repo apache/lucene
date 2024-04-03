@@ -360,8 +360,13 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
       int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
-      VectorSimilarityFunction similarityFunction =
-          RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
+      VectorSimilarity similarityFunction =
+          RandomPicks.randomFrom(r, new VectorSimilarity[]{
+            VectorSimilarity.DotProductSimilarity.INSTANCE,
+            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
+            VectorSimilarity.CosineSimilarity.INSTANCE,
+            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE
+          });
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
       type.setVectorAttributes(dimension, encoding, similarityFunction);
     }

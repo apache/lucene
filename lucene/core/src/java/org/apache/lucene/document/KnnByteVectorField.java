@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
 
@@ -30,7 +29,7 @@ import org.apache.lucene.search.Query;
  * - that is, every dimension of a vector contains an explicit value, stored packed into an array
  * (of type byte[]) whose length is the vector dimension. Values can be retrieved using {@link
  * ByteVectorValues}, which is a forward-only docID-based iterator and also offers random-access by
- * dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to compare vectors at
+ * dense ordinal (not docId). {@link VectorSimilarity} may be used to compare vectors at
  * query time (for example as part of result ranking). A KnnByteVectorField may be associated with a
  * search similarity function defining the metric used for nearest-neighbor search among vectors of
  * that field.
@@ -85,7 +84,7 @@ public class KnnByteVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * some vector similarities (like {@link VectorSimilarity.DotProductSimilarity}) require values to
    * be constant-length.
    *
    * @param name field name
@@ -97,13 +96,6 @@ public class KnnByteVectorField extends Field {
   public KnnByteVectorField(String name, byte[] vector, VectorSimilarity similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector; // null-check done above
-  }
-
-  /** See {@link #KnnByteVectorField(String, byte[], VectorSimilarity)} */
-  @Deprecated
-  public KnnByteVectorField(
-      String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
-    this(name, vector, VectorSimilarity.fromVectorSimilarityFunction(similarityFunction));
   }
 
   /**

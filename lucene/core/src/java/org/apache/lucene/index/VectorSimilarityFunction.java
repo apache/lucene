@@ -27,16 +27,21 @@ import static org.apache.lucene.util.VectorUtil.squareDistance;
  * vector. This is a label describing the method used during indexing and searching of the vectors
  * in order to determine the nearest neighbors.
  */
+@Deprecated
 public enum VectorSimilarityFunction {
 
-  /** Euclidean distance */
+  /** Euclidean distance
+   * @deprecated
+   **/
   EUCLIDEAN {
     @Override
+    @Deprecated
     public float compare(float[] v1, float[] v2) {
       return 1 / (1 + squareDistance(v1, v2));
     }
 
     @Override
+    @Deprecated
     public float compare(byte[] v1, byte[] v2) {
       return 1 / (1f + squareDistance(v1, v2));
     }
@@ -51,11 +56,13 @@ public enum VectorSimilarityFunction {
    */
   DOT_PRODUCT {
     @Override
+    @Deprecated
     public float compare(float[] v1, float[] v2) {
       return Math.max((1 + dotProduct(v1, v2)) / 2, 0);
     }
 
     @Override
+    @Deprecated
     public float compare(byte[] v1, byte[] v2) {
       return dotProductScore(v1, v2);
     }
@@ -69,11 +76,13 @@ public enum VectorSimilarityFunction {
    */
   COSINE {
     @Override
+    @Deprecated
     public float compare(float[] v1, float[] v2) {
       return Math.max((1 + cosine(v1, v2)) / 2, 0);
     }
 
     @Override
+    @Deprecated
     public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
     }
@@ -86,11 +95,13 @@ public enum VectorSimilarityFunction {
    */
   MAXIMUM_INNER_PRODUCT {
     @Override
+    @Deprecated
     public float compare(float[] v1, float[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
 
     @Override
+    @Deprecated
     public float compare(byte[] v1, byte[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
@@ -104,6 +115,7 @@ public enum VectorSimilarityFunction {
    * @param v2 another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
+  @Deprecated
   public abstract float compare(float[] v1, float[] v2);
 
   /**
@@ -115,5 +127,6 @@ public enum VectorSimilarityFunction {
    * @param v2 another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
+  @Deprecated
   public abstract float compare(byte[] v1, byte[] v2);
 }
