@@ -37,7 +37,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
       QuantizedByteVectorProvider values) {
     this.similarity =
         new ScalarQuantizedVectorSimilarity(
-            similarityFunction, scalarQuantizer.getConstantMultiplier());
+            similarityFunction, scalarQuantizer.getConstantMultiplier(), scalarQuantizer.getBits());
     this.values = values;
   }
 

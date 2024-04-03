@@ -31,7 +31,7 @@ public interface FloatVectorProvider {
    *
    * @return the dimension of the float vector
    */
-  int dimension() throws IOException;
+  int dimension();
 
   /**
    * Returns the float vector value for the given target ordinal.

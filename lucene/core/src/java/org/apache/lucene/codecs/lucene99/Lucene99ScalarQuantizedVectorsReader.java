@@ -129,8 +129,13 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               + fieldEntry.dimension);
     }
 
-    // int8 quantized and calculated stored offset.
-    long quantizedVectorBytes = dimension + Float.BYTES;
+    final long quantizedVectorBytes;
+    if (fieldEntry.bits <= 4 && fieldEntry.compress) {
+      quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
+    } else {
+      // int8 quantized and calculated stored offset.
+      quantizedVectorBytes = dimension + Float.BYTES;
+    }
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
@@ -212,6 +217,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.ordToDoc,
             fieldEntry.dimension,
             fieldEntry.size,
+            fieldEntry.bits,
+            fieldEntry.compress,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
@@ -222,7 +229,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             target, quantized, similarity, fieldEntry.scalarQuantizer);
     ScalarQuantizedVectorSimilarity quantizedSimilarity =
         new ScalarQuantizedVectorSimilarity(
-            similarity, fieldEntry.scalarQuantizer.getConstantMultiplier());
+            similarity, fieldEntry.scalarQuantizer.getConstantMultiplier(), fieldEntry.bits);
     VectorSimilarity.VectorScorer scorer =
         quantizedSimilarity.getVectorScorer(vectorValues, quantized, queryCorrection);
     return new RandomVectorScorer(vectorValues, scorer);
@@ -252,7 +259,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarity fieldInfoSimilarity = info.getVectorSimilarity();
-    if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES) {
+    if (versionMeta
+        < Lucene99ScalarQuantizedVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES_AND_ADD_BITS) {
       VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
       VectorSimilarityFunction bwcSimilarity =
           VectorSimilarity.toVectorSimilarityFunction(fieldInfoSimilarity);
@@ -267,7 +275,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
                 + bwcSimilarity);
       }
     }
-    return new FieldEntry(input, vectorEncoding, fieldInfoSimilarity);
+    return new FieldEntry(input, versionMeta, vectorEncoding, fieldInfoSimilarity);
   }
 
   @Override
@@ -280,6 +288,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         fieldEntry.ordToDoc,
         fieldEntry.dimension,
         fieldEntry.size,
+        fieldEntry.bits,
+        fieldEntry.compress,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
         quantizedVectorData);
@@ -304,9 +314,15 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     final long vectorDataLength;
     final ScalarQuantizer scalarQuantizer;
     final int size;
+    final byte bits;
+    final boolean compress;
     final OrdToDocDISIReaderConfiguration ordToDoc;
 
-    FieldEntry(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarity similarityFunction)
+    FieldEntry(
+        IndexInput input,
+        int versionMeta,
+        VectorEncoding vectorEncoding,
+        VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
@@ -315,12 +331,30 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       dimension = input.readVInt();
       size = input.readInt();
       if (size > 0) {
-        float confidenceInterval = Float.intBitsToFloat(input.readInt());
-        float minQuantile = Float.intBitsToFloat(input.readInt());
-        float maxQuantile = Float.intBitsToFloat(input.readInt());
-        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, confidenceInterval);
+        if (versionMeta
+            < Lucene99ScalarQuantizedVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES_AND_ADD_BITS) {
+          int floatBits = input.readInt(); // confidenceInterval, unused
+          if (floatBits == -1) {
+            throw new CorruptIndexException(
+                "Missing confidence interval for scalar quantizer", input);
+          }
+          this.bits = (byte) 7;
+          this.compress = false;
+          float minQuantile = Float.intBitsToFloat(input.readInt());
+          float maxQuantile = Float.intBitsToFloat(input.readInt());
+          scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, (byte) 7);
+        } else {
+          input.readInt(); // confidenceInterval, unused
+          this.bits = input.readByte();
+          this.compress = input.readByte() == 1;
+          float minQuantile = Float.intBitsToFloat(input.readInt());
+          float maxQuantile = Float.intBitsToFloat(input.readInt());
+          scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, bits);
+        }
       } else {
         scalarQuantizer = null;
+        this.bits = (byte) 7;
+        this.compress = false;
       }
       ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
     }

@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -66,5 +67,53 @@ public interface RandomAccessVectorValues<T> {
    */
   default Bits getAcceptOrds(Bits acceptDocs) {
     return acceptDocs;
+  }
+
+  static RandomAccessVectorValues<float[]> fromFloatVectorList(List<float[]> vectors) {
+    return new RandomAccessVectorValues<>() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return vectors.get(0).length;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public RandomAccessVectorValues<float[]> copy() {
+        return this;
+      }
+    };
+  }
+
+  static RandomAccessVectorValues<byte[]> fromByteVectorList(List<byte[]> vectors) {
+    return new RandomAccessVectorValues<>() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return vectors.get(0).length;
+      }
+
+      @Override
+      public byte[] vectorValue(int targetOrd) {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public RandomAccessVectorValues<byte[]> copy() {
+        return this;
+      }
+    };
   }
 }

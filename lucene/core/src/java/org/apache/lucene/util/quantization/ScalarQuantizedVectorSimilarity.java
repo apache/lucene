@@ -17,6 +17,8 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.ByteVectorProvider;
+import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -44,14 +46,22 @@ public class ScalarQuantizedVectorSimilarity {
   private final VectorSimilarity configuredScorer;
   private final float multiplier;
 
-  public ScalarQuantizedVectorSimilarity(VectorSimilarity configuredScorer, float multiplier) {
+  public ScalarQuantizedVectorSimilarity(
+      VectorSimilarity configuredScorer, float multiplier, byte bits) {
     // This is a hack to avoid adding a new method to VectorSimilarity
     // Cosine is an exception as all quantization comparisons are dot products assuming normalized
     // vectors
+    VectorSimilarity innerSimilarity = configuredScorer;
+
     if (configuredScorer.getName().equals(VectorSimilarity.CosineSimilarity.NAME)) {
-      this.configuredScorer = VectorSimilarity.DotProductSimilarity.INSTANCE;
+      innerSimilarity = VectorSimilarity.DotProductSimilarity.INSTANCE;
+    }
+    if (bits <= 4
+        && (innerSimilarity.getName().equals(VectorSimilarity.DotProductSimilarity.NAME)
+            || innerSimilarity.getName().equals(VectorSimilarity.MaxInnerProductSimilarity.NAME))) {
+      this.configuredScorer = new Int4OptimizedVectorSimilarity(innerSimilarity);
     } else {
-      this.configuredScorer = configuredScorer;
+      this.configuredScorer = innerSimilarity;
     }
     this.multiplier = multiplier;
   }
@@ -119,5 +129,72 @@ public class ScalarQuantizedVectorSimilarity {
         return configuredScorer.scaleVectorScore(comparisonResult);
       }
     };
+  }
+
+  /** Compares two byte vectors */
+  interface ByteVectorComparator {
+    int compare(byte[] v1, byte[] v2);
+  }
+
+  private static final class Int4OptimizedVectorSimilarity extends VectorSimilarity {
+    private final VectorSimilarity similarity;
+
+    public Int4OptimizedVectorSimilarity(VectorSimilarity similarity) {
+      super("Int4Optimized" + similarity.getName());
+      this.similarity = similarity;
+    }
+
+    @Override
+    public float scaleVectorScore(float score) {
+      return similarity.scaleVectorScore(score);
+    }
+
+    @Override
+    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target)
+        throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
+        throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target)
+        throws IOException {
+      return new VectorScorer() {
+        @Override
+        public float scaleScore(float comparisonResult) {
+          return similarity.scaleVectorScore(comparisonResult);
+        }
+
+        @Override
+        public float compare(int targetVectorOrd) throws IOException {
+          byte[] targetVector = byteVectorProvider.vectorValue(targetVectorOrd);
+          return VectorUtil.int4DotProduct(target, targetVector);
+        }
+      };
+    }
+
+    @Override
+    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+        throws IOException {
+      return new VectorComparator() {
+        private final ByteVectorProvider copy = byteVectorProvider.copy();
+
+        @Override
+        public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
+          return VectorUtil.int4DotProduct(
+              copy.vectorValue(vectorOrd1), byteVectorProvider.vectorValue(vectorOrd2));
+        }
+
+        @Override
+        public float scaleScore(float comparisonResult) {
+          return similarity.scaleVectorScore(comparisonResult);
+        }
+      };
+    }
   }
 }
