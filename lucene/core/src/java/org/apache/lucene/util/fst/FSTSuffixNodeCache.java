@@ -31,8 +31,24 @@ import org.apache.lucene.util.packed.PagedGrowableWriter;
 // TODO: couldn't we prune naturally back until we see a transition with an output?  it's highly
 // unlikely (mostly impossible) such suffixes can be shared?
 
-// Used to dedup states (lookup already-frozen states)
-final class NodeHash<T> {
+/**
+ * This is essentially a LRU cache to maintain and lookup node suffix. Un-compiled node can be added
+ * into the cache and if a similar node exists we will return its address in the FST. A node is
+ * defined as similar if it has the same label, arcs, outputs & other properties that identify a
+ * node.
+ *
+ * <p>The total size of the cache is controlled through the constructor parameter <code>ramLimitMB
+ * </code> Implementation-wise, we maintain two lookup tables, a primary table where node can be
+ * looked up from, and a fallback lookup table in case the lookup in the primary table fails. Nodes
+ * from the fallback table can also be promoted to the primary table when that happens. When the
+ * primary table is full, we swap it with the fallback table and clear out the primary table.
+ *
+ * <p>To lookup the node address, we build a special hash table which maps from the Node hash value
+ * to the Node address in the FST, called <code>PagedGrowableHash</code>. Internally it uses {@link
+ * PagedGrowableWriter} to store the mapping, which allows efficient packing the hash & address long
+ * values, and uses {@link ByteBlockPool} to store the actual node content (arcs & outputs).
+ */
+final class FSTSuffixNodeCache<T> {
 
   // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then
   // we move it to fallback
@@ -60,7 +76,7 @@ final class NodeHash<T> {
    * recently used suffixes are discarded, and the FST is no longer minimalI. Still, larger
    * ramLimitMB will make the FST smaller (closer to minimal).
    */
-  public NodeHash(FSTCompiler<T> fstCompiler, double ramLimitMB) {
+  public FSTSuffixNodeCache(FSTCompiler<T> fstCompiler, double ramLimitMB) {
     if (ramLimitMB <= 0) {
       throw new IllegalArgumentException("ramLimitMB must be > 0; got: " + ramLimitMB);
     }
