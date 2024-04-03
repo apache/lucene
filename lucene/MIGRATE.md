@@ -21,7 +21,15 @@
 
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using and be running on Java 17.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
+
+### Snowball dependency upgrade
+
+Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
+
+### Romanian analysis
+
+RomanianAnalyzer now works with Romanian in its modern unicode form, and normalizes cedilla forms to forms with commas. Both forms are still in use in "the wild": you should reindex Romanian documents.
 
 ### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
 
@@ -100,7 +108,7 @@ determine the number of valid ordinals for the currently-positioned document up-
 illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
 for the currently-positioned document (doing so will result in undefined behavior).
 
-### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+### IOContext removed from Directory#openChecksumInput (GITHUB#12027)
 
 `Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
@@ -151,6 +159,43 @@ may throw `IOException` on index problems, bubbling up unexpectedly to the calle
 `(Reverse)PathHierarchyTokenizer` now produces sequential (instead of overlapping) tokens with accurate
 offsets, making positional queries and highlighters possible for fields tokenized with this tokenizer.
 
+### Removed Scorable#docID() (GITHUB#12407)
+
+This method has been removed in order to enable more search-time optimizations.
+Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
+collected.
+
+### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
+
+In order to adapt to the removal of `Scorable#docID()`,
+`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
+`Scorable`.
+
+### Some classes converted to records classes (GITHUB#13207)
+
+Some classes with only final fields and no programming logic were converted to `record` classes.
+Those changes are mostly compatible with Lucene 9.x code (constructors, accessor methods), but
+record's fields are only available with accessor methods. Some code may need to be refactored to
+access the members using method calls instead of field accesses. Affected classes:
+
+- `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
+
+### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+
+The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
+enum.
+
+### IOContext.LOAD and IOContext.READ removed
+
+`IOContext#LOAD` has been removed, it should be replaced with
+`ioContext.withReadAdvice(ReadAdvice.RANDOM_PRELOAD)`.
+
+`IOContext.READ` has been removed, it should be replaced with `IOContext.DEFAULT`.
+
+### TimeLimitingCollector removed (GITHUB#13243)
+
+`TimeLimitingCollector` has been removed, use `IndexSearcher#setTimeout(QueryTimeout)` to time out queries instead.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
@@ -197,18 +242,6 @@ also when using the now deprecated ctors, so users are advised to upgrade to
 Lucene 9.2 or stay with 9.0.
 
 See LUCENE-10558 for more details and workarounds.
-
-### Removed Scorable#docID() (GITHUB#12407)
-
-This method has been removed in order to enable more search-time optimizations.
-Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
-collected.
-
-### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
-
-In order to adapt to the removal of `Scorable#docID()`,
-`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
-`Scorable`.
 
 ## Migration from Lucene 8.x to Lucene 9.0
 

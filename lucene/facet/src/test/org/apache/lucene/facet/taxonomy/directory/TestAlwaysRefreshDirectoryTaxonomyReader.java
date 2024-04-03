@@ -67,7 +67,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     for (String file : dir1.listAll()) {
       if (isExtra(file) == false) {
         // the test framework creates these devious extra files just to chaos test the edge cases
-        commit1.copyFrom(dir1, file, file, IOContext.READ);
+        commit1.copyFrom(dir1, file, file, IOContext.DEFAULT);
       }
     }
 
@@ -103,7 +103,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     // copy all index files from commit1
     for (String file : commit1.listAll()) {
       if (isExtra(file) == false) {
-        dir1.copyFrom(commit1, file, file, IOContext.READ);
+        dir1.copyFrom(commit1, file, file, IOContext.DEFAULT);
       }
     }
 

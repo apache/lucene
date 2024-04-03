@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -119,6 +120,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 public class TestStressNRTReplication extends LuceneTestCase {
+  public static final String CRASH_MSG_PREFIX = "will crash after ";
 
   // Test evilness controls:
 
@@ -256,7 +258,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     if (TEST_NIGHTLY) {
       runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 120, 240);
     } else {
-      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 45, 120);
+      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 20, 60);
     }
 
     System.out.println("TEST: will run for " + runTimeSec + " sec");
@@ -642,6 +644,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long initInfosVersion = -1;
     Pattern logTimeStart = Pattern.compile("^[0-9.]+s .*");
     boolean willCrash = false;
+    Optional<Thread> subprocessKiller = Optional.empty();
 
     while (true) {
       String l = r.readLine();
@@ -701,8 +704,40 @@ public class TestStressNRTReplication extends LuceneTestCase {
         initCommitVersion = Integer.parseInt(l.substring(16).trim());
       } else if (l.startsWith("INFOS VERSION: ")) {
         initInfosVersion = Integer.parseInt(l.substring(15).trim());
-      } else if (l.contains("will crash after")) {
+      } else if (l.contains(CRASH_MSG_PREFIX)) {
         willCrash = true;
+        Pattern crashMsg =
+            Pattern.compile(Pattern.quote(CRASH_MSG_PREFIX) + "\\s*(?<millis>[0-9]+)");
+        var m = crashMsg.matcher(l);
+        if (!m.find()) {
+          throw new AssertionError("Expected the crash message to include the timeout: " + l);
+        }
+        final long deadline =
+            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Integer.parseInt(m.group("millis")));
+        // Fork a new thread that will attempt to terminate the subprocess after a certain delay.
+        // We don't keep track of these "killer" subprocesses; they will end gracefully if the
+        // subprocess is terminated prior to the timeout.
+        subprocessKiller =
+            Optional.of(
+                new Thread(
+                    () -> {
+                      while (System.nanoTime() < deadline && p.isAlive()) {
+                        try {
+                          Thread.sleep(250);
+                        } catch (
+                            @SuppressWarnings("unused")
+                            InterruptedException e) {
+                          // If we do get interrupted, it's likely we're being cleaned up. Do
+                          // proceed immediately then.
+                          break;
+                        }
+                      }
+                      if (p.isAlive()) {
+                        message("now killing process " + p);
+                        p.destroyForcibly();
+                      }
+                    }));
+        subprocessKiller.get().start();
       } else if (l.startsWith("NODE STARTED")) {
         break;
       }
@@ -769,7 +804,15 @@ public class TestStressNRTReplication extends LuceneTestCase {
             + " initInfosVersion="
             + initInfosVersion);
     return new NodeProcess(
-        p, id, tcpPort, pumper, isPrimary, initCommitVersion, initInfosVersion, nodeIsClosing);
+        p,
+        id,
+        tcpPort,
+        pumper,
+        isPrimary,
+        initCommitVersion,
+        initInfosVersion,
+        nodeIsClosing,
+        subprocessKiller);
   }
 
   private void nodeClosed(int id) {

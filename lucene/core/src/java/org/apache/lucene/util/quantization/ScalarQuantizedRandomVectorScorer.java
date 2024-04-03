@@ -76,7 +76,7 @@ public class ScalarQuantizedRandomVectorScorer
     this.queryOffset = correction;
     this.similarity =
         ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-            similarityFunction, scalarQuantizer.getConstantMultiplier());
+            similarityFunction, scalarQuantizer.getConstantMultiplier(), scalarQuantizer.getBits());
     this.values = values;
   }
 

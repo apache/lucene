@@ -54,4 +54,25 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract float[] vectorValue() throws IOException;
+
+  /**
+   * Checks the Vector Encoding of a field
+   *
+   * @throws IllegalStateException if {@code field} has vectors, but using a different encoding
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  public static void checkField(LeafReader in, String field) {
+    FieldInfo fi = in.getFieldInfos().fieldInfo(field);
+    if (fi != null && fi.hasVectorValues() && fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalStateException(
+          "Unexpected vector encoding ("
+              + fi.getVectorEncoding()
+              + ") for field "
+              + field
+              + "(expected="
+              + VectorEncoding.FLOAT32
+              + ")");
+    }
+  }
 }

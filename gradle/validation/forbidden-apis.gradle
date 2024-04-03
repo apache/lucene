@@ -162,5 +162,10 @@ allprojects { prj ->
           file("${resources}/defaults.logging.txt")
       )
     }
+
+    // disable forbidden apis for snowball code
+    if (prj.path == ":lucene:analysis:common") {
+      forbiddenApisMain.exclude("org/tartarus/**")
+    }
   })
 }
