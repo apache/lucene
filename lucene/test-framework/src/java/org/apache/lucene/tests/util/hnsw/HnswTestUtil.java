@@ -26,10 +26,10 @@ import java.util.List;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.Unwrappable;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Utilities for use in tests involving HNSW graphs */
@@ -117,7 +117,7 @@ public class HnswTestUtil {
   public static boolean graphIsConnected(IndexReader reader, String vectorField)
       throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
-      CodecReader codecReader = (CodecReader) Unwrappable.unwrapAll(ctx.reader());
+      CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       HnswGraph graph =
           ((HnswGraphProvider)
                   ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
