@@ -200,9 +200,10 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           final VectorSimilarity vectorDistFunc;
           if (format < FORMAT_PLUGGABLE_SIMILARITY) {
             final byte distanceFunction = input.readByte();
-            final VectorSimilarityFunction legacyFunction = distOrdToFunc(distanceFunction);
-            vectorDistFunc =
-                VectorSimilarity.fromVectorSimilarityFunction((byte) legacyFunction.ordinal());
+            if (distanceFunction < 0 || distanceFunction >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
+              throw new IllegalArgumentException("invalid distance function: " + i);
+            }
+            vectorDistFunc = VectorSimilarity.fromVectorSimilarityFunction(distanceFunction);
           } else {
             final String similarityName = input.readString();
             vectorDistFunc = VectorSimilarity.forName(similarityName);
@@ -306,13 +307,6 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           VectorSimilarityFunction.DOT_PRODUCT,
           VectorSimilarityFunction.COSINE,
           VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
-
-  static VectorSimilarityFunction distOrdToFunc(byte i) {
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
-      throw new IllegalArgumentException("invalid distance function: " + i);
-    }
-    return SIMILARITY_FUNCTIONS.get(i);
-  }
 
   static byte distFuncToOrd(VectorSimilarityFunction func) {
     for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {

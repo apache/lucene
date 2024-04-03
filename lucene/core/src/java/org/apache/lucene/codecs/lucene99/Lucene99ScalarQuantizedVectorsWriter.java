@@ -720,7 +720,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.confidenceInterval = confidenceInterval;
       this.bits = bits;
       this.fieldInfo = fieldInfo;
-      this.normalize = fieldInfo.getVectorSimilarity().requiresQuantizationNormalization();
+      this.normalize =
+          ScalarQuantizer.similarityRequiresNormalization(fieldInfo.getVectorSimilarity());
       this.floatVectors = new ArrayList<>();
       this.infoStream = infoStream;
       this.docsWithField = new DocsWithFieldSet();
@@ -986,7 +987,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      if (vectorSimilarityFunction.requiresQuantizationNormalization()) {
+      if (ScalarQuantizer.similarityRequiresNormalization(vectorSimilarityFunction)) {
         this.normalizedVector = new float[values.dimension()];
       } else {
         this.normalizedVector = null;

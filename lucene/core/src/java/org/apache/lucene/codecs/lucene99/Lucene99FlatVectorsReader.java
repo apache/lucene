@@ -17,7 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readLegacySimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
@@ -38,7 +38,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -191,18 +190,16 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarity fieldInfoSimilarity = info.getVectorSimilarity();
     if (versionMeta < Lucene99FlatVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES) {
-      VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-      VectorSimilarityFunction bwcSimilarity =
-          VectorSimilarity.toVectorSimilarityFunction(fieldInfoSimilarity);
+      VectorSimilarity similarityFunction = readLegacySimilarityFunction(input);
       // Ensure, if there is a comparable legacy similarity, it matches the field's similarity
-      if (Objects.equals(similarityFunction, bwcSimilarity) == false) {
+      if (Objects.equals(similarityFunction.getName(), fieldInfoSimilarity.getName()) == false) {
         throw new IllegalStateException(
             "Inconsistent vector similarity function for field=\""
                 + info.name
                 + "\"; "
-                + similarityFunction
+                + similarityFunction.getName()
                 + " != "
-                + bwcSimilarity);
+                + fieldInfoSimilarity.getName());
       }
     }
     return new FieldEntry(input, vectorEncoding, fieldInfoSimilarity);

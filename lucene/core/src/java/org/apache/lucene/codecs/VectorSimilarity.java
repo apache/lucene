@@ -117,16 +117,6 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     return true;
   }
 
-  /** Returns true if the vector similarity requires normalization if scalar quantized */
-  public boolean requiresQuantizationNormalization() {
-    return false;
-  }
-
-  /** Returns true if the vector similarity requires offset normalization if scalar quantized */
-  public boolean requiresQuantizationOffsetCorrection() {
-    return true;
-  }
-
   /** Scales the score of a vector comparison. */
   public abstract float scaleVectorScore(float score);
 
@@ -391,11 +381,6 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public boolean requiresQuantizationNormalization() {
-      return true;
-    }
-
-    @Override
     public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
       return VectorSimilarityFunction.COSINE;
     }
@@ -517,11 +502,6 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(float[] v1, float[] v2) {
       return scaleVectorScore(squareDistance(v1, v2));
-    }
-
-    @Override
-    public boolean requiresQuantizationOffsetCorrection() {
-      return false;
     }
 
     @Override

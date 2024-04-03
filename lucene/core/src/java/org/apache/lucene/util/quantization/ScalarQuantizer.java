@@ -72,6 +72,15 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public class ScalarQuantizer {
 
+  private static boolean similarityRequiresQuantizationOffsetCorrection(
+      VectorSimilarity similarity) {
+    return similarity.getName().equals(VectorSimilarity.EuclideanDistanceSimilarity.NAME) == false;
+  }
+
+  public static boolean similarityRequiresNormalization(VectorSimilarity similarity) {
+    return similarity.getName().equals(VectorSimilarity.CosineSimilarity.NAME);
+  }
+
   public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 25_000;
   // 20*dimension provides protection from extreme confidence intervals
   // and also prevents humongous allocations
@@ -103,7 +112,6 @@ public class ScalarQuantizer {
    *
    * @param src the source vector
    * @param dest the destination vector
-   * @param similarityFunction the similarity function used to calculate the quantile
    * @return the corrective offset that needs to be applied to the score
    */
   public float quantize(float[] src, byte[] dest, VectorSimilarity similarityFunction) {
@@ -112,10 +120,10 @@ public class ScalarQuantizer {
     for (int i = 0; i < src.length; i++) {
       correction += quantizeFloat(src[i], dest, i);
     }
-    if (similarityFunction.requiresQuantizationOffsetCorrection() == false) {
-      return 0;
+    if (ScalarQuantizer.similarityRequiresQuantizationOffsetCorrection(similarityFunction)) {
+      return correction;
     }
-    return correction;
+    return 0;
   }
 
   private float quantizeFloat(float v, byte[] dest, int destIndex) {
@@ -152,7 +160,8 @@ public class ScalarQuantizer {
    */
   public float recalculateCorrectiveOffset(
       byte[] quantizedVector, ScalarQuantizer oldQuantizer, VectorSimilarity similarityFunction) {
-    if (similarityFunction.requiresQuantizationOffsetCorrection() == false) {
+    if (ScalarQuantizer.similarityRequiresQuantizationOffsetCorrection(similarityFunction)
+        == false) {
       return 0f;
     }
     float correctiveOffset = 0f;
@@ -395,7 +404,7 @@ public class ScalarQuantizer {
     // neighbor scores
     // with the float vector scores
     RandomAccessVectorValues<float[]> randomAccessVectorValues =
-        RandomAccessVectorValues.fromFloatVectorList(sampledDocs);
+        RandomAccessVectorValues.fromFloatVectorList(sampledDocs, floatVectorValues.dimension());
     List<ScoreDocsAndScoreVariance> nearestNeighbors =
         findNearestNeighbors(randomAccessVectorValues, sampledDocs.size(), function);
     float[] bestPair =

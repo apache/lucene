@@ -127,7 +127,7 @@ public class TestVectorUtil extends LuceneTestCase {
       v2[i] = -0.777777f;
     }
     RandomAccessVectorValues<float[]> fvp =
-        RandomAccessVectorValues.fromFloatVectorList(List.of(v1, v2));
+        RandomAccessVectorValues.fromFloatVectorList(List.of(v1, v2), 1536);
     for (VectorSimilarity.VectorComparator vectorSimilarityFunction :
         new VectorSimilarity.VectorComparator[] {
           VectorSimilarity.DotProductSimilarity.INSTANCE.getFloatVectorComparator(fvp),

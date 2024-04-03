@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -36,7 +35,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -94,13 +92,13 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         confidenceInterval == null
             ? ScalarQuantizer.fromVectorsAutoInterval(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(
-                    vectors, similarityFunction.requiresQuantizationNormalization()),
+                    vectors, ScalarQuantizer.similarityRequiresNormalization(similarityFunction)),
                 similarityFunction,
                 numVectors,
                 (byte) bits)
             : ScalarQuantizer.fromVectors(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(
-                    vectors, similarityFunction.requiresQuantizationNormalization()),
+                    vectors, ScalarQuantizer.similarityRequiresNormalization(similarityFunction)),
                 confidenceInterval,
                 numVectors,
                 (byte) bits);
@@ -108,7 +106,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
       float[] vector = vectors.get(i);
-      if (similarityFunction.requiresQuantizationNormalization()) {
+      if (ScalarQuantizer.similarityRequiresNormalization(similarityFunction)) {
         float[] copy = new float[vector.length];
         System.arraycopy(vector, 0, copy, 0, copy.length);
         VectorUtil.l2normalize(copy);
@@ -227,14 +225,5 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         () ->
             new Lucene99HnswScalarQuantizedVectorsFormat(
                 20, 100, 1, 7, false, null, new SameThreadExecutorService()));
-  }
-
-  // Ensures that all expected vector similarity functions are translatable
-  // in the format.
-  public void testVectorSimilarityFuncs() {
-    // This does not necessarily have to be all similarity functions, but
-    // differences should be considered carefully.
-    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
-    assertEquals(Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS, expectedValues);
   }
 }

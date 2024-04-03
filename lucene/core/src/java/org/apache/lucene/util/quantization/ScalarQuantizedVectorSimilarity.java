@@ -35,7 +35,7 @@ public class ScalarQuantizedVectorSimilarity {
       VectorSimilarity similarity,
       ScalarQuantizer scalarQuantizer) {
     float[] processedQuery = query;
-    if (similarity.requiresQuantizationNormalization()) {
+    if (ScalarQuantizer.similarityRequiresNormalization(similarity)) {
       processedQuery = ArrayUtil.copyOfSubArray(query, 0, query.length);
       VectorUtil.l2normalize(processedQuery);
     }
@@ -51,7 +51,6 @@ public class ScalarQuantizedVectorSimilarity {
     // Cosine is an exception as all quantization comparisons are dot products assuming normalized
     // vectors
     VectorSimilarity innerSimilarity = configuredScorer;
-
     if (configuredScorer.getName().equals(VectorSimilarity.CosineSimilarity.NAME)) {
       innerSimilarity = VectorSimilarity.DotProductSimilarity.INSTANCE;
     }

@@ -69,7 +69,8 @@ public interface RandomAccessVectorValues<T> {
     return acceptDocs;
   }
 
-  static RandomAccessVectorValues<float[]> fromFloatVectorList(List<float[]> vectors) {
+  static RandomAccessVectorValues<float[]> fromFloatVectorList(
+      List<float[]> vectors, int dimension) {
     return new RandomAccessVectorValues<>() {
       @Override
       public int size() {
@@ -78,7 +79,7 @@ public interface RandomAccessVectorValues<T> {
 
       @Override
       public int dimension() {
-        return vectors.get(0).length;
+        return dimension;
       }
 
       @Override
@@ -93,7 +94,7 @@ public interface RandomAccessVectorValues<T> {
     };
   }
 
-  static RandomAccessVectorValues<byte[]> fromByteVectorList(List<byte[]> vectors) {
+  static RandomAccessVectorValues<byte[]> fromByteVectorList(List<byte[]> vectors, int dimension) {
     return new RandomAccessVectorValues<>() {
       @Override
       public int size() {
@@ -102,7 +103,7 @@ public interface RandomAccessVectorValues<T> {
 
       @Override
       public int dimension() {
-        return vectors.get(0).length;
+        return dimension;
       }
 
       @Override

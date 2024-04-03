@@ -22,7 +22,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
@@ -38,7 +37,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -175,24 +173,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  // List of vector similarity functions. This list is defined here, in order
-  // to avoid an undesirable dependency on the declaration and order of values
-  // in VectorSimilarityFunction. The list values and order must be identical
-  // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
-  public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
-      List.of(
-          VectorSimilarityFunction.EUCLIDEAN,
-          VectorSimilarityFunction.DOT_PRODUCT,
-          VectorSimilarityFunction.COSINE,
-          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
-
-  public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
-      throws IOException {
+  public static VectorSimilarity readLegacySimilarityFunction(DataInput input) throws IOException {
     int i = input.readInt();
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+    if (i < 0 || i >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
       throw new IllegalArgumentException("invalid distance function: " + i);
     }
-    return SIMILARITY_FUNCTIONS.get(i);
+    return VectorSimilarity.fromVectorSimilarityFunction((byte) i);
   }
 
   public static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
@@ -208,18 +194,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarity fieldInfoSimilarity = info.getVectorSimilarity();
     if (versionMeta < Lucene99HnswVectorsFormat.VERSION_PLUGGABLE_SIMILARITIES) {
-      VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-      VectorSimilarityFunction bwcSimilarity =
-          VectorSimilarity.toVectorSimilarityFunction(fieldInfoSimilarity);
+      VectorSimilarity similarityFunction = readLegacySimilarityFunction(input);
       // Ensure, if there is a comparable legacy similarity, it matches the field's similarity
-      if (Objects.equals(similarityFunction, bwcSimilarity) == false) {
+      if (Objects.equals(similarityFunction.getName(), fieldInfoSimilarity.getName()) == false) {
         throw new IllegalStateException(
             "Inconsistent vector similarity function for field=\""
                 + info.name
                 + "\"; "
-                + similarityFunction
+                + similarityFunction.getName()
                 + " != "
-                + bwcSimilarity);
+                + fieldInfoSimilarity.getName());
       }
     }
     return new FieldEntry(input, vectorEncoding, fieldInfoSimilarity);
