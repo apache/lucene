@@ -29,6 +29,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.Unwrappable;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Utilities for use in tests involving HNSW graphs */
@@ -50,7 +51,6 @@ public class HnswTestUtil {
     List<Integer> sizes = new ArrayList<>();
     FixedBitSet connectedNodes = new FixedBitSet(hnsw.size());
     assert hnsw.size() == hnsw.getNodesOnLevel(0).size();
-    System.out.println("size=" + hnsw.size());
     int total = 0;
     while (total < connectedNodes.length()) {
       int componentSize = traverseConnectedNodes(hnsw, connectedNodes);
@@ -90,7 +90,7 @@ public class HnswTestUtil {
   }
 
   private static int nextClearBit(FixedBitSet bits, int index) {
-    // Depends on the ghost bits being clear!
+    // Does not depend on the ghost bits being clear!
     long[] barray = bits.getBits();
     assert index >= 0 && index < bits.length() : "index=" + index + ", numBits=" + bits.length();
     int i = index >> 6;
@@ -117,13 +117,13 @@ public class HnswTestUtil {
   public static boolean graphIsConnected(IndexReader reader, String vectorField)
       throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
+      CodecReader codecReader = (CodecReader) Unwrappable.unwrapAll(ctx.reader());
       HnswGraph graph =
           ((HnswGraphProvider)
-                  ((PerFieldKnnVectorsFormat.FieldsReader)
-                          ((CodecReader) ctx.reader()).getVectorReader())
+                  ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
                       .getFieldReader(vectorField))
               .getGraph(vectorField);
-      if (HnswTestUtil.isFullyConnected(graph) == false) {
+      if (isFullyConnected(graph) == false) {
         return false;
       }
     }
