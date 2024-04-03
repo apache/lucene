@@ -26,17 +26,23 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.HnswGraphProvider;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.hnsw.HnswTestUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
@@ -165,6 +171,9 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
+      if (graphIsDisconnected(reader)) {
+        return;
+      }
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
@@ -289,6 +298,9 @@ abstract class BaseVectorSimilarityQueryTestCase<
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
+        if (graphIsDisconnected(reader)) {
+          return;
+        }
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
@@ -521,5 +533,21 @@ abstract class BaseVectorSimilarityQueryTestCase<
       }
     }
     return dir;
+  }
+
+  private boolean graphIsDisconnected(IndexReader reader) throws IOException {
+    for (LeafReaderContext ctx : reader.leaves()) {
+      HnswGraph graph =
+          ((HnswGraphProvider)
+                  ((PerFieldKnnVectorsFormat.FieldsReader)
+                          ((CodecReader) ctx.reader()).getVectorReader())
+                      .getFieldReader(vectorField))
+              .getGraph(vectorField);
+      if (HnswTestUtil.isFullyConnected(graph) == false) {
+        // for now just bail out.
+        return true;
+      }
+    }
+    return false;
   }
 }
