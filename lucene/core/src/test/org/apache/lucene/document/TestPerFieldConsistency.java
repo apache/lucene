@@ -26,7 +26,6 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLong;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Random;
-
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
@@ -34,7 +33,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -91,12 +89,14 @@ public class TestPerFieldConsistency extends LuceneTestCase {
 
   private static Field randomKnnVectorField(Random random, String fieldName) {
     VectorSimilarity similarityFunction =
-        RandomPicks.randomFrom(random, new VectorSimilarity[]{
-          VectorSimilarity.DotProductSimilarity.INSTANCE,
-          VectorSimilarity.CosineSimilarity.INSTANCE,
-          VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
-          VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
-        });
+        RandomPicks.randomFrom(
+            random,
+            new VectorSimilarity[] {
+              VectorSimilarity.DotProductSimilarity.INSTANCE,
+              VectorSimilarity.CosineSimilarity.INSTANCE,
+              VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
+              VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE,
+            });
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();

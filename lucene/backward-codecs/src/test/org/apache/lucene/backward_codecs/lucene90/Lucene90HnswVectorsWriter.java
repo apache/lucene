@@ -25,12 +25,12 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -140,7 +140,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
       writeGraph(
           vectorIndex,
           offHeapVectors,
-          fieldInfo.getVectorSimilarityFunction(),
+          fieldInfo.getVectorSimilarity(),
           vectorIndexOffset,
           offsets,
           maxConn,
@@ -232,7 +232,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
   private void writeGraph(
       IndexOutput graphData,
       RandomAccessVectorValues<float[]> vectorValues,
-      VectorSimilarityFunction similarityFunction,
+      VectorSimilarity similarityFunction,
       long graphDataOffset,
       long[] offsets,
       int maxConn,

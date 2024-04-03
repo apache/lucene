@@ -18,9 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import java.util.function.Function;
-import org.apache.lucene.codecs.ByteVectorProvider;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.Bits;
 
@@ -28,23 +25,19 @@ import org.apache.lucene.util.Bits;
 public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
 
   private final VectorSimilarity.VectorScorer scorer;
-  private final int size;
-  private final IntToIntFunction ordToDoc;
-  private final Function<Bits, Bits> acceptOrds;
+  private final RandomAccessVectorValues<?> values;
 
   public RandomVectorScorer(
       RandomAccessVectorValues<?> values, VectorSimilarity.VectorScorer scorer) {
     this.scorer = scorer;
-    this.size = values.size();
-    this.ordToDoc = values::ordToDoc;
-    this.acceptOrds = values::getAcceptOrds;
+    this.values = values;
   }
 
   /**
    * @return the maximum possible ordinal for this scorer
    */
   public int maxOrd() {
-    return size;
+    return values.size();
   }
 
   /**
@@ -54,7 +47,7 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
    * @return the document Id for that vector ordinal
    */
   public int ordToDoc(int ord) {
-    return ordToDoc.apply(ord);
+    return values.ordToDoc(ord);
   }
 
   /**
@@ -64,7 +57,7 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
    * @return the accept docs
    */
   public Bits getAcceptOrds(Bits acceptDocs) {
-    return acceptOrds.apply(acceptDocs);
+    return values.getAcceptOrds(acceptDocs);
   }
 
   @Override
@@ -75,6 +68,13 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
   @Override
   public float compare(int node) throws IOException {
     return scorer.compare(node);
+  }
+
+  /**
+   * @return the underlying {@link RandomAccessVectorValues} for this scorer
+   */
+  public RandomAccessVectorValues<?> getValues() {
+    return values;
   }
 
   /**
@@ -101,9 +101,7 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    VectorSimilarity.VectorScorer scorer =
-        similarityFunction.getVectorScorer(
-            FloatVectorProvider.fromRandomAccessVectorValues(vectors), query);
+    VectorSimilarity.VectorScorer scorer = similarityFunction.getVectorScorer(vectors, query);
     return new RandomVectorScorer(vectors, scorer);
   }
 
@@ -131,9 +129,7 @@ public class RandomVectorScorer implements VectorSimilarity.VectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    VectorSimilarity.VectorScorer scorer =
-        similarityFunction.getVectorScorer(
-            ByteVectorProvider.fromRandomAccessVectorValues(vectors), query);
+    VectorSimilarity.VectorScorer scorer = similarityFunction.getVectorScorer(vectors, query);
     return new RandomVectorScorer(vectors, scorer);
   }
 }

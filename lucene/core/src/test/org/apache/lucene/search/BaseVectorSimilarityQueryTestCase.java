@@ -25,8 +25,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.IntStream;
-
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -387,8 +385,9 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     // Cache scores of vectors
     Map<Integer, Float> scores = new HashMap<>();
+    VectorSimilarity.VectorScorer scorer = compare(queryVector, vectors);
     for (int i = 0; i < numDocs; i++) {
-      float score = compare(queryVector, vectors[i]);
+      float score = scorer.score(i);
       if (score >= resultSimilarity) {
         scores.put(i, score);
       }
@@ -472,15 +471,16 @@ abstract class BaseVectorSimilarityQueryTestCase<
     }
   }
 
-  private float getSimilarity(V[] vectors, V queryVector, int targetVisited) {
+  private float getSimilarity(V[] vectors, V queryVector, int targetVisited) throws IOException {
     assertTrue(targetVisited >= 0 && targetVisited <= numDocs);
     if (targetVisited == 0) {
       return Float.POSITIVE_INFINITY;
     }
 
     float[] scores = new float[numDocs];
+    VectorSimilarity.VectorScorer scorer = compare(queryVector, vectors);
     for (int i = 0; i < numDocs; i++) {
-      scores[i] = compare(queryVector, vectors[i]);
+      scores[i] = scorer.score(i);
     }
     Arrays.sort(scores);
 
@@ -505,10 +505,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
         .intValue();
   }
 
-  @SuppressWarnings("unchecked")
-  V[] getRandomVectors(int numDocs, int dim) {
-    return (V[]) IntStream.range(0, numDocs).mapToObj(i -> getRandomVector(dim)).toArray();
-  }
+  abstract V[] getRandomVectors(int numDocs, int dim);
 
   @SafeVarargs
   final Directory getIndexStore(V... vectors) throws IOException {

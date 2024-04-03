@@ -105,14 +105,8 @@ public interface IndexableFieldType {
   /** The {@link VectorEncoding} of the field's vector value */
   VectorEncoding vectorEncoding();
 
-  /** The {@link VectorSimilarityFunction} of the field's vector value */
-  @Deprecated
-  VectorSimilarityFunction vectorSimilarityFunction();
-
   /** The {@link VectorSimilarity} of the field's vector value */
-  default VectorSimilarity vectorSimilarity() {
-    return VectorSimilarity.fromVectorSimilarityFunction(vectorSimilarityFunction());
-  }
+  VectorSimilarity vectorSimilarity();
 
   /**
    * Attributes for the field type.

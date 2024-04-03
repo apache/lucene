@@ -38,7 +38,6 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -361,12 +360,14 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
       int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarity similarityFunction =
-          RandomPicks.randomFrom(r, new VectorSimilarity[]{
-            VectorSimilarity.DotProductSimilarity.INSTANCE,
-            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
-            VectorSimilarity.CosineSimilarity.INSTANCE,
-            VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE
-          });
+          RandomPicks.randomFrom(
+              r,
+              new VectorSimilarity[] {
+                VectorSimilarity.DotProductSimilarity.INSTANCE,
+                VectorSimilarity.MaxInnerProductSimilarity.INSTANCE,
+                VectorSimilarity.CosineSimilarity.INSTANCE,
+                VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE
+              });
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
       type.setVectorAttributes(dimension, encoding, similarityFunction);
     }

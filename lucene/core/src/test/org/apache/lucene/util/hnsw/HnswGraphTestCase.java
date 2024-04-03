@@ -38,9 +38,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
@@ -140,13 +138,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       throws IOException {
     return switch (getVectorEncoding()) {
       case BYTE -> similarityFunction.getVectorScorer(
-          ByteVectorProvider.fromRandomAccessVectorValues(
-              (RandomAccessVectorValues<byte[]>) vectors),
-          (byte[]) query);
+          (RandomAccessVectorValues<byte[]>) vectors, (byte[]) query);
       case FLOAT32 -> similarityFunction.getVectorScorer(
-          FloatVectorProvider.fromRandomAccessVectorValues(
-              (RandomAccessVectorValues<float[]>) vectors),
-          (float[]) query);
+          (RandomAccessVectorValues<float[]>) vectors, (float[]) query);
     };
   }
 

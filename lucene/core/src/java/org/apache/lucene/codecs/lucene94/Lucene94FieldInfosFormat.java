@@ -201,7 +201,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           if (format < FORMAT_PLUGGABLE_SIMILARITY) {
             final byte distanceFunction = input.readByte();
             final VectorSimilarityFunction legacyFunction = distOrdToFunc(distanceFunction);
-            vectorDistFunc = VectorSimilarity.fromVectorSimilarityFunction((byte) legacyFunction.ordinal());
+            vectorDistFunc =
+                VectorSimilarity.fromVectorSimilarityFunction((byte) legacyFunction.ordinal());
           } else {
             final String similarityName = input.readString();
             vectorDistFunc = VectorSimilarity.forName(similarityName);

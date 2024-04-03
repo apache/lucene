@@ -27,6 +27,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.NamedSPILoader;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Vector similarity function interface. Used in search to compare vectors.
@@ -35,6 +36,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
+  /** The number of the legacy vector function values. */
   public static final int LEGACY_VALUE_LENGTH = 4;
 
   /**
@@ -51,7 +53,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       case 3:
         return MaxInnerProductSimilarity.INSTANCE;
       default:
-        throw new IllegalArgumentException("Unknown vector similarity function ordinal " + vectorSimilarityOrdinal);
+        throw new IllegalArgumentException(
+            "Unknown vector similarity function ordinal " + vectorSimilarityOrdinal);
     }
   }
 
@@ -143,44 +146,44 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   /**
    * Returns a vector scorer for the given target vector.
    *
-   * @param vectorProvider the vector provider for gathering stored vectors
+   * @param vectorValues the vector provider for gathering stored vectors
    * @param target the query target vector
    * @return a vector scorer
    * @throws IOException if an error occurs
    */
-  public abstract VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target)
-      throws IOException;
+  public abstract VectorScorer getVectorScorer(
+      RandomAccessVectorValues<float[]> vectorValues, float[] target) throws IOException;
 
   /**
    * Returns a vector comparator for comparing two float vectors.
    *
-   * @param vectorProvider the vector provider for gathering stored vectors
+   * @param vectorValues the vector provider for gathering stored vectors
    * @return a vector comparator for comparing two stored vectors given their ordinals
    * @throws IOException if an error occurs
    */
-  public abstract VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-      throws IOException;
+  public abstract VectorComparator getFloatVectorComparator(
+      RandomAccessVectorValues<float[]> vectorValues) throws IOException;
 
   /**
    * Returns a vector scorer for the given target vector.
    *
-   * @param byteVectorProvider the byte vector provider for gathering stored vectors
+   * @param vectorValues the byte vector provider for gathering stored vectors
    * @param target the query target vector
    * @return a vector scorer
    * @throws IOException if an error occurs
    */
-  public abstract VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target)
-      throws IOException;
+  public abstract VectorScorer getVectorScorer(
+      RandomAccessVectorValues<byte[]> vectorValues, byte[] target) throws IOException;
 
   /**
    * Returns a vector comparator for comparing two byte vectors.
    *
-   * @param byteVectorProvider the byte vector provider for gathering stored vectors
+   * @param vectorValues the byte vector provider for gathering stored vectors
    * @return a vector comparator for comparing two stored vectors given their ordinals
    * @throws IOException if an error occurs
    */
-  public abstract VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
-      throws IOException;
+  public abstract VectorComparator getByteVectorComparator(
+      RandomAccessVectorValues<byte[]> vectorValues) throws IOException;
 
   /** Vector scorer interface. Used to score a provided query vector with a given target vector. */
   public interface VectorScorer {
@@ -284,23 +287,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return VectorSimilarityFunction.DOT_PRODUCT;
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(byte[] v1, byte[] v2) {
       float denom = (float) (v1.length * (1 << 15));
       return 0.5f + dotProduct(v1, v2) / denom;
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(float[] v1, float[] v2) {
       return scaleVectorScore(dotProduct(v1, v2));
     }
 
     @Override
-    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<float[]> vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -315,10 +315,10 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-        throws IOException {
+    public VectorComparator getFloatVectorComparator(
+        RandomAccessVectorValues<float[]> vectorProvider) throws IOException {
       return new VectorComparator() {
-        final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+        final RandomAccessVectorValues<float[]> vectorProviderCopy = vectorProvider.copy();
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
@@ -334,12 +334,13 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<byte[]> vectorValues, byte[] target) {
       return new VectorScorer() {
         // TODO: this is only needed because of the weird way the legacy similarity function works
         // for byte
         // vectors. We should fix this.
-        private final float denom = (float) (byteVectorProvider.dimension() * (1 << 15));
+        private final float denom = (float) (vectorValues.dimension() * (1 << 15));
 
         @Override
         public float scaleScore(float comparisonResult) {
@@ -348,25 +349,24 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return dotProduct(target, byteVectorProvider.vectorValue(targetVectorOrd));
+          return dotProduct(target, vectorValues.vectorValue(targetVectorOrd));
         }
       };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+    public VectorComparator getByteVectorComparator(RandomAccessVectorValues<byte[]> vectorValues)
         throws IOException {
       return new VectorComparator() {
-        final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+        final RandomAccessVectorValues<byte[]> vectorValuesCopy = vectorValues.copy();
         // TODO: this is only needed because of the weird way the legacy similarity function works
         // for byte
         // vectors. We should fix this.
-        private final float denom = (float) (byteVectorProvider.dimension() * (1 << 15));
+        private final float denom = (float) (vectorValues.dimension() * (1 << 15));
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
-          return dotProduct(
-              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+          return dotProduct(vectorValuesCopy.vectorValue(ord1), vectorValues.vectorValue(ord2));
         }
 
         @Override
@@ -405,22 +405,19 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return (1f + comparisonResult) / 2f;
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(byte[] v1, byte[] v2) {
       return scaleVectorScore(cosine(v1, v2));
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(float[] v1, float[] v2) {
       return scaleVectorScore(cosine(v1, v2));
     }
 
     @Override
-    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<float[]> vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -435,10 +432,10 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-        throws IOException {
+    public VectorComparator getFloatVectorComparator(
+        RandomAccessVectorValues<float[]> vectorProvider) throws IOException {
       return new VectorComparator() {
-        final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+        final RandomAccessVectorValues<float[]> vectorProviderCopy = vectorProvider.copy();
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
@@ -454,7 +451,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<byte[]> vectorValues, byte[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -463,21 +461,21 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return VectorUtil.cosine(target, byteVectorProvider.vectorValue(targetVectorOrd));
+          return VectorUtil.cosine(target, vectorValues.vectorValue(targetVectorOrd));
         }
       };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+    public VectorComparator getByteVectorComparator(RandomAccessVectorValues<byte[]> vectorValues)
         throws IOException {
       return new VectorComparator() {
-        final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+        final RandomAccessVectorValues<byte[]> vectorValuesCopy = vectorValues.copy();
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
           return VectorUtil.cosine(
-              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+              vectorValuesCopy.vectorValue(ord1), vectorValues.vectorValue(ord2));
         }
 
         @Override
@@ -511,16 +509,12 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return 1 / (1 + comparisonResult);
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(byte[] v1, byte[] v2) {
       return scaleVectorScore(squareDistance(v1, v2));
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(float[] v1, float[] v2) {
       return scaleVectorScore(squareDistance(v1, v2));
     }
@@ -531,7 +525,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<float[]> vectorProvider, float[] target) {
       return new VectorScorer() {
 
         @Override
@@ -547,10 +542,10 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-        throws IOException {
+    public VectorComparator getFloatVectorComparator(
+        RandomAccessVectorValues<float[]> vectorProvider) throws IOException {
       return new VectorComparator() {
-        private final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+        private final RandomAccessVectorValues<float[]> vectorProviderCopy = vectorProvider.copy();
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
@@ -566,7 +561,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<byte[]> vectorValues, byte[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -575,21 +571,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return squareDistance(target, byteVectorProvider.vectorValue(targetVectorOrd));
+          return squareDistance(target, vectorValues.vectorValue(targetVectorOrd));
         }
       };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+    public VectorComparator getByteVectorComparator(RandomAccessVectorValues<byte[]> vectorValues)
         throws IOException {
       return new VectorComparator() {
-        private final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+        private final RandomAccessVectorValues<byte[]> vectorValuesCopy = vectorValues.copy();
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
-          return squareDistance(
-              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+          return squareDistance(vectorValuesCopy.vectorValue(ord1), vectorValues.vectorValue(ord2));
         }
 
         @Override
@@ -618,16 +613,12 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
       return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(byte[] v1, byte[] v2) {
       return scaleVectorScore(dotProduct(v1, v2));
     }
 
-    /**
-     * Allow direct comparison of byte vectors. This is only used for testing purposes.
-     */
+    /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
     public float score(float[] v1, float[] v2) {
       return scaleVectorScore(dotProduct(v1, v2));
     }
@@ -638,7 +629,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<float[]> vectorProvider, float[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -653,10 +645,10 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-        throws IOException {
+    public VectorComparator getFloatVectorComparator(
+        RandomAccessVectorValues<float[]> vectorProvider) throws IOException {
       return new VectorComparator() {
-        private final FloatVectorProvider vectorProviderCopy = vectorProvider.copy();
+        private final RandomAccessVectorValues<float[]> vectorProviderCopy = vectorProvider.copy();
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {
@@ -672,7 +664,8 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     }
 
     @Override
-    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target) {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<byte[]> vectorValues, byte[] target) {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -681,21 +674,20 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
 
         @Override
         public float compare(int targetVectorOrd) throws IOException {
-          return dotProduct(target, byteVectorProvider.vectorValue(targetVectorOrd));
+          return dotProduct(target, vectorValues.vectorValue(targetVectorOrd));
         }
       };
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
+    public VectorComparator getByteVectorComparator(RandomAccessVectorValues<byte[]> vectorValues)
         throws IOException {
       return new VectorComparator() {
-        private final ByteVectorProvider byteVectorProviderCopy = byteVectorProvider.copy();
+        private final RandomAccessVectorValues<byte[]> vectorValuesCopy = vectorValues.copy();
 
         @Override
         public float compare(int ord1, int ord2) throws IOException {
-          return dotProduct(
-              byteVectorProviderCopy.vectorValue(ord1), byteVectorProvider.vectorValue(ord2));
+          return dotProduct(vectorValuesCopy.vectorValue(ord1), vectorValues.vectorValue(ord2));
         }
 
         @Override

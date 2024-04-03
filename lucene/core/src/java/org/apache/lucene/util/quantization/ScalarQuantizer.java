@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.HitQueue;
@@ -395,15 +394,14 @@ public class ScalarQuantizer {
     // Now we need to find the best candidate pair by correlating the true quantized nearest
     // neighbor scores
     // with the float vector scores
-    FloatVectorProvider floatVectorProvider =
-        FloatVectorProvider.fromRandomAccessVectorValues(
-            RandomAccessVectorValues.fromFloatVectorList(sampledDocs));
+    RandomAccessVectorValues<float[]> randomAccessVectorValues =
+        RandomAccessVectorValues.fromFloatVectorList(sampledDocs);
     List<ScoreDocsAndScoreVariance> nearestNeighbors =
-        findNearestNeighbors(floatVectorProvider, sampledDocs.size(), function);
+        findNearestNeighbors(randomAccessVectorValues, sampledDocs.size(), function);
     float[] bestPair =
         candidateGridSearch(
             nearestNeighbors,
-            floatVectorProvider,
+            randomAccessVectorValues,
             lowerCandidates,
             upperCandidates,
             function,
@@ -442,7 +440,7 @@ public class ScalarQuantizer {
 
   private static float[] candidateGridSearch(
       List<ScoreDocsAndScoreVariance> nearestNeighbors,
-      FloatVectorProvider vectors,
+      RandomAccessVectorValues<float[]> vectors,
       float[] lowerCandidates,
       float[] upperCandidates,
       VectorSimilarity function,
@@ -496,12 +494,14 @@ public class ScalarQuantizer {
    * @return The top 10 nearest neighbors for each vector from the vectors list
    */
   private static List<ScoreDocsAndScoreVariance> findNearestNeighbors(
-      FloatVectorProvider floatVectorProvider, int size, VectorSimilarity similarityFunction)
+      RandomAccessVectorValues<float[]> randomAccessVectorValues,
+      int size,
+      VectorSimilarity similarityFunction)
       throws IOException {
     List<HitQueue> queues = new ArrayList<>(size);
     queues.add(new HitQueue(10, false));
     VectorSimilarity.VectorComparator comparator =
-        similarityFunction.getFloatVectorComparator(floatVectorProvider);
+        similarityFunction.getFloatVectorComparator(randomAccessVectorValues);
     for (int i = 0; i < size; i++) {
       for (int j = i + 1; j < size; j++) {
         float score = comparator.compare(i, j);
@@ -629,14 +629,14 @@ public class ScalarQuantizer {
     private final OnlineMeanAndVar errors = new OnlineMeanAndVar();
     private final VectorSimilarity function;
     private final List<ScoreDocsAndScoreVariance> nearestNeighbors;
-    private final FloatVectorProvider vectors;
+    private final RandomAccessVectorValues<float[]> vectors;
     private final byte[] query;
     private final byte bits;
 
     public ScoreErrorCorrelator(
         VectorSimilarity function,
         List<ScoreDocsAndScoreVariance> nearestNeighbors,
-        FloatVectorProvider vectors,
+        RandomAccessVectorValues<float[]> vectors,
         byte bits) {
       this.function = function;
       this.nearestNeighbors = nearestNeighbors;
@@ -651,7 +651,7 @@ public class ScalarQuantizer {
       ScalarQuantizedVectorSimilarity scalarQuantizedVectorSimilarity =
           new ScalarQuantizedVectorSimilarity(
               function, quantizer.getConstantMultiplier(), quantizer.bits);
-      QuantizedByteVectorProvider quantizedByteVectorProvider =
+      QuantizedVectorProvider quantizedByteVectorProvider =
           new QuantizedVectorProvider(vectors, quantizer, function);
 
       for (int i = 0; i < nearestNeighbors.size(); i++) {
@@ -676,8 +676,8 @@ public class ScalarQuantizer {
     }
   }
 
-  static final class QuantizedVectorProvider implements QuantizedByteVectorProvider {
-    private final FloatVectorProvider floatVectorProvider;
+  static final class QuantizedVectorProvider implements RandomAccessQuantizedByteVectorValues {
+    private final RandomAccessVectorValues<float[]> vectors;
     private final ScalarQuantizer scalarQuantizer;
     private final VectorSimilarity similarityFunction;
     private final byte[] quantizedVector;
@@ -685,13 +685,13 @@ public class ScalarQuantizer {
     private int docId = -1;
 
     public QuantizedVectorProvider(
-        FloatVectorProvider floatVectorProvider,
+        RandomAccessVectorValues<float[]> vectors,
         ScalarQuantizer scalarQuantizer,
         VectorSimilarity similarityFunction) {
-      this.floatVectorProvider = floatVectorProvider;
+      this.vectors = vectors;
       this.scalarQuantizer = scalarQuantizer;
       this.similarityFunction = similarityFunction;
-      this.quantizedVector = new byte[floatVectorProvider.dimension()];
+      this.quantizedVector = new byte[vectors.dimension()];
     }
 
     @Override
@@ -701,13 +701,13 @@ public class ScalarQuantizer {
 
     @Override
     public int dimension() {
-      return floatVectorProvider.dimension();
+      return vectors.dimension();
     }
 
     @Override
     public byte[] vectorValue(int targetOrd) throws IOException {
       if (targetOrd != docId) {
-        float[] vector = floatVectorProvider.vectorValue(targetOrd);
+        float[] vector = vectors.vectorValue(targetOrd);
         correctionConstant = scalarQuantizer.quantize(vector, quantizedVector, similarityFunction);
         docId = targetOrd;
       }
@@ -717,7 +717,7 @@ public class ScalarQuantizer {
     @Override
     public float getScoreCorrectionConstant(int vectorOrdinal) throws IOException {
       if (vectorOrdinal != docId) {
-        float[] vector = floatVectorProvider.vectorValue(vectorOrdinal);
+        float[] vector = vectors.vectorValue(vectorOrdinal);
         correctionConstant = scalarQuantizer.quantize(vector, quantizedVector, similarityFunction);
         docId = vectorOrdinal;
       }
@@ -725,8 +725,8 @@ public class ScalarQuantizer {
     }
 
     @Override
-    public QuantizedByteVectorProvider copy() {
-      return new QuantizedVectorProvider(floatVectorProvider, scalarQuantizer, similarityFunction);
+    public QuantizedVectorProvider copy() {
+      return new QuantizedVectorProvider(vectors, scalarQuantizer, similarityFunction);
     }
   }
 }

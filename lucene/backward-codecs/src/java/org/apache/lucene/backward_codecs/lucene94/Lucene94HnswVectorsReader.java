@@ -34,7 +34,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -193,10 +192,9 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
   private VectorSimilarity readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-      || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
+    if (similarityFunctionId < 0 || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
       throw new CorruptIndexException(
-        "Invalid similarity function id: " + similarityFunctionId, input);
+          "Invalid similarity function id: " + similarityFunctionId, input);
     }
     return VectorSimilarity.fromVectorSimilarityFunction((byte) similarityFunctionId);
   }
@@ -212,14 +210,14 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarity similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName())) {
+    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName()) == false) {
       throw new IllegalStateException(
-        "Inconsistent vector similarity function for field=\""
-          + info.name
-          + "\"; "
-          + similarityFunction.getName()
-          + " != "
-          + info.getVectorSimilarity().getName());
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction.getName()
+              + " != "
+              + info.getVectorSimilarity().getName());
     }
     return new FieldEntry(input, vectorEncoding, info.getVectorSimilarity());
   }
@@ -351,10 +349,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     final DirectMonotonicReader.Meta meta;
     final long addressesLength;
 
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarity similarityFunction)
+    FieldEntry(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarity similarityFunction)
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;

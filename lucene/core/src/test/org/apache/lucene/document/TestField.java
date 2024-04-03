@@ -29,7 +29,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -699,7 +698,8 @@ public class TestField extends LuceneTestCase {
       Document doc = new Document();
       byte[] b = new byte[5];
       KnnByteVectorField field =
-          new KnnByteVectorField("binary", b, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
+          new KnnByteVectorField(
+              "binary", b, VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE);
       assertNull(field.binaryValue());
       assertArrayEquals(b, field.vectorValue());
       expectThrows(

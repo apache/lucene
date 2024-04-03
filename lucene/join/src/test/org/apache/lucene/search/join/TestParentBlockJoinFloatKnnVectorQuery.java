@@ -17,11 +17,10 @@
 
 package org.apache.lucene.search.join;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -29,7 +28,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
@@ -54,7 +52,9 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
               d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 1}, COSINE));
+        doc.add(
+            getKnnVectorField(
+                "field", new float[] {1, 1}, VectorSimilarity.CosineSimilarity.INSTANCE));
         toAdd.add(doc);
         toAdd.add(makeParent(new int[] {1}));
         w.addDocuments(toAdd);
@@ -78,7 +78,9 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(
+              getKnnVectorField(
+                  "field", new float[] {j, j * j}, VectorSimilarity.CosineSimilarity.INSTANCE));
           doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
           toAdd.add(doc);
           toAdd.add(makeParent(new int[] {j}));
@@ -116,8 +118,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
   }
 
   @Override
-  Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
+  Field getKnnVectorField(String name, float[] vector, VectorSimilarity vectorSimilarityFunction) {
     return new KnnFloatVectorField(name, vector, vectorSimilarityFunction);
   }
 }

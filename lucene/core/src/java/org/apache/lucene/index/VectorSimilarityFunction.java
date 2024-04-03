@@ -30,9 +30,7 @@ import static org.apache.lucene.util.VectorUtil.squareDistance;
 @Deprecated
 public enum VectorSimilarityFunction {
 
-  /** Euclidean distance
-   * @deprecated
-   **/
+  /** Euclidean distance */
   EUCLIDEAN {
     @Override
     @Deprecated

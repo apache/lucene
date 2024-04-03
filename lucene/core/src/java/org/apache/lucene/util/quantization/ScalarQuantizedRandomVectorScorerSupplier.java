@@ -28,13 +28,13 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
 
-  private final QuantizedByteVectorProvider values;
+  private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
   public ScalarQuantizedRandomVectorScorerSupplier(
       VectorSimilarity similarityFunction,
       ScalarQuantizer scalarQuantizer,
-      QuantizedByteVectorProvider values) {
+      RandomAccessQuantizedByteVectorValues values) {
     this.similarity =
         new ScalarQuantizedVectorSimilarity(
             similarityFunction, scalarQuantizer.getConstantMultiplier(), scalarQuantizer.getBits());
@@ -42,7 +42,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
   }
 
   private ScalarQuantizedRandomVectorScorerSupplier(
-      ScalarQuantizedVectorSimilarity similarity, QuantizedByteVectorProvider values) {
+      ScalarQuantizedVectorSimilarity similarity, RandomAccessQuantizedByteVectorValues values) {
     this.similarity = similarity;
     this.values = values;
   }

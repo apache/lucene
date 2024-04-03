@@ -29,10 +29,10 @@ import org.apache.lucene.search.Query;
  * - that is, every dimension of a vector contains an explicit value, stored packed into an array
  * (of type byte[]) whose length is the vector dimension. Values can be retrieved using {@link
  * ByteVectorValues}, which is a forward-only docID-based iterator and also offers random-access by
- * dense ordinal (not docId). {@link VectorSimilarity} may be used to compare vectors at
- * query time (for example as part of result ranking). A KnnByteVectorField may be associated with a
- * search similarity function defining the metric used for nearest-neighbor search among vectors of
- * that field.
+ * dense ordinal (not docId). {@link VectorSimilarity} may be used to compare vectors at query time
+ * (for example as part of result ranking). A KnnByteVectorField may be associated with a search
+ * similarity function defining the metric used for nearest-neighbor search among vectors of that
+ * field.
  *
  * @lucene.experimental
  */
@@ -84,8 +84,7 @@ public class KnnByteVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarity.DotProductSimilarity}) require values to
-   * be constant-length.
+   * some vector similarities require values to be constant-length.
    *
    * @param name field name
    * @param vector value

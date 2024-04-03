@@ -17,11 +17,10 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.ByteVectorProvider;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Quantized vector similarity
@@ -67,9 +66,10 @@ public class ScalarQuantizedVectorSimilarity {
   }
 
   public VectorSimilarity.VectorComparator getByteVectorComparator(
-      QuantizedByteVectorProvider quantizedByteVectorProvider) throws IOException {
+      RandomAccessQuantizedByteVectorValues quantizedByteVectorProvider) throws IOException {
     return new VectorSimilarity.VectorComparator() {
-      private final QuantizedByteVectorProvider provider = quantizedByteVectorProvider.copy();
+      private final RandomAccessQuantizedByteVectorValues provider =
+          quantizedByteVectorProvider.copy();
       private final VectorSimilarity.VectorComparator rawComparator =
           configuredScorer.getByteVectorComparator(quantizedByteVectorProvider);
 
@@ -109,11 +109,11 @@ public class ScalarQuantizedVectorSimilarity {
   }
 
   public VectorSimilarity.VectorScorer getVectorScorer(
-      QuantizedByteVectorProvider quantizedByteVectorProvider,
+      RandomAccessQuantizedByteVectorValues quantizedByteVectorProvider,
       byte[] quantizedQuery,
       float queryCorrection)
       throws IOException {
-    final QuantizedByteVectorProvider providerCopy = quantizedByteVectorProvider.copy();
+    final RandomAccessQuantizedByteVectorValues providerCopy = quantizedByteVectorProvider.copy();
     final VectorSimilarity.VectorScorer rawComparator =
         configuredScorer.getVectorScorer(providerCopy, quantizedQuery);
     return new VectorSimilarity.VectorScorer() {
@@ -150,20 +150,20 @@ public class ScalarQuantizedVectorSimilarity {
     }
 
     @Override
-    public VectorScorer getVectorScorer(FloatVectorProvider vectorProvider, float[] target)
-        throws IOException {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<float[]> vectorProvider, float[] target) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public VectorComparator getFloatVectorComparator(FloatVectorProvider vectorProvider)
-        throws IOException {
+    public VectorComparator getFloatVectorComparator(
+        RandomAccessVectorValues<float[]> vectorProvider) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public VectorScorer getVectorScorer(ByteVectorProvider byteVectorProvider, byte[] target)
-        throws IOException {
+    public VectorScorer getVectorScorer(
+        RandomAccessVectorValues<byte[]> byteVectorProvider, byte[] target) throws IOException {
       return new VectorScorer() {
         @Override
         public float scaleScore(float comparisonResult) {
@@ -179,10 +179,10 @@ public class ScalarQuantizedVectorSimilarity {
     }
 
     @Override
-    public VectorComparator getByteVectorComparator(ByteVectorProvider byteVectorProvider)
-        throws IOException {
+    public VectorComparator getByteVectorComparator(
+        RandomAccessVectorValues<byte[]> byteVectorProvider) throws IOException {
       return new VectorComparator() {
-        private final ByteVectorProvider copy = byteVectorProvider.copy();
+        private final RandomAccessVectorValues<byte[]> copy = byteVectorProvider.copy();
 
         @Override
         public float compare(int vectorOrd1, int vectorOrd2) throws IOException {

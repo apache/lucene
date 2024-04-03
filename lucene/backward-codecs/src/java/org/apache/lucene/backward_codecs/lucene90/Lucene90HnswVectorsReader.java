@@ -192,8 +192,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
   private VectorSimilarity readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
+    if (similarityFunctionId < 0 || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
       throw new CorruptIndexException(
           "Invalid similarity function id: " + similarityFunctionId, input);
     }
@@ -202,7 +201,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorSimilarity similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName())) {
+    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName()) == false) {
       throw new IllegalStateException(
           "Inconsistent vector similarity function for field=\""
               + info.name

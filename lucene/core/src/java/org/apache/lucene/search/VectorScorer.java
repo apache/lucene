@@ -17,13 +17,12 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.ByteVectorProvider;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -128,8 +127,8 @@ abstract class VectorScorer {
     }
   }
 
-  private static ByteVectorProvider fromByteVectorValues(ByteVectorValues values) {
-    return new ByteVectorProvider() {
+  private static RandomAccessVectorValues<byte[]> fromByteVectorValues(ByteVectorValues values) {
+    return new RandomAccessVectorValues<>() {
       @Override
       public byte[] vectorValue(int targetOrd) throws IOException {
         assert values.docID() == targetOrd;
@@ -140,7 +139,7 @@ abstract class VectorScorer {
       }
 
       @Override
-      public ByteVectorProvider copy() throws IOException {
+      public RandomAccessVectorValues<byte[]> copy() throws IOException {
         throw new UnsupportedOperationException();
       }
 
@@ -148,11 +147,16 @@ abstract class VectorScorer {
       public int dimension() {
         return values.dimension();
       }
+
+      @Override
+      public int size() {
+        return values.size();
+      }
     };
   }
 
-  private static FloatVectorProvider fromFloatVectorValues(FloatVectorValues values) {
-    return new FloatVectorProvider() {
+  private static RandomAccessVectorValues<float[]> fromFloatVectorValues(FloatVectorValues values) {
+    return new RandomAccessVectorValues<>() {
       @Override
       public float[] vectorValue(int targetOrd) throws IOException {
         assert values.docID() == targetOrd;
@@ -163,13 +167,18 @@ abstract class VectorScorer {
       }
 
       @Override
-      public FloatVectorProvider copy() throws IOException {
+      public RandomAccessVectorValues<float[]> copy() throws IOException {
         throw new UnsupportedOperationException();
       }
 
       @Override
       public int dimension() {
         return values.dimension();
+      }
+
+      @Override
+      public int size() {
+        return values.size();
       }
     };
   }

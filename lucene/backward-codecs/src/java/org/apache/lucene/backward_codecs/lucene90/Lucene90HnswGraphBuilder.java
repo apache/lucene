@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -48,7 +48,7 @@ public final class Lucene90HnswGraphBuilder {
   private final int beamWidth;
   private final Lucene90NeighborArray scratch;
 
-  private final VectorSimilarityFunction similarityFunction;
+  private final VectorSimilarity similarityFunction;
   private final RandomAccessVectorValues<float[]> vectorValues;
   private final SplittableRandom random;
   private final Lucene90BoundsChecker bound;
@@ -74,7 +74,7 @@ public final class Lucene90HnswGraphBuilder {
    */
   public Lucene90HnswGraphBuilder(
       RandomAccessVectorValues<float[]> vectors,
-      VectorSimilarityFunction similarityFunction,
+      VectorSimilarity similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
@@ -234,9 +234,10 @@ public final class Lucene90HnswGraphBuilder {
       RandomAccessVectorValues<float[]> vectorValues)
       throws IOException {
     bound.set(score);
+    VectorSimilarity.VectorScorer scorer =
+        similarityFunction.getVectorScorer(vectorValues, candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node()[i]));
+      float neighborSimilarity = scorer.compare(neighbors.node()[i]);
       if (bound.check(neighborSimilarity) == false) {
         return false;
       }
@@ -271,10 +272,10 @@ public final class Lucene90HnswGraphBuilder {
       int neighborId = neighbors.node()[i];
       bound.set(neighbors.score()[i]);
       float[] neighborVector = vectorValues.vectorValue(neighborId);
+      VectorSimilarity.VectorScorer scorer =
+          similarityFunction.getVectorScorer(vectorValues, neighborVector);
       for (int j = maxConn; j > i; j--) {
-        float neighborSimilarity =
-            similarityFunction.compare(
-                neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
+        float neighborSimilarity = scorer.compare(neighbors.node()[j]);
         if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]

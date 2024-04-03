@@ -18,14 +18,11 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import org.apache.lucene.codecs.ByteVectorProvider;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.junit.Before;
 
 public class TestFloatVectorSimilarityQuery
@@ -47,6 +44,15 @@ public class TestFloatVectorSimilarityQuery
   }
 
   @Override
+  float[][] getRandomVectors(int numDocs, int dim) {
+    float[][] vectors = new float[numDocs][];
+    for (int i = 0; i < numDocs; i++) {
+      vectors[i] = getRandomVector(dim);
+    }
+    return vectors;
+  }
+
+  @Override
   VectorSimilarity.VectorScorer compare(float[] queryVector, float[][] vectors) throws IOException {
     return function.getVectorScorer(fromFloatArrays(vectors), queryVector);
   }
@@ -57,8 +63,7 @@ public class TestFloatVectorSimilarityQuery
   }
 
   @Override
-  KnnFloatVectorField getVectorField(
-      String name, float[] vector, VectorSimilarity function) {
+  KnnFloatVectorField getVectorField(String name, float[] vector, VectorSimilarity function) {
     return new KnnFloatVectorField(name, vector, function);
   }
 
@@ -89,8 +94,8 @@ public class TestFloatVectorSimilarityQuery
     };
   }
 
-  static FloatVectorProvider fromFloatArrays(float[][] vectors) {
-    return new FloatVectorProvider() {
+  static RandomAccessVectorValues<float[]> fromFloatArrays(float[][] vectors) {
+    return new RandomAccessVectorValues<>() {
       @Override
       public int dimension() {
         return vectors[0].length;
@@ -102,7 +107,12 @@ public class TestFloatVectorSimilarityQuery
       }
 
       @Override
-      public FloatVectorProvider copy() throws IOException {
+      public int size() {
+        return vectors.length;
+      }
+
+      @Override
+      public RandomAccessVectorValues<float[]> copy() throws IOException {
         return this;
       }
     };

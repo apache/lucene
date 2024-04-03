@@ -59,10 +59,12 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         new KnnFloatVectorField(
             "knnFloatField2",
             new float[] {2.2f, -3.2f, -3.1f},
-          VectorSimilarity.DotProductSimilarity.INSTANCE));
+            VectorSimilarity.DotProductSimilarity.INSTANCE));
     document.add(
         new KnnFloatVectorField(
-            "knnFloatField3", new float[] {4.5f, 10.3f, -7.f}, VectorSimilarity.CosineSimilarity.INSTANCE));
+            "knnFloatField3",
+            new float[] {4.5f, 10.3f, -7.f},
+            VectorSimilarity.CosineSimilarity.INSTANCE));
     document.add(
         new KnnFloatVectorField(
             "knnFloatField4",
@@ -72,15 +74,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     document.add(new KnnByteVectorField("knnByteField1", new byte[] {106, 80, 127}));
     document.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {4, 2, 3},  VectorSimilarity.DotProductSimilarity.INSTANCE));
+            "knnByteField2", new byte[] {4, 2, 3}, VectorSimilarity.DotProductSimilarity.INSTANCE));
     document.add(
         new KnnByteVectorField(
-            "knnByteField3", new byte[] {-121, -64, -1}, VectorSimilarity.CosineSimilarity.INSTANCE));
+            "knnByteField3",
+            new byte[] {-121, -64, -1},
+            VectorSimilarity.CosineSimilarity.INSTANCE));
     document.add(
         new KnnByteVectorField(
             "knnByteField4",
             new byte[] {-127, 127, 127},
-          VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
+            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
     iw.addDocument(document);
 
     Document document2 = new Document();
@@ -91,15 +95,19 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         new KnnFloatVectorField(
             "knnFloatField2",
             new float[] {-5.2f, 8.7f, 3.1f},
-          VectorSimilarity.DotProductSimilarity.INSTANCE));
+            VectorSimilarity.DotProductSimilarity.INSTANCE));
     document2.add(
         new KnnFloatVectorField(
-            "knnFloatField3", new float[] {0.2f, -3.2f, 3.1f}, VectorSimilarity.CosineSimilarity.INSTANCE));
+            "knnFloatField3",
+            new float[] {0.2f, -3.2f, 3.1f},
+            VectorSimilarity.CosineSimilarity.INSTANCE));
     document2.add(new KnnFloatVectorField("knnFloatField5", new float[] {2.f, 13.2f, 9.1f}));
     document2.add(new KnnByteVectorField("knnByteField1", new byte[] {1, -2, -30}));
     document2.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {40, 21, 3},  VectorSimilarity.DotProductSimilarity.INSTANCE));
+            "knnByteField2",
+            new byte[] {40, 21, 3},
+            VectorSimilarity.DotProductSimilarity.INSTANCE));
     document2.add(
         new KnnByteVectorField(
             "knnByteField3", new byte[] {9, 2, 3}, VectorSimilarity.CosineSimilarity.INSTANCE));
@@ -107,7 +115,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         new KnnByteVectorField(
             "knnByteField4",
             new byte[] {14, 29, 31},
-          VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
+            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
     iw.addDocument(document2);
 
     Document document3 = new Document();
@@ -116,12 +124,16 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     document3.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
     document3.add(
         new KnnFloatVectorField(
-            "knnFloatField2", new float[] {-8.f, 7.f, -6.f},  VectorSimilarity.DotProductSimilarity.INSTANCE));
+            "knnFloatField2",
+            new float[] {-8.f, 7.f, -6.f},
+            VectorSimilarity.DotProductSimilarity.INSTANCE));
     document3.add(new KnnFloatVectorField("knnFloatField5", new float[] {5.2f, 3.2f, 3.1f}));
     document3.add(new KnnByteVectorField("knnByteField1", new byte[] {-128, 0, 127}));
     document3.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {-1, -2, -3},  VectorSimilarity.DotProductSimilarity.INSTANCE));
+            "knnByteField2",
+            new byte[] {-1, -2, -3},
+            VectorSimilarity.DotProductSimilarity.INSTANCE));
     document3.add(
         new KnnByteVectorField(
             "knnByteField3", new byte[] {4, 2, 3}, VectorSimilarity.CosineSimilarity.INSTANCE));
@@ -129,7 +141,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         new KnnByteVectorField(
             "knnByteField4",
             new byte[] {-4, -2, -128},
-          VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
+            VectorSimilarity.MaxInnerProductSimilarity.INSTANCE));
     document3.add(new KnnByteVectorField("knnByteField5", new byte[] {-120, -2, 3}));
     iw.addDocument(document3);
     iw.commit();

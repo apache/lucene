@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -89,7 +87,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes
     NeighborQueue candidates = new NeighborQueue(numSeed, true);
-    VectorSimilarity.VectorScorer scorer = similarityFunction.getVectorScorer(FloatVectorProvider.fromRandomAccessVectorValues(vectors), query);
+    VectorSimilarity.VectorScorer scorer = similarityFunction.getVectorScorer(vectors, query);
 
     int numVisited = 0;
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking

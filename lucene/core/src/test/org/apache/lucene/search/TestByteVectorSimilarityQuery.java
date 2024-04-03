@@ -18,13 +18,11 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import org.apache.lucene.codecs.ByteVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.junit.Before;
 
 public class TestByteVectorSimilarityQuery
@@ -43,6 +41,15 @@ public class TestByteVectorSimilarityQuery
   @Override
   byte[] getRandomVector(int dim) {
     return TestVectorUtil.randomVectorBytes(dim);
+  }
+
+  @Override
+  byte[][] getRandomVectors(int numDocs, int dim) {
+    byte[][] vectors = new byte[numDocs][];
+    for (int i = 0; i < numDocs; i++) {
+      vectors[i] = getRandomVector(dim);
+    }
+    return vectors;
   }
 
   @Override
@@ -87,8 +94,8 @@ public class TestByteVectorSimilarityQuery
     };
   }
 
-  static ByteVectorProvider fromByteArrays(byte[][] vectors) {
-    return new ByteVectorProvider() {
+  static RandomAccessVectorValues<byte[]> fromByteArrays(byte[][] vectors) {
+    return new RandomAccessVectorValues<>() {
       @Override
       public int dimension() {
         return vectors[0].length;
@@ -100,7 +107,12 @@ public class TestByteVectorSimilarityQuery
       }
 
       @Override
-      public ByteVectorProvider copy() throws IOException {
+      public int size() {
+        return vectors.length;
+      }
+
+      @Override
+      public RandomAccessVectorValues<byte[]> copy() throws IOException {
         return this;
       }
     };

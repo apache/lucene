@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsReader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.VectorSimilarity;
@@ -35,7 +33,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -186,24 +183,23 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
   private VectorSimilarity readSimilarityFunction(DataInput input) throws IOException {
     int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-      || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
+    if (similarityFunctionId < 0 || similarityFunctionId >= VectorSimilarity.LEGACY_VALUE_LENGTH) {
       throw new CorruptIndexException(
-        "Invalid similarity function id: " + similarityFunctionId, input);
+          "Invalid similarity function id: " + similarityFunctionId, input);
     }
     return VectorSimilarity.fromVectorSimilarityFunction((byte) similarityFunctionId);
   }
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorSimilarity similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName())) {
+    if (similarityFunction.getName().equals(info.getVectorSimilarity().getName()) == false) {
       throw new IllegalStateException(
-        "Inconsistent vector similarity function for field=\""
-          + info.name
-          + "\"; "
-          + similarityFunction.getName()
-          + " != "
-          + info.getVectorSimilarity().getName());
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction.getName()
+              + " != "
+              + info.getVectorSimilarity().getName());
     }
     return new FieldEntry(input, info.getVectorSimilarity());
   }

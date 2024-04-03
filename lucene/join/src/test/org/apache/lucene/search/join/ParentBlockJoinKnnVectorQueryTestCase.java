@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -34,7 +35,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -316,7 +316,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
   abstract Field getKnnVectorField(String name, float[] vector);
 
   abstract Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction);
+      String name, float[] vector, VectorSimilarity vectorSimilarityFunction);
 
   private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)
       throws IOException {

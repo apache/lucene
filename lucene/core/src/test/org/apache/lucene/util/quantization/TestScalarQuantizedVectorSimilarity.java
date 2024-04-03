@@ -22,12 +22,12 @@ import static org.apache.lucene.util.quantization.TestScalarQuantizer.randomFloa
 
 import java.io.IOException;
 import java.util.Set;
-import org.apache.lucene.codecs.FloatVectorProvider;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
 
@@ -159,16 +159,16 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       ScalarQuantizedVectorSimilarity quantizedSimilarity,
       ScalarQuantizer scalarQuantizer)
       throws IOException {
-    QuantizedByteVectorProvider quantizedByteVectorProvider =
+    RandomAccessQuantizedByteVectorValues quantizedByteVectorProvider =
         fromQuantized(quantized, storedOffsets);
-    FloatVectorProvider floatVectorProvider = floatVectorProvider(floats);
+    RandomAccessVectorValues<float[]> vectorValues = randomAccessVectorValues(floats);
     byte[] quantizedQuery = new byte[query.length];
     float queryOffset = scalarQuantizer.quantize(query, quantizedQuery, similarityFunction);
     VectorSimilarity.VectorScorer quantizedScorer =
         quantizedSimilarity.getVectorScorer(
             quantizedByteVectorProvider, quantizedQuery, queryOffset);
     VectorSimilarity.VectorScorer rawScorer =
-        similarityFunction.getVectorScorer(floatVectorProvider, query);
+        similarityFunction.getVectorScorer(vectorValues, query);
     for (int i = 0; i < floats.length; i++) {
       float original = rawScorer.score(i);
       float quantizedScore = quantizedScorer.score(i);
@@ -223,19 +223,25 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     };
   }
 
-  private static QuantizedByteVectorProvider fromQuantized(byte[][] quantized, float[] offsets) {
+  private static TestQuantizedByteVectorProvider fromQuantized(
+      byte[][] quantized, float[] offsets) {
     return new TestQuantizedByteVectorProvider(quantized, offsets);
   }
 
-  private static FloatVectorProvider floatVectorProvider(float[][] floats) {
-    return new FloatVectorProvider() {
+  private static RandomAccessVectorValues<float[]> randomAccessVectorValues(float[][] floats) {
+    return new RandomAccessVectorValues<>() {
       @Override
       public float[] vectorValue(int targetOrd) {
         return floats[targetOrd];
       }
 
       @Override
-      public FloatVectorProvider copy() {
+      public int size() {
+        return floats.length;
+      }
+
+      @Override
+      public RandomAccessVectorValues<float[]> copy() {
         return this;
       }
 
@@ -246,7 +252,8 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     };
   }
 
-  private static class TestQuantizedByteVectorProvider implements QuantizedByteVectorProvider {
+  private static class TestQuantizedByteVectorProvider
+      implements RandomAccessQuantizedByteVectorValues {
     private final byte[][] quantized;
     private final float[] offsets;
 
@@ -266,7 +273,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     }
 
     @Override
-    public QuantizedByteVectorProvider copy() {
+    public TestQuantizedByteVectorProvider copy() {
       return new TestQuantizedByteVectorProvider(quantized, offsets);
     }
 
