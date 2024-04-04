@@ -285,6 +285,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Test that the query times out correctly. */
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13272")
   public void testTimeout() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
