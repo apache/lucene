@@ -157,7 +157,14 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
-  
+
+Changes in Runtime Behavior
+---------------------
+
+* GITHUB#13244: IOContext now uses ReadAdvice#RANDOM by default for read
+  operations. An implication is that `MMapDirectory` will use POSIX_MADV_RANDOM
+  on POSIX systems. (Adrien Grand)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 

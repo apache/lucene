@@ -49,7 +49,7 @@ public record IOContext(
    * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
    * another {@link ReadAdvice}.
    */
-  public static final IOContext DEFAULT = new IOContext(ReadAdvice.NORMAL);
+  public static final IOContext DEFAULT = new IOContext(ReadAdvice.RANDOM);
 
   /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
@@ -67,13 +67,10 @@ public record IOContext(
       case FLUSH -> Objects.requireNonNull(
           flushInfo, "flushInfo must not be null if context is FLUSH");
     }
-    if (context == Context.MERGE && readAdvice != ReadAdvice.SEQUENTIAL) {
+    if ((context == Context.FLUSH || context == Context.MERGE)
+        && readAdvice != ReadAdvice.SEQUENTIAL) {
       throw new IllegalArgumentException(
-          "The MERGE context must use the SEQUENTIAL read access advice");
-    }
-    if (context == Context.FLUSH && readAdvice != ReadAdvice.NORMAL) {
-      throw new IllegalArgumentException(
-          "The FLUSH context must use the NORMAL read access advice");
+          "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
     }
   }
 
@@ -84,7 +81,7 @@ public record IOContext(
 
   /** Creates an {@link IOContext} for flushing. */
   public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, ReadAdvice.NORMAL);
+    this(Context.FLUSH, null, flushInfo, ReadAdvice.SEQUENTIAL);
   }
 
   /** Creates an {@link IOContext} for merging. */
