@@ -23,9 +23,9 @@ import java.util.List;
  * Combines scores of subscorers. If a subscorer does not contain the docId, a smoothing score is
  * calculated for that document/subscorer combination.
  */
-public class IndriAndScorer extends IndriDisjunctionScorer {
+public class IndriOrScorer extends IndriDisjunctionScorer {
 
-  protected IndriAndScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode, float boost)
+  protected IndriOrScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode, float boost)
       throws IOException {
     super(weight, subScorers, scoreMode, boost);
   }
@@ -42,20 +42,20 @@ public class IndriAndScorer extends IndriDisjunctionScorer {
   }
 
   private float scoreDoc(List<Scorer> subScorers, int docId) throws IOException {
-    float score = 0;
+    double score = 1;
     for (Scorer scorer : subScorers) {
       int scorerDocId = scorer.docID();
       // If the query exists in the document, score the document
       // Otherwise, compute a smoothing score, which acts like an idf
       // for subqueries/terms
-      float tempScore = 0;
+      double tempScore = 0;
       if (docId == scorerDocId) {
-        tempScore = scorer.score();
+        tempScore = (1 - Math.exp(scorer.score()));
       } else {
-        tempScore = scorer.smoothingScore(docId);
+        tempScore = (1 - Math.exp(scorer.smoothingScore(docId)));
       }
-      score += tempScore;
+      score *= tempScore;
     }
-    return score;
+    return (float) Math.log(1.0 - score);
   }
 }

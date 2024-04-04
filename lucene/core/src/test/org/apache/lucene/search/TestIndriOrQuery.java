@@ -21,7 +21,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
@@ -33,7 +32,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestIndriAndQuery extends LuceneTestCase {
+public class TestIndriOrQuery extends LuceneTestCase {
 
   /** threshold for comparing floats */
   public static final float SCORE_COMP_THRESH = 0.0000f;
@@ -57,31 +56,38 @@ public class TestIndriAndQuery extends LuceneTestCase {
                         random(), MockTokenizer.WHITESPACE, true, MockTokenFilter.ENGLISH_STOPSET))
                 .setSimilarity(sim)
                 .setMergePolicy(newLogMergePolicy()));
+    // Query is "President Washington"
     {
       Document d1 = new Document();
       d1.add(newField("id", "d1", TextField.TYPE_STORED));
-      d1.add(newTextField("body", "President Washington", Field.Store.YES));
+      d1.add(
+          newTextField(
+              "body", "President Washington was the first leader of the US", Field.Store.YES));
       writer.addDocument(d1);
     }
 
     {
       Document d2 = new Document();
       d2.add(newField("id", "d2", TextField.TYPE_STORED));
-      d2.add(newTextField("body", "President Lincoln", Field.Store.YES));
+      d2.add(
+          newTextField(
+              "body",
+              "The president is head of the executive branch of government",
+              Field.Store.YES));
       writer.addDocument(d2);
     }
 
     {
       Document d3 = new Document();
       d3.add(newField("id", "d3", TextField.TYPE_STORED));
-      d3.add(newTextField("body", "George Washington", Field.Store.YES));
+      d3.add(newTextField("body", "George Washington was a general", Field.Store.YES));
       writer.addDocument(d3);
     }
 
     {
       Document d4 = new Document();
       d4.add(newField("id", "d4", TextField.TYPE_STORED));
-      d4.add(newTextField("body", "President Jefferson", Field.Store.YES));
+      d4.add(newTextField("body", "A company or college can have a president", Field.Store.YES));
       writer.addDocument(d4);
     }
 
@@ -104,14 +110,14 @@ public class TestIndriAndQuery extends LuceneTestCase {
     BooleanClause clause1 = new BooleanClause(tq("body", "george"), Occur.SHOULD);
     BooleanClause clause2 = new BooleanClause(tq("body", "washington"), Occur.SHOULD);
 
-    IndriAndQuery q = new IndriAndQuery(Arrays.asList(clause1, clause2));
+    IndriOrQuery q = new IndriOrQuery(Arrays.asList(clause1, clause2));
 
     ScoreDoc[] h = s.search(q, 1000).scoreDocs;
 
     try {
       assertEquals("2 docs should match " + q.toString(), 2, h.length);
     } catch (Error e) {
-      printHits("testSimpleEqualScores1", h, s);
+      printHits("Query: george washington", h, s);
       throw e;
     }
   }
@@ -121,7 +127,7 @@ public class TestIndriAndQuery extends LuceneTestCase {
     BooleanClause clause1 = new BooleanClause(tq("body", "president"), Occur.SHOULD);
     BooleanClause clause2 = new BooleanClause(tq("body", "washington"), Occur.SHOULD);
 
-    IndriAndQuery q = new IndriAndQuery(Arrays.asList(clause1, clause2));
+    IndriOrQuery q = new IndriOrQuery(Arrays.asList(clause1, clause2));
 
     ScoreDoc[] h = s.search(q, 1000).scoreDocs;
 
@@ -150,37 +156,7 @@ public class TestIndriAndQuery extends LuceneTestCase {
       assertTrue(
           "d2 does not have a better score then d3: " + score1 + " >? " + score2, score1 > score2);
     } catch (Error e) {
-      printHits("testSimpleQuery2", h, s);
-      throw e;
-    }
-  }
-
-  public void testBoostQuery() throws Exception {
-
-    BooleanClause clause1 =
-        new BooleanClause(new BoostQuery(tq("body", "president"), 3), Occur.SHOULD);
-    BooleanClause clause2 =
-        new BooleanClause(new BoostQuery(tq("body", "washington"), 1), Occur.SHOULD);
-
-    IndriAndQuery q = new IndriAndQuery(Arrays.asList(clause1, clause2));
-
-    ScoreDoc[] h = s.search(q, 1000).scoreDocs;
-
-    try {
-      assertEquals("all docs should match " + q.toString(), 4, h.length);
-
-      String doc0 = s.doc(h[0].doc).get("id");
-      String doc1 = s.doc(h[1].doc).get("id");
-      String doc2 = s.doc(h[2].doc).get("id");
-      String doc3 = s.doc(h[3].doc).get("id");
-
-      assertEquals("doc0 should be d1: ", "d1", doc0);
-      assertEquals("doc1 should be d3: ", "d2", doc1);
-      assertEquals("doc2 should be d2: ", "d4", doc2);
-      assertEquals("doc3 should be d4: ", "d3", doc3);
-
-    } catch (Error e) {
-      printHits("testBoostQuery", h, s);
+      printHits("Query: president washington", h, s);
       throw e;
     }
   }
@@ -200,9 +176,8 @@ public class TestIndriAndQuery extends LuceneTestCase {
 
     System.err.println("------- " + test + " -------");
 
-    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < h.length; i++) {
-      Document d = storedFields.document(h[i].doc);
+      Document d = searcher.doc(h[i].doc);
       float score = h[i].score;
       System.err.println("#" + i + ": " + score + " - " + d.get("body"));
     }

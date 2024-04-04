@@ -22,43 +22,27 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 
-/** The Weight for IndriAndQuery, used to normalize, score and explain these queries. */
-public class IndriAndWeight extends Weight {
+/** The Weight for IndriOrQuery, used to normalize, score and explain these queries. */
+public class IndriOrWeight extends Weight {
 
+  private final float boost;
   private final ArrayList<Weight> weights;
   private final ScoreMode scoreMode;
-  private final float boost;
 
-  public IndriAndWeight(
-      IndriAndQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
+  public IndriOrWeight(IndriOrQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     super(query);
     this.boost = boost;
     this.scoreMode = scoreMode;
-    weights = new ArrayList<>();
-    // Calculate total boost score so that boost can be normalized
-    float boostSum = 0;
+    this.weights = new ArrayList<>();
     for (BooleanClause c : query) {
-      Query q = c.getQuery();
-      if (q instanceof BoostQuery) {
-        boostSum += ((BoostQuery) q).getBoost();
-      } else {
-        boostSum++;
-      }
-    }
-    for (BooleanClause c : query) {
-      float subBoost = 1.0f;
-      if (c.getQuery() instanceof BoostQuery) {
-        subBoost = ((BoostQuery) c.getQuery()).getBoost() / boostSum;
-      }
-      Weight w = searcher.createWeight(c.getQuery(), scoreMode, subBoost);
+      Weight w = searcher.createWeight(c.getQuery(), scoreMode, 1.0f);
       weights.add(w);
     }
   }
 
   private Scorer getScorer(LeafReaderContext context) throws IOException {
     List<Scorer> subScorers = new ArrayList<>();
-
     for (Weight w : weights) {
       Scorer scorer = w.scorer(context);
       if (scorer != null) {
@@ -69,9 +53,10 @@ public class IndriAndWeight extends Weight {
     if (subScorers.isEmpty()) {
       return null;
     }
+
     Scorer scorer = subScorers.get(0);
     if (subScorers.size() > 1) {
-      scorer = new IndriAndScorer(this, subScorers, scoreMode, boost);
+      scorer = new IndriOrScorer(this, subScorers, scoreMode, boost);
     }
     return scorer;
   }
@@ -106,14 +91,14 @@ public class IndriAndWeight extends Weight {
       Weight w = wIter.next();
       Explanation e = w.explain(context, doc);
       if (e.isMatch()) {
-        subs.add(e);
+        subs.add(Explanation.match(e.getValue(), "log(1 - e^score)", e));
       }
     }
     Scorer scorer = scorer(context);
     if (scorer != null) {
       int advanced = scorer.iterator().advance(doc);
       assert advanced == doc;
-      return Explanation.match(scorer.score(), "sum of:", subs);
+      return Explanation.match(scorer.score(), "log (1 - product of subscores):", subs);
     } else {
       return Explanation.noMatch(
           "Failure to meet condition(s) of required/prohibited clause(s)", subs);

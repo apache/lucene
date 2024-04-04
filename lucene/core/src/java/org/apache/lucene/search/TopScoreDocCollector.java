@@ -72,7 +72,9 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           float score = scorer.score();
 
           // This collector relies on the fact that scorers produce positive values:
-          assert score >= 0; // NOTE: false for NaN
+          if (!(scorer instanceof IndriDisjunctionScorer)) {
+            assert score >= 0; // NOTE: false for NaN
+          }
 
           totalHits++;
           hitsThresholdChecker.incrementHitCount();

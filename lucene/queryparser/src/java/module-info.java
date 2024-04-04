@@ -44,6 +44,7 @@ module org.apache.lucene.queryparser {
   exports org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
   exports org.apache.lucene.queryparser.flexible.standard.parser;
   exports org.apache.lucene.queryparser.flexible.standard.processors;
+  exports org.apache.lucene.queryparser.indri;
   exports org.apache.lucene.queryparser.simple;
   exports org.apache.lucene.queryparser.surround.parser;
   exports org.apache.lucene.queryparser.surround.query;

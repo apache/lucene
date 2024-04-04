@@ -14,39 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.queryparser.indri;
 
-import java.io.IOException;
+/** The domain object for storing an Indri Query Term */
+public class QueryParserTermQuery extends QueryParserQuery {
 
-/**
- * The Indri parent scorer that stores the boost so that IndriScorers can use the boost outside of
- * the term.
- */
-public abstract class IndriScorer extends Scorer {
+  private String term;
 
-  private float boost;
-
-  protected IndriScorer(Weight weight, float boost) {
-    super(weight);
-    this.boost = boost;
+  public String getTerm() {
+    return term;
   }
 
-  @Override
-  public abstract DocIdSetIterator iterator();
-
-  @Override
-  public abstract float getMaxScore(int upTo) throws IOException;
-
-  @Override
-  public abstract float score() throws IOException;
-
-  @Override
-  public abstract float smoothingScore(int docId) throws IOException;
-
-  @Override
-  public abstract int docID();
-
-  public float getBoost() {
-    return this.boost;
+  public void setTerm(String term) {
+    this.term = term;
   }
 }
