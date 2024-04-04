@@ -68,7 +68,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
       TermVectorsWriter writer =
           codec
               .termVectorsFormat()
-              .vectorsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+              .vectorsWriter(state.directory, state.segmentInfo, state.context);
       try {
         reader.checkIntegrity();
         for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {

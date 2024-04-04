@@ -103,7 +103,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     StoredFieldsWriter sortWriter =
         codec
             .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+            .fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
       CopyVisitor visitor = new CopyVisitor(sortWriter);
