@@ -152,6 +152,11 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
+    return dotProduct(a, b);
+  }
+
+  @Override
   public float cosine(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;

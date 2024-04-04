@@ -24,7 +24,6 @@ import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -157,7 +156,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
-    List<FieldInfo> valuesTemp = new ArrayList<>();
+    List<FieldInfo> valuesTemp = new ArrayList<>(infos.length);
     byNumber = new FieldInfo[size];
     for (int i = 0; i < size; i++) {
       byNumber[i] = byNumberTemp[i];
@@ -165,8 +164,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         valuesTemp.add(byNumberTemp[i]);
       }
     }
-    values =
-        Collections.unmodifiableCollection(Arrays.asList(valuesTemp.toArray(new FieldInfo[0])));
+    values = Collections.unmodifiableCollection(valuesTemp);
   }
 
   /**
