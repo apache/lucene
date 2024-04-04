@@ -94,6 +94,8 @@ API Changes
 
 * GITHUB#13242: Replace `IOContext.READ` with `IOContext.DEFAULT`. (Adrien Grand)
 
+* GITHUB#13261: Convert `BooleanClause` class to record class. (Pulkit Gupta)
+
 New Features
 ---------------------
 
