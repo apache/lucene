@@ -40,6 +40,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -70,7 +71,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Flat formats are used to randomly access vectors from their node ID that is stored
               // in the HNSW graph.
-              IOContext.RANDOM);
+              state.context.withReadAdvice(ReadAdvice.RANDOM));
       success = true;
     } finally {
       if (success == false) {

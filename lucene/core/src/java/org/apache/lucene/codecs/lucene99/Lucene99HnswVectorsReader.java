@@ -43,6 +43,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -104,7 +105,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               versionMeta,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-              IOContext.RANDOM);
+              state.context.withReadAdvice(ReadAdvice.RANDOM));
       success = true;
     } finally {
       if (success == false) {
