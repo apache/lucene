@@ -257,6 +257,9 @@ Improvements
 * GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
+* GITHUB#12966: Move most of the responsibility from TaxonomyFacets implementations to TaxonomyFacets itself.
+  This reduces code duplication and enables future development. (Stefan Vodita)
+
 Optimizations
 ---------------------
 
@@ -285,6 +288,9 @@ Optimizations
 * GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
   IntersectVisitor::visit(int). (Anton Hägerstrand)
 
+* GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
+  could. (Stefan Vodita)
+
 Bug Fixes
 ---------------------
 
@@ -304,6 +310,8 @@ Bug Fixes
 * GITHUB#13204: Fix equals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
 
 * GITHUB#13206: Subtract deleted file size from the cache size of NRTCachingDirectory. (Jean-François Boeuf)
+
+* GITHUB#12966: Aggregation facets no longer assume that aggregation values are positive. (Stefan Vodita)
 
 Build
 ---------------------
