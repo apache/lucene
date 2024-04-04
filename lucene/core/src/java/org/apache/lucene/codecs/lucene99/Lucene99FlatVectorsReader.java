@@ -38,7 +38,9 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -66,7 +68,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               state,
               versionMeta,
               Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              // Flat formats are used to randomly access vectors from their node ID that is stored
+              // in the HNSW graph.
+              state.context.withReadAdvice(ReadAdvice.RANDOM));
       success = true;
     } finally {
       if (success == false) {
@@ -102,11 +107,15 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
+      SegmentReadState state,
+      int versionMeta,
+      String fileExtension,
+      String codecName,
+      IOContext context)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
+    IndexInput in = state.directory.openInput(fileName, context);
     boolean success = false;
     try {
       int versionVectorData =

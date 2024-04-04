@@ -179,6 +179,7 @@ record's fields are only available with accessor methods. Some code may need to 
 access the members using method calls instead of field accesses. Affected classes:
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
+- `BooleanClause` (GITHUB#13261)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
 

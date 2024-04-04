@@ -18,7 +18,10 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.logging.Logger;
+import org.apache.lucene.store.ReadAdvice;
 
 /** Some useful constants. */
 public final class Constants {
@@ -151,6 +154,16 @@ public final class Constants {
     // everyone else is slow, until proven otherwise by benchmarks
     return false;
   }
+
+  /**
+   * The default {@link ReadAdvice} used for opening index files. It will be {@link
+   * ReadAdvice#RANDOM} by default, unless set by system property {@code
+   * org.apache.lucene.store.defaultReadAdvice}.
+   */
+  public static final ReadAdvice DEFAULT_READADVICE =
+      Optional.ofNullable(getSysProp("org.apache.lucene.store.defaultReadAdvice"))
+          .map(a -> ReadAdvice.valueOf(a.toUpperCase(Locale.ROOT)))
+          .orElse(ReadAdvice.RANDOM);
 
   private static String getSysProp(String property) {
     try {
