@@ -97,4 +97,24 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         Constants.LINUX || Constants.MAC_OS_X,
         MMapDirectory.supportsMadvise());
   }
+
+  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  public void testWithNormal() throws Exception {
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (final IndexInput in =
+          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
+      }
+    }
+  }
 }

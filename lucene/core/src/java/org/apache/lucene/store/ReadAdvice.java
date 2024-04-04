@@ -19,9 +19,14 @@ package org.apache.lucene.store;
 /** Advice regarding the read access pattern. */
 public enum ReadAdvice {
   /**
-   * Data may be read in a random-access fashion, either by taking advantage of {@link
-   * IndexInput#seek(long)} or of the {@link RandomAccessInput} abstraction. This is the default
-   * {@link ReadAdvice} for reading index files.
+   * Normal behavior. Data is expected to be read mostly sequentially. The system is expected to
+   * cache the hottest pages.
+   */
+  NORMAL,
+  /**
+   * Data is expected to be read in a random-access fashion, either by {@link IndexInput#seek(long)
+   * seeking} often and reading relatively short sequences of bytes at once, or by reading data
+   * through the {@link RandomAccessInput} abstraction in random order.
    */
   RANDOM,
   /**

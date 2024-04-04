@@ -49,7 +49,7 @@ public record IOContext(
    * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
    * another {@link ReadAdvice}.
    */
-  public static final IOContext DEFAULT = new IOContext(ReadAdvice.NORMAL);
+  public static final IOContext DEFAULT = new IOContext(ReadAdvice.RANDOM);
 
   /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
