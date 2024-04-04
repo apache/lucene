@@ -163,7 +163,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       FieldsIndexReader fieldsIndexReader =
           new FieldsIndexReader(
-              d, si.name, segmentSuffix, INDEX_EXTENSION, INDEX_CODEC_NAME, si.getId(), metaIn);
+              d,
+              si.name,
+              segmentSuffix,
+              INDEX_EXTENSION,
+              INDEX_CODEC_NAME,
+              si.getId(),
+              metaIn,
+              context);
       indexReader = fieldsIndexReader;
       maxPointer = fieldsIndexReader.getMaxPointer();
 

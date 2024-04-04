@@ -159,7 +159,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -206,10 +206,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorEncoding.values()[encodingId];
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
+    }
+    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -257,6 +266,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }
@@ -285,6 +297,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }
