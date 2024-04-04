@@ -68,9 +68,9 @@ public record BooleanClause(Query query, Occur occur) {
   }
 
   /** Constructs a BooleanClause. */
-  public BooleanClause(Query query, Occur occur) {
-    this.query = Objects.requireNonNull(query, "Query must not be null");
-    this.occur = Objects.requireNonNull(occur, "Occur must not be null");
+  public BooleanClause {
+    Objects.requireNonNull(query, "Query must not be null");
+    Objects.requireNonNull(occur, "Occur must not be null");
   }
 
   public boolean isProhibited() {
