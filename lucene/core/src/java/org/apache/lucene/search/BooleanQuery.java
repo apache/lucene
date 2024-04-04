@@ -153,7 +153,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     clauseSets.put(Occur.FILTER, new HashSet<>());
     clauseSets.put(Occur.MUST_NOT, new HashSet<>());
     for (BooleanClause clause : clauses) {
-      clauseSets.get(clause.getOccur()).add(clause.getQuery());
+      clauseSets.get(clause.occur()).add(clause.query());
     }
   }
 
@@ -184,8 +184,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   boolean isTwoClausePureDisjunctionWithTerms() {
     return clauses.size() == 2
         && isPureDisjunction()
-        && clauses.get(0).getQuery() instanceof TermQuery
-        && clauses.get(1).getQuery() instanceof TermQuery;
+        && clauses.get(0).query() instanceof TermQuery
+        && clauses.get(1).query() instanceof TermQuery;
   }
 
   /**
@@ -197,7 +197,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     BooleanQuery.Builder newQuery = new BooleanQuery.Builder();
     Query[] queries = new Query[3];
     for (int i = 0; i < clauses.size(); i++) {
-      TermQuery termQuery = (TermQuery) clauses.get(i).getQuery();
+      TermQuery termQuery = (TermQuery) clauses.get(i).query();
       // Optimization will count term query several times so use cache to avoid multiple terms
       // dictionary lookups
       if (termQuery.getTermStates() == null) {
@@ -235,7 +235,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
             || (clauseSets.get(Occur.MUST).size() + clauseSets.get(Occur.FILTER).size() == 0);
 
     for (BooleanClause clause : clauses) {
-      Query query = clause.getQuery();
+      Query query = clause.query();
       // NOTE: rewritingNoScoring() should not call rewrite(), otherwise this
       // method could run in exponential time with the depth of the query as
       // every new level would rewrite 2x more than its parent level.
@@ -249,7 +249,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (rewritten instanceof BooleanQuery) {
         rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
       }
-      BooleanClause.Occur occur = clause.getOccur();
+      BooleanClause.Occur occur = clause.occur();
       if (occur == Occur.SHOULD && keepShould == false) {
         // ignore clause
         actuallyRewritten = true;
@@ -287,11 +287,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // optimize 1-clause queries
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
-      Query query = c.getQuery();
-      if (minimumNumberShouldMatch == 1 && c.getOccur() == Occur.SHOULD) {
+      Query query = c.query();
+      if (minimumNumberShouldMatch == 1 && c.occur() == Occur.SHOULD) {
         return query;
       } else if (minimumNumberShouldMatch == 0) {
-        switch (c.getOccur()) {
+        switch (c.occur()) {
           case SHOULD:
           case MUST:
             return query;
@@ -313,8 +313,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
       boolean actuallyRewritten = false;
       for (BooleanClause clause : this) {
-        Query query = clause.getQuery();
-        BooleanClause.Occur occur = clause.getOccur();
+        Query query = clause.query();
+        BooleanClause.Occur occur = clause.occur();
         Query rewritten;
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
@@ -396,7 +396,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         builder.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
         for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.FILTER) {
+          if (clause.occur() != Occur.FILTER) {
             builder.add(clause);
           }
         }
@@ -420,9 +420,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         int minShouldMatch = getMinimumNumberShouldMatch();
 
         for (BooleanClause clause : clauses) {
-          if (intersection.contains(clause.getQuery())) {
-            if (clause.getOccur() == Occur.SHOULD) {
-              builder.add(new BooleanClause(clause.getQuery(), Occur.MUST));
+          if (intersection.contains(clause.query())) {
+            if (clause.occur() == Occur.SHOULD) {
+              builder.add(new BooleanClause(clause.query(), Occur.MUST));
               minShouldMatch--;
             }
           } else {
@@ -459,7 +459,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           builder.add(query, Occur.SHOULD);
         }
         for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.SHOULD) {
+          if (clause.occur() != Occur.SHOULD) {
             builder.add(clause);
           }
         }
@@ -491,7 +491,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           builder.add(query, Occur.MUST);
         }
         for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.MUST) {
+          if (clause.occur() != Occur.MUST) {
             builder.add(clause);
           }
         }
@@ -517,7 +517,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           // ignore SHOULD clause for now
           BooleanQuery.Builder builder = new BooleanQuery.Builder();
           for (BooleanClause clause : clauses) {
-            switch (clause.getOccur()) {
+            switch (clause.occur()) {
               case FILTER:
               case MUST_NOT:
                 builder.add(clause);
@@ -555,8 +555,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
       for (BooleanClause clause : clauses) {
-        if (clause.getOccur() == Occur.SHOULD && clause.getQuery() instanceof BooleanQuery) {
-          BooleanQuery innerQuery = (BooleanQuery) clause.getQuery();
+        if (clause.occur() == Occur.SHOULD && clause.query() instanceof BooleanQuery) {
+          BooleanQuery innerQuery = (BooleanQuery) clause.query();
           if (innerQuery.isPureDisjunction()) {
             actuallyRewritten = true;
             for (BooleanClause innerClause : innerQuery.clauses()) {
@@ -586,8 +586,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         if (shoulds.size() == minimumNumberShouldMatch) {
           BooleanQuery.Builder builder = new BooleanQuery.Builder();
           for (BooleanClause clause : clauses) {
-            if (clause.getOccur() == Occur.SHOULD) {
-              builder.add(clause.getQuery(), Occur.MUST);
+            if (clause.occur() == Occur.SHOULD) {
+              builder.add(clause.query(), Occur.MUST);
             } else {
               builder.add(clause);
             }
@@ -631,9 +631,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     int i = 0;
     for (BooleanClause c : this) {
-      buffer.append(c.getOccur().toString());
+      buffer.append(c.occur().toString());
 
-      Query subQuery = c.getQuery();
+      Query subQuery = c.query();
       if (subQuery instanceof BooleanQuery) { // wrap sub-bools in parens
         buffer.append("(");
         buffer.append(subQuery.toString(field));

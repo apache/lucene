@@ -474,7 +474,7 @@ public class TestBooleanQuery extends LuceneTestCase {
       throws IOException {
     final BooleanQuery.Builder bq2Builder = new BooleanQuery.Builder();
     for (BooleanClause c : bq) {
-      if (c.getOccur() != Occur.FILTER) {
+      if (c.occur() != Occur.FILTER) {
         bq2Builder.add(c);
       }
     }
