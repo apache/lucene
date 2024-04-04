@@ -241,6 +241,8 @@ Improvements
   implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
   executor is provided. (Ben Trent)
 
+* GITHUB#13239: Upgrade icu4j to version 74.2. (Robert Muir)
+
 * GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
