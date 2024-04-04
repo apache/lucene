@@ -150,8 +150,8 @@ public class TestTermRangeQuery extends LuceneTestCase {
     final Set<String> allowedTerms = asSet(terms);
     assertEquals(allowedTerms.size(), bq.clauses().size());
     for (BooleanClause c : bq.clauses()) {
-      assertTrue(c.getQuery() instanceof TermQuery);
-      final TermQuery tq = (TermQuery) c.getQuery();
+      assertTrue(c.query() instanceof TermQuery);
+      final TermQuery tq = (TermQuery) c.query();
       final String term = tq.getTerm().text();
       assertTrue("invalid term: " + term, allowedTerms.contains(term));
       allowedTerms.remove(term); // remove to fail on double terms
