@@ -78,6 +78,12 @@ Optimizations
 * GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
   IntersectVisitor::visit(int). (Anton Hägerstrand)
 
+* GITHUB#13222: Vector data files - including quantized vectors, HNSW graphs,
+  stored fields data files and term vectors data files now advise the
+  underlying `Directory` to optimize for random-access. On recent Java versions
+  (>= 21) and POSIX systems, `MMapDirectory` would use MADV_RANDOM for these
+  files under the hood. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 

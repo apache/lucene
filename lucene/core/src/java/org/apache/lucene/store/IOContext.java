@@ -132,8 +132,22 @@ public class IOContext {
     this.mergeInfo = ctxt.mergeInfo;
     this.flushInfo = ctxt.flushInfo;
     this.readOnce = readOnce;
-    this.randomAccess = ctxt.randomAccess;
+    this.randomAccess = false;
     this.load = false;
+  }
+
+  /**
+   * Return an updated {@link IOContext} that has {@link IOContext#randomAccess} set to true if
+   * {@link IOContext#context} is {@link Context#READ} or {@link Context#DEFAULT}. Otherwise, this
+   * returns this instance. This helps preserve sequential access for merging, which is always the
+   * right choice, while allowing {@link IndexInput}s open for searching to use random access.
+   */
+  public IOContext withRandomAccess() {
+    if (context == Context.READ || context == Context.DEFAULT) {
+      return RANDOM;
+    } else {
+      return this;
+    }
   }
 
   @Override
