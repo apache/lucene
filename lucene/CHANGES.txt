@@ -234,6 +234,8 @@ Improvements
   implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
   executor is provided. (Ben Trent)
 
+* GITHUB#13239: Upgrade icu4j to version 74.2. (Robert Muir)
+
 Optimizations
 ---------------------
 
