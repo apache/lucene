@@ -220,6 +220,9 @@ New Features
   This may improve paging logic especially when large segments are merged under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
+* GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
+  to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
 Improvements
 ---------------------
 
@@ -239,6 +242,11 @@ Improvements
 * GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
   implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
   executor is provided. (Ben Trent)
+
+* GITHUB#13239: Upgrade icu4j to version 74.2. (Robert Muir)
+
+* GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
 Optimizations
 ---------------------
@@ -264,6 +272,9 @@ Optimizations
 
 * GITHUB#11888: Binary search the BlockTree terms dictionary entries when all suffixes have the same length
   in a leaf block, speeding up cases like primary key lookup on an id field when all ids are the same length. (zhouhui)
+
+* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
+  IntersectVisitor::visit(int). (Anton Hägerstrand)
 
 Bug Fixes
 ---------------------

@@ -1,7 +1,7 @@
 {
-    "lucene/analysis/icu/src/data/uax29/Default.rbbi": "71bfaee5e81ac272aff828d1e44d0612be1b8363",
-    "lucene/analysis/icu/src/data/uax29/MyanmarSyllable.rbbi": "4c6817658b454add5ec1f9ac8c0015ce8eb3b5f2",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "50fa00b5e1f40da5dfe3f0b9e49ab5612dfd4a0e",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "1034111656380fbeb08e80ad98983f575a6f07fd",
-    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
+    "lucene/analysis/icu/src/data/uax29/Default.rbbi": "b89c0b5cd1fe1612ed547f9ea4650306ff3d1bc7",
+    "lucene/analysis/icu/src/data/uax29/MyanmarSyllable.rbbi": "9805f3266ab696be901d817661acda37a6650c44",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "2d086e1ab46ea76e2c65f993429fa61f8cae7b13",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "67ef1f8f217708f533cc576ae6adb683cc8c8cfc",
+    "property:icuConfig": "com.ibm.icu:icu4j:74.2"
 }
