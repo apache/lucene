@@ -899,7 +899,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
 
     ReadBytesDirectoryWrapper readTrackingDir = new ReadBytesDirectoryWrapper(dir);
     CompoundDirectory compoundDir =
-        si.getCodec().compoundFormat().getCompoundReader(readTrackingDir, si, IOContext.READ);
+        si.getCodec().compoundFormat().getCompoundReader(readTrackingDir, si, IOContext.DEFAULT);
     compoundDir.checkIntegrity();
     Map<String, FixedBitSet> readBytes = readTrackingDir.getReadBytes();
     assertEquals(createdFiles, readBytes.keySet());

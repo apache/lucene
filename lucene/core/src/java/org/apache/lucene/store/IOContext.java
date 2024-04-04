@@ -16,11 +16,12 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * IOContext holds additional details on the merge/search context. A IOContext object can never be
- * initialized as null as passed as a parameter to either {@link
+ * IOContext holds additional details on the merge/search context. An IOContext object can never be
+ * passed as a {@code null} parameter to either {@link
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
  *
@@ -36,22 +37,25 @@ public record IOContext(
    * Context is a enumerator which specifies the context in which the Directory is being used for.
    */
   public enum Context {
+    /** Context for reads and writes that are associated with a merge. */
     MERGE,
-    READ,
+    /** Context for writes that are associated with a segment flush. */
     FLUSH,
+    /** Default context, can be used for reading or writing. */
     DEFAULT
   };
 
-  public static final IOContext DEFAULT =
-      new IOContext(Context.DEFAULT, null, null, ReadAdvice.NORMAL);
+  /**
+   * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
+   * another {@link ReadAdvice}.
+   */
+  public static final IOContext DEFAULT = new IOContext(ReadAdvice.NORMAL);
 
+  /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
-  public static final IOContext READ = new IOContext(ReadAdvice.NORMAL);
-
-  public static final IOContext PRELOAD = new IOContext(ReadAdvice.RANDOM_PRELOAD);
-
-  public static final IOContext RANDOM = new IOContext(ReadAdvice.RANDOM);
+  private static final IOContext[] DEFAULT_READADVICE_CACHE =
+      Arrays.stream(ReadAdvice.values()).map(IOContext::new).toArray(IOContext[]::new);
 
   @SuppressWarnings("incomplete-switch")
   public IOContext {
@@ -67,25 +71,40 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The MERGE context must use the SEQUENTIAL read access advice");
     }
-    if ((context == Context.FLUSH || context == Context.DEFAULT)
-        && readAdvice != ReadAdvice.NORMAL) {
+    if (context == Context.FLUSH && readAdvice != ReadAdvice.NORMAL) {
       throw new IllegalArgumentException(
-          "The FLUSH and DEFAULT contexts must use the NORMAL read access advice");
+          "The FLUSH context must use the NORMAL read access advice");
     }
   }
 
+  /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
   private IOContext(ReadAdvice accessAdvice) {
-    this(Context.READ, null, null, accessAdvice);
+    this(Context.DEFAULT, null, null, accessAdvice);
   }
 
-  /** Creates an IOContext for flushing. */
+  /** Creates an {@link IOContext} for flushing. */
   public IOContext(FlushInfo flushInfo) {
     this(Context.FLUSH, null, flushInfo, ReadAdvice.NORMAL);
   }
 
-  /** Creates an IOContext for merging. */
+  /** Creates an {@link IOContext} for merging. */
   public IOContext(MergeInfo mergeInfo) {
     // Merges read input segments sequentially.
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
+  }
+
+  /**
+   * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
+   * Context} is a {@link Context#DEFAULT} context, otherwise return this existing instance. This
+   * helps preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right
+   * choice, while allowing {@link IndexInput}s open for searching to use arbitrary {@link
+   * ReadAdvice}s.
+   */
+  public IOContext withReadAdvice(ReadAdvice advice) {
+    if (context == Context.DEFAULT) {
+      return DEFAULT_READADVICE_CACHE[advice.ordinal()];
+    } else {
+      return this;
+    }
   }
 }

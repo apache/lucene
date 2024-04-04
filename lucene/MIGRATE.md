@@ -27,6 +27,10 @@
 
 Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
 
+### Romanian analysis
+
+RomanianAnalyzer now works with Romanian in its modern unicode form, and normalizes cedilla forms to forms with commas. Both forms are still in use in "the wild": you should reindex Romanian documents.
+
 ### IndexWriter requires a parent document field in order to use index sorting with document blocks (GITHUB#12829)
 
 For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
@@ -181,9 +185,16 @@ access the members using method calls instead of field accesses. Affected classe
 The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
 enum.
 
-### IOContext.LOAD renamed to IOContext.PRELOAD
+### IOContext.LOAD and IOContext.READ removed
 
-`IOContext#LOAD` has been replaced with `IOContext#PRELOAD`.
+`IOContext#LOAD` has been removed, it should be replaced with
+`ioContext.withReadAdvice(ReadAdvice.RANDOM_PRELOAD)`.
+
+`IOContext.READ` has been removed, it should be replaced with `IOContext.DEFAULT`.
+
+### TimeLimitingCollector removed (GITHUB#13243)
+
+`TimeLimitingCollector` has been removed, use `IndexSearcher#setTimeout(QueryTimeout)` to time out queries instead.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

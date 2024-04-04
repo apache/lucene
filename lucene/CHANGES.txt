@@ -92,6 +92,8 @@ API Changes
 * GITHUB#13219: The `readOnce`, `load` and `random` flags on `IOContext` have
   been replaced with a new `ReadAdvice` enum. (Adrien Grand)
 
+* GITHUB#13242: Replace `IOContext.READ` with `IOContext.DEFAULT`. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -106,6 +108,8 @@ New Features
   IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
   maintained alongside their parent documents during sort and merge. IndexWriterConfig now requires a parent field to be
   specified if index sorting is used together with document blocks. (Simon Willnauer)
+
+* GITHUB#13233: Add RomanianNormalizationFilter (Trey Jones, Robert Muir)
 
 Improvements
 ---------------------
@@ -214,6 +218,9 @@ New Features
   This may improve paging logic especially when large segments are merged under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
+* GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
+  to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
 Improvements
 ---------------------
 
@@ -236,6 +243,9 @@ Improvements
 
 * GITHUB#13239: Upgrade icu4j to version 74.2. (Robert Muir)
 
+* GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+
 Optimizations
 ---------------------
 
@@ -253,6 +263,16 @@ Optimizations
 * GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
 
 * GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
+
+* GITHUB#13224: Use singleton for all-zeros DirectMonotonicReader.Meta (Armin Braun)
+
+* GITHUB#13232 : Introduce singleton for PackedInts.NullReader of size 256 (Armin Braun)
+
+* GITHUB#11888: Binary search the BlockTree terms dictionary entries when all suffixes have the same length
+  in a leaf block, speeding up cases like primary key lookup on an id field when all ids are the same length. (zhouhui)
+
+* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
+  IntersectVisitor::visit(int). (Anton Hägerstrand)
 
 Bug Fixes
 ---------------------
