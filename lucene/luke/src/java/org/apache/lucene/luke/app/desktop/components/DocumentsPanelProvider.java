@@ -58,6 +58,7 @@ import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.table.TableCellRenderer;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
@@ -1235,21 +1236,17 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
         sb.append("K");
         sb.append(String.format(Locale.ENGLISH, "%04d", f.getVectorDimension()));
         sb.append("/");
-        switch (f.getVectorSimilarity()) {
-          case COSINE:
-            sb.append("cos");
-            break;
-          case DOT_PRODUCT:
-            sb.append("dot");
-            break;
-          case EUCLIDEAN:
-            sb.append("euc");
-            break;
-          case MAXIMUM_INNER_PRODUCT:
-            sb.append("mip");
-            break;
-          default:
-            sb.append("???");
+        VectorSimilarity vectorSimilarity = f.getVectorSimilarityMethod();
+        if (vectorSimilarity instanceof VectorSimilarity.CosineSimilarity) {
+          sb.append("cos");
+        } else if (vectorSimilarity instanceof VectorSimilarity.DotProductSimilarity) {
+          sb.append("dot");
+        } else if (vectorSimilarity instanceof VectorSimilarity.EuclideanDistanceSimilarity) {
+          sb.append("euc");
+        } else if (vectorSimilarity instanceof VectorSimilarity.MaxInnerProductSimilarity) {
+          sb.append("mip");
+        } else {
+          sb.append(vectorSimilarity.getName());
         }
       }
       return sb.toString();

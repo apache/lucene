@@ -27,7 +27,6 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -169,17 +168,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {1.f, 2.f, 3.f}, floatQueryVector));
 
     dv =
@@ -188,17 +187,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {-6.7f, -1.0f, -0.9f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {2.f, 13.2f, 9.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new float[] {5.2f, 3.2f, 3.1f}, floatQueryVector));
 
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
@@ -209,17 +208,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new byte[] {106, 80, 127}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new byte[] {1, -2, -30}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new byte[] {-128, 0, 127}, byteQueryVector));
 
     dv =
@@ -230,7 +229,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.EUCLIDEAN.compare(
+                == VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
                     new byte[] {-120, -2, 3}, byteQueryVector));
   }
 
@@ -245,17 +244,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new float[] {2.2f, -3.2f, -3.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new float[] {-5.2f, 8.7f, 3.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new float[] {-8.f, 7.f, -6.f}, floatQueryVector));
 
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
@@ -266,17 +265,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new byte[] {4, 2, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new byte[] {40, 21, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.DOT_PRODUCT.compare(
+                == VectorSimilarity.DotProductSimilarity.INSTANCE.score(
                     new byte[] {-1, -2, -3}, byteQueryVector));
   }
 
@@ -291,12 +290,12 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.COSINE.compare(
+                == VectorSimilarity.CosineSimilarity.INSTANCE.score(
                     new float[] {4.5f, 10.3f, -7.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.COSINE.compare(
+                == VectorSimilarity.CosineSimilarity.INSTANCE.score(
                     new float[] {0.2f, -3.2f, 3.1f}, floatQueryVector));
     assertFalse(dv.advanceExact(2));
 
@@ -308,16 +307,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == VectorSimilarityFunction.COSINE.compare(
+                == VectorSimilarity.CosineSimilarity.INSTANCE.score(
                     new byte[] {-121, -64, -1}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == VectorSimilarityFunction.COSINE.compare(new byte[] {9, 2, 3}, byteQueryVector));
+                == VectorSimilarity.CosineSimilarity.INSTANCE.score(
+                    new byte[] {9, 2, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == VectorSimilarityFunction.COSINE.compare(new byte[] {4, 2, 3}, byteQueryVector));
+                == VectorSimilarity.CosineSimilarity.INSTANCE.score(
+                    new byte[] {4, 2, 3}, byteQueryVector));
   }
 
   public void testMaximumProductSimilarityValuesSource() throws Exception {
@@ -330,7 +331,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField4");
     assertTrue(dv.advanceExact(0));
     assertEquals(
-        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+        VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.score(
             new float[] {-1.3f, 1.0f, 1.0f}, floatQueryVector),
         dv.doubleValue(),
         0.0001);
@@ -344,19 +345,19 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField4");
     assertTrue(dv.advanceExact(0));
     assertEquals(
-        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+        VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.score(
             new byte[] {-127, 127, 127}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
     assertTrue(dv.advanceExact(1));
     assertEquals(
-        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+        VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.score(
             new byte[] {14, 29, 31}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
     assertTrue(dv.advanceExact(2));
     assertEquals(
-        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+        VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.score(
             new byte[] {-4, -2, -128}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
@@ -383,18 +384,20 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(dv.advanceExact(0));
     assertEquals(
         dv.doubleValue(),
-        VectorSimilarityFunction.EUCLIDEAN.compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector),
+        VectorSimilarity.EuclideanDistanceSimilarity.INSTANCE.score(
+            new float[] {1.f, 2.f, 3.f}, floatQueryVector),
         0.0);
     assertNotEquals(
         dv.doubleValue(),
-        VectorSimilarityFunction.DOT_PRODUCT.compare(
+        VectorSimilarity.DotProductSimilarity.INSTANCE.score(
             new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertNotEquals(
         dv.doubleValue(),
-        VectorSimilarityFunction.COSINE.compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+        VectorSimilarity.CosineSimilarity.INSTANCE.score(
+            new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertNotEquals(
         dv.doubleValue(),
-        VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.compare(
+        VectorSimilarity.MaxInnerProductSimilarity.INSTANCE.score(
             new float[] {1.f, 2.f, 3.f}, floatQueryVector));
   }
 }

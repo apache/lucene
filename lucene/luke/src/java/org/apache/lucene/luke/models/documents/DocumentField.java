@@ -19,6 +19,7 @@ package org.apache.lucene.luke.models.documents;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -57,7 +58,7 @@ public final class DocumentField {
 
   // knn vector values
   private int vectorDimension;
-  private VectorSimilarityFunction vectorSimilarity;
+  private VectorSimilarity vectorSimilarity;
 
   static DocumentField of(FieldInfo finfo, IndexReader reader, int docId) throws IOException {
     return of(finfo, null, reader, docId);
@@ -90,7 +91,7 @@ public final class DocumentField {
     dfield.pointNumBytes = finfo.getPointNumBytes();
 
     dfield.vectorDimension = finfo.getVectorDimension();
-    dfield.vectorSimilarity = finfo.getVectorSimilarityFunction();
+    dfield.vectorSimilarity = finfo.getVectorSimilarity();
 
     if (field != null) {
       dfield.isStored = field.fieldType().stored();
@@ -160,7 +161,12 @@ public final class DocumentField {
     return vectorDimension;
   }
 
+  @Deprecated
   public VectorSimilarityFunction getVectorSimilarity() {
+    return VectorSimilarity.toVectorSimilarityFunction(vectorSimilarity);
+  }
+
+  public VectorSimilarity getVectorSimilarityMethod() {
     return vectorSimilarity;
   }
 

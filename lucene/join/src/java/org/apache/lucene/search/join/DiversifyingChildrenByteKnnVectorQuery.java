@@ -16,14 +16,16 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.util.hnsw.RandomAccessVectorValues.fromByteVectorValues;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
@@ -95,11 +97,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     ParentBlockJoinByteVectorScorer vectorScorer =
         new ParentBlockJoinByteVectorScorer(
-            byteVectorValues,
-            acceptIterator,
-            parentBitSet,
-            query,
-            fi.getVectorSimilarityFunction());
+            byteVectorValues, acceptIterator, parentBitSet, query, fi.getVectorSimilarity());
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
@@ -181,7 +179,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   private static class ParentBlockJoinByteVectorScorer {
     private final byte[] query;
     private final ByteVectorValues values;
-    private final VectorSimilarityFunction similarity;
+    private final VectorSimilarity similarity;
     private final DocIdSetIterator acceptedChildrenIterator;
     private final BitSet parentBitSet;
     private int currentParent = -1;
@@ -193,7 +191,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
         DocIdSetIterator acceptedChildrenIterator,
         BitSet parentBitSet,
         byte[] query,
-        VectorSimilarityFunction similarity) {
+        VectorSimilarity similarity) {
       this.query = query;
       this.values = values;
       this.similarity = similarity;
@@ -216,9 +214,11 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       }
       currentScore = Float.NEGATIVE_INFINITY;
       currentParent = parentBitSet.nextSetBit(nextChild);
+      VectorSimilarity.VectorScorer scorer =
+          similarity.getVectorScorer(fromByteVectorValues(values), query);
       do {
         values.advance(nextChild);
-        float score = similarity.compare(query, values.vectorValue());
+        float score = scorer.score(values.docID());
         if (score > currentScore) {
           bestChild = nextChild;
           currentScore = score;

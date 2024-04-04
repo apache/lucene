@@ -16,13 +16,15 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.util.hnsw.RandomAccessVectorValues.fromByteVectorValues;
+import static org.apache.lucene.util.hnsw.RandomAccessVectorValues.fromFloatVectorValues;
+
 import java.io.IOException;
 import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -40,9 +42,9 @@ abstract class VectorScorer {
    */
   static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
       throws IOException {
-    FloatVectorValues.checkField(context.reader(), fi.name);
     FloatVectorValues values = context.reader().getFloatVectorValues(fi.name);
     if (values == null) {
+      FloatVectorValues.checkField(context.reader(), fi.name);
       return null;
     }
     VectorSimilarity similarity = fi.getVectorSimilarity();
@@ -125,61 +127,5 @@ abstract class VectorScorer {
       assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
       return scorer.score(values.docID());
     }
-  }
-
-  private static RandomAccessVectorValues<byte[]> fromByteVectorValues(ByteVectorValues values) {
-    return new RandomAccessVectorValues<>() {
-      @Override
-      public byte[] vectorValue(int targetOrd) throws IOException {
-        assert values.docID() == targetOrd;
-        if (values.docID() < targetOrd) {
-          values.advance(targetOrd);
-        }
-        return values.vectorValue();
-      }
-
-      @Override
-      public RandomAccessVectorValues<byte[]> copy() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int dimension() {
-        return values.dimension();
-      }
-
-      @Override
-      public int size() {
-        return values.size();
-      }
-    };
-  }
-
-  private static RandomAccessVectorValues<float[]> fromFloatVectorValues(FloatVectorValues values) {
-    return new RandomAccessVectorValues<>() {
-      @Override
-      public float[] vectorValue(int targetOrd) throws IOException {
-        assert values.docID() == targetOrd;
-        if (values.docID() < targetOrd) {
-          values.advance(targetOrd);
-        }
-        return values.vectorValue();
-      }
-
-      @Override
-      public RandomAccessVectorValues<float[]> copy() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int dimension() {
-        return values.dimension();
-      }
-
-      @Override
-      public int size() {
-        return values.size();
-      }
-    };
   }
 }

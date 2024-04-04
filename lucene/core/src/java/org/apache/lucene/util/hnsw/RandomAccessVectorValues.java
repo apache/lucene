@@ -19,6 +19,8 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -69,6 +71,7 @@ public interface RandomAccessVectorValues<T> {
     return acceptDocs;
   }
 
+  /** Returns RandomAccessVectorValues that wraps a list of float[] vectors. */
   static RandomAccessVectorValues<float[]> fromFloatVectorList(
       List<float[]> vectors, int dimension) {
     return new RandomAccessVectorValues<>() {
@@ -94,6 +97,7 @@ public interface RandomAccessVectorValues<T> {
     };
   }
 
+  /** Returns RandomAccessVectorValues that wraps a list of byte[] vectors. */
   static RandomAccessVectorValues<byte[]> fromByteVectorList(List<byte[]> vectors, int dimension) {
     return new RandomAccessVectorValues<>() {
       @Override
@@ -114,6 +118,72 @@ public interface RandomAccessVectorValues<T> {
       @Override
       public RandomAccessVectorValues<byte[]> copy() {
         return this;
+      }
+    };
+  }
+
+  /**
+   * Returns RandomAccessVectorValues that wraps the provided byte vector values. The random access,
+   * however, is only forward and depends on the iteration order of the provided {@link
+   * ByteVectorValues}.
+   */
+  static RandomAccessVectorValues<byte[]> fromByteVectorValues(ByteVectorValues values) {
+    return new RandomAccessVectorValues<>() {
+      @Override
+      public byte[] vectorValue(int docID) throws IOException {
+        if (values.docID() != docID) {
+          throw new IllegalArgumentException(
+              "docID must be advanced in order by the caller on the ByteVectorValues");
+        }
+        return values.vectorValue();
+      }
+
+      @Override
+      public RandomAccessVectorValues<byte[]> copy() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int dimension() {
+        return values.dimension();
+      }
+
+      @Override
+      public int size() {
+        return values.size();
+      }
+    };
+  }
+
+  /**
+   * Returns RandomAccessVectorValues that wraps the provided byte vector values. The random access,
+   * however, is only forward and depends on the iteration order of the provided {@link
+   * FloatVectorValues}.
+   */
+  static RandomAccessVectorValues<float[]> fromFloatVectorValues(FloatVectorValues values) {
+    return new RandomAccessVectorValues<>() {
+      @Override
+      public float[] vectorValue(int docID) throws IOException {
+        if (values.docID() != docID) {
+          throw new IllegalArgumentException(
+              "docID must be advanced in order by the caller on the FloatVectorValues");
+        }
+        return values.vectorValue();
+      }
+
+      @Override
+      public RandomAccessVectorValues<float[]> copy() throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int dimension() {
+        return values.dimension();
+      }
+
+      @Override
+      public int size() {
+        return values.size();
       }
     };
   }

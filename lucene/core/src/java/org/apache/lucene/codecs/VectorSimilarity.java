@@ -39,18 +39,30 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   /** The number of the legacy vector function values. */
   public static final int LEGACY_VALUE_LENGTH = 4;
 
+  /** The legacy EUCLIDEAN vector similarity function ordinal. */
+  public static final byte EUCLIDEAN = 0;
+
+  /** The legacy DOT_PRODUCT vector similarity function ordinal. */
+  public static final byte DOT_PRODUCT = 1;
+
+  /** The legacy COSINE vector similarity function ordinal. */
+  public static final byte COSINE = 2;
+
+  /** The legacy MAXIMUM_INNER_PRODUCT vector similarity function ordinal. */
+  public static final byte MAXIMUM_INNER_PRODUCT = 3;
+
   /**
    * Returns the new vector similarity function from the legacy given vector similarity function.
    */
   public static VectorSimilarity fromVectorSimilarityFunction(byte vectorSimilarityOrdinal) {
     switch (vectorSimilarityOrdinal) {
-      case 0:
+      case EUCLIDEAN:
         return EuclideanDistanceSimilarity.INSTANCE;
-      case 1:
+      case DOT_PRODUCT:
         return DotProductSimilarity.INSTANCE;
-      case 2:
+      case COSINE:
         return CosineSimilarity.INSTANCE;
-      case 3:
+      case MAXIMUM_INNER_PRODUCT:
         return MaxInnerProductSimilarity.INSTANCE;
       default:
         throw new IllegalArgumentException(
@@ -64,7 +76,17 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     if (similarity == null) {
       throw new IllegalArgumentException("VectorSimilarity cannot be null");
     }
-    return similarity.toLegacyVectorSimilarityFunction();
+    if (similarity instanceof EuclideanDistanceSimilarity) {
+      return VectorSimilarityFunction.EUCLIDEAN;
+    } else if (similarity instanceof DotProductSimilarity) {
+      return VectorSimilarityFunction.DOT_PRODUCT;
+    } else if (similarity instanceof CosineSimilarity) {
+      return VectorSimilarityFunction.COSINE;
+    } else if (similarity instanceof MaxInnerProductSimilarity) {
+      return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
+    } else {
+      throw new IllegalArgumentException("Unknown vector similarity function " + similarity);
+    }
   }
 
   private static final class Holder {
@@ -100,11 +122,6 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
   @Override
   public String getName() {
     return name;
-  }
-
-  /** Returns the legacy vector similarity function from the given vector similarity. */
-  protected VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
-    return null;
   }
 
   /**
@@ -260,7 +277,7 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public static final String NAME = "dotProduct";
 
     /** The dot product similarity function instance. */
-    public static final VectorSimilarity INSTANCE = new DotProductSimilarity();
+    public static final DotProductSimilarity INSTANCE = new DotProductSimilarity();
 
     /** Creates a new dot product similarity function. */
     public DotProductSimilarity() {
@@ -270,11 +287,6 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     @Override
     public float scaleVectorScore(float comparisonResult) {
       return Math.max((1 + comparisonResult) / 2, 0);
-    }
-
-    @Override
-    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
-      return VectorSimilarityFunction.DOT_PRODUCT;
     }
 
     /** Allow direct comparison of byte vectors. This is only used for testing purposes. */
@@ -373,16 +385,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public static final String NAME = "cosine";
 
     /** The cosine similarity function instance. */
-    public static final VectorSimilarity INSTANCE = new CosineSimilarity();
+    public static final CosineSimilarity INSTANCE = new CosineSimilarity();
 
     /** Creates a new cosine similarity function. */
     public CosineSimilarity() {
       super(NAME);
-    }
-
-    @Override
-    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
-      return VectorSimilarityFunction.COSINE;
     }
 
     @Override
@@ -477,16 +484,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public static final String NAME = "euclidean";
 
     /** The Euclidean distance similarity function instance. */
-    public static final VectorSimilarity INSTANCE = new EuclideanDistanceSimilarity();
+    public static final EuclideanDistanceSimilarity INSTANCE = new EuclideanDistanceSimilarity();
 
     /** Creates a new Euclidean distance similarity function. */
     public EuclideanDistanceSimilarity() {
       super(NAME);
-    }
-
-    @Override
-    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
-      return VectorSimilarityFunction.EUCLIDEAN;
     }
 
     @Override
@@ -581,16 +583,11 @@ public abstract class VectorSimilarity implements NamedSPILoader.NamedSPI {
     public static final String NAME = "maxInnerProduct";
 
     /** The max-inner product similarity function instance. */
-    public static final VectorSimilarity INSTANCE = new MaxInnerProductSimilarity();
+    public static final MaxInnerProductSimilarity INSTANCE = new MaxInnerProductSimilarity();
 
     /** Creates a new max-inner product similarity function. */
     public MaxInnerProductSimilarity() {
       super(NAME);
-    }
-
-    @Override
-    public VectorSimilarityFunction toLegacyVectorSimilarityFunction() {
-      return VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
     }
 
     /** Allow direct comparison of byte vectors. This is only used for testing purposes. */

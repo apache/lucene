@@ -17,12 +17,14 @@
 
 package org.apache.lucene.search;
 
+import static org.apache.lucene.util.hnsw.RandomAccessVectorValues.fromFloatVectorValues;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.codecs.VectorSimilarity;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
@@ -44,12 +46,14 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       FloatVectorValues.checkField(ctx.reader(), fieldName);
       return DoubleValues.EMPTY;
     }
-    VectorSimilarityFunction function =
-        ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
+    VectorSimilarity function =
+        ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarity();
+    VectorSimilarity.VectorScorer scorer =
+        function.getVectorScorer(fromFloatVectorValues(vectorValues), queryVector);
     return new DoubleValues() {
       @Override
       public double doubleValue() throws IOException {
-        return function.compare(queryVector, vectorValues.vectorValue());
+        return scorer.score(vectorValues.docID());
       }
 
       @Override

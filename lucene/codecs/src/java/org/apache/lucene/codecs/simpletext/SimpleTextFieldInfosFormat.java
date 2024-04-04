@@ -30,7 +30,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -220,8 +219,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   }
 
   public VectorSimilarity distanceFunction(String scoreFunction) {
-    return VectorSimilarity.fromVectorSimilarityFunction(
-        (byte) VectorSimilarityFunction.valueOf(scoreFunction).ordinal());
+    return VectorSimilarity.forName(scoreFunction);
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {
@@ -321,7 +319,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, VECTOR_SIMILARITY);
-        SimpleTextUtil.write(out, fi.getVectorSimilarityFunction().name(), scratch);
+        SimpleTextUtil.write(out, fi.getVectorSimilarity().getName(), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, SOFT_DELETES);
