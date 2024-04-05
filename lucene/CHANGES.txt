@@ -224,9 +224,12 @@ New Features
 * GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
   and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
-* GITHUB#13196: Add support for posix_madvise to MMapDirectory: If running on Linux/macOS and Java 21
-  or later, MMapDirectory uses IOContext to pass suitable MADV flags to kernel of operating system.
-  This may improve paging logic especially when large segments are merged under memory pressure.
+* GITHUB#13196, GITHUB#13222: Add support for posix_madvise to MMapDirectory: If running on
+  Linux/macOS and Java 21 or later, MMapDirectory uses IOContext to pass suitable MADV flags to
+  kernel of operating system. In particular, merging now passes POSIX_MADV_SEQUENTIAL to the readers
+  that are being merged, and searching passes POSIX_MADV_RANDOM to vector data files - including
+  quantized vector data files, HNSW graphs, stored fields data files and term vectors data files.
+  This may improve paging logic especially when working with large indexes under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
