@@ -121,7 +121,8 @@ public class IOContext {
 
   /**
    * This constructor is used to initialize a {@link IOContext} instance with a new value for the
-   * readOnce variable.
+   * readOnce variable. This automatically sets {@link #randomAccess} and {@link #load} to {@code
+   * false}.
    *
    * @param ctxt {@link IOContext} object whose information is used to create the new instance
    *     except the readOnce variable.

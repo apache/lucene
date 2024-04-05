@@ -320,8 +320,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // Note: don't use the context from the state, which is a flush/merge context, not expecting
       // to perform random reads.
       vectorDataInput =
-          segmentWriteState.directory.openInput(
-              tempVectorData.getName(), IOContext.DEFAULT.withRandomAccess());
+          segmentWriteState.directory.openInput(tempVectorData.getName(), IOContext.RANDOM);
       // copy the temporary file vectors to the actual data file
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
