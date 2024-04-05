@@ -695,7 +695,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       if (contextQuery != null) {
         boolean allMustNot = true;
         for (BooleanClause clause : contextQuery.clauses()) {
-          if (clause.getOccur() != BooleanClause.Occur.MUST_NOT) {
+          if (clause.occur() != BooleanClause.Occur.MUST_NOT) {
             allMustNot = false;
             break;
           }

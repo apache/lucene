@@ -16,6 +16,22 @@ In many cases hitting (1) means you'll have to do (2) so let's discuss
 these in order.
 
 
+SPECIAL NOTE
+------------
+
+Regeneration tasks currently don't play well with the current gradle version.
+To workaround the issue, compile everything first:
+
+gradlew compileJava
+
+Then run the commands as described in this document, excluding compileJava.
+For example to run "regenerate":
+
+gradlew regenerate -x compileJava
+
+More information: https://github.com/apache/lucene/issues/13240
+
+
 Checksum validation errors
 --------------------------
 

@@ -33,6 +33,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -283,6 +284,37 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  /** Test that the query times out correctly. */
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13272")
+  public void testTimeout() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      BitSetProducer parentFilter = parentFilter(reader);
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query query = getParentJoinKnnQuery("field", new float[] {1, 2}, null, 2, parentFilter);
+      Query exactQuery =
+          getParentJoinKnnQuery(
+              "field", new float[] {1, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+
+      assertEquals(2, searcher.count(query)); // Expect some results without timeout
+      assertEquals(3, searcher.count(exactQuery)); // Same for exact search
+
+      searcher.setTimeout(() -> true); // Immediately timeout
+      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+      assertEquals(0, searcher.count(exactQuery)); // Same for exact search
+
+      searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
+      // Note: This depends on the HNSW graph having just one layer,
+      // would be 0 in case of multiple layers
+      assertEquals(1, searcher.count(query)); // Expect only 1 result
+
+      searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
+      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+    }
+  }
+
   Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer =
@@ -350,6 +382,23 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       String actualId = reader.storedFields().document(docId).get("id");
       assertTrue(idToScore.containsKey(actualId));
       assertEquals(idToScore.get(actualId), scorer.score(), 0.0001);
+    }
+  }
+
+  private static class CountingQueryTimeout implements QueryTimeout {
+    private int remaining;
+
+    public CountingQueryTimeout(int count) {
+      remaining = count;
+    }
+
+    @Override
+    public boolean shouldExit() {
+      if (remaining > 0) {
+        remaining--;
+        return false;
+      }
+      return true;
     }
   }
 }

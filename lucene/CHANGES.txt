@@ -94,6 +94,8 @@ API Changes
 
 * GITHUB#13242: Replace `IOContext.READ` with `IOContext.DEFAULT`. (Adrien Grand)
 
+* GITHUB#13261: Convert `BooleanClause` class to record class. (Pulkit Gupta)
+
 New Features
 ---------------------
 
@@ -157,7 +159,16 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
-  
+
+Changes in Runtime Behavior
+---------------------
+
+* GITHUB#13244, GITHUB#13264: IOContext now uses ReadAdvice#RANDOM by default for read
+  operations. An implication is that `MMapDirectory` will use POSIX_MADV_RANDOM
+  on POSIX systems. To fallback to OS default behaviour, pass system property via
+  `-Dorg.apache.lucene.store.defaultReadAdvice=normal`. This may be useful on systems
+  with lots of RAM as this increases read-ahead. (Adrien Grand, Uwe Schindler)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
@@ -218,6 +229,9 @@ New Features
   This may improve paging logic especially when large segments are merged under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
+* GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
+  to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
 Improvements
 ---------------------
 
@@ -237,6 +251,14 @@ Improvements
 * GITHUB#13124: MergeScheduler can now provide an executor for intra-merge parallelism. The first
   implementation is the ConcurrentMergeScheduler and the Lucene99HnswVectorsFormat will use it if no other
   executor is provided. (Ben Trent)
+
+* GITHUB#13239: Upgrade icu4j to version 74.2. (Robert Muir)
+
+* GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+
+* GITHUB#12966: Move most of the responsibility from TaxonomyFacets implementations to TaxonomyFacets itself.
+  This reduces code duplication and enables future development. (Stefan Vodita)
 
 Optimizations
 ---------------------
@@ -260,6 +282,15 @@ Optimizations
 
 * GITHUB#13232 : Introduce singleton for PackedInts.NullReader of size 256 (Armin Braun)
 
+* GITHUB#11888: Binary search the BlockTree terms dictionary entries when all suffixes have the same length
+  in a leaf block, speeding up cases like primary key lookup on an id field when all ids are the same length. (zhouhui)
+
+* GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
+  IntersectVisitor::visit(int). (Anton Hägerstrand)
+
+* GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
+  could. (Stefan Vodita)
+
 Bug Fixes
 ---------------------
 
@@ -279,6 +310,8 @@ Bug Fixes
 * GITHUB#13204: Fix equals/hashCode of IOContext. (Uwe Schindler, Robert Muir)
 
 * GITHUB#13206: Subtract deleted file size from the cache size of NRTCachingDirectory. (Jean-François Boeuf)
+
+* GITHUB#12966: Aggregation facets no longer assume that aggregation values are positive. (Stefan Vodita)
 
 Build
 ---------------------

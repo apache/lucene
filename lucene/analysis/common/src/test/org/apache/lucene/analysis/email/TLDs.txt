@@ -1,6 +1,5 @@
 # Generated from IANA TLD Database (gradlew generateTlds).aaa
 aarp
-abarth
 abb
 abbott
 abbvie
@@ -16,7 +15,6 @@ accountants
 aco
 actor
 ad
-adac
 ads
 adult
 ae
@@ -36,7 +34,6 @@ airforce
 airtel
 akdn
 al
-alfaromeo
 alibaba
 alipay
 allfinanz
@@ -87,7 +84,6 @@ auspost
 author
 auto
 autos
-avianca
 aw
 aws
 ax
@@ -98,7 +94,6 @@ ba
 baby
 baidu
 banamex
-bananarepublic
 band
 bank
 bar
@@ -175,7 +170,6 @@ brother
 brussels
 bs
 bt
-bugatti
 build
 builders
 business
@@ -195,7 +189,6 @@ calvinklein
 cam
 camera
 camp
-cancerresearch
 canon
 capetown
 capital
@@ -217,7 +210,6 @@ catholic
 cba
 cbn
 cbre
-cbs
 cc
 cd
 center
@@ -246,7 +238,6 @@ citadel
 citi
 citic
 city
-cityeats
 ck
 cl
 claims
@@ -267,7 +258,6 @@ coffee
 college
 cologne
 com
-comcast
 commbank
 community
 company
@@ -280,7 +270,6 @@ consulting
 contact
 contractors
 cooking
-cookingchannel
 cool
 coop
 corsica
@@ -386,7 +375,6 @@ es
 esq
 estate
 et
-etisalat
 eu
 eurovision
 eus
@@ -412,7 +400,6 @@ feedback
 ferrari
 ferrero
 fi
-fiat
 fidelity
 fido
 film
@@ -438,7 +425,6 @@ fm
 fo
 foo
 food
-foodnetwork
 football
 ford
 forex
@@ -451,7 +437,6 @@ free
 fresenius
 frl
 frogans
-frontdoor
 frontier
 ftr
 fujitsu
@@ -523,7 +508,6 @@ group
 gs
 gt
 gu
-guardian
 gucci
 guge
 guide
@@ -544,7 +528,6 @@ help
 helsinki
 here
 hermes
-hgtv
 hiphop
 hisamitsu
 hitachi
@@ -566,7 +549,6 @@ hospital
 host
 hosting
 hot
-hoteles
 hotels
 hotmail
 house
@@ -654,7 +636,6 @@ ki
 kia
 kids
 kim
-kinder
 kindle
 kitchen
 kiwi
@@ -679,7 +660,6 @@ lacaixa
 lamborghini
 lamer
 lancaster
-lancia
 land
 landrover
 lanxess
@@ -710,7 +690,6 @@ lilly
 limited
 limo
 lincoln
-linde
 link
 lipsy
 live
@@ -722,7 +701,6 @@ loan
 loans
 locker
 locus
-loft
 lol
 london
 lotte
@@ -742,7 +720,6 @@ luxury
 lv
 ly
 ma
-macys
 madrid
 maif
 maison
@@ -756,7 +733,6 @@ marketing
 markets
 marriott
 marshalls
-maserati
 mattel
 mba
 mc
@@ -816,7 +792,6 @@ mtr
 mu
 museum
 music
-mutual
 mv
 mw
 mx
@@ -857,7 +832,6 @@ nissay
 nl
 no
 nokia
-northwesternmutual
 norton
 now
 nowruz
@@ -876,7 +850,6 @@ office
 okinawa
 olayan
 olayangroup
-oldnavy
 ollo
 om
 omega
@@ -903,7 +876,6 @@ pars
 partners
 parts
 party
-passagens
 pay
 pccw
 pe
@@ -1004,7 +976,6 @@ ril
 rio
 rip
 ro
-rocher
 rocks
 rodeo
 rogers
@@ -1039,7 +1010,6 @@ sb
 sbi
 sbs
 sc
-sca
 scb
 schaeffler
 schmidt
@@ -1059,7 +1029,6 @@ seek
 select
 sener
 services
-ses
 seven
 sew
 sex
@@ -1078,7 +1047,6 @@ shop
 shopping
 shouji
 show
-showtime
 si
 silk
 sina
@@ -1176,7 +1144,6 @@ theatre
 tiaa
 tickets
 tienda
-tiffany
 tips
 tires
 tirol
@@ -1206,7 +1173,6 @@ trade
 trading
 training
 travel
-travelchannel
 travelers
 travelersinsurance
 trust
@@ -1261,14 +1227,12 @@ vivo
 vlaanderen
 vn
 vodka
-volkswagen
 volvo
 vote
 voting
 voto
 voyage
 vu
-vuelos
 wales
 walmart
 walter
@@ -1306,7 +1270,6 @@ wtc
 wtf
 xbox
 xerox
-xfinity
 xihuan
 xin
 xn--11b4c3d
@@ -1386,7 +1349,6 @@ xn--j1aef
 xn--j1amh
 xn--j6w193g
 xn--jlq480n2rg
-xn--jlq61u9w7b
 xn--jvr189m
 xn--kcrx77d1x4a
 xn--kprw13d
@@ -1398,7 +1360,6 @@ xn--mgb9awbf
 xn--mgba3a3ejt
 xn--mgba3a4f16a
 xn--mgba7c0bbn0a
-xn--mgbaakc7dvf
 xn--mgbaam7a8h
 xn--mgbab2bd
 xn--mgbah1a3hjkrd

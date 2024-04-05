@@ -149,11 +149,7 @@ public class PackedInts {
       assert bitsPerValue >= 0 && bitsPerValue <= 64 : bitsPerValue;
       final long byteCount = byteCount(packedIntsVersion, valueCount, bitsPerValue);
       assert byteCount < 8L * Integer.MAX_VALUE;
-      if ((byteCount % 8) == 0) {
-        return (int) (byteCount / 8);
-      } else {
-        return (int) (byteCount / 8 + 1);
-      }
+      return (int) ((byteCount + 7) >>> 3);
     }
 
     /** Tests whether the provided number of bits per value is supported by the format. */
@@ -604,8 +600,10 @@ public class PackedInts {
 
     @Override
     public long ramBytesUsed() {
-      return RamUsageEstimator.alignObjectSize(
-          RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
+      return valueCount == PackedLongValues.DEFAULT_PAGE_SIZE
+          ? 0
+          : RamUsageEstimator.alignObjectSize(
+              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
     }
   }
 
