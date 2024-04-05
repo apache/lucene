@@ -197,6 +197,35 @@ enum.
 
 `TimeLimitingCollector` has been removed, use `IndexSearcher#setTimeout(QueryTimeout)` to time out queries instead.
 
+### IndexSearch#search(Query, Collector) being deprecated in favor of IndexSearcher#search(Query, CollectorManager) (LUCENE-10002)
+
+`IndexSearch#search(Query, Collector)` is now being deprecated in favor of `IndexSearcher#search(Query, CollectorManager)`,
+as `CollectorManager` implementation would allow taking advantage of intra-query concurrency via its map-reduce API design.
+To migrate, use a provided `CollectorManager` implementation that suits your use cases, or change your `Collector` implementation
+to follow the new API pattern. The straight forward approach would be to instantiate the single-threaded `Collector` in a wrapper `CollectorManager`.
+
+For example
+```java
+public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
+    @Override
+    public CustomCollector newCollector() throws IOException {
+      return new CustomCollector();
+    }
+
+    @Override
+    public List<Object> reduce(Collection<CustomCollector> collectors) throws IOException {
+      List<Object> all = new ArrayList<>();
+      for (CustomCollector c : collectors) {
+        all.addAll(c.getResult());
+      }
+
+      return all;
+    }
+}
+
+List<Object> results = searcher.search(query, new CustomCollectorManager());
+```
+
 ### Accountable interface removed from KnnVectorsReader (GITHUB#13255)
 
 `KnnVectorsReader` objects use small heap memory, so it's not worth maintaining heap usage for them hence removed
