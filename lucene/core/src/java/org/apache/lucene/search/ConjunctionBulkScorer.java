@@ -217,14 +217,14 @@ final class ConjunctionBulkScorer extends BulkScorer {
       assert lead2.docID() == doc;
 
       for (DocIdSetIterator it : others) {
-        if (it.docID() < doc) {
-          int next = it.advance(doc);
-          if (next != doc) {
-            doc = lead1.advance(next);
-            continue advanceHead;
-          }
+        int next = it.docID();
+        if (next < doc) {
+          next = it.advance(doc);
         }
-        assert it.docID() == doc;
+        if (next != doc) {
+          doc = lead1.advance(next);
+          continue advanceHead;
+        }
       }
 
       collector.collect(doc);
