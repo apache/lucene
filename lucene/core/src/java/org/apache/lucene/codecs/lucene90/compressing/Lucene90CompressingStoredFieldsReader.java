@@ -128,7 +128,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context);
+      fieldsStream = d.openInput(fieldsStreamFN, context.withRandomAccess());
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);

@@ -134,7 +134,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       // Open the data file
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream = d.openInput(vectorsStreamFN, context);
+      vectorsStream = d.openInput(vectorsStreamFN, context.withRandomAccess());
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
