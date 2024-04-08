@@ -309,7 +309,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
 
-    int originEndCount = -1;
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
     }
@@ -436,8 +435,21 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
         currentFrame = lastFrame;
-        originEndCount = currentFrame.entCount;
-        currentFrame.rewind2();
+
+        // Only rewindWithoutReload for non-floor block or first floor block.
+        // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
+        // non-first floor blocks.
+        if (currentFrame.fp != currentFrame.fpOrig
+            || currentFrame.entCount == 0
+            || currentFrame.nextEnt == -1) {
+          currentFrame.rewind();
+        } else {
+          // Since target greater than current term, we could reduce entCount to nextEnt, and
+          // revert it after scanToTerm.
+          // origEndCount = currentFrame.entCount;
+          // currentFrame.entCount = currentFrame.nextEnt;
+          currentFrame.rewindWithoutReload();
+        }
 
       } else {
         // Target is exactly the same as current term
@@ -522,9 +534,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         currentFrame.loadBlock();
 
         final SeekStatus result = currentFrame.scanToTerm(target, true);
-        if (originEndCount != -1) {
-          currentFrame.entCount = originEndCount;
-        }
+
         if (result == SeekStatus.FOUND) {
           // if (DEBUG) {
           //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
@@ -580,9 +590,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     currentFrame.loadBlock();
 
     final SeekStatus result = currentFrame.scanToTerm(target, true);
-    if (originEndCount != -1) {
-      currentFrame.entCount = originEndCount;
-    }
+
     if (result == SeekStatus.FOUND) {
       // if (DEBUG) {
       //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);

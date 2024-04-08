@@ -285,25 +285,31 @@ final class SegmentTermsEnumFrame {
   }
 
   // Only rewind, don't force reload block.
-  // Reset reader position, don't read, decompress.
+  // Reset readers' position, don't read, decompress.
   // Current term greater than target, reduce endCount.
-  void rewind2() {
-
-    // Force reload:
-    fp = fpOrig;
-    // TODO: Reset entCount after this seek.
-    entCount = nextEnt;
+  void rewindWithoutReload() {
     nextEnt = 0;
-    hasTerms = hasTermsOrig;
-    if (isFloor) {
-      floorDataReader.setPosition(rewindPos);
-      numFollowFloorBlocks = floorDataReader.readVInt();
-      assert numFollowFloorBlocks > 0;
-      nextFloorLabel = floorDataReader.readByte() & 0xff;
-    }
-
     suffixesReader.setPosition(0);
     suffixLengthsReader.setPosition(0);
+    statsReader.setPosition(0);
+    bytesReader.setPosition(0);
+
+    // TODO: Since we only rewind without reload for fist floor(currentFrame.fp ==
+    // currentFrame.fpOrig)
+    // So no need to set floorDataReader again?
+    //    if (isFloor) {
+    //      floorDataReader.setPosition(rewindPos);
+    //      numFollowFloorBlocks = floorDataReader.readVInt();
+    //      assert numFollowFloorBlocks > 0;
+    //      nextFloorLabel = floorDataReader.readByte() & 0xff;
+    //    }
+
+    metaDataUpto = 0;
+
+    statsSingletonRunLength = 0;
+    state.termBlockOrd = 0;
+    lastSubFP = -1;
+    //    state.termBlockOrd = 0;
     /*
     //System.out.println("rewind");
     // Keeps the block loaded, but rewinds its state:
