@@ -296,7 +296,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // This Directory is only supposed to be used during merging,
         // so all writes should have MERGE context, else there is a bug
         // somewhere that is failing to pass down the right IOContext:
-        assert context.context == IOContext.Context.MERGE : "got context=" + context.context;
+        assert context.context() == IOContext.Context.MERGE : "got context=" + context.context();
 
         return new RateLimitedIndexOutput(rateLimiter, in.createOutput(name, context));
       }

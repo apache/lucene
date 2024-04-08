@@ -3029,7 +3029,7 @@ public class TestIndexWriter extends LuceneTestCase {
         writer.commit();
         assertEquals(1, writer.getDocStats().maxDoc);
         // now check that we moved to 3
-        dir.openInput("segments_3", IOContext.READ).close();
+        dir.openInput("segments_3", IOContext.DEFAULT).close();
       }
       reader.close();
       in.close();

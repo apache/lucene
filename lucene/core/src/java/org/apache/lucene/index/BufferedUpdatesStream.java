@@ -282,7 +282,7 @@ final class BufferedUpdatesStream implements Accountable {
         ReadersAndUpdates rld, IOConsumer<ReadersAndUpdates> onClose, SegmentCommitInfo info)
         throws IOException {
       this.rld = rld;
-      reader = rld.getReader(IOContext.READ);
+      reader = rld.getReader(IOContext.DEFAULT);
       startDelCount = rld.getDelCount();
       delGen = info.getBufferedDeletesGen();
       this.onClose = onClose;

@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.util.Constants;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -86,6 +87,33 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertThrows(NullPointerException.class, () -> in.readBytes(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
         assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
+      }
+    }
+  }
+
+  public void testMadviseAvail() throws Exception {
+    assertEquals(
+        "madvise should be supported on Linux and Macos",
+        Constants.LINUX || Constants.MAC_OS_X,
+        MMapDirectory.supportsMadvise());
+  }
+
+  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  public void testWithNormal() throws Exception {
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (final IndexInput in =
+          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
       }
     }
   }

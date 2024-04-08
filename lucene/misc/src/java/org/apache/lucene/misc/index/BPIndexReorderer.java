@@ -817,8 +817,8 @@ public final class BPIndexReorderer {
               });
     }
 
-    IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.READ);
-    IndexInput startOffsets = tempDir.openInput(startOffsetsFileName, IOContext.READ);
+    IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.DEFAULT);
+    IndexInput startOffsets = tempDir.openInput(startOffsetsFileName, IOContext.DEFAULT);
     return new ForwardIndex(startOffsets, termIDsInput, maxTerm);
   }
 
