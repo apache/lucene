@@ -286,15 +286,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public void close() throws IOException {
       IOUtils.close(fields.values());
     }
-
-    @Override
-    public long ramBytesUsed() {
-      long total = 0;
-      for (KnnVectorsReader reader : fields.values()) {
-        total += reader.ramBytesUsed();
-      }
-      return total;
-    }
   }
 
   static String getSuffix(String formatName, String suffix) {
