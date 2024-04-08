@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.FlatVectorsScorer;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -71,7 +72,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  public Lucene99FlatVectorsWriter(SegmentWriteState state) throws IOException {
+  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(

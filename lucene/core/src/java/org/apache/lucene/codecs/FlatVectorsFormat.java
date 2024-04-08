@@ -22,7 +22,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Encodes/decodes per-document vectors
+ * Encodes/decodes per-document vectors and provides a scoring interface for the flat stored vectors
  *
  * @lucene.experimental
  */

@@ -314,7 +314,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -347,7 +347,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() {
+    public SimpleTextFloatVectorValues copy() {
       return this;
     }
 
@@ -403,7 +403,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextByteVectorValues extends ByteVectorValues
-      implements RandomAccessVectorValues<BytesRef> {
+      implements RandomAccessVectorValues.Bytes {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -440,7 +440,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues<BytesRef> copy() {
+    public SimpleTextByteVectorValues copy() {
       return this;
     }
 
@@ -490,9 +490,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public BytesRef vectorValue(int targetOrd) throws IOException {
-      binaryValue.bytes = values[curOrd];
-      return binaryValue;
+    public byte[] vectorValue(int targetOrd) throws IOException {
+      return values[curOrd];
     }
   }
 

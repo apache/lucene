@@ -556,14 +556,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, fieldInfo.getVectorDimension());
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerSupplier.createBytes(
-                (RandomAccessVectorValues<byte[]>) raVectors,
+                RandomAccessVectorValues.fromBytes(
+                    (List<byte[]>) vectors, fieldInfo.getVectorDimension()),
                 fieldInfo.getVectorSimilarityFunction());
             case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-                (RandomAccessVectorValues<float[]>) raVectors,
+                RandomAccessVectorValues.fromFloats(
+                    (List<float[]>) vectors, fieldInfo.getVectorDimension()),
                 fieldInfo.getVectorSimilarityFunction());
           };
       hnswGraphBuilder =
@@ -607,36 +608,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           + (long) vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
           + hnswGraphBuilder.getGraph().ramBytesUsed();
-    }
-  }
-
-  private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
-    private final List<T> vectors;
-    private final int dim;
-
-    RAVectorValues(List<T> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public T vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RandomAccessVectorValues<T> copy() throws IOException {
-      return this;
     }
   }
 }

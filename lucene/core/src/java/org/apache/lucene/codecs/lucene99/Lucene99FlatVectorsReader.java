@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -59,7 +60,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state) throws IOException {
+  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -267,7 +270,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
     }
-    return RandomVectorScorer.createFloats(
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
@@ -275,7 +279,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             vectorData),
-        fieldEntry.similarityFunction,
         target);
   }
 
@@ -285,7 +288,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return null;
     }
-    return RandomVectorScorer.createBytes(
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
@@ -293,7 +297,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             vectorData),
-        fieldEntry.similarityFunction,
         target);
   }
 

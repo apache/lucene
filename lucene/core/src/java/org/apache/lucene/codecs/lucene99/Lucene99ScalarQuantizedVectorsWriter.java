@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.FlatVectorsScorer;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -59,7 +60,6 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
-import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -105,8 +105,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       Float confidenceInterval,
       byte bits,
       boolean compress,
-      FlatVectorsWriter rawVectorDelegate)
+      FlatVectorsWriter rawVectorDelegate,
+      FlatVectorsScorer scorer)
       throws IOException {
+    super(scorer);
     this.confidenceInterval = confidenceInterval;
     this.bits = bits;
     this.compress = compress;
@@ -476,13 +478,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             segmentWriteState.directory.deleteFile(tempQuantizedVectorData.getName());
           },
           docsWithField.cardinality(),
-          new ScalarQuantizedRandomVectorScorerSupplier(
+          vectorsScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(),
-              mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
-                  bits,
+                  mergedQuantizationState,
                   compress,
                   quantizationDataInput)));
     } finally {
@@ -1056,12 +1057,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   static final class ScalarQuantizedCloseableRandomVectorScorerSupplier
       implements CloseableRandomVectorScorerSupplier {
 
-    private final ScalarQuantizedRandomVectorScorerSupplier supplier;
+    private final RandomVectorScorerSupplier supplier;
     private final Closeable onClose;
     private final int numVectors;
 
     ScalarQuantizedCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, ScalarQuantizedRandomVectorScorerSupplier supplier) {
+        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
       this.numVectors = numVectors;

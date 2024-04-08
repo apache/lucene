@@ -30,7 +30,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues<byte[]> {
+    implements RandomAccessVectorValues.Bytes {
 
   protected final int dimension;
   protected final int size;
@@ -122,7 +122,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public OffHeapByteVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -184,7 +184,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public OffHeapByteVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
@@ -251,7 +251,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public OffHeapByteVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

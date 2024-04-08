@@ -32,9 +32,13 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
  * @lucene.experimental
  */
 public abstract class FlatVectorsWriter implements Accountable, Closeable {
+  /** Scorer for flat vectors */
+  protected final FlatVectorsScorer vectorsScorer;
 
   /** Sole constructor */
-  protected FlatVectorsWriter() {}
+  protected FlatVectorsWriter(FlatVectorsScorer vectorsScorer) {
+    this.vectorsScorer = vectorsScorer;
+  }
 
   /**
    * Add a new field for indexing, allowing the user to provide a writer that the flat vectors

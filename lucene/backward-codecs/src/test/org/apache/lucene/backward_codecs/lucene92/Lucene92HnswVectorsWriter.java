@@ -273,7 +273,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues.Floats vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph

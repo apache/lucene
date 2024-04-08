@@ -14,23 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.quantization;
 
-import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
-
-/**
- * Random access values for <code>byte[]</code>, but also includes accessing the score correction
- * constant for the current vector in the buffer.
- *
- * @lucene.experimental
- */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues.Bytes {
-
-  ScalarQuantizer getScalarQuantizer();
-
-  float getScoreCorrectionConstant();
-
-  @Override
-  RandomAccessQuantizedByteVectorValues copy() throws IOException;
-}
+/** A bit vector format that utilizes hamming distance and supports bit vector storage in HNSW. */
+package org.apache.lucene.sandbox.codecs.bitvectors;

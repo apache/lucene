@@ -55,7 +55,7 @@ public final class Lucene91HnswGraphBuilder {
   private final Lucene91NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final RandomAccessVectorValues<float[]> vectorValues;
+  private final RandomAccessVectorValues.Floats vectorValues;
   private final SplittableRandom random;
   private final Lucene91BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
@@ -66,7 +66,7 @@ public final class Lucene91HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues<float[]> buildVectors;
+  private RandomAccessVectorValues.Floats buildVectors;
 
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
@@ -81,7 +81,7 @@ public final class Lucene91HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene91HnswGraphBuilder(
-      RandomAccessVectorValues<float[]> vectors,
+      RandomAccessVectorValues.Floats vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
@@ -118,8 +118,7 @@ public final class Lucene91HnswGraphBuilder {
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public Lucene91OnHeapHnswGraph build(RandomAccessVectorValues<float[]> vectors)
-      throws IOException {
+  public Lucene91OnHeapHnswGraph build(RandomAccessVectorValues.Floats vectors) throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -253,7 +252,7 @@ public final class Lucene91HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene91NeighborArray neighbors,
-      RandomAccessVectorValues<float[]> vectorValues)
+      RandomAccessVectorValues.Floats vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {

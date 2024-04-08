@@ -41,8 +41,13 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  */
 public abstract class FlatVectorsReader implements Closeable, Accountable {
 
+  /** Scorer for flat vectors */
+  protected final FlatVectorsScorer vectorScorer;
+
   /** Sole constructor */
-  protected FlatVectorsReader() {}
+  protected FlatVectorsReader(FlatVectorsScorer vectorsScorer) {
+    this.vectorScorer = vectorsScorer;
+  }
 
   /**
    * Returns a {@link RandomVectorScorer} for the given field and target vector.

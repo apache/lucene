@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.lucene99;
 import java.io.IOException;
 import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.FlatVectorsScorer;
 import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
@@ -75,20 +76,21 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+  private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat() {
-    super();
+  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+    this.vectorsScorer = vectorsScorer;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99FlatVectorsWriter(state);
+    return new Lucene99FlatVectorsWriter(state, vectorsScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatVectorsReader(state);
+    return new Lucene99FlatVectorsReader(state, vectorsScorer);
   }
 
   @Override

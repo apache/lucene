@@ -656,14 +656,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RandomAccessVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerSupplier.createBytes(
-                (RandomAccessVectorValues<byte[]>) raVectors,
+                RandomAccessVectorValues.fromBytes((List<byte[]>) vectors, dim),
                 fieldInfo.getVectorSimilarityFunction());
             case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-                (RandomAccessVectorValues<float[]>) raVectors,
+                RandomAccessVectorValues.fromFloats((List<float[]>) vectors, dim),
                 fieldInfo.getVectorSimilarityFunction());
           };
       hnswGraphBuilder =
@@ -706,36 +705,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
           + vectorSize * fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize
           + hnswGraphBuilder.getGraph().ramBytesUsed();
-    }
-  }
-
-  private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
-    private final List<T> vectors;
-    private final int dim;
-
-    RAVectorValues(List<T> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public T vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RAVectorValues<T> copy() throws IOException {
-      return this;
     }
   }
 }

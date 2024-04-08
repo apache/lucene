@@ -68,8 +68,8 @@ public interface RandomVectorScorer {
    * @param similarityFunction the similarity function to score vectors
    * @param query the actual query
    */
-  static RandomVectorScorer createFloats(
-      final RandomAccessVectorValues<float[]> vectors,
+  static FloatVectorScorer createFloats(
+      final RandomAccessVectorValues.Floats vectors,
       final VectorSimilarityFunction similarityFunction,
       final float[] query) {
     if (query.length != vectors.dimension()) {
@@ -79,12 +79,7 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
-      }
-    };
+    return new FloatVectorScorer(vectors, query, similarityFunction);
   }
 
   /**
@@ -99,8 +94,8 @@ public interface RandomVectorScorer {
    * @param similarityFunction the similarity function to use to score vectors
    * @param query the actual query
    */
-  static RandomVectorScorer createBytes(
-      final RandomAccessVectorValues<byte[]> vectors,
+  static ByteVectorScorer createBytes(
+      final RandomAccessVectorValues.Bytes vectors,
       final VectorSimilarityFunction similarityFunction,
       final byte[] query) {
     if (query.length != vectors.dimension()) {
@@ -110,28 +105,19 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
-      }
-    };
+    return new ByteVectorScorer(vectors, query, similarityFunction);
   }
 
-  /**
-   * Creates a default scorer for random access vectors.
-   *
-   * @param <T> the type of the vector values
-   */
-  abstract class AbstractRandomVectorScorer<T> implements RandomVectorScorer {
-    private final RandomAccessVectorValues<T> values;
+  /** Creates a default scorer for random access vectors. */
+  abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
+    private final RandomAccessVectorValues values;
 
     /**
      * Creates a new scorer for the given vector values.
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(RandomAccessVectorValues<T> values) {
+    public AbstractRandomVectorScorer(RandomAccessVectorValues values) {
       this.values = values;
     }
 
@@ -148,6 +134,50 @@ public interface RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+  }
+
+  /** A {@link RandomVectorScorer} for float vectors. */
+  class FloatVectorScorer extends AbstractRandomVectorScorer {
+    private final RandomAccessVectorValues.Floats values;
+    private final float[] query;
+    private final VectorSimilarityFunction similarityFunction;
+
+    public FloatVectorScorer(
+        RandomAccessVectorValues.Floats values,
+        float[] query,
+        VectorSimilarityFunction similarityFunction) {
+      super(values);
+      this.values = values;
+      this.query = query;
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      return similarityFunction.compare(query, values.vectorValue(node));
+    }
+  }
+
+  /** A {@link RandomVectorScorer} for byte vectors. */
+  class ByteVectorScorer extends AbstractRandomVectorScorer {
+    private final RandomAccessVectorValues.Bytes values;
+    private final byte[] query;
+    private final VectorSimilarityFunction similarityFunction;
+
+    public ByteVectorScorer(
+        RandomAccessVectorValues.Bytes values,
+        byte[] query,
+        VectorSimilarityFunction similarityFunction) {
+      super(values);
+      this.values = values;
+      this.query = query;
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      return similarityFunction.compare(query, values.vectorValue(node));
     }
   }
 }

@@ -46,7 +46,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
-  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
+  private static final FlatVectorsFormat rawVectorFormat =
+      new Lucene99FlatVectorsFormat(new OnHeapFlatVectorScorer());
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
@@ -62,6 +63,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
 
   final byte bits;
   final boolean compress;
+  final OnHeapScalarQuantizedVectorScorer onHeapScorer;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -98,6 +100,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
     this.compress = compress;
+    this.onHeapScorer = new OnHeapScalarQuantizedVectorScorer();
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -123,11 +126,17 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, bits, compress, rawVectorFormat.fieldsWriter(state));
+        state,
+        confidenceInterval,
+        bits,
+        compress,
+        rawVectorFormat.fieldsWriter(state),
+        onHeapScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
+    return new Lucene99ScalarQuantizedVectorsReader(
+        state, rawVectorFormat.fieldsReader(state), onHeapScorer);
   }
 }
