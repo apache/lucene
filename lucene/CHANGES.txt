@@ -266,6 +266,8 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
+
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 
 * GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
