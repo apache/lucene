@@ -374,6 +374,10 @@ public class TestPointQueries extends LuceneTestCase {
     doTestRandomLongs(1000);
   }
 
+  public void testRandomLongsBig() throws Exception {
+    doTestRandomLongs(20_000);
+  }
+
   private void doTestRandomLongs(int count) throws Exception {
 
     int numValues = TestUtil.nextInt(random(), count, count * 2);
@@ -434,7 +438,13 @@ public class TestPointQueries extends LuceneTestCase {
       dir = newMaybeVirusCheckingDirectory();
     }
 
-    int missingPct = random().nextInt(100);
+    /*
+    The point range query chooses only considers using an inverse BKD visitor if
+    there is exactly one value per document. If any document misses a value that
+    code is not exercised. Using a nextBoolean() here increases the likelihood
+    that there is no missing values, making the test more likely to test that code.
+    */
+    int missingPct = random().nextBoolean() ? 0 : random().nextInt(100);
     int deletedPct = random().nextInt(100);
     if (VERBOSE) {
       System.out.println("  missingPct=" + missingPct);

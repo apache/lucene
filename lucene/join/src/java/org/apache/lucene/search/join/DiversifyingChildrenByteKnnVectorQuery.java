@@ -22,6 +22,7 @@ import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
@@ -77,7 +78,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected TopDocs exactSearch(
+      LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
     if (byteVectorValues == null) {
@@ -100,8 +102,15 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
             fi.getVectorSimilarityFunction());
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
+    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
     while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
+      // Mark results as partial if timeout is met
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
+        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        break;
+      }
+
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
@@ -120,7 +129,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       topScoreDocs[i] = queue.pop();
     }
 
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
   }
 
@@ -136,6 +145,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
+    ByteVectorValues.checkField(context.reader(), field);
     KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
     if (collector == null) {
       return NO_RESULTS;

@@ -327,7 +327,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     int pathCount = 0;
     int childCount = 0;
 
-    TopOrdAndIntQueue.OrdAndValue reuse = null;
+    TopOrdAndIntQueue.OrdAndInt reuse = null;
     while (childOrds.hasNext()) {
       int ord = childOrds.next();
       int count = getCount(ord);
@@ -335,20 +335,20 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         pathCount += count;
         childCount++;
         if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-          if (reuse == null) {
-            reuse = new TopOrdAndIntQueue.OrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
           if (q == null) {
             // Lazy init, so we don't create this for the
             // sparse case unnecessarily
             q = new TopOrdAndIntQueue(topN);
           }
-          reuse = q.insertWithOverflow(reuse);
+          if (reuse == null) {
+            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+          }
+          reuse.ord = ord;
+          reuse.value = count;
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
           if (q.size() == topN) {
-            bottomCount = q.top().value;
-            bottomOrd = q.top().value;
+            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
+            bottomOrd = q.top().ord;
           }
         }
       }
@@ -396,7 +396,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      TopOrdAndIntQueue.OrdAndInt ordAndValue = (TopOrdAndIntQueue.OrdAndInt) q.pop();
       assert ordAndValue != null;
       final BytesRef term = dv.lookupOrd(ordAndValue.ord);
       String[] parts = FacetsConfig.stringToPath(term.utf8ToString());

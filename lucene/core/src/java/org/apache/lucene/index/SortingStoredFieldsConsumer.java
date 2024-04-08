@@ -101,9 +101,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =
-        codec
-            .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+        codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
       CopyVisitor visitor = new CopyVisitor(sortWriter);

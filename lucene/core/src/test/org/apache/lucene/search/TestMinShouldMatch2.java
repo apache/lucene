@@ -360,7 +360,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
       for (BooleanClause clause : bq.clauses()) {
         assert !clause.isProhibited();
         assert !clause.isRequired();
-        Term term = ((TermQuery) clause.getQuery()).getTerm();
+        Term term = ((TermQuery) clause.query()).getTerm();
         long ord = dv.lookupTerm(term.bytes());
         if (ord >= 0) {
           boolean success = ords.add(ord);
