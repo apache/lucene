@@ -285,7 +285,6 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Test that the query times out correctly. */
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13272")
   public void testTimeout() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
@@ -306,9 +305,9 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(0, searcher.count(exactQuery)); // Same for exact search
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
-      // Note: This depends on the HNSW graph having just one layer,
-      // would be 0 in case of multiple layers
-      assertEquals(1, searcher.count(query)); // Expect only 1 result
+      // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
+      // because the timeout is exhausted while finding the best entry node for the last level
+      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
       assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
