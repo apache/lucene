@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -259,7 +258,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
   private class FieldsReader extends DocValuesProducer {
 
-    private final Map<String, DocValuesProducer> fields = new TreeMap<>();
+    private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
