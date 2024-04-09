@@ -39,7 +39,10 @@ configure(project(":lucene:core")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 }
 
 configure(project(":lucene:backward-codecs")) {
@@ -64,7 +67,10 @@ configure(project(":lucene:backward-codecs")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil84Internal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil84Internal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 
   task generateForUtil90Internal() {
     description "Regenerate gen_ForUtil.py"
@@ -86,6 +92,9 @@ configure(project(":lucene:backward-codecs")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil90Internal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil90Internal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 }
 
