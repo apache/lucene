@@ -1349,7 +1349,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     ir.close();
   }
 
-  public void testMatchedFields() throws IOException {
+  public void testMaskedFields() throws IOException {
     final Map<String, Analyzer> fieldAnalyzers = new TreeMap<>();
     fieldAnalyzers.put("field", new WhitespaceAnalyzer());
     fieldAnalyzers.put("field_english", new EnglishAnalyzer()); // English stemming and stopwords
@@ -1384,7 +1384,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
         // field is highlighted based on the matches from the "field_english"
-        matchedFieldsTestCase(
+        maskedFieldsTestCase(
             analyzer,
             searcher,
             Set.of("field", "field_english"),
@@ -1393,7 +1393,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
             "<b>dance</b> with <b>star</b>");
 
         // field is highlighted based on the matches from the "field_characters"
-        matchedFieldsTestCase(
+        maskedFieldsTestCase(
             analyzer,
             searcher,
             Set.of("field", "field_characters"),
@@ -1402,7 +1402,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
             "<b>d</b><b>a</b><b>n</b><b>c</b>e with star");
 
         // field is highlighted based on the matches from the "field_tripples"
-        matchedFieldsTestCase(
+        maskedFieldsTestCase(
             analyzer,
             searcher,
             Set.of("field", "field_tripples"),
@@ -1412,7 +1412,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
         // field is highlighted based on the matches from the "field_characters" and
         // "field_tripples"
-        matchedFieldsTestCase(
+        maskedFieldsTestCase(
             analyzer,
             searcher,
             Set.of("field", "field_tripples", "field_characters"),
@@ -1423,28 +1423,28 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     }
   }
 
-  private static void matchedFieldsTestCase(
+  private static void maskedFieldsTestCase(
       Analyzer analyzer,
       IndexSearcher searcher,
-      Set<String> matchedFields,
+      Set<String> maskedFields,
       String queryText,
       String expectedSnippetWithWeightMatches,
       String expectedSnippetWithoutWeightMatches)
       throws IOException {
     QueryBuilder queryBuilder = new QueryBuilder(analyzer);
     BooleanQuery.Builder boolQueryBuilder = new BooleanQuery.Builder();
-    for (String matchedField : matchedFields) {
-      Query fieldPhraseQuery = queryBuilder.createPhraseQuery(matchedField, queryText, 2);
+    for (String maskedField : maskedFields) {
+      Query fieldPhraseQuery = queryBuilder.createPhraseQuery(maskedField, queryText, 2);
       boolQueryBuilder.add(fieldPhraseQuery, BooleanClause.Occur.SHOULD);
     }
     Query query = boolQueryBuilder.build();
     TopDocs topDocs = searcher.search(query, 10);
     assertEquals(1, topDocs.totalHits.value);
 
-    Function<String, Set<String>> matchedFieldsFunc =
-        fieldName -> fieldName.equals("field") ? matchedFields : Collections.emptySet();
+    Function<String, Set<String>> maskedFieldsFunc =
+        fieldName -> fieldName.equals("field") ? maskedFields : Collections.emptySet();
     UnifiedHighlighter.Builder uhBuilder =
-        new UnifiedHighlighter.Builder(searcher, analyzer).withMatchedFieldsFunc(matchedFieldsFunc);
+        new UnifiedHighlighter.Builder(searcher, analyzer).withMaskedFieldsFunc(maskedFieldsFunc);
     UnifiedHighlighter highlighter =
         randomUnifiedHighlighter(
             uhBuilder, EnumSet.of(HighlightFlag.PHRASES), random().nextBoolean());
