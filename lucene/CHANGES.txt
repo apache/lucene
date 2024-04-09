@@ -81,6 +81,12 @@ Optimizations
 * GITHUB#13149: Made PointRangeQuery faster, for some segment sizes, by reducing the amount of virtual calls to
   IntersectVisitor::visit(int). (Anton Hägerstrand)
 
+* GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
+  could. (Stefan Vodita)
+
+* GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
+  a TreeMap. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
