@@ -119,6 +119,8 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#13246: Simplify bytes comparison as long comparison in NumericComparator. (Guo feng)
+
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
