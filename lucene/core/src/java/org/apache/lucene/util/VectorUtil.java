@@ -175,6 +175,13 @@ public final class VectorUtil {
     return IMPL.dotProduct(a, b);
   }
 
+  public static int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4DotProduct(a, b);
+  }
+
   /**
    * Dot product score computed over signed bytes, scaled to be in [0, 1].
    *

@@ -98,8 +98,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input with IOContext.RANDOM to ensure basic code path coverage for POSIX_MADV_RANDOM.
-  public void testWithRandom() throws Exception {
+  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  public void testWithNormal() throws Exception {
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
@@ -109,7 +109,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
-      try (final IndexInput in = dir.openInput("test", IOContext.RANDOM)) {
+      try (final IndexInput in =
+          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);

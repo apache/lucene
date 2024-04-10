@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Long#compare} for {@code numHits}. This comparator provides a skipping
@@ -56,6 +57,11 @@ public class LongComparator extends NumericComparator<Long> {
   @Override
   protected long missingValueAsComparableLong() {
     return missingValue;
+  }
+
+  @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToLong(bytes, 0);
   }
 
   @Override

@@ -37,7 +37,6 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntArrayDocIdSet;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LSBRadixSorter;
-import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -89,15 +88,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     pruning = Pruning.NONE;
   }
 
-  private static long bytesAsLong(byte[] bytes) {
-    return switch (bytes.length) {
-      case 4 -> NumericUtils.sortableBytesToInt(bytes, 0);
-      case 8 -> NumericUtils.sortableBytesToLong(bytes, 0);
-      default -> throw new IllegalStateException("bytes count should be 4 or 8");
-    };
-  }
-
   protected abstract long missingValueAsComparableLong();
+
+  /**
+   * Decode sortable bytes to long. It should be consistent with the codec that {@link PointValues}
+   * of this field is using.
+   */
+  protected abstract long sortableBytesToLong(byte[] bytes);
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
@@ -105,6 +102,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
+    private final PointValues.PointTree pointTree;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
@@ -145,11 +143,15 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   + " expected "
                   + bytesCount);
         }
+        this.pointTree = pointValues.getPointTree();
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
-        encodeTop();
+        if (leafTopSet) {
+          encodeTop();
+        }
       } else {
+        this.pointTree = null;
         this.enableSkipping = false;
         this.maxDoc = 0;
         this.competitiveIterator = null;
@@ -216,7 +218,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
 
       if (competitiveIterator instanceof CompetitiveIterator iter) {
-        encodeBottom();
+        if (queueFull) {
+          encodeBottom();
+        }
         // CompetitiveIterator already built, try to reduce clause.
         tryReduceDisjunctionClause(iter);
         return;
@@ -233,7 +237,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       if ((reverse == false && bottomAsComparableLong() <= thresholdAsLong)
           || (reverse && bottomAsComparableLong() >= thresholdAsLong)) {
-        encodeBottom();
+        if (queueFull) {
+          encodeBottom();
+        }
         DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor();
         competitiveIterator = visitor.generateCompetitiveIterator();
       }
@@ -266,9 +272,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         thresholdValuePos = reverse == false ? threshold : pointValues.size() - threshold;
       }
       if (thresholdValuePos <= 0) {
-        return bytesAsLong(pointValues.getMinPackedValue());
+        return sortableBytesToLong(pointValues.getMinPackedValue());
       } else if (thresholdValuePos >= pointValues.size()) {
-        return bytesAsLong(pointValues.getMaxPackedValue());
+        return sortableBytesToLong(pointValues.getMaxPackedValue());
       } else {
         return intersectValueByPos(pointValues.getPointTree(), thresholdValuePos);
       }
@@ -282,15 +288,15 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         pointTree.moveToSibling();
       }
       if (pointTree.size() == pos) {
-        return bytesAsLong(pointTree.getMaxPackedValue());
+        return sortableBytesToLong(pointTree.getMaxPackedValue());
       } else if (pos == 0) {
-        return bytesAsLong(pointTree.getMinPackedValue());
+        return sortableBytesToLong(pointTree.getMinPackedValue());
       } else if (pointTree.moveToChild()) {
         return intersectValueByPos(pointTree, pos);
       } else {
         return reverse == false
-            ? bytesAsLong(pointTree.getMaxPackedValue())
-            : bytesAsLong(pointTree.getMinPackedValue());
+            ? sortableBytesToLong(pointTree.getMaxPackedValue())
+            : sortableBytesToLong(pointTree.getMinPackedValue());
       }
     }
 
@@ -301,9 +307,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * value is 5, we will use a range on [MIN_VALUE, 4].
      */
     private void encodeBottom() {
-      if (queueFull == false) {
-        return;
-      }
       if (reverse == false) {
         maxValueAsLong = bottomAsComparableLong();
         if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && maxValueAsLong != Long.MIN_VALUE) {
@@ -324,9 +327,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * is 3, we will use a range on [4, MAX_VALUE].
      */
     private void encodeTop() {
-      if (leafTopSet == false) {
-        return;
-      }
       if (reverse == false) {
         minValueAsLong = topAsComparableLong();
         if (singleSort
@@ -453,8 +453,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                 pointTree.visitDocIDs(this);
               }
               updateMinMax(
-                  bytesAsLong(pointTree.getMinPackedValue()),
-                  bytesAsLong(pointTree.getMaxPackedValue()));
+                  sortableBytesToLong(pointTree.getMinPackedValue()),
+                  sortableBytesToLong(pointTree.getMaxPackedValue()));
             }
           }
           case CELL_OUTSIDE_QUERY -> {}
@@ -546,7 +546,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
   }
 
-  private static class RangeVisitor implements PointValues.IntersectVisitor {
+  private class RangeVisitor implements PointValues.IntersectVisitor {
 
     private final long minInclusive;
     private final long maxInclusive;
@@ -571,7 +571,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (docID <= docLowerBound) {
         return; // already visited or skipped
       }
-      long l = bytesAsLong(packedValue);
+      long l = sortableBytesToLong(packedValue);
       if (l >= minInclusive && l <= maxInclusive) {
         consumeDoc(docID);
       }
@@ -579,7 +579,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
-      long l = bytesAsLong(packedValue);
+      long l = sortableBytesToLong(packedValue);
       if (l >= minInclusive && l <= maxInclusive) {
         int doc = docLowerBound >= 0 ? iterator.advance(docLowerBound) : iterator.nextDoc();
         while (doc != DocIdSetIterator.NO_MORE_DOCS) {
@@ -600,8 +600,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      long min = bytesAsLong(minPackedValue);
-      long max = bytesAsLong(maxPackedValue);
+      long min = sortableBytesToLong(minPackedValue);
+      long max = sortableBytesToLong(maxPackedValue);
 
       if (min > maxInclusive || max < minInclusive) {
         // 1. cmp ==0 and pruning==Pruning.GREATER_THAN_OR_EQUAL_TO : if the sort is

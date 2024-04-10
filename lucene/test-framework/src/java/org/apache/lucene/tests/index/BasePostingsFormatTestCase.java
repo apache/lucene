@@ -369,6 +369,61 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
+  protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {}
+
+  public void testBinarySearchTermLeaf() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 100000; i <= 100400; i++) {
+      // only add odd number
+      if (i % 2 == 1) {
+        Document document = new Document();
+        document.add(new StringField("id", i + "", Field.Store.NO));
+        iw.addDocument(document);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+    // test seekExact
+    for (int i = 100000; i <= 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertTrue(termsEnum.seekExact(target));
+        assertEquals(termsEnum.term(), target);
+      } else {
+        assertFalse(termsEnum.seekExact(target));
+      }
+    }
+
+    subCheckBinarySearch(termsEnum);
+    // test seekCeil
+    for (int i = 100000; i < 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+        assertEquals(termsEnum.term(), target);
+        if (i <= 100397) {
+          assertEquals(new BytesRef(i + 2 + ""), termsEnum.next());
+        }
+      } else {
+        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
+        assertEquals(new BytesRef(i + 1 + ""), termsEnum.term());
+      }
+    }
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
   // tests that level 2 ghost fields still work
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();

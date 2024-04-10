@@ -75,6 +75,9 @@ final class SegmentTermsEnumFrame {
   // True if all entries are terms
   boolean isLeafBlock;
 
+  // True if all entries have the same length.
+  boolean allEqual;
+
   long lastSubFP;
 
   int nextFloorLabel;
@@ -183,7 +186,7 @@ final class SegmentTermsEnumFrame {
     suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
 
     int numSuffixLengthBytes = ste.in.readVInt();
-    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
     if (suffixLengthBytes.length < numSuffixLengthBytes) {
       suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
@@ -523,7 +526,15 @@ final class SegmentTermsEnumFrame {
 
   // NOTE: sets startBytePos/suffix as a side effect
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
-    return isLeafBlock ? scanToTermLeaf(target, exactOnly) : scanToTermNonLeaf(target, exactOnly);
+    if (isLeafBlock) {
+      if (allEqual) {
+        return binarySearchTermLeaf(target, exactOnly);
+      } else {
+        return scanToTermLeaf(target, exactOnly);
+      }
+    } else {
+      return scanToTermNonLeaf(target, exactOnly);
+    }
   }
 
   private int startBytePos;
@@ -554,8 +565,6 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
-    // TODO: binary search when all terms have the same length, which is common for ID fields,
-    // which are also the most sensitive to lookup performance?
     // Loop over each entry (term or sub-block) in this block:
     do {
       nextEnt++;
@@ -626,6 +635,97 @@ final class SegmentTermsEnumFrame {
     // not-exact case we don't next() into the next
     // frame here
     return SeekStatus.END;
+  }
+
+  // Target's prefix matches this block's prefix;
+  // And all suffixes have the same length in this block,
+  // we binary search the entries to check if the suffix matches.
+  public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
+    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
+    // prefix + "
+    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
+    // brToString(term));
+
+    assert nextEnt != -1;
+
+    ste.termExists = true;
+    subCode = 0;
+
+    if (nextEnt == entCount) {
+      if (exactOnly) {
+        fillTerm();
+      }
+      return SeekStatus.END;
+    }
+
+    assert prefixMatches(target);
+
+    suffix = suffixLengthsReader.readVInt();
+    // TODO early terminate when target length unequals suffix + prefix.
+    // But we need to keep the same status with scanToTermLeaf.
+    int start = nextEnt;
+    int end = entCount - 1;
+    // Binary search the entries (terms) in this leaf block:
+    int cmp = 0;
+    while (start <= end) {
+      int mid = (start + end) >>> 1;
+      nextEnt = mid + 1;
+      startBytePos = mid * suffix;
+
+      // Binary search bytes in the suffix, comparing to the target.
+      cmp =
+          Arrays.compareUnsigned(
+              suffixBytes,
+              startBytePos,
+              startBytePos + suffix,
+              target.bytes,
+              target.offset + prefix,
+              target.offset + target.length);
+      if (cmp < 0) {
+        start = mid + 1;
+      } else if (cmp > 0) {
+        end = mid - 1;
+      } else {
+        // Exact match!
+        suffixesReader.setPosition(startBytePos + suffix);
+        fillTerm();
+        // if (DEBUG) System.out.println("        found!");
+        return SeekStatus.FOUND;
+      }
+    }
+
+    // It is possible (and OK) that terms index pointed us
+    // at this block, but, we searched the entire block and
+    // did not find the term to position to.  This happens
+    // when the target is after the last term in the block
+    // (but, before the next term in the index).  EG
+    // target could be foozzz, and terms index pointed us
+    // to the foo* block, but the last term in this block
+    // was fooz (and, eg, first term in the next block will
+    // bee fop).
+    // if (DEBUG) System.out.println("      block end");
+    SeekStatus seekStatus;
+    if (end < entCount - 1) {
+      seekStatus = SeekStatus.NOT_FOUND;
+      // If binary search ended at the less term, and greater term exists.
+      // We need to advance to the greater term.
+      if (cmp < 0) {
+        startBytePos += suffix;
+        nextEnt++;
+      }
+      suffixesReader.setPosition(startBytePos + suffix);
+      fillTerm();
+    } else {
+      seekStatus = SeekStatus.END;
+      suffixesReader.setPosition(startBytePos + suffix);
+      if (exactOnly) {
+        fillTerm();
+      }
+    }
+    // TODO: not consistent that in the
+    // not-exact case we don't next() into the next
+    // frame here
+    return seekStatus;
   }
 
   // Target's prefix matches this block's prefix; we

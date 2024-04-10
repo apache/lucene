@@ -60,6 +60,11 @@ public class DoubleComparator extends NumericComparator<Double> {
   }
 
   @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToLong(bytes, 0);
+  }
+
+  @Override
   public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
     return new DoubleLeafComparator(context);
   }
