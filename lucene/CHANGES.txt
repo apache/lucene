@@ -197,6 +197,9 @@ New Features
 * GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
   and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
+* GITHUB#13268: Add ability for UnifiedHighlighter to highlight a field based on combined matches from multiple fields.
+  (Mayya Sharipova, Jim Ferenczi)
+
 Improvements
 ---------------------
 

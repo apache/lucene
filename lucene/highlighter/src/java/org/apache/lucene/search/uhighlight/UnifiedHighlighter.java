@@ -368,8 +368,8 @@ public class UnifiedHighlighter {
 
     /**
      * Set up a function that given a field retuns a set of masked fields whose matches are combined
-     * to highlight the given field. This is useful when you want to highlight a field based on
-     * matches from several fields.
+     * to highlight the given field. Masked fields should not include the original field. This is
+     * useful when you want to highlight a field based on matches from several fields.
      *
      * <p>Note: All masked fields must share the same source as the field being highlighted,
      * otherwise their offsets will not correspond to the highlighted field.
@@ -1099,12 +1099,17 @@ public class UnifiedHighlighter {
       OffsetSource offsetSource = getOptimizedOffsetSource(components);
       fieldOffsetStrategy = getOffsetStrategy(offsetSource, components);
     } else {
-      List<FieldOffsetStrategy> fieldsOffsetStrategies = new ArrayList<>(maskedFields.size());
+      List<FieldOffsetStrategy> fieldsOffsetStrategies = new ArrayList<>(maskedFields.size() + 1);
       for (String maskedField : maskedFields) {
         UHComponents components = getHighlightComponents(maskedField, query, allTerms);
         OffsetSource offsetSource = getOptimizedOffsetSource(components);
         fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
       }
+      // adding original field as well
+      UHComponents components = getHighlightComponents(field, query, allTerms);
+      OffsetSource offsetSource = getOptimizedOffsetSource(components);
+      fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
+
       fieldOffsetStrategy = new MultiFieldsOffsetStrategy(fieldsOffsetStrategies);
     }
     return newFieldHighlighter(

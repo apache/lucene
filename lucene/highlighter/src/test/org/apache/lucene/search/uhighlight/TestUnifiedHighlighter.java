@@ -1387,7 +1387,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         maskedFieldsTestCase(
             analyzer,
             searcher,
-            Set.of("field", "field_english"),
+            "field",
+            Set.of("field_english"),
             "dancing with the stars",
             "<b>dance with star</b>",
             "<b>dance</b> with <b>star</b>");
@@ -1396,7 +1397,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         maskedFieldsTestCase(
             analyzer,
             searcher,
-            Set.of("field", "field_characters"),
+            "field",
+            Set.of("field_characters"),
             "danc",
             "<b>danc</b>e with star",
             "<b>d</b><b>a</b><b>n</b><b>c</b>e with star");
@@ -1405,7 +1407,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         maskedFieldsTestCase(
             analyzer,
             searcher,
-            Set.of("field", "field_tripples"),
+            "field",
+            Set.of("field_tripples"),
             "danc",
             "<b>dan</b>ce with star",
             "<b>dan</b>ce with star");
@@ -1415,7 +1418,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         maskedFieldsTestCase(
             analyzer,
             searcher,
-            Set.of("field", "field_tripples", "field_characters"),
+            "field",
+            Set.of("field_tripples", "field_characters"),
             "danc",
             "<b>danc</b>e with star",
             "<b>da</b><b>n</b><b>c</b>e with star");
@@ -1426,6 +1430,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
   private static void maskedFieldsTestCase(
       Analyzer analyzer,
       IndexSearcher searcher,
+      String field,
       Set<String> maskedFields,
       String queryText,
       String expectedSnippetWithWeightMatches,
@@ -1433,8 +1438,10 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
       throws IOException {
     QueryBuilder queryBuilder = new QueryBuilder(analyzer);
     BooleanQuery.Builder boolQueryBuilder = new BooleanQuery.Builder();
+    Query fieldPhraseQuery = queryBuilder.createPhraseQuery(field, queryText, 2);
+    boolQueryBuilder.add(fieldPhraseQuery, BooleanClause.Occur.SHOULD);
     for (String maskedField : maskedFields) {
-      Query fieldPhraseQuery = queryBuilder.createPhraseQuery(maskedField, queryText, 2);
+      fieldPhraseQuery = queryBuilder.createPhraseQuery(maskedField, queryText, 2);
       boolQueryBuilder.add(fieldPhraseQuery, BooleanClause.Occur.SHOULD);
     }
     Query query = boolQueryBuilder.build();
@@ -1442,15 +1449,15 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     assertEquals(1, topDocs.totalHits.value);
 
     Function<String, Set<String>> maskedFieldsFunc =
-        fieldName -> fieldName.equals("field") ? maskedFields : Collections.emptySet();
+        fieldName -> fieldName.equals(field) ? maskedFields : Collections.emptySet();
     UnifiedHighlighter.Builder uhBuilder =
         new UnifiedHighlighter.Builder(searcher, analyzer).withMaskedFieldsFunc(maskedFieldsFunc);
     UnifiedHighlighter highlighter =
         randomUnifiedHighlighter(
             uhBuilder, EnumSet.of(HighlightFlag.PHRASES), random().nextBoolean());
-    String[] snippets = highlighter.highlight("field", query, topDocs, 10);
+    String[] snippets = highlighter.highlight(field, query, topDocs, 10);
     String expectedSnippet =
-        highlighter.getFlags("field").contains(HighlightFlag.WEIGHT_MATCHES)
+        highlighter.getFlags(field).contains(HighlightFlag.WEIGHT_MATCHES)
             ? expectedSnippetWithWeightMatches
             : expectedSnippetWithoutWeightMatches;
     assertEquals(1, snippets.length);
