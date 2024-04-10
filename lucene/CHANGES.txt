@@ -98,7 +98,7 @@ API Changes
 
 * GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
 
-* GITHUB#13262: Remove deprecated code IntField.IntField(name, value), VH_BE_DOUBLE (static memeber in BitUtil) and
+* GITHUB#13262: Remove deprecated code IntField.IntField(name, value), VH_BE_DOUBLE (static member in BitUtil) and
   BlockJoinSelector.wrap (Sanjay Dutt)
 
 
