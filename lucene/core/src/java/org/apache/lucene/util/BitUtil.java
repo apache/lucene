@@ -185,16 +185,6 @@ public final class BitUtil {
       MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
 
   /**
-   * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
-   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
-   *
-   * @deprecated Better use little endian unless it is needed for backwards compatibility.
-   */
-  @Deprecated
-  public static final VarHandle VH_BE_DOUBLE =
-      MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
-
-  /**
    * returns the next highest power of two, or the current value if it's already a power of two or
    * zero
    */
