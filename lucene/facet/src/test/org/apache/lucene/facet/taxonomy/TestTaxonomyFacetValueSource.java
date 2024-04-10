@@ -688,15 +688,13 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
         aggregatedValue = aggregationFunction.aggregate(aggregatedValue, ent.getValue());
       }
       sortLabelValues(labelValues);
-      if (aggregatedValue > 0) {
-        expected.add(
-            new FacetResult(
-                "dim" + i,
-                new String[0],
-                aggregatedValue,
-                labelValues.toArray(new LabelAndValue[labelValues.size()]),
-                labelValues.size()));
-      }
+      expected.add(
+          new FacetResult(
+              "dim" + i,
+              new String[0],
+              aggregatedValue,
+              labelValues.toArray(new LabelAndValue[labelValues.size()]),
+              labelValues.size()));
     }
 
     // Sort by highest value, tie break by value:
