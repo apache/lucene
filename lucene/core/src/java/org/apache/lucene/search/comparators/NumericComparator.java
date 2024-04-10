@@ -151,7 +151,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
-        this.competitiveIterator = null;
       }
     }
 
