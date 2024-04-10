@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;

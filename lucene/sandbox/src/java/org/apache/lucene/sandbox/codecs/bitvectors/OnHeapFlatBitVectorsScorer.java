@@ -18,7 +18,7 @@
 package org.apache.lucene.sandbox.codecs.bitvectors;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;

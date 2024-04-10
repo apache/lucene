@@ -84,7 +84,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
       return new EmptyOffHeapVectorValues(dimension);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
-    int byteSize = dimension * java.lang.Float.BYTES;
+    int byteSize = dimension * Float.BYTES;
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(dimension, configuration.size, bytesSlice, byteSize);
     } else {

@@ -25,10 +25,10 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMU
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;

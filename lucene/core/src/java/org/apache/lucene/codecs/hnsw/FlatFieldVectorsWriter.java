@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.hnsw;
+
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 
 /**
  * Vectors' writer for a field

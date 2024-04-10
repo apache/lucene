@@ -14,24 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs;
+
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * An interface that provides an HNSW graph. This interface is useful when gathering multiple HNSW
- * graphs to bootstrap segment merging. The graph may be off the JVM heap.
+ * Encodes/decodes per-document vectors and provides a scoring interface for the flat stored vectors
  *
  * @lucene.experimental
  */
-public interface HnswGraphProvider {
-  /**
-   * Return the stored HnswGraph for the given field.
-   *
-   * @param field the field containing the graph
-   * @return the HnswGraph for the given field if found
-   * @throws IOException when reading potentially off-heap graph fails
-   */
-  HnswGraph getGraph(String field) throws IOException;
+public abstract class FlatVectorsFormat {
+
+  /** Sole constructor */
+  protected FlatVectorsFormat() {}
+
+  /** Returns a {@link FlatVectorsWriter} to write the vectors to the index. */
+  public abstract FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
+
+  /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
+  public abstract FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 }
