@@ -26,8 +26,8 @@ class TokenInfoDictionaryWriter
     extends org.apache.lucene.analysis.morph.BinaryDictionaryWriter<TokenInfoDictionary> {
   private FST<Long> fst;
 
-  TokenInfoDictionaryWriter(int size) {
-    super(TokenInfoDictionary.class, new TokenInfoDictionaryEntryWriter(size));
+  TokenInfoDictionaryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
+    super(TokenInfoDictionary.class, new TokenInfoDictionaryEntryWriter(format, size));
   }
 
   public void setFST(FST<Long> fst) {

@@ -25,7 +25,7 @@ import java.util.Locale;
  * Tool to build dictionaries. Usage:
  *
  * <pre>
- *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.util.DictionaryBuilder \
+ *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.dict.DictionaryBuilder \
  *          ${inputDir} ${outputDir} ${encoding} ${normalizeEntry}
  * </pre>
  *
@@ -66,7 +66,7 @@ public class DictionaryBuilder {
         .build(inputDir)
         .write(outputDir);
 
-    new UnknownDictionaryBuilder(encoding).build(inputDir).write(outputDir);
+    new UnknownDictionaryBuilder(format, encoding).build(inputDir).write(outputDir);
 
     ConnectionCostsBuilder.build(inputDir.resolve("matrix.def"))
         .write(outputDir, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);

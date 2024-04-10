@@ -25,7 +25,8 @@ public class TestUnknownDictionary extends LuceneTestCase {
 
   @Test
   public void testPutCharacterCategory() {
-    UnknownDictionaryWriter unkDic = new UnknownDictionaryWriter(10 * 1024 * 1024);
+    UnknownDictionaryWriter unkDic =
+        new UnknownDictionaryWriter(DictionaryBuilder.DictionaryFormat.IPADIC, 10 * 1024 * 1024);
 
     expectThrows(Exception.class, () -> unkDic.putCharacterCategory(0, "DUMMY_NAME"));
 
@@ -40,7 +41,8 @@ public class TestUnknownDictionary extends LuceneTestCase {
 
   @Test
   public void testPut() {
-    UnknownDictionaryWriter unkDic = new UnknownDictionaryWriter(10 * 1024 * 1024);
+    UnknownDictionaryWriter unkDic =
+        new UnknownDictionaryWriter(DictionaryBuilder.DictionaryFormat.IPADIC, 10 * 1024 * 1024);
     expectThrows(
         NumberFormatException.class,
         () -> unkDic.put(CSVUtil.parse("KANJI,1285,11426,名詞,一般,*,*,*,*,*,*,*")));

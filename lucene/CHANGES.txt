@@ -119,6 +119,8 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-4056: Japanese Tokenizer (Kuromoji) can build a UniDic dictionary (Jun Ohtani, Alexander Zagniotov)
+
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
