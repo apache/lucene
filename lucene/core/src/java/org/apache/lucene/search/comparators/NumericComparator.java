@@ -84,6 +84,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   protected abstract long missingValueAsComparableLong();
 
+  /**
+   * Decode sortable bytes to long. It should be consistent with the codec that {@link PointValues}
+   * of this field is using.
+   */
   protected abstract long sortableBytesToLong(byte[] bytes);
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
