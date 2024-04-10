@@ -1,12 +1,12 @@
 {
     "lucene/analysis/icu/src/data/utr30/BasicFoldings.txt": "c8c10df0fb555092c206416a33e3f4d56174bd28",
-    "lucene/analysis/icu/src/data/utr30/DiacriticFolding.txt": "0cd67967ac94aa2bf134e2ec55c8c26b13dd7d23",
+    "lucene/analysis/icu/src/data/utr30/DiacriticFolding.txt": "c27e6b7d20c3cfa99f52fd141ae510b4dfe27589",
     "lucene/analysis/icu/src/data/utr30/DingbatFolding.txt": "ca562b2029e208bdf07cb2e5f689e509a336265e",
     "lucene/analysis/icu/src/data/utr30/HanRadicalFolding.txt": "f5848aa38cbf1a11131d59384f31477f3b7f077b",
-    "lucene/analysis/icu/src/data/utr30/NativeDigitFolding.txt": "d01d190007e6bbd1bf97473a2bedbe65d64d0b31",
-    "lucene/analysis/icu/src/data/utr30/nfc.txt": "95dba9e4992693e851e5012ca17862e50600c2c1",
-    "lucene/analysis/icu/src/data/utr30/nfkc.txt": "960d000f7f0b20a01d6eae915649f8a5d75bc590",
-    "lucene/analysis/icu/src/data/utr30/nfkc_cf.txt": "bc71ce253a290fba8bb32bf55b543b49fabe4271",
-    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/utr30.nrm": "188d75c1faf8f3212a772a93c809b7fe69d3e57f",
-    "property:icuConfig": "com.ibm.icu:icu4j:70.1"
+    "lucene/analysis/icu/src/data/utr30/NativeDigitFolding.txt": "11e7af84e659f1e6f561ca474ff507a3c6454759",
+    "lucene/analysis/icu/src/data/utr30/nfc.txt": "bec12fa1efb931686c7f2d9fce77a408f50d8fc2",
+    "lucene/analysis/icu/src/data/utr30/nfkc.txt": "ced755fcdc1a08d0c10e2a276cf40cad248066a6",
+    "lucene/analysis/icu/src/data/utr30/nfkc_cf.txt": "88441c8f18234f454ae1a675ce3f6ddf448adcc3",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/utr30.nrm": "25281f002b0554af951670d8d45ae71b54da56c1",
+    "property:icuConfig": "com.ibm.icu:icu4j:74.2"
 }

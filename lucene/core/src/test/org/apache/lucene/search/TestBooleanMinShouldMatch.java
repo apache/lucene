@@ -320,7 +320,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
           public void postCreate(BooleanQuery.Builder q) {
             int opt = 0;
             for (BooleanClause clause : q.build().clauses()) {
-              if (clause.getOccur() == BooleanClause.Occur.SHOULD) opt++;
+              if (clause.occur() == BooleanClause.Occur.SHOULD) opt++;
             }
             q.setMinimumNumberShouldMatch(random().nextInt(opt + 2));
             if (random().nextBoolean()) {

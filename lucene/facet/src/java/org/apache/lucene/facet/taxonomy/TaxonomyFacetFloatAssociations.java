@@ -152,8 +152,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           int ordinalCount = ordinalValues.docValueCount();
           for (int i = 0; i < ordinalCount; i++) {
             int ord = (int) ordinalValues.nextValue();
-            float newValue = aggregationFunction.aggregate(values[ord], value);
-            values[ord] = newValue;
+            float currentValue = getValue(ord);
+            float newValue = aggregationFunction.aggregate(currentValue, value);
+            setValue(ord, newValue);
+            setCount(ord, getCount(ord) + 1);
           }
         }
       }
@@ -188,8 +190,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           offset += 4;
           float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
           offset += 4;
-          float newValue = aggregationFunction.aggregate(values[ord], value);
-          values[ord] = newValue;
+          float currentValue = getValue(ord);
+          float newValue = aggregationFunction.aggregate(currentValue, value);
+          setValue(ord, newValue);
+          setCount(ord, getCount(ord) + 1);
         }
       }
     }

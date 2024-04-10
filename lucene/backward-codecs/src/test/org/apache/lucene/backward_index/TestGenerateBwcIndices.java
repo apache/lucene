@@ -82,6 +82,16 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     sortedTest.createBWCIndex();
   }
 
+  public void testCreateInt8HNSWIndices() throws IOException {
+    TestInt8HnswBackwardsCompatibility int8HnswBackwardsCompatibility =
+        new TestInt8HnswBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestInt8HnswBackwardsCompatibility.INDEX_NAME,
+                TestInt8HnswBackwardsCompatibility.SUFFIX));
+    int8HnswBackwardsCompatibility.createBWCIndex();
+  }
+
   private boolean isInitialMajorVersionRelease() {
     return Version.LATEST.equals(Version.fromBits(Version.LATEST.major, 0, 0));
   }

@@ -89,6 +89,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -100,6 +101,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -1778,37 +1780,35 @@ public abstract class LuceneTestCase extends Assert {
   public static IOContext newIOContext(Random random, IOContext oldContext) {
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
-    if (oldContext.flushInfo != null) {
+    if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
       return new IOContext(
-          new FlushInfo(randomNumDocs, Math.max(oldContext.flushInfo.estimatedSegmentSize, size)));
-    } else if (oldContext.mergeInfo != null) {
+          new FlushInfo(
+              randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
+    } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
       return new IOContext(
           new MergeInfo(
               randomNumDocs,
-              Math.max(oldContext.mergeInfo.estimatedMergeBytes, size),
+              Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
       // Make a totally random IOContext:
       final IOContext context;
-      switch (random.nextInt(5)) {
+      switch (random.nextInt(4)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = IOContext.READ;
-          break;
-        case 2:
           context = IOContext.READONCE;
           break;
-        case 3:
+        case 2:
           context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
           break;
-        case 4:
+        case 3:
           context = new IOContext(new FlushInfo(randomNumDocs, size));
           break;
         default:
@@ -3211,5 +3211,14 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     return it;
+  }
+
+  protected KnnVectorsFormat randomVectorFormat() {
+    ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
+    List<KnnVectorsFormat> availableFormats = new ArrayList<>();
+    for (KnnVectorsFormat f : formats) {
+      availableFormats.add(f);
+    }
+    return RandomPicks.randomFrom(random(), availableFormats);
   }
 }
