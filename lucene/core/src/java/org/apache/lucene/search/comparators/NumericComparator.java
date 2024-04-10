@@ -102,7 +102,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
-    private final PointValues.PointTree pointTree;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
@@ -143,7 +142,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   + " expected "
                   + bytesCount);
         }
-        this.pointTree = pointValues.getPointTree();
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
@@ -151,7 +149,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           encodeTop();
         }
       } else {
-        this.pointTree = null;
         this.enableSkipping = false;
         this.maxDoc = 0;
         this.competitiveIterator = null;
