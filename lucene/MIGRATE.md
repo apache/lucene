@@ -225,6 +225,23 @@ public class CustomCollectorManager implements CollectorManager<CustomCollector,
 
 List<Object> results = searcher.search(query, new CustomCollectorManager());
 ```
+
+### Accountable interface removed from KnnVectorsReader (GITHUB#13255)
+
+`KnnVectorsReader` objects use small heap memory, so it's not worth maintaining heap usage for them hence removed
+`Accountable` interface from `KnnVectorsReader`.
+
+### Deprecated code removal (GITHUB#13262)
+
+1. `IntField(String name, int value)`. Use `IntField(String, int, Field.Store)` with `Field.Store#NO` instead.
+2. `DoubleField(String name, double value)`. Use `DoubleField(String, double, Field.Store)` with `Field.Store#NO` instead.
+2. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
+3. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
+4. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
+5. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
+6. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
+7. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

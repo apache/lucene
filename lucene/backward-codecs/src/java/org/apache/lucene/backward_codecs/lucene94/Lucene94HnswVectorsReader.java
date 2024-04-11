@@ -40,7 +40,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -221,15 +220,6 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + info.getVectorSimilarityFunction());
     }
     return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene94HnswVectorsFormat.class);
-    totalBytes +=
-        RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    return totalBytes;
   }
 
   @Override

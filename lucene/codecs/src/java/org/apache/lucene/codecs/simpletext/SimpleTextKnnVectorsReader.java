@@ -46,7 +46,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
@@ -58,9 +57,6 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextKnnVectorsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
 
@@ -272,20 +268,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    // mirror implementation of Lucene90VectorReader#ramBytesUsed
-    long totalBytes = BASE_RAM_BYTES_USED;
-    totalBytes += RamUsageEstimator.sizeOf(scratch.bytes());
-    totalBytes +=
-        RamUsageEstimator.sizeOfMap(
-            fieldEntries, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    for (FieldEntry entry : fieldEntries.values()) {
-      totalBytes += RamUsageEstimator.sizeOf(entry.ordToDoc);
-    }
-    return totalBytes;
   }
 
   @Override

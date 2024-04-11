@@ -96,6 +96,12 @@ API Changes
 
 * GITHUB#13261: Convert `BooleanClause` class to record class. (Pulkit Gupta)
 
+* GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
+
+* GITHUB#13262: Removed deprecated constructors from DoubleField, FloatField, IntField, LongField, and LongPoint.
+  Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
+  to MIGRATE.md for further details. (Sanjay Dutt)
+
 New Features
 ---------------------
 
@@ -115,6 +121,8 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#13246: Simplify bytes comparison as long comparison in NumericComparator. (Guo feng)
 
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
@@ -224,9 +232,12 @@ New Features
 * GITHUB#12915: Add new token filters for Japanese sutegana (捨て仮名). This introduces JapaneseHiraganaUppercaseFilter
   and JapaneseKatakanaUppercaseFilter. (Dai Sugimori)
 
-* GITHUB#13196: Add support for posix_madvise to MMapDirectory: If running on Linux/macOS and Java 21
-  or later, MMapDirectory uses IOContext to pass suitable MADV flags to kernel of operating system.
-  This may improve paging logic especially when large segments are merged under memory pressure.
+* GITHUB#13196, GITHUB#13222: Add support for posix_madvise to MMapDirectory: If running on
+  Linux/macOS and Java 21 or later, MMapDirectory uses IOContext to pass suitable MADV flags to
+  kernel of operating system. In particular, merging now passes POSIX_MADV_SEQUENTIAL to the readers
+  that are being merged, and searching passes POSIX_MADV_RANDOM to vector data files - including
+  quantized vector data files, HNSW graphs, stored fields data files and term vectors data files.
+  This may improve paging logic especially when working with large indexes under memory pressure.
   (Uwe Schindler, Chris Hegarty, Robert Muir, Adrien Grand)
 
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
@@ -290,6 +301,9 @@ Optimizations
 
 * GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
   could. (Stefan Vodita)
+
+* GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
+  a TreeMap. (Adrien Grand)
 
 Bug Fixes
 ---------------------

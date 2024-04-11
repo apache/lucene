@@ -61,9 +61,6 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
 
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
-
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
@@ -233,13 +230,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + info.getVectorSimilarityFunction());
     }
     return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return Lucene95HnswVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }
 
   @Override
