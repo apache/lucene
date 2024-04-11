@@ -177,6 +177,9 @@ Changes in Runtime Behavior
   `-Dorg.apache.lucene.store.defaultReadAdvice=normal`. This may be useful on systems
   with lots of RAM as this increases read-ahead. (Adrien Grand, Uwe Schindler)
 
+* GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
+  for merging. (Adrien Grand)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
