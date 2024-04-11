@@ -116,6 +116,9 @@ public class LiveIndexWriterConfig {
   /** The IndexWriter event listener to record key events * */
   protected IndexWriterEventListener eventListener;
 
+  /** DWPT criteria definition used to select pool group from which DWPT will be selected. */
+  protected DWPTGroupingCriteriaDefinition dwptGroupingCriteriaDefinition;
+
   // used by IndexWriterConfig
   LiveIndexWriterConfig(Analyzer analyzer) {
     this.analyzer = analyzer;
@@ -139,6 +142,8 @@ public class LiveIndexWriterConfig {
     perThreadHardLimitMB = IndexWriterConfig.DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB;
     maxFullFlushMergeWaitMillis = IndexWriterConfig.DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS;
     eventListener = IndexWriterEventListener.NO_OP_LISTENER;
+    dwptGroupingCriteriaDefinition =
+        DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUPING_CRITERIA_DEFINITION;
   }
 
   /** Returns the default analyzer to use for indexing documents. */
@@ -375,6 +380,26 @@ public class LiveIndexWriterConfig {
   public LiveIndexWriterConfig setUseCompoundFile(boolean useCompoundFile) {
     this.useCompoundFile = useCompoundFile;
     return this;
+  }
+
+  /**
+   * Set DWPT grouping criteria definition
+   *
+   * @param dwptGroupingCriteriaDefinition the passed DWPT grouping criteria definition.
+   */
+  public LiveIndexWriterConfig setDWPTGroupingCriteriaFunction(
+      final DWPTGroupingCriteriaDefinition dwptGroupingCriteriaDefinition) {
+    this.dwptGroupingCriteriaDefinition = dwptGroupingCriteriaDefinition;
+    return this;
+  }
+
+  /**
+   * Get DWPT grouping criteria definition
+   *
+   * @return dwptGroupingCriteriaDefinition
+   */
+  public DWPTGroupingCriteriaDefinition getDwptGroupingCriteriaDefinition() {
+    return dwptGroupingCriteriaDefinition;
   }
 
   /**

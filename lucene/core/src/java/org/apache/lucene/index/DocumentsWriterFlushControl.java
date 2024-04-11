@@ -521,9 +521,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     flushDeletes.set(true);
   }
 
-  DocumentsWriterPerThread obtainAndLock() {
+  DocumentsWriterPerThread obtainAndLock(int dwptGroupNumber) {
     while (closed == false) {
-      final DocumentsWriterPerThread perThread = perThreadPool.getAndLock();
+      final DocumentsWriterPerThread perThread = perThreadPool.getAndLock(dwptGroupNumber);
       if (perThread.deleteQueue == documentsWriter.deleteQueue) {
         // simply return the DWPT even in a flush all case since we already hold the lock and the
         // DWPT is not stale
