@@ -231,6 +231,12 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 `KnnVectorsReader` objects use small heap memory, so it's not worth maintaining heap usage for them hence removed
 `Accountable` interface from `KnnVectorsReader`.
 
+### Auto I/O throttling disabled by default in ConcurrentMergeScheduler
+
+ConcurrentMergeScheduler now disables auto I/O throttling by default. There is still some throttling
+happening at the CPU level, since ConcurrentMergeScheduler has a maximum number of threads it can
+use, which is only a fraction of the total number of threads of the host by default.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
