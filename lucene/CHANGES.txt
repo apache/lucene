@@ -180,6 +180,9 @@ Changes in Runtime Behavior
 * GITHUB13293: Auto I/O throttling is now disabled by default on ConcurrentMergeScheduler.
   (Adrien Grand)
 
+* GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
+  for merging. (Adrien Grand)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
