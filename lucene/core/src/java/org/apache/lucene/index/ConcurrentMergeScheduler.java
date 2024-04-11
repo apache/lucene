@@ -108,7 +108,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected double targetMBPerSec = START_MB_PER_SEC;
 
   /** true if we should rate-limit writes for each merge */
-  private boolean doAutoIOThrottle = true;
+  private boolean doAutoIOThrottle = false;
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
 
@@ -202,7 +202,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   /**
    * Turn on dynamic IO throttling, to adaptively rate limit writes bytes/sec to the minimal rate
-   * necessary so merges do not fall behind. By default this is enabled.
+   * necessary so merges do not fall behind. By default this is disabled and writes are not
+   * rate-limited.
    */
   public synchronized void enableAutoIOThrottle() {
     doAutoIOThrottle = true;
