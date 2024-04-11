@@ -128,9 +128,9 @@ public final class FixedBitSet extends BitSet {
   }
 
   /**
-   * Creates a new FixedBitSet using the provided long[] array as backing store. The storedBits array
-   * must be large enough to accommodate the numBits specified, but may be larger. In that case the
-   * 'extra' or 'ghost' bits must be clear (or they may provoke spurious side-effects)
+   * Creates a new FixedBitSet using the provided long[] array as backing store. The storedBits
+   * array must be large enough to accommodate the numBits specified, but may be larger. In that
+   * case the 'extra' or 'ghost' bits must be clear (or they may provoke spurious side-effects)
    *
    * @param storedBits the array to use as backing store
    * @param numBits the number of bits actually needed
