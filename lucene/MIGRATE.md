@@ -242,7 +242,7 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 6. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
 7. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
 
-### Auto I/O throttling disabled by default in ConcurrentMergeScheduler
+### Auto I/O throttling disabled by default in ConcurrentMergeScheduler (GITHUB#13293)
 
 ConcurrentMergeScheduler now disables auto I/O throttling by default. There is still some throttling
 happening at the CPU level, since ConcurrentMergeScheduler has a maximum number of threads it can
