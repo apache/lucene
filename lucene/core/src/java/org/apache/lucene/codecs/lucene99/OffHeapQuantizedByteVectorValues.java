@@ -131,11 +131,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
-  public IndexInput getSlice() {
-    return slice;
-  }
-
-  @Override
   public float getScoreCorrectionConstant() {
     return scoreCorrectionConstant[0];
   }

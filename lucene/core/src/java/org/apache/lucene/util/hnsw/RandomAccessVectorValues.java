@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -60,15 +59,6 @@ public interface RandomAccessVectorValues {
    */
   default Bits getAcceptOrds(Bits acceptDocs) {
     return acceptDocs;
-  }
-
-  /**
-   * Returns the {@link IndexInput} slice that contains the vector values. Since the vectors are
-   * stored in a flat file, their offsets are calculable given dimensions and codec configurations.
-   * By default, this returns null as some implementations may not reference a slice.
-   */
-  default IndexInput getSlice() {
-    return null;
   }
 
   /** Float vector values. */

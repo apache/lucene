@@ -243,6 +243,9 @@ New Features
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
   to compress them to gain a 50% reduction in memory usage. (Ben Trent)
 
+* GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
+  new Hnsw format for binary quantized vectors. (Ben Trent)
+
 Improvements
 ---------------------
 

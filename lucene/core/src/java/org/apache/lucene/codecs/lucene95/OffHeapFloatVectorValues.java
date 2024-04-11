@@ -67,11 +67,6 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     return value;
   }
 
-  @Override
-  public IndexInput getSlice() {
-    return slice;
-  }
-
   public static OffHeapFloatVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       VectorEncoding vectorEncoding,
