@@ -42,6 +42,13 @@ public abstract class FlatVectorsWriter implements Accountable, Closeable {
   }
 
   /**
+   * @return the {@link FlatVectorsScorer} for this reader.
+   */
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return vectorsScorer;
+  }
+
+  /**
    * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
    * writer can delegate to if additional indexing logic is required.
    *

@@ -95,6 +95,6 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene99FlatVectorsFormat()";
+    return "Lucene99FlatVectorsFormat(" + "vectorsScorer=" + vectorsScorer + ')';
   }
 }

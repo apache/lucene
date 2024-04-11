@@ -50,6 +50,13 @@ public abstract class FlatVectorsReader implements Closeable, Accountable {
   }
 
   /**
+   * @return the {@link FlatVectorsScorer} for this reader.
+   */
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return vectorScorer;
+  }
+
+  /**
    * Returns a {@link RandomVectorScorer} for the given field and target vector.
    *
    * @param field the field to search

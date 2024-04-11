@@ -29,7 +29,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 public abstract class OffHeapFloatVectorValues extends FloatVectorValues
-    implements RandomAccessVectorValues.Floats, OffHeapRandomAccessVectorValues {
+    implements RandomAccessVectorValues.Floats {
 
   protected final int dimension;
   protected final int size;

@@ -42,6 +42,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -987,8 +988,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
-      KnnVectorsFormat format1 = randomVectorFormat();
-      KnnVectorsFormat format2 = randomVectorFormat();
+      KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);
+      KnnVectorsFormat format2 = randomVectorFormat(VectorEncoding.FLOAT32);
       iwc.setCodec(
           new AssertingCodec() {
             @Override

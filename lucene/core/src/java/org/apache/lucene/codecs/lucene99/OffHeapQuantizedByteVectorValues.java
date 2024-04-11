@@ -20,7 +20,6 @@ package org.apache.lucene.codecs.lucene99;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.codecs.lucene95.OffHeapRandomAccessVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
@@ -34,7 +33,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  * supports both iterated and random access.
  */
 public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
-    implements RandomAccessQuantizedByteVectorValues, OffHeapRandomAccessVectorValues {
+    implements RandomAccessQuantizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;

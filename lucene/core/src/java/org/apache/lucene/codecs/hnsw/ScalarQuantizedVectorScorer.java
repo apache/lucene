@@ -29,23 +29,25 @@ import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** On-heap scalar quantized implementation of {@link FlatVectorsScorer}. */
-public class OnHeapScalarQuantizedVectorScorer implements FlatVectorsScorer {
+public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
-  public OnHeapScalarQuantizedVectorScorer() {}
+  private final FlatVectorsScorer nonQuantizedDelegate;
+
+  public ScalarQuantizedVectorScorer(FlatVectorsScorer flatVectorsScorer) {
+    nonQuantizedDelegate = flatVectorsScorer;
+  }
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
       throws IOException {
-    assert vectorValues instanceof RandomAccessQuantizedByteVectorValues;
     if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           similarityFunction,
           quantizedByteVectorValues.getScalarQuantizer(),
           quantizedByteVectorValues);
     }
-    throw new IllegalArgumentException(
-        "vectorValues must be an instance of RandomAccessQuantizedByteVectorValues");
+    return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
   @Override
@@ -54,7 +56,6 @@ public class OnHeapScalarQuantizedVectorScorer implements FlatVectorsScorer {
       RandomAccessVectorValues vectorValues,
       float[] target)
       throws IOException {
-    assert vectorValues instanceof RandomAccessQuantizedByteVectorValues;
     if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
       ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
       byte[] targetBytes = new byte[target.length];
@@ -72,8 +73,7 @@ public class OnHeapScalarQuantizedVectorScorer implements FlatVectorsScorer {
           targetBytes,
           offsetCorrection);
     }
-    throw new IllegalArgumentException(
-        "vectorValues must be an instance of RandomAccessQuantizedByteVectorValues");
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   @Override
@@ -82,6 +82,11 @@ public class OnHeapScalarQuantizedVectorScorer implements FlatVectorsScorer {
       RandomAccessVectorValues vectorValues,
       byte[] target)
       throws IOException {
-    throw new IllegalArgumentException("scalar quantization does not support byte[] targets");
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public String toString() {
+    return "ScalarQuantizedVectorScorer(" + "nonQuantizedDelegate=" + nonQuantizedDelegate + ')';
   }
 }

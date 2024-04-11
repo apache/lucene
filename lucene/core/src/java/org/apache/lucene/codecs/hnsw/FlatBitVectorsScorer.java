@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.sandbox.codecs.bitvectors;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
@@ -27,7 +26,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /** A bit vector scorer for scoring byte vectors. */
-public class OnHeapFlatBitVectorsScorer implements FlatVectorsScorer {
+public class FlatBitVectorsScorer implements FlatVectorsScorer {
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
@@ -118,5 +117,10 @@ public class OnHeapFlatBitVectorsScorer implements FlatVectorsScorer {
     public RandomVectorScorerSupplier copy() throws IOException {
       return new BitRandomVectorScorerSupplier(vectorValues.copy());
     }
+  }
+
+  @Override
+  public String toString() {
+    return "FlatBitVectorsScorer()";
   }
 }

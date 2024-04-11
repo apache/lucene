@@ -24,7 +24,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /** On-heap implementation of {@link FlatVectorsScorer}. */
-public class OnHeapFlatVectorScorer implements FlatVectorsScorer {
+public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
@@ -58,5 +58,10 @@ public class OnHeapFlatVectorScorer implements FlatVectorsScorer {
     assert vectorValues instanceof RandomAccessVectorValues.Bytes;
     return RandomVectorScorer.createBytes(
         (RandomAccessVectorValues.Bytes) vectorValues, similarityFunction, target);
+  }
+
+  @Override
+  public String toString() {
+    return "DefaultFlatVectorScorer()";
   }
 }
