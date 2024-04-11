@@ -204,9 +204,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
    * Turn on dynamic IO throttling, to adaptively rate limit writes bytes/sec to the minimal rate
    * necessary so merges do not fall behind. By default this is disabled and writes are not
    * rate-limited.
-   *
-   * <p><b>NOTE</b>: I/O throttling may not apply to ongoing merges, but it would apply to new
-   * merges.
    */
   public synchronized void enableAutoIOThrottle() {
     doAutoIOThrottle = true;
@@ -285,13 +282,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     if (!MergeThread.class.isInstance(mergeThread)) {
       throw new AssertionError(
           "wrapForMerge should be called from MergeThread. Current thread: " + mergeThread);
-    }
-
-    if (getAutoIOThrottle() == false) {
-      // Don't pay the overhead of additional wrapping if auto I/O throttling is disabled. This
-      // means that if I/O throttle suddenly gets enabled, it will not apply to merges that are
-      // already going, only to new merges. This is fine.
-      return in;
     }
 
     // Return a wrapped Directory which has rate-limited output.
