@@ -3,7 +3,8 @@ Checks: >
   -llvmlibc*,
   -fuchsia*,
   -cert-dcl50-cpp,
-  -altera*
+  -altera*,
+  -bugprone-easily-swappable-parameters
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
@@ -57,7 +58,9 @@ CheckOptions:
   - key: readability-identifier-naming.VariableCase
     value: lower_case
   - key: readability-identifier-naming.VariableIgnoredRegexp
-    value: "(.*(Class|Field|Method|ID|Constructor)$|^nativePointer$|^isSingleDpu$|^nrRanks$|^dpuSystem$|^nativeDpuSet$|^byteBuffer$)"
+    value: "(.*(Class|Field|Method|ID|Constructor)$|^nativePointer$|^isSingleDpu$|^nrRanks$|^dpuSystem$|^nativeDpuSet$|^byteBuffer$|^byteBufferQueriesIndices$|^byteBufferSegmentsIndices$)"
+  - key: readability-identifier-naming.ParameterIgnoredRegexp
+    value: "(^dpuSystemExecutor$|^dpuSystem$|^sgReturn$)"
   - key: readability-identifier-naming.IgnoreMainLikeFunctions
     value: 1
   - key: readability-identifier-naming.MethodCase
