@@ -767,7 +767,6 @@ final class SegmentTermsEnumFrame {
       // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
-      final int termLen = prefix + suffix;
       startBytePos = suffixesReader.getPosition();
       suffixesReader.skipBytes(suffix);
       ste.termExists = (code & 1) == 0;
@@ -806,7 +805,7 @@ final class SegmentTermsEnumFrame {
           // us to position to the next term after
           // the target, so we must recurse into the
           // sub-frame(s):
-          ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, termLen);
+          ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, prefix + suffix);
           ste.currentFrame.loadBlock();
           while (ste.currentFrame.next()) {
             ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, ste.term.length());
