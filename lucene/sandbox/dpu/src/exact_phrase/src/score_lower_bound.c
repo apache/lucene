@@ -7,7 +7,7 @@
 // store all scores found so far
 __mram_noinit score_t best_scores[DPU_MAX_BATCH_SIZE][MAX_NB_SCORES];
 // number of scores stored
-__host uint8_t nb_best_scores[DPU_MAX_BATCH_SIZE];
+__host uint8_t nb_best_scores[DPU_MAX_BATCH_SIZE] = {0};
 
 // lower bound on score for each query, to be set by the host
 __host uint32_t score_lower_bound[DPU_MAX_BATCH_SIZE] = {0};

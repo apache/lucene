@@ -43,7 +43,7 @@ __mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
 __host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
 __mram uint32_t results_index_lucene_segments[DPU_MAX_BATCH_SIZE * DPU_MAX_NR_LUCENE_SEGMENTS] = {0};
 __mram_noinit uint32_t results_segment_offset[DPU_MAX_BATCH_SIZE * MAX_NR_SEGMENTS];
-__host uint64_t search_done;
+__host uint64_t search_done = 1;
 
 /* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];

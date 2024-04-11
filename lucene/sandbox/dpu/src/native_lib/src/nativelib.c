@@ -364,11 +364,12 @@ Java_org_apache_lucene_sandbox_pim_DpuSystemExecutor_sgXferResults(JNIEnv *env,
         // access scorers[i].scorer.cache (should be BM25Scorer)
         jobject object =  (*env)->GetObjectArrayElement(env, scorers, i);
         jclass cls = (*env)->GetObjectClass(env, object);
-        jfieldID scorerID = (*env)->GetFieldID(env, cls, "scorer", "L");
+        jfieldID scorerID = (*env)->GetFieldID(env, cls, "scorer",
+                    "Lorg/apache/lucene/search/similarities/Similarity$SimScorer;");
         jobject scorer = (*env)->GetObjectField(env, object, scorerID);
         cls = (*env)->GetObjectClass(env, scorer);
         // TODO assert that the class is BM25Scorer
-        jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "L");
+        jfieldID cacheID = (*env)->GetFieldID(env, cls, "cache", "[F");
         jfloatArray cache = (*env)->GetObjectField(env, scorer, cacheID);
         jfloat* cache_arr = (*env)->GetFloatArrayElements(env, cache, 0);
         for(int j = 0; j < 256; ++j)

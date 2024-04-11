@@ -277,7 +277,7 @@ destructor_inbound_buffers(void *args)
 NODISCARD static dpu_error_t
 update_rank_status(struct dpu_set_t rank, bool *finished)
 {
-    uint32_t finished_dpu[MAX_NR_DPUS_PER_RANK];
+    uint64_t finished_dpu[MAX_NR_DPUS_PER_RANK];
     const uint32_t nr_dpus = DPU_PROPERTY(uint32_t, dpu_get_nr_dpus, rank);
 
     struct dpu_set_t dpu;
@@ -285,7 +285,7 @@ update_rank_status(struct dpu_set_t rank, bool *finished)
     DPU_FOREACH (rank, dpu, each_dpu) {
         DPU_PROPAGATE(dpu_prepare_xfer(dpu, &finished_dpu[each_dpu]));
     }
-    DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "finished", 0, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(dpu_push_xfer(rank, DPU_XFER_FROM_DPU, "search_done", 0, sizeof(uint64_t), DPU_XFER_DEFAULT));
 
     *finished = true;
     for (uint32_t i = 0; i < nr_dpus; i++) {
@@ -308,7 +308,6 @@ read_best_scores(struct dpu_set_t rank, int nr_queries, dpu_score_t *my_bounds_b
     DPU_FOREACH (rank, dpu, each_dpu) {
         DPU_PROPAGATE(dpu_prepare_xfer(dpu, &(*my_bounds)[each_dpu][0]));
     }
-    // TODO(sbrocard): handle uneven nr_queries
     DPU_PROPAGATE(dpu_push_xfer(
         rank, DPU_XFER_FROM_DPU, "best_scores", 0, nr_queries * sizeof(dpu_score_t) * MAX_NB_SCORES, DPU_XFER_DEFAULT));
 
@@ -391,7 +390,8 @@ broadcast_new_bounds(struct dpu_set_t set,
     pque_array score_pques,
     int nr_queries,
     lower_bound_t *updated_bounds,
-    const uint32_t *quant_factors)
+    const uint32_t *quant_factors,
+    uint32_t nb_dpu_scores)
 {
     for (int i_qry = 0; i_qry < nr_queries; i_qry++) {
         // compute dpu lower bound as lower_bound = round_down(score * quant_factors[query])
@@ -400,6 +400,8 @@ broadcast_new_bounds(struct dpu_set_t set,
 
     DPU_PROPAGATE(
         dpu_broadcast_to(set, "score_lower_bound", 0, updated_bounds, nr_queries * sizeof(lower_bound_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(
+            dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_dpu_scores, sizeof(uint32_t), DPU_XFER_DEFAULT));
 
     return DPU_OK;
 }
@@ -439,15 +441,24 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
         = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
 
     bool first_run = true;
+    uint32_t nb_dpu_scores = 1;
     do {
         if (!first_run) {
-            DPU_PROPAGATE(broadcast_new_bounds(set, score_pques, nr_queries, updated_bounds, quant_factors));
+            nb_dpu_scores *= 2;
+            DPU_PROPAGATE(broadcast_new_bounds(set, score_pques, nr_queries, updated_bounds,
+                                                  quant_factors, nb_dpu_scores));
             DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
         }
         DPU_PROPAGATE(dpu_callback(set, update_bounds_atomic, &ctx, DPU_CALLBACK_ASYNC));
         // TODO(sbrocard) : benchmark if syncing is the best strategy
         DPU_PROPAGATE(dpu_sync(set));
-        first_run = false;
+        if(first_run) {
+           first_run = false;
+           // tell the DPU that the next runs are for the same query
+           uint32_t new_query = 0;
+           DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query,
+                                              sizeof(uint32_t), DPU_XFER_DEFAULT));
+       }
     } while (!all_dpus_have_finished(finished_ranks, nr_ranks));
 
     return DPU_OK;
