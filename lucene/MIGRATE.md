@@ -757,7 +757,7 @@ classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on th
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
 
-### Deprecated code removal 
+### Deprecated code removal (GITHUB#13262)
 
 1. `IntField(String name, int value)`. Use `IntField(String, int, Field.Store)` with `Field.Store#NO` instead.
 2. `DoubleField(String name, double value)`. Use `DoubleField(String, double, Field.Store)` with `Field.Store#NO` instead.

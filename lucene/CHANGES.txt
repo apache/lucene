@@ -98,9 +98,9 @@ API Changes
 
 * GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
 
-* GITHUB#13262: Remove deprecated code IntField.IntField(name, value), VH_BE_DOUBLE (static member in BitUtil) and
-  BlockJoinSelector.wrap (Sanjay Dutt)
-
+* GITHUB#13262: Removed deprecated constructors from DoubleField, FloatField, IntField, LongField, and LongPoint.
+  Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
+  to MIGRATE.md for further details. (Sanjay Dutt)
 
 New Features
 ---------------------
