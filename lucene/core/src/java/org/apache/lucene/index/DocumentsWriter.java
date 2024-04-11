@@ -384,7 +384,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     ensureOpen();
     boolean hasEvents = false;
     while (flushControl.anyStalledThreads()
-        || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
+        || (config.checkPendingFlushOnUpdate && flushControl.numQueuedFlushes() > 0)) {
       // Help out flushing any queued DWPTs so we can un-stall:
       // Try pickup pending threads here if possible
       // no need to loop over the next pending flushes... doFlush will take care of this
@@ -540,13 +540,16 @@ final class DocumentsWriter implements Closeable, Accountable {
     return deleteQueue.getNextSequenceNumber();
   }
 
-  synchronized void resetDeleteQueue(DocumentsWriterDeleteQueue newQueue) {
+  synchronized long resetDeleteQueue(int maxNumPendingOps) {
+    final DocumentsWriterDeleteQueue newQueue = deleteQueue.advanceQueue(maxNumPendingOps);
     assert deleteQueue.isAdvanced();
     assert newQueue.isAdvanced() == false;
     assert deleteQueue.getLastSequenceNumber() <= newQueue.getLastSequenceNumber();
     assert deleteQueue.getMaxSeqNo() <= newQueue.getLastSequenceNumber()
         : "maxSeqNo: " + deleteQueue.getMaxSeqNo() + " vs. " + newQueue.getLastSequenceNumber();
+    long oldMaxSeqNo = deleteQueue.getMaxSeqNo();
     deleteQueue = newQueue;
+    return oldMaxSeqNo;
   }
 
   interface FlushNotifications { // TODO maybe we find a better name for this?

@@ -75,7 +75,7 @@ public class SimpleIniFile implements IniFile {
   }
 
   private boolean checkString(String s) {
-    return Objects.nonNull(s) && !s.equals("");
+    return Objects.nonNull(s) && !s.isEmpty();
   }
 
   Map<String, OptionMap> getSections() {

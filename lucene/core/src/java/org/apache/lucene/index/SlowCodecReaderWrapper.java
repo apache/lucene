@@ -191,11 +191,6 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
-
-      @Override
-      public long ramBytesUsed() {
-        return 0L;
-      }
     };
   }
 

@@ -136,14 +136,6 @@ public abstract class MergePolicy {
      */
     public void pauseNanos(long pauseNanos, PauseReason reason, BooleanSupplier condition)
         throws InterruptedException {
-      if (Thread.currentThread() != owner) {
-        throw new RuntimeException(
-            "Only the merge owner thread can call pauseNanos(). This thread: "
-                + Thread.currentThread().getName()
-                + ", owner thread: "
-                + owner);
-      }
-
       long start = System.nanoTime();
       AtomicLong timeUpdate = pauseTimesNS.get(reason);
       pauseLock.lock();
@@ -597,12 +589,12 @@ public abstract class MergePolicy {
    * If the size of the merge segment exceeds this ratio of the total index size then it will remain
    * in non-compound format
    */
-  protected double noCFSRatio = DEFAULT_NO_CFS_RATIO;
+  protected double noCFSRatio;
 
   /**
    * If the size of the merged segment exceeds this value then it will not use compound file format.
    */
-  protected long maxCFSSegmentSize = DEFAULT_MAX_CFS_SEGMENT_SIZE;
+  protected long maxCFSSegmentSize;
 
   /** Creates a new merge policy instance. */
   protected MergePolicy() {

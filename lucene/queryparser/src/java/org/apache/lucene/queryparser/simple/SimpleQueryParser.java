@@ -514,7 +514,7 @@ public class SimpleQueryParser extends QueryBuilder {
       int fuzziness = 0;
       try {
         String fuzzyString = new String(slopText, 0, slopLength);
-        if ("".equals(fuzzyString)) {
+        if (fuzzyString.isEmpty()) {
           // Use automatic fuzziness, ~2
           fuzziness = 2;
         } else {
@@ -620,7 +620,7 @@ public class SimpleQueryParser extends QueryBuilder {
     if (bq.clauses().isEmpty()) {
       return null;
     } else if (bq.clauses().size() == 1) {
-      return bq.clauses().iterator().next().getQuery();
+      return bq.clauses().iterator().next().query();
     } else {
       return bq;
     }

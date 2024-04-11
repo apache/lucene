@@ -47,6 +47,29 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         fieldName, queryVector, childFilter, k, parentBitSet);
   }
 
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+        List<Document> toAdd = new ArrayList<>();
+        Document doc = new Document();
+        doc.add(getKnnVectorField("field", new float[] {1, 1}, COSINE));
+        toAdd.add(doc);
+        toAdd.add(makeParent(new int[] {1}));
+        w.addDocuments(toAdd);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(reader);
+        Query kvq =
+            new DiversifyingChildrenByteKnnVectorQuery(
+                "field", new byte[] {1, 2}, null, 2, parentFilter);
+        assertThrows(IllegalStateException.class, () -> searcher.search(kvq, 3));
+      }
+    }
+  }
+
   public void testScoreCosine() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w =
@@ -81,7 +104,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         float score1 =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
-        assertScorerResults(searcher, query, new float[] {score0, score1}, new String[] {"1", "2"});
+        assertScorerResults(
+            searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
     }
   }

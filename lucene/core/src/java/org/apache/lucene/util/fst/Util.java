@@ -738,7 +738,7 @@ public final class Util {
   public static IntsRef toUTF16(CharSequence s, IntsRefBuilder scratch) {
     final int charLimit = s.length();
     scratch.setLength(charLimit);
-    scratch.grow(charLimit);
+    scratch.growNoCopy(charLimit);
     for (int idx = 0; idx < charLimit; idx++) {
       scratch.setIntAt(idx, s.charAt(idx));
     }
@@ -794,7 +794,7 @@ public final class Util {
 
   /** Just converts IntsRef to BytesRef; you must ensure the int values fit into a byte. */
   public static BytesRef toBytesRef(IntsRef input, BytesRefBuilder scratch) {
-    scratch.grow(input.length);
+    scratch.growNoCopy(input.length);
     for (int i = 0; i < input.length; i++) {
       int value = input.ints[i + input.offset];
       // NOTE: we allow -128 to 255

@@ -521,4 +521,31 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertTrue(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
   }
+
+  public void testMaxScoreNonTopLevelScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST).add(clause2);
+
+    Scorer scorer =
+        new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0).get(10);
+    assertEquals(2.0, scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0.0);
+
+    subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    subs.get(Occur.SHOULD).add(clause1);
+    subs.get(Occur.SHOULD).add(clause2);
+
+    scorer = new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0).get(10);
+    assertEquals(2.0, scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0.0);
+  }
 }

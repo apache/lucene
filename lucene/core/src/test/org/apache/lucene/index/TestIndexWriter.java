@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,6 +114,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automata;
@@ -936,6 +938,7 @@ public class TestIndexWriter extends LuceneTestCase {
                     @Override
                     protected boolean isOK(Throwable th) {
                       return th instanceof AlreadyClosedException
+                          || th instanceof RejectedExecutionException
                           || (th instanceof IllegalStateException
                               && th.getMessage()
                                   .contains("this writer hit an unrecoverable error"));
@@ -1086,6 +1089,7 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testThreadInterruptDeadlock() throws Exception {
     IndexerThreadInterrupt t = new IndexerThreadInterrupt(1);
     t.setDaemon(true);
@@ -1232,7 +1236,6 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testDeleteUnusedFiles() throws Exception {
     assumeFalse("test relies on exact filenames", Codec.getDefault() instanceof SimpleTextCodec);
-    assumeWorkingMMapOnWindows();
 
     for (int iter = 0; iter < 2; iter++) {
       // relies on Windows semantics
@@ -2610,6 +2613,7 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   /** Make sure that close waits for any still-running commits. */
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCloseDuringCommit() throws Exception {
 
     final CountDownLatch startCommit = new CountDownLatch(1);
@@ -3025,7 +3029,7 @@ public class TestIndexWriter extends LuceneTestCase {
         writer.commit();
         assertEquals(1, writer.getDocStats().maxDoc);
         // now check that we moved to 3
-        dir.openInput("segments_3", IOContext.READ).close();
+        dir.openInput("segments_3", IOContext.DEFAULT).close();
       }
       reader.close();
       in.close();

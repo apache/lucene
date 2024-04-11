@@ -74,7 +74,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.LockValidatingDirectoryWrapper;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Accountable;
@@ -539,7 +538,7 @@ public class IndexWriter
           final ReadersAndUpdates rld = getPooledInstance(sci, true);
           try {
             assert Thread.holdsLock(IndexWriter.this);
-            SegmentReader segmentReader = rld.getReadOnlyClone(IOContext.READ);
+            SegmentReader segmentReader = rld.getReadOnlyClone(IOContext.DEFAULT);
             // only track this if we actually do fullFlush merges
             if (maxFullFlushMergeWaitMillis > 0) {
               openedReadOnlyClones.put(sci.info.name, segmentReader);
@@ -1303,12 +1302,6 @@ public class IndexWriter
               + Version.LATEST.toString()
               + "\n"
               + config.toString());
-      final StringBuilder unmapInfo =
-          new StringBuilder(Boolean.toString(MMapDirectory.UNMAP_SUPPORTED));
-      if (!MMapDirectory.UNMAP_SUPPORTED) {
-        unmapInfo.append(" (").append(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON).append(")");
-      }
-      infoStream.message("IW", "MMapDirectory.UNMAP_SUPPORTED=" + unmapInfo);
     }
   }
 
@@ -3428,7 +3421,17 @@ public class IndexWriter
       readers.add(reader);
     }
 
-    if (config.getIndexSort() == null && readers.isEmpty() == false) {
+    // Don't reorder if an explicit sort is configured.
+    final boolean hasIndexSort = config.getIndexSort() != null;
+    // Don't reorder if blocks can't be identified using the parent field.
+    final boolean hasBlocksButNoParentField =
+        readers.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+            && readers.stream()
+                .map(CodecReader::getFieldInfos)
+                .map(FieldInfos::getParentField)
+                .anyMatch(Objects::isNull);
+
+    if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
       DocMap docMap = merge.reorder(mergedReader, directory);
       if (docMap != null) {
@@ -3437,7 +3440,14 @@ public class IndexWriter
     }
 
     SegmentMerger merger =
-        new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
+        new SegmentMerger(
+            readers,
+            segInfo,
+            infoStream,
+            trackingDir,
+            globalFieldNumberMap,
+            context,
+            mergeScheduler.getIntraMergeExecutor(merge));
 
     if (!merger.shouldMerge()) {
       return;
@@ -3940,7 +3950,8 @@ public class IndexWriter
                 // updates
                 // in a separate map in order to be applied to the merged segment after it's done
                 rld.setIsMerging();
-                return rld.getReaderForMerge(context);
+                return rld.getReaderForMerge(
+                    context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
               });
         }
         closeReaders = false;
@@ -5072,6 +5083,7 @@ public class IndexWriter
                 readerPool.drop(rld.info);
               }
             }
+            deleter.decRef(mr.reader.getSegmentInfo().files());
           });
     } else {
       assert merge.getMergeReader().isEmpty()
@@ -5141,7 +5153,10 @@ public class IndexWriter
           sci -> {
             final ReadersAndUpdates rld = getPooledInstance(sci, true);
             rld.setIsMerging();
-            return rld.getReaderForMerge(context);
+            synchronized (this) {
+              return rld.getReaderForMerge(
+                  context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
+            }
           });
       // Let the merge wrap readers
       List<CodecReader> mergeReaders = new ArrayList<>();
@@ -5194,7 +5209,17 @@ public class IndexWriter
       }
 
       MergeState.DocMap[] reorderDocMaps = null;
-      if (config.getIndexSort() == null) {
+      // Don't reorder if an explicit sort is configured.
+      final boolean hasIndexSort = config.getIndexSort() != null;
+      // Don't reorder if blocks can't be identified using the parent field.
+      final boolean hasBlocksButNoParentField =
+          mergeReaders.stream().map(LeafReader::getMetaData).anyMatch(LeafMetaData::hasBlocks)
+              && mergeReaders.stream()
+                  .map(CodecReader::getFieldInfos)
+                  .map(FieldInfos::getParentField)
+                  .anyMatch(Objects::isNull);
+
+      if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
         CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
         Sorter.DocMap docMap = merge.reorder(mergedView, directory);
@@ -5221,7 +5246,13 @@ public class IndexWriter
 
       final SegmentMerger merger =
           new SegmentMerger(
-              mergeReaders, merge.info.info, infoStream, dirWrapper, globalFieldNumberMap, context);
+              mergeReaders,
+              merge.info.info,
+              infoStream,
+              dirWrapper,
+              globalFieldNumberMap,
+              context,
+              mergeScheduler.getIntraMergeExecutor(merge));
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 
@@ -5416,7 +5447,7 @@ public class IndexWriter
       final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
       if (readerPool.isReaderPoolingEnabled() && mergedSegmentWarmer != null) {
         final ReadersAndUpdates rld = getPooledInstance(merge.info, true);
-        final SegmentReader sr = rld.getReader(IOContext.READ);
+        final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
         try {
           mergedSegmentWarmer.warm(sr);
         } finally {

@@ -89,7 +89,7 @@ public final class DutchAnalyzer extends Analyzer {
   private final CharArraySet stoptable;
 
   /** Contains words that should be indexed but not stemmed. */
-  private CharArraySet excltable = CharArraySet.EMPTY_SET;
+  private final CharArraySet excltable;
 
   private final StemmerOverrideMap stemdict;
 

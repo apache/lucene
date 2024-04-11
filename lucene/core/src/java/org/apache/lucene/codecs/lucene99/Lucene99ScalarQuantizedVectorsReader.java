@@ -17,6 +17,9 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,13 +36,17 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads Scalar Quantized vectors from the index segments along with index data structures.
@@ -56,8 +63,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
-      throws IOException {
+  public Lucene99ScalarQuantizedVectorsReader(
+      SegmentReadState state, FlatVectorsReader rawVectorsReader) throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
@@ -77,7 +84,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
                 Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta, versionMeta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -88,7 +95,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               state,
               versionMeta,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+              // graph.
+              state.context.withReadAdvice(ReadAdvice.RANDOM));
       success = true;
     } finally {
       if (success == false) {
@@ -97,13 +107,14 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta, int versionMeta, FieldInfos infos)
+      throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, versionMeta, info);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -121,8 +132,13 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               + fieldEntry.dimension);
     }
 
-    // int8 quantized and calculated stored offset.
-    long quantizedVectorBytes = dimension + Float.BYTES;
+    final long quantizedVectorBytes;
+    if (fieldEntry.bits <= 4 && fieldEntry.compress) {
+      quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
+    } else {
+      // int8 quantized and calculated stored offset.
+      quantizedVectorBytes = dimension + Float.BYTES;
+    }
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
@@ -155,11 +171,15 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
+      SegmentReadState state,
+      int versionMeta,
+      String fileExtension,
+      String codecName,
+      IOContext context)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
+    IndexInput in = state.directory.openInput(fileName, context);
     boolean success = false;
     try {
       int versionVectorData =
@@ -204,6 +224,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.ordToDoc,
             fieldEntry.dimension,
             fieldEntry.size,
+            fieldEntry.bits,
+            fieldEntry.compress,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
@@ -231,28 +253,20 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return size;
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
+      throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
-  }
-
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
     }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
-  }
-
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
-    int encodingId = input.readInt();
-    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
-      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
-    }
-    return VectorEncoding.values()[encodingId];
+    return new FieldEntry(input, versionMeta, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -265,6 +279,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         fieldEntry.ordToDoc,
         fieldEntry.dimension,
         fieldEntry.size,
+        fieldEntry.bits,
+        fieldEntry.compress,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
         quantizedVectorData);
@@ -289,10 +305,13 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     final long vectorDataLength;
     final ScalarQuantizer scalarQuantizer;
     final int size;
+    final byte bits;
+    final boolean compress;
     final OrdToDocDISIReaderConfiguration ordToDoc;
 
     FieldEntry(
         IndexInput input,
+        int versionMeta,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
@@ -303,12 +322,29 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       dimension = input.readVInt();
       size = input.readInt();
       if (size > 0) {
-        float confidenceInterval = Float.intBitsToFloat(input.readInt());
-        float minQuantile = Float.intBitsToFloat(input.readInt());
-        float maxQuantile = Float.intBitsToFloat(input.readInt());
-        scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, confidenceInterval);
+        if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
+          int floatBits = input.readInt(); // confidenceInterval, unused
+          if (floatBits == -1) {
+            throw new CorruptIndexException(
+                "Missing confidence interval for scalar quantizer", input);
+          }
+          this.bits = (byte) 7;
+          this.compress = false;
+          float minQuantile = Float.intBitsToFloat(input.readInt());
+          float maxQuantile = Float.intBitsToFloat(input.readInt());
+          scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, (byte) 7);
+        } else {
+          input.readInt(); // confidenceInterval, unused
+          this.bits = input.readByte();
+          this.compress = input.readByte() == 1;
+          float minQuantile = Float.intBitsToFloat(input.readInt());
+          float maxQuantile = Float.intBitsToFloat(input.readInt());
+          scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, bits);
+        }
       } else {
         scalarQuantizer = null;
+        this.bits = (byte) 7;
+        this.compress = false;
       }
       ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
     }
