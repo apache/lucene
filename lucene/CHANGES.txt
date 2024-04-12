@@ -177,6 +177,12 @@ Changes in Runtime Behavior
   `-Dorg.apache.lucene.store.defaultReadAdvice=normal`. This may be useful on systems
   with lots of RAM as this increases read-ahead. (Adrien Grand, Uwe Schindler)
 
+* GITHUB13293: Auto I/O throttling is now disabled by default on ConcurrentMergeScheduler.
+  (Adrien Grand)
+
+* GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
+  for merging. (Adrien Grand)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
@@ -242,6 +248,9 @@ New Features
 
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
   to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
+* GITHUB#13268: Add ability for UnifiedHighlighter to highlight a field based on combined matches from multiple fields.
+  (Mayya Sharipova, Jim Ferenczi)
 
 * GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
   new Hnsw format for binary quantized vectors. (Ben Trent)
