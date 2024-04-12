@@ -288,6 +288,7 @@ final class SegmentTermsEnumFrame {
   // Reset readers' position, don't read, decompress.
   // Current term greater than target, reduce endCount.
   void rewindWithoutReload() {
+    // Set nextEnt to 0, to prevent force load.
     nextEnt = 0;
     suffixesReader.setPosition(0);
     suffixLengthsReader.setPosition(0);
@@ -816,5 +817,36 @@ final class SegmentTermsEnumFrame {
     ste.term.setLength(termLength);
     ste.term.grow(termLength);
     System.arraycopy(suffixBytes, startBytePos, ste.term.bytes(), prefix, suffix);
+  }
+
+  // Used for debugging.
+  @Override
+  public String toString() {
+    return "fp: "
+        + fp
+        + ", fpOrig: "
+        + fpOrig
+        + ", fpEnd: "
+        + fpEnd
+        + ", lastSubFP: "
+        + lastSubFP
+        + ", entCount: "
+        + entCount
+        + ", nextEnt: "
+        + nextEnt
+        + ", isLeafBlock: "
+        + isLeafBlock
+        + ", isFloor: "
+        + isFloor
+        + ", isLastInFloor: "
+        + isLastInFloor
+        + ", nextFloorLabel: "
+        + nextFloorLabel
+        + ", suffixesPos: "
+        + suffixesReader.getPosition()
+        + ", suffixLengthsPos: "
+        + suffixLengthsReader.getPosition()
+        + ", floorDataPos: "
+        + floorDataReader.getPosition();
   }
 }
