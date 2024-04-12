@@ -111,7 +111,7 @@ typedef struct {
     mutex_array_t query_mutexes;
     lower_bound_t *updated_bounds; // lower_bound_t[nr_queries]
     const int *quant_factors; // int[nr_queries]
-    uint32_t nb_dpu_scores;
+    uint32_t *nb_dpu_scores;
 } broadcast_params_t;
 
 typedef struct {
@@ -220,6 +220,7 @@ entry_init_topdocs_sync(struct dpu_set_t set,
     mutex_array_t *query_mutexes,
     uint32_t *nr_ranks,
     lower_bound_t **updated_bounds,
+    uint32_t **nb_dpu_scores,
     bool **finished_ranks)
 {
     score_pques->nr_pques = *nr_queries;
@@ -232,6 +233,9 @@ entry_init_topdocs_sync(struct dpu_set_t set,
 
     *updated_bounds = SAFE_MALLOC((size_t)*nr_queries * sizeof(**updated_bounds));
     *finished_ranks = SAFE_MALLOC(*nr_ranks * sizeof(**finished_ranks));
+    *nb_dpu_scores = SAFE_MALLOC(*nr_ranks * sizeof(**nb_dpu_scores));
+    for(uint32_t i = 0; i < *nr_ranks; ++i)
+        (*nb_dpu_scores)[i] = INITIAL_NB_SCORES;
 
     return DPU_OK;
 }
@@ -427,7 +431,7 @@ update_bounds_atomic(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atom
 }
 
 NODISCARD static inline dpu_error_t
-broadcast_new_bounds(struct dpu_set_t set, broadcast_params_t *args)
+broadcast_new_bounds(struct dpu_set_t set, uint32_t rank_id, broadcast_params_t *args)
 {
     pthread_mutex_t *mutexes = args->query_mutexes.mutexes;
     for (int i_qry = 0; i_qry < args->nr_queries; i_qry++) {
@@ -447,7 +451,7 @@ broadcast_new_bounds(struct dpu_set_t set, broadcast_params_t *args)
 
     DPU_PROPAGATE(dpu_broadcast_to(
         set, "score_lower_bound", 0, args->updated_bounds, (size_t)args->nr_queries * sizeof(lower_bound_t), DPU_XFER_DEFAULT));
-    DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &args->nb_dpu_scores, sizeof(uint32_t), DPU_XFER_DEFAULT));
+    DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, args->nb_dpu_scores + rank_id, sizeof(uint32_t), DPU_XFER_DEFAULT));
 
     return DPU_OK;
 }
@@ -464,17 +468,21 @@ nb_topdocs_above_limit(int nr_queries, const int nr_topdocs[nr_queries])
 }
 
 NODISCARD static inline dpu_error_t
-sync_loop_iteration(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, bool first_run, bool *finished)
+sync_loop_iteration(struct dpu_set_t rank, uint32_t rank_id, update_bounds_atomic_context_t *ctx, broadcast_params_t *broadcast_args, uint32_t n_iter, bool *finished)
 {
-    if (!first_run) {
-        broadcast_args->nb_dpu_scores *= NB_SCORES_SCALING_FACTOR;
-        DPU_PROPAGATE(broadcast_new_bounds(rank, broadcast_args));
-        DPU_PROPAGATE(dpu_launch(rank, DPU_SYNCHRONOUS));
+    if (n_iter > 0) {
+         if(n_iter % NB_SCORES_UPDATE_PERIOD == 0) {
+             uint64_t new_nb_dpu_scores = broadcast_args->nb_dpu_scores[rank_id] * NB_SCORES_SCALING_FACTOR;
+             if(new_nb_dpu_scores <= UINT32_MAX)
+                 broadcast_args->nb_dpu_scores[rank_id] = (uint32_t)new_nb_dpu_scores;
+         }
+         DPU_PROPAGATE(broadcast_new_bounds(rank, rank_id, broadcast_args));
+         DPU_PROPAGATE(dpu_launch(rank, DPU_SYNCHRONOUS));
     }
     DPU_PROPAGATE(update_bounds_atomic(rank, rank_id, ctx, finished));
     // TODO(sbrocard) : benchmark if syncing is the best strategy
     // DPU_PROPAGATE(dpu_sync(rank));
-    if (first_run) {
+    if (n_iter == 0) {
         // tell the DPU that the next runs are for the same query
         uint32_t new_query = 0;
         DPU_PROPAGATE(dpu_broadcast_to(rank, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
@@ -487,13 +495,13 @@ NODISCARD static inline dpu_error_t
 run_sync_loop(struct dpu_set_t rank, uint32_t rank_id, void *args)
 {
     bool finished = false;
-    bool first_run = true;
+    uint32_t n_iter = 0;
 
     run_sync_loop_context_t *run_sync_loop_ctx = args;
 
     do {
-        DPU_PROPAGATE(sync_loop_iteration(rank, rank_id, run_sync_loop_ctx->ctx, run_sync_loop_ctx->broadcast_args, first_run, &finished));
-        first_run = false;
+        DPU_PROPAGATE(sync_loop_iteration(rank, rank_id, run_sync_loop_ctx->ctx, run_sync_loop_ctx->broadcast_args, n_iter, &finished));
+        n_iter++;
     } while (!finished);
 
     return DPU_OK;
@@ -506,12 +514,12 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
     const float norm_inverse[nr_queries][NORM_INVERSE_CACHE_SIZE],
     const int quant_factors[nr_queries])
 {
-    // uint32_t new_query = 1;
-    // DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_DEFAULT));
     const bool use_lower_bound_flow = !nb_topdocs_above_limit(nr_queries, nr_topdocs);
-    // const uint32_t nb_max_doc_match = use_lower_bound_flow ? 1 : UINT32_MAX;
-    // DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_DEFAULT));
-    // DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
+    uint32_t new_query = 1;
+    DPU_PROPAGATE(dpu_broadcast_to(set, "new_query", 0, &new_query, sizeof(uint32_t), DPU_XFER_ASYNC));
+    const uint32_t nb_max_doc_match = use_lower_bound_flow ? INITIAL_NB_SCORES : UINT32_MAX;
+    DPU_PROPAGATE(dpu_broadcast_to(set, "nb_max_doc_match", 0, &nb_max_doc_match, sizeof(uint32_t), DPU_XFER_ASYNC));
+    DPU_PROPAGATE(dpu_launch(set, DPU_ASYNCHRONOUS));
 
     // (void)fprintf(stderr, "use_lower_bound_flow: %d\n", use_lower_bound_flow);
     if (use_lower_bound_flow) {
@@ -520,13 +528,14 @@ topdocs_lower_bound_sync(struct dpu_set_t set,
         mutex_array_t query_mutexes = {};
         CLEANUP(cleanup_free) lower_bound_t *updated_bounds = NULL;
         CLEANUP(cleanup_free) bool *finished_ranks = NULL;
+        CLEANUP(cleanup_free) uint32_t *nb_dpu_scores = NULL;
 
         DPU_PROPAGATE(entry_init_topdocs_sync(
-            set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks));
+            set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &nb_dpu_scores, &finished_ranks));
 
         update_bounds_atomic_context_t ctx = { nr_queries, nr_topdocs, query_mutexes, score_pques, norm_inverse, finished_ranks };
         broadcast_params_t broadcast_args
-            = { score_pques, nr_queries, nr_topdocs, query_mutexes, updated_bounds, quant_factors, INITIAL_NB_SCORES };
+            = { score_pques, nr_queries, nr_topdocs, query_mutexes, updated_bounds, quant_factors, nb_dpu_scores };
         run_sync_loop_context_t run_sync_loop_ctx = { &ctx, &broadcast_args, nr_ranks };
 
         DPU_PROPAGATE(dpu_callback(set, run_sync_loop, &run_sync_loop_ctx, DPU_CALLBACK_ASYNC));

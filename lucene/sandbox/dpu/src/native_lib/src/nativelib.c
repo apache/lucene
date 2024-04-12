@@ -503,8 +503,13 @@ get_block(struct sg_block_info *out, uint32_t i_dpu, uint32_t i_block, void *arg
 
 #ifndef NDEBUG
     if (out->addr == NULL) {
-        (void)fprintf(
-            stderr, "Block address is NULL, i_dpu=%u, i_block=%u, i_qu=%u, i_seg=%u, offset=%i\n", i_dpu, i_block, i_qu, i_seg, offset);
+        (void)fprintf(stderr,
+            "Block address is NULL, i_dpu=%u, i_block=%u, i_qu=%u, i_seg=%u, offset=%i\n",
+            i_dpu,
+            i_block,
+            i_qu,
+            i_seg,
+            offset);
         (void)fprintf(stderr, "nr_queries=%u, nr_segments=%u\n", nr_queries, nr_segments);
         exit(1);
     }
@@ -572,8 +577,8 @@ perform_topdocs_lower_bound_sync(JNIEnv *env,
 {
     jint *nr_hits_arr = (*env)->GetIntArrayElements(env, nr_hits, 0);
     jint *quant_factors_arr = (*env)->GetIntArrayElements(env, quant_factors, 0);
-    CLEANUP(release_int_arrays)
-    const release_int_arrays_ctx release_trigger = { env, nr_hits_arr, nr_hits, quant_factors_arr, quant_factors };
+    __attribute__((unused)) CLEANUP(release_int_arrays) const release_int_arrays_ctx release_trigger
+        = { env, nr_hits_arr, nr_hits, quant_factors_arr, quant_factors };
 
     // create norm inverse array using scorers
     CLEANUP(cleanup_free)
@@ -587,15 +592,15 @@ perform_topdocs_lower_bound_sync(JNIEnv *env,
 static inline void
 check_block_addresses(JNIEnv *env,
     uint32_t nr_dpus,
-    uint32_t nr_queries,
-    uint32_t nr_segments,
+    jint nr_queries,
+    jint nr_segments,
     result_t *block_addresses[nr_dpus][nr_queries][nr_segments])
 {
     for (uint32_t i_dpu = 0; i_dpu < nr_dpus; ++i_dpu) {
-        for (uint32_t i_qu = 0; i_qu < nr_queries; ++i_qu) {
-            for (uint32_t i_seg = 0; i_seg < nr_segments; ++i_seg) {
+        for (int i_qu = 0; i_qu < nr_queries; ++i_qu) {
+            for (int i_seg = 0; i_seg < nr_segments; ++i_seg) {
                 if (block_addresses[i_dpu][i_qu][i_seg] == NULL) {
-                    (void)fprintf(stderr, "Block address is NULL, i_dpu=%u, i_qu=%u, i_seg=%u\n", i_dpu, i_qu, i_seg);
+                    (void)fprintf(stderr, "Block address is NULL, i_dpu=%u, i_qu=%i, i_seg=%i\n", i_dpu, i_qu, i_seg);
                     (void)fprintf(stderr, "nr_queries=%u, nr_segments=%u\n", nr_queries, nr_segments);
                     THROW_ON_ERROR(DPU_ERR_SYSTEM);
                 }

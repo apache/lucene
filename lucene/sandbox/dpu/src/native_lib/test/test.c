@@ -99,12 +99,13 @@ test_entry_init_topdocs_sync(void)
     uint32_t nr_ranks = 0;
     lower_bound_t *updated_bounds = NULL;
     bool *finished_ranks = NULL;
+    uint32_t *nb_dpu_scores = NULL;
 
     dpu_error_t result = dpu_alloc(DPU_ALLOCATE_ALL, NULL, &set);
     CU_ASSERT_EQUAL_FATAL(result, DPU_OK);
 
     result = entry_init_topdocs_sync(
-        set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &finished_ranks);
+        set, nr_topdocs, &nr_queries, &score_pques, &query_mutexes, &nr_ranks, &updated_bounds, &nb_dpu_scores, &finished_ranks);
 
     dpu_sync(set);
 
@@ -121,6 +122,7 @@ test_entry_init_topdocs_sync(void)
 
     free(updated_bounds);
     free(finished_ranks);
+    free(nb_dpu_scores);
 
     result = dpu_free(set);
     CU_ASSERT_EQUAL_FATAL(result, DPU_OK);
