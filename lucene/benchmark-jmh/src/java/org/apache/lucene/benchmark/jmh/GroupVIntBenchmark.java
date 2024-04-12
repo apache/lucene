@@ -86,6 +86,7 @@ public class GroupVIntBenchmark {
       };
 
   final int maxSize = 256;
+  final long[] docs = new long[maxSize];
   final long[] values = new long[maxSize];
 
   IndexInput byteBufferGVIntIn;
@@ -95,6 +96,9 @@ public class GroupVIntBenchmark {
 
   ByteArrayDataInput byteArrayVIntIn;
   ByteArrayDataInput byteArrayGVIntIn;
+
+  // benchmark for write
+  ByteBuffersDataOutput byteBuffersGVIntOut = new ByteBuffersDataOutput();
 
   @Param({"64"})
   public int size;
@@ -153,7 +157,6 @@ public class GroupVIntBenchmark {
 
   @Setup(Level.Trial)
   public void init() throws Exception {
-    long[] docs = new long[maxSize];
     Random r = new Random(0);
     for (int i = 0; i < maxSize; ++i) {
       float randomFloat = r.nextFloat();
@@ -236,5 +239,11 @@ public class GroupVIntBenchmark {
     byteBuffersGVIntIn.seek(0);
     this.readGroupVIntsBaseline(byteBuffersGVIntIn, values, size);
     bh.consume(values);
+  }
+
+  @Benchmark
+  public void bench_writeGroupVInt(Blackhole bh) throws IOException {
+    byteBuffersGVIntOut.reset();
+    byteBuffersGVIntOut.writeGroupVInts(docs, size);
   }
 }

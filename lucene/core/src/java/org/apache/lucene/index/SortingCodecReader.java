@@ -520,11 +520,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
-
-      @Override
-      public long ramBytesUsed() {
-        return delegate.ramBytesUsed();
-      }
     };
   }
 

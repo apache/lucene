@@ -25,6 +25,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -38,10 +39,15 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -762,6 +768,77 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  /** Test functionality of {@link TimeLimitingKnnCollectorManager}. */
+  public void testTimeLimitingKnnCollectorManager() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      KnnCollectorManager delegate = new TopKnnCollectorManager(3, searcher);
+
+      // A collector manager with no timeout
+      TimeLimitingKnnCollectorManager noTimeoutManager =
+          new TimeLimitingKnnCollectorManager(delegate, null);
+      KnnCollector noTimeoutCollector =
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+
+      // Check that a normal collector is created without timeout
+      assertTrue(noTimeoutCollector instanceof TopKnnCollector);
+      noTimeoutCollector.collect(0, 0);
+      assertFalse(noTimeoutCollector.earlyTerminated());
+
+      // Check that results are complete
+      TopDocs noTimeoutTopDocs = noTimeoutCollector.topDocs();
+      assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation);
+      assertEquals(1, noTimeoutTopDocs.scoreDocs.length);
+
+      // A collector manager that immediately times out
+      TimeLimitingKnnCollectorManager timeoutManager =
+          new TimeLimitingKnnCollectorManager(delegate, () -> true);
+      KnnCollector timeoutCollector =
+          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+
+      // Check that a time limiting collector is created, which returns partial results
+      assertFalse(timeoutCollector instanceof TopKnnCollector);
+      timeoutCollector.collect(0, 0);
+      assertTrue(timeoutCollector.earlyTerminated());
+
+      // Check that partial results are returned
+      TopDocs timeoutTopDocs = timeoutCollector.topDocs();
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, timeoutTopDocs.totalHits.relation);
+      assertEquals(1, timeoutTopDocs.scoreDocs.length);
+    }
+  }
+
+  /** Test that the query times out correctly. */
+  public void testTimeout() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
+      AbstractKnnVectorQuery exactQuery =
+          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
+
+      assertEquals(2, searcher.count(query)); // Expect some results without timeout
+      assertEquals(3, searcher.count(exactQuery)); // Same for exact search
+
+      searcher.setTimeout(() -> true); // Immediately timeout
+      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+      assertEquals(0, searcher.count(exactQuery)); // Same for exact search
+
+      searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
+      // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
+      // because the timeout is exhausted while finding the best entry node for the last level
+      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
+
+      searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
+      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+    }
+  }
+
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   Directory getIndexStore(String field, float[]... contents) throws IOException {
     return getIndexStore(field, VectorSimilarityFunction.EUCLIDEAN, contents);
@@ -947,6 +1024,77 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     @Override
     public int hashCode() {
       return 31 * classHash() + docs.hashCode();
+    }
+  }
+
+  public void testSameFieldDifferentFormats() throws IOException {
+    try (Directory directory = newDirectory()) {
+      MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+      IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
+      KnnVectorsFormat format1 = randomVectorFormat();
+      KnnVectorsFormat format2 = randomVectorFormat();
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return format1;
+            }
+          });
+
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(getKnnVectorField("field1", new float[] {1, 1, 1}));
+        iwriter.addDocument(doc);
+
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {1, 2, 3}));
+        iwriter.addDocument(doc);
+        iwriter.commit();
+      }
+
+      iwc = newIndexWriterConfig(mockAnalyzer);
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return format2;
+            }
+          });
+
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {1, 1, 2}));
+        iwriter.addDocument(doc);
+
+        doc.clear();
+        doc.add(getKnnVectorField("field1", new float[] {4, 5, 6}));
+        iwriter.addDocument(doc);
+        iwriter.commit();
+      }
+
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        AbstractKnnVectorQuery vectorQuery = getKnnVectorQuery("field1", new float[] {1, 2, 3}, 10);
+        TopDocs hits1 = new IndexSearcher(ireader).search(vectorQuery, 4);
+        assertEquals(4, hits1.scoreDocs.length);
+      }
+    }
+  }
+
+  private static class CountingQueryTimeout implements QueryTimeout {
+    private int remaining;
+
+    public CountingQueryTimeout(int count) {
+      remaining = count;
+    }
+
+    @Override
+    public boolean shouldExit() {
+      if (remaining > 0) {
+        remaining--;
+        return false;
+      }
+      return true;
     }
   }
 }
