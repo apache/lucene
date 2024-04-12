@@ -60,20 +60,6 @@ public final class DoubleField extends Field {
   private final StoredValue storedValue;
 
   /**
-   * Creates a new DoubleField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the double value
-   * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #DoubleField(String, double, Field.Store)} with {@link Field.Store#NO}
-   *     instead.
-   */
-  @Deprecated
-  public DoubleField(String name, double value) {
-    this(name, value, Field.Store.NO);
-  }
-
-  /**
    * Creates a new DoubleField, indexing the provided point, storing it as a DocValue, and
    * optionally storing it as a stored field.
    *

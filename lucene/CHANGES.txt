@@ -96,6 +96,12 @@ API Changes
 
 * GITHUB#13261: Convert `BooleanClause` class to record class. (Pulkit Gupta)
 
+* GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
+
+* GITHUB#13262: Removed deprecated constructors from DoubleField, FloatField, IntField, LongField, and LongPoint.
+  Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
+  to MIGRATE.md for further details. (Sanjay Dutt)
+
 New Features
 ---------------------
 
@@ -115,6 +121,8 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#13246: Simplify bytes comparison as long comparison in NumericComparator. (Guo feng)
 
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
@@ -168,6 +176,12 @@ Changes in Runtime Behavior
   on POSIX systems. To fallback to OS default behaviour, pass system property via
   `-Dorg.apache.lucene.store.defaultReadAdvice=normal`. This may be useful on systems
   with lots of RAM as this increases read-ahead. (Adrien Grand, Uwe Schindler)
+
+* GITHUB13293: Auto I/O throttling is now disabled by default on ConcurrentMergeScheduler.
+  (Adrien Grand)
+
+* GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
+  for merging. (Adrien Grand)
 
 Changes in Backwards Compatibility Policy
 -----------------------------------------
@@ -293,6 +307,9 @@ Optimizations
 
 * GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
   could. (Stefan Vodita)
+
+* GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
+  a TreeMap. (Adrien Grand)
 
 Bug Fixes
 ---------------------

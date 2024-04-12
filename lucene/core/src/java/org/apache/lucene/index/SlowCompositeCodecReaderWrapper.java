@@ -824,15 +824,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public long ramBytesUsed() {
-      long ramBytesUsed = 0;
-      for (KnnVectorsReader reader : readers) {
-        ramBytesUsed += reader.ramBytesUsed();
-      }
-      return ramBytesUsed;
-    }
-
-    @Override
     public void checkIntegrity() throws IOException {
       for (KnnVectorsReader reader : readers) {
         if (reader != null) {

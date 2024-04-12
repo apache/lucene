@@ -172,11 +172,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public long ramBytesUsed() {
-      return delegate.ramBytesUsed();
-    }
-
-    @Override
     public HnswGraph getGraph(String field) throws IOException {
       return ((HnswGraphProvider) delegate).getGraph(field);
     }
