@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
@@ -122,6 +123,8 @@ public class UnifiedHighlighter {
 
   private Predicate<String> fieldMatcher;
 
+  private final Function<String, Set<String>> maskedFieldsFunc;
+
   private Set<HighlightFlag> flags;
 
   // e.g. wildcards
@@ -162,6 +165,7 @@ public class UnifiedHighlighter {
         Objects.requireNonNull(
             indexAnalyzer,
             "indexAnalyzer is required" + " (even if in some circumstances it isn't used)");
+    this.maskedFieldsFunc = null;
   }
 
   @Deprecated
@@ -256,6 +260,8 @@ public class UnifiedHighlighter {
 
     private final Analyzer indexAnalyzer;
     private Predicate<String> fieldMatcher;
+
+    private Function<String, Set<String>> maskedFieldsFunc;
     private Set<HighlightFlag> flags;
     private boolean handleMultiTermQuery = DEFAULT_ENABLE_MULTI_TERM_QUERY;
     private boolean highlightPhrasesStrictly = DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY;
@@ -360,6 +366,22 @@ public class UnifiedHighlighter {
       return this;
     }
 
+    /**
+     * Set up a function that given a field retuns a set of masked fields whose matches are combined
+     * to highlight the given field. Masked fields should not include the original field. This is
+     * useful when you want to highlight a field based on matches from several fields.
+     *
+     * <p>Note: All masked fields must share the same source as the field being highlighted,
+     * otherwise their offsets will not correspond to the highlighted field.
+     *
+     * <p>Note: Only the field being highlighted must provide an original source value (e.g. through
+     * stored field), other masked fields don't need it.
+     */
+    public Builder withMaskedFieldsFunc(Function<String, Set<String>> maskedFieldsFunc) {
+      this.maskedFieldsFunc = maskedFieldsFunc;
+      return this;
+    }
+
     public Builder withScorer(PassageScorer value) {
       this.scorer = value;
       return this;
@@ -436,6 +458,7 @@ public class UnifiedHighlighter {
     this.maxLength = builder.maxLength;
     this.breakIterator = builder.breakIterator;
     this.fieldMatcher = builder.fieldMatcher;
+    this.maskedFieldsFunc = builder.maskedFieldsFunc;
     this.scorer = builder.scorer;
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
@@ -541,6 +564,10 @@ public class UnifiedHighlighter {
       // requireFieldMatch = true
       return (qf) -> field.equals(qf);
     }
+  }
+
+  protected Set<String> getMaskedFields(String field) {
+    return maskedFieldsFunc == null ? null : maskedFieldsFunc.apply(field);
   }
 
   /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
@@ -1065,11 +1092,29 @@ public class UnifiedHighlighter {
 
   protected FieldHighlighter getFieldHighlighter(
       String field, Query query, Set<Term> allTerms, int maxPassages) {
-    UHComponents components = getHighlightComponents(field, query, allTerms);
-    OffsetSource offsetSource = getOptimizedOffsetSource(components);
+    Set<String> maskedFields = getMaskedFields(field);
+    FieldOffsetStrategy fieldOffsetStrategy;
+    if (maskedFields == null || maskedFields.isEmpty()) {
+      UHComponents components = getHighlightComponents(field, query, allTerms);
+      OffsetSource offsetSource = getOptimizedOffsetSource(components);
+      fieldOffsetStrategy = getOffsetStrategy(offsetSource, components);
+    } else {
+      List<FieldOffsetStrategy> fieldsOffsetStrategies = new ArrayList<>(maskedFields.size() + 1);
+      for (String maskedField : maskedFields) {
+        UHComponents components = getHighlightComponents(maskedField, query, allTerms);
+        OffsetSource offsetSource = getOptimizedOffsetSource(components);
+        fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
+      }
+      // adding original field as well
+      UHComponents components = getHighlightComponents(field, query, allTerms);
+      OffsetSource offsetSource = getOptimizedOffsetSource(components);
+      fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
+
+      fieldOffsetStrategy = new MultiFieldsOffsetStrategy(fieldsOffsetStrategies);
+    }
     return newFieldHighlighter(
         field,
-        getOffsetStrategy(offsetSource, components),
+        fieldOffsetStrategy,
         new SplittingBreakIterator(getBreakIterator(field), UnifiedHighlighter.MULTIVAL_SEP_CHAR),
         getScorer(field),
         maxPassages,
