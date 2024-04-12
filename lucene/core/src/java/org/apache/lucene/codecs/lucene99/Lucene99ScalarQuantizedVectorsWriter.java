@@ -98,7 +98,20 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final FlatVectorsWriter rawVectorDelegate;
   private final byte bits;
   private final boolean compress;
+  private final int version;
   private boolean finished;
+
+  public Lucene99ScalarQuantizedVectorsWriter(
+      SegmentWriteState state, Float confidenceInterval, FlatVectorsWriter rawVectorDelegate)
+      throws IOException {
+    this(
+        state,
+        confidenceInterval,
+        Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
+        (byte) 7,
+        false,
+        rawVectorDelegate);
+  }
 
   public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
@@ -107,9 +120,27 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       boolean compress,
       FlatVectorsWriter rawVectorDelegate)
       throws IOException {
+    this(
+        state,
+        confidenceInterval,
+        Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS,
+        bits,
+        compress,
+        rawVectorDelegate);
+  }
+
+  private Lucene99ScalarQuantizedVectorsWriter(
+      SegmentWriteState state,
+      Float confidenceInterval,
+      int version,
+      byte bits,
+      boolean compress,
+      FlatVectorsWriter rawVectorDelegate)
+      throws IOException {
     this.confidenceInterval = confidenceInterval;
     this.bits = bits;
     this.compress = compress;
+    this.version = version;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -132,13 +163,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       CodecUtil.writeIndexHeader(
           meta,
           Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           quantizedVectorData,
           Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -301,9 +332,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     meta.writeInt(count);
     if (count > 0) {
       assert Float.isFinite(lowerQuantile) && Float.isFinite(upperQuantile);
-      meta.writeInt(confidenceInterval == null ? -1 : Float.floatToIntBits(confidenceInterval));
-      meta.writeByte(bits);
-      meta.writeByte(compress ? (byte) 1 : (byte) 0);
+      if (version >= Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
+        meta.writeInt(confidenceInterval == null ? -1 : Float.floatToIntBits(confidenceInterval));
+        meta.writeByte(bits);
+        meta.writeByte(compress ? (byte) 1 : (byte) 0);
+      } else {
+        meta.writeInt(
+            Float.floatToIntBits(
+                confidenceInterval == null
+                    ? calculateDefaultConfidenceInterval(field.getVectorDimension())
+                    : confidenceInterval));
+      }
       meta.writeInt(Float.floatToIntBits(lowerQuantile));
       meta.writeInt(Float.floatToIntBits(upperQuantile));
     }
@@ -453,10 +492,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(quantizationDataInput);
-      float confidenceInterval =
-          this.confidenceInterval == null
-              ? calculateDefaultConfidenceInterval(fieldInfo.getVectorDimension())
-              : this.confidenceInterval;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),

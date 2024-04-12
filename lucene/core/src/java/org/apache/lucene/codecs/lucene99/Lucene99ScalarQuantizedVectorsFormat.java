@@ -36,7 +36,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
-  static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
+  public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_ADD_BITS = 1;
