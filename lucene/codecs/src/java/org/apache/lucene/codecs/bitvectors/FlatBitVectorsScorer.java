@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.hnsw;
+package org.apache.lucene.codecs.bitvectors;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
@@ -69,7 +70,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
 
     BitRandomVectorScorer(RandomAccessVectorValues.Bytes vectorValues, byte[] query) {
       this.query = query;
-      this.bitDimensions = vectorValues.dimension() * 8;
+      this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
     }
 

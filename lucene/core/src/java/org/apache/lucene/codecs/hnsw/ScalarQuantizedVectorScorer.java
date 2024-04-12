@@ -28,7 +28,11 @@ import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupp
 import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
-/** On-heap scalar quantized implementation of {@link FlatVectorsScorer}. */
+/**
+ * Default scalar quantized implementation of {@link FlatVectorsScorer}.
+ *
+ * @lucene.experimental
+ */
 public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   private final FlatVectorsScorer nonQuantizedDelegate;
@@ -47,6 +51,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           quantizedByteVectorValues.getScalarQuantizer(),
           quantizedByteVectorValues);
     }
+    // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
@@ -73,6 +78,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           targetBytes,
           offsetCorrection);
     }
+    // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 

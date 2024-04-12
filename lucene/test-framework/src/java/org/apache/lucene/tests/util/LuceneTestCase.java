@@ -102,7 +102,7 @@ import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswBitVectorsFormat;
+import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -3219,7 +3219,7 @@ public abstract class LuceneTestCase extends Assert {
     ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
     List<KnnVectorsFormat> availableFormats = new ArrayList<>();
     for (KnnVectorsFormat f : formats) {
-      if (f.getName().equals(Lucene99HnswBitVectorsFormat.NAME)) {
+      if (f.getName().equals(HnswBitVectorsFormat.NAME)) {
         if (vectorEncoding.equals(VectorEncoding.BYTE)) {
           availableFormats.add(f);
         }

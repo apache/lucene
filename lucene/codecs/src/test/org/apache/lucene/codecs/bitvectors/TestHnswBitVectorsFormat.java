@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.bitvectors;
 
 import static org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase.randomVector8;
 
@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -38,13 +39,13 @@ import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseIndexFileFormatTestCase;
 
-public class TestLucene99HnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
+public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
   @Override
   protected Codec getCodec() {
     return new Lucene99Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99HnswBitVectorsFormat();
+        return new HnswBitVectorsFormat();
       }
     };
   }
@@ -61,7 +62,7 @@ public class TestLucene99HnswBitVectorsFormat extends BaseIndexFileFormatTestCas
       doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException e =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-      e.getMessage().contains("Lucene99HnswBitVectorsFormat only supports BYTE encoding");
+      e.getMessage().contains("HnswBitVectorsFormat only supports BYTE encoding");
     }
   }
 
@@ -108,21 +109,20 @@ public class TestLucene99HnswBitVectorsFormat extends BaseIndexFileFormatTestCas
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99HnswBitVectorsFormat(10, 20);
+            return new HnswBitVectorsFormat(10, 20);
           }
         };
     String expectedString =
-        "Lucene99HnswBitVectorsFormat(name=Lucene99HnswBitVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=FlatBitVectorsScorer()))";
+        "HnswBitVectorsFormat(name=HnswBitVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=FlatBitVectorsScorer()))";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 
   public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(-1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(0, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(20, 0));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(20, -1));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(512 + 1, 20));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswBitVectorsFormat(20, 3201));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(-1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, 0));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, -1));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(512 + 1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, 3201));
   }
 }

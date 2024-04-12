@@ -23,7 +23,11 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-/** On-heap implementation of {@link FlatVectorsScorer}. */
+/**
+ * Default implementation of {@link FlatVectorsScorer}.
+ *
+ * @lucene.experimental
+ */
 public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
