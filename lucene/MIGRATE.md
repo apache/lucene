@@ -180,6 +180,8 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
+- `FieldEntry`, a static nested class, from `Lucene90HnswVectorsReader`, `SimpleTextKnnVectorsReader`,
+  `Lucene99FlatVectorsReader`, `Lucene99HnswVectorsReader`, and `Lucene99ScalarQuantizedVectorsReader`
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
 

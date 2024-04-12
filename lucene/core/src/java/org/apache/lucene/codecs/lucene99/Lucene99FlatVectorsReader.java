@@ -302,29 +302,50 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     IOUtils.close(vectorData);
   }
 
-  private static class FieldEntry implements Accountable {
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      long vectorDataOffset,
+      long vectorDataLength,
+      int dimension,
+      int size,
+      OrdToDocDISIReaderConfiguration ordToDoc)
+      implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final int dimension;
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final int size;
-    final OrdToDocDISIReaderConfiguration ordToDoc;
 
-    FieldEntry(
+    private FieldEntry(
+        VectorSimilarityFunction similarityFunction,
+        VectorEncoding vectorEncoding,
+        long vectorDataOffset,
+        long vectorDataLength,
+        int dimension,
+        int size,
+        IndexInput input)
+        throws IOException {
+      this(
+          similarityFunction,
+          vectorEncoding,
+          vectorDataOffset,
+          vectorDataLength,
+          dimension,
+          size,
+          OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size));
+    }
+
+    public FieldEntry(
         IndexInput input,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
-      ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      this(
+          similarityFunction,
+          vectorEncoding,
+          input.readVLong(),
+          input.readVLong(),
+          input.readVInt(),
+          input.readInt(),
+          input);
     }
 
     @Override

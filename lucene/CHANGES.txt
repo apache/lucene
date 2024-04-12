@@ -102,6 +102,9 @@ API Changes
   Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
   to MIGRATE.md for further details. (Sanjay Dutt)
 
+* GITHUB#13207: Converted the FieldEntry, a static nested class, from Lucene90HnswVectorsReader, SimpleTextKnnVectorsReader,
+  Lucene99FlatVectorsReader, Lucene99HnswVectorsReader, and Lucene99ScalarQuantizedVectorsReader to a record class.
+
 New Features
 ---------------------
 

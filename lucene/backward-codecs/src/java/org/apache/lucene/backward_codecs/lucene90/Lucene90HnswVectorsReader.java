@@ -210,7 +210,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, info.getVectorSimilarityFunction());
+    return FieldEntry.create(input, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -303,37 +303,44 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     IOUtils.close(vectorData, vectorIndex);
   }
 
-  private static class FieldEntry {
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      long vectorDataOffset,
+      long vectorDataLength,
+      long indexDataOffset,
+      long indexDataLength,
+      int dimension,
+      int[] ordToDoc,
+      long[] ordOffsets) {
 
-    final int dimension;
-    final VectorSimilarityFunction similarityFunction;
-
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final long indexDataOffset;
-    final long indexDataLength;
-    final int[] ordToDoc;
-    final long[] ordOffsets;
-
-    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
-      this.similarityFunction = similarityFunction;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      indexDataOffset = input.readVLong();
-      indexDataLength = input.readVLong();
-      dimension = input.readInt();
-      int size = input.readInt();
-      ordToDoc = new int[size];
+    static FieldEntry create(DataInput input, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      final long vectorDataOffset = input.readVLong();
+      final long vectorDataLength = input.readVLong();
+      final long indexDataOffset = input.readVLong();
+      final long indexDataLength = input.readVLong();
+      final int dimension = input.readInt();
+      final int size = input.readInt();
+      final int[] ordToDoc = new int[size];
       for (int i = 0; i < size; i++) {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
-      ordOffsets = new long[size()];
+      final long[] ordOffsets = new long[size];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
         offset += input.readVLong();
         ordOffsets[i] = offset;
       }
+      return new FieldEntry(
+          similarityFunction,
+          vectorDataOffset,
+          vectorDataLength,
+          indexDataOffset,
+          indexDataLength,
+          dimension,
+          ordToDoc,
+          ordOffsets);
     }
 
     int size() {
