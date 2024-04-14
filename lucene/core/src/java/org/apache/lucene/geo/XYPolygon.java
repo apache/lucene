@@ -187,6 +187,7 @@ public final class XYPolygon extends XYGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+    sb.append("XYPolygon");
     for (int i = 0; i < x.length; i++) {
       sb.append("[").append(x[i]).append(", ").append(y[i]).append("] ");
     }
