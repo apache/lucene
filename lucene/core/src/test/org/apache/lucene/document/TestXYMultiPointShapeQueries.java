@@ -38,7 +38,7 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     int n = random().nextInt(4) + 1;
     XYPoint[] points = new XYPoint[n];
     for (int i = 0; i < n; i++) {
-      points[i] = ShapeTestUtil.nextPoint();
+      points[i] = ShapeTestUtil.nextXYPoint();
     }
     return points;
   }
