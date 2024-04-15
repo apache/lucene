@@ -643,6 +643,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public SeekStatus seekCeil(BytesRef target) throws IOException {
+    long withOutReloadFp = -1;
+    int origNextEnt = -1;
 
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
@@ -762,8 +764,30 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("  target is before current (shares prefixLen=" + targetUpto + ");
         // rewind frame ord=" + lastFrame.ord);
         // }
+
+        // If current frame changed, we can't reduce entCount. since target just less than different
+        // frame's last term.
+        boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
-        currentFrame.rewind();
+
+        // Only rewindWithoutReload for non-floor block or first floor block.
+        // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
+        // non-first floor blocks.
+        if (currentFrame.fp != currentFrame.fpOrig
+            || currentFrame.entCount == 0
+            || currentFrame.nextEnt == -1) {
+          currentFrame.rewind();
+        } else {
+          // Since target greater than last term, and stay on same frame with last term, we can
+          // reduce entCount
+          // to nextEnt, and
+          // revert it after scanToTerm.
+          if (currentIsLast) {
+            origNextEnt = currentFrame.nextEnt;
+            withOutReloadFp = currentFrame.fp;
+          }
+          currentFrame.rewindWithoutReload();
+        }
       } else {
         // Target is exactly the same as current term
         assert term.length() == target.length;
@@ -833,8 +857,21 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         currentFrame.loadBlock();
 
+        // We still stay on withOutReload frame, reduce entCount to nextEnt.
+        int origEntCount = -1;
+        if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
+          origEntCount = currentFrame.entCount;
+          currentFrame.entCount = origNextEnt;
+        }
+
         // if (DEBUG) System.out.println("  now scanToTerm");
         final SeekStatus result = currentFrame.scanToTerm(target, false);
+
+        // Revert entCount to origEntCount.
+        if (origEntCount != -1) {
+          currentFrame.entCount = origEntCount;
+        }
+
         if (result == SeekStatus.END) {
           term.copyBytes(target);
           termExists = false;
@@ -890,7 +927,19 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     currentFrame.loadBlock();
 
+    // We still stay on withOutReload frame, reduce entCount to nextEnt.
+    int origEntCount = -1;
+    if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
+      origEntCount = currentFrame.entCount;
+      currentFrame.entCount = origNextEnt;
+    }
+
     final SeekStatus result = currentFrame.scanToTerm(target, false);
+
+    // Revert entCount to origEntCount.
+    if (origEntCount != -1) {
+      currentFrame.entCount = origEntCount;
+    }
 
     if (result == SeekStatus.END) {
       term.copyBytes(target);
