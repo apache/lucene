@@ -29,7 +29,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
   // We only allow unsigned byte (8), signed byte (7), and half-byte (4)

@@ -106,8 +106,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       throws IOException {
     this(
         state,
-        confidenceInterval,
         Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
+        confidenceInterval,
         (byte) 7,
         false,
         rawVectorDelegate);
@@ -122,8 +122,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       throws IOException {
     this(
         state,
-        confidenceInterval,
         Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS,
+        confidenceInterval,
         bits,
         compress,
         rawVectorDelegate);
@@ -131,8 +131,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   private Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
-      Float confidenceInterval,
       int version,
+      Float confidenceInterval,
       byte bits,
       boolean compress,
       FlatVectorsWriter rawVectorDelegate)

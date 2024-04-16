@@ -42,7 +42,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   public static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
 
