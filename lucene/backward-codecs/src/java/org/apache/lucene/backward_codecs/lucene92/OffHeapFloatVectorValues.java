@@ -68,13 +68,14 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   static OffHeapFloatVectorValues load(
       Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+    if (fieldEntry.docsWithFieldOffset() == -2) {
+      return new EmptyOffHeapVectorValues(fieldEntry.dimension());
     }
     IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
+        vectorData.slice(
+            "vector-data", fieldEntry.vectorDataOffset(), fieldEntry.vectorDataLength());
+    if (fieldEntry.docsWithFieldOffset() == -1) {
+      return new DenseOffHeapVectorValues(fieldEntry.dimension(), fieldEntry.size(), bytesSlice);
     } else {
       return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
     }
@@ -134,20 +135,20 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
         Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice);
+      super(fieldEntry.dimension(), fieldEntry.size(), slice);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+          dataIn.randomAccessSlice(fieldEntry.addressesOffset(), fieldEntry.addressesLength());
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
+      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
       this.disi =
           new IndexedDISI(
               dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
+              fieldEntry.docsWithFieldOffset(),
+              fieldEntry.docsWithFieldLength(),
+              fieldEntry.jumpTableEntryCount(),
+              fieldEntry.denseRankPower(),
+              fieldEntry.size());
     }
 
     @Override
