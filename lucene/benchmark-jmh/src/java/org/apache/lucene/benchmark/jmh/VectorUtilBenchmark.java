@@ -30,18 +30,34 @@ import org.openjdk.jmh.annotations.*;
 @Measurement(iterations = 5, time = 1)
 // engage some noise reduction
 @Fork(
-    value = 3,
+    value = 1,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
+
+  static void decompressBytes(byte[] compressed, byte[] raw) {
+    for (int i = 0; i < compressed.length; ++i) {
+      raw[compressed.length + i] = (byte) (compressed[i] & 0x0F);
+      raw[i] = (byte) ((compressed[i] & 0xFF) >> 4);
+    }
+  }
+
+  static void compressBytes(byte[] raw, byte[] compressed) {
+    for (int i = 0; i < compressed.length; ++i) {
+      int v = (raw[i] << 4) | raw[compressed.length + i];
+      compressed[i] = (byte) v;
+    }
+  }
 
   private byte[] bytesA;
   private byte[] bytesB;
   private byte[] halfBytesA;
   private byte[] halfBytesB;
+  private byte[] halfBytesAPacked;
+  private byte[] halfBytesBPacked;
   private float[] floatsA;
   private float[] floatsB;
 
-  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  @Param({"1024"})
   int size;
 
   @Setup(Level.Iteration)
@@ -61,6 +77,11 @@ public class VectorUtilBenchmark {
       halfBytesA[i] = (byte) random.nextInt(16);
       halfBytesB[i] = (byte) random.nextInt(16);
     }
+    // pack the half byte arrays
+    halfBytesAPacked = new byte[(size + 1) >> 1];
+    halfBytesBPacked = new byte[(size + 1) >> 1];
+    compressBytes(halfBytesA, halfBytesAPacked);
+    compressBytes(halfBytesB, halfBytesBPacked);
 
     // random float arrays for float methods
     floatsA = new float[size];
@@ -106,13 +127,39 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public int binaryHalfByteScalar() {
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVector() {
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+  }
+
+  @Benchmark
+  public int binaryHalfByteScalarPacked() {
+    return VectorUtil.int4DotProduct(halfBytesAPacked, true, halfBytesBPacked, true);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteVectorPacked() {
+    return VectorUtil.int4DotProduct(halfBytesAPacked, true, halfBytesBPacked, true);
+  }
+
+  @Benchmark
+  public int binaryHalfByteScalarPackedUnpacked() {
+    decompressBytes(halfBytesAPacked, halfBytesA);
+    decompressBytes(halfBytesBPacked, halfBytesB);
+    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteVectorPackedUnpacked() {
+    decompressBytes(halfBytesAPacked, halfBytesA);
+    decompressBytes(halfBytesBPacked, halfBytesB);
+    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
   }
 
   @Benchmark

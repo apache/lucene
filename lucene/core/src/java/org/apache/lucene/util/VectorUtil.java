@@ -175,11 +175,25 @@ public final class VectorUtil {
     return IMPL.dotProduct(a, b);
   }
 
-  public static int int4DotProduct(byte[] a, byte[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+  public static int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
+    if (apacked && bpacked) {
+      if (a.length != b.length) {
+        throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+      }
+    } else if (apacked) {
+      if (a.length != ((b.length + 1) >> 1)) {
+        throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+      }
+    } else if (bpacked) {
+      if (b.length != ((a.length + 1) >> 1)) {
+        throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+      }
+    } else {
+      if (a.length != b.length) {
+        throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+      }
     }
-    return IMPL.int4DotProduct(a, b);
+    return IMPL.int4DotProduct(a, apacked, b, apacked);
   }
 
   /**

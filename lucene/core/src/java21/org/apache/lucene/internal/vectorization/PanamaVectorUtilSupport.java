@@ -31,6 +31,7 @@ import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
+import static jdk.incubator.vector.VectorOperators.ASHR;
 /**
  * VectorUtil methods implemented with Panama incubating vector API.
  *
@@ -390,20 +391,72 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProduct(byte[] a, byte[] b) {
+  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     int i = 0;
     int res = 0;
-    if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
-      return dotProduct(a, b);
-    } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
-      i += ByteVector.SPECIES_128.loopBound(a.length);
-      res += int4DotProductBody128(a, b, i);
+    if (apacked == false && bpacked == false) {
+      if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
+        return dotProduct(a, b);
+      } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
+        i += ByteVector.SPECIES_128.loopBound(a.length);
+        res += int4DotProductBody128(a, b, i);
+      }
+      // scalar tail
+      for (; i < a.length; i++) {
+        res += b[i] * a[i];
+      }
+    } else if (apacked && bpacked) {
+      return dotProductBody128Int4Packed(a, b, a.length);
+    } else {
+      throw new IllegalArgumentException("One vector is packed, the other is not");
     }
-    // scalar tail
-    for (; i < a.length; i++) {
-      res += b[i] * a[i];
-    }
+
     return res;
+  }
+
+  /** vectorized dot product body (128 bit vectors) */
+  private int dotProductBody128Int4Packed(byte[] a, byte[] b, int limit) {
+    int sum = 0;
+    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += 1024) {
+      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_128);
+      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
+      int innerLimit = Math.min(limit - i, 1024);
+      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
+        ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j);
+        ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j);
+        // upper
+        ByteVector prod8 = va8.and((byte) 0x0F).mul(vb8.and((byte) 0x0F));
+        ShortVector prod16 =
+          prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.and((short) 0xFF));
+
+        // lower
+        prod8 = va8.and((byte) 0xFF).lanewise(ASHR, 4).mul(vb8.and((byte) 0xFF).lanewise(ASHR, 4));
+        prod16 =
+          prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.and((short) 0xFF));
+
+        va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j + 8);
+        vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j + 8);
+
+        // upper
+        prod8 = va8.and((byte)0x0F).mul(vb8.and((byte) 0x0F));
+        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc1 = acc1.add(prod16.and((short) 0xFF));
+
+        // lower
+        prod8 = va8.and((byte) 0xFF).lanewise(ASHR, 4).mul(vb8.and((byte) 0xFF).lanewise(ASHR, 4));
+        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        acc1 = acc1.add(prod16.and((short) 0xFF));
+      }
+      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
+      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
+      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
+      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+    }
+    return sum;
   }
 
   private int int4DotProductBody128(byte[] a, byte[] b, int limit) {

@@ -41,9 +41,9 @@ public interface ScalarQuantizedVectorSimilarity {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT -> new DotProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+          constMultiplier, bits <= 4 ? (a, b) -> VectorUtil.int4DotProduct(a, false, b, false) : VectorUtil::dotProduct);
       case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+          constMultiplier, bits <= 4 ? (a, b) -> VectorUtil.int4DotProduct(a, false, b, false) : VectorUtil::dotProduct);
     };
   }
 

@@ -135,6 +135,16 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     return scoreCorrectionConstant[0];
   }
 
+  @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
+  @Override
+  public int getVectorByteLength() {
+    return numBytes;
+  }
+
   public static OffHeapQuantizedByteVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,

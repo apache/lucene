@@ -19,6 +19,8 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.List;
+
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -40,6 +42,18 @@ public interface RandomAccessVectorValues {
    * access different values at once, to avoid overwriting the underlying vector returned.
    */
   RandomAccessVectorValues copy() throws IOException;
+
+  /**
+   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if available
+   */
+  default IndexInput getSlice() {
+    return null;
+  }
+
+  /**
+   * Returns the byte length of the vector values.
+   */
+  int getVectorByteLength();
 
   /**
    * Translates vector ordinal to the correct document ID. By default, this is an identity function.
@@ -72,6 +86,11 @@ public interface RandomAccessVectorValues {
      * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
      */
     float[] vectorValue(int targetOrd) throws IOException;
+
+    @Override
+    default int getVectorByteLength() {
+      return dimension() * Float.BYTES;
+    }
   }
 
   /** Byte vector values. */
@@ -85,6 +104,11 @@ public interface RandomAccessVectorValues {
      * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
      */
     byte[] vectorValue(int targetOrd) throws IOException;
+
+    @Override
+    default int getVectorByteLength() {
+      return dimension() * Byte.BYTES;
+    }
   }
 
   /**
