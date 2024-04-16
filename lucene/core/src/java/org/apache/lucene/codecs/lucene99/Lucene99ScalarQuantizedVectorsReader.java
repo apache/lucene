@@ -267,7 +267,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, versionMeta, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(
+        input, versionMeta, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -296,32 +297,34 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return fieldEntry.scalarQuantizer;
   }
 
-  private static class FieldEntry implements Accountable {
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      int dimension,
+      long vectorDataOffset,
+      long vectorDataLength,
+      ScalarQuantizer scalarQuantizer,
+      int size,
+      byte bits,
+      boolean compress,
+      OrdToDocDISIReaderConfiguration ordToDoc)
+      implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final int dimension;
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final ScalarQuantizer scalarQuantizer;
-    final int size;
-    final byte bits;
-    final boolean compress;
-    final OrdToDocDISIReaderConfiguration ordToDoc;
 
-    FieldEntry(
+    static FieldEntry create(
         IndexInput input,
         int versionMeta,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
+      final ScalarQuantizer scalarQuantizer;
+      final byte bits;
+      final boolean compress;
       if (size > 0) {
         if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
           int floatBits = input.readInt(); // confidenceInterval, unused
@@ -329,25 +332,36 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             throw new CorruptIndexException(
                 "Missing confidence interval for scalar quantizer", input);
           }
-          this.bits = (byte) 7;
-          this.compress = false;
+          bits = (byte) 7;
+          compress = false;
           float minQuantile = Float.intBitsToFloat(input.readInt());
           float maxQuantile = Float.intBitsToFloat(input.readInt());
           scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, (byte) 7);
         } else {
           input.readInt(); // confidenceInterval, unused
-          this.bits = input.readByte();
-          this.compress = input.readByte() == 1;
+          bits = input.readByte();
+          compress = input.readByte() == 1;
           float minQuantile = Float.intBitsToFloat(input.readInt());
           float maxQuantile = Float.intBitsToFloat(input.readInt());
           scalarQuantizer = new ScalarQuantizer(minQuantile, maxQuantile, bits);
         }
       } else {
         scalarQuantizer = null;
-        this.bits = (byte) 7;
-        this.compress = false;
+        bits = (byte) 7;
+        compress = false;
       }
-      ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          dimension,
+          vectorDataOffset,
+          vectorDataLength,
+          scalarQuantizer,
+          size,
+          bits,
+          compress,
+          ordToDoc);
     }
 
     @Override

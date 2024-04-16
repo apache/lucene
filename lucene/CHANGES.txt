@@ -222,6 +222,8 @@ Other
 * GITHUB#12753: Bump minimum required Java version to 21
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
+* GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes

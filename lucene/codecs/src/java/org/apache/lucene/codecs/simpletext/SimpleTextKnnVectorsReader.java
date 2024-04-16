@@ -274,21 +274,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     dataIn.close();
   }
 
-  private static class FieldEntry {
-
-    final int dimension;
-
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final int[] ordToDoc;
-
-    FieldEntry(int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
-      this.dimension = dimension;
-      this.vectorDataOffset = vectorDataOffset;
-      this.vectorDataLength = vectorDataLength;
-      this.ordToDoc = ordToDoc;
-    }
-
+  private record FieldEntry(
+      int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
     int size() {
       return ordToDoc.length;
     }

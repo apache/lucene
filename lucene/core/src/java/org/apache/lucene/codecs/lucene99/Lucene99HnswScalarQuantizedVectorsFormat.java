@@ -42,7 +42,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+
+  public static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -103,7 +105,7 @@ public final class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFo
       boolean compress,
       Float confidenceInterval,
       ExecutorService mergeExec) {
-    super("Lucene99HnswScalarQuantizedVectorsFormat");
+    super(NAME);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "
