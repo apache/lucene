@@ -317,10 +317,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      final long vectorDataOffset = input.readVLong();
-      final long vectorDataLength = input.readVLong();
-      final int dimension = input.readVInt();
-      final int size = input.readInt();
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
       final ScalarQuantizer scalarQuantizer;
       final byte bits;
       final boolean compress;
@@ -349,8 +349,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         bits = (byte) 7;
         compress = false;
       }
-      final OrdToDocDISIReaderConfiguration ordToDoc =
-          OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,

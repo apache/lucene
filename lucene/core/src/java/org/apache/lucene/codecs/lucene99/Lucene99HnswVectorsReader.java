@@ -371,14 +371,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      final long vectorIndexOffset = input.readVLong();
-      final long vectorIndexLength = input.readVLong();
-      final int dimension = input.readVInt();
-      final int size = input.readInt();
+      final var vectorIndexOffset = input.readVLong();
+      final var vectorIndexLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
       // read nodes by level
-      final int M = input.readVInt();
-      final int numLevels = input.readVInt();
-      final int[][] nodesByLevel = new int[numLevels][];
+      final var M = input.readVInt();
+      final var numLevels = input.readVInt();
+      final var nodesByLevel = new int[numLevels][];
       long numberOfOffsets = 0;
       final long offsetsOffset;
       final int offsetsBlockShift;

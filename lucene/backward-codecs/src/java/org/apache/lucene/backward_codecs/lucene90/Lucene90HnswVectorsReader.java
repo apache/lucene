@@ -315,18 +315,18 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     static FieldEntry create(DataInput input, VectorSimilarityFunction similarityFunction)
         throws IOException {
-      final long vectorDataOffset = input.readVLong();
-      final long vectorDataLength = input.readVLong();
-      final long indexDataOffset = input.readVLong();
-      final long indexDataLength = input.readVLong();
-      final int dimension = input.readInt();
-      final int size = input.readInt();
-      final int[] ordToDoc = new int[size];
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var indexDataOffset = input.readVLong();
+      final var indexDataLength = input.readVLong();
+      final var dimension = input.readInt();
+      final var size = input.readInt();
+      final var ordToDoc = new int[size];
       for (int i = 0; i < size; i++) {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
-      final long[] ordOffsets = new long[size];
+      final var ordOffsets = new long[size];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
         offset += input.readVLong();

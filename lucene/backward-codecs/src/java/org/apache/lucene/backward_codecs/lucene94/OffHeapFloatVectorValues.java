@@ -68,19 +68,20 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   static OffHeapFloatVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+    if (fieldEntry.docsWithFieldOffset() == -2) {
+      return new EmptyOffHeapVectorValues(fieldEntry.dimension());
     }
     IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+        vectorData.slice(
+            "vector-data", fieldEntry.vectorDataOffset(), fieldEntry.vectorDataLength());
     int byteSize =
-        switch (fieldEntry.vectorEncoding) {
-          case BYTE -> fieldEntry.dimension;
-          case FLOAT32 -> fieldEntry.dimension * Float.BYTES;
+        switch (fieldEntry.vectorEncoding()) {
+          case BYTE -> fieldEntry.dimension();
+          case FLOAT32 -> fieldEntry.dimension() * Float.BYTES;
         };
-    if (fieldEntry.docsWithFieldOffset == -1) {
+    if (fieldEntry.docsWithFieldOffset() == -1) {
       return new DenseOffHeapVectorValues(
-          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
+          fieldEntry.dimension(), fieldEntry.size(), bytesSlice, byteSize);
     } else {
       return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
     }
@@ -143,20 +144,20 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
         int byteSize)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
+      super(fieldEntry.dimension(), fieldEntry.size(), slice, byteSize);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+          dataIn.randomAccessSlice(fieldEntry.addressesOffset(), fieldEntry.addressesLength());
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
+      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
       this.disi =
           new IndexedDISI(
               dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
+              fieldEntry.docsWithFieldOffset(),
+              fieldEntry.docsWithFieldLength(),
+              fieldEntry.jumpTableEntryCount(),
+              fieldEntry.denseRankPower(),
+              fieldEntry.size());
     }
 
     @Override
