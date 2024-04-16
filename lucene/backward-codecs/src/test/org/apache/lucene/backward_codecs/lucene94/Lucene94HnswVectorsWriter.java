@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -409,6 +410,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       int byteSize = fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
       OnHeapHnswGraph graph = null;
+      DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
       if (docsWithField.cardinality() != 0) {
         // build graph
         graph =
@@ -421,8 +423,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 RandomVectorScorerSupplier scorerSupplier =
-                    RandomVectorScorerSupplier.createBytes(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                    defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                        fieldInfo.getVectorSimilarityFunction(), vectorValues);
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -437,8 +439,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 RandomVectorScorerSupplier scorerSupplier =
-                    RandomVectorScorerSupplier.createFloats(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                    defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                        fieldInfo.getVectorSimilarityFunction(), vectorValues);
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -656,14 +658,15 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
+      DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> RandomVectorScorerSupplier.createBytes(
-                RandomAccessVectorValues.fromBytes((List<byte[]>) vectors, dim),
-                fieldInfo.getVectorSimilarityFunction());
-            case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-                RandomAccessVectorValues.fromFloats((List<float[]>) vectors, dim),
-                fieldInfo.getVectorSimilarityFunction());
+            case BYTE -> defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
+                RandomAccessVectorValues.fromBytes((List<byte[]>) vectors, dim));
+            case FLOAT32 -> defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
+                RandomAccessVectorValues.fromFloats((List<float[]>) vectors, dim));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);

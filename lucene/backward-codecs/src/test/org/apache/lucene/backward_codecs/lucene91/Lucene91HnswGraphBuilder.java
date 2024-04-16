@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -54,6 +55,7 @@ public final class Lucene91HnswGraphBuilder {
   private final double ml;
   private final Lucene91NeighborArray scratch;
 
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues.Floats vectorValues;
   private final SplittableRandom random;
@@ -145,7 +147,7 @@ public final class Lucene91HnswGraphBuilder {
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(int node, float[] value) throws IOException {
     RandomVectorScorer scorer =
-        RandomVectorScorer.createFloats(vectorValues, similarityFunction, value);
+        defaultFlatVectorScorer.getRandomVectorScorer(similarityFunction, vectorValues, value);
     HnswGraphBuilder.GraphBuilderKnnCollector candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;

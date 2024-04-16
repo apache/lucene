@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
@@ -65,6 +66,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
@@ -300,7 +302,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             fieldEntry.vectorDataLength,
             vectorData);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
@@ -328,7 +331,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             fieldEntry.vectorDataLength,
             vectorData);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),

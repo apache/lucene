@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /** A supplier that creates {@link RandomVectorScorer} from an ordinal. */
 public interface RandomVectorScorerSupplier {
@@ -36,92 +35,4 @@ public interface RandomVectorScorerSupplier {
    * be used in other threads.
    */
   RandomVectorScorerSupplier copy() throws IOException;
-
-  /**
-   * Creates a {@link RandomVectorScorerSupplier} to compare float vectors. The vectorValues passed
-   * in will be copied and the original copy will not be used.
-   *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to score vectors
-   */
-  static RandomVectorScorerSupplier createFloats(
-      final RandomAccessVectorValues.Floats vectors,
-      final VectorSimilarityFunction similarityFunction)
-      throws IOException {
-    // We copy the provided random accessor just once during the supplier's initialization
-    // and then reuse it consistently across all scorers for conducting vector comparisons.
-    return new FloatScoringSupplier(vectors, similarityFunction);
-  }
-
-  /**
-   * Creates a {@link RandomVectorScorerSupplier} to compare byte vectors. The vectorValues passed
-   * in will be copied and the original copy will not be used.
-   *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to score vectors
-   */
-  static RandomVectorScorerSupplier createBytes(
-      final RandomAccessVectorValues.Bytes vectors,
-      final VectorSimilarityFunction similarityFunction)
-      throws IOException {
-    // We copy the provided random accessor only during the supplier's initialization
-    // and then reuse it consistently across all scorers for conducting vector comparisons.
-    return new ByteScoringSupplier(vectors, similarityFunction);
-  }
-
-  /** RandomVectorScorerSupplier for bytes vector */
-  final class ByteScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Bytes vectors;
-    private final RandomAccessVectorValues.Bytes vectors1;
-    private final RandomAccessVectorValues.Bytes vectors2;
-    private final VectorSimilarityFunction similarityFunction;
-
-    private ByteScoringSupplier(
-        RandomAccessVectorValues.Bytes vectors, VectorSimilarityFunction similarityFunction)
-        throws IOException {
-      this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
-      this.similarityFunction = similarityFunction;
-    }
-
-    @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return new RandomVectorScorer.ByteVectorScorer(
-          vectors2, vectors1.vectorValue(ord), similarityFunction);
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new ByteScoringSupplier(vectors, similarityFunction);
-    }
-  }
-
-  /** RandomVectorScorerSupplier for Float vector */
-  final class FloatScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Floats vectors;
-    private final RandomAccessVectorValues.Floats vectors1;
-    private final RandomAccessVectorValues.Floats vectors2;
-    private final VectorSimilarityFunction similarityFunction;
-
-    private FloatScoringSupplier(
-        RandomAccessVectorValues.Floats vectors, VectorSimilarityFunction similarityFunction)
-        throws IOException {
-      this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
-      this.similarityFunction = similarityFunction;
-    }
-
-    @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return new RandomVectorScorer.FloatVectorScorer(
-          vectors2, vectors1.vectorValue(ord), similarityFunction);
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new FloatScoringSupplier(vectors, similarityFunction);
-    }
-  }
 }

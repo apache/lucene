@@ -40,6 +40,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -87,6 +88,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
+  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -115,22 +117,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues vectors)
       throws IOException {
-    return switch (getVectorEncoding()) {
-      case BYTE -> RandomVectorScorerSupplier.createBytes(
-          (RandomAccessVectorValues.Bytes) vectors, similarityFunction);
-      case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-          (RandomAccessVectorValues.Floats) vectors, similarityFunction);
-    };
+    return flatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectors);
   }
 
   protected RandomVectorScorer buildScorer(RandomAccessVectorValues vectors, T query)
       throws IOException {
     RandomAccessVectorValues vectorsCopy = vectors.copy();
     return switch (getVectorEncoding()) {
-      case BYTE -> RandomVectorScorer.createBytes(
-          (RandomAccessVectorValues.Bytes) vectorsCopy, similarityFunction, (byte[]) query);
-      case FLOAT32 -> RandomVectorScorer.createFloats(
-          (RandomAccessVectorValues.Floats) vectorsCopy, similarityFunction, (float[]) query);
+      case BYTE -> flatVectorScorer.getRandomVectorScorer(
+          similarityFunction, vectorsCopy, (byte[]) query);
+      case FLOAT32 -> flatVectorScorer.getRandomVectorScorer(
+          similarityFunction, vectorsCopy, (float[]) query);
     };
   }
 

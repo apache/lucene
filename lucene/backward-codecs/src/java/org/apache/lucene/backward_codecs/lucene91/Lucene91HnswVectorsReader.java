@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -56,6 +57,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   Lucene91HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
@@ -233,7 +235,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
