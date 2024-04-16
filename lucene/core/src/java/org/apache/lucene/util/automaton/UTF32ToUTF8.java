@@ -35,13 +35,11 @@ public final class UTF32ToUTF8 {
   private static final int[] startCodes = new int[] {0, 128, 2048, 65536};
   private static final int[] endCodes = new int[] {127, 2047, 65535, 1114111};
 
-  static int[] MASKS = new int[8];
+  static byte[] MASKS = new byte[8];
 
   static {
-    int v = 2;
     for (int i = 0; i < 7; i++) {
-      MASKS[i + 1] = v - 1;
-      v *= 2;
+      MASKS[i + 1] = (byte) ((2 << i) - 1);
     }
   }
 
