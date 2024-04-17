@@ -44,6 +44,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.MultiLeafKnnCollector;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -784,7 +785,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
 
       // Check that a normal collector is created without timeout
-      assertTrue(noTimeoutCollector instanceof TopKnnCollector);
+      assertTrue(
+          noTimeoutCollector instanceof TopKnnCollector
+              || noTimeoutCollector instanceof MultiLeafKnnCollector);
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
