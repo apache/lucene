@@ -28,7 +28,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapFloatVectorValues extends FloatVectorValues
-    implements RandomAccessVectorValues<float[]> {
+    implements RandomAccessVectorValues.Floats {
 
   protected final int dimension;
   protected final int size;
@@ -113,7 +113,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone());
     }
 
@@ -172,7 +172,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public OffHeapFloatVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
     }
 
@@ -239,7 +239,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public OffHeapFloatVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

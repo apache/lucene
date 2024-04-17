@@ -14,23 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.quantization;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Random access values for <code>byte[]</code>, but also includes accessing the score correction
- * constant for the current vector in the buffer.
+ * An interface that provides an HNSW graph. This interface is useful when gathering multiple HNSW
+ * graphs to bootstrap segment merging. The graph may be off the JVM heap.
  *
  * @lucene.experimental
  */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues.Bytes {
-
-  ScalarQuantizer getScalarQuantizer();
-
-  float getScoreCorrectionConstant();
-
-  @Override
-  RandomAccessQuantizedByteVectorValues copy() throws IOException;
+public interface HnswGraphProvider {
+  /**
+   * Return the stored HnswGraph for the given field.
+   *
+   * @param field the field containing the graph
+   * @return the HnswGraph for the given field if found
+   * @throws IOException when reading potentially off-heap graph fails
+   */
+  HnswGraph getGraph(String field) throws IOException;
 }

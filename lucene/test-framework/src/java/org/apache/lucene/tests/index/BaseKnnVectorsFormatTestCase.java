@@ -1253,7 +1253,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-  protected float[] randomVector(int dim) {
+  public static float[] randomVector(int dim) {
     assert dim > 0;
     float[] v = new float[dim];
     double squareSum = 0.0;
@@ -1268,13 +1268,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return v;
   }
 
-  protected float[] randomNormalizedVector(int dim) {
+  public static float[] randomNormalizedVector(int dim) {
     float[] v = randomVector(dim);
     VectorUtil.l2normalize(v);
     return v;
   }
 
-  protected byte[] randomVector8(int dim) {
+  public static byte[] randomVector8(int dim) {
     assert dim > 0;
     float[] v = randomNormalizedVector(dim);
     byte[] b = new byte[dim];

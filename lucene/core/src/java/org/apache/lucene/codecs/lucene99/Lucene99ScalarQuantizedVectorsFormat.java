@@ -18,9 +18,11 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.FlatVectorsFormat;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -46,7 +48,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
-  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
+  private static final FlatVectorsFormat rawVectorFormat =
+      new Lucene99FlatVectorsFormat(new DefaultFlatVectorScorer());
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
@@ -62,6 +65,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   final byte bits;
   final boolean compress;
+  final ScalarQuantizedVectorScorer flatVectorScorer;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -98,6 +102,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
     this.compress = compress;
+    this.flatVectorScorer = new ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer());
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -115,6 +120,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + bits
         + ", compress="
         + compress
+        + ", flatVectorScorer="
+        + flatVectorScorer
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -123,11 +130,17 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, bits, compress, rawVectorFormat.fieldsWriter(state));
+        state,
+        confidenceInterval,
+        bits,
+        compress,
+        rawVectorFormat.fieldsWriter(state),
+        flatVectorScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
+    return new Lucene99ScalarQuantizedVectorsReader(
+        state, rawVectorFormat.fieldsReader(state), flatVectorScorer);
   }
 }
