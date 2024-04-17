@@ -72,7 +72,7 @@ public final class UTF32ToUTF8 {
       return bytes[idx].bits;
     }
 
-    private void set(int code) {
+    private void set(int code, boolean setRest) {
       if (code < 128) {
         // 0xxxxxxx
         bytes[0].value = code;
@@ -82,19 +82,25 @@ public final class UTF32ToUTF8 {
         // 110yyyxx 10xxxxxx
         bytes[0].value = (6 << 5) | (code >> 6);
         bytes[0].bits = 5;
-        setRest(code, 1);
+        if (setRest) {
+          setRest(code, 1);
+        }
         len = 2;
       } else if (code < 65536) {
         // 1110yyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (14 << 4) | (code >> 12);
         bytes[0].bits = 4;
-        setRest(code, 2);
+        if (setRest) {
+          setRest(code, 2);
+        }
         len = 3;
       } else {
         // 11110zzz 10zzyyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (30 << 3) | (code >> 18);
         bytes[0].bits = 3;
-        setRest(code, 3);
+        if (setRest) {
+          setRest(code, 3);
+        }
         len = 4;
       }
     }
@@ -131,8 +137,8 @@ public final class UTF32ToUTF8 {
 
   // Builds necessary utf8 edges between start & end
   void convertOneEdge(int start, int end, int startCodePoint, int endCodePoint) {
-    startUTF8.set(startCodePoint);
-    endUTF8.set(endCodePoint);
+    startUTF8.set(startCodePoint, true);
+    endUTF8.set(endCodePoint, true);
     build(start, end, startUTF8, endUTF8, 0);
   }
 
@@ -183,8 +189,8 @@ public final class UTF32ToUTF8 {
       while (byteCount < limit) {
         // wasteful: we only need first byte, and, we should
         // statically encode this first byte:
-        tmpUTF8a.set(startCodes[byteCount - 1]);
-        tmpUTF8b.set(endCodes[byteCount - 1]);
+        tmpUTF8a.set(startCodes[byteCount - 1], false);
+        tmpUTF8b.set(endCodes[byteCount - 1], false);
         all(start, end, tmpUTF8a.byteAt(0), tmpUTF8b.byteAt(0), tmpUTF8a.len - 1);
         byteCount++;
       }
