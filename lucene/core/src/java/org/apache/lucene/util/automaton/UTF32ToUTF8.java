@@ -202,8 +202,6 @@ public final class UTF32ToUTF8 {
       int byteCount = 1 + startUTF8.len - upto;
       final int limit = endUTF8.len - upto;
       while (byteCount < limit) {
-        // wasteful: we only need first byte, and, we should
-        // statically encode this first byte:
         tmpUTF8a.setFirstByte(startCodes[byteCount - 1]);
         tmpUTF8b.setFirstByte(endCodes[byteCount - 1]);
         all(start, end, tmpUTF8a.byteAt(0), tmpUTF8b.byteAt(0), tmpUTF8a.len - 1);
