@@ -19,6 +19,7 @@ package org.apache.lucene.internal.vectorization;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
+import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 
 import jdk.incubator.vector.ByteVector;
@@ -31,7 +32,6 @@ import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-import static jdk.incubator.vector.VectorOperators.LSHR;
 /**
  * VectorUtil methods implemented with Panama incubating vector API.
  *
@@ -393,22 +393,25 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     if (apacked && bpacked) {
-      throw new IllegalArgumentException("Both vectors cannot be packed");
+      throw new IllegalArgumentException(
+          "Both vectors cannot be packed, at least one must be unpacked");
     }
     int i = 0;
     int res = 0;
     if (apacked || bpacked) {
       byte[] packed = apacked ? a : b;
       byte[] unpacked = apacked ? b : a;
-      if (b.length >= 32 && VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(packed.length);
-        res += dotProductBody512Packed(unpacked, packed, i);
-      } else if (b.length >= 32 && VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(packed.length);
-        res += dotProductBody256Packed(unpacked, packed, i);
-      } else if (b.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
-        i += ByteVector.SPECIES_64.loopBound(packed.length);
-        res += dotProductBody128Int4Packed(unpacked, packed, i);
+      if (packed.length >= 32) {
+        if (VECTOR_BITSIZE >= 512) {
+          i += BYTE_SPECIES.loopBound(packed.length);
+          res += dotProductBody512Packed(unpacked, packed, i);
+        } else if (VECTOR_BITSIZE == 256) {
+          i += BYTE_SPECIES.loopBound(packed.length);
+          res += dotProductBody256Packed(unpacked, packed, i);
+        } else if (HAS_FAST_INTEGER_VECTORS) {
+          i += ByteVector.SPECIES_64.loopBound(packed.length);
+          res += dotProductBody128Int4Packed(unpacked, packed, i);
+        }
       }
       // scalar tail
       for (; i < packed.length; i++) {
@@ -451,14 +454,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
         ShortVector prod16 =
-          prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+            prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
         acc0 = acc0.add(prod16.and((short) 0xFF));
 
         // lower
         va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j);
         prod8 = vb8.lanewise(LSHR, 4).mul(va8);
-        prod16 =
-          prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
+        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
         acc1 = acc1.add(prod16.and((short) 0xFF));
       }
       IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();

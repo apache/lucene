@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
@@ -44,15 +43,14 @@ public interface RandomAccessVectorValues {
   RandomAccessVectorValues copy() throws IOException;
 
   /**
-   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if available
+   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
+   * available
    */
   default IndexInput getSlice() {
     return null;
   }
 
-  /**
-   * Returns the byte length of the vector values.
-   */
+  /** Returns the byte length of the vector values. */
   int getVectorByteLength();
 
   /**
