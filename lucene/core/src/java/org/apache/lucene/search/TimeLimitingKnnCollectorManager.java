@@ -42,13 +42,13 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
     if (queryTimeout == null) {
       return collector;
     }
-    return new TimeoutingKnnCollector(collector);
+    return new TimeLimitingKnnCollector(collector);
   }
 
-  class TimeoutingKnnCollector implements KnnCollector {
+  class TimeLimitingKnnCollector implements KnnCollector {
     private final KnnCollector collector;
 
-    TimeoutingKnnCollector(KnnCollector collector) {
+    TimeLimitingKnnCollector(KnnCollector collector) {
       this.collector = collector;
     }
 
