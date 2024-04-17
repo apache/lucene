@@ -24,7 +24,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -45,7 +46,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
-import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorer;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -64,7 +64,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final FlatVectorsReader rawVectorsReader;
 
   public Lucene99ScalarQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader) throws IOException {
+      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
@@ -224,13 +226,12 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.ordToDoc,
             fieldEntry.dimension,
             fieldEntry.size,
-            fieldEntry.bits,
+            fieldEntry.scalarQuantizer,
             fieldEntry.compress,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
-    return new ScalarQuantizedRandomVectorScorer(
-        fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, vectorValues, target);
+    return vectorScorer.getRandomVectorScorer(fieldEntry.similarityFunction, vectorValues, target);
   }
 
   @Override
@@ -280,7 +281,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         fieldEntry.ordToDoc,
         fieldEntry.dimension,
         fieldEntry.size,
-        fieldEntry.bits,
+        fieldEntry.scalarQuantizer,
         fieldEntry.compress,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,

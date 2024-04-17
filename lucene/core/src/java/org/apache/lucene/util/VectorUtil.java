@@ -183,6 +183,30 @@ public final class VectorUtil {
   }
 
   /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  /**
    * Dot product score computed over signed bytes, scaled to be in [0, 1].
    *
    * @param a bytes containing a vector
