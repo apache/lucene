@@ -56,6 +56,7 @@ public class VectorUtilBenchmark {
   private byte[] halfBytesBPacked;
   private float[] floatsA;
   private float[] floatsB;
+  private int expectedhalfByteDotProduct;
 
   @Param({"1024"})
   int size;
@@ -71,11 +72,13 @@ public class VectorUtilBenchmark {
     random.nextBytes(bytesB);
     // random half byte arrays for binary methods
     // this means that all values must be between 0 and 15
+    expectedhalfByteDotProduct = 0;
     halfBytesA = new byte[size];
     halfBytesB = new byte[size];
     for (int i = 0; i < size; ++i) {
       halfBytesA[i] = (byte) random.nextInt(16);
       halfBytesB[i] = (byte) random.nextInt(16);
+      expectedhalfByteDotProduct += halfBytesA[i] * halfBytesB[i];
     }
     // pack the half byte arrays
     halfBytesAPacked = new byte[(size + 1) >> 1];
@@ -127,39 +130,45 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public int binaryHalfByteScalar() {
-    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVector() {
-    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark
   public int binaryHalfByteScalarPacked() {
-    return VectorUtil.int4DotProduct(halfBytesAPacked, true, halfBytesBPacked, true);
+    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedhalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+    }
+    return v;
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVectorPacked() {
-    return VectorUtil.int4DotProduct(halfBytesAPacked, true, halfBytesBPacked, true);
+    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedhalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+    }
+    return v;
   }
 
   @Benchmark
   public int binaryHalfByteScalarPackedUnpacked() {
-    decompressBytes(halfBytesAPacked, halfBytesA);
     decompressBytes(halfBytesBPacked, halfBytesB);
-    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVectorPackedUnpacked() {
-    decompressBytes(halfBytesAPacked, halfBytesA);
     decompressBytes(halfBytesBPacked, halfBytesB);
-    return VectorUtil.int4DotProduct(halfBytesA, false, halfBytesB, false);
+    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark

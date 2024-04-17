@@ -154,15 +154,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     if (apacked && bpacked) {
-      int total = 0;
-      for (int i = 0; i < a.length; i++) {
-        byte aByte = a[i];
-        byte bByte = b[i];
-        total += (aByte & 0x0F) * (bByte & 0x0F);
-        total += (aByte >> 4) * (bByte >> 4);
-      }
-      return total;
-    } else if (apacked || bpacked) {
+      throw new IllegalArgumentException("Both vectors cannot be packed");
+    }
+    if (apacked || bpacked) {
       byte[] packed = apacked ? a : b;
       byte[] unpacked = apacked ? b : a;
       int total = 0;
@@ -170,8 +164,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
         byte packedByte = packed[i];
         byte unpacked1 = unpacked[i];
         byte unpacked2 = unpacked[i + packed.length];
-        total += (packedByte & 0x0F) * unpacked1;
-        total += (packedByte >> 4) * unpacked2;
+        total += (packedByte & 0x0F) * unpacked2;
+        total += ((packedByte & 0xFF) >> 4) * unpacked1;
       }
       return total;
     }
