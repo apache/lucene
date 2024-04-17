@@ -71,7 +71,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
               scalarQuantizer.getConstantMultiplier(),
-              scalarQuantizer.getBits());
+              quantizedByteVectorValues);
       return new ScalarQuantizedRandomVectorScorer(
           scalarQuantizedVectorSimilarity,
           quantizedByteVectorValues,

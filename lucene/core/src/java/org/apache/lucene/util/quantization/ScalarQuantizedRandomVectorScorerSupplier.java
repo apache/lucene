@@ -38,7 +38,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
       RandomAccessQuantizedByteVectorValues values) {
     this.similarity =
         ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-            similarityFunction, scalarQuantizer.getConstantMultiplier(), scalarQuantizer.getBits());
+            similarityFunction, scalarQuantizer.getConstantMultiplier(), values);
     this.values = values;
     this.vectorSimilarityFunction = similarityFunction;
   }
@@ -56,7 +56,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
   public RandomVectorScorer scorer(int ord) throws IOException {
     final RandomAccessQuantizedByteVectorValues vectorsCopy = values.copy();
     final byte[] queryVector = values.vectorValue(ord);
-    final float queryOffset = values.getScoreCorrectionConstant();
+    final float queryOffset = values.getScoreCorrectionConstant(ord);
     return new ScalarQuantizedRandomVectorScorer(similarity, vectorsCopy, queryVector, queryOffset);
   }
 

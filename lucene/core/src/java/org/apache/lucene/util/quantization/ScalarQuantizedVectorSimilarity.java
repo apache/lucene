@@ -18,6 +18,7 @@ package org.apache.lucene.util.quantization;
 
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
+import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
@@ -33,33 +34,36 @@ public interface ScalarQuantizedVectorSimilarity {
    *
    * @param sim similarity function
    * @param constMultiplier constant multiplier used for quantization
-   * @param bits number of bits used for quantization
+   * @param values the quantized byte vector values
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-      VectorSimilarityFunction sim, float constMultiplier, byte bits) {
+      VectorSimilarityFunction sim,
+      float constMultiplier,
+      RandomAccessQuantizedByteVectorValues values) {
     return switch (sim) {
-      case EUCLIDEAN -> new Euclidean(constMultiplier);
-      case COSINE, DOT_PRODUCT -> new DotProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case EUCLIDEAN -> new Euclidean(constMultiplier, values);
+      case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier, values);
+      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier, values);
     };
   }
 
-  float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset);
+  float score(byte[] queryVector, float queryVectorOffset, int vectorOrdinal) throws IOException;
 
   /** Calculates euclidean distance on quantized vectors, applying the appropriate corrections */
   class Euclidean implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
+    private final RandomAccessQuantizedByteVectorValues values;
 
-    public Euclidean(float constMultiplier) {
+    public Euclidean(float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
       this.constMultiplier = constMultiplier;
+      this.values = values;
     }
 
     @Override
-    public float score(
-        byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset) {
+    public float score(byte[] queryVector, float queryVectorOffset, int vectorOrdinal)
+        throws IOException {
+      byte[] storedVector = values.vectorValue(vectorOrdinal);
       int squareDistance = VectorUtil.squareDistance(storedVector, queryVector);
       float adjustedDistance = squareDistance * constMultiplier;
       return 1 / (1f + adjustedDistance);
@@ -69,17 +73,45 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates dot product on quantized vectors, applying the appropriate corrections */
   class DotProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
-    private final ByteVectorComparator comparator;
+    private final RandomAccessQuantizedByteVectorValues values;
+    private final byte[] compressedVector;
 
-    public DotProduct(float constMultiplier, ByteVectorComparator comparator) {
+    public DotProduct(float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
       this.constMultiplier = constMultiplier;
-      this.comparator = comparator;
+      this.values = values;
+      if (values.getScalarQuantizer().getBits() <= 4
+          && values.getVectorByteLength() != values.dimension() + Float.BYTES
+          && values.getSlice() != null) {
+        this.compressedVector = new byte[values.getVectorByteLength() - Float.BYTES];
+      } else {
+        this.compressedVector = null;
+      }
     }
 
     @Override
-    public float score(
-        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = comparator.compare(storedVector, queryVector);
+    public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
+        throws IOException {
+      final int dotProduct;
+      final float vectorOffset;
+      if (values.getScalarQuantizer().getBits() <= 4) {
+        if (values.getSlice() != null
+            && values.getVectorByteLength() != queryVector.length + Float.BYTES) {
+          // get compressed vector
+          values.getSlice().seek((long) vectorOrdinal * values.getVectorByteLength());
+          values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
+          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+          dotProduct = VectorUtil.int4DotProductPacked(queryVector, compressedVector);
+        } else {
+          byte[] storedVector = values.vectorValue(vectorOrdinal);
+          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+          // For 4-bit quantization, we use a specialized dot product implementation
+          dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
+        }
+      } else {
+        byte[] storedVector = values.vectorValue(vectorOrdinal);
+        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+        dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      }
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return (1 + adjustedDistance) / 2;
     }
@@ -88,17 +120,46 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates max inner product on quantized vectors, applying the appropriate corrections */
   class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
-    private final ByteVectorComparator comparator;
+    private final RandomAccessQuantizedByteVectorValues values;
+    private final byte[] compressedVector;
 
-    public MaximumInnerProduct(float constMultiplier, ByteVectorComparator comparator) {
+    public MaximumInnerProduct(
+        float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
       this.constMultiplier = constMultiplier;
-      this.comparator = comparator;
+      this.values = values;
+      if (values.getScalarQuantizer().getBits() <= 4
+          && values.getVectorByteLength() != values.dimension() + Float.BYTES
+          && values.getSlice() != null) {
+        this.compressedVector = new byte[values.getVectorByteLength() - Float.BYTES];
+      } else {
+        this.compressedVector = null;
+      }
     }
 
     @Override
-    public float score(
-        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
-      int dotProduct = comparator.compare(storedVector, queryVector);
+    public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
+        throws IOException {
+      final int dotProduct;
+      final float vectorOffset;
+      if (values.getScalarQuantizer().getBits() <= 4) {
+        if (values.getSlice() != null
+            && values.getVectorByteLength() != queryVector.length + Float.BYTES) {
+          // get compressed vector
+          values.getSlice().seek((long) vectorOrdinal * values.getVectorByteLength());
+          values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
+          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+          dotProduct = VectorUtil.int4DotProductPacked(queryVector, compressedVector);
+        } else {
+          byte[] storedVector = values.vectorValue(vectorOrdinal);
+          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+          // For 4-bit quantization, we use a specialized dot product implementation
+          dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
+        }
+      } else {
+        byte[] storedVector = values.vectorValue(vectorOrdinal);
+        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+        dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      }
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return scaleMaxInnerProductScore(adjustedDistance);
     }

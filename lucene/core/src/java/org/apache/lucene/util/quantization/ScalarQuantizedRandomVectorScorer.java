@@ -49,7 +49,6 @@ public class ScalarQuantizedRandomVectorScorer
 
   private final byte[] quantizedQuery;
   private final float queryOffset;
-  private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
   public ScalarQuantizedRandomVectorScorer(
@@ -61,14 +60,10 @@ public class ScalarQuantizedRandomVectorScorer
     this.quantizedQuery = query;
     this.queryOffset = queryOffset;
     this.similarity = similarityFunction;
-    this.values = values;
   }
 
   @Override
   public float score(int node) throws IOException {
-    byte[] storedVectorValue = values.vectorValue(node);
-    float storedVectorCorrection = values.getScoreCorrectionConstant();
-    return similarity.score(
-        quantizedQuery, this.queryOffset, storedVectorValue, storedVectorCorrection);
+    return similarity.score(quantizedQuery, this.queryOffset, node);
   }
 }

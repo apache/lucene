@@ -136,13 +136,23 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
+  public float getScoreCorrectionConstant(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return scoreCorrectionConstant[0];
+    }
+    slice.seek((long) targetOrd * byteSize);
+    slice.readFloats(scoreCorrectionConstant, 0, 1);
+    return scoreCorrectionConstant[0];
+  }
+
+  @Override
   public IndexInput getSlice() {
     return slice;
   }
 
   @Override
   public int getVectorByteLength() {
-    return numBytes;
+    return byteSize;
   }
 
   public static OffHeapQuantizedByteVectorValues load(
