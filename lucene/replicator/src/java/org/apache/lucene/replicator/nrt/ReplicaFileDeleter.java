@@ -76,14 +76,13 @@ class ReplicaFileDeleter {
       }
     }
     this.policy.onInit(commits);
-   
   }
 
   public void checkpoint(SegmentInfos sis) throws IOException {
     CommitPoint commitPoint = new CommitPoint(dir, sis);
     policy.onCommit(Collections.singletonList(commitPoint));
   }
-  
+
   public synchronized void incRef(Collection<String> fileNames) throws IOException {
     fileDeleter.incRef(fileNames);
   }
