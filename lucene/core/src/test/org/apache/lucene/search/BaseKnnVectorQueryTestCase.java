@@ -813,7 +813,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager noTimeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, null);
       KnnCollector noTimeoutCollector =
-          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
       assertTrue(noTimeoutCollector instanceof TopKnnCollector);
@@ -829,7 +829,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
       KnnCollector timeoutCollector =
-          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
       assertFalse(timeoutCollector instanceof TopKnnCollector);
