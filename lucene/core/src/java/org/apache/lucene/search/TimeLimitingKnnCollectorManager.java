@@ -46,7 +46,7 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
   }
 
   class TimeoutingKnnCollector implements KnnCollector {
-    final KnnCollector collector;
+    private final KnnCollector collector;
 
     TimeoutingKnnCollector(KnnCollector collector) {
       this.collector = collector;
