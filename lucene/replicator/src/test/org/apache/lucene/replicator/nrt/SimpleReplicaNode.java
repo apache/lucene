@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.KeepOnlyLastCommitDeletionPolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
@@ -75,7 +76,11 @@ class SimpleReplicaNode extends ReplicaNode {
       boolean doCheckIndexOnClose)
       throws IOException {
     super(
-        id, getDirectory(random, id, indexPath, doCheckIndexOnClose), searcherFactory, System.out);
+        id,
+        getDirectory(random, id, indexPath, doCheckIndexOnClose),
+        new KeepOnlyLastCommitDeletionPolicy(),
+        searcherFactory,
+        System.out);
     this.tcpPort = tcpPort;
     this.random = new Random(random.nextLong());
 

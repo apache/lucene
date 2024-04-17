@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.index.IndexDeletionPolicy;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfos;
@@ -86,7 +87,11 @@ public abstract class ReplicaNode extends Node {
   protected long lastPrimaryGen;
 
   public ReplicaNode(
-      int id, Directory dir, SearcherFactory searcherFactory, PrintStream printStream)
+      int id,
+      Directory dir,
+      IndexDeletionPolicy policy,
+      SearcherFactory searcherFactory,
+      PrintStream printStream)
       throws IOException {
     super(id, dir, searcherFactory, printStream);
 
@@ -105,7 +110,7 @@ public abstract class ReplicaNode extends Node {
       writeFileLock = dir.obtainLock(IndexWriter.WRITE_LOCK_NAME);
 
       state = "init";
-      deleter = new ReplicaFileDeleter(this, dir);
+      deleter = new ReplicaFileDeleter(this, dir, policy);
       success = true;
     } catch (Throwable t) {
       message("exc on init:");
@@ -378,6 +383,7 @@ public abstract class ReplicaNode extends Node {
 
       // write and fsync a new segments_N
       infos.commit(dir);
+      deleter.checkpoint(infos);
 
       // Notify current infos (which may have changed while we were doing dir.sync above) what
       // generation we are up to; this way future
