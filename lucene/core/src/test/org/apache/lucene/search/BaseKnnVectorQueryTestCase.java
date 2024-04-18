@@ -816,7 +816,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
-      assertTrue(noTimeoutCollector instanceof TopKnnCollector);
+      assertFalse(
+          noTimeoutCollector instanceof TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector);
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
