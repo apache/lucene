@@ -390,7 +390,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
 
     for (int i = 0; i < 20000; i++) {
-      int n = random().nextInt(0, 10000);
+      int n = TestUtil.nextInt(random(), 0, 9999);
       BytesRef target = new BytesRef(n + "");
       // seekExact.
       assertTrue(termsEnum.seekExact(target));
