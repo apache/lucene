@@ -369,6 +369,42 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
+  // Test seek in disorder.
+  public void testDisorder() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 0; i < 10000; i++) {
+      Document document = new Document();
+      document.add(new StringField("id", i + "", Field.Store.NO));
+      iw.addDocument(document);
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+
+    for (int i = 0; i < 20000; i++) {
+      int n = random().nextInt(0, 10000);
+      BytesRef target = new BytesRef(n + "");
+      // seekExact.
+      assertTrue(termsEnum.seekExact(target));
+      assertEquals(termsEnum.term(), target);
+      // seekCeil.
+      assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+      assertEquals(termsEnum.term(), target);
+    }
+
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
   protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {}
 
   public void testBinarySearchTermLeaf() throws Exception {
