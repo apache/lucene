@@ -32,6 +32,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -100,11 +101,10 @@ public class XYDocValuesPointInGeometryQuery extends Query {
       throws IOException {
 
     return new ConstantScoreWeight(this, boost) {
-
       final Component2D component2D = XYGeometry.create(geometries);
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final SortedNumericDocValues values = context.reader().getSortedNumericDocValues(field);
         if (values == null) {
           return null;
@@ -131,7 +131,18 @@ public class XYDocValuesPointInGeometryQuery extends Query {
                 return 1000f; // TODO: what should it be?
               }
             };
-        return new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            return scorer;
+          }
+
+          @Override
+          public long cost() {
+            return scorer.iterator().cost();
+          }
+        };
       }
 
       @Override

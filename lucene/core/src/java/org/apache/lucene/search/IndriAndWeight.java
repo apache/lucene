@@ -65,11 +65,6 @@ public class IndriAndWeight extends Weight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    return getScorer(context);
-  }
-
-  @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     Scorer scorer = getScorer(context);
     if (scorer != null) {
@@ -118,5 +113,24 @@ public class IndriAndWeight extends Weight {
             "Failure to meet condition(s) of required/prohibited clause(s)", subs);
       }
     }
+  }
+
+  @Override
+  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+    final var scorer = getScorer(context);
+    if (scorer == null) {
+      return null;
+    }
+    return new ScorerSupplier() {
+      @Override
+      public Scorer get(long leadCost) throws IOException {
+        return scorer;
+      }
+
+      @Override
+      public long cost() {
+        return scorer.iterator().cost();
+      }
+    };
   }
 }

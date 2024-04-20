@@ -27,6 +27,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -72,8 +73,19 @@ public class FunctionQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      return new AllScorer(context, this, boost);
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final var scorer = new AllScorer(context, this, boost);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          return scorer;
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator.cost();
+        }
+      };
     }
 
     @Override

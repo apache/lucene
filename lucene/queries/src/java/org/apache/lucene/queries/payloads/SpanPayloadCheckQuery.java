@@ -38,6 +38,8 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BytesRef;
 
 /** Only return those matches that have a specific payload at the given position. */
@@ -171,7 +173,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       if (field == null) {
         return null;
       }
@@ -191,7 +193,18 @@ public class SpanPayloadCheckQuery extends SpanQuery {
         return null;
       }
       final LeafSimScorer docScorer = getSimScorer(context);
-      return new SpanScorer(this, spans, docScorer);
+      final var scorer = new SpanScorer(this, spans, docScorer);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          return scorer;
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator().cost();
+        }
+      };
     }
 
     @Override

@@ -251,7 +251,7 @@ public class TestSortRandom extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           Random random = new Random(context.docBase ^ seed);
           final int maxDoc = context.reader().maxDoc();
           final NumericDocValues idSource = DocValues.getNumeric(context.reader(), "id");
@@ -266,8 +266,23 @@ public class TestSortRandom extends LuceneTestCase {
             }
           }
 
-          return new ConstantScoreScorer(
-              this, score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));
+          final var scorer =
+              new ConstantScoreScorer(
+                  this,
+                  score(),
+                  scoreMode,
+                  new BitSetIterator(bits, bits.approximateCardinality()));
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
 
         @Override

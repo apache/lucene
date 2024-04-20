@@ -821,15 +821,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
-    @Override
     public int count(LeafReaderContext context) throws IOException {
       // If the wrapped weight can count quickly then use that
       int innerCount = in.count(context);

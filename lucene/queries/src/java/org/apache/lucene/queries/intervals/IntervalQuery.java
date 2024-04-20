@@ -30,6 +30,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -186,12 +187,24 @@ public final class IntervalQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       IntervalIterator intervals = intervalsSource.intervals(field, context);
       if (intervals == null) {
         return null;
       }
-      return new IntervalScorer(this, intervals, intervalsSource.minExtent(), boost, scoreFunction);
+      final var scorer =
+          new IntervalScorer(this, intervals, intervalsSource.minExtent(), boost, scoreFunction);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          return scorer;
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator().cost();
+        }
+      };
     }
 
     @Override

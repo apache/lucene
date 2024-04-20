@@ -376,15 +376,6 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
       }

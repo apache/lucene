@@ -24,6 +24,8 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafSimScorer;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 
 /** Wraps a SpanWeight with additional asserts */
 public class AssertingSpanWeight extends SpanWeight {
@@ -59,8 +61,20 @@ public class AssertingSpanWeight extends SpanWeight {
   }
 
   @Override
-  public SpanScorer scorer(LeafReaderContext context) throws IOException {
-    return in.scorer(context);
+  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+    final var scorer = in.scorer(context);
+    if (scorer == null) return null;
+    return new ScorerSupplier() {
+      @Override
+      public Scorer get(long leadCost) throws IOException {
+        return scorer;
+      }
+
+      @Override
+      public long cost() {
+        return scorer.iterator().cost();
+      }
+    };
   }
 
   @Override

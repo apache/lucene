@@ -122,7 +122,13 @@ public abstract class Weight implements SegmentCacheable {
    * @return a {@link Scorer} which scores documents in/out-of order.
    * @throws IOException if there is a low-level I/O error
    */
-  public abstract Scorer scorer(LeafReaderContext context) throws IOException;
+  public final Scorer scorer(LeafReaderContext context) throws IOException {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
+      return null;
+    }
+    return scorerSupplier.get(Long.MAX_VALUE);
+  }
 
   /**
    * Optional method. Get a {@link ScorerSupplier}, which allows to know the cost of the {@link
@@ -131,23 +137,7 @@ public abstract class Weight implements SegmentCacheable {
    *
    * @see #scorer
    */
-  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    final Scorer scorer = scorer(context);
-    if (scorer == null) {
-      return null;
-    }
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) {
-        return scorer;
-      }
-
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
-  }
+  public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
   /**
    * Optional method, to return a {@link BulkScorer} to score the query and send hits to a {@link

@@ -131,9 +131,23 @@ public class TestNeedsScores extends LuceneTestCase {
       final Weight w = in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(w) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          assertEquals("query=" + in, value, scoreMode);
-          return w.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer = w.scorer(context);
+          if (scorer == null) {
+            return null;
+          }
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              assertEquals("query=" + in, value, scoreMode);
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
       };
     }

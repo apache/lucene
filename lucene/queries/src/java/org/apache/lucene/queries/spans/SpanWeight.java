@@ -135,16 +135,6 @@ public abstract class SpanWeight extends Weight {
   public abstract Spans getSpans(LeafReaderContext ctx, Postings requiredPostings)
       throws IOException;
 
-  @Override
-  public SpanScorer scorer(LeafReaderContext context) throws IOException {
-    final Spans spans = getSpans(context, Postings.POSITIONS);
-    if (spans == null) {
-      return null;
-    }
-    final LeafSimScorer docScorer = getSimScorer(context);
-    return new SpanScorer(this, spans, docScorer);
-  }
-
   /**
    * Return a LeafSimScorer for this context
    *
@@ -158,7 +148,7 @@ public abstract class SpanWeight extends Weight {
 
   @Override
   public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-    SpanScorer scorer = scorer(context);
+    SpanScorer scorer = (SpanScorer) scorer(context);
     if (scorer != null) {
       int newDoc = scorer.iterator().advance(doc);
       if (newDoc == doc) {

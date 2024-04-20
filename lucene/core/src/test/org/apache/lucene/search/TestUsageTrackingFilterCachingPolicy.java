@@ -133,8 +133,20 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(DummyQuery.this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return new ConstantScoreScorer(this, score(), scoreMode, DocIdSetIterator.all(1));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer =
+              new ConstantScoreScorer(this, score(), scoreMode, DocIdSetIterator.all(1));
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
 
         @Override

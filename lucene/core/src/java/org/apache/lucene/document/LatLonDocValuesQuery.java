@@ -36,6 +36,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -134,9 +135,8 @@ class LatLonDocValuesQuery extends Query {
             ? null
             : GeoEncodingUtils.createComponentPredicate(component2D);
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final SortedNumericDocValues values = context.reader().getSortedNumericDocValues(field);
         if (values == null) {
           return null;
@@ -159,7 +159,19 @@ class LatLonDocValuesQuery extends Query {
             throw new IllegalArgumentException(
                 "Invalid query relationship:[" + queryRelation + "]");
         }
-        return new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        return new ScorerSupplier() {
+
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            return scorer;
+          }
+
+          @Override
+          public long cost() {
+            return scorer.iterator().cost();
+          }
+        };
       }
 
       @Override

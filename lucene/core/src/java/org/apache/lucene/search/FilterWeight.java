@@ -59,11 +59,6 @@ public abstract class FilterWeight extends Weight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    return in.scorer(context);
-  }
-
-  @Override
   public Matches matches(LeafReaderContext context, int doc) throws IOException {
     return in.matches(context, doc);
   }

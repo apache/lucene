@@ -79,8 +79,20 @@ class ForceNoBulkScoringQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext leafReaderContext) throws IOException {
-        return innerWeight.scorer(leafReaderContext);
+      public ScorerSupplier scorerSupplier(LeafReaderContext leafReaderContext) throws IOException {
+        final var scorer = innerWeight.scorer(leafReaderContext);
+        if (scorer == null) return null;
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            return scorer;
+          }
+
+          @Override
+          public long cost() {
+            return scorer.iterator().cost();
+          }
+        };
       }
 
       @Override

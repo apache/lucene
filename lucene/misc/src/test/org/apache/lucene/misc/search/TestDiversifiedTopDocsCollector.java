@@ -43,6 +43,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
@@ -527,32 +528,44 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           Scorer innerScorer = inner.scorer(context);
           NumericDocValues scoreFactors = DocValues.getNumeric(context.reader(), scoreField);
-          return new Scorer(this) {
+          final var scorer =
+              new Scorer(this) {
 
+                @Override
+                public float score() throws IOException {
+                  if (scoreFactors.advanceExact(docID())) {
+                    return Float.intBitsToFloat((int) scoreFactors.longValue());
+                  }
+                  return 0;
+                }
+
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  return Float.POSITIVE_INFINITY;
+                }
+
+                @Override
+                public DocIdSetIterator iterator() {
+                  return innerScorer.iterator();
+                }
+
+                @Override
+                public int docID() {
+                  return innerScorer.docID();
+                }
+              };
+          return new ScorerSupplier() {
             @Override
-            public float score() throws IOException {
-              if (scoreFactors.advanceExact(docID())) {
-                return Float.intBitsToFloat((int) scoreFactors.longValue());
-              }
-              return 0;
+            public Scorer get(long leadCost) throws IOException {
+              return scorer;
             }
 
             @Override
-            public float getMaxScore(int upTo) throws IOException {
-              return Float.POSITIVE_INFINITY;
-            }
-
-            @Override
-            public DocIdSetIterator iterator() {
-              return innerScorer.iterator();
-            }
-
-            @Override
-            public int docID() {
-              return innerScorer.docID();
+            public long cost() {
+              return scorer.iterator().cost();
             }
           };
         }

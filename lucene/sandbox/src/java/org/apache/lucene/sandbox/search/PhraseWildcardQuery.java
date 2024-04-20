@@ -48,7 +48,7 @@ import org.apache.lucene.search.PhraseWeight;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SloppyPhraseMatcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
@@ -229,7 +229,7 @@ public class PhraseWildcardQuery extends Query {
   protected Weight noMatchWeight() {
     return new ConstantScoreWeight(this, 0) {
       @Override
-      public Scorer scorer(LeafReaderContext leafReaderContext) {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         return null;
       }
 

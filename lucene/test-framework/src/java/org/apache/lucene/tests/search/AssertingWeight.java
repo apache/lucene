@@ -56,7 +56,7 @@ class AssertingWeight extends FilterWeight {
     return new AssertingMatches(matches);
   }
 
-  @Override
+  /*@Override
   public Scorer scorer(LeafReaderContext context) throws IOException {
     if (random.nextBoolean()) {
       final Scorer inScorer = in.scorer(context);
@@ -73,7 +73,7 @@ class AssertingWeight extends FilterWeight {
       }
       return scorerSupplier.get(Long.MAX_VALUE);
     }
-  }
+  }*/
 
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {

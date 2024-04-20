@@ -31,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -160,7 +161,7 @@ public final class LongRange extends Range {
 
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final int maxDoc = context.reader().maxDoc();
 
           final DocIdSetIterator approximation;
@@ -188,7 +189,18 @@ public final class LongRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
 
         @Override
@@ -258,7 +270,7 @@ public final class LongRange extends Range {
 
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final int maxDoc = context.reader().maxDoc();
 
           final DocIdSetIterator approximation;
@@ -294,7 +306,18 @@ public final class LongRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
 
         @Override

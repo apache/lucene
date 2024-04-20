@@ -23,7 +23,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 
 /** Keep matches that are contained within another Spans. */
 public final class SpanWithinQuery extends SpanContainQuery {
@@ -135,6 +138,28 @@ public final class SpanWithinQuery extends SpanContainQuery {
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return littleWeight.isCacheable(ctx) && bigWeight.isCacheable(ctx);
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final SpanWeight spanWeight = this;
+      final Spans spans = getSpans(context, Postings.POSITIONS);
+      if (spans == null) {
+        return null;
+      }
+      final LeafSimScorer docScorer = getSimScorer(context);
+      final var scorer = new SpanScorer(spanWeight, spans, docScorer);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          return scorer;
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator().cost();
+        }
+      };
     }
   }
 }

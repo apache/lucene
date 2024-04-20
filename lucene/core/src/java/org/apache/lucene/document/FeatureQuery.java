@@ -152,15 +152,6 @@ final class FeatureQuery extends Query {
           }
         };
       }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier supplier = scorerSupplier(context);
-        if (supplier == null) {
-          return null;
-        }
-        return supplier.get(Long.MAX_VALUE);
-      }
     };
   }
 

@@ -143,16 +143,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     // This is an inverted structure and should be used in the first pass:
 
     return new ConstantScoreWeight(this, boost) {
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;

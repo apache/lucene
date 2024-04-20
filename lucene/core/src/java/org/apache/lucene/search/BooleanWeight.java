@@ -554,15 +554,6 @@ final class BooleanWeight extends Weight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    ScorerSupplier scorerSupplier = scorerSupplier(context);
-    if (scorerSupplier == null) {
-      return null;
-    }
-    return scorerSupplier.get(Long.MAX_VALUE);
-  }
-
-  @Override
   public boolean isCacheable(LeafReaderContext ctx) {
     if (query.clauses().size()
         > AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
