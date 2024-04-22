@@ -18,7 +18,6 @@ package org.apache.lucene.util.quantization;
 
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
-import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
@@ -34,36 +33,33 @@ public interface ScalarQuantizedVectorSimilarity {
    *
    * @param sim similarity function
    * @param constMultiplier constant multiplier used for quantization
-   * @param values the quantized byte vector values
+   * @param bits number of bits used for quantization
    * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
-      VectorSimilarityFunction sim,
-      float constMultiplier,
-      RandomAccessQuantizedByteVectorValues values) {
+      VectorSimilarityFunction sim, float constMultiplier, byte bits) {
     return switch (sim) {
-      case EUCLIDEAN -> new Euclidean(constMultiplier, values);
-      case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier, values);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier, values);
+      case EUCLIDEAN -> new Euclidean(constMultiplier);
+      case COSINE, DOT_PRODUCT -> new DotProduct(
+          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
+          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
     };
   }
 
-  float score(byte[] queryVector, float queryVectorOffset, int vectorOrdinal) throws IOException;
+  float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset);
 
   /** Calculates euclidean distance on quantized vectors, applying the appropriate corrections */
   class Euclidean implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
-    private final RandomAccessQuantizedByteVectorValues values;
 
-    public Euclidean(float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
+    public Euclidean(float constMultiplier) {
       this.constMultiplier = constMultiplier;
-      this.values = values;
     }
 
     @Override
-    public float score(byte[] queryVector, float queryVectorOffset, int vectorOrdinal)
-        throws IOException {
-      byte[] storedVector = values.vectorValue(vectorOrdinal);
+    public float score(
+        byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset) {
       int squareDistance = VectorUtil.squareDistance(storedVector, queryVector);
       float adjustedDistance = squareDistance * constMultiplier;
       return 1 / (1f + adjustedDistance);
@@ -73,18 +69,18 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates dot product on quantized vectors, applying the appropriate corrections */
   class DotProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
-    private final RandomAccessQuantizedByteVectorValues values;
+    private final ByteVectorComparator comparator;
 
-    public DotProduct(float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
+    public DotProduct(float constMultiplier, ByteVectorComparator comparator) {
       this.constMultiplier = constMultiplier;
-      this.values = values;
+      this.comparator = comparator;
     }
 
     @Override
-    public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
-        throws IOException {
-      float adjustedDistance =
-          optimizedDotProduct(queryVector, queryOffset, vectorOrdinal, values, constMultiplier);
+    public float score(
+        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
+      int dotProduct = comparator.compare(storedVector, queryVector);
+      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return (1 + adjustedDistance) / 2;
     }
   }
@@ -92,38 +88,24 @@ public interface ScalarQuantizedVectorSimilarity {
   /** Calculates max inner product on quantized vectors, applying the appropriate corrections */
   class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
-    private final RandomAccessQuantizedByteVectorValues values;
+    private final ByteVectorComparator comparator;
 
-    public MaximumInnerProduct(
-        float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
+    public MaximumInnerProduct(float constMultiplier, ByteVectorComparator comparator) {
       this.constMultiplier = constMultiplier;
-      this.values = values;
+      this.comparator = comparator;
     }
 
     @Override
-    public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
-        throws IOException {
-      float adjustedDistance =
-          optimizedDotProduct(queryVector, queryOffset, vectorOrdinal, values, constMultiplier);
+    public float score(
+        byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
+      int dotProduct = comparator.compare(storedVector, queryVector);
+      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return scaleMaxInnerProductScore(adjustedDistance);
     }
   }
 
-  private static float optimizedDotProduct(
-      byte[] queryVector,
-      float queryOffset,
-      int vectorOrdinal,
-      RandomAccessQuantizedByteVectorValues values,
-      float constMultiplier)
-      throws IOException {
-    final byte[] storedVector = values.vectorValue(vectorOrdinal);
-    final float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-    final int dotProduct =
-        values.getScalarQuantizer().getBits() <= 4
-            ?
-            // For 4-bit quantization, we use a specialized dot product implementation
-            VectorUtil.int4DotProduct(storedVector, queryVector)
-            : VectorUtil.dotProduct(storedVector, queryVector);
-    return dotProduct * constMultiplier + queryOffset + vectorOffset;
+  /** Compares two byte vectors */
+  interface ByteVectorComparator {
+    int compare(byte[] v1, byte[] v2);
   }
 }

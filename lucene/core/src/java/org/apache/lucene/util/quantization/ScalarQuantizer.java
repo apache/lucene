@@ -19,7 +19,6 @@ package org.apache.lucene.util.quantization;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -623,6 +622,7 @@ public class ScalarQuantizer {
     private final List<ScoreDocsAndScoreVariance> nearestNeighbors;
     private final List<float[]> vectors;
     private final byte[] query;
+    private final byte[] vector;
     private final byte bits;
 
     public ScoreErrorCorrelator(
@@ -634,17 +634,16 @@ public class ScalarQuantizer {
       this.nearestNeighbors = nearestNeighbors;
       this.vectors = vectors;
       this.query = new byte[vectors.get(0).length];
+      this.vector = new byte[vectors.get(0).length];
       this.bits = bits;
     }
 
     double scoreErrorCorrelation(float lowerQuantile, float upperQuantile) {
       corr.reset();
       ScalarQuantizer quantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, bits);
-      QuantizedRandomAccessVectors quantizedRandomAccessVectors =
-          new QuantizedRandomAccessVectors(vectors, quantizer, function);
       ScalarQuantizedVectorSimilarity scalarQuantizedVectorSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              function, quantizer.getConstantMultiplier(), quantizedRandomAccessVectors);
+              function, quantizer.getConstantMultiplier(), quantizer.bits);
       for (int i = 0; i < nearestNeighbors.size(); i++) {
         float queryCorrection = quantizer.quantize(vectors.get(i), query, function);
         ScoreDocsAndScoreVariance scoreDocsAndScoreVariance = nearestNeighbors.get(i);
@@ -654,84 +653,15 @@ public class ScalarQuantizer {
         // scores now
         errors.reset();
         for (ScoreDoc scoreDoc : scoreDocs) {
-          try {
-            float qScore =
-                scalarQuantizedVectorSimilarity.score(query, queryCorrection, scoreDoc.doc);
-            errors.add(qScore - scoreDoc.score);
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+          float vectorCorrection = quantizer.quantize(vectors.get(scoreDoc.doc), vector, function);
+          float qScore =
+              scalarQuantizedVectorSimilarity.score(
+                  query, queryCorrection, vector, vectorCorrection);
+          errors.add(qScore - scoreDoc.score);
         }
         corr.add(1 - errors.var() / scoreVariance);
       }
       return corr.mean;
-    }
-  }
-
-  private static class QuantizedRandomAccessVectors
-      implements RandomAccessQuantizedByteVectorValues {
-    private final List<float[]> vectors;
-    private final ScalarQuantizer scalarQuantizer;
-    private final VectorSimilarityFunction similarityFunction;
-    private byte[] scratch;
-    private float correctiveOffset;
-    private int currentOrd;
-
-    private QuantizedRandomAccessVectors(
-        List<float[]> vectors,
-        ScalarQuantizer scalarQuantizer,
-        VectorSimilarityFunction similarityFunction) {
-      this.vectors = vectors;
-      this.scalarQuantizer = scalarQuantizer;
-      this.scratch = new byte[vectors.get(0).length];
-      this.similarityFunction = similarityFunction;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return scratch.length;
-    }
-
-    @Override
-    public byte[] vectorValue(int targetOrd) {
-      if (targetOrd == currentOrd) {
-        return scratch;
-      }
-      correctiveOffset =
-          scalarQuantizer.quantize(vectors.get(targetOrd), scratch, similarityFunction);
-      currentOrd = targetOrd;
-      return scratch;
-    }
-
-    @Override
-    public int getVectorByteLength() {
-      return scratch.length;
-    }
-
-    @Override
-    public ScalarQuantizer getScalarQuantizer() {
-      return scalarQuantizer;
-    }
-
-    @Override
-    public float getScoreCorrectionConstant(int vectorOrd) {
-      if (vectorOrd == currentOrd) {
-        return correctiveOffset;
-      }
-      correctiveOffset =
-          scalarQuantizer.quantize(vectors.get(vectorOrd), scratch, similarityFunction);
-      currentOrd = vectorOrd;
-      return correctiveOffset;
-    }
-
-    @Override
-    public RandomAccessQuantizedByteVectorValues copy() {
-      return new QuantizedRandomAccessVectors(vectors, scalarQuantizer, similarityFunction);
     }
   }
 }

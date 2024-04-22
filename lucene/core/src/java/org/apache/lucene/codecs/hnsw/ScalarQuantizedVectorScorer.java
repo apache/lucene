@@ -87,11 +87,14 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
               scalarQuantizer.getConstantMultiplier(),
-              quantizedByteVectorValues);
+              scalarQuantizer.getBits());
       return new RandomVectorScorer.AbstractRandomVectorScorer(quantizedByteVectorValues) {
         @Override
         public float score(int node) throws IOException {
-          return scalarQuantizedVectorSimilarity.score(targetBytes, offsetCorrection, node);
+          byte[] nodeVector = quantizedByteVectorValues.vectorValue(node);
+          float nodeOffset = quantizedByteVectorValues.getScoreCorrectionConstant(node);
+          return scalarQuantizedVectorSimilarity.score(
+              targetBytes, offsetCorrection, nodeVector, nodeOffset);
         }
       };
     }
@@ -131,7 +134,9 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         RandomAccessQuantizedByteVectorValues values) {
       this.similarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-              similarityFunction, scalarQuantizer.getConstantMultiplier(), values);
+              similarityFunction,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
       this.values = values;
       this.vectorSimilarityFunction = similarityFunction;
     }
@@ -153,7 +158,9 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorsCopy) {
         @Override
         public float score(int node) throws IOException {
-          return similarity.score(queryVector, queryOffset, node);
+          byte[] nodeVector = vectorsCopy.vectorValue(node);
+          float nodeOffset = vectorsCopy.getScoreCorrectionConstant(node);
+          return similarity.score(queryVector, queryOffset, nodeVector, nodeOffset);
         }
       };
     }
