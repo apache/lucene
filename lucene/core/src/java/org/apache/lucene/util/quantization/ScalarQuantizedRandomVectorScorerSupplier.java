@@ -30,6 +30,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
 
   private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
+  private final VectorSimilarityFunction vectorSimilarityFunction;
 
   public ScalarQuantizedRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
@@ -39,12 +40,16 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
         ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
             similarityFunction, scalarQuantizer.getConstantMultiplier(), scalarQuantizer.getBits());
     this.values = values;
+    this.vectorSimilarityFunction = similarityFunction;
   }
 
   private ScalarQuantizedRandomVectorScorerSupplier(
-      ScalarQuantizedVectorSimilarity similarity, RandomAccessQuantizedByteVectorValues values) {
+      ScalarQuantizedVectorSimilarity similarity,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      RandomAccessQuantizedByteVectorValues values) {
     this.similarity = similarity;
     this.values = values;
+    this.vectorSimilarityFunction = vectorSimilarityFunction;
   }
 
   @Override
@@ -57,6 +62,7 @@ public class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSc
 
   @Override
   public RandomVectorScorerSupplier copy() throws IOException {
-    return new ScalarQuantizedRandomVectorScorerSupplier(similarity, values.copy());
+    return new ScalarQuantizedRandomVectorScorerSupplier(
+        similarity, vectorSimilarityFunction, values.copy());
   }
 }

@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -458,27 +459,28 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
+        DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
         final RandomVectorScorerSupplier scorerSupplier;
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE:
             scorerSupplier =
-                RandomVectorScorerSupplier.createBytes(
+                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize),
-                    fieldInfo.getVectorSimilarityFunction());
+                        byteSize));
             break;
           case FLOAT32:
             scorerSupplier =
-                RandomVectorScorerSupplier.createFloats(
+                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize),
-                    fieldInfo.getVectorSimilarityFunction());
+                        byteSize));
             break;
           default:
             throw new IllegalArgumentException(
@@ -728,20 +730,20 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
+      DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
       final RandomVectorScorerSupplier scorerSupplier;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE:
           scorerSupplier =
-              RandomVectorScorerSupplier.createBytes(
-                  (RandomAccessVectorValues<byte[]>) raVectors,
-                  fieldInfo.getVectorSimilarityFunction());
+              defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(),
+                  RandomAccessVectorValues.fromBytes((List<byte[]>) vectors, dim));
           break;
         case FLOAT32:
           scorerSupplier =
-              RandomVectorScorerSupplier.createFloats(
-                  (RandomAccessVectorValues<float[]>) raVectors,
-                  fieldInfo.getVectorSimilarityFunction());
+              defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(),
+                  RandomAccessVectorValues.fromFloats((List<float[]>) vectors, dim));
           break;
         default:
           throw new IllegalArgumentException(
@@ -786,36 +788,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
               * fieldInfo.getVectorDimension()
               * fieldInfo.getVectorEncoding().byteSize
           + hnswGraphBuilder.getGraph().ramBytesUsed();
-    }
-  }
-
-  private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
-    private final List<T> vectors;
-    private final int dim;
-
-    RAVectorValues(List<T> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public T vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RandomAccessVectorValues<T> copy() throws IOException {
-      return this;
     }
   }
 }

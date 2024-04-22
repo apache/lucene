@@ -17,7 +17,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.HnswGraphProvider;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
