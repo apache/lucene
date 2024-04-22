@@ -74,45 +74,17 @@ public interface ScalarQuantizedVectorSimilarity {
   class DotProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
     private final RandomAccessQuantizedByteVectorValues values;
-    private final byte[] compressedVector;
 
     public DotProduct(float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
       this.constMultiplier = constMultiplier;
       this.values = values;
-      if (values.getScalarQuantizer().getBits() <= 4
-          && values.getVectorByteLength() != values.dimension() + Float.BYTES
-          && values.getSlice() != null) {
-        this.compressedVector = new byte[values.getVectorByteLength() - Float.BYTES];
-      } else {
-        this.compressedVector = null;
-      }
     }
 
     @Override
     public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
         throws IOException {
-      final int dotProduct;
-      final float vectorOffset;
-      if (values.getScalarQuantizer().getBits() <= 4) {
-        if (values.getSlice() != null
-            && values.getVectorByteLength() != queryVector.length + Float.BYTES) {
-          // get compressed vector
-          values.getSlice().seek((long) vectorOrdinal * values.getVectorByteLength());
-          values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
-          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-          dotProduct = VectorUtil.int4DotProductPacked(queryVector, compressedVector);
-        } else {
-          byte[] storedVector = values.vectorValue(vectorOrdinal);
-          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-          // For 4-bit quantization, we use a specialized dot product implementation
-          dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
-        }
-      } else {
-        byte[] storedVector = values.vectorValue(vectorOrdinal);
-        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-        dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
-      }
-      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
+      float adjustedDistance =
+          optimizedDotProduct(queryVector, queryOffset, vectorOrdinal, values, constMultiplier);
       return (1 + adjustedDistance) / 2;
     }
   }
@@ -121,52 +93,37 @@ public interface ScalarQuantizedVectorSimilarity {
   class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
     private final float constMultiplier;
     private final RandomAccessQuantizedByteVectorValues values;
-    private final byte[] compressedVector;
 
     public MaximumInnerProduct(
         float constMultiplier, RandomAccessQuantizedByteVectorValues values) {
       this.constMultiplier = constMultiplier;
       this.values = values;
-      if (values.getScalarQuantizer().getBits() <= 4
-          && values.getVectorByteLength() != values.dimension() + Float.BYTES
-          && values.getSlice() != null) {
-        this.compressedVector = new byte[values.getVectorByteLength() - Float.BYTES];
-      } else {
-        this.compressedVector = null;
-      }
     }
 
     @Override
     public float score(byte[] queryVector, float queryOffset, int vectorOrdinal)
         throws IOException {
-      final int dotProduct;
-      final float vectorOffset;
-      if (values.getScalarQuantizer().getBits() <= 4) {
-        if (values.getSlice() != null
-            && values.getVectorByteLength() != queryVector.length + Float.BYTES) {
-          // get compressed vector
-          values.getSlice().seek((long) vectorOrdinal * values.getVectorByteLength());
-          values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
-          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-          dotProduct = VectorUtil.int4DotProductPacked(queryVector, compressedVector);
-        } else {
-          byte[] storedVector = values.vectorValue(vectorOrdinal);
-          vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-          // For 4-bit quantization, we use a specialized dot product implementation
-          dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
-        }
-      } else {
-        byte[] storedVector = values.vectorValue(vectorOrdinal);
-        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-        dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
-      }
-      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
+      float adjustedDistance =
+          optimizedDotProduct(queryVector, queryOffset, vectorOrdinal, values, constMultiplier);
       return scaleMaxInnerProductScore(adjustedDistance);
     }
   }
 
-  /** Compares two byte vectors */
-  interface ByteVectorComparator {
-    int compare(byte[] v1, byte[] v2);
+  private static float optimizedDotProduct(
+      byte[] queryVector,
+      float queryOffset,
+      int vectorOrdinal,
+      RandomAccessQuantizedByteVectorValues values,
+      float constMultiplier)
+      throws IOException {
+    final byte[] storedVector = values.vectorValue(vectorOrdinal);
+    final float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+    final int dotProduct =
+        values.getScalarQuantizer().getBits() <= 4
+            ?
+            // For 4-bit quantization, we use a specialized dot product implementation
+            VectorUtil.int4DotProduct(storedVector, queryVector)
+            : VectorUtil.dotProduct(storedVector, queryVector);
+    return dotProduct * constMultiplier + queryOffset + vectorOffset;
   }
 }

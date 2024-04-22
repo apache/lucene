@@ -140,7 +140,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     if (lastOrd == targetOrd) {
       return scoreCorrectionConstant[0];
     }
-    slice.seek((long) targetOrd * byteSize);
+    slice.seek(((long) targetOrd * byteSize) + numBytes);
     slice.readFloats(scoreCorrectionConstant, 0, 1);
     return scoreCorrectionConstant[0];
   }
@@ -152,7 +152,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
   @Override
   public int getVectorByteLength() {
-    return byteSize;
+    return numBytes;
   }
 
   public static OffHeapQuantizedByteVectorValues load(

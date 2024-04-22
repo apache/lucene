@@ -418,8 +418,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         byte packedByte = packed[i];
         byte unpacked1 = unpacked[i];
         byte unpacked2 = unpacked[i + packed.length];
-        res += (packedByte & 0x0F) * unpacked1;
-        res += ((packedByte & 0xFF) >> 4) * unpacked2;
+        res += (packedByte & 0x0F) * unpacked2;
+        res += ((packedByte & 0xFF) >> 4) * unpacked1;
       }
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
@@ -449,7 +449,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // packed
         ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, packed, i + j);
         // unpacked
-        ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j + limit);
+        ByteVector va8 =
+            ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j + packed.length);
 
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
@@ -487,7 +488,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       Vector<Integer> prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
       acc = acc.add(prod32);
 
-      va8 = ByteVector.fromArray(BYTE_SPECIES, unpacked, i + limit);
+      va8 = ByteVector.fromArray(BYTE_SPECIES, unpacked, i + packed.length);
       va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
       vb16 = vb8.and((byte) 0x0F).convertShape(B2S, SHORT_SPECIES, 0);
       prod16 = va16.mul(vb16);
@@ -512,7 +513,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       acc = acc.add(va32.mul(vb32));
 
       // upper
-      va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + limit);
+      va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + packed.length);
 
       // 32-bit multiply and add into accumulator
       va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
