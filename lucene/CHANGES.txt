@@ -222,6 +222,8 @@ Other
 * GITHUB#12753: Bump minimum required Java version to 21
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
+* GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
@@ -248,6 +250,12 @@ New Features
 
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
   to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
+* GITHUB#13268: Add ability for UnifiedHighlighter to highlight a field based on combined matches from multiple fields.
+  (Mayya Sharipova, Jim Ferenczi)
+
+* GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
+  new Hnsw format for binary quantized vectors. (Ben Trent)
 
 Improvements
 ---------------------
@@ -279,6 +287,8 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 

@@ -30,7 +30,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 public abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues<byte[]> {
+    implements RandomAccessVectorValues.Bytes {
 
   protected final int dimension;
   protected final int size;
@@ -85,12 +85,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
       return new EmptyOffHeapVectorValues(dimension);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
-    int byteSize = dimension;
     if (configuration.isDense()) {
-      return new DenseOffHeapVectorValues(dimension, configuration.size, bytesSlice, byteSize);
+      return new DenseOffHeapVectorValues(dimension, configuration.size, bytesSlice, dimension);
     } else {
       return new SparseOffHeapVectorValues(
-          configuration, vectorData, bytesSlice, dimension, byteSize);
+          configuration, vectorData, bytesSlice, dimension, dimension);
     }
   }
 
@@ -131,7 +130,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -194,7 +193,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
           configuration, dataIn, slice.clone(), dimension, byteSize);
     }
@@ -262,7 +261,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public EmptyOffHeapVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

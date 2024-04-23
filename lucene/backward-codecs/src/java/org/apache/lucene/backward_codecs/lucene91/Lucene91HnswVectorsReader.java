@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -56,6 +57,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   Lucene91HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
@@ -202,7 +204,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, info.getVectorSimilarityFunction());
+    return FieldEntry.create(input, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -233,7 +235,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
@@ -286,32 +289,30 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     IOUtils.close(vectorData, vectorIndex);
   }
 
-  private static class FieldEntry {
-
-    final VectorSimilarityFunction similarityFunction;
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
-    final int maxConn;
-    final int numLevels;
-    final int dimension;
-    private final int size;
-    final int[] ordToDoc;
-    private final IntUnaryOperator ordToDocOperator;
-    final int[][] nodesByLevel;
-    // for each level the start offsets in vectorIndex file from where to read neighbours
-    final long[] graphOffsetsByLevel;
-
-    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
-      this.similarityFunction = similarityFunction;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      vectorIndexOffset = input.readVLong();
-      vectorIndexLength = input.readVLong();
-      dimension = input.readInt();
-      size = input.readInt();
-
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      long vectorDataOffset,
+      long vectorDataLength,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      int maxConn,
+      int numLevels,
+      int dimension,
+      int size,
+      int[] ordToDoc,
+      IntUnaryOperator ordToDocOperator,
+      int[][] nodesByLevel,
+      // for each level the start offsets in vectorIndex file from where to read neighbours
+      long[] graphOffsetsByLevel) {
+    static FieldEntry create(DataInput input, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var vectorIndexOffset = input.readVLong();
+      final var vectorIndexLength = input.readVLong();
+      final var dimension = input.readInt();
+      final var size = input.readInt();
+      final int[] ordToDoc;
       int denseSparseMarker = input.readByte();
       if (denseSparseMarker == -1) {
         ordToDoc = null; // each document has a vector value
@@ -328,12 +329,13 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
           ordToDoc[i] = doc;
         }
       }
-      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+      final IntUnaryOperator ordToDocOperator =
+          ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
 
       // read nodes by level
-      maxConn = input.readInt();
-      numLevels = input.readInt();
-      nodesByLevel = new int[numLevels][];
+      final var maxConn = input.readInt();
+      final var numLevels = input.readInt();
+      final var nodesByLevel = new int[numLevels][];
       for (int level = 0; level < numLevels; level++) {
         int numNodesOnLevel = input.readInt();
         if (level == 0) {
@@ -350,7 +352,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
-      graphOffsetsByLevel = new long[numLevels];
+      final var graphOffsetsByLevel = new long[numLevels];
       final long connectionsAndSizeBytes =
           Math.multiplyExact(Math.addExact(1L, maxConn), Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
@@ -364,10 +366,21 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
                   Math.multiplyExact(connectionsAndSizeBytes, numNodesOnPrevLevel));
         }
       }
-    }
 
-    int size() {
-      return size;
+      return new FieldEntry(
+          similarityFunction,
+          vectorDataOffset,
+          vectorDataLength,
+          vectorIndexOffset,
+          vectorIndexLength,
+          maxConn,
+          numLevels,
+          dimension,
+          size,
+          ordToDoc,
+          ordToDocOperator,
+          nodesByLevel,
+          graphOffsetsByLevel);
     }
 
     int ordToDoc(int ord) {
@@ -377,7 +390,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
   static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
 
     private final int dimension;
     private final int size;
@@ -454,7 +467,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() {
+    public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 

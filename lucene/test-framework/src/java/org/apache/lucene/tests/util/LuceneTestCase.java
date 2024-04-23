@@ -102,6 +102,7 @@ import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -152,6 +153,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -3213,11 +3215,17 @@ public abstract class LuceneTestCase extends Assert {
     return it;
   }
 
-  protected KnnVectorsFormat randomVectorFormat() {
+  protected KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
     ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
     List<KnnVectorsFormat> availableFormats = new ArrayList<>();
     for (KnnVectorsFormat f : formats) {
-      availableFormats.add(f);
+      if (f.getName().equals(HnswBitVectorsFormat.NAME)) {
+        if (vectorEncoding.equals(VectorEncoding.BYTE)) {
+          availableFormats.add(f);
+        }
+      } else {
+        availableFormats.add(f);
+      }
     }
     return RandomPicks.randomFrom(random(), availableFormats);
   }

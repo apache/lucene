@@ -15,14 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Encodes/decodes per-document vectors
+ * Encodes/decodes per-document vectors and provides a scoring interface for the flat stored vectors
  *
  * @lucene.experimental
  */
