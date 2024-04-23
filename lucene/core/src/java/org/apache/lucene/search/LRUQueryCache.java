@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import org.apache.lucene.index.IndexReader;
@@ -103,8 +104,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
   // these variables are volatile so that we do not need to sync reads
   // but increments need to be performed under the lock
   private volatile long ramBytesUsed;
-  private volatile long hitCount;
-  private volatile long missCount;
+  private volatile LongAdder hitCount;
+  private volatile LongAdder missCount;
   private volatile long cacheCount;
   private volatile long cacheSize;
 
@@ -137,6 +138,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
     writeLock = lock.writeLock();
     readLock = lock.readLock();
     ramBytesUsed = 0;
+    hitCount = new LongAdder();
+    missCount = new LongAdder();
   }
 
   /**
@@ -180,7 +183,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onHit(Object readerCoreKey, Query query) {
-    hitCount += 1;
+    hitCount.add(1);
   }
 
   /**
@@ -191,7 +194,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    */
   protected void onMiss(Object readerCoreKey, Query query) {
     assert query != null;
-    missCount += 1;
+    missCount.add(1);
   }
 
   /**
@@ -568,7 +571,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @see #getMissCount()
    */
   public final long getHitCount() {
-    return hitCount;
+    return hitCount.sum();
   }
 
   /**
@@ -579,7 +582,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @see #getHitCount()
    */
   public final long getMissCount() {
-    return missCount;
+    return missCount.sum();
   }
 
   /**
@@ -911,7 +914,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (readLock.tryLock() == false) {
+      if (writeLock.tryLock() == false) {
         return in.bulkScorer(context);
       }
 
@@ -919,7 +922,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       try {
         cached = get(in.getQuery(), cacheHelper);
       } finally {
-        readLock.unlock();
+        writeLock.unlock();
       }
 
       if (cached == null) {
