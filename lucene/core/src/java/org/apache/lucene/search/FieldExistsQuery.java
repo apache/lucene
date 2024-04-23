@@ -35,7 +35,7 @@ import org.apache.lucene.index.Terms;
  * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
-  private String field;
+  private final String field;
 
   /** Create a query that will match that have a value for the given {@code field}. */
   public FieldExistsQuery(String field) {
@@ -238,7 +238,13 @@ public class FieldExistsQuery extends Query {
           }
 
           return super.count(context);
-        } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
+        } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
+          if (reader.hasDeletions() == false) {
+            return switch (fieldInfo.getVectorEncoding()) {
+              case FLOAT32 -> reader.getFloatVectorValues(field).size();
+              case BYTE -> reader.getByteVectorValues(field).size();
+            };
+          }
           return super.count(context);
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
