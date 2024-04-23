@@ -33,14 +33,6 @@ import org.openjdk.jmh.annotations.*;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
-
-  static void decompressBytes(byte[] compressed, byte[] raw) {
-    for (int i = 0; i < compressed.length; ++i) {
-      raw[compressed.length + i] = (byte) (compressed[i] & 0x0F);
-      raw[i] = (byte) ((compressed[i] & 0xFF) >> 4);
-    }
-  }
-
   static void compressBytes(byte[] raw, byte[] compressed) {
     for (int i = 0; i < compressed.length; ++i) {
       int v = (raw[i] << 4) | raw[compressed.length + i];
@@ -161,25 +153,6 @@ public class VectorUtilBenchmark {
       throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
     }
     return v;
-  }
-
-  @Benchmark
-  public int binaryHalfByteScalarPackedUnpacked() {
-    if (size % 2 != 0) {
-      throw new RuntimeException("Size must be even for this benchmark");
-    }
-    decompressBytes(halfBytesBPacked, halfBytesB);
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int binaryHalfByteVectorPackedUnpacked() {
-    if (size % 2 != 0) {
-      throw new RuntimeException("Size must be even for this benchmark");
-    }
-    decompressBytes(halfBytesBPacked, halfBytesB);
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
   }
 
   @Benchmark
