@@ -69,8 +69,15 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   private void vectorScoringTest(int bits, boolean compress) throws IOException {
     float[][] storedVectors = new float[10][];
     int numVectors = 10;
+    int vectorDimensions = random().nextInt(10) + 4;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
     for (int i = 0; i < numVectors; i++) {
-      float[] vector = new float[] {i, i + 1, i + 2, i + 3};
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
       VectorUtil.l2normalize(vector);
       storedVectors[i] = vector;
     }
@@ -86,7 +93,10 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         indexVectors(dir, storedVectors, similarityFunction, bits, compress);
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
           LeafReader leafReader = reader.leaves().get(0).reader();
-          float[] vector = new float[] {1, 2, 3, 4};
+          float[] vector = new float[vectorDimensions];
+          for (int i = 0; i < vectorDimensions; i++) {
+            vector[i] = i + 1;
+          }
           VectorUtil.l2normalize(vector);
           RandomVectorScorer randomScorer =
               getRandomVectorScorer(similarityFunction, leafReader, vector);

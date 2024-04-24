@@ -85,6 +85,7 @@ public interface RandomAccessVectorValues {
      */
     float[] vectorValue(int targetOrd) throws IOException;
 
+    /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
     @Override
     default int getVectorByteLength() {
       return dimension() * Float.BYTES;
@@ -103,6 +104,7 @@ public interface RandomAccessVectorValues {
      */
     byte[] vectorValue(int targetOrd) throws IOException;
 
+    /** Returns the vector byte length, defaults to dimension multiplied by byte size */
     @Override
     default int getVectorByteLength() {
       return dimension() * Byte.BYTES;
@@ -129,12 +131,12 @@ public interface RandomAccessVectorValues {
       }
 
       @Override
-      public float[] vectorValue(int targetOrd) throws IOException {
+      public float[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
       }
 
       @Override
-      public RandomAccessVectorValues.Floats copy() throws IOException {
+      public RandomAccessVectorValues.Floats copy() {
         return this;
       }
     };
@@ -160,12 +162,12 @@ public interface RandomAccessVectorValues {
       }
 
       @Override
-      public byte[] vectorValue(int targetOrd) throws IOException {
+      public byte[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
       }
 
       @Override
-      public RandomAccessVectorValues.Bytes copy() throws IOException {
+      public RandomAccessVectorValues.Bytes copy() {
         return this;
       }
     };
