@@ -454,7 +454,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // reduce entCount
           // to nextEnt, and
           // revert it after scanToTerm.
-          if (currentIsLast) {
+          if (currentIsLast && currentFrame.isLeafBlock) {
             origNextEnt = currentFrame.nextEnt;
             withOutReloadFp = currentFrame.fp;
           }
@@ -781,7 +781,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // reduce entCount
           // to nextEnt, and
           // revert it after scanToTerm.
-          if (currentIsLast) {
+          if (currentIsLast && currentFrame.isLeafBlock) {
             origNextEnt = currentFrame.nextEnt;
             withOutReloadFp = currentFrame.fp;
           }
