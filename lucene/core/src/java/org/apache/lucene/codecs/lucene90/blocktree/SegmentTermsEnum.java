@@ -458,7 +458,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
             origNextEnt = currentFrame.nextEnt;
             withOutReloadFp = currentFrame.fp;
           }
-          // TODO: take this to seekCeil.
           currentFrame.rewindWithoutReload();
         }
 
