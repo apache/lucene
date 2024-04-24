@@ -96,6 +96,12 @@ API Changes
 
 * GITHUB#13261: Convert `BooleanClause` class to record class. (Pulkit Gupta)
 
+* GITHUB#13241: Remove Accountable interface on KnnVectorsReader. (Pulkit Gupta)
+
+* GITHUB#13262: Removed deprecated constructors from DoubleField, FloatField, IntField, LongField, and LongPoint.
+  Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
+  to MIGRATE.md for further details. (Sanjay Dutt)
+
 New Features
 ---------------------
 
@@ -115,6 +121,8 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#13246: Simplify bytes comparison as long comparison in NumericComparator. (Guo feng)
 
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
@@ -169,6 +177,12 @@ Changes in Runtime Behavior
   `-Dorg.apache.lucene.store.defaultReadAdvice=normal`. This may be useful on systems
   with lots of RAM as this increases read-ahead. (Adrien Grand, Uwe Schindler)
 
+* GITHUB13293: Auto I/O throttling is now disabled by default on ConcurrentMergeScheduler.
+  (Adrien Grand)
+
+* GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
+  for merging. (Adrien Grand)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
@@ -208,6 +222,8 @@ Other
 * GITHUB#12753: Bump minimum required Java version to 21
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
+* GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
@@ -234,6 +250,12 @@ New Features
 
 * GITHUB#13197: Expand support for new scalar bit levels for HNSW vectors. This includes 4-bit vectors and an option
   to compress them to gain a 50% reduction in memory usage. (Ben Trent)
+
+* GITHUB#13268: Add ability for UnifiedHighlighter to highlight a field based on combined matches from multiple fields.
+  (Mayya Sharipova, Jim Ferenczi)
+
+* GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
+  new Hnsw format for binary quantized vectors. (Ben Trent)
 
 Improvements
 ---------------------
@@ -266,6 +288,8 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
+
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 
 * GITHUB#13115: Short circuit queued flush check when flush on update is disabled (Prabhat Sharma)
@@ -293,6 +317,9 @@ Optimizations
 
 * GITHUB#12966: FloatTaxonomyFacets can now collect values into a sparse structure, like IntTaxonomyFacets already
   could. (Stefan Vodita)
+
+* GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
+  a TreeMap. (Adrien Grand)
 
 Bug Fixes
 ---------------------

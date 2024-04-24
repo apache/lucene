@@ -63,6 +63,7 @@ module org.apache.lucene.core {
       org.apache.lucene.test_framework;
 
   exports org.apache.lucene.util.quantization;
+  exports org.apache.lucene.codecs.hnsw;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

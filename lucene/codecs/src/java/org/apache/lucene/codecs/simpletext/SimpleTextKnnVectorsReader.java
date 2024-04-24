@@ -46,9 +46,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vector values from a simple text format. All vectors are read up front and cached in RAM in
@@ -58,9 +56,6 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   // shallowSizeOfInstance for fieldEntries map is included in ramBytesUsed() calculation
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextKnnVectorsReader.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class);
 
   private static final BytesRef EMPTY = new BytesRef("");
 
@@ -275,46 +270,18 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public long ramBytesUsed() {
-    // mirror implementation of Lucene90VectorReader#ramBytesUsed
-    long totalBytes = BASE_RAM_BYTES_USED;
-    totalBytes += RamUsageEstimator.sizeOf(scratch.bytes());
-    totalBytes +=
-        RamUsageEstimator.sizeOfMap(
-            fieldEntries, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    for (FieldEntry entry : fieldEntries.values()) {
-      totalBytes += RamUsageEstimator.sizeOf(entry.ordToDoc);
-    }
-    return totalBytes;
-  }
-
-  @Override
   public void close() throws IOException {
     dataIn.close();
   }
 
-  private static class FieldEntry {
-
-    final int dimension;
-
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final int[] ordToDoc;
-
-    FieldEntry(int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
-      this.dimension = dimension;
-      this.vectorDataOffset = vectorDataOffset;
-      this.vectorDataLength = vectorDataLength;
-      this.ordToDoc = ordToDoc;
-    }
-
+  private record FieldEntry(
+      int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
     int size() {
       return ordToDoc.length;
     }
   }
 
-  private static class SimpleTextFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+  private static class SimpleTextFloatVectorValues extends FloatVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -344,11 +311,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public float[] vectorValue() {
       return values[curOrd];
-    }
-
-    @Override
-    public RandomAccessVectorValues<float[]> copy() {
-      return this;
     }
 
     @Override
@@ -395,15 +357,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         value[i] = Float.parseFloat(floatStrings[i]);
       }
     }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      return values[targetOrd];
-    }
   }
 
-  private static class SimpleTextByteVectorValues extends ByteVectorValues
-      implements RandomAccessVectorValues<BytesRef> {
+  private static class SimpleTextByteVectorValues extends ByteVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -437,11 +393,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     public byte[] vectorValue() {
       binaryValue.bytes = values[curOrd];
       return binaryValue.bytes;
-    }
-
-    @Override
-    public RandomAccessVectorValues<BytesRef> copy() {
-      return this;
     }
 
     @Override
@@ -487,12 +438,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = (byte) Float.parseFloat(floatStrings[i]);
       }
-    }
-
-    @Override
-    public BytesRef vectorValue(int targetOrd) throws IOException {
-      binaryValue.bytes = values[curOrd];
-      return binaryValue;
     }
   }
 

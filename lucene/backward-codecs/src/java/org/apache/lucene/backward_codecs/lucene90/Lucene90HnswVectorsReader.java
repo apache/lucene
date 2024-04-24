@@ -40,7 +40,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -211,19 +210,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, info.getVectorSimilarityFunction());
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene90HnswVectorsReader.class);
-    totalBytes +=
-        RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    for (FieldEntry entry : fields.values()) {
-      totalBytes += RamUsageEstimator.sizeOf(entry.ordToDoc);
-    }
-    return totalBytes;
+    return FieldEntry.create(input, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -316,37 +303,44 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     IOUtils.close(vectorData, vectorIndex);
   }
 
-  private static class FieldEntry {
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      long vectorDataOffset,
+      long vectorDataLength,
+      long indexDataOffset,
+      long indexDataLength,
+      int dimension,
+      int[] ordToDoc,
+      long[] ordOffsets) {
 
-    final int dimension;
-    final VectorSimilarityFunction similarityFunction;
-
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final long indexDataOffset;
-    final long indexDataLength;
-    final int[] ordToDoc;
-    final long[] ordOffsets;
-
-    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
-      this.similarityFunction = similarityFunction;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      indexDataOffset = input.readVLong();
-      indexDataLength = input.readVLong();
-      dimension = input.readInt();
-      int size = input.readInt();
-      ordToDoc = new int[size];
+    static FieldEntry create(DataInput input, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var indexDataOffset = input.readVLong();
+      final var indexDataLength = input.readVLong();
+      final var dimension = input.readInt();
+      final var size = input.readInt();
+      final var ordToDoc = new int[size];
       for (int i = 0; i < size; i++) {
         int doc = input.readVInt();
         ordToDoc[i] = doc;
       }
-      ordOffsets = new long[size()];
+      final var ordOffsets = new long[size];
       long offset = 0;
       for (int i = 0; i < ordOffsets.length; i++) {
         offset += input.readVLong();
         ordOffsets[i] = offset;
       }
+      return new FieldEntry(
+          similarityFunction,
+          vectorDataOffset,
+          vectorDataLength,
+          indexDataOffset,
+          indexDataLength,
+          dimension,
+          ordToDoc,
+          ordOffsets);
     }
 
     int size() {
@@ -356,7 +350,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
   static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
 
     final int dimension;
     final int[] ordToDoc;
@@ -425,7 +419,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() {
+    public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(dimension, ordToDoc, dataIn.clone());
     }
 

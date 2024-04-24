@@ -543,7 +543,7 @@ final class SegmentTermsEnumFrame {
   CompressionAlgorithm compressionAlg = CompressionAlgorithm.NO_COMPRESSION;
 
   // Target's prefix matches this block's prefix; we
-  // scan the entries check if the suffix matches.
+  // scan the entries to check if the suffix matches.
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
@@ -610,7 +610,6 @@ final class SegmentTermsEnumFrame {
         // would have followed the index to this
         // sub-block from the start:
 
-        assert ste.termExists;
         fillTerm();
         // if (DEBUG) System.out.println("        found!");
         return SeekStatus.FOUND;
@@ -729,7 +728,7 @@ final class SegmentTermsEnumFrame {
   }
 
   // Target's prefix matches this block's prefix; we
-  // scan the entries check if the suffix matches.
+  // scan the entries to check if the suffix matches.
   public SeekStatus scanToTermNonLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
@@ -767,7 +766,6 @@ final class SegmentTermsEnumFrame {
       // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
-      final int termLen = prefix + suffix;
       startBytePos = suffixesReader.getPosition();
       suffixesReader.skipBytes(suffix);
       ste.termExists = (code & 1) == 0;
@@ -806,7 +804,7 @@ final class SegmentTermsEnumFrame {
           // us to position to the next term after
           // the target, so we must recurse into the
           // sub-frame(s):
-          ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, termLen);
+          ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, prefix + suffix);
           ste.currentFrame.loadBlock();
           while (ste.currentFrame.next()) {
             ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, ste.term.length());

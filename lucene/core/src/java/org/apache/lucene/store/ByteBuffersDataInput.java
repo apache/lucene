@@ -83,16 +83,6 @@ public final class ByteBuffersDataInput extends DataInput
     this.pos = offset;
   }
 
-  /**
-   * Returns the total number of bytes in this stream.
-   *
-   * @deprecated Use {@link #length()} instead.
-   */
-  @Deprecated
-  public long size() {
-    return length();
-  }
-
   @Override
   public long ramBytesUsed() {
     // Return a rough estimation for allocated blocks. Note that we do not make
