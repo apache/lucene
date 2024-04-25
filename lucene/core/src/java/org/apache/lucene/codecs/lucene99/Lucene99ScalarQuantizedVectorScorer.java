@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer.quantizeQuery;
-import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -100,11 +99,35 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       RandomAccessQuantizedByteVectorValues values) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
-      case COSINE, DOT_PRODUCT -> new DotProduct(
-          values, constMultiplier, targetBytes, offsetCorrection);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
-          values, constMultiplier, targetBytes, offsetCorrection);
+      case COSINE, DOT_PRODUCT -> dotProductFactory(
+          targetBytes, offsetCorrection, sim, constMultiplier, values, f -> (1 + f) / 2);
+      case MAXIMUM_INNER_PRODUCT -> dotProductFactory(
+          targetBytes,
+          offsetCorrection,
+          sim,
+          constMultiplier,
+          values,
+          VectorUtil::scaleMaxInnerProductScore);
     };
+  }
+
+  private static RandomVectorScorer.AbstractRandomVectorScorer dotProductFactory(
+      byte[] targetBytes,
+      float offsetCorrection,
+      VectorSimilarityFunction sim,
+      float constMultiplier,
+      RandomAccessQuantizedByteVectorValues values,
+      FloatToFloatFunction scoreAdjustmentFunction) {
+    if (values.getScalarQuantizer().getBits() <= 4) {
+      if (values.getVectorByteLength() != values.dimension() && values.getSlice() != null) {
+        return new CompressedInt4DotProduct(
+            values, constMultiplier, targetBytes, offsetCorrection, scoreAdjustmentFunction);
+      }
+      return new Int4DotProduct(
+          values, constMultiplier, targetBytes, offsetCorrection, scoreAdjustmentFunction);
+    }
+    return new DotProduct(
+        values, constMultiplier, targetBytes, offsetCorrection, scoreAdjustmentFunction);
   }
 
   private static class Euclidean extends RandomVectorScorer.AbstractRandomVectorScorer {
@@ -133,116 +156,105 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   private static class DotProduct extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final float constMultiplier;
     private final RandomAccessQuantizedByteVectorValues values;
-    private final byte[] compressedVector;
     private final byte[] targetBytes;
     private final float offsetCorrection;
+    private final FloatToFloatFunction scoreAdjustmentFunction;
 
     public DotProduct(
         RandomAccessQuantizedByteVectorValues values,
         float constMultiplier,
         byte[] targetBytes,
-        float offsetCorrection) {
+        float offsetCorrection,
+        FloatToFloatFunction scoreAdjustmentFunction) {
       super(values);
       this.constMultiplier = constMultiplier;
       this.values = values;
-      if (values.getScalarQuantizer().getBits() <= 4
-          && values.getVectorByteLength() != values.dimension()
-          && values.getSlice() != null) {
-        this.compressedVector = new byte[values.getVectorByteLength()];
-      } else {
-        this.compressedVector = null;
-      }
       this.targetBytes = targetBytes;
       this.offsetCorrection = offsetCorrection;
+      this.scoreAdjustmentFunction = scoreAdjustmentFunction;
     }
 
     @Override
     public float score(int vectorOrdinal) throws IOException {
-      float adjustedDistance =
-          optimizedDotProduct(
-              targetBytes,
-              offsetCorrection,
-              vectorOrdinal,
-              values,
-              compressedVector,
-              constMultiplier);
-      return (1 + adjustedDistance) / 2;
+      byte[] storedVector = values.vectorValue(vectorOrdinal);
+      float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+      int dotProduct = VectorUtil.dotProduct(storedVector, targetBytes);
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      return scoreAdjustmentFunction.apply(adjustedDistance);
     }
   }
 
-  /** Calculates max inner product on quantized vectors, applying the appropriate corrections */
-  private static class MaximumInnerProduct extends RandomVectorScorer.AbstractRandomVectorScorer {
+  private static class CompressedInt4DotProduct
+      extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final float constMultiplier;
     private final RandomAccessQuantizedByteVectorValues values;
     private final byte[] compressedVector;
     private final byte[] targetBytes;
     private final float offsetCorrection;
+    private final FloatToFloatFunction scoreAdjustmentFunction;
 
-    public MaximumInnerProduct(
+    private CompressedInt4DotProduct(
         RandomAccessQuantizedByteVectorValues values,
         float constMultiplier,
         byte[] targetBytes,
-        float offsetCorrection) {
+        float offsetCorrection,
+        FloatToFloatFunction scoreAdjustmentFunction) {
       super(values);
       this.constMultiplier = constMultiplier;
       this.values = values;
-      if (values.getScalarQuantizer().getBits() <= 4
-          && values.getVectorByteLength() != values.dimension()
-          && values.getSlice() != null) {
-        this.compressedVector = new byte[values.getVectorByteLength()];
-      } else {
-        this.compressedVector = null;
-      }
+      this.compressedVector = new byte[values.getVectorByteLength()];
       this.targetBytes = targetBytes;
       this.offsetCorrection = offsetCorrection;
+      this.scoreAdjustmentFunction = scoreAdjustmentFunction;
     }
 
     @Override
     public float score(int vectorOrdinal) throws IOException {
-      float adjustedDistance =
-          optimizedDotProduct(
-              targetBytes,
-              offsetCorrection,
-              vectorOrdinal,
-              values,
-              compressedVector,
-              constMultiplier);
-      return scaleMaxInnerProductScore(adjustedDistance);
+      // get compressed vector, in Lucene99, vector values are stored and have a single value for
+      // offset correction
+      values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
+      values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
+      float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+      int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      return scoreAdjustmentFunction.apply(adjustedDistance);
     }
   }
 
-  private static float optimizedDotProduct(
-      byte[] queryVector,
-      float queryOffset,
-      int vectorOrdinal,
-      RandomAccessQuantizedByteVectorValues values,
-      byte[] compressedVector,
-      float constMultiplier)
-      throws IOException {
-    final int dotProduct;
-    final float vectorOffset;
-    if (values.getScalarQuantizer().getBits() <= 4) {
-      // This means we can use our optimized path for 4-bit quantization comparisons
-      if (values.getSlice() != null && compressedVector != null) {
-        // get compressed vector, in Lucene99, vector values are stored and have a single value for
-        // offset correction
-        values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
-        values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
-        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-        dotProduct = VectorUtil.int4DotProductPacked(queryVector, compressedVector);
-      } else {
-        // fall back to the standard path, which reads the vector value and inflates it if necessary
-        byte[] storedVector = values.vectorValue(vectorOrdinal);
-        vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-        // For 4-bit quantization, we use a specialized dot product implementation
-        dotProduct = VectorUtil.int4DotProduct(storedVector, queryVector);
-      }
-    } else {
-      byte[] storedVector = values.vectorValue(vectorOrdinal);
-      vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-      dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+  private static class Int4DotProduct extends RandomVectorScorer.AbstractRandomVectorScorer {
+    private final float constMultiplier;
+    private final RandomAccessQuantizedByteVectorValues values;
+    private final byte[] targetBytes;
+    private final float offsetCorrection;
+    private final FloatToFloatFunction scoreAdjustmentFunction;
+
+    public Int4DotProduct(
+        RandomAccessQuantizedByteVectorValues values,
+        float constMultiplier,
+        byte[] targetBytes,
+        float offsetCorrection,
+        FloatToFloatFunction scoreAdjustmentFunction) {
+      super(values);
+      this.constMultiplier = constMultiplier;
+      this.values = values;
+      this.targetBytes = targetBytes;
+      this.offsetCorrection = offsetCorrection;
+      this.scoreAdjustmentFunction = scoreAdjustmentFunction;
     }
-    return dotProduct * constMultiplier + queryOffset + vectorOffset;
+
+    @Override
+    public float score(int vectorOrdinal) throws IOException {
+      byte[] storedVector = values.vectorValue(vectorOrdinal);
+      float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
+      int dotProduct = VectorUtil.int4DotProduct(storedVector, targetBytes);
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      return scoreAdjustmentFunction.apply(adjustedDistance);
+    }
+  }
+
+  @FunctionalInterface
+  private interface FloatToFloatFunction {
+    float apply(float f);
   }
 
   private static final class ScalarQuantizedRandomVectorScorerSupplier
