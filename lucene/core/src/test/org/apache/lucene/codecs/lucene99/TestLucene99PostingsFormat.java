@@ -201,6 +201,22 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     assertTrue(termsEnum.seekExact(target));
     assertEquals(termsEnum.term(), target);
 
+    target = new BytesRef("request4");
+    assertTrue(termsEnum.seekExact(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("regular");
+    assertTrue(termsEnum.seekExact(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("rest");
+    assertTrue(termsEnum.seekExact(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("regular");
+    assertTrue(termsEnum.seekExact(target));
+    assertEquals(termsEnum.term(), target);
+
     // Test seekCeil.
     target = new BytesRef("request2");
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
@@ -223,6 +239,22 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     assertEquals(termsEnum.term(), target);
 
     target = new BytesRef("request1");
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("request4");
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("regular");
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("rest");
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
+    assertEquals(termsEnum.term(), target);
+
+    target = new BytesRef("regular");
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
     assertEquals(termsEnum.term(), target);
 
