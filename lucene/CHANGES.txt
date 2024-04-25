@@ -162,6 +162,8 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 
