@@ -27,10 +27,10 @@ import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -131,9 +131,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
     this.skipCacheFactor = skipCacheFactor;
 
-    uniqueQueries = new LinkedHashMap<>(16, 0.75f, true);
+    uniqueQueries = new ConcurrentHashMap<>(16, 0.75f);
     mostRecentlyUsedQueries = uniqueQueries.keySet();
-    cache = new IdentityHashMap<>();
+    cache = new ConcurrentHashMap<>();
     ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     writeLock = lock.writeLock();
     readLock = lock.readLock();
