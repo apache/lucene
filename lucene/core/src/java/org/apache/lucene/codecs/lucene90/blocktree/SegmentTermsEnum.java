@@ -437,8 +437,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
 
-        // If current frame changed, we can't reduce entCount. since target just less than different
-        // frame's last term.
+        // We got lastFrame by comparing target and term, and target less than last seeked term in
+        // currentFrame. If lastFrame's fp is same with currentFrame's fp, we can reduce entCount to
+        // nextEnt.
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
@@ -450,10 +451,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
             || currentFrame.nextEnt == -1) {
           currentFrame.rewind();
         } else {
-          // Since target greater than last term, and stay on same frame with last term, we can
-          // reduce entCount
-          // to nextEnt, and
-          // revert it after scanToTerm.
+          // Prepare to reduce entCount.
           if (currentIsLast && currentFrame.isLeafBlock) {
             origNextEnt = currentFrame.nextEnt;
             withOutReloadFp = currentFrame.fp;
@@ -764,8 +762,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
 
-        // If current frame changed, we can't reduce entCount. since target just less than different
-        // frame's last term.
+        // We got lastFrame by comparing target and term, and target less than last seeked term in
+        // currentFrame. If lastFrame's fp is same with currentFrame's fp, we can reduce entCount to
+        // nextEnt.
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
@@ -777,10 +776,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
             || currentFrame.nextEnt == -1) {
           currentFrame.rewind();
         } else {
-          // Since target greater than last term, and stay on same frame with last term, we can
-          // reduce entCount
-          // to nextEnt, and
-          // revert it after scanToTerm.
+          // Prepare to reduce entCount.
           if (currentIsLast && currentFrame.isLeafBlock) {
             origNextEnt = currentFrame.nextEnt;
             withOutReloadFp = currentFrame.fp;
