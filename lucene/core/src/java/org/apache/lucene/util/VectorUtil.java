@@ -184,7 +184,7 @@ public final class VectorUtil {
 
   /**
    * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
-   * "packed" (i.e. every two bytes represent a single value). The following packing is assumed:
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
    *
    * <pre class="prettyprint lang-java">
    *   packed[0] = (raw[0] * 16) | raw[packed.length];
