@@ -92,6 +92,22 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  public void testInt4DotProduct() {
+    assumeTrue("even sizes only", size % 2 == 0);
+    var a = new byte[size];
+    var b = new byte[size];
+    for (int i = 0; i < size; ++i) {
+      a[i] = (byte) random().nextInt(16);
+      b[i] = (byte) random().nextInt(16);
+    }
+
+    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
+    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+  }
+
   public void testInt4DotProductBoundaries() {
     assumeTrue("even sizes only", size % 2 == 0);
     byte MAX_VALUE = 15;
@@ -120,7 +136,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     int len = (unpacked.length + 1) / 2;
     var packed = new byte[len];
     for (int i = 0; i < len; i++) {
-      packed[i] = (byte) (unpacked[0] << 4 | unpacked[packed.length + i]);
+      packed[i] = (byte) (unpacked[i] << 4 | unpacked[packed.length + i]);
     }
     return packed;
   }
