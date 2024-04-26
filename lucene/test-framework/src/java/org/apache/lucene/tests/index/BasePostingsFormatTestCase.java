@@ -1710,7 +1710,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     // Use a FS dir and a non-randomized IWC to not slow down indexing
     try (Directory dir = newFSDirectory(createTempDir())) {
       try (LineFileDocs docs = new LineFileDocs(random());
-           IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
         final int numDocs = atLeast(10_000);
         for (int i = 0; i < numDocs; ++i) {
           // Only keep the body field, and don't index term vectors on it, we only care about
