@@ -168,7 +168,7 @@ public class MultiFieldQueryParser extends QueryParser {
             if (fieldQueries[i] instanceof BooleanQuery) {
               List<BooleanClause> nestedClauses = ((BooleanQuery) fieldQueries[i]).clauses();
               if (termNum < nestedClauses.size()) {
-                q = nestedClauses.get(termNum).getQuery();
+                q = nestedClauses.get(termNum).query();
               }
             } else if (termNum == 0) { // e.g. TermQuery-s
               q = fieldQueries[i];

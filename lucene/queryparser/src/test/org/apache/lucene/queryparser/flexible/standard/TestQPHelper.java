@@ -1261,7 +1261,7 @@ public class TestQPHelper extends LuceneTestCase {
     assertEquals(new MatchAllDocsQuery(), qp.parse("(*:*)", "field"));
     BooleanQuery bq = (BooleanQuery) qp.parse("+*:* -*:*", "field");
     for (BooleanClause c : bq) {
-      assertTrue(c.getQuery().getClass() == MatchAllDocsQuery.class);
+      assertTrue(c.query().getClass() == MatchAllDocsQuery.class);
     }
   }
 

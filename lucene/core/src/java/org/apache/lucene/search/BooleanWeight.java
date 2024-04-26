@@ -59,7 +59,7 @@ final class BooleanWeight extends Weight {
     for (BooleanClause c : query) {
       Weight w =
           searcher.createWeight(
-              c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost);
+              c.query(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost);
       weightedClauses.add(new WeightedBooleanClause(c, w));
     }
   }
@@ -87,20 +87,18 @@ final class BooleanWeight extends Weight {
                   e));
         } else if (c.isProhibited()) {
           subs.add(
-              Explanation.noMatch(
-                  "match on prohibited clause (" + c.getQuery().toString() + ")", e));
+              Explanation.noMatch("match on prohibited clause (" + c.query().toString() + ")", e));
           fail = true;
         }
         if (!c.isProhibited()) {
           matchCount++;
         }
-        if (c.getOccur() == Occur.SHOULD) {
+        if (c.occur() == Occur.SHOULD) {
           shouldMatchCount++;
         }
       } else if (c.isRequired()) {
         subs.add(
-            Explanation.noMatch(
-                "no match on required clause (" + c.getQuery().toString() + ")", e));
+            Explanation.noMatch("no match on required clause (" + c.query().toString() + ")", e));
         fail = true;
       }
     }
@@ -145,7 +143,7 @@ final class BooleanWeight extends Weight {
         }
         matches.add(m);
       }
-      if (bc.getOccur() == Occur.SHOULD) {
+      if (bc.occur() == Occur.SHOULD) {
         if (m != null) {
           matches.add(m);
           shouldMatchCount++;
@@ -202,7 +200,7 @@ final class BooleanWeight extends Weight {
       for (WeightedBooleanClause wc : weightedClauses) {
         Weight w = wc.weight;
         BooleanClause c = wc.clause;
-        if (c.getOccur() != Occur.SHOULD) {
+        if (c.occur() != Occur.SHOULD) {
           continue;
         }
         ScorerSupplier scorer = w.scorerSupplier(context);
@@ -227,7 +225,7 @@ final class BooleanWeight extends Weight {
     for (WeightedBooleanClause wc : weightedClauses) {
       Weight w = wc.weight;
       BooleanClause c = wc.clause;
-      if (c.getOccur() != Occur.SHOULD) {
+      if (c.occur() != Occur.SHOULD) {
         continue;
       }
       BulkScorer subScorer = w.bulkScorer(context);
@@ -525,7 +523,7 @@ final class BooleanWeight extends Weight {
     int optCount = 0;
     boolean unknownCount = false;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
-      if (weightedClause.clause.getOccur() != occur) {
+      if (weightedClause.clause.occur() != occur) {
         continue;
       }
       int count = weightedClause.weight.count(context);
@@ -598,7 +596,7 @@ final class BooleanWeight extends Weight {
           return null;
         }
       } else {
-        scorers.get(c.getOccur()).add(subScorer);
+        scorers.get(c.occur()).add(subScorer);
       }
     }
 

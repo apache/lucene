@@ -39,15 +39,19 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
    * from disk.
    */
   public static class Meta implements Accountable {
+
+    // Use a shift of 63 so that there would be a single block regardless of the number of values.
+    private static final Meta SINGLE_ZERO_BLOCK = new Meta(1L, 63);
+
     private static final long BASE_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(Meta.class);
 
-    final int blockShift;
-    final int numBlocks;
-    final long[] mins;
-    final float[] avgs;
-    final byte[] bpvs;
-    final long[] offsets;
+    private final int blockShift;
+    private final int numBlocks;
+    private final long[] mins;
+    private final float[] avgs;
+    private final byte[] bpvs;
+    private final long[] offsets;
 
     Meta(long numValues, int blockShift) {
       this.blockShift = blockShift;
@@ -79,14 +83,20 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
    */
   public static Meta loadMeta(IndexInput metaIn, long numValues, int blockShift)
       throws IOException {
+    boolean allValuesZero = true;
     Meta meta = new Meta(numValues, blockShift);
     for (int i = 0; i < meta.numBlocks; ++i) {
-      meta.mins[i] = metaIn.readLong();
-      meta.avgs[i] = Float.intBitsToFloat(metaIn.readInt());
+      long min = metaIn.readLong();
+      meta.mins[i] = min;
+      int avgInt = metaIn.readInt();
+      meta.avgs[i] = Float.intBitsToFloat(avgInt);
       meta.offsets[i] = metaIn.readLong();
-      meta.bpvs[i] = metaIn.readByte();
+      byte bpvs = metaIn.readByte();
+      meta.bpvs[i] = bpvs;
+      allValuesZero = allValuesZero && min == 0L && avgInt == 0 && bpvs == 0;
     }
-    return meta;
+    // save heap in case all values are zero
+    return allValuesZero ? Meta.SINGLE_ZERO_BLOCK : meta;
   }
 
   /** Retrieves a non-merging instance from the specified slice. */

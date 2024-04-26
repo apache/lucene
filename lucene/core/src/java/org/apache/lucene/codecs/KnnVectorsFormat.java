@@ -131,11 +131,6 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public void close() {}
-
-            @Override
-            public long ramBytesUsed() {
-              return 0;
-            }
           };
         }
 

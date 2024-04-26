@@ -253,7 +253,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     // compress stored fields to fieldsStream.
     if (sliced) {
       // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
-      final int capacity = (int) bytebuffers.size();
+      final int capacity = (int) bytebuffers.length();
       for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
         int l = Math.min(chunkSize, capacity - compressed);
         ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);

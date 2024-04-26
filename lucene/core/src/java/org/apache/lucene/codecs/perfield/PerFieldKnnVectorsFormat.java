@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -187,7 +186,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
   public static class FieldsReader extends KnnVectorsReader {
 
-    private final Map<String, KnnVectorsReader> fields = new TreeMap<>();
+    private final Map<String, KnnVectorsReader> fields = new HashMap<>();
 
     /**
      * Create a FieldsReader over a segment, opening VectorReaders for each KnnVectorsFormat
@@ -285,15 +284,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void close() throws IOException {
       IOUtils.close(fields.values());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long total = 0;
-      for (KnnVectorsReader reader : fields.values()) {
-        total += reader.ramBytesUsed();
-      }
-      return total;
     }
   }
 

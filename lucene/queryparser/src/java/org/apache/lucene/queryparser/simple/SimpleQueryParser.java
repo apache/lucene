@@ -620,7 +620,7 @@ public class SimpleQueryParser extends QueryBuilder {
     if (bq.clauses().isEmpty()) {
       return null;
     } else if (bq.clauses().size() == 1) {
-      return bq.clauses().iterator().next().getQuery();
+      return bq.clauses().iterator().next().query();
     } else {
       return bq;
     }

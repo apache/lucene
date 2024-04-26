@@ -38,7 +38,7 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
           }
         };
     String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat())";
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer()))";
     assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 
@@ -49,8 +49,6 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 100, 100, null));
     expectThrows(
         IllegalArgumentException.class,
         () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
