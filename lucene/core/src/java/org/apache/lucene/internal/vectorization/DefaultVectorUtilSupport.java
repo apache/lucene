@@ -153,9 +153,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    if (apacked && bpacked) {
-      throw new IllegalArgumentException("Both vectors cannot be packed");
-    }
+    assert (apacked && bpacked) == false;
     if (apacked || bpacked) {
       byte[] packed = apacked ? a : b;
       byte[] unpacked = apacked ? b : a;

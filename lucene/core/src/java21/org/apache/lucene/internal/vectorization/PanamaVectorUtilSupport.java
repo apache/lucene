@@ -392,10 +392,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    if (apacked && bpacked) {
-      throw new IllegalArgumentException(
-          "Both vectors cannot be packed, at least one must be unpacked");
-    }
+    assert (apacked && bpacked) == false;
     int i = 0;
     int res = 0;
     if (apacked || bpacked) {
