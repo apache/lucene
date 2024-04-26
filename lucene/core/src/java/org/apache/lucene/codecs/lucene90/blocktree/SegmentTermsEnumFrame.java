@@ -254,7 +254,6 @@ final class SegmentTermsEnumFrame {
       suffixLengthsReader.setPosition(0);
     } else {
       suffixes = new int[entCount];
-      // TODO: remove positions if it is unnecessary.
       positions = new int[entCount];
       if (isLeafBlock) {
         for (int i = 0; i < suffixes.length; i++) {
@@ -1107,7 +1106,6 @@ final class SegmentTermsEnumFrame {
     suffixesReader.setPosition(startBytePos + suffix);
 
     // Set suffixLengthsReader's position.
-    // TODO: is it necessary to set suffixLengthsReader's position?
     suffixLengthsReader.setPosition(positions[currentEnt]);
   }
 
@@ -1120,7 +1118,6 @@ final class SegmentTermsEnumFrame {
     suffixesReader.setPosition(startBytePos + suffix);
 
     // Set suffixLengthsReader's position.
-    // TODO: is it necessary to set suffixLengthsReader's position?
     suffixLengthsReader.setPosition(positions[currentEnt]);
   }
 
