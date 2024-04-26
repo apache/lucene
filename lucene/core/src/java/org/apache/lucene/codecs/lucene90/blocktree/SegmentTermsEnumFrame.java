@@ -53,7 +53,7 @@ final class SegmentTermsEnumFrame {
   final ByteArrayDataInput suffixLengthsReader;
 
   int[] suffixes;
-  int[] postions;
+  int[] positions;
   int[] offsets;
   int[] termBlockOrds;
   int[] lastSubIndices;
@@ -213,7 +213,7 @@ final class SegmentTermsEnumFrame {
         suffix = suffixLengthsReader.readVInt();
       } else {
         // Handle subCode for non leaf block.
-        postions = new int[entCount];
+        positions = new int[entCount];
         termExists = new FixedBitSet(entCount);
         subCodes = new long[entCount];
         termBlockOrds = new int[entCount];
@@ -232,7 +232,7 @@ final class SegmentTermsEnumFrame {
           lastSubIndex = 0;
         }
         termBlockOrds[0] = termBlockOrd;
-        postions[0] = suffixLengthsReader.getPosition();
+        positions[0] = suffixLengthsReader.getPosition();
         lastSubIndices[0] = lastSubIndex;
         for (int i = 1; i < suffixes.length; i++) {
           code = suffixLengthsReader.readVInt();
@@ -246,7 +246,7 @@ final class SegmentTermsEnumFrame {
             lastSubIndex = i;
           }
           termBlockOrds[i] = termBlockOrd;
-          postions[i] = suffixLengthsReader.getPosition();
+          positions[i] = suffixLengthsReader.getPosition();
           lastSubIndices[i] = lastSubIndex;
         }
       }
@@ -254,12 +254,12 @@ final class SegmentTermsEnumFrame {
       suffixLengthsReader.setPosition(0);
     } else {
       suffixes = new int[entCount];
-      // TODO: remove postions if it is unnecessary.
-      postions = new int[entCount];
+      // TODO: remove positions if it is unnecessary.
+      positions = new int[entCount];
       if (isLeafBlock) {
         for (int i = 0; i < suffixes.length; i++) {
           suffixes[i] = suffixLengthsReader.readVInt();
-          postions[i] = suffixLengthsReader.getPosition();
+          positions[i] = suffixLengthsReader.getPosition();
         }
       } else {
         // Handle subCode for non leaf block.
@@ -281,7 +281,7 @@ final class SegmentTermsEnumFrame {
             lastSubIndex = i;
           }
           termBlockOrds[i] = termBlockOrd;
-          postions[i] = suffixLengthsReader.getPosition();
+          positions[i] = suffixLengthsReader.getPosition();
           lastSubIndices[i] = lastSubIndex;
         }
       }
@@ -1108,7 +1108,7 @@ final class SegmentTermsEnumFrame {
 
     // Set suffixLengthsReader's position.
     // TODO: is it necessary to set suffixLengthsReader's position?
-    suffixLengthsReader.setPosition(postions[currentEnt]);
+    suffixLengthsReader.setPosition(positions[currentEnt]);
   }
 
   // Set suffixesReader's position.
@@ -1121,7 +1121,7 @@ final class SegmentTermsEnumFrame {
 
     // Set suffixLengthsReader's position.
     // TODO: is it necessary to set suffixLengthsReader's position?
-    suffixLengthsReader.setPosition(postions[currentEnt]);
+    suffixLengthsReader.setPosition(positions[currentEnt]);
   }
 
   private void fillTerm() {
