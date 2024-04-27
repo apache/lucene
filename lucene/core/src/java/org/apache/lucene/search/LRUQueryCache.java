@@ -632,7 +632,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     LeafCache(Object key) {
       this.key = key;
-      cache = new IdentityHashMap<>();
+      cache = new ConcurrentHashMap<>();
       ramBytesUsed = 0;
     }
 
