@@ -134,7 +134,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     uniqueQueries = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     mostRecentlyUsedQueries = uniqueQueries.keySet();
-    cache = new ConcurrentHashMap<>();
+    cache = Collections.synchronizedMap(new IdentityHashMap<>());
     ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     writeLock = lock.writeLock();
     readLock = lock.readLock();
@@ -632,7 +632,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     LeafCache(Object key) {
       this.key = key;
-      cache = new ConcurrentHashMap<>();
+      cache = Collections.synchronizedMap(new IdentityHashMap<>());
       ramBytesUsed = 0;
     }
 
