@@ -21,6 +21,7 @@ import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
+import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -400,11 +401,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       byte[] unpacked = apacked ? b : a;
       if (packed.length >= 32) {
         if (VECTOR_BITSIZE >= 512) {
-          i += BYTE_SPECIES.loopBound(packed.length);
-          res += dotProductBody512Packed(unpacked, packed, i);
+          i += ByteVector.SPECIES_256.loopBound(packed.length);
+          res += dotProductBody512Int4Packed(unpacked, packed, i);
         } else if (VECTOR_BITSIZE == 256) {
-          i += BYTE_SPECIES.loopBound(packed.length);
-          res += dotProductBody256Packed(unpacked, packed, i);
+          i += ByteVector.SPECIES_128.loopBound(packed.length);
+          res += dotProductBody256Int4Packed(unpacked, packed, i);
         } else if (HAS_FAST_INTEGER_VECTORS) {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
@@ -432,6 +433,72 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     return res;
+  }
+
+  private int dotProductBody512Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+    int sum = 0;
+    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += 4096) {
+      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_512);
+      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_512);
+      int innerLimit = Math.min(limit - i, 4096);
+      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_256.length()) {
+        // packed
+        var vb8 = ByteVector.fromArray(ByteVector.SPECIES_256, packed, i + j);
+        // unpacked
+        var va8 = ByteVector.fromArray(ByteVector.SPECIES_256, unpacked, i + j + packed.length);
+
+        // upper
+        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
+        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_512, 0);
+        acc0 = acc0.add(prod16);
+
+        // lower
+        ByteVector vc8 = ByteVector.fromArray(ByteVector.SPECIES_256, unpacked, i + j);
+        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
+        Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_512, 0);
+        acc1 = acc1.add(prod16a);
+      }
+      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_512, 0).reinterpretAsInts();
+      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_512, 1).reinterpretAsInts();
+      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_512, 0).reinterpretAsInts();
+      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_512, 1).reinterpretAsInts();
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+    }
+    return sum;
+  }
+
+  private int dotProductBody256Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+    int sum = 0;
+    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += 2048) {
+      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_256);
+      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_256);
+      int innerLimit = Math.min(limit - i, 2048);
+      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
+        // packed
+        var vb8 = ByteVector.fromArray(ByteVector.SPECIES_128, packed, i + j);
+        // unpacked
+        var va8 = ByteVector.fromArray(ByteVector.SPECIES_128, unpacked, i + j + packed.length);
+
+        // upper
+        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
+        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_256, 0);
+        acc0 = acc0.add(prod16);
+
+        // lower
+        ByteVector vc8 = ByteVector.fromArray(ByteVector.SPECIES_128, unpacked, i + j);
+        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
+        Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_256, 0);
+        acc1 = acc1.add(prod16a);
+      }
+      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_256, 0).reinterpretAsInts();
+      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_256, 1).reinterpretAsInts();
+      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_256, 0).reinterpretAsInts();
+      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_256, 1).reinterpretAsInts();
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+    }
+    return sum;
   }
 
   /** vectorized dot product body (128 bit vectors) */
