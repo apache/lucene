@@ -6128,7 +6128,7 @@ public class IndexWriter
     ensureOpen(false);
     validate(info);
     MergePolicy mergePolicy = config.getMergePolicy();
-    final ReadersAndUpdates rld = getPooledInstance(info, false);
+    final ReadersAndUpdates rld = getPooledInstance(info, true);
     int numDeletesToMerge;
     if (rld != null) {
       numDeletesToMerge = rld.numDeletesToMerge(mergePolicy);
