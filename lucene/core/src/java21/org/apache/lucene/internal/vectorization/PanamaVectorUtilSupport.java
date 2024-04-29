@@ -537,57 +537,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  private int dotProductBody512Packed(byte[] unpacked, byte[] packed, int limit) {
-    IntVector acc = IntVector.zero(INT_SPECIES);
-    for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromArray(BYTE_SPECIES, unpacked, i);
-      ByteVector vb8 = ByteVector.fromArray(BYTE_SPECIES, packed, i);
-
-      // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
-      Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
-      Vector<Short> vb16 = vb8.lanewise(LSHR, 4).convertShape(B2S, SHORT_SPECIES, 0);
-      Vector<Short> prod16 = va16.mul(vb16);
-
-      // 32-bit add
-      Vector<Integer> prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
-      acc = acc.add(prod32);
-
-      va8 = ByteVector.fromArray(BYTE_SPECIES, unpacked, i + packed.length);
-      va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
-      vb16 = vb8.and((byte) 0x0F).convertShape(B2S, SHORT_SPECIES, 0);
-      prod16 = va16.mul(vb16);
-      prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
-      acc = acc.add(prod32);
-    }
-    // reduce
-    return acc.reduceLanes(ADD);
-  }
-
-  private int dotProductBody256Packed(byte[] unpacked, byte[] packed, int limit) {
-    IntVector acc = IntVector.zero(IntVector.SPECIES_256);
-    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, packed, i);
-
-      // lower
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i);
-
-      // 32-bit multiply and add into accumulator
-      Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
-      Vector<Integer> vb32 = vb8.lanewise(LSHR, 4).convertShape(B2I, IntVector.SPECIES_256, 0);
-      acc = acc.add(va32.mul(vb32));
-
-      // upper
-      va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + packed.length);
-
-      // 32-bit multiply and add into accumulator
-      va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
-      vb32 = vb8.and((byte) 0x0F).convertShape(B2I, IntVector.SPECIES_256, 0);
-      acc = acc.add(va32.mul(vb32));
-    }
-    // reduce
-    return acc.reduceLanes(ADD);
-  }
-
   private int int4DotProductBody128(byte[] a, byte[] b, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
