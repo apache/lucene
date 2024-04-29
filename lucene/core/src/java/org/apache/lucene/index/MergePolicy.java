@@ -787,9 +787,7 @@ public abstract class MergePolicy {
   protected final boolean isMerged(
       SegmentInfos infos, SegmentCommitInfo info, MergeContext mergeContext) throws IOException {
     assert mergeContext != null;
-    int delCount = mergeContext.numDeletesToMerge(info);
-    assert assertDelCount(delCount, info);
-    return delCount == 0
+    return mergeContext.isFullyMerged(info)
         && useCompoundFile(infos, info, mergeContext) == info.info.getUseCompoundFile();
   }
 
@@ -864,6 +862,23 @@ public abstract class MergePolicy {
     return delCount;
   }
 
+  /**
+   * Determines whether the given segment is fully merged. By default, this method returns {@code
+   * true} if the number of deletes returned by {@link #numDeletesToMerge(SegmentCommitInfo, int,
+   * IOSupplier)} is 0; otherwise, it returns {@code false}. Subclasses can override this method to
+   * return {@code true} for segments without deletions. This may occur for merge policies that drop
+   * surplus structures when they are no longer needed.
+   *
+   * @param info the segment info that identifies the segment
+   * @param delCount the number deleted documents for this segment
+   * @param readerSupplier a supplier that allows to obtain a {@link CodecReader} for this segment
+   */
+  public boolean isFullyMerged(
+      SegmentCommitInfo info, int delCount, IOSupplier<CodecReader> readerSupplier)
+      throws IOException {
+    return numDeletesToMerge(info, delCount, readerSupplier) == 0;
+  }
+
   /** Builds a String representation of the given SegmentCommitInfo instances */
   protected final String segString(MergeContext mergeContext, Iterable<SegmentCommitInfo> infos) {
     return StreamSupport.stream(infos.spliterator(), false)
@@ -907,6 +922,17 @@ public abstract class MergePolicy {
 
     /** Returns the number of deleted documents in the given segments. */
     int numDeletedDocs(SegmentCommitInfo info);
+
+    /**
+     * Whether the given segment is fully merged or not. By default, this method return {@code true}
+     * if {@link #numDeletesToMerge(SegmentCommitInfo)} return zero; otherwise return {@code false}.
+     *
+     * @param info the segment to check
+     * @see MergePolicy#numDeletesToMerge(SegmentCommitInfo, int, org.apache.lucene.util.IOSupplier)
+     */
+    default boolean isFullyMerged(SegmentCommitInfo info) throws IOException {
+      return numDeletesToMerge(info) == 0;
+    }
 
     /** Returns the info stream that can be used to log messages */
     InfoStream getInfoStream();

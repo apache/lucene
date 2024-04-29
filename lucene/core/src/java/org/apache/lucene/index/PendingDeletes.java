@@ -238,6 +238,11 @@ class PendingDeletes {
     return policy.numDeletesToMerge(info, getDelCount(), readerIOSupplier);
   }
 
+  boolean isFullyMerged(MergePolicy policy, IOSupplier<CodecReader> readerIOSupplier)
+      throws IOException {
+    return policy.isFullyMerged(info, getDelCount(), readerIOSupplier);
+  }
+
   /** Returns true if the given reader needs to be refreshed in order to see the latest deletes */
   final boolean needsRefresh(CodecReader reader) {
     return reader.getLiveDocs() != getLiveDocs() || reader.numDeletedDocs() != getDelCount();

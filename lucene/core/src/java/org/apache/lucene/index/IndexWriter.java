@@ -6141,6 +6141,19 @@ public class IndexWriter
     return numDeletesToMerge;
   }
 
+  @Override
+  public boolean isFullyMerged(SegmentCommitInfo info) throws IOException {
+    ensureOpen(false);
+    validate(info);
+    MergePolicy mergePolicy = config.getMergePolicy();
+    final ReadersAndUpdates rld = getPooledInstance(info, true);
+    if (rld != null) {
+      return rld.isFullyMerged(mergePolicy);
+    } else {
+      return info.getDelCount(softDeletesEnabled) == 0;
+    }
+  }
+
   void release(ReadersAndUpdates readersAndUpdates) throws IOException {
     release(readersAndUpdates, true);
   }

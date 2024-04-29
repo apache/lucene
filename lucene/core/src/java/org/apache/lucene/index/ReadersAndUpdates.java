@@ -238,6 +238,10 @@ final class ReadersAndUpdates {
     return pendingDeletes.numDeletesToMerge(policy, this::getLatestReader);
   }
 
+  synchronized boolean isFullyMerged(MergePolicy policy) throws IOException {
+    return pendingDeletes.isFullyMerged(policy, this::getLatestReader);
+  }
+
   private synchronized CodecReader getLatestReader() throws IOException {
     if (this.reader == null) {
       // get a reader and dec the ref right away we just make sure we have a reader
