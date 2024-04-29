@@ -23,7 +23,7 @@ import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -61,9 +62,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final String parentField;
 
   // used only by fieldInfo(int)
-  private final FieldInfo[] byNumber;
-
-  private final HashMap<String, FieldInfo> byName = new HashMap<>();
+  private final FieldInfoByNumber byNumber;
+  private final HashMap<String, FieldInfo> byName;
   private final Collection<FieldInfo> values; // for an unmodifiable iterator
 
   /** Constructs a new FieldInfos from an array of FieldInfo objects */
@@ -81,30 +81,13 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    int size = 0; // number of elements in byNumberTemp, number of used array slots
-    FieldInfo[] byNumberTemp = new FieldInfo[10]; // initial array capacity of 10
+    byName = new HashMap<>((int) (infos.length / 0.75f) + 1);
     for (FieldInfo info : infos) {
       if (info.number < 0) {
         throw new IllegalArgumentException(
             "illegal field number: " + info.number + " for field " + info.name);
       }
-      size = info.number >= size ? info.number + 1 : size;
-      if (info.number >= byNumberTemp.length) { // grow array
-        byNumberTemp = ArrayUtil.grow(byNumberTemp, info.number + 1);
-      }
-      FieldInfo previous = byNumberTemp[info.number];
-      if (previous != null) {
-        throw new IllegalArgumentException(
-            "duplicate field numbers: "
-                + previous.name
-                + " and "
-                + info.name
-                + " have: "
-                + info.number);
-      }
-      byNumberTemp[info.number] = info;
-
-      previous = byName.put(info.name, info);
+      FieldInfo previous = byName.put(info.name, info);
       if (previous != null) {
         throw new IllegalArgumentException(
             "duplicate field names: "
@@ -156,15 +139,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
-    List<FieldInfo> valuesTemp = new ArrayList<>(infos.length);
-    byNumber = new FieldInfo[size];
-    for (int i = 0; i < size; i++) {
-      byNumber[i] = byNumberTemp[i];
-      if (byNumberTemp[i] != null) {
-        valuesTemp.add(byNumberTemp[i]);
-      }
-    }
-    values = Collections.unmodifiableCollection(valuesTemp);
+    FieldInfo[] sortedFieldInfos = ArrayUtil.copyOfSubArray(infos, 0, infos.length);
+    Arrays.sort(sortedFieldInfos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
+    int maxFieldNumber = infos.length == 0 ? -1 : sortedFieldInfos[infos.length - 1].number;
+    // If there are many fields and the max field number is greater than twice the number
+    // of fields, then a map structure is more compact to store the by-number mapping.
+    byNumber =
+        maxFieldNumber >= 2 * infos.length && maxFieldNumber >= 32
+            ? new MapFieldInfoByNumber(infos)
+            : new ArrayFieldInfoByNumber(infos, maxFieldNumber);
+    // The iteration of FieldInfo is ordered by ascending field number.
+    values = Collections.unmodifiableCollection(Arrays.asList(sortedFieldInfos));
   }
 
   /**
@@ -323,10 +308,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     if (fieldNumber < 0) {
       throw new IllegalArgumentException("Illegal field number: " + fieldNumber);
     }
-    if (fieldNumber >= byNumber.length) {
-      return null;
-    }
-    return byNumber[fieldNumber];
+    return byNumber.get(fieldNumber);
   }
 
   static final class FieldDimensions {
@@ -819,6 +801,66 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldInfos finish() {
       finished = true;
       return new FieldInfos(byName.values().toArray(new FieldInfo[byName.size()]));
+    }
+  }
+
+  private interface FieldInfoByNumber {
+
+    FieldInfo get(int fieldNumber);
+  }
+
+  private static class MapFieldInfoByNumber implements FieldInfoByNumber {
+
+    private final IntObjectHashMap<FieldInfo> map;
+
+    MapFieldInfoByNumber(FieldInfo[] fieldInfos) {
+      map = new IntObjectHashMap<>(fieldInfos.length);
+      for (FieldInfo fieldInfo : fieldInfos) {
+        FieldInfo previous = map.put(fieldInfo.number, fieldInfo);
+        if (previous != null) {
+          throw new IllegalArgumentException(
+              "duplicate field numbers: "
+                  + previous.name
+                  + " and "
+                  + fieldInfo.name
+                  + " have: "
+                  + fieldInfo.number);
+        }
+      }
+    }
+
+    @Override
+    public FieldInfo get(int fieldNumber) {
+      return map.get(fieldNumber);
+    }
+  }
+
+  private static class ArrayFieldInfoByNumber implements FieldInfoByNumber {
+
+    private static final FieldInfo[] EMPTY = new FieldInfo[0];
+
+    private final FieldInfo[] array;
+
+    ArrayFieldInfoByNumber(FieldInfo[] fieldInfos, int maxFieldNumber) {
+      array = fieldInfos.length == 0 ? EMPTY : new FieldInfo[maxFieldNumber + 1];
+      for (FieldInfo fieldInfo : fieldInfos) {
+        FieldInfo previous = array[fieldInfo.number];
+        if (previous != null) {
+          throw new IllegalArgumentException(
+              "duplicate field numbers: "
+                  + previous.name
+                  + " and "
+                  + fieldInfo.name
+                  + " have: "
+                  + fieldInfo.number);
+        }
+        array[fieldInfo.number] = fieldInfo;
+      }
+    }
+
+    @Override
+    public FieldInfo get(int fieldNumber) {
+      return fieldNumber >= array.length ? null : array[fieldNumber];
     }
   }
 }
