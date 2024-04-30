@@ -19,6 +19,7 @@ package org.apache.lucene.luke.models.documents;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Random;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -53,7 +54,13 @@ public abstract class DocumentsTestBase extends LuceneTestCase {
     indexDir = createTempDir();
 
     Directory dir = newFSDirectory(indexDir);
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, new StandardAnalyzer());
+    Random r = random();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            r,
+            dir,
+            newIndexWriterConfig(r, new StandardAnalyzer())
+                .setMergePolicy(newMergePolicy(r, false)));
 
     FieldType titleType = new FieldType();
     titleType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);

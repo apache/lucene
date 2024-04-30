@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -26,7 +27,7 @@ import org.apache.lucene.util.Bits;
  *
  * @lucene.experimental
  */
-public interface RandomAccessVectorValues<T> {
+public interface RandomAccessVectorValues {
 
   /** Return the number of vector values */
   int size();
@@ -35,18 +36,10 @@ public interface RandomAccessVectorValues<T> {
   int dimension();
 
   /**
-   * Return the vector value indexed at the given ordinal.
-   *
-   * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
-   */
-  T vectorValue(int targetOrd) throws IOException;
-
-  /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to
-   * access different values at once, to avoid overwriting the underlying float vector returned by
-   * {@link RandomAccessVectorValues#vectorValue}.
+   * access different values at once, to avoid overwriting the underlying vector returned.
    */
-  RandomAccessVectorValues<T> copy() throws IOException;
+  RandomAccessVectorValues copy() throws IOException;
 
   /**
    * Translates vector ordinal to the correct document ID. By default, this is an identity function.
@@ -66,5 +59,93 @@ public interface RandomAccessVectorValues<T> {
    */
   default Bits getAcceptOrds(Bits acceptDocs) {
     return acceptDocs;
+  }
+
+  /** Float vector values. */
+  interface Floats extends RandomAccessVectorValues {
+    @Override
+    RandomAccessVectorValues.Floats copy() throws IOException;
+
+    /**
+     * Return the vector value indexed at the given ordinal.
+     *
+     * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
+     */
+    float[] vectorValue(int targetOrd) throws IOException;
+  }
+
+  /** Byte vector values. */
+  interface Bytes extends RandomAccessVectorValues {
+    @Override
+    RandomAccessVectorValues.Bytes copy() throws IOException;
+
+    /**
+     * Return the vector value indexed at the given ordinal.
+     *
+     * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
+     */
+    byte[] vectorValue(int targetOrd) throws IOException;
+  }
+
+  /**
+   * Creates a {@link RandomAccessVectorValues.Floats} from a list of float arrays.
+   *
+   * @param vectors the list of float arrays
+   * @param dim the dimension of the vectors
+   * @return a {@link RandomAccessVectorValues.Floats} instance
+   */
+  static RandomAccessVectorValues.Floats fromFloats(List<float[]> vectors, int dim) {
+    return new RandomAccessVectorValues.Floats() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) throws IOException {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public RandomAccessVectorValues.Floats copy() throws IOException {
+        return this;
+      }
+    };
+  }
+
+  /**
+   * Creates a {@link RandomAccessVectorValues.Bytes} from a list of byte arrays.
+   *
+   * @param vectors the list of byte arrays
+   * @param dim the dimension of the vectors
+   * @return a {@link RandomAccessVectorValues.Bytes} instance
+   */
+  static RandomAccessVectorValues.Bytes fromBytes(List<byte[]> vectors, int dim) {
+    return new RandomAccessVectorValues.Bytes() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public byte[] vectorValue(int targetOrd) throws IOException {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public RandomAccessVectorValues.Bytes copy() throws IOException {
+        return this;
+      }
+    };
   }
 }

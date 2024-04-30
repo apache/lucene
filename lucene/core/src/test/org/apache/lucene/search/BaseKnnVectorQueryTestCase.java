@@ -42,6 +42,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
@@ -781,10 +782,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager noTimeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, null);
       KnnCollector noTimeoutCollector =
-          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
-      assertTrue(noTimeoutCollector instanceof TopKnnCollector);
+      assertFalse(
+          noTimeoutCollector instanceof TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector);
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
@@ -797,7 +799,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
       KnnCollector timeoutCollector =
-          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.getFirst());
+          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
       assertFalse(timeoutCollector instanceof TopKnnCollector);
@@ -1031,8 +1033,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
-      KnnVectorsFormat format1 = randomVectorFormat();
-      KnnVectorsFormat format2 = randomVectorFormat();
+      KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);
+      KnnVectorsFormat format2 = randomVectorFormat(VectorEncoding.FLOAT32);
       iwc.setCodec(
           new AssertingCodec() {
             @Override

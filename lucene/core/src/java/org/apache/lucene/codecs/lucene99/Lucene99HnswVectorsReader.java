@@ -25,9 +25,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -219,7 +219,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -347,40 +347,43 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return null;
   }
 
-  static class FieldEntry implements Accountable {
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      int M,
+      int numLevels,
+      int dimension,
+      int size,
+      int[][] nodesByLevel,
+      // for each level the start offsets in vectorIndex file from where to read neighbours
+      DirectMonotonicReader.Meta offsetsMeta,
+      long offsetsOffset,
+      int offsetsBlockShift,
+      long offsetsLength)
+      implements Accountable {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
-    final int M;
-    final int numLevels;
-    final int dimension;
-    final int size;
-    final int[][] nodesByLevel;
-    // for each level the start offsets in vectorIndex file from where to read neighbours
-    final DirectMonotonicReader.Meta offsetsMeta;
-    final long offsetsOffset;
-    final int offsetsBlockShift;
-    final long offsetsLength;
 
-    FieldEntry(
+    static FieldEntry create(
         IndexInput input,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorIndexOffset = input.readVLong();
-      vectorIndexLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
+      final var vectorIndexOffset = input.readVLong();
+      final var vectorIndexLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
       // read nodes by level
-      M = input.readVInt();
-      numLevels = input.readVInt();
-      nodesByLevel = new int[numLevels][];
+      final var M = input.readVInt();
+      final var numLevels = input.readVInt();
+      final var nodesByLevel = new int[numLevels][];
       long numberOfOffsets = 0;
+      final long offsetsOffset;
+      final int offsetsBlockShift;
+      final DirectMonotonicReader.Meta offsetsMeta;
+      final long offsetsLength;
       for (int level = 0; level < numLevels; level++) {
         if (level > 0) {
           int numNodesOnLevel = input.readVInt();
@@ -405,10 +408,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsMeta = null;
         offsetsLength = 0;
       }
-    }
-
-    int size() {
-      return size;
+      return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          vectorIndexOffset,
+          vectorIndexLength,
+          M,
+          numLevels,
+          dimension,
+          size,
+          nodesByLevel,
+          offsetsMeta,
+          offsetsOffset,
+          offsetsBlockShift,
+          offsetsLength);
     }
 
     @Override

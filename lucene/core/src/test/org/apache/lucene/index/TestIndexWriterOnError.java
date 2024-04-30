@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -53,7 +54,7 @@ import org.apache.lucene.util.IOUtils;
  * index corruption is ever created.
  */
 @SuppressCodecs("SimpleText")
-public class TestIndexWriterOnVMError extends LuceneTestCase {
+public class TestIndexWriterOnError extends LuceneTestCase {
 
   // just one thread, serial merge policy, hopefully debuggable
   private void doTest(MockDirectoryWrapper.Failure failOn) throws Exception {
@@ -151,7 +152,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
                     "dv2",
                     new BytesRef(Integer.toString(i + 1)));
               }
-            } catch (VirtualMachineError | AlreadyClosedException disaster) {
+            } catch (Error | AlreadyClosedException disaster) {
               getTragedy(disaster, iw, exceptionStream);
               continue STARTOVER;
             }
@@ -174,7 +175,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
                 iw.deleteDocuments(
                     new Term("id", Integer.toString(i)), new Term("id", Integer.toString(-i)));
               }
-            } catch (VirtualMachineError | AlreadyClosedException disaster) {
+            } catch (Error | AlreadyClosedException disaster) {
               getTragedy(disaster, iw, exceptionStream);
               continue STARTOVER;
             }
@@ -197,7 +198,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
               if (DirectoryReader.indexExists(dir)) {
                 TestUtil.checkIndex(dir);
               }
-            } catch (VirtualMachineError | AlreadyClosedException disaster) {
+            } catch (Error | AlreadyClosedException disaster) {
               getTragedy(disaster, iw, exceptionStream);
               continue STARTOVER;
             }
@@ -206,7 +207,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
 
         try {
           iw.close();
-        } catch (VirtualMachineError | AlreadyClosedException disaster) {
+        } catch (Error | AlreadyClosedException disaster) {
           getTragedy(disaster, iw, exceptionStream);
           continue STARTOVER;
         }
@@ -225,15 +226,13 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
     }
   }
 
-  private VirtualMachineError getTragedy(Throwable disaster, IndexWriter writer, PrintStream log) {
+  private Error getTragedy(Throwable disaster, IndexWriter writer, PrintStream log) {
     Throwable e = disaster;
     if (e instanceof AlreadyClosedException) {
       e = e.getCause();
     }
 
-    if (e instanceof VirtualMachineError
-        && e.getMessage() != null
-        && e.getMessage().startsWith("Fake")) {
+    if (e instanceof Error && e.getMessage() != null && e.getMessage().contains("Fake")) {
       log.println("\nTEST: got expected fake exc:" + e.getMessage());
       e.printStackTrace(log);
       // TODO: remove rollback here, and add this assert to ensure "full OOM protection" anywhere IW
@@ -244,7 +243,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
       } catch (Throwable t) {
         t.printStackTrace(log);
       }
-      return (VirtualMachineError) e;
+      return (Error) e;
     } else {
       Rethrow.rethrow(disaster);
       return null; // dead
@@ -275,6 +274,36 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
             if (r.nextInt(3000) == 0) {
               if (callStackContains(IndexWriter.class)) {
                 throw new UnknownError("Fake UnknownError");
+              }
+            }
+          }
+        });
+  }
+
+  public void testLinkageError() throws Exception {
+    final Random r = new Random(random().nextLong());
+    doTest(
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (r.nextInt(3000) == 0) {
+              if (callStackContains(IndexWriter.class)) {
+                throw new LinkageError("Fake LinkageError");
+              }
+            }
+          }
+        });
+  }
+
+  public void testIOError() throws Exception {
+    final Random r = new Random(random().nextLong());
+    doTest(
+        new Failure() {
+          @Override
+          public void eval(MockDirectoryWrapper dir) throws IOException {
+            if (r.nextInt(3000) == 0) {
+              if (callStackContains(IndexWriter.class)) {
+                throw new IOError(new RuntimeException("Fake IOError"));
               }
             }
           }

@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
@@ -32,9 +33,20 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
  * @lucene.experimental
  */
 public abstract class FlatVectorsWriter implements Accountable, Closeable {
+  /** Scorer for flat vectors */
+  protected final FlatVectorsScorer vectorsScorer;
 
   /** Sole constructor */
-  protected FlatVectorsWriter() {}
+  protected FlatVectorsWriter(FlatVectorsScorer vectorsScorer) {
+    this.vectorsScorer = vectorsScorer;
+  }
+
+  /**
+   * @return the {@link FlatVectorsScorer} for this reader.
+   */
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return vectorsScorer;
+  }
 
   /**
    * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
