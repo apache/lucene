@@ -6129,16 +6129,14 @@ public class IndexWriter
     validate(info);
     MergePolicy mergePolicy = config.getMergePolicy();
     final ReadersAndUpdates rld = getPooledInstance(info, true);
-    int numDeletesToMerge;
-    if (rld != null) {
-      numDeletesToMerge = rld.numDeletesToMerge(mergePolicy);
-    } else {
-      // if we don't have a  pooled instance lets just return the hard deletes, this is safe!
-      numDeletesToMerge = info.getDelCount();
+    try {
+      final int numDeletesToMerge = rld.numDeletesToMerge(mergePolicy);
+      assert numDeletesToMerge <= info.info.maxDoc()
+          : "numDeletesToMerge: " + numDeletesToMerge + " > maxDoc: " + info.info.maxDoc();
+      return numDeletesToMerge;
+    } finally {
+      release(rld);
     }
-    assert numDeletesToMerge <= info.info.maxDoc()
-        : "numDeletesToMerge: " + numDeletesToMerge + " > maxDoc: " + info.info.maxDoc();
-    return numDeletesToMerge;
   }
 
   void release(ReadersAndUpdates readersAndUpdates) throws IOException {
