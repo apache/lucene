@@ -448,9 +448,9 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       Arrays.sort(
           facetResult.labelValues,
           (a, b) -> {
-            int cmp = Long.compare(b.value.longValue(), a.value.longValue()); // high-to-low
+            int cmp = Long.compare(b.value().longValue(), a.value().longValue()); // high-to-low
             if (cmp == 0) {
-              cmp = a.label.compareTo(b.label); // low-to-high
+              cmp = a.label().compareTo(b.label()); // low-to-high
             }
             return cmp;
           });
@@ -458,8 +458,8 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       for (int i = 0; i < Math.min(topN, maxTopN); i++) {
         String expectedKey = expectedCountsSorted.get(i).getKey();
         int expectedValue = expectedCountsSorted.get(i).getValue();
-        assertEquals(expectedKey, facetResult.labelValues[i].label);
-        assertEquals(expectedValue, facetResult.labelValues[i].value);
+        assertEquals(expectedKey, facetResult.labelValues[i].label());
+        assertEquals(expectedValue, facetResult.labelValues[i].value());
         // make sure getSpecificValue reports the same count
         assertEquals(expectedValue, facets.getSpecificValue("field", expectedKey));
       }
@@ -473,7 +473,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         searcher.search(q, 1);
         assertEquals(
             expectedCountsSorted.get(randomTestValIdx).getValue(),
-            facetResult.labelValues[randomTestValIdx].value);
+            facetResult.labelValues[randomTestValIdx].value());
       }
     }
   }
@@ -511,14 +511,14 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     // and count in ascending order in order to compare with expected results
     Arrays.sort(
         facetResult.labelValues,
-        Comparator.comparing((LabelAndValue a) -> a.label)
-            .thenComparingLong(a -> a.value.longValue()));
+        Comparator.comparing((LabelAndValue a) -> a.label())
+            .thenComparingLong(a -> a.value().longValue()));
 
     for (int i = 0; i < expectedCountsSortedByValue.size(); i++) {
       String expectedKey = expectedCountsSortedByValue.get(i).getKey();
       int expectedValue = expectedCountsSortedByValue.get(i).getValue();
-      assertEquals(expectedKey, facetResult.labelValues[i].label);
-      assertEquals(expectedValue, facetResult.labelValues[i].value);
+      assertEquals(expectedKey, facetResult.labelValues[i].label());
+      assertEquals(expectedValue, facetResult.labelValues[i].value());
       // make sure getSpecificValue reports the same count
       assertEquals(expectedValue, facets.getSpecificValue("field", expectedKey));
     }

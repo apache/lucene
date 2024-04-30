@@ -115,7 +115,7 @@ public final class MultiPostingsEnum extends PostingsEnum {
       } else {
         upto++;
         current = subs[upto].postingsEnum;
-        currentBase = subs[upto].slice.start;
+        currentBase = subs[upto].slice.start();
       }
     }
   }
@@ -129,7 +129,7 @@ public final class MultiPostingsEnum extends PostingsEnum {
         } else {
           upto++;
           current = subs[upto].postingsEnum;
-          currentBase = subs[upto].slice.start;
+          currentBase = subs[upto].slice.start();
         }
       }
 

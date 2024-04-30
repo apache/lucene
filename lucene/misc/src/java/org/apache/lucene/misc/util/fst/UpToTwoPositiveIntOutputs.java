@@ -42,10 +42,7 @@ import org.apache.lucene.util.fst.Outputs;
 public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
 
   /** Holds two long outputs. */
-  public static final class TwoLongs {
-    public final long first;
-    public final long second;
-
+  public record TwoLongs(long first, long second) {
     public TwoLongs(long first, long second) {
       this.first = first;
       this.second = second;

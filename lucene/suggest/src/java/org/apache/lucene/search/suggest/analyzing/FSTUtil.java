@@ -35,28 +35,18 @@ public class FSTUtil {
 
   private FSTUtil() {}
 
-  /** Holds a pair (automaton, fst) of states and accumulated output in the intersected machine. */
-  public static final class Path<T> {
-
-    /** Node in the automaton where path ends: */
-    public final int state;
-
-    /** Node in the FST where path ends: */
-    public final FST.Arc<T> fstNode;
-
-    /** Output of the path so far: */
-    public final T output;
-
-    /** Input of the path so far: */
-    public final IntsRefBuilder input;
+  /**
+   * Holds a pair (automaton, fst) of states and accumulated output in the intersected machine.
+   *
+   * @param state Node in the automaton where path ends:
+   * @param fstNode Node in the FST where path ends:
+   * @param output Output of the path so far:
+   * @param input Input of the path so far:
+   */
+  public record Path<T>(int state, FST.Arc<T> fstNode, T output, IntsRefBuilder input) {
 
     /** Sole constructor. */
-    public Path(int state, FST.Arc<T> fstNode, T output, IntsRefBuilder input) {
-      this.state = state;
-      this.fstNode = fstNode;
-      this.output = output;
-      this.input = input;
-    }
+    public Path {}
   }
 
   /**

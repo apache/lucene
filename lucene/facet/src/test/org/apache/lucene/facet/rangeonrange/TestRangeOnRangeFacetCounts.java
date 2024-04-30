@@ -972,13 +972,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
         }
         LabelAndValue subNode = result.labelValues[rangeID];
-        assertEquals("r" + rangeID, subNode.label);
-        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        assertEquals("r" + rangeID, subNode.label());
+        assertEquals(expectedCounts[rangeID], subNode.value().intValue());
         // test topNChildren and assert topNResults are sorted by count
         if (rangeID < topNResult.labelValues.length) {
           LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
           assertEquals(
-              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value().intValue());
         }
 
         LongRange range = ranges[rangeID];
@@ -1130,13 +1130,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
         }
         LabelAndValue subNode = result.labelValues[rangeID];
-        assertEquals("r" + rangeID, subNode.label);
-        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        assertEquals("r" + rangeID, subNode.label());
+        assertEquals(expectedCounts[rangeID], subNode.value().intValue());
         // test topNChildren and assert topNResults are sorted by count
         if (rangeID < topNResult.labelValues.length) {
           LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
           assertEquals(
-              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value().intValue());
         }
 
         LongRange range = ranges[rangeID];
@@ -1288,13 +1288,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
         }
         LabelAndValue subNode = result.labelValues[rangeID];
-        assertEquals("r" + rangeID, subNode.label);
-        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        assertEquals("r" + rangeID, subNode.label());
+        assertEquals(expectedCounts[rangeID], subNode.value().intValue());
         // test topNChildren and assert topNResults are sorted by count
         if (rangeID < topNResult.labelValues.length) {
           LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
           assertEquals(
-              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value().intValue());
         }
 
         DoubleRange range = ranges[rangeID];
@@ -1447,13 +1447,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
         }
         LabelAndValue subNode = result.labelValues[rangeID];
-        assertEquals("r" + rangeID, subNode.label);
-        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        assertEquals("r" + rangeID, subNode.label());
+        assertEquals(expectedCounts[rangeID], subNode.value().intValue());
         // test topNChildren and assert topNResults are sorted by count
         if (rangeID < topNResult.labelValues.length) {
           LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
           assertEquals(
-              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value().intValue());
         }
 
         DoubleRange range = ranges[rangeID];

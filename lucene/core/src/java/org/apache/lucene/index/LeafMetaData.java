@@ -26,12 +26,8 @@ import org.apache.lucene.util.Version;
  *
  * @lucene.experimental
  */
-public final class LeafMetaData {
-
-  private final int createdVersionMajor;
-  private final Version minVersion;
-  private final Sort sort;
-  private final boolean hasBlocks;
+public record LeafMetaData(
+    int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
 
   /** Expert: Sole constructor. Public for use by custom {@link LeafReader} impls. */
   public LeafMetaData(int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
@@ -57,7 +53,8 @@ public final class LeafMetaData {
    * compatibility on top of the codec API. A return value of {@code 6} indicates that the created
    * version is unknown.
    */
-  public int getCreatedVersionMajor() {
+  @Override
+  public int createdVersionMajor() {
     return createdVersionMajor;
   }
 
@@ -65,7 +62,8 @@ public final class LeafMetaData {
    * Return the minimum Lucene version that contributed documents to this index, or {@code null} if
    * this information is not available.
    */
-  public Version getMinVersion() {
+  @Override
+  public Version minVersion() {
     return minVersion;
   }
 
@@ -73,7 +71,8 @@ public final class LeafMetaData {
    * Return the order in which documents from this index are sorted, or {@code null} if documents
    * are in no particular order.
    */
-  public Sort getSort() {
+  @Override
+  public Sort sort() {
     return sort;
   }
 
@@ -88,6 +87,7 @@ public final class LeafMetaData {
    * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
    * @see IndexWriter#addDocuments(Iterable)
    */
+  @Override
   public boolean hasBlocks() {
     return hasBlocks;
   }

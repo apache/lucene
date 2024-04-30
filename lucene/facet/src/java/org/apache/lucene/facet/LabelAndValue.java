@@ -16,19 +16,15 @@
  */
 package org.apache.lucene.facet;
 
-/** Single label and its value, usually contained in a {@link FacetResult}. */
-public final class LabelAndValue {
-  /** Facet's label. */
-  public final String label;
-
-  /** Value associated with this label. */
-  public final Number value;
-
+/**
+ * Single label and its value, usually contained in a {@link FacetResult}.
+ *
+ * @param label Facet's label.
+ * @param value Value associated with this label.
+ */
+public record LabelAndValue(String label, Number value) {
   /** Sole constructor. */
-  public LabelAndValue(String label, Number value) {
-    this.label = label;
-    this.value = value;
-  }
+  public LabelAndValue {}
 
   @Override
   public String toString() {
@@ -42,10 +38,5 @@ public final class LabelAndValue {
     }
     LabelAndValue other = (LabelAndValue) _other;
     return label.equals(other.label) && value.equals(other.value);
-  }
-
-  @Override
-  public int hashCode() {
-    return label.hashCode() + 1439 * value.hashCode();
   }
 }

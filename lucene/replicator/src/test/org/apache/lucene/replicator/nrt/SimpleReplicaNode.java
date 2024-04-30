@@ -136,7 +136,7 @@ class SimpleReplicaNode extends ReplicaNode {
         c.out.writeByte((byte) 1);
         c.flush();
         copyState = TestSimpleServer.readCopyState(c.in);
-        files = copyState.files;
+        files = copyState.files();
       } else {
         c.out.writeByte((byte) 0);
         copyState = null;

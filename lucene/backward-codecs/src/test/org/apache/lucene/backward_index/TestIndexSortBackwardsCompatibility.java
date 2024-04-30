@@ -72,7 +72,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     final Sort sort;
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       assertEquals(1, reader.leaves().size());
-      sort = reader.leaves().get(0).reader().getMetaData().getSort();
+      sort = reader.leaves().get(0).reader().getMetaData().sort();
       assertNotNull(sort);
       searchExampleIndex(reader);
     }
@@ -140,7 +140,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   public void testSortedIndex() throws Exception {
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       assertEquals(1, reader.leaves().size());
-      Sort sort = reader.leaves().get(0).reader().getMetaData().getSort();
+      Sort sort = reader.leaves().get(0).reader().getMetaData().sort();
       assertNotNull(sort);
       assertEquals("<long: \"dateDV\">!", sort.toString());
       // This will confirm the docs are really sorted

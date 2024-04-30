@@ -173,19 +173,19 @@ public class LongValueFacetCounts extends Facets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      LongValues fv = valueSource.getValues(hits.context, null);
+      LongValues fv = valueSource.getValues(hits.context(), null);
 
       // NOTE: this is not as efficient as working directly with the doc values APIs in the sparse
       // case
       // because we are doing a linear scan across all hits, but this API is more flexible since a
       // LongValuesSource can compute interesting values at query time
 
-      DocIdSetIterator docs = hits.bits.iterator();
+      DocIdSetIterator docs = hits.bits().iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (fv.advanceExact(doc)) {
@@ -202,14 +202,14 @@ public class LongValueFacetCounts extends Facets {
   private void count(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      MultiLongValues multiValues = valuesSource.getValues(hits.context);
+      MultiLongValues multiValues = valuesSource.getValues(hits.context());
 
-      DocIdSetIterator docs = hits.bits.iterator();
+      DocIdSetIterator docs = hits.bits().iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (multiValues.advanceExact(doc)) {
@@ -236,18 +236,20 @@ public class LongValueFacetCounts extends Facets {
   /** Counts from the field's indexed doc values. */
   private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      SortedNumericDocValues multiValues =
+          DocValues.getSortedNumeric(hits.context().reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
       if (singleValues != null) {
 
         DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), singleValues));
+            ConjunctionUtils.intersectIterators(
+                Arrays.asList(hits.bits().iterator(), singleValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           increment(singleValues.longValue());
@@ -256,7 +258,7 @@ public class LongValueFacetCounts extends Facets {
       } else {
 
         DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), multiValues));
+            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), multiValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int limit = multiValues.docValueCount();

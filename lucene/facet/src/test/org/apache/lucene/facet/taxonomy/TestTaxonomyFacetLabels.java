@@ -73,7 +73,7 @@ public class TestTaxonomyFacetLabels extends FacetTestCase {
   }
 
   private List<Integer> allDocIds(MatchingDocs m, boolean decreasingDocIds) throws IOException {
-    DocIdSetIterator disi = m.bits.iterator();
+    DocIdSetIterator disi = m.bits().iterator();
     List<Integer> docIds = new ArrayList<>();
     while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       docIds.add(disi.docID());
@@ -106,7 +106,7 @@ public class TestTaxonomyFacetLabels extends FacetTestCase {
 
     for (MatchingDocs m : matchingDocs) {
       TaxonomyFacetLabels.FacetLabelReader facetLabelReader =
-          taxoLabels.getFacetLabelReader(m.context);
+          taxoLabels.getFacetLabelReader(m.context());
       List<Integer> docIds = allDocIds(m, decreasingDocIds);
       FacetLabel facetLabel;
       for (Integer docId : docIds) {

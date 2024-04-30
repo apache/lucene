@@ -687,8 +687,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   private static FacetResult sortAllChildren(FacetResult allChildrenResult) {
     Arrays.sort(
         allChildrenResult.labelValues,
-        Comparator.comparing((LabelAndValue a) -> a.label)
-            .thenComparingLong(a -> a.value.longValue()));
+        Comparator.comparing((LabelAndValue a) -> a.label())
+            .thenComparingLong(a -> a.value().longValue()));
     return allChildrenResult;
   }
 }

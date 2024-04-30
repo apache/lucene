@@ -222,10 +222,10 @@ public final class Sorter {
     }
     if (metaData.hasBlocks()
         && fieldInfos.getParentField() == null
-        && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+        && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
       throw new CorruptIndexException(
           "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
-              + metaData.getCreatedVersionMajor(),
+              + metaData.createdVersionMajor(),
           "Sorter");
     }
 

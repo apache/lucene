@@ -578,16 +578,7 @@ public final class BKDRadixSelector {
   }
 
   /** Sliced reference to points in an PointWriter. */
-  public static final class PathSlice {
-    public final PointWriter writer;
-    public final long start;
-    public final long count;
-
-    public PathSlice(PointWriter writer, long start, long count) {
-      this.writer = writer;
-      this.start = start;
-      this.count = count;
-    }
+  public record PathSlice(PointWriter writer, long start, long count) {
 
     @Override
     public String toString() {

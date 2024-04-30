@@ -431,14 +431,5 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
     }
   }
 
-  private static class GroupedFacetHit {
-
-    final BytesRef groupValue;
-    final BytesRef facetValue;
-
-    GroupedFacetHit(BytesRef groupValue, BytesRef facetValue) {
-      this.groupValue = groupValue;
-      this.facetValue = facetValue;
-    }
-  }
+  private record GroupedFacetHit(BytesRef groupValue, BytesRef facetValue) {}
 }

@@ -62,21 +62,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     }
   }
 
-  private static class FieldAndShardVersion {
-    private final long version;
-    private final int nodeID;
-    private final String field;
-
-    public FieldAndShardVersion(int nodeID, long version, String field) {
-      this.nodeID = nodeID;
-      this.version = version;
-      this.field = field;
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) (version * nodeID + field.hashCode());
-    }
+  private record FieldAndShardVersion(int nodeID, long version, String field) {
 
     @Override
     public boolean equals(Object _other) {
@@ -101,21 +87,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     }
   }
 
-  private static class TermAndShardVersion {
-    private final long version;
-    private final int nodeID;
-    private final Term term;
-
-    public TermAndShardVersion(int nodeID, long version, Term term) {
-      this.nodeID = nodeID;
-      this.version = version;
-      this.term = term;
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) (version * nodeID + term.hashCode());
-    }
+  private record TermAndShardVersion(int nodeID, long version, Term term) {
 
     @Override
     public boolean equals(Object _other) {
@@ -665,13 +637,5 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
   }
 
   /** An IndexSearcher and associated version (lease) */
-  protected static class SearcherAndVersion {
-    public final IndexSearcher searcher;
-    public final long version;
-
-    public SearcherAndVersion(IndexSearcher searcher, long version) {
-      this.searcher = searcher;
-      this.version = version;
-    }
-  }
+  protected record SearcherAndVersion(IndexSearcher searcher, long version) {}
 }

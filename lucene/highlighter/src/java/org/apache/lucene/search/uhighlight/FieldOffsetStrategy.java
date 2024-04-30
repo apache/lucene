@@ -46,7 +46,7 @@ public abstract class FieldOffsetStrategy {
   }
 
   public String getField() {
-    return components.getField();
+    return components.field();
   }
 
   public abstract UnifiedHighlighter.OffsetSource getOffsetSource();
@@ -69,7 +69,7 @@ public abstract class FieldOffsetStrategy {
     final List<OffsetsEnum> offsetsEnums = new ArrayList<>();
 
     // Handle Weight.matches approach
-    if (components.getHighlightFlags().contains(UnifiedHighlighter.HighlightFlag.WEIGHT_MATCHES)) {
+    if (components.highlightFlags().contains(UnifiedHighlighter.HighlightFlag.WEIGHT_MATCHES)) {
 
       createOffsetsEnumsWeightMatcher(leafReader, doc, offsetsEnums);
 
@@ -77,8 +77,8 @@ public abstract class FieldOffsetStrategy {
 
       // Handle position insensitive terms (a subset of this.terms field):
       final BytesRef[] insensitiveTerms;
-      final PhraseHelper phraseHelper = components.getPhraseHelper();
-      final BytesRef[] terms = components.getTerms();
+      final PhraseHelper phraseHelper = components.phraseHelper();
+      final BytesRef[] terms = components.terms();
       if (phraseHelper.hasPositionSensitivity()) {
         insensitiveTerms = phraseHelper.getAllPositionInsensitiveTerms();
         assert insensitiveTerms.length <= terms.length
@@ -96,7 +96,7 @@ public abstract class FieldOffsetStrategy {
       }
 
       // Handle automata
-      if (components.getAutomata().length > 0) {
+      if (components.automata().length > 0) {
         createOffsetsEnumsForAutomata(termsIndex, doc, offsetsEnums);
       }
     }
@@ -118,8 +118,8 @@ public abstract class FieldOffsetStrategy {
         new FilterLeafReader(_leafReader) {
           @Override
           public Terms terms(String field) throws IOException {
-            if (components.getFieldMatcher().test(field)) {
-              return super.terms(components.getField());
+            if (components.fieldMatcher().test(field)) {
+              return super.terms(components.field());
             } else {
               return super.terms(field);
             }
@@ -142,14 +142,14 @@ public abstract class FieldOffsetStrategy {
     indexSearcher.setQueryCache(null);
     Matches matches =
         indexSearcher
-            .rewrite(components.getQuery())
+            .rewrite(components.query())
             .createWeight(indexSearcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f)
             .matches(leafReader.getContext(), docId);
     if (matches == null) {
       return; // doc doesn't match
     }
     for (String field : matches) {
-      if (components.getFieldMatcher().test(field)) {
+      if (components.fieldMatcher().test(field)) {
         MatchesIterator iterator = matches.getMatches(field);
         if (iterator == null) {
           continue;
@@ -180,7 +180,7 @@ public abstract class FieldOffsetStrategy {
 
   protected void createOffsetsEnumsForAutomata(Terms termsIndex, int doc, List<OffsetsEnum> results)
       throws IOException {
-    final LabelledCharArrayMatcher[] automata = components.getAutomata();
+    final LabelledCharArrayMatcher[] automata = components.automata();
     List<List<PostingsEnum>> automataPostings = new ArrayList<>(automata.length);
     for (int i = 0; i < automata.length; i++) {
       automataPostings.add(new ArrayList<>());

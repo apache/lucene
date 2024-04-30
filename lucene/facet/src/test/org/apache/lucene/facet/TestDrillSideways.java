@@ -1482,7 +1482,8 @@ public class TestDrillSideways extends FacetTestCase {
         // context, which happens as part of #finish getting called:
         assertEquals(1, result.drillDownFacetsCollector.getMatchingDocs().size());
         assertEquals(
-            1, result.drillDownFacetsCollector.getMatchingDocs().get(0).context.reader().maxDoc());
+            1,
+            result.drillDownFacetsCollector.getMatchingDocs().get(0).context().reader().maxDoc());
         assertEquals(1, result.drillSidewaysFacetsCollector.length);
         assertEquals(1, result.drillSidewaysFacetsCollector[0].getMatchingDocs().size());
         assertEquals(
@@ -1491,7 +1492,7 @@ public class TestDrillSideways extends FacetTestCase {
                 .drillSidewaysFacetsCollector[0]
                 .getMatchingDocs()
                 .get(0)
-                .context
+                .context()
                 .reader()
                 .maxDoc());
       }
@@ -1557,15 +1558,7 @@ public class TestDrillSideways extends FacetTestCase {
     Facets facets;
   }
 
-  private static class CollectedResult {
-    final DocAndScore docAndScore;
-    final String id;
-
-    CollectedResult(DocAndScore docAndScore, String id) {
-      this.docAndScore = docAndScore;
-      this.id = id;
-    }
-  }
+  private record CollectedResult(DocAndScore docAndScore, String id) {}
 
   private abstract static class SimpleLeafCollector implements LeafCollector {
     protected Scorable scorer;
@@ -1900,10 +1893,15 @@ public class TestDrillSideways extends FacetTestCase {
 
       if (fr != null) {
         for (LabelAndValue labelValue : fr.labelValues) {
-          actualValues.put(labelValue.label, labelValue.value.intValue());
+          actualValues.put(labelValue.label(), labelValue.value().intValue());
           if (VERBOSE) {
             System.out.println(
-                "        " + idx + ": " + new BytesRef(labelValue.label) + ": " + labelValue.value);
+                "        "
+                    + idx
+                    + ": "
+                    + new BytesRef(labelValue.label())
+                    + ": "
+                    + labelValue.value());
             idx++;
           }
         }
@@ -1938,11 +1936,12 @@ public class TestDrillSideways extends FacetTestCase {
         }
         for (int i = 0; i < topNIDs.length; i++) {
           int expectedOrd = topNIDs[i];
-          assertEquals(expected.counts[dim][expectedOrd], fr.labelValues[i].value.intValue());
+          assertEquals(expected.counts[dim][expectedOrd], fr.labelValues[i].value().intValue());
           if (isSortedSetDV) {
             // Tie-break facet labels are only in unicode
             // order with SortedSetDVFacets:
-            assertEquals("value @ idx=" + i, dimValues[dim][expectedOrd], fr.labelValues[i].label);
+            assertEquals(
+                "value @ idx=" + i, dimValues[dim][expectedOrd], fr.labelValues[i].label());
           }
         }
       } else {

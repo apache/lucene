@@ -26,11 +26,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
  * @see ExtendableQueryParser
  * @see ParserExtension
  */
-public class ExtensionQuery {
-
-  private final String field;
-  private final String rawQueryString;
-  private final QueryParser topLevelParser;
+public record ExtensionQuery(QueryParser topLevelParser, String field, String rawQueryString) {
 
   /**
    * Creates a new {@link ExtensionQuery}
@@ -38,18 +34,15 @@ public class ExtensionQuery {
    * @param field the query field
    * @param rawQueryString the raw extension query string
    */
-  public ExtensionQuery(QueryParser topLevelParser, String field, String rawQueryString) {
-    this.field = field;
-    this.rawQueryString = rawQueryString;
-    this.topLevelParser = topLevelParser;
-  }
+  public ExtensionQuery {}
 
   /**
    * Returns the query field
    *
    * @return the query field
    */
-  public String getField() {
+  @Override
+  public String field() {
     return field;
   }
 
@@ -58,7 +51,8 @@ public class ExtensionQuery {
    *
    * @return the raw extension query string
    */
-  public String getRawQueryString() {
+  @Override
+  public String rawQueryString() {
     return rawQueryString;
   }
 
@@ -67,7 +61,8 @@ public class ExtensionQuery {
    *
    * @return the top level parser which created this {@link ExtensionQuery}
    */
-  public QueryParser getTopLevelParser() {
+  @Override
+  public QueryParser topLevelParser() {
     return topLevelParser;
   }
 }

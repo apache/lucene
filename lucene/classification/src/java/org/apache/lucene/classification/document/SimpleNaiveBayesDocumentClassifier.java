@@ -80,9 +80,9 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> c : assignedClasses) {
-      if (c.getScore() > maxscore) {
+      if (c.score() > maxscore) {
         assignedClass = c;
-        maxscore = c.getScore();
+        maxscore = c.score();
       }
     }
     return assignedClass;

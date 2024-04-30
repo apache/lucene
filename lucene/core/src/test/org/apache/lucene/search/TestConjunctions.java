@@ -153,7 +153,7 @@ public class TestConjunctions extends LuceneTestCase {
       assertEquals(2, childScorers.size());
       Set<String> terms = new HashSet<>();
       for (Scorer.ChildScorable childScorer : childScorers) {
-        Query query = ((Scorer) childScorer.child).getWeight().getQuery();
+        Query query = ((Scorer) childScorer.child()).getWeight().getQuery();
         assertTrue(query instanceof TermQuery);
         Term term = ((TermQuery) query).getTerm();
         assertEquals("field", term.field());

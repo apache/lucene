@@ -138,7 +138,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
     assertEquals(7, values.longValue());
     assertEquals(2, values.nextDoc());
     assertEquals(18, values.longValue());
-    assertNotNull(leaf.getMetaData().getSort());
+    assertNotNull(leaf.getMetaData().sort());
     IOUtils.close(r, w, dir, tmpDir);
   }
 

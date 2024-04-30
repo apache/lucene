@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
@@ -447,14 +446,8 @@ class GeneratingSuggester {
     return commonScore;
   }
 
-  private static class Weighted<T extends Comparable<T>> implements Comparable<Weighted<T>> {
-    final T word;
-    final int score;
-
-    Weighted(T word, int score) {
-      this.word = word;
-      this.score = score;
-    }
+  private record Weighted<T extends Comparable<T>>(T word, int score)
+      implements Comparable<Weighted<T>> {
 
     @Override
     public boolean equals(Object o) {
@@ -463,11 +456,6 @@ class GeneratingSuggester {
       @SuppressWarnings("unchecked")
       Weighted<T> that = (Weighted<T>) o;
       return score == that.score && word.equals(that.word);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(word, score);
     }
 
     @Override

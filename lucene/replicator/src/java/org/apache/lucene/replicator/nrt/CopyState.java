@@ -25,19 +25,17 @@ import org.apache.lucene.index.SegmentInfos;
 /**
  * Holds incRef'd file level details for one point-in-time segment infos on the primary node.
  *
+ * @param infos only non-null on the primary node
  * @lucene.experimental
  */
-public class CopyState {
-
-  public final Map<String, FileMetaData> files;
-  public final long version;
-  public final long gen;
-  public final byte[] infosBytes;
-  public final Set<String> completedMergeFiles;
-  public final long primaryGen;
-
-  // only non-null on the primary node
-  public final SegmentInfos infos;
+public record CopyState(
+    Map<String, FileMetaData> files,
+    long version,
+    long gen,
+    byte[] infosBytes,
+    Set<String> completedMergeFiles,
+    long primaryGen,
+    SegmentInfos infos) {
 
   public CopyState(
       Map<String, FileMetaData> files,

@@ -50,11 +50,7 @@ import org.apache.lucene.util.BytesRef;
 // TODO: actually add missing cross-checks to guarantee TermStatistics is in bounds of
 // CollectionStatistics,
 // otherwise many similarity functions will implode.
-public class TermStatistics {
-  private final BytesRef term;
-  private final long docFreq;
-  private final long totalTermFreq;
-
+public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
   /**
    * Creates statistics instance for a term.
    *
@@ -65,7 +61,7 @@ public class TermStatistics {
    * @throws IllegalArgumentException if {@code docFreq} is negative or zero.
    * @throws IllegalArgumentException if {@code totalTermFreq} is less than {@code docFreq}.
    */
-  public TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
+  public TermStatistics {
     Objects.requireNonNull(term);
     if (docFreq <= 0) {
       throw new IllegalArgumentException("docFreq must be positive, docFreq: " + docFreq);
@@ -81,9 +77,6 @@ public class TermStatistics {
               + ", docFreq: "
               + docFreq);
     }
-    this.term = term;
-    this.docFreq = docFreq;
-    this.totalTermFreq = totalTermFreq;
   }
 
   /**
@@ -93,7 +86,8 @@ public class TermStatistics {
    *
    * @return term's text, not {@code null}
    */
-  public final BytesRef term() {
+  @Override
+  public BytesRef term() {
     return term;
   }
 
@@ -109,7 +103,8 @@ public class TermStatistics {
    * @return document frequency, in the range [1 .. {@link #totalTermFreq()}]
    * @see TermsEnum#docFreq()
    */
-  public final long docFreq() {
+  @Override
+  public long docFreq() {
     return docFreq;
   }
 
@@ -126,7 +121,8 @@ public class TermStatistics {
    *     CollectionStatistics#sumTotalTermFreq()}]
    * @see TermsEnum#totalTermFreq()
    */
-  public final long totalTermFreq() {
+  @Override
+  public long totalTermFreq() {
     return totalTermFreq;
   }
 

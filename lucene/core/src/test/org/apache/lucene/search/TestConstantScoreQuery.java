@@ -107,7 +107,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
       try {
         Collection<Scorable.ChildScorable> children = s.getChildren();
         if (children.size() == 0) return s;
-        s = children.stream().findFirst().get().child;
+        s = children.stream().findFirst().get().child();
       } catch (
           @SuppressWarnings("unused")
           Exception e) {

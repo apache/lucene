@@ -47,13 +47,8 @@ import org.apache.lucene.index.Terms; // javadocs
  *
  * @lucene.experimental
  */
-public class CollectionStatistics {
-  private final String field;
-  private final long maxDoc;
-  private final long docCount;
-  private final long sumTotalTermFreq;
-  private final long sumDocFreq;
-
+public record CollectionStatistics(
+    String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
   /**
    * Creates statistics instance for a collection (field).
    *
@@ -68,8 +63,7 @@ public class CollectionStatistics {
    * @throws IllegalArgumentException if {@code sumDocFreq} is less than {@code docCount}.
    * @throws IllegalArgumentException if {@code sumTotalTermFreq} is less than {@code sumDocFreq}.
    */
-  public CollectionStatistics(
-      String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
+  public CollectionStatistics {
     Objects.requireNonNull(field);
     if (maxDoc <= 0) {
       throw new IllegalArgumentException("maxDoc must be positive, maxDoc: " + maxDoc);
@@ -102,11 +96,6 @@ public class CollectionStatistics {
               + ", sumDocFreq: "
               + sumDocFreq);
     }
-    this.field = field;
-    this.maxDoc = maxDoc;
-    this.docCount = docCount;
-    this.sumTotalTermFreq = sumTotalTermFreq;
-    this.sumDocFreq = sumDocFreq;
   }
 
   /**
@@ -116,7 +105,8 @@ public class CollectionStatistics {
    *
    * @return field's name, not {@code null}
    */
-  public final String field() {
+  @Override
+  public String field() {
     return field;
   }
 
@@ -128,7 +118,8 @@ public class CollectionStatistics {
    * @return total number of documents, in the range [1 .. {@link Long#MAX_VALUE}]
    * @see IndexReader#maxDoc()
    */
-  public final long maxDoc() {
+  @Override
+  public long maxDoc() {
     return maxDoc;
   }
 
@@ -140,7 +131,8 @@ public class CollectionStatistics {
    * @return total number of documents containing this field, in the range [1 .. {@link #maxDoc()}]
    * @see Terms#getDocCount()
    */
-  public final long docCount() {
+  @Override
+  public long docCount() {
     return docCount;
   }
 
@@ -155,7 +147,8 @@ public class CollectionStatistics {
    *     Long#MAX_VALUE}]
    * @see Terms#getSumTotalTermFreq()
    */
-  public final long sumTotalTermFreq() {
+  @Override
+  public long sumTotalTermFreq() {
     return sumTotalTermFreq;
   }
 
@@ -171,7 +164,8 @@ public class CollectionStatistics {
    *     #sumTotalTermFreq()}]
    * @see Terms#getSumDocFreq()
    */
-  public final long sumDocFreq() {
+  @Override
+  public long sumDocFreq() {
     return sumDocFreq;
   }
 

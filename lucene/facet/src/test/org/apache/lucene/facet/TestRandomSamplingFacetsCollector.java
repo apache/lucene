@@ -85,7 +85,7 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
 
     // There should be no results at all
     for (MatchingDocs doc : collectRandomZeroResults.getMatchingDocs()) {
-      assertEquals(0, doc.totalHits);
+      assertEquals(0, doc.totalHits());
     }
 
     // Now start searching and retrieve results.
@@ -106,17 +106,17 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
     //    System.out.println("numSegments=" + numSampledDocs.length);
     for (int i = 0; i < numSampledDocs.length; i++) {
       MatchingDocs md = matchingDocs.get(i);
-      final DocIdSetIterator iter = md.bits.iterator();
+      final DocIdSetIterator iter = md.bits().iterator();
       while (iter.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) ++numSampledDocs[i];
       totalSampledDocs += numSampledDocs[i];
-      totalHits += md.totalHits;
+      totalHits += md.totalHits();
     }
 
     // compute the chi-square value for the sampled documents' distribution
     float chi_square = 0;
     for (int i = 0; i < numSampledDocs.length; i++) {
       MatchingDocs md = matchingDocs.get(i);
-      float ei = (float) md.totalHits / totalHits;
+      float ei = (float) md.totalHits() / totalHits;
       if (ei > 0.0f) {
         float oi = (float) numSampledDocs[i] / totalSampledDocs;
         chi_square += (Math.pow(ei - oi, 2) / ei);
@@ -143,8 +143,8 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
       LabelAndValue sampled = random10Result.labelValues[i];
       // since numDocs may not divide by 10 exactly, allow for some slack in the amortized count
       assertEquals(
-          amortized.value.floatValue(),
-          Math.min(5 * sampled.value.floatValue(), numDocs / 10.f),
+          amortized.value().floatValue(),
+          Math.min(5 * sampled.value().floatValue(), numDocs / 10.f),
           1.0);
     }
 

@@ -59,12 +59,12 @@ public class PatternTypingFilter extends TokenFilter {
   public final boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       for (PatternTypingRule rule : replacementAndFlagByPattern) {
-        Matcher matcher = rule.getPattern().matcher(termAtt);
+        Matcher matcher = rule.pattern().matcher(termAtt);
         if (matcher.find()) {
           // allow 2nd reset() and find() that occurs inside replaceFirst to avoid excess string
           // creation
-          typeAtt.setType(matcher.replaceFirst(rule.getTypeTemplate()));
-          flagAtt.setFlags(rule.getFlags());
+          typeAtt.setType(matcher.replaceFirst(rule.typeTemplate()));
+          flagAtt.setFlags(rule.flags());
           return true;
         }
       }
@@ -74,27 +74,5 @@ public class PatternTypingFilter extends TokenFilter {
   }
 
   /** Value holding class for pattern typing rules. */
-  public static class PatternTypingRule {
-    private final Pattern pattern;
-    private final int flags;
-    private final String typeTemplate;
-
-    public PatternTypingRule(Pattern pattern, int flags, String typeTemplate) {
-      this.pattern = pattern;
-      this.flags = flags;
-      this.typeTemplate = typeTemplate;
-    }
-
-    public Pattern getPattern() {
-      return pattern;
-    }
-
-    public int getFlags() {
-      return flags;
-    }
-
-    public String getTypeTemplate() {
-      return typeTemplate;
-    }
-  }
+  public record PatternTypingRule(Pattern pattern, int flags, String typeTemplate) {}
 }

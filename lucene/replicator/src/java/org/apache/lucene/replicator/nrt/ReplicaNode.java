@@ -249,7 +249,7 @@ public abstract class ReplicaNode extends Node {
                   null);
           job.start();
 
-          message("top: init: sync sis.version=" + job.getCopyState().version);
+          message("top: init: sync sis.version=" + job.getCopyState().version());
 
           // Force this copy job to finish while we wait, now.  Note that this can be very time
           // consuming!
@@ -272,17 +272,17 @@ public abstract class ReplicaNode extends Node {
           }
         }
 
-        lastPrimaryGen = job.getCopyState().primaryGen;
+        lastPrimaryGen = job.getCopyState().primaryGen();
 
         SegmentInfos syncInfos =
             SegmentInfos.readCommit(
-                dir, toIndexInput(job.getCopyState().infosBytes), job.getCopyState().gen);
+                dir, toIndexInput(job.getCopyState().infosBytes()), job.getCopyState().gen());
 
         // Must always commit to a larger generation than what's currently in the index:
         syncInfos.updateGeneration(infos);
         infos = syncInfos;
 
-        assert infos.getVersion() == job.getCopyState().version;
+        assert infos.getVersion() == job.getCopyState().version();
         message("  version=" + infos.getVersion() + " segments=" + infos.toString());
         message("top: init: incRef nrtFiles=" + job.getFileNames());
         deleter.incRef(job.getFileNames());
@@ -293,7 +293,7 @@ public abstract class ReplicaNode extends Node {
         lastNRTFiles.addAll(job.getFileNames());
 
         message("top: init: set lastNRTFiles=" + lastNRTFiles);
-        lastFileMetaData = job.getCopyState().files;
+        lastFileMetaData = job.getCopyState().files();
         message(
             String.format(
                 Locale.ROOT,
@@ -301,7 +301,7 @@ public abstract class ReplicaNode extends Node {
                 id,
                 (System.nanoTime() - initSyncStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
                 bytesToString(job.getTotalBytesCopied()),
-                job.getCopyState().version));
+                job.getCopyState().version()));
 
         doCommit = true;
       } else {
@@ -406,7 +406,7 @@ public abstract class ReplicaNode extends Node {
     CopyState copyState = job.getCopyState();
     message(
         "top: finishNRTCopy: version="
-            + copyState.version
+            + copyState.version()
             + (job.getFailed() ? " FAILED" : "")
             + " job="
             + job);
@@ -437,8 +437,8 @@ public abstract class ReplicaNode extends Node {
 
       // Turn byte[] back to SegmentInfos:
       SegmentInfos infos =
-          SegmentInfos.readCommit(dir, toIndexInput(copyState.infosBytes), copyState.gen);
-      assert infos.getVersion() == copyState.version;
+          SegmentInfos.readCommit(dir, toIndexInput(copyState.infosBytes()), copyState.gen());
+      assert infos.getVersion() == copyState.version();
 
       message("  version=" + infos.getVersion() + " segments=" + infos.toString());
 
@@ -447,7 +447,7 @@ public abstract class ReplicaNode extends Node {
 
       // Must first incRef new NRT files, then decRef old ones, to make sure we don't remove an NRT
       // file that's in common to both:
-      Collection<String> newFiles = copyState.files.keySet();
+      Collection<String> newFiles = copyState.files().keySet();
       message("top: incRef newNRTFiles=" + newFiles);
       deleter.incRef(newFiles);
 
@@ -467,9 +467,10 @@ public abstract class ReplicaNode extends Node {
       // finishes, copies its files out to us, but is then merged away (or dropped due to 100%
       // deletions) before we ever cutover to it
       // in an NRT point:
-      if (copyState.completedMergeFiles.isEmpty() == false) {
-        message("now remove-if-not-ref'd completed merge files: " + copyState.completedMergeFiles);
-        for (String fileName : copyState.completedMergeFiles) {
+      if (copyState.completedMergeFiles().isEmpty() == false) {
+        message(
+            "now remove-if-not-ref'd completed merge files: " + copyState.completedMergeFiles());
+        for (String fileName : copyState.completedMergeFiles()) {
           if (pendingMergeFiles.contains(fileName)) {
             pendingMergeFiles.remove(fileName);
             deleter.deleteIfNoRef(fileName);
@@ -477,7 +478,7 @@ public abstract class ReplicaNode extends Node {
         }
       }
 
-      lastFileMetaData = copyState.files;
+      lastFileMetaData = copyState.files();
     }
 
     int markerCount;
@@ -494,7 +495,7 @@ public abstract class ReplicaNode extends Node {
             "top: done sync: took %.3fs for %s, opened NRT reader version=%d markerCount=%d",
             (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1),
             bytesToString(job.getTotalBytesCopied()),
-            copyState.version,
+            copyState.version(),
             markerCount));
   }
 
@@ -609,7 +610,7 @@ public abstract class ReplicaNode extends Node {
       return null;
     }
 
-    assert newPrimaryGen == job.getCopyState().primaryGen;
+    assert newPrimaryGen == job.getCopyState().primaryGen();
 
     Collection<String> newNRTFiles = job.getFileNames();
 
@@ -865,8 +866,8 @@ public abstract class ReplicaNode extends Node {
       return false;
     }
 
-    if (Arrays.equals(destMetaData.header, srcMetaData.header) == false
-        || Arrays.equals(destMetaData.footer, srcMetaData.footer) == false) {
+    if (Arrays.equals(destMetaData.header(), srcMetaData.header()) == false
+        || Arrays.equals(destMetaData.footer(), srcMetaData.footer()) == false) {
       // Segment name was reused!  This is rare but possible and otherwise devastating:
       if (Node.VERBOSE_FILES) {
         message("file " + fileName + ": will copy [header/footer is different]");

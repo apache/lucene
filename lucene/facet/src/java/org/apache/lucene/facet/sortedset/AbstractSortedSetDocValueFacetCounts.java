@@ -420,13 +420,5 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
   }
 
-  static final class ChildIterationCursor {
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-
-    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
-      this.pathOrd = pathOrd;
-      this.childIterator = childIterator;
-    }
-  }
+  record ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {}
 }

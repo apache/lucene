@@ -69,8 +69,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
     TaxonomyFacetLabels taxoLabels =
         new TaxonomyFacetLabels(taxoReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
     for (MatchingDocs m : fc.getMatchingDocs()) {
-      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context);
-      DocIdSetIterator disi = m.bits.iterator();
+      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context());
+      DocIdSetIterator disi = m.bits().iterator();
       while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         actualLabels.add(allFacetLabels(disi.docID(), dimension, facetLabelReader));
       }
@@ -170,7 +170,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
     int numInRow = 0;
     int i = 0;
     while (i <= labelValues.length) {
-      if (i < labelValues.length && labelValues[i].value.doubleValue() == lastValue) {
+      if (i < labelValues.length && labelValues[i].value().doubleValue() == lastValue) {
         numInRow++;
       } else {
         if (numInRow > 1) {
@@ -181,14 +181,14 @@ public abstract class FacetTestCase extends LuceneTestCase {
               new Comparator<LabelAndValue>() {
                 @Override
                 public int compare(LabelAndValue a, LabelAndValue b) {
-                  assert a.value.doubleValue() == b.value.doubleValue();
-                  return new BytesRef(a.label).compareTo(new BytesRef(b.label));
+                  assert a.value().doubleValue() == b.value().doubleValue();
+                  return new BytesRef(a.label()).compareTo(new BytesRef(b.label()));
                 }
               });
         }
         numInRow = 1;
         if (i < labelValues.length) {
-          lastValue = labelValues[i].value.doubleValue();
+          lastValue = labelValues[i].value().doubleValue();
         }
       }
       i++;
@@ -201,12 +201,12 @@ public abstract class FacetTestCase extends LuceneTestCase {
         new Comparator<LabelAndValue>() {
           @Override
           public int compare(LabelAndValue a, LabelAndValue b) {
-            if (a.value.doubleValue() > b.value.doubleValue()) {
+            if (a.value().doubleValue() > b.value().doubleValue()) {
               return -1;
-            } else if (a.value.doubleValue() < b.value.doubleValue()) {
+            } else if (a.value().doubleValue() < b.value().doubleValue()) {
               return 1;
             } else {
-              return new BytesRef(a.label).compareTo(new BytesRef(b.label));
+              return new BytesRef(a.label()).compareTo(new BytesRef(b.label()));
             }
           }
         });
@@ -257,8 +257,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
     assertNumericValuesEquals(a.value, b.value);
     assertEquals(a.labelValues.length, b.labelValues.length);
     for (int i = 0; i < a.labelValues.length; i++) {
-      assertEquals(a.labelValues[i].label, b.labelValues[i].label);
-      assertNumericValuesEquals(a.labelValues[i].value, b.labelValues[i].value);
+      assertEquals(a.labelValues[i].label(), b.labelValues[i].label());
+      assertNumericValuesEquals(a.labelValues[i].value(), b.labelValues[i].value());
     }
   }
 

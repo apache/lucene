@@ -642,14 +642,7 @@ public final class SynonymQuery extends Query {
     }
   }
 
-  private static class TermAndBoost {
-    final BytesRef term;
-    final float boost;
-
-    TermAndBoost(BytesRef term, float boost) {
-      this.term = term;
-      this.boost = boost;
-    }
+  private record TermAndBoost(BytesRef term, float boost) {
 
     @Override
     public boolean equals(Object o) {
@@ -657,11 +650,6 @@ public final class SynonymQuery extends Query {
       if (o == null || getClass() != o.getClass()) return false;
       TermAndBoost that = (TermAndBoost) o;
       return Float.compare(that.boost, boost) == 0 && Objects.equals(term, that.term);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(term, boost);
     }
   }
 }

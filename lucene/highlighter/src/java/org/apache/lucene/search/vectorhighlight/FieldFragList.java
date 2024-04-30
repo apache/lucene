@@ -101,37 +101,15 @@ public abstract class FieldFragList {
       return sb.toString();
     }
 
-    /** Represents the list of term offsets for some text */
-    public static class SubInfo {
-      private final String text; // unnecessary member, just exists for debugging purpose
-      // usually termsOffsets.size() == 1,
-      // but if position-gap > 1 and slop > 0 then size() could be greater than 1
-      private final List<Toffs> termsOffsets;
-      private final int seqnum;
-      private final float boost; // used for scoring split WeightedPhraseInfos.
-
-      public SubInfo(String text, List<Toffs> termsOffsets, int seqnum, float boost) {
-        this.text = text;
-        this.termsOffsets = termsOffsets;
-        this.seqnum = seqnum;
-        this.boost = boost;
-      }
-
-      public List<Toffs> getTermsOffsets() {
-        return termsOffsets;
-      }
-
-      public int getSeqnum() {
-        return seqnum;
-      }
-
-      public String getText() {
-        return text;
-      }
-
-      public float getBoost() {
-        return boost;
-      }
+    /**
+     * Represents the list of term offsets for some text
+     *
+     * @param text unnecessary member, just exists for debugging purpose
+     * @param termsOffsets usually termsOffsets.size() == 1, but if position-gap > 1 and slop > 0
+     *     then size() could be greater than 1
+     * @param boost used for scoring split WeightedPhraseInfos.
+     */
+    public record SubInfo(String text, List<Toffs> termsOffsets, int seqnum, float boost) {
 
       @Override
       public String toString() {

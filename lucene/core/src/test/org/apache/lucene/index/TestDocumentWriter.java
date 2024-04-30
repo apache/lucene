@@ -388,26 +388,12 @@ public class TestDocumentWriter extends LuceneTestCase {
                 field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 
-  private static class MockIndexableField implements IndexableField {
-
-    private final String field;
-    private final BytesRef value;
-    private final IndexableFieldType fieldType;
-
-    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
-      this.field = field;
-      this.value = value;
-      this.fieldType = fieldType;
-    }
+  private record MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType)
+      implements IndexableField {
 
     @Override
     public String name() {
       return field;
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return fieldType;
     }
 
     @Override

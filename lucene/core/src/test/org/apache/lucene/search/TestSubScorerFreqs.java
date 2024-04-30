@@ -80,14 +80,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
     dir = null;
   }
 
-  private static class CountingCollectorManager
+  private record CountingCollectorManager(Set<String> relationships)
       implements CollectorManager<CountingCollector, Map<Integer, Map<Query, Float>>> {
-
-    private final Set<String> relationships;
-
-    CountingCollectorManager(Set<String> relationships) {
-      this.relationships = relationships;
-    }
 
     @Override
     public CountingCollector newCollector() {
@@ -126,8 +120,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
     public void setSubScorers(Scorable scorer) throws IOException {
       scorer = AssertingScorable.unwrap(scorer);
       for (Scorable.ChildScorable child : scorer.getChildren()) {
-        if (relationships.contains(child.relationship)) {
-          setSubScorers(child.child);
+        if (relationships.contains(child.relationship())) {
+          setSubScorers(child.child());
         }
       }
       subScorers.put(((Scorer) scorer).getWeight().getQuery(), (Scorer) scorer);

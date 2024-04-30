@@ -34,19 +34,14 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
 
   private static final BytesRef NO_BYTES = new BytesRef();
 
-  public static final class Output {
-    public final BytesRef bytes;
-    // Inclusive:
-    public final long startOrd;
-    // Inclusive:
-    public final long endOrd;
-
-    public Output(BytesRef bytes, long startOrd, long endOrd) {
+  /**
+   * @param startOrd Inclusive:
+   * @param endOrd Inclusive:
+   */
+  public record Output(BytesRef bytes, long startOrd, long endOrd) {
+    public Output {
       assert startOrd >= 0 : "startOrd=" + startOrd;
       assert endOrd >= 0 : "endOrd=" + endOrd;
-      this.bytes = bytes;
-      this.startOrd = startOrd;
-      this.endOrd = endOrd;
     }
 
     @Override

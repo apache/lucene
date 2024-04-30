@@ -144,14 +144,7 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
   }
 
   // read-only
-  static class SimpleTextBits implements Bits {
-    final BitSet bits;
-    final int size;
-
-    SimpleTextBits(BitSet bits, int size) {
-      this.bits = bits;
-      this.size = size;
-    }
+  record SimpleTextBits(BitSet bits, int size) implements Bits {
 
     @Override
     public boolean get(int index) {

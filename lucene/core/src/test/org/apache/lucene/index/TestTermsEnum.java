@@ -625,15 +625,7 @@ public class TestTermsEnum extends LuceneTestCase {
     }
   }
 
-  private static class TermAndState {
-    public final BytesRef term;
-    public final TermState state;
-
-    public TermAndState(BytesRef term, TermState state) {
-      this.term = term;
-      this.state = state;
-    }
-  }
+  private record TermAndState(BytesRef term, TermState state) {}
 
   private void testRandomSeeks(IndexReader r, String... validTermStrings) throws IOException {
     final BytesRef[] validTerms = new BytesRef[validTermStrings.length];

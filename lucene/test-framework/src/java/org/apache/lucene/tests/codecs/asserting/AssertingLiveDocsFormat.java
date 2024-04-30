@@ -68,9 +68,7 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
     return "Asserting(" + in + ")";
   }
 
-  static class AssertingBits implements Bits {
-    final Bits in;
-
+  record AssertingBits(Bits in) implements Bits {
     AssertingBits(Bits in) {
       this.in = in;
       assert in.length() >= 0;

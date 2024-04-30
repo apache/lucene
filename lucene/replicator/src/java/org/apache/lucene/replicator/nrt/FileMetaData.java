@@ -21,26 +21,12 @@ package org.apache.lucene.replicator.nrt;
  * Holds metadata details about a single file that we use to confirm two files (one remote, one
  * local) are in fact "identical".
  *
+ * @param header Header and footer of the file must be identical between primary and replica to
+ *     consider the files equal:
+ * @param checksum Used to ensure no bit flips when copying the file:
  * @lucene.experimental
  */
-public class FileMetaData {
-
-  // Header and footer of the file must be identical between primary and replica to consider the
-  // files equal:
-  public final byte[] header;
-  public final byte[] footer;
-
-  public final long length;
-
-  // Used to ensure no bit flips when copying the file:
-  public final long checksum;
-
-  public FileMetaData(byte[] header, byte[] footer, long length, long checksum) {
-    this.header = header;
-    this.footer = footer;
-    this.length = length;
-    this.checksum = checksum;
-  }
+public record FileMetaData(byte[] header, byte[] footer, long length, long checksum) {
 
   @Override
   public String toString() {

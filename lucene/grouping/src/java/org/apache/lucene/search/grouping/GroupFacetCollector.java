@@ -229,15 +229,7 @@ public abstract class GroupFacetCollector extends SimpleCollector {
   }
 
   /** Represents a facet entry with a value and a count. */
-  public static class FacetEntry {
-
-    private final BytesRef value;
-    private final int count;
-
-    public FacetEntry(BytesRef value, int count) {
-      this.value = value;
-      this.count = count;
-    }
+  public record FacetEntry(BytesRef value, int count) {
 
     @Override
     public boolean equals(Object o) {
@@ -253,13 +245,6 @@ public abstract class GroupFacetCollector extends SimpleCollector {
     }
 
     @Override
-    public int hashCode() {
-      int result = value.hashCode();
-      result = 31 * result + count;
-      return result;
-    }
-
-    @Override
     public String toString() {
       return "FacetEntry{" + "value=" + value.utf8ToString() + ", count=" + count + '}';
     }
@@ -267,14 +252,16 @@ public abstract class GroupFacetCollector extends SimpleCollector {
     /**
      * @return The value of this facet entry
      */
-    public BytesRef getValue() {
+    @Override
+    public BytesRef value() {
       return value;
     }
 
     /**
      * @return The count (number of groups) of this facet entry.
      */
-    public int getCount() {
+    @Override
+    public int count() {
       return count;
     }
   }

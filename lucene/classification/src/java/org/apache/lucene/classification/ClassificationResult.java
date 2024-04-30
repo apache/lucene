@@ -22,10 +22,8 @@ package org.apache.lucene.classification;
  *
  * @lucene.experimental
  */
-public class ClassificationResult<T> implements Comparable<ClassificationResult<T>> {
-
-  private final T assignedClass;
-  private final double score;
+public record ClassificationResult<T>(T assignedClass, double score)
+    implements Comparable<ClassificationResult<T>> {
 
   /**
    * Constructor
@@ -33,17 +31,15 @@ public class ClassificationResult<T> implements Comparable<ClassificationResult<
    * @param assignedClass the class <code>T</code> assigned by a {@link Classifier}
    * @param score the score for the assignedClass as a <code>double</code>
    */
-  public ClassificationResult(T assignedClass, double score) {
-    this.assignedClass = assignedClass;
-    this.score = score;
-  }
+  public ClassificationResult {}
 
   /**
    * retrieve the result class
    *
    * @return a <code>T</code> representing an assigned class
    */
-  public T getAssignedClass() {
+  @Override
+  public T assignedClass() {
     return assignedClass;
   }
 
@@ -52,12 +48,13 @@ public class ClassificationResult<T> implements Comparable<ClassificationResult<
    *
    * @return a <code>double</code> representing a result score
    */
-  public double getScore() {
+  @Override
+  public double score() {
     return score;
   }
 
   @Override
   public int compareTo(ClassificationResult<T> o) {
-    return Double.compare(o.getScore(), this.getScore());
+    return Double.compare(o.score(), this.score());
   }
 }

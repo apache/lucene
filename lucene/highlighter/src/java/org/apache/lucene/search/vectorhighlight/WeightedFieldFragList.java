@@ -70,13 +70,10 @@ public class WeightedFieldFragList extends FieldFragList {
 
     float totalBoost = 0;
     for (SubInfo tempSubInfo : tempSubInfos) {
-      float subInfoBoost = tempSubInfo.getBoost() * norm;
+      float subInfoBoost = tempSubInfo.boost() * norm;
       realSubInfos.add(
           new SubInfo(
-              tempSubInfo.getText(),
-              tempSubInfo.getTermsOffsets(),
-              tempSubInfo.getSeqnum(),
-              subInfoBoost));
+              tempSubInfo.text(), tempSubInfo.termsOffsets(), tempSubInfo.seqnum(), subInfoBoost));
       totalBoost += subInfoBoost;
     }
 

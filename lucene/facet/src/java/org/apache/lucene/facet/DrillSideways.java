@@ -300,20 +300,9 @@ public class DrillSideways {
     }
   }
 
-  private static class CallableCollector implements Callable<CallableResult> {
-
-    private final int pos;
-    private final IndexSearcher searcher;
-    private final Query query;
-    private final CollectorManager<?, ?> collectorManager;
-
-    private CallableCollector(
-        int pos, IndexSearcher searcher, Query query, CollectorManager<?, ?> collectorManager) {
-      this.pos = pos;
-      this.searcher = searcher;
-      this.query = query;
-      this.collectorManager = collectorManager;
-    }
+  private record CallableCollector(
+      int pos, IndexSearcher searcher, Query query, CollectorManager<?, ?> collectorManager)
+      implements Callable<CallableResult> {
 
     @Override
     public CallableResult call() throws Exception {
@@ -321,16 +310,7 @@ public class DrillSideways {
     }
   }
 
-  private static class CallableResult {
-
-    private final int pos;
-    private final Object result;
-
-    private CallableResult(int pos, Object result) {
-      this.pos = pos;
-      this.result = result;
-    }
-  }
+  private record CallableResult(int pos, Object result) {}
 
   private DrillDownQuery getDrillDownQuery(
       final DrillDownQuery query, Query[] queries, final String excludedDimension) {

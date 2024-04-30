@@ -142,22 +142,10 @@ public final class SynonymGraphFilter extends TokenFilter {
     }
   }
 
-  static class BufferedOutputToken {
-    final String term;
-
-    // Non-null if this was an incoming token:
-    final State state;
-
-    final int startNode;
-    final int endNode;
-
-    public BufferedOutputToken(State state, String term, int startNode, int endNode) {
-      this.state = state;
-      this.term = term;
-      this.startNode = startNode;
-      this.endNode = endNode;
-    }
-  }
+  /**
+   * @param state Non-null if this was an incoming token:
+   */
+  record BufferedOutputToken(State state, String term, int startNode, int endNode) {}
 
   /**
    * Apply previously built synonyms to incoming tokens.

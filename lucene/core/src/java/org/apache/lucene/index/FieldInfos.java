@@ -329,32 +329,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return byNumber[fieldNumber];
   }
 
-  static final class FieldDimensions {
-    public final int dimensionCount;
-    public final int indexDimensionCount;
-    public final int dimensionNumBytes;
+  record FieldDimensions(int dimensionCount, int indexDimensionCount, int dimensionNumBytes) {}
 
-    public FieldDimensions(int dimensionCount, int indexDimensionCount, int dimensionNumBytes) {
-      this.dimensionCount = dimensionCount;
-      this.indexDimensionCount = indexDimensionCount;
-      this.dimensionNumBytes = dimensionNumBytes;
-    }
-  }
-
-  static final class FieldVectorProperties {
-    final int numDimensions;
-    final VectorEncoding vectorEncoding;
-    final VectorSimilarityFunction similarityFunction;
-
-    FieldVectorProperties(
-        int numDimensions,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction) {
-      this.numDimensions = numDimensions;
-      this.vectorEncoding = vectorEncoding;
-      this.similarityFunction = similarityFunction;
-    }
-  }
+  record FieldVectorProperties(
+      int numDimensions,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 

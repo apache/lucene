@@ -180,27 +180,16 @@ public class HighlightsMatch extends QueryMatch {
     hitSet.add(new Hit(startPos, startOffset, endPos, endOffset));
   }
 
-  /** Represents an individual hit */
-  public static class Hit implements Comparable<Hit> {
-
-    /** The start position */
-    public final int startPosition;
-
-    /** The start offset */
-    public final int startOffset;
-
-    /** The end positions */
-    public final int endPosition;
-
-    /** The end offset */
-    public final int endOffset;
-
-    public Hit(int startPosition, int startOffset, int endPosition, int endOffset) {
-      this.startPosition = startPosition;
-      this.startOffset = startOffset;
-      this.endPosition = endPosition;
-      this.endOffset = endOffset;
-    }
+  /**
+   * Represents an individual hit
+   *
+   * @param startPosition The start position
+   * @param startOffset The start offset
+   * @param endPosition The end positions
+   * @param endOffset The end offset
+   */
+  public record Hit(int startPosition, int startOffset, int endPosition, int endOffset)
+      implements Comparable<Hit> {
 
     @Override
     public boolean equals(Object obj) {
@@ -211,15 +200,6 @@ public class HighlightsMatch extends QueryMatch {
           && this.endOffset == other.endOffset
           && this.startPosition == other.startPosition
           && this.endPosition == other.endPosition;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = startPosition;
-      result = 31 * result + startOffset;
-      result = 31 * result + endPosition;
-      result = 31 * result + endOffset;
-      return result;
     }
 
     @Override

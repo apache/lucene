@@ -25,71 +25,19 @@ import org.apache.lucene.util.BytesRef;
 /**
  * A parameter object to hold the components a {@link FieldOffsetStrategy} needs.
  *
+ * @param terms Query: all terms we extracted (some may be position sensitive)
+ * @param phraseHelper Query: position-sensitive information
+ * @param automata Query: wildcards (i.e. multi-term query), not position sensitive
+ * @param hasUnrecognizedQueryPart Query: if part of the query (other than the extracted terms /
+ *     automata) is a leaf we don't know
  * @lucene.internal
  */
-public class UHComponents {
-  private final String field;
-  private final Predicate<String> fieldMatcher;
-  private final Query query;
-  // Query: all terms we extracted (some may be position sensitive)
-  private final BytesRef[] terms;
-  // Query: position-sensitive information
-  private final PhraseHelper phraseHelper;
-  // Query: wildcards (i.e. multi-term query), not position sensitive
-  private final LabelledCharArrayMatcher[] automata;
-  // Query: if part of the query (other than the extracted terms / automata) is a leaf we don't know
-  private final boolean hasUnrecognizedQueryPart;
-
-  private final Set<UnifiedHighlighter.HighlightFlag> highlightFlags;
-
-  public UHComponents(
-      String field,
-      Predicate<String> fieldMatcher,
-      Query query,
-      BytesRef[] terms,
-      PhraseHelper phraseHelper,
-      LabelledCharArrayMatcher[] automata,
-      boolean hasUnrecognizedQueryPart,
-      Set<UnifiedHighlighter.HighlightFlag> highlightFlags) {
-    this.field = field;
-    this.fieldMatcher = fieldMatcher;
-    this.query = query;
-    this.terms = terms;
-    this.phraseHelper = phraseHelper;
-    this.automata = automata;
-    this.hasUnrecognizedQueryPart = hasUnrecognizedQueryPart;
-    this.highlightFlags = highlightFlags;
-  }
-
-  public String getField() {
-    return field;
-  }
-
-  public Predicate<String> getFieldMatcher() {
-    return fieldMatcher;
-  }
-
-  public Query getQuery() {
-    return query;
-  }
-
-  public BytesRef[] getTerms() {
-    return terms;
-  }
-
-  public PhraseHelper getPhraseHelper() {
-    return phraseHelper;
-  }
-
-  public LabelledCharArrayMatcher[] getAutomata() {
-    return automata;
-  }
-
-  public boolean hasUnrecognizedQueryPart() {
-    return hasUnrecognizedQueryPart;
-  }
-
-  public Set<UnifiedHighlighter.HighlightFlag> getHighlightFlags() {
-    return highlightFlags;
-  }
-}
+public record UHComponents(
+    String field,
+    Predicate<String> fieldMatcher,
+    Query query,
+    BytesRef[] terms,
+    PhraseHelper phraseHelper,
+    LabelledCharArrayMatcher[] automata,
+    boolean hasUnrecognizedQueryPart,
+    Set<UnifiedHighlighter.HighlightFlag> highlightFlags) {}
