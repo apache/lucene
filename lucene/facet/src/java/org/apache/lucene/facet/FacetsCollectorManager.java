@@ -26,13 +26,21 @@ import org.apache.lucene.search.CollectorManager;
  * FacetsCollector. This is used for concurrent FacetsCollection.
  */
 public class FacetsCollectorManager implements CollectorManager<FacetsCollector, FacetsCollector> {
+  private boolean keepScores;
 
-  /** Sole constructor. */
-  public FacetsCollectorManager() {}
+  /** constructor. */
+  public FacetsCollectorManager(boolean keepScores) {
+    this.keepScores = keepScores;
+  }
+
+  /** constructor that has keepScores defaulted to false. */
+  public FacetsCollectorManager() {
+    this(false);
+  }
 
   @Override
   public FacetsCollector newCollector() throws IOException {
-    return new FacetsCollector();
+    return new FacetsCollector(keepScores);
   }
 
   @Override

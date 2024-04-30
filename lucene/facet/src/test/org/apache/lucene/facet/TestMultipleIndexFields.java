@@ -32,6 +32,8 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -337,9 +339,12 @@ public class TestMultipleIndexFields extends FacetTestCase {
 
   private FacetsCollector performSearch(TaxonomyReader tr, IndexReader ir, IndexSearcher searcher)
       throws IOException {
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
-    return fc;
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+    return (FacetsCollector) results[1];
   }
 
   private void seedIndex(TaxonomyWriter tw, RandomIndexWriter iw, FacetsConfig config)

@@ -25,6 +25,7 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetCounts;
@@ -36,6 +37,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 
@@ -91,13 +94,16 @@ public class SimpleSortedSetFacetsExample {
     SortedSetDocValuesReaderState state =
         new DefaultSortedSetDocValuesReaderState(indexReader, config);
 
-    // Aggregatses the facet counts
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] searchResults =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) searchResults[1];
 
     // Retrieve results
     Facets facets = new SortedSetDocValuesFacetCounts(state, fc);
@@ -120,8 +126,13 @@ public class SimpleSortedSetFacetsExample {
     // Now user drills down on Publish Year/2010:
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("Publish Year", "2010");
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, q, 10, fc);
+
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results = searcher.search(q, new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     // Retrieve results
     Facets facets = new SortedSetDocValuesFacetCounts(state, fc);

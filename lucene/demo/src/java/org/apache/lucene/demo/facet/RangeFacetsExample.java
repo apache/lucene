@@ -30,6 +30,7 @@ import org.apache.lucene.facet.DrillSideways;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.facet.range.LongRangeFacetCounts;
@@ -39,7 +40,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
@@ -115,13 +118,16 @@ public class RangeFacetsExample implements Closeable {
   /** User runs a query and counts facets. */
   public FacetResult search() throws IOException {
 
-    // Aggregates the facet counts
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     Facets facets = new LongRangeFacetCounts("timestamp", fc, PAST_HOUR, PAST_SIX_HOURS, PAST_DAY);
     return facets.getAllChildren("timestamp");
@@ -130,13 +136,16 @@ public class RangeFacetsExample implements Closeable {
   /** User runs a query and counts facets. */
   public FacetResult searchTopChildren() throws IOException {
 
-    // Aggregates the facet counts
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     Facets facets = new LongRangeFacetCounts("error timestamp", fc, logTimestampRanges);
     return facets.getTopChildren(10, "error timestamp");

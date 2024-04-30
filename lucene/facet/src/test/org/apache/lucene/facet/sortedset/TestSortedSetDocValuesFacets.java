@@ -45,8 +45,10 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1362,9 +1364,17 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+
+              FacetsCollectorManager fcm = new FacetsCollectorManager();
+              TopScoreDocCollectorManager tsdcm =
+                  new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+              Object[] results =
+                  searcher.search(
+                      new TermQuery(new Term("content", searchToken)),
+                      new MultiCollectorManager(tsdcm, fcm));
+
+              FacetsCollector fc = (FacetsCollector) results[1];
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
@@ -1503,9 +1513,16 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollectorManager fcm = new FacetsCollectorManager();
+              TopScoreDocCollectorManager tsdcm =
+                  new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+              Object[] results =
+                  searcher.search(
+                      new TermQuery(new Term("content", searchToken)),
+                      new MultiCollectorManager(tsdcm, fcm));
+
+              FacetsCollector fc = (FacetsCollector) results[1];
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);

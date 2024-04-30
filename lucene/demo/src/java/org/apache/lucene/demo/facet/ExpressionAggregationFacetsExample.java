@@ -30,6 +30,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetFloatAssociations;
@@ -43,6 +44,8 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
@@ -96,13 +99,16 @@ public class ExpressionAggregationFacetsExample {
         "popularity",
         DoubleValuesSource.fromLongField("popularity")); // the value of the 'popularity' field
 
-    // Aggregates the facet values
-    FacetsCollector fc = new FacetsCollector(true);
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager(true);
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     // Retrieve results
     Facets facets =
