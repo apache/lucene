@@ -25,16 +25,17 @@ import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
@@ -62,7 +63,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final String parentField;
 
   // used only by fieldInfo(int)
-  private final FieldInfoByNumber byNumber;
+  private final IntFunction<FieldInfo> byNumber;
   private final HashMap<String, FieldInfo> byName;
   private final Collection<FieldInfo> values; // for an unmodifiable iterator
 
@@ -81,7 +82,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    byName = new HashMap<>((int) (infos.length / 0.75f) + 1);
+    byName = CollectionUtil.newHashMap(infos.length);
     for (FieldInfo info : infos) {
       if (info.number < 0) {
         throw new IllegalArgumentException(
@@ -149,7 +150,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
             ? new MapFieldInfoByNumber(infos)
             : new ArrayFieldInfoByNumber(infos, maxFieldNumber);
     // The iteration of FieldInfo is ordered by ascending field number.
-    values = Collections.unmodifiableCollection(Arrays.asList(sortedFieldInfos));
+    values = Arrays.asList(sortedFieldInfos);
   }
 
   /**
@@ -308,7 +309,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     if (fieldNumber < 0) {
       throw new IllegalArgumentException("Illegal field number: " + fieldNumber);
     }
-    return byNumber.get(fieldNumber);
+    return byNumber.apply(fieldNumber);
   }
 
   static final class FieldDimensions {
@@ -804,12 +805,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
   }
 
-  private interface FieldInfoByNumber {
-
-    FieldInfo get(int fieldNumber);
-  }
-
-  private static class MapFieldInfoByNumber implements FieldInfoByNumber {
+  private static class MapFieldInfoByNumber implements IntFunction<FieldInfo> {
 
     private final IntObjectHashMap<FieldInfo> map;
 
@@ -830,12 +826,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     @Override
-    public FieldInfo get(int fieldNumber) {
+    public FieldInfo apply(int fieldNumber) {
       return map.get(fieldNumber);
     }
   }
 
-  private static class ArrayFieldInfoByNumber implements FieldInfoByNumber {
+  private static class ArrayFieldInfoByNumber implements IntFunction<FieldInfo> {
 
     private static final FieldInfo[] EMPTY = new FieldInfo[0];
 
@@ -859,7 +855,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     @Override
-    public FieldInfo get(int fieldNumber) {
+    public FieldInfo apply(int fieldNumber) {
       return fieldNumber >= array.length ? null : array[fieldNumber];
     }
   }
