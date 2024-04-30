@@ -278,6 +278,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     String parentField = random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
 
+    if (softDeletesField != null && softDeletesField.equals(parentField)) {
+      parentField = null;
+    }
     var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField, parentField);
 
     for (String field : fieldNames) {

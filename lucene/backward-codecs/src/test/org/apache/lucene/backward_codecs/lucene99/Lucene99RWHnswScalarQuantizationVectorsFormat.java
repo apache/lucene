@@ -18,9 +18,11 @@
 package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.FlatVectorsFormat;
-import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
@@ -56,12 +58,16 @@ class Lucene99RWHnswScalarQuantizationVectorsFormat
   }
 
   static class Lucene99RWScalarQuantizedFormat extends Lucene99ScalarQuantizedVectorsFormat {
-    private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
+    private static final FlatVectorsFormat rawVectorFormat =
+        new Lucene99FlatVectorsFormat(new DefaultFlatVectorScorer());
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       return new Lucene99ScalarQuantizedVectorsWriter(
-          state, null, rawVectorFormat.fieldsWriter(state));
+          state,
+          null,
+          rawVectorFormat.fieldsWriter(state),
+          new ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()));
     }
   }
 }

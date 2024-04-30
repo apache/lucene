@@ -25,9 +25,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -266,6 +266,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }
@@ -294,6 +297,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // and collect them
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
           knnCollector.incVisitedCount(1);
           knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
         }

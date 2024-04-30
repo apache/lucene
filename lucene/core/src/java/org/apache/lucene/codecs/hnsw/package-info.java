@@ -15,25 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
-
-import java.io.IOException;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SegmentWriteState;
-
 /**
- * Encodes/decodes per-document vectors
- *
- * @lucene.experimental
+ * HNSW vector helper classes. The classes in this package provide a scoring and storing mechanism
+ * for vectors stored in a flat file. This allows for HNSW formats to be extended with other flat
+ * storage formats or scoring without significant changes to the HNSW code. Some examples for
+ * scoring include {@link org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer} and {@link
+ * org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer}. Some examples for storing include {@link
+ * org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat} and {@link
+ * org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat}.
  */
-public abstract class FlatVectorsFormat {
-
-  /** Sole constructor */
-  protected FlatVectorsFormat() {}
-
-  /** Returns a {@link FlatVectorsWriter} to write the vectors to the index. */
-  public abstract FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
-
-  /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
-  public abstract FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException;
-}
+package org.apache.lucene.codecs.hnsw;

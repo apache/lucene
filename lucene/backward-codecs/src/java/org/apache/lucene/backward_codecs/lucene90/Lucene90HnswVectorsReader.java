@@ -356,7 +356,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
   static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
 
     final int dimension;
     final int[] ordToDoc;
@@ -425,7 +425,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() {
+    public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(dimension, ordToDoc, dataIn.clone());
     }
 

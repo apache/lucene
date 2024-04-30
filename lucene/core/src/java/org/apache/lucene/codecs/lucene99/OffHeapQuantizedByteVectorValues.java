@@ -26,6 +26,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Read the quantized vector values and their score correction values from the index input. This
@@ -37,7 +38,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   protected final int dimension;
   protected final int size;
   protected final int numBytes;
-  protected final byte bits;
+  protected final ScalarQuantizer scalarQuantizer;
   protected final boolean compress;
 
   protected final IndexInput slice;
@@ -81,13 +82,17 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   OffHeapQuantizedByteVectorValues(
-      int dimension, int size, byte bits, boolean compress, IndexInput slice) {
+      int dimension,
+      int size,
+      ScalarQuantizer scalarQuantizer,
+      boolean compress,
+      IndexInput slice) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    this.bits = bits;
+    this.scalarQuantizer = scalarQuantizer;
     this.compress = compress;
-    if (bits <= 4 && compress) {
+    if (scalarQuantizer.getBits() <= 4 && compress) {
       this.numBytes = (dimension + 1) >> 1;
     } else {
       this.numBytes = dimension;
@@ -95,6 +100,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     this.byteSize = this.numBytes + Float.BYTES;
     byteBuffer = ByteBuffer.allocate(dimension);
     binaryValue = byteBuffer.array();
+  }
+
+  @Override
+  public ScalarQuantizer getScalarQuantizer() {
+    return scalarQuantizer;
   }
 
   @Override
@@ -129,7 +139,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
-      byte bits,
+      ScalarQuantizer scalarQuantizer,
       boolean compress,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
@@ -142,10 +152,10 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
     if (configuration.isDense()) {
-      return new DenseOffHeapVectorValues(dimension, size, bits, compress, bytesSlice);
+      return new DenseOffHeapVectorValues(dimension, size, scalarQuantizer, compress, bytesSlice);
     } else {
       return new SparseOffHeapVectorValues(
-          configuration, dimension, size, bits, compress, vectorData, bytesSlice);
+          configuration, dimension, size, scalarQuantizer, compress, vectorData, bytesSlice);
     }
   }
 
@@ -158,8 +168,12 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     private int doc = -1;
 
     public DenseOffHeapVectorValues(
-        int dimension, int size, byte bits, boolean compress, IndexInput slice) {
-      super(dimension, size, bits, compress, slice);
+        int dimension,
+        int size,
+        ScalarQuantizer scalarQuantizer,
+        boolean compress,
+        IndexInput slice) {
+      super(dimension, size, scalarQuantizer, compress, slice);
     }
 
     @Override
@@ -188,7 +202,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, bits, compress, slice.clone());
+      return new DenseOffHeapVectorValues(
+          dimension, size, scalarQuantizer, compress, slice.clone());
     }
 
     @Override
@@ -208,12 +223,12 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
-        byte bits,
+        ScalarQuantizer scalarQuantizer,
         boolean compress,
         IndexInput dataIn,
         IndexInput slice)
         throws IOException {
-      super(dimension, size, bits, compress, slice);
+      super(dimension, size, scalarQuantizer, compress, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -244,7 +259,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
-          configuration, dimension, size, bits, compress, dataIn, slice.clone());
+          configuration, dimension, size, scalarQuantizer, compress, dataIn, slice.clone());
     }
 
     @Override
@@ -274,7 +289,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   private static class EmptyOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, (byte) 7, false, null);
+      super(dimension, 0, new ScalarQuantizer(-1, 1, (byte) 7), false, null);
     }
 
     private int doc = -1;
