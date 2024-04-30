@@ -59,6 +59,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -134,7 +135,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       // Open the data file
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream = d.openInput(vectorsStreamFN, context);
+      vectorsStream = d.openInput(vectorsStreamFN, context.withReadAdvice(ReadAdvice.RANDOM));
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -169,7 +170,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
               VECTORS_INDEX_EXTENSION,
               VECTORS_INDEX_CODEC_NAME,
               si.getId(),
-              metaIn);
+              metaIn,
+              context);
 
       this.indexReader = fieldsIndexReader;
       this.maxPointer = fieldsIndexReader.getMaxPointer();

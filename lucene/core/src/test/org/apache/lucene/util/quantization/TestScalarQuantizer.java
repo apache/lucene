@@ -35,7 +35,8 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
-    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1, numVecs);
+    ScalarQuantizer scalarQuantizer =
+        ScalarQuantizer.fromVectors(floatVectorValues, 1, numVecs, (byte) 7);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
@@ -88,6 +89,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
+          (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
@@ -97,6 +99,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
+          (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
@@ -106,6 +109,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
+          (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
     {
@@ -115,7 +119,33 @@ public class TestScalarQuantizer extends LuceneTestCase {
           floatVectorValues,
           0.99f,
           floatVectorValues.numLiveVectors,
+          (byte) 7,
           Math.max(random().nextInt(floatVectorValues.floats.length - 1) + 1, SCRATCH_SIZE + 1));
+    }
+  }
+
+  public void testFromVectorsAutoInterval() throws IOException {
+    int dims = 128;
+    int numVecs = 100;
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+
+    float[][] floats = randomFloats(numVecs, dims);
+    FloatVectorValues floatVectorValues = fromFloats(floats);
+    ScalarQuantizer scalarQuantizer =
+        ScalarQuantizer.fromVectorsAutoInterval(
+            floatVectorValues, similarityFunction, numVecs, (byte) 4);
+    assertNotNull(scalarQuantizer);
+    float[] dequantized = new float[dims];
+    byte[] quantized = new byte[dims];
+    byte[] requantized = new byte[dims];
+    for (int i = 0; i < numVecs; i++) {
+      scalarQuantizer.quantize(floats[i], quantized, similarityFunction);
+      scalarQuantizer.deQuantize(quantized, dequantized);
+      scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
+      for (int j = 0; j < dims; j++) {
+        assertEquals(dequantized[j], floats[i][j], 0.2);
+        assertEquals(quantized[j], requantized[j]);
+      }
     }
   }
 

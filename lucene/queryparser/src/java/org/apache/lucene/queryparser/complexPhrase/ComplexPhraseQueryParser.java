@@ -281,10 +281,10 @@ public class ComplexPhraseQueryParser extends QueryParser {
       int i = 0;
       for (BooleanClause clause : bq) {
         // HashSet bclauseterms=new HashSet();
-        Query qc = clause.getQuery();
+        Query qc = clause.query();
         // Rewrite this clause e.g one* becomes (one OR onerous)
         qc = indexSearcher.rewrite(qc);
-        if (clause.getOccur().equals(BooleanClause.Occur.MUST_NOT)) {
+        if (clause.occur().equals(BooleanClause.Occur.MUST_NOT)) {
           numNegatives++;
         }
 
@@ -340,7 +340,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
       ArrayList<SpanQuery> positiveClauses = new ArrayList<>();
       i = 0;
       for (BooleanClause clause : bq) {
-        if (!clause.getOccur().equals(BooleanClause.Occur.MUST_NOT)) {
+        if (!clause.occur().equals(BooleanClause.Occur.MUST_NOT)) {
           positiveClauses.add(allSpanClauses[i]);
         }
         i += 1;
@@ -376,7 +376,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
       // For all clauses e.g. one* two~
       for (BooleanClause clause : qc) {
-        Query childQuery = clause.getQuery();
+        Query childQuery = clause.query();
 
         while (childQuery instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) childQuery;
@@ -385,7 +385,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
         // select the list to which we will add these options
         ArrayList<SpanQuery> chosenList = ors;
-        if (clause.getOccur() == BooleanClause.Occur.MUST_NOT) {
+        if (clause.occur() == BooleanClause.Occur.MUST_NOT) {
           chosenList = nots;
         }
 

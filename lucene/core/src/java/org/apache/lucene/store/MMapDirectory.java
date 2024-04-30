@@ -48,6 +48,13 @@ import org.apache.lucene.util.Constants;
  * of box with some compilation tricks. For more information about the foreign memory API read
  * documentation of the {@link java.lang.foreign} package.
  *
+ * <p>On some platforms like Linux and MacOS X, this class will invoke the syscall {@code madvise()}
+ * to advise how OS kernel should handle paging after opening a file. For this to work, Java code
+ * must be able to call native code. If this is not allowed, a warning is logged. To enable native
+ * access for Lucene in a modularized application, pass {@code
+ * --enable-native-access=org.apache.lucene.core} to the Java command line. If Lucene is running in
+ * a classpath-based application, use {@code --enable-native-access=ALL-UNNAMED}.
+ *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
  * blocked on IO. The channel will remain closed and subsequent access to {@link MMapDirectory} will
@@ -78,10 +85,10 @@ public class MMapDirectory extends FSDirectory {
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link IOContext#LOAD} I/O context.
+   * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.load;
+      (filename, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
@@ -204,6 +211,8 @@ public class MMapDirectory extends FSDirectory {
 
     long getDefaultMaxChunkSize();
 
+    boolean supportsMadvise();
+
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
       final String originalMessage;
@@ -267,6 +276,14 @@ public class MMapDirectory extends FSDirectory {
     } catch (ClassNotFoundException cnfe) {
       throw new LinkageError("MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
     }
+  }
+
+  /**
+   * Returns true, if MMapDirectory uses the platform's {@code madvise()} syscall to advise how OS
+   * kernel should handle paging after opening a file.
+   */
+  public static boolean supportsMadvise() {
+    return PROVIDER.supportsMadvise();
   }
 
   static {

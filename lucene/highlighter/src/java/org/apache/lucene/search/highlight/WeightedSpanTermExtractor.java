@@ -133,7 +133,7 @@ public class WeightedSpanTermExtractor {
     } else if (query instanceof BooleanQuery) {
       for (BooleanClause clause : (BooleanQuery) query) {
         if (!clause.isProhibited()) {
-          extract(clause.getQuery(), boost, terms);
+          extract(clause.query(), boost, terms);
         }
       }
     } else if (query instanceof PhraseQuery) {

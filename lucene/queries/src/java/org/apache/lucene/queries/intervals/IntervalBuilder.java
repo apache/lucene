@@ -51,7 +51,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
@@ -201,11 +201,10 @@ final class IntervalBuilder {
   private static List<IntervalsSource> analyzeGraph(TokenStream source) throws IOException {
     source.reset();
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(source);
-
     List<IntervalsSource> clauses = new ArrayList<>();
     int[] articulationPoints = graph.articulationPoints();
     int lastState = 0;
-    int maxClauseCount = BooleanQuery.getMaxClauseCount();
+    int maxClauseCount = IndexSearcher.getMaxClauseCount();
     for (int i = 0; i <= articulationPoints.length; i++) {
       int start = lastState;
       int end = -1;
@@ -220,7 +219,7 @@ final class IntervalBuilder {
           TokenStream ts = it.next();
           IntervalsSource phrase = combineSources(analyzeTerms(ts), 0, true);
           if (paths.size() >= maxClauseCount) {
-            throw new BooleanQuery.TooManyClauses();
+            throw new IndexSearcher.TooManyClauses();
           }
           paths.add(phrase);
         }

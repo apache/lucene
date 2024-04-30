@@ -211,7 +211,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
     POINT() {
       @Override
       public XYPoint nextShape() {
-        return ShapeTestUtil.nextPoint();
+        return ShapeTestUtil.nextXYPoint();
       }
     },
     LINE() {

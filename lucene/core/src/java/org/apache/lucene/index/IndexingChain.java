@@ -284,7 +284,7 @@ final class IndexingChain implements Accountable {
             state.directory,
             state.segmentInfo,
             state.fieldInfos,
-            IOContext.READ,
+            IOContext.DEFAULT,
             state.segmentSuffix);
 
     t0 = System.nanoTime();

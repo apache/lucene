@@ -34,6 +34,7 @@ import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.junit.Assert;
 
 public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
 
@@ -166,5 +167,28 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
     nrtDir2.createTempOutput("bar", "baz", ioContext).close();
 
     dir.close();
+  }
+
+  public void testCacheSizeAfterDelete() throws IOException {
+    IOContext ioContext = new IOContext(new FlushInfo(3, 40));
+    String fn = "f1";
+    try (Directory dir = newDirectory();
+        NRTCachingDirectory nrt = new NRTCachingDirectory(dir, 1, 1); ) {
+      // deletes a closed file
+      try (IndexOutput out = nrt.createOutput(fn, ioContext)) {
+        for (int i = 0; i < 10; i++) out.writeInt(i);
+      }
+      Assert.assertEquals(40, nrt.ramBytesUsed());
+      nrt.deleteFile(fn);
+      Assert.assertEquals(0, nrt.ramBytesUsed());
+
+      // Deletes an unclosed file (write before and after deletion
+      try (IndexOutput out = nrt.createOutput(fn, ioContext)) {
+        for (int i = 0; i < 10; i++) out.writeInt(i);
+        nrt.deleteFile(fn);
+        for (int i = 0; i < 10; i++) out.writeInt(i);
+      }
+      Assert.assertEquals(0, nrt.ramBytesUsed());
+    }
   }
 }

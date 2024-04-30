@@ -101,7 +101,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
 /** Common tests to all index formats. */
-abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
+public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
@@ -374,7 +374,8 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new SegmentWriteState(
             null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
 
-    SegmentReadState readState = new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.READ);
+    SegmentReadState readState =
+        new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);
 
     // PostingsFormat
     NormsProducer fakeNorms =
