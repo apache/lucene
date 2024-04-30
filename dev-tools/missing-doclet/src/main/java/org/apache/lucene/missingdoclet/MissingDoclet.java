@@ -393,16 +393,11 @@ public class MissingDoclet extends StandardDoclet {
 
   /** Returns all {@code @param} parameters we see in the javadocs of the element */
   private Set<String> getDocParameters(DocCommentTree tree) {
-    Set<String> seenParameters = new HashSet<>();
-    if (tree != null) {
-      for (var tag : tree.getBlockTags()) {
-        if (tag instanceof ParamTree) {
-          var name = ((ParamTree)tag).getName().getName().toString();
-          seenParameters.add(name);
-        }
-      }
-    }
-    return seenParameters;
+    return Stream.ofNullable(tree)
+      .flatMap(t -> t.getBlockTags().stream())
+      .filter(ParamTree.class::isInstance)
+      .map(tag -> ((ParamTree)tag).getName().getName().toString())
+      .collect(Collectors.toSet());
   }
   
   /** Checks there is a corresponding "param" tag for each method parameter */
