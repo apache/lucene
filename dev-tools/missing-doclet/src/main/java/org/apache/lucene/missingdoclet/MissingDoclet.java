@@ -330,8 +330,8 @@ public class MissingDoclet extends StandardDoclet {
         error(element, "comment is really a license");
       }
     }
-    if (level >= PARAMETER) {
-      checkParameters(element, tree);
+    if (level >= PARAMETER && element instanceof ExecutableElement execEle) {
+      checkMethodParameters(execEle, tree);
     }
   }
 
@@ -406,16 +406,14 @@ public class MissingDoclet extends StandardDoclet {
   }
   
   /** Checks there is a corresponding "param" tag for each method parameter */
-  private void checkParameters(Element element, DocCommentTree tree) {
-    if (element instanceof ExecutableElement execEle) {
-      // record each @param that we see
-      var seenParameters = getDocParameters(tree);
-      // now compare the method's formal parameter list against it
-      for (var param : execEle.getParameters()) {
-        var name = param.getSimpleName().toString();
-        if (!seenParameters.contains(name)) {
-          error(element, "missing javadoc @param for parameter '" + name + "'");
-        }
+  private void checkMethodParameters(ExecutableElement element, DocCommentTree tree) {
+    // record each @param that we see
+    var seenParameters = getDocParameters(tree);
+    // now compare the method's formal parameter list against it
+    for (var param : element.getParameters()) {
+      var name = param.getSimpleName().toString();
+      if (!seenParameters.contains(name)) {
+        error(element, "missing javadoc @param for parameter '" + name + "'");
       }
     }
   }
