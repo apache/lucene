@@ -226,6 +226,8 @@ Other
 
 * GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
 
+* GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
