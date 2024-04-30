@@ -53,12 +53,10 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -646,11 +644,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       return skipReader.getImpacts();
     }
   }
-
-  private static final long TERMS_BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextTerms.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
-          + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
 
   private class SimpleTextTerms extends Terms {
     private final long termsStart;
