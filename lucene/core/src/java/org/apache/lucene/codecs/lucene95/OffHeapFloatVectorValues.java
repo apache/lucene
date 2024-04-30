@@ -18,15 +18,18 @@
 package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
@@ -40,18 +43,21 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
   protected int lastOrd = -1;
   protected final float[] value;
   protected final VectorSimilarityFunction similarityFunction;
+  protected final FlatVectorsScorer flatVectorsScorer;
 
   OffHeapFloatVectorValues(
       int dimension,
       int size,
       IndexInput slice,
       int byteSize,
+      FlatVectorsScorer flatVectorsScorer,
       VectorSimilarityFunction similarityFunction) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
     this.byteSize = byteSize;
     this.similarityFunction = similarityFunction;
+    this.flatVectorsScorer = flatVectorsScorer;
     value = new float[dimension];
   }
 
@@ -76,13 +82,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     return value;
   }
 
-  @Override
-  public VectorScorer scorer(float[] query) {
-    return new VectorScorer.FloatVectorScorer(this, query, similarityFunction);
-  }
-
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
+      FlatVectorsScorer flatVectorsScorer,
       OrdToDocDISIReaderConfiguration configuration,
       VectorEncoding vectorEncoding,
       int dimension,
@@ -91,16 +93,27 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
       IndexInput vectorData)
       throws IOException {
     if (configuration.docsWithFieldOffset == -2 || vectorEncoding != VectorEncoding.FLOAT32) {
-      return new EmptyOffHeapVectorValues(dimension, vectorSimilarityFunction);
+      return new EmptyOffHeapVectorValues(dimension, flatVectorsScorer, vectorSimilarityFunction);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     int byteSize = dimension * Float.BYTES;
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
-          dimension, configuration.size, bytesSlice, byteSize, vectorSimilarityFunction);
+          dimension,
+          configuration.size,
+          bytesSlice,
+          byteSize,
+          flatVectorsScorer,
+          vectorSimilarityFunction);
     } else {
       return new SparseOffHeapVectorValues(
-          configuration, vectorData, bytesSlice, dimension, byteSize, vectorSimilarityFunction);
+          configuration,
+          vectorData,
+          bytesSlice,
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          vectorSimilarityFunction);
     }
   }
 
@@ -117,8 +130,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
         int size,
         IndexInput slice,
         int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction) {
-      super(dimension, size, slice, byteSize, similarityFunction);
+      super(dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction);
     }
 
     @Override
@@ -148,12 +162,29 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, slice.clone(), byteSize, similarityFunction);
+          dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
     }
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      RandomVectorScorer randomVectorScorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return randomVectorScorer.score(doc);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return DenseOffHeapVectorValues.this;
+        }
+      };
     }
   }
 
@@ -170,10 +201,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
         IndexInput slice,
         int dimension,
         int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
 
-      super(dimension, configuration.size, slice, byteSize, similarityFunction);
+      super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
       this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
@@ -213,7 +245,13 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
-          configuration, dataIn, slice.clone(), dimension, byteSize, similarityFunction);
+          configuration,
+          dataIn,
+          slice.clone(),
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction);
     }
 
     @Override
@@ -238,12 +276,32 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
         }
       };
     }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      RandomVectorScorer randomVectorScorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return randomVectorScorer.score(disi.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return SparseOffHeapVectorValues.this;
+        }
+      };
+    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
 
-    public EmptyOffHeapVectorValues(int dimension, VectorSimilarityFunction similarityFunction) {
-      super(dimension, 0, null, 0, similarityFunction);
+    public EmptyOffHeapVectorValues(
+        int dimension,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction) {
+      super(dimension, 0, null, 0, flatVectorsScorer, similarityFunction);
     }
 
     private int doc = -1;
@@ -274,17 +332,17 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       return doc = NO_MORE_DOCS;
     }
 
     @Override
-    public EmptyOffHeapVectorValues copy() throws IOException {
+    public EmptyOffHeapVectorValues copy() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
+    public float[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
@@ -296,6 +354,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return null;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) {
+      throw new UnsupportedOperationException();
     }
   }
 }

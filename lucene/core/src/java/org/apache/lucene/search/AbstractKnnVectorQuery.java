@@ -206,17 +206,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
     DocIdSetIterator vectorIterator = vectorScorer.iterator();
+    DocIdSetIterator conjunction =
+        ConjunctionDISI.createConjunction(List.of(vectorIterator, acceptIterator), List.of());
     int doc;
-    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while ((doc = conjunction.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
-
-      vectorIterator.advance(doc);
       assert vectorIterator.docID() == doc;
-
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;

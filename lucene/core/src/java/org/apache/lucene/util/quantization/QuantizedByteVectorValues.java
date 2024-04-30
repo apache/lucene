@@ -19,6 +19,7 @@ package org.apache.lucene.util.quantization;
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 
 /**
  * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
@@ -45,4 +46,6 @@ public abstract class QuantizedByteVectorValues extends DocIdSetIterator {
   public final long cost() {
     return size();
   }
+
+  public abstract VectorScorer vectorScorer(float[] target) throws IOException;
 }

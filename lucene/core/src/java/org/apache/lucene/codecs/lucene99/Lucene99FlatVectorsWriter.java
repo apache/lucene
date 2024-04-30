@@ -315,6 +315,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     docsWithField.cardinality(),
                     finalVectorDataInput,
                     fieldInfo.getVectorDimension() * Byte.BYTES,
+                    vectorsScorer,
                     fieldInfo.getVectorSimilarityFunction()));
             case FLOAT32 -> vectorsScorer.getRandomVectorScorerSupplier(
                 fieldInfo.getVectorSimilarityFunction(),
@@ -323,6 +324,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     docsWithField.cardinality(),
                     finalVectorDataInput,
                     fieldInfo.getVectorDimension() * Float.BYTES,
+                    vectorsScorer,
                     fieldInfo.getVectorSimilarityFunction()));
           };
       return new FlatCloseableRandomVectorScorerSupplier(

@@ -57,10 +57,8 @@ public class TestVectorScorer extends LuceneTestCase {
 
       DocIdSetIterator iterator = vectorScorer.iterator();
       int numDocs = 0;
-      for (int i = 0; i < reader.maxDoc(); i++) {
-        if (iterator.advance(i) == i) {
-          numDocs++;
-        }
+      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        numDocs++;
       }
       assertEquals(3, numDocs);
     }

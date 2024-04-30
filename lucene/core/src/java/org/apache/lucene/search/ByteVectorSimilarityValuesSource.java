@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
@@ -43,12 +42,12 @@ class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       ByteVectorValues.checkField(ctx.reader(), fieldName);
       return DoubleValues.EMPTY;
     }
-    VectorSimilarityFunction function =
-        ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
     return new DoubleValues() {
+      private final VectorScorer scorer = vectorValues.scorer(queryVector);
+
       @Override
       public double doubleValue() throws IOException {
-        return function.compare(queryVector, vectorValues.vectorValue());
+        return scorer.score();
       }
 
       @Override

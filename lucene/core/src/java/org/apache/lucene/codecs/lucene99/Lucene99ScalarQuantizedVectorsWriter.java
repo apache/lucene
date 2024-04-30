@@ -527,6 +527,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   docsWithField.cardinality(),
                   mergedQuantizationState,
                   compress,
+                  fieldInfo.getVectorSimilarityFunction(),
+                  vectorsScorer,
                   quantizationDataInput)));
     } finally {
       if (success == false) {
@@ -1019,6 +1021,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public float getScoreCorrectionConstant() throws IOException {
       return current.values.getScoreCorrectionConstant();
     }
+
+    @Override
+    public VectorScorer vectorScorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
@@ -1086,6 +1093,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         quantize();
       }
       return doc;
+    }
+
+    @Override
+    public VectorScorer vectorScorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
     }
 
     private void quantize() throws IOException {
@@ -1187,6 +1199,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public int advance(int target) throws IOException {
       return in.advance(target);
+    }
+
+    @Override
+    public VectorScorer vectorScorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
     }
   }
 }

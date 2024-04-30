@@ -478,7 +478,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public VectorScorer scorer(float[] target) {
+      public VectorScorer scorer(float[] target) throws IOException {
         return vectorValues.scorer(target);
       }
 
@@ -550,7 +550,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public VectorScorer scorer(byte[] target) {
+      public VectorScorer scorer(byte[] target) throws IOException {
         return vectorValues.scorer(target);
       }
 
