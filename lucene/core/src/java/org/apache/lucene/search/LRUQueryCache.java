@@ -134,7 +134,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     uniqueQueries = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     mostRecentlyUsedQueries = uniqueQueries.keySet();
-    cache = Collections.synchronizedMap(new IdentityHashMap<>());
+    cache = new IdentityHashMap<>();
     ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     writeLock = lock.writeLock();
     readLock = lock.readLock();
@@ -632,16 +632,18 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     LeafCache(Object key) {
       this.key = key;
-      cache = Collections.synchronizedMap(new IdentityHashMap<>());
+      cache = new IdentityHashMap<>();
       ramBytesUsed = 0;
     }
 
     private void onDocIdSetCache(long ramBytesUsed) {
+      assert writeLock.isHeldByCurrentThread();
       this.ramBytesUsed += ramBytesUsed;
       LRUQueryCache.this.onDocIdSetCache(key, ramBytesUsed);
     }
 
     private void onDocIdSetEviction(long ramBytesUsed) {
+      assert writeLock.isHeldByCurrentThread();
       this.ramBytesUsed -= ramBytesUsed;
       LRUQueryCache.this.onDocIdSetEviction(key, 1, ramBytesUsed);
     }
@@ -653,6 +655,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     void putIfAbsent(Query query, CacheAndCount cached) {
+      assert writeLock.isHeldByCurrentThread();
       assert query instanceof BoostQuery == false;
       assert query instanceof ConstantScoreQuery == false;
       if (cache.putIfAbsent(query, cached) == null) {
@@ -662,6 +665,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     void remove(Query query) {
+      assert writeLock.isHeldByCurrentThread();
       assert query instanceof BoostQuery == false;
       assert query instanceof ConstantScoreQuery == false;
       CacheAndCount removed = cache.remove(query);
