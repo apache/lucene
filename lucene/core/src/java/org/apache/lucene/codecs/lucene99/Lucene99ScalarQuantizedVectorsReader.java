@@ -40,7 +40,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -307,10 +306,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       int size,
       byte bits,
       boolean compress,
-      OrdToDocDISIReaderConfiguration ordToDoc)
-      implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
+      OrdToDocDISIReaderConfiguration ordToDoc) {
 
     static FieldEntry create(
         IndexInput input,
@@ -362,11 +358,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
           bits,
           compress,
           ordToDoc);
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(ordToDoc);
     }
   }
 }

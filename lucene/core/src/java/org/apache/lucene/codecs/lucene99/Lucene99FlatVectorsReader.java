@@ -42,7 +42,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -263,9 +262,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
-      FieldInfo info)
-      implements Accountable {
-    static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
+      FieldInfo info) {
 
     FieldEntry {
       if (similarityFunction != info.getVectorSimilarityFunction()) {
@@ -327,11 +324,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           size,
           ordToDoc,
           info);
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(ordToDoc);
     }
   }
 }

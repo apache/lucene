@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.blockterms;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 
 // TODO
@@ -34,7 +33,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public abstract class TermsIndexReaderBase implements Closeable, Accountable {
+public abstract class TermsIndexReaderBase implements Closeable {
 
   public abstract FieldIndexEnum getFieldEnum(FieldInfo fieldInfo);
 

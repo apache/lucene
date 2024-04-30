@@ -44,11 +44,9 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -384,10 +382,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
       // Contains the configuration for reading sparse vectors and translating vector ordinals to
       // docId
-      OrdToDocDISIReaderConfiguration ordToDocVectorValues)
-      implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
+      OrdToDocDISIReaderConfiguration ordToDocVectorValues) {
 
     static FieldEntry create(
         IndexInput input,
@@ -453,14 +448,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
           offsetsBlockShift,
           offsetsLength,
           ordToDocVectorValues);
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(ordToDocVectorValues)
-          + RamUsageEstimator.sizeOf(offsetsMeta);
     }
   }
 

@@ -29,7 +29,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -51,8 +50,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -655,7 +652,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
           + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
           + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
 
-  private class SimpleTextTerms extends Terms implements Accountable {
+  private class SimpleTextTerms extends Terms {
     private final long termsStart;
     private final FieldInfo fieldInfo;
     private final int maxDoc;
@@ -746,23 +743,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       System.out.println("SAVED out.dot");
       */
       // System.out.println("FST " + fst.sizeInBytes());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return TERMS_BASE_RAM_BYTES_USED
-          + (fst != null ? fst.ramBytesUsed() : 0)
-          + RamUsageEstimator.sizeOf(scratch.bytes())
-          + RamUsageEstimator.sizeOf(scratchUTF16.chars());
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      if (fst == null) {
-        return Collections.emptyList();
-      } else {
-        return Collections.singletonList(Accountables.namedAccountable("term cache", fst));
-      }
     }
 
     @Override

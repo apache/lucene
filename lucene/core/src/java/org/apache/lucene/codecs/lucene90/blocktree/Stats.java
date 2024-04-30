@@ -31,9 +31,6 @@ import org.apache.lucene.util.BytesRef;
  * @lucene.internal
  */
 public class Stats {
-  /** Byte size of the index. */
-  public long indexNumBytes;
-
   /** Total number of terms in the field. */
   public long totalTermCount;
 
@@ -181,8 +178,6 @@ public class Stats {
     final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     PrintStream out = new PrintStream(bos, false, UTF_8);
 
-    out.println("  index FST:");
-    out.println("    " + indexNumBytes + " bytes");
     out.println("  terms:");
     out.println("    " + totalTermCount + " terms");
     out.println(
