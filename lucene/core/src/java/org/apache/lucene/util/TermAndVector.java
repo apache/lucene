@@ -24,7 +24,23 @@ import java.util.Locale;
  *
  * @lucene.experimental
  */
-public record TermAndVector(BytesRef term, float[] vector) {
+public class TermAndVector {
+
+  private final BytesRef term;
+  private final float[] vector;
+
+  public TermAndVector(BytesRef term, float[] vector) {
+    this.term = term;
+    this.vector = vector;
+  }
+
+  public BytesRef getTerm() {
+    return this.term;
+  }
+
+  public float[] getVector() {
+    return this.vector;
+  }
 
   public int size() {
     return vector.length;

@@ -20,38 +20,12 @@ package org.apache.lucene.classification;
  * The result of a call to {@link Classifier#assignClass(String)} holding an assigned class of type
  * <code>T</code> and a score.
  *
+ * @param assignedClass the class <code>T</code> assigned by a {@link Classifier}
+ * @param score score the score for the assignedClass as a <code>double</code>
  * @lucene.experimental
  */
 public record ClassificationResult<T>(T assignedClass, double score)
     implements Comparable<ClassificationResult<T>> {
-
-  /**
-   * Constructor
-   *
-   * @param assignedClass the class <code>T</code> assigned by a {@link Classifier}
-   * @param score the score for the assignedClass as a <code>double</code>
-   */
-  public ClassificationResult {}
-
-  /**
-   * retrieve the result class
-   *
-   * @return a <code>T</code> representing an assigned class
-   */
-  @Override
-  public T assignedClass() {
-    return assignedClass;
-  }
-
-  /**
-   * retrieve the result score
-   *
-   * @return a <code>double</code> representing a result score
-   */
-  @Override
-  public double score() {
-    return score;
-  }
 
   @Override
   public int compareTo(ClassificationResult<T> o) {

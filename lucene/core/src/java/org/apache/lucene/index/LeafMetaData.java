@@ -24,6 +24,22 @@ import org.apache.lucene.util.Version;
 /**
  * Provides read-only metadata about a leaf.
  *
+ * @param createdVersionMajor the Lucene version that created this index. This can be used to
+ *     implement backward compatibility on top of the codec API. A return value of {@code 6}
+ *     indicates that the created version is unknown.
+ * @param minVersion the minimum Lucene version that contributed documents to this index, or {@code
+ *     null} if this information is not available.
+ * @param sort the order in which documents from this index are sorted, or {@code null} if documents
+ *     are in no particular order.
+ * @param hasBlocks Returns <code>true</code> iff this index contains blocks created with {@link
+ *     IndexWriter#addDocument(Iterable)} or it's corresponding update methods with at least 2 or
+ *     more documents per call. Note: This property was not recorded before {@link
+ *     Version#LUCENE_9_9_0} this method will return false for all leaves written before {@link
+ *     Version#LUCENE_9_9_0}
+ * @see IndexWriter#updateDocuments(Term, Iterable)
+ * @see IndexWriter#updateDocuments(Query, Iterable)
+ * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
+ * @see IndexWriter#addDocuments(Iterable)
  * @lucene.experimental
  */
 public record LeafMetaData(
@@ -46,49 +62,5 @@ public record LeafMetaData(
     this.minVersion = minVersion;
     this.sort = sort;
     this.hasBlocks = hasBlocks;
-  }
-
-  /**
-   * Get the Lucene version that created this index. This can be used to implement backward
-   * compatibility on top of the codec API. A return value of {@code 6} indicates that the created
-   * version is unknown.
-   */
-  @Override
-  public int createdVersionMajor() {
-    return createdVersionMajor;
-  }
-
-  /**
-   * Return the minimum Lucene version that contributed documents to this index, or {@code null} if
-   * this information is not available.
-   */
-  @Override
-  public Version minVersion() {
-    return minVersion;
-  }
-
-  /**
-   * Return the order in which documents from this index are sorted, or {@code null} if documents
-   * are in no particular order.
-   */
-  @Override
-  public Sort sort() {
-    return sort;
-  }
-
-  /**
-   * Returns <code>true</code> iff this index contains blocks created with {@link
-   * IndexWriter#addDocument(Iterable)} or it's corresponding update methods with at least 2 or more
-   * documents per call. Note: This property was not recorded before {@link Version#LUCENE_9_9_0}
-   * this method will return false for all leaves written before {@link Version#LUCENE_9_9_0}
-   *
-   * @see IndexWriter#updateDocuments(Term, Iterable)
-   * @see IndexWriter#updateDocuments(Query, Iterable)
-   * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
-   * @see IndexWriter#addDocuments(Iterable)
-   */
-  @Override
-  public boolean hasBlocks() {
-    return hasBlocks;
   }
 }

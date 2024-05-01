@@ -171,13 +171,7 @@ public class PackedInts {
   }
 
   /** Simple class that holds a format and a number of bits per value. */
-  public record FormatAndBits(Format format, int bitsPerValue) {
-
-    @Override
-    public String toString() {
-      return "FormatAndBits(format=" + format + " bitsPerValue=" + bitsPerValue + ")";
-    }
-  }
+  public record FormatAndBits(Format format, int bitsPerValue) {}
 
   /**
    * Try to find the {@link Format} and number of bits per value that would restore from disk the
