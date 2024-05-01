@@ -66,17 +66,12 @@ public abstract class Scorable {
    * A child Scorer and its relationship to its parent. The meaning of the relationship depends upon
    * the parent query.
    *
+   * <p>The relationship can be any string that makes sense to the parent Scorer.
+   *
    * @param child Child Scorer. (note this is typically a direct child, and may itself also have
    *     children).
    * @param relationship An arbitrary string relating this scorer to the parent.
    * @lucene.experimental
    */
-  public record ChildScorable(Scorable child, String relationship) {
-    /**
-     * Creates a new ChildScorer node with the specified relationship.
-     *
-     * <p>The relationship can be any string that makes sense to the parent Scorer.
-     */
-    public ChildScorable {}
-  }
+  public record ChildScorable(Scorable child, String relationship) {}
 }

@@ -167,14 +167,5 @@ public class Extensions {
    * @param <Cur> the pairs first element
    * @param <Cud> the pairs last element of the pair.
    */
-  public record Pair<Cur, Cud>(Cur cur, Cud cud) {
-
-    /**
-     * Creates a new Pair
-     *
-     * @param cur the pairs first element
-     * @param cud the pairs last element
-     */
-    public Pair {}
-  }
+  public record Pair<Cur, Cud>(Cur cur, Cud cud) {}
 }

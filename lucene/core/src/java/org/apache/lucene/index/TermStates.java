@@ -232,32 +232,5 @@ public final class TermStates {
   }
 
   /** Wrapper over TermState, ordinal value, term doc frequency and total term frequency */
-  private record TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {
-    /** Initialize TermStateInfo */
-    private TermStateInfo {}
-
-    /** Get term state */
-    @Override
-    public TermState state() {
-      return state;
-    }
-
-    /** Get ordinal value */
-    @Override
-    public int ordinal() {
-      return ordinal;
-    }
-
-    /** Get term doc frequency */
-    @Override
-    public int docFreq() {
-      return docFreq;
-    }
-
-    /** Get total term frequency */
-    @Override
-    public long totalTermFreq() {
-      return totalTermFreq;
-    }
-  }
+  private record TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {}
 }

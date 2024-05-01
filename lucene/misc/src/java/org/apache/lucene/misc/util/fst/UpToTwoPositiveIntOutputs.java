@@ -49,26 +49,6 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
       assert first >= 0;
       assert second >= 0;
     }
-
-    @Override
-    public String toString() {
-      return "TwoLongs:" + first + "," + second;
-    }
-
-    @Override
-    public boolean equals(Object _other) {
-      if (_other instanceof TwoLongs) {
-        final TwoLongs other = (TwoLongs) _other;
-        return first == other.first && second == other.second;
-      } else {
-        return false;
-      }
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) ((first ^ (first >>> 32)) ^ (second ^ (second >> 32)));
-    }
   }
 
   private static final Long NO_OUTPUT = 0L;

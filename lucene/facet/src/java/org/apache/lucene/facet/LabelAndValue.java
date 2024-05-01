@@ -23,20 +23,8 @@ package org.apache.lucene.facet;
  * @param value Value associated with this label.
  */
 public record LabelAndValue(String label, Number value) {
-  /** Sole constructor. */
-  public LabelAndValue {}
-
   @Override
   public String toString() {
     return label + " (" + value + ")";
-  }
-
-  @Override
-  public boolean equals(Object _other) {
-    if ((_other instanceof LabelAndValue) == false) {
-      return false;
-    }
-    LabelAndValue other = (LabelAndValue) _other;
-    return label.equals(other.label) && value.equals(other.value);
   }
 }

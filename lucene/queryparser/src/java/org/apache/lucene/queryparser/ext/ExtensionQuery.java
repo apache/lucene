@@ -22,47 +22,11 @@ import org.apache.lucene.queryparser.classic.QueryParser;
  * {@link ExtensionQuery} holds all query components extracted from the original query string like
  * the query field and the extension query string.
  *
+ * @param topLevelParser the top level parser
+ * @param field the query field
+ * @param rawQueryString the raw extension query string
  * @see Extensions
  * @see ExtendableQueryParser
  * @see ParserExtension
  */
-public record ExtensionQuery(QueryParser topLevelParser, String field, String rawQueryString) {
-
-  /**
-   * Creates a new {@link ExtensionQuery}
-   *
-   * @param field the query field
-   * @param rawQueryString the raw extension query string
-   */
-  public ExtensionQuery {}
-
-  /**
-   * Returns the query field
-   *
-   * @return the query field
-   */
-  @Override
-  public String field() {
-    return field;
-  }
-
-  /**
-   * Returns the raw extension query string
-   *
-   * @return the raw extension query string
-   */
-  @Override
-  public String rawQueryString() {
-    return rawQueryString;
-  }
-
-  /**
-   * Returns the top level parser which created this {@link ExtensionQuery}
-   *
-   * @return the top level parser which created this {@link ExtensionQuery}
-   */
-  @Override
-  public QueryParser topLevelParser() {
-    return topLevelParser;
-  }
-}
+public record ExtensionQuery(QueryParser topLevelParser, String field, String rawQueryString) {}

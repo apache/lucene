@@ -28,9 +28,4 @@ public record ReaderSlice(int start, int length, int readerIndex) {
 
   /** Zero-length {@code ReaderSlice} array. */
   public static final ReaderSlice[] EMPTY_ARRAY = new ReaderSlice[0];
-
-  @Override
-  public String toString() {
-    return "slice start=" + start + " length=" + length + " readerIndex=" + readerIndex;
-  }
 }

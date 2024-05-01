@@ -43,11 +43,7 @@ public class FSTUtil {
    * @param output Output of the path so far:
    * @param input Input of the path so far:
    */
-  public record Path<T>(int state, FST.Arc<T> fstNode, T output, IntsRefBuilder input) {
-
-    /** Sole constructor. */
-    public Path {}
-  }
+  public record Path<T>(int state, FST.Arc<T> fstNode, T output, IntsRefBuilder input) {}
 
   /**
    * Enumerates all minimal prefix paths in the automaton that also intersect the FST, accumulating

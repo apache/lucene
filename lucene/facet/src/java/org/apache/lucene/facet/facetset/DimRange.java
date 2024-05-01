@@ -26,13 +26,6 @@ import org.apache.lucene.util.NumericUtils;
  * @lucene.experimental
  */
 public record DimRange(long min, long max) {
-  /**
-   * Creates a LongRange.
-   *
-   * @param min inclusive min value in range
-   * @param max inclusive max value in range
-   */
-  public DimRange {}
 
   /**
    * Creates a {@link DimRange} for the given min and max long values. This method is also suitable

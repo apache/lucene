@@ -192,17 +192,6 @@ public class HighlightsMatch extends QueryMatch {
       implements Comparable<Hit> {
 
     @Override
-    public boolean equals(Object obj) {
-      if (this == obj) return true;
-      if (!(obj instanceof Hit)) return false;
-      Hit other = (Hit) obj;
-      return this.startOffset == other.startOffset
-          && this.endOffset == other.endOffset
-          && this.startPosition == other.startPosition
-          && this.endPosition == other.endPosition;
-    }
-
-    @Override
     public String toString() {
       return String.format(
           Locale.ROOT, "%d(%d)->%d(%d)", startPosition, startOffset, endPosition, endOffset);

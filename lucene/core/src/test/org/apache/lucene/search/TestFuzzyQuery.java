@@ -718,11 +718,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
         return term.compareTo(other.term);
       }
     }
-
-    @Override
-    public String toString() {
-      return term + " score=" + score;
-    }
   }
 
   // Poached from LuceneLevenshteinDistance.java (from suggest module): it supports transpositions

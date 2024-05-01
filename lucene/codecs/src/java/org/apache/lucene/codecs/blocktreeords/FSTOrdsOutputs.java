@@ -63,16 +63,6 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
       hash = (int) (hash ^ endOrd);
       return hash;
     }
-
-    @Override
-    public boolean equals(Object _other) {
-      if (_other instanceof Output) {
-        Output other = (Output) _other;
-        return bytes.equals(other.bytes) && startOrd == other.startOrd && endOrd == other.endOrd;
-      } else {
-        return false;
-      }
-    }
   }
 
   @Override

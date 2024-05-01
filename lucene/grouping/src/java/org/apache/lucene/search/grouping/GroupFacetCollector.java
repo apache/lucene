@@ -232,37 +232,8 @@ public abstract class GroupFacetCollector extends SimpleCollector {
   public record FacetEntry(BytesRef value, int count) {
 
     @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      FacetEntry that = (FacetEntry) o;
-
-      if (count != that.count) return false;
-      if (!value.equals(that.value)) return false;
-
-      return true;
-    }
-
-    @Override
     public String toString() {
       return "FacetEntry{" + "value=" + value.utf8ToString() + ", count=" + count + '}';
-    }
-
-    /**
-     * @return The value of this facet entry
-     */
-    @Override
-    public BytesRef value() {
-      return value;
-    }
-
-    /**
-     * @return The count (number of groups) of this facet entry.
-     */
-    @Override
-    public int count() {
-      return count;
     }
   }
 

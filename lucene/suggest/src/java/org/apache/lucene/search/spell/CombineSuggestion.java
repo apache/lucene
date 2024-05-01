@@ -23,10 +23,4 @@ package org.apache.lucene.search.spell;
  *     combination
  * @param suggestion The word combination suggestion
  */
-public record CombineSuggestion(SuggestWord suggestion, int[] originalTermIndexes) {
-  /**
-   * Creates a new CombineSuggestion from a <code>suggestion</code> and an array of term ids
-   * (referencing the indexes to the original terms that form this combined suggestion)
-   */
-  public CombineSuggestion {}
-}
+public record CombineSuggestion(SuggestWord suggestion, int[] originalTermIndexes) {}
