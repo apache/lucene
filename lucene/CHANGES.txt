@@ -226,6 +226,8 @@ Other
 
 * GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
 
+* GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
@@ -322,6 +324,9 @@ Optimizations
 
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
+
+* GITHUB#13321: Improve compressed int4 quantized vector search by utilizing SIMD inline with the decompression
+  process. (Ben Trent)
 
 Bug Fixes
 ---------------------
