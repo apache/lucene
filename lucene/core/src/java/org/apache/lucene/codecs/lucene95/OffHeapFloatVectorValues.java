@@ -57,6 +57,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
   }
 
   @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
+  @Override
   public float[] vectorValue(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
