@@ -101,6 +101,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
     FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
     if (vectorValues == null) {
+      FloatVectorValues.checkField(context.reader(), field);
       return null;
     }
     return vectorValues.scorer(target);

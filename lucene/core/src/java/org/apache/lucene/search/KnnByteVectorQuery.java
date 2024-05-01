@@ -100,6 +100,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
     ByteVectorValues vectorValues = context.reader().getByteVectorValues(field);
     if (vectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
       return null;
     }
     return vectorValues.scorer(target);

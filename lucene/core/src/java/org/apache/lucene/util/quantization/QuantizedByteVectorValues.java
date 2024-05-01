@@ -47,5 +47,11 @@ public abstract class QuantizedByteVectorValues extends DocIdSetIterator {
     return size();
   }
 
-  public abstract VectorScorer vectorScorer(float[] target) throws IOException;
+  /**
+   * Return a {@link VectorScorer} for the given query vector.
+   *
+   * @param query the query vector
+   * @return a {@link VectorScorer} instance
+   */
+  public abstract VectorScorer vectorScorer(float[] query) throws IOException;
 }
