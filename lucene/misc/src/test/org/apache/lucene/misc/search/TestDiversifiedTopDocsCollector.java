@@ -529,7 +529,9 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          Scorer innerScorer = inner.scorer(context);
+          final var scorerSupplier = inner.scorerSupplier(context);
+          if (scorerSupplier == null) return null;
+          final var innerScorer = scorerSupplier.get(Long.MAX_VALUE);
           NumericDocValues scoreFactors = DocValues.getNumeric(context.reader(), scoreField);
           final var scorer =
               new Scorer(this) {

@@ -90,10 +90,11 @@ public class RandomApproximationQuery extends Query {
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       final Scorer scorer;
-      final Scorer subScorer = in.scorer(context);
-      if (subScorer == null) {
+      final var scorerSupplier = in.scorerSupplier(context);
+      if (scorerSupplier == null) {
         return null;
       } else {
+        final var subScorer = scorerSupplier.get(Long.MAX_VALUE);
         scorer = new RandomApproximationScorer(subScorer, new Random(random.nextLong()));
       }
       return new DefaultScorerSupplier(scorer);

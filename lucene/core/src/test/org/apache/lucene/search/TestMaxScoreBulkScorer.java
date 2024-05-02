@@ -390,17 +390,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) {
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public long cost() {
-          return 0;
-        }
-      };
+      throw new UnsupportedOperationException();
     }
   }
 

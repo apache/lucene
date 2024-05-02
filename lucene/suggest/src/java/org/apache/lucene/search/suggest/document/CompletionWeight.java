@@ -22,7 +22,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.suggest.BitsProducer;
@@ -122,17 +121,7 @@ public class CompletionWeight extends Weight {
 
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long cost() {
-        return 0;
-      }
-    };
+    throw new UnsupportedOperationException();
   }
 
   /**
