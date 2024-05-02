@@ -121,6 +121,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   public Stats computeBlockStats() throws IOException {
 
     Stats stats = new Stats(fr.parent.segment, fr.fieldInfo.name);
+    if (fr.index != null) {
+      stats.indexNumBytes = fr.index.ramBytesUsed();
+    }
 
     currentFrame = staticFrame;
     FST.Arc<BytesRef> arc;
