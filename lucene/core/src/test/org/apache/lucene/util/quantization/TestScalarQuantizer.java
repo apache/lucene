@@ -57,8 +57,8 @@ public class TestScalarQuantizer extends LuceneTestCase {
       }
     }
     // int7 should always quantize to 0-127
-    assertTrue(minDimValue >= (byte)0);
-    assertTrue(maxDimValue <= (byte)127);
+    assertTrue(minDimValue >= (byte) 0);
+    assertTrue(maxDimValue <= (byte) 127);
   }
 
   public void testQuantiles() {
@@ -166,8 +166,8 @@ public class TestScalarQuantizer extends LuceneTestCase {
       }
     }
     // int4 should always quantize to 0-15
-    assertTrue(minDimValue >= (byte)0);
-    assertTrue(maxDimValue <= (byte)15);
+    assertTrue(minDimValue >= (byte) 0);
+    assertTrue(maxDimValue <= (byte) 15);
   }
 
   static void shuffleArray(float[] ar) {
