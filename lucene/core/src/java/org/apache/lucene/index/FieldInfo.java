@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -42,7 +44,7 @@ public final class FieldInfo {
   private final IndexOptions indexOptions;
   private boolean storePayloads; // whether this field stores payloads together with term positions
 
-  private final Map<String, String> attributes;
+  private Map<String, String> attributes;
 
   private long dvGen;
 
@@ -613,7 +615,7 @@ public final class FieldInfo {
   }
 
   /** Get a codec attribute value, or null if it does not exist */
-  public String getAttribute(String key) {
+  public synchronized String getAttribute(String key) {
     return attributes.get(key);
   }
 
@@ -628,12 +630,17 @@ public final class FieldInfo {
    * If the value of the attributes for a same field is changed between the documents, the behaviour
    * after merge is undefined.
    */
-  public String putAttribute(String key, String value) {
-    return attributes.put(key, value);
+  public synchronized String putAttribute(String key, String value) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    String oldValue = newMap.put(key, value);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
+    return oldValue;
   }
 
   /** Returns internal codec attributes map. */
-  public Map<String, String> attributes() {
+  public synchronized Map<String, String> attributes() {
     return attributes;
   }
 
