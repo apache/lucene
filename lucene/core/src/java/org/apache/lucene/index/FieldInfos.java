@@ -31,12 +31,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -63,9 +61,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final String parentField;
 
   // used only by fieldInfo(int)
-  private final IntFunction<FieldInfo> byNumber;
+  private final FieldInfo[] byNumber;
   private final HashMap<String, FieldInfo> byName;
-  private final Collection<FieldInfo> values; // for an unmodifiable iterator
+
+  /** Iterator in ascending order of field number. */
+  private final Collection<FieldInfo> values;
 
   /** Constructs a new FieldInfos from an array of FieldInfo objects */
   public FieldInfos(FieldInfo[] infos) {
@@ -83,10 +83,18 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String parentField = null;
 
     byName = CollectionUtil.newHashMap(infos.length);
+    int maxFieldNumber = -1;
+    boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
-      if (info.number < 0) {
+      int fieldNumber = info.number;
+      if (fieldNumber < 0) {
         throw new IllegalArgumentException(
             "illegal field number: " + info.number + " for field " + info.name);
+      }
+      if (maxFieldNumber < fieldNumber) {
+        maxFieldNumber = fieldNumber;
+      } else {
+        fieldNumberStrictlyAscending = false;
       }
       FieldInfo previous = byName.put(info.name, info);
       if (previous != null) {
@@ -140,17 +148,38 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
-    FieldInfo[] sortedFieldInfos = ArrayUtil.copyOfSubArray(infos, 0, infos.length);
-    Arrays.sort(sortedFieldInfos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
-    int maxFieldNumber = infos.length == 0 ? -1 : sortedFieldInfos[infos.length - 1].number;
-    // If there are many fields and the max field number is greater than twice the number
-    // of fields, then a map structure is more compact to store the by-number mapping.
-    byNumber =
-        maxFieldNumber >= 2 * infos.length && maxFieldNumber >= 32
-            ? new MapFieldInfoByNumber(infos)
-            : new ArrayFieldInfoByNumber(infos, maxFieldNumber);
-    // The iteration of FieldInfo is ordered by ascending field number.
-    values = Arrays.asList(sortedFieldInfos);
+    if (fieldNumberStrictlyAscending && maxFieldNumber == infos.length - 1) {
+      // The input FieldInfo[] contains all fields numbered from 0 to infos.length - 1 and they are
+      // sorted, use it directly. This is an optimization when reading a segment with all fields
+      // since the FieldInfo[] is sorted.
+      byNumber = infos; // We could copy the input array, but do we need to?
+      values = Arrays.asList(byNumber);
+    } else {
+      byNumber = new FieldInfo[maxFieldNumber + 1];
+      for (FieldInfo fieldInfo : infos) {
+        FieldInfo previous = byNumber[fieldInfo.number];
+        if (previous != null) {
+          throw new IllegalArgumentException(
+              "duplicate field numbers: "
+                  + previous.name
+                  + " and "
+                  + fieldInfo.name
+                  + " have: "
+                  + fieldInfo.number);
+        }
+        byNumber[fieldInfo.number] = fieldInfo;
+      }
+      if (maxFieldNumber == infos.length - 1) {
+        // No fields are missing, use byNumber.
+        values = Arrays.asList(byNumber);
+      } else {
+        // The below code is faster than Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
+        // mainly when the input FieldInfo[] is sorted, when reading a segment.
+        FieldInfo[] sortedFieldInfos = ArrayUtil.copyOfSubArray(infos, 0, infos.length);
+        Arrays.sort(sortedFieldInfos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
+        values = Arrays.asList(sortedFieldInfos);
+      }
+    }
   }
 
   /**
@@ -309,7 +338,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     if (fieldNumber < 0) {
       throw new IllegalArgumentException("Illegal field number: " + fieldNumber);
     }
-    return byNumber.apply(fieldNumber);
+    return fieldNumber >= byNumber.length ? null : byNumber[fieldNumber];
   }
 
   static final class FieldDimensions {
@@ -802,61 +831,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldInfos finish() {
       finished = true;
       return new FieldInfos(byName.values().toArray(new FieldInfo[byName.size()]));
-    }
-  }
-
-  private static class MapFieldInfoByNumber implements IntFunction<FieldInfo> {
-
-    private final IntObjectHashMap<FieldInfo> map;
-
-    MapFieldInfoByNumber(FieldInfo[] fieldInfos) {
-      map = new IntObjectHashMap<>(fieldInfos.length);
-      for (FieldInfo fieldInfo : fieldInfos) {
-        FieldInfo previous = map.put(fieldInfo.number, fieldInfo);
-        if (previous != null) {
-          throw new IllegalArgumentException(
-              "duplicate field numbers: "
-                  + previous.name
-                  + " and "
-                  + fieldInfo.name
-                  + " have: "
-                  + fieldInfo.number);
-        }
-      }
-    }
-
-    @Override
-    public FieldInfo apply(int fieldNumber) {
-      return map.get(fieldNumber);
-    }
-  }
-
-  private static class ArrayFieldInfoByNumber implements IntFunction<FieldInfo> {
-
-    private static final FieldInfo[] EMPTY = new FieldInfo[0];
-
-    private final FieldInfo[] array;
-
-    ArrayFieldInfoByNumber(FieldInfo[] fieldInfos, int maxFieldNumber) {
-      array = fieldInfos.length == 0 ? EMPTY : new FieldInfo[maxFieldNumber + 1];
-      for (FieldInfo fieldInfo : fieldInfos) {
-        FieldInfo previous = array[fieldInfo.number];
-        if (previous != null) {
-          throw new IllegalArgumentException(
-              "duplicate field numbers: "
-                  + previous.name
-                  + " and "
-                  + fieldInfo.name
-                  + " have: "
-                  + fieldInfo.number);
-        }
-        array[fieldInfo.number] = fieldInfo;
-      }
-    }
-
-    @Override
-    public FieldInfo apply(int fieldNumber) {
-      return fieldNumber >= array.length ? null : array[fieldNumber];
     }
   }
 }
