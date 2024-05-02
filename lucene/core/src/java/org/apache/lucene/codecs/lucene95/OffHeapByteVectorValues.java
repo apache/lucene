@@ -68,6 +68,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     return binaryValue;
   }
 
+  @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
   private void readValue(int targetOrd) throws IOException {
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);

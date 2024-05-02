@@ -183,6 +183,8 @@ Changes in Runtime Behavior
 * GITHUB#13293: ConcurrentMergeScheduler now allows up to 50% of the threads of the host to be used
   for merging. (Adrien Grand)
 
+* GITHUB#13277: IndexWriter treats any java.lang.Error as tragic. (Robert Muir)
+
 Changes in Backwards Compatibility Policy
 -----------------------------------------
 
@@ -223,6 +225,8 @@ Other
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
 * GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
+
+* GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
 
 ======================== Lucene 9.11.0 =======================
 
@@ -320,6 +324,9 @@ Optimizations
 
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
+
+* GITHUB#13321: Improve compressed int4 quantized vector search by utilizing SIMD inline with the decompression
+  process. (Ben Trent)
 
 Bug Fixes
 ---------------------
