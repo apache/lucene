@@ -101,6 +101,9 @@ public class LiveIndexWriterConfig {
   /** parent document field */
   protected String parentField = null;
 
+  /** The DataCubes config based on which data cube indices will be created during flush/merge */
+  protected DataCubesConfig dataCubesConfig = null;
+
   /**
    * if an indexing thread should check for pending flushes on update in order to help out on a full
    * flush
@@ -395,6 +398,11 @@ public class LiveIndexWriterConfig {
   /** Get the index-time {@link Sort} order, applied to all (flushed and merged) segments. */
   public Sort getIndexSort() {
     return indexSort;
+  }
+
+  /** Get the index-time DataCubeConfig and associated fields, applied to all segments. */
+  public DataCubesConfig getDataCubesConfig() {
+    return dataCubesConfig;
   }
 
   /** Returns the field names involved in the index sort */

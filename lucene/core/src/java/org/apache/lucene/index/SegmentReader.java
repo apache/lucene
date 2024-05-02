@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DataCubesProducer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -285,6 +286,12 @@ public final class SegmentReader extends CodecReader {
   @Override
   public KnnVectorsReader getVectorReader() {
     return core.knnVectorsReader;
+  }
+
+  @Override
+  public DataCubesProducer<?> getDataCubesProducer() {
+    ensureOpen();
+    return core.dataCubesProducer;
   }
 
   @Override

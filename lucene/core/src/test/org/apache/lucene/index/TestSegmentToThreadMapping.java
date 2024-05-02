@@ -117,6 +117,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
+      public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
       public void searchNearestVectors(
           String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 

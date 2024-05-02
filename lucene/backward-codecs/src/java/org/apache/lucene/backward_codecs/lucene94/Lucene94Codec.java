@@ -21,6 +21,7 @@ import org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
+import org.apache.lucene.codecs.DataCubesFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.codecs.FilterCodec;
@@ -213,5 +214,10 @@ public class Lucene94Codec extends Codec {
   @Override
   public final NormsFormat normsFormat() {
     return normsFormat;
+  }
+
+  @Override
+  public DataCubesFormat dataCubesFormat() {
+    return DataCubesFormat.EMPTY;
   }
 }

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.codecs.DataCubesProducer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -98,6 +99,16 @@ public abstract class FilterCodecReader extends CodecReader {
   @Override
   public PointsReader getPointsReader() {
     return in.getPointsReader();
+  }
+
+  @Override
+  public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+    return in.getDataCubeValues(field);
+  }
+
+  @Override
+  public DataCubesProducer<?> getDataCubesProducer() {
+    return in.getDataCubesProducer();
   }
 
   @Override

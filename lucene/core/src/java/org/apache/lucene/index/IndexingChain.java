@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.codecs.DataCubesFormat;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -287,6 +288,15 @@ final class IndexingChain implements Accountable {
             IOContext.DEFAULT,
             state.segmentSuffix);
 
+    // This must be called before writeDocValues because this uses docValuesWriter
+    DataCubesConfig dataCubesConfig = state.segmentInfo.getDataCubesConfig();
+    t0 = System.nanoTime();
+    writeDataCubes(state, sortMap, dataCubesConfig);
+    if (infoStream.isEnabled("IW")) {
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write dataCubes");
+    }
+
     t0 = System.nanoTime();
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
@@ -404,6 +414,77 @@ final class IndexingChain implements Accountable {
       } else {
         IOUtils.closeWhileHandlingException(pointsWriter);
       }
+    }
+  }
+
+  /** Writes DataCubeIndices based on buffered doc values (called from {@link #flush}). */
+  private void writeDataCubes(
+      SegmentWriteState state, Sorter.DocMap sortMap, DataCubesConfig dataCubesConfig)
+      throws IOException {
+    if (dataCubesConfig == null) return;
+    DataCubesDocValuesConsumer dataCubeDocValuesConsumer = null;
+    boolean success = false;
+    try {
+      for (int i = 0; i < fieldHash.length; i++) {
+        PerField perField = fieldHash[i];
+        while (perField != null) {
+          if (perField.docValuesWriter != null) {
+            if (perField.fieldInfo.getDocValuesType() == DocValuesType.NONE) {
+              // BUG
+              throw new AssertionError(
+                  "segment="
+                      + state.segmentInfo
+                      + ": field=\""
+                      + perField.fieldInfo.name
+                      + "\" has no docValues but wrote them");
+            }
+            if (dataCubeDocValuesConsumer == null) {
+              // lazy init
+              DataCubesFormat fmt = state.segmentInfo.getCodec().dataCubesFormat();
+              dataCubeDocValuesConsumer = fmt.fieldsConsumer(state, dataCubesConfig);
+            }
+            perField.docValuesWriter.flush(state, sortMap, dataCubeDocValuesConsumer);
+          } else if (perField.fieldInfo != null
+              && perField.fieldInfo.getDocValuesType() != DocValuesType.NONE) {
+            // BUG
+            throw new AssertionError(
+                "segment="
+                    + state.segmentInfo
+                    + ": field=\""
+                    + perField.fieldInfo.name
+                    + "\" has docValues but did not write them");
+          }
+          perField = perField.next;
+        }
+      }
+      // IMPORTANT : This call creates the data cubes structures
+      if (dataCubeDocValuesConsumer != null) {
+        dataCubeDocValuesConsumer.flush(dataCubesConfig);
+      }
+
+      // TODO: catch missing DV fields here?  else we have
+      // null/"" depending on how docs landed in segments?
+      // but we can't detect all cases, and we should leave
+      // this behavior undefined. dv is not "schemaless": it's column-stride.
+      success = true;
+    } finally {
+      if (success) {
+        IOUtils.close(dataCubeDocValuesConsumer);
+      } else {
+        IOUtils.closeWhileHandlingException(dataCubeDocValuesConsumer);
+      }
+    }
+
+    if (state.fieldInfos.hasDocValues() == false) {
+      if (dataCubeDocValuesConsumer != null) {
+        // BUG
+        throw new AssertionError(
+            "segment=" + state.segmentInfo + ": fieldInfos has no docValues but wrote them");
+      }
+    } else if (dataCubeDocValuesConsumer == null) {
+      // BUG
+      throw new AssertionError(
+          "segment=" + state.segmentInfo + ": fieldInfos has docValues but did not wrote them");
     }
   }
 

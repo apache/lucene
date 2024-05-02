@@ -145,6 +145,11 @@ public class TestMinimalCodec extends LuceneTestCase {
     public KnnVectorsFormat knnVectorsFormat() {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public DataCubesFormat dataCubesFormat() {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /**

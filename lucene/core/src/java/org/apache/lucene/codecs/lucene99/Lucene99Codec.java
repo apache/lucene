@@ -55,6 +55,8 @@ public class Lucene99Codec extends Codec {
   private final CompoundFormat compoundFormat = new Lucene90CompoundFormat();
   private final NormsFormat normsFormat = new Lucene90NormsFormat();
 
+  // private final DataCubesFormat dataCubesFormat = ;
+
   private final PostingsFormat defaultPostingsFormat;
   private final PostingsFormat postingsFormat =
       new PerFieldPostingsFormat() {
@@ -146,6 +148,11 @@ public class Lucene99Codec extends Codec {
   @Override
   public final KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
+  }
+
+  @Override
+  public DataCubesFormat dataCubesFormat() {
+    return DataCubesFormat.EMPTY; // TODO
   }
 
   /**

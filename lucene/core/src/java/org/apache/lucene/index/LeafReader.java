@@ -219,6 +219,12 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 
   /**
+   * Returns {@link DataCubeValues} for this field, or null if no data cube values were indexed for
+   * this field. The returned instance should only be used by a single thread.
+   */
+  public abstract DataCubeValues<?> getDataCubeValues(String field) throws IOException;
+
+  /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
    * this field, to the given vector, by the field's similarity function. The score of each document
    * is derived from the vector similarity in a way that ensures scores are positive and that a

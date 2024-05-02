@@ -58,6 +58,11 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
+  public final DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     throw new UnsupportedOperationException();

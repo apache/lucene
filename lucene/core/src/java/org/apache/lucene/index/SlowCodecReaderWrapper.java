@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import org.apache.lucene.codecs.DataCubesProducer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -92,6 +93,12 @@ public final class SlowCodecReaderWrapper {
           } catch (IOException bogus) {
             throw new AssertionError(bogus);
           }
+        }
+
+        @Override
+        public DataCubesProducer<?> getDataCubesProducer() {
+          reader.ensureOpen();
+          return readerToDataCubeProducer(reader);
         }
 
         @Override
@@ -303,6 +310,23 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public void close() {}
+    };
+  }
+
+  private static DataCubesProducer<Object> readerToDataCubeProducer(final LeafReader reader) {
+    return new DataCubesProducer<>() {
+      @Override
+      public void checkIntegrity() throws IOException {}
+
+      @Override
+      public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+        // TODO : change this
+        // return reader.getAggregatedDocValues();
+        return reader.getDataCubeValues(field);
+      }
+
+      @Override
+      public void close() throws IOException {}
     };
   }
 

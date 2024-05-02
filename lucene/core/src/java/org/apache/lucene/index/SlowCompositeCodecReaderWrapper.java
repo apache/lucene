@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.lucene.codecs.DataCubesProducer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -801,6 +802,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   @Override
   public KnnVectorsReader getVectorReader() {
     return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts);
+  }
+
+  @Override
+  public DataCubesProducer<?> getDataCubesProducer() {
+    return null; // TODO
   }
 
   private static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader {

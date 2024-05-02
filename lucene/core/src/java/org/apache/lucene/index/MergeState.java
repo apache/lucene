@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.DataCubesProducer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -79,6 +80,9 @@ public class MergeState {
   /** Vector readers to merge */
   public final KnnVectorsReader[] knnVectorsReaders;
 
+  /** DataCubes producers being merged */
+  public final DataCubesProducer<?>[] dataCubesProducers;
+
   /** Max docs per reader */
   public final int[] maxDocs;
 
@@ -113,6 +117,7 @@ public class MergeState {
     knnVectorsReaders = new KnnVectorsReader[numReaders];
     fieldInfos = new FieldInfos[numReaders];
     liveDocs = new Bits[numReaders];
+    dataCubesProducers = new DataCubesProducer<?>[numReaders];
 
     int numDocs = 0;
     for (int i = 0; i < numReaders; i++) {
@@ -155,6 +160,11 @@ public class MergeState {
       knnVectorsReaders[i] = reader.getVectorReader();
       if (knnVectorsReaders[i] != null) {
         knnVectorsReaders[i] = knnVectorsReaders[i].getMergeInstance();
+      }
+
+      dataCubesProducers[i] = reader.getDataCubesProducer();
+      if (dataCubesProducers[i] != null) {
+        dataCubesProducers[i] = dataCubesProducers[i].getMergeInstance();
       }
 
       numDocs += reader.numDocs();
@@ -281,6 +291,7 @@ public class MergeState {
       FieldsProducer[] fieldsProducers,
       PointsReader[] pointsReaders,
       KnnVectorsReader[] knnVectorsReaders,
+      DataCubesProducer<?>[] dataCubesProducers,
       int[] maxDocs,
       InfoStream infoStream,
       Executor intraMergeTaskExecutor,
@@ -301,5 +312,6 @@ public class MergeState {
     this.infoStream = infoStream;
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
     this.needsIndexSort = needsIndexSort;
+    this.dataCubesProducers = dataCubesProducers;
   }
 }

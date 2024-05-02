@@ -16,6 +16,7 @@
  */
 
 import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.index.DataCubeField;
 
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
@@ -80,6 +81,8 @@ module org.apache.lucene.core {
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;
+  provides org.apache.lucene.index.DataCubeFieldProvider with
+      DataCubeField.Provider;
 
   uses org.apache.lucene.analysis.CharFilterFactory;
   uses org.apache.lucene.analysis.TokenFilterFactory;
@@ -89,4 +92,5 @@ module org.apache.lucene.core {
   uses org.apache.lucene.codecs.KnnVectorsFormat;
   uses org.apache.lucene.codecs.PostingsFormat;
   uses org.apache.lucene.index.SortFieldProvider;
+  uses org.apache.lucene.index.DataCubeFieldProvider;
 }

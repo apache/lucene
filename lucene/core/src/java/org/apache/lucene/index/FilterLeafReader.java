@@ -352,6 +352,11 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
+  public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+    return in.getDataCubeValues(field);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return in.getByteVectorValues(field);
   }

@@ -161,7 +161,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
                         random(), StringHelper.ID_LENGTH, StringHelper.ID_LENGTH)
                     .getBytes(StandardCharsets.US_ASCII),
                 Collections.emptyMap(), // attributes
-                null /* indexSort */);
+                null /* indexSort*/);
         info.setFiles(Collections.emptyList());
         infos.add(
             new SegmentCommitInfo(
