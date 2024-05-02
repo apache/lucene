@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
@@ -23,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
+import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -307,39 +310,44 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int dotProduct(byte[] a, byte[] b) {
+    return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+  }
+
+  public static int dotProduct(MemorySegment a, MemorySegment b) {
+    assert a.byteSize() == b.byteSize();
     int i = 0;
     int res = 0;
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(a.length);
+        i += BYTE_SPECIES.loopBound(a.byteSize());
         res += dotProductBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(a.length);
+        i += BYTE_SPECIES.loopBound(a.byteSize());
         res += dotProductBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(a.byteSize() - ByteVector.SPECIES_64.length());
         res += dotProductBody128(a, b, i);
       }
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      res += b[i] * a[i];
+    for (; i < a.byteSize(); i++) {
+      res += b.get(JAVA_BYTE, i) * a.get(JAVA_BYTE, i);
     }
     return res;
   }
 
   /** vectorized dot product body (512 bit vectors) */
-  private int dotProductBody512(byte[] a, byte[] b, int limit) {
+  private static int dotProductBody512(MemorySegment a, MemorySegment b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromArray(BYTE_SPECIES, a, i);
-      ByteVector vb8 = ByteVector.fromArray(BYTE_SPECIES, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
@@ -355,11 +363,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (256 bit vectors) */
-  private int dotProductBody256(byte[] a, byte[] b, int limit) {
+  private static int dotProductBody256(MemorySegment a, MemorySegment b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
 
       // 32-bit multiply and add into accumulator
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
@@ -371,13 +379,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private int dotProductBody128(byte[] a, byte[] b, int limit) {
+  private static int dotProductBody128(MemorySegment a, MemorySegment b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
       // load 8 bytes
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
 
       // process first "half" only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
@@ -689,35 +697,40 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
+    return squareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+  }
+
+  public static int squareDistance(MemorySegment a, MemorySegment b) {
+    assert a.byteSize() == b.byteSize();
     int i = 0;
     int res = 0;
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
       if (VECTOR_BITSIZE >= 256) {
-        i += BYTE_SPECIES.loopBound(a.length);
+        i += BYTE_SPECIES.loopBound((int) a.byteSize());
         res += squareDistanceBody256(a, b, i);
       } else {
-        i += ByteVector.SPECIES_64.loopBound(a.length);
+        i += ByteVector.SPECIES_64.loopBound((int) a.byteSize());
         res += squareDistanceBody128(a, b, i);
       }
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      int diff = a[i] - b[i];
+    for (; i < a.byteSize(); i++) {
+      int diff = a.get(JAVA_BYTE, i) - b.get(JAVA_BYTE, i);
       res += diff * diff;
     }
     return res;
   }
 
   /** vectorized square distance body (256+ bit vectors) */
-  private int squareDistanceBody256(byte[] a, byte[] b, int limit) {
+  private static int squareDistanceBody256(MemorySegment a, MemorySegment b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromArray(BYTE_SPECIES, a, i);
-      ByteVector vb8 = ByteVector.fromArray(BYTE_SPECIES, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
 
       // 32-bit sub, multiply, and add into accumulators
       // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
@@ -731,14 +744,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized square distance body (128 bit vectors) */
-  private int squareDistanceBody128(byte[] a, byte[] b, int limit) {
+  private static int squareDistanceBody128(MemorySegment a, MemorySegment b, int limit) {
     // 128-bit implementation, which must "split up" vectors due to widening conversions
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
 
       // 16-bit sub
       Vector<Short> va16 = va8.convertShape(B2S, ShortVector.SPECIES_128, 0);

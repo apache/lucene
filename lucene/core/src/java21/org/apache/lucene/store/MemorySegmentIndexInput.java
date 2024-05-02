@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.internal.vectorization.MemorySegmentAccess;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
@@ -34,7 +35,8 @@ import org.apache.lucene.util.GroupVIntUtil;
  * chunkSizePower</code>).
  */
 @SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
+abstract class MemorySegmentIndexInput extends IndexInput
+    implements RandomAccessInput, MemorySegmentAccess {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -503,6 +505,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+    if (pos + len > length) {
+      throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
+    }
+    final int si = (int) (pos >> chunkSizePower);
+    final MemorySegment seg = segments[si];
+    final long segOffset = pos & chunkSizeMask;
+    if (checkIndex(segOffset + len, seg.byteSize() + 1)) {
+      return seg.asSlice(segOffset, len);
+    }
+    return null;
+  }
+
+  static boolean checkIndex(long index, long length) {
+    return index >= 0 && index < length;
+  }
+
   @Override
   public final void close() throws IOException {
     if (curSegment == null) {
@@ -614,6 +633,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         throw alreadyClosed(e);
       }
     }
+
+    @Override
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      try {
+        Objects.checkIndex(pos + len, this.length + 1);
+        return curSegment.asSlice(pos, len);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "segmentSliceOrNull", pos);
+      }
+    }
   }
 
   /** This class adds offset support to MemorySegmentIndexInput, which is needed for slices. */
@@ -677,6 +706,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     @Override
     public long readLong(long pos) throws IOException {
       return super.readLong(pos + offset);
+    }
+
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      return super.segmentSliceOrNull(pos + offset, len);
     }
 
     @Override

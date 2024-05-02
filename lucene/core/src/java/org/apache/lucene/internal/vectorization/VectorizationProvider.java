@@ -177,7 +177,10 @@ public abstract class VectorizationProvider {
   }
 
   // add all possible callers here as FQCN:
-  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
+  private static final Set<String> VALID_CALLERS =
+      Set.of(
+          "org.apache.lucene.util.VectorUtil",
+          "org.apache.lucene.internal.vectorization.FlatVectorScorerProvider");
 
   private static void ensureCaller() {
     final boolean validCaller =
@@ -198,6 +201,11 @@ public abstract class VectorizationProvider {
   private static final class Holder {
     private Holder() {}
 
-    static final VectorizationProvider INSTANCE = lookup(false);
+    // TODO: this is not quite right. But we should be able to run tests with Panama Vector
+    static boolean testMode() {
+      return TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS;
+    }
+
+    static final VectorizationProvider INSTANCE = lookup(testMode());
   }
 }
