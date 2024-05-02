@@ -159,17 +159,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                 VectorSimilarityScorer.fromScoreDocs(this, boost, results.scoreDocs);
           }
         }
-        return new ScorerSupplier() {
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            return vectorSimilarityScorer;
-          }
-
-          @Override
-          public long cost() {
-            return vectorSimilarityScorer.iterator().cost();
-          }
-        };
+        return new DefaultScorerSupplier(vectorSimilarityScorer);
       }
 
       @Override

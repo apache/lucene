@@ -435,17 +435,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       // the sub iterators are two-phase iterators.
       DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
       final var scorer = new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator.cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

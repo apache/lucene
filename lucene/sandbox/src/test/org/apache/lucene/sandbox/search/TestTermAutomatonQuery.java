@@ -52,7 +52,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -614,17 +613,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
                   score(),
                   scoreMode,
                   new BitSetIterator(bits, bits.approximateCardinality()));
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return scorer;
-            }
-
-            @Override
-            public long cost() {
-              return scorer.iterator().cost();
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

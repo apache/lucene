@@ -252,17 +252,7 @@ public final class CoveringQuery extends Query implements Accountable {
               scorers,
               minimumNumberMatch.getValues(context, null),
               context.reader().maxDoc());
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator().cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

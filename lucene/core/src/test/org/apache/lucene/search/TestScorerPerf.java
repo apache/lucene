@@ -174,17 +174,7 @@ public class TestScorerPerf extends LuceneTestCase {
                   score(),
                   scoreMode,
                   new BitSetIterator(docs, docs.approximateCardinality()));
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return scorer;
-            }
-
-            @Override
-            public long cost() {
-              return 0;
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

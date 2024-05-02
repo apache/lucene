@@ -171,17 +171,7 @@ public class FunctionRangeQuery extends Query {
       final var scorer =
           functionValues.getRangeScorer(
               this, context, lowerVal, upperVal, includeLower, includeUpper);
-      return new ScorerSupplier() {
-        @Override
-        public ValueSourceScorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator().cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

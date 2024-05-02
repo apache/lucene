@@ -96,17 +96,7 @@ public class RandomApproximationQuery extends Query {
       } else {
         scorer = new RandomApproximationScorer(subScorer, new Random(random.nextLong()));
       }
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator().cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
   }
 

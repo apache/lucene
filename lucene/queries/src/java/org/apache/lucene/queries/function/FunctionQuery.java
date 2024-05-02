@@ -75,17 +75,7 @@ public class FunctionQuery extends Query {
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       final var scorer = new AllScorer(context, this, boost);
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator.cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

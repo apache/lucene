@@ -272,17 +272,7 @@ public class TestSortRandom extends LuceneTestCase {
                   score(),
                   scoreMode,
                   new BitSetIterator(bits, bits.approximateCardinality()));
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return scorer;
-            }
-
-            @Override
-            public long cost() {
-              return scorer.iterator().cost();
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

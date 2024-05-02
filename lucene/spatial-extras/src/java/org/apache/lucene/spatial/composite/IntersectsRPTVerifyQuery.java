@@ -150,18 +150,7 @@ public class IntersectsRPTVerifyQuery extends Query {
 
         s = new ConstantScoreScorer(this, score(), scoreMode, twoPhaseIterator);
         final Scorer scorer = s;
-        return new ScorerSupplier() {
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            // Compute approx & exact
-            return scorer;
-          }
-
-          @Override
-          public long cost() {
-            return scorer.iterator().cost();
-          }
-        };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

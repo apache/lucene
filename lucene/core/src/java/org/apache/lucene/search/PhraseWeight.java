@@ -66,17 +66,7 @@ public abstract class PhraseWeight extends Weight {
     LeafSimScorer simScorer =
         new LeafSimScorer(stats, context.reader(), field, scoreMode.needsScores());
     final var scorer = new PhraseScorer(this, matcher, scoreMode, simScorer);
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) throws IOException {
-        return scorer;
-      }
-
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
+    return new DefaultScorerSupplier(scorer);
   }
 
   @Override

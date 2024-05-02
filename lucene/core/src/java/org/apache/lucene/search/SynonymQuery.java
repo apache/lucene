@@ -350,17 +350,7 @@ public final class SynonymQuery extends Query {
 
         synonymScorer = new SynonymScorer(this, queue, iterator, impactsDisi, simScorer);
       }
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return synonymScorer;
-        }
-
-        @Override
-        public long cost() {
-          return synonymScorer.iterator().cost();
-        }
-      };
+      return new DefaultScorerSupplier(synonymScorer);
     }
 
     @Override

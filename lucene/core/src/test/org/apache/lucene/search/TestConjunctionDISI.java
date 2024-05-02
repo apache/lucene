@@ -99,17 +99,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return null;
-        }
-
-        @Override
-        public long cost() {
-          return 0;
-        }
-      };
+      return null;
     }
 
     @Override

@@ -132,10 +132,11 @@ public class TestNeedsScores extends LuceneTestCase {
       return new FilterWeight(w) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final var scorer = w.scorer(context);
-          if (scorer == null) {
+          final var scorerSupplier = w.scorerSupplier(context);
+          if (scorerSupplier == null) {
             return null;
           }
+          final var scorer = scorerSupplier.get(Long.MAX_VALUE);
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {

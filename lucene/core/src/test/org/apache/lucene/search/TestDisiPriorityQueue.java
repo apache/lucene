@@ -126,17 +126,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final var scorer = new ConstantScoreScorer(this, score(), scoreMode, disi);
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return scorer;
-            }
-
-            @Override
-            public long cost() {
-              return 0;
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

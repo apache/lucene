@@ -598,17 +598,7 @@ public class TestJoinUtil extends LuceneTestCase {
                     return Float.POSITIVE_INFINITY;
                   }
                 };
-            return new ScorerSupplier() {
-              @Override
-              public Scorer get(long leadCost) throws IOException {
-                return scorer;
-              }
-
-              @Override
-              public long cost() {
-                return scorer.iterator().cost();
-              }
-            };
+            return new DefaultScorerSupplier(scorer);
           }
 
           @Override

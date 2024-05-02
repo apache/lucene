@@ -1356,10 +1356,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-      final var scorer = in.scorer(context);
-      if (scorer == null) {
+      final var scorerSupplier = in.scorerSupplier(context);
+      if (scorerSupplier == null) {
         return null;
       }
+      final var scorer = scorerSupplier.get(Long.MAX_VALUE);
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
@@ -1732,7 +1733,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
             @Override
             public long cost() {
-              return 0;
+              return context.reader().maxDoc();
             }
           };
         }

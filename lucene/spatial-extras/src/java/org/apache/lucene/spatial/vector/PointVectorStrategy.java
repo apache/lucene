@@ -288,17 +288,7 @@ public class PointVectorStrategy extends SpatialStrategy {
                 }
               };
           final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return scorer;
-            }
-
-            @Override
-            public long cost() {
-              return scorer.iterator().cost();
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

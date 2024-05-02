@@ -92,7 +92,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
             @Override
             public long cost() {
-              return 0;
+              throw new UnsupportedOperationException();
             }
           };
         }

@@ -25,7 +25,6 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 
 /** Keep matches that contain another SpanScorer. */
@@ -148,17 +147,7 @@ public final class SpanContainingQuery extends SpanContainQuery {
       }
       final LeafSimScorer docScorer = getSimScorer(context);
       final var scorer = new SpanScorer(spanWeight, spans, docScorer);
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator().cost();
-        }
-      };
+      return new DefaultScorerSupplier(scorer);
     }
   }
 }

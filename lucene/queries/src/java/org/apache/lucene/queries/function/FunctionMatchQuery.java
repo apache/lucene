@@ -30,7 +30,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
@@ -106,17 +105,7 @@ public final class FunctionMatchQuery extends Query {
               }
             };
         final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
-        return new ScorerSupplier() {
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            return scorer;
-          }
-
-          @Override
-          public long cost() {
-            return scorer.iterator().cost();
-          }
-        };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
