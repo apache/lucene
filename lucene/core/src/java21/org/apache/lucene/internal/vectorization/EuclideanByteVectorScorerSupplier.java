@@ -17,13 +17,17 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 final class EuclideanByteVectorScorerSupplier extends MemorySegmentByteVectorScorerSupplier {
 
   EuclideanByteVectorScorerSupplier(
-      int dims, int maxOrd, int vectorByteSize, IndexInput input, RandomAccessVectorValues values) {
+      int dims,
+      int maxOrd,
+      int vectorByteSize,
+      MemorySegmentAccessInput input,
+      RandomAccessVectorValues values) {
     super(dims, maxOrd, vectorByteSize, input, values);
   }
 

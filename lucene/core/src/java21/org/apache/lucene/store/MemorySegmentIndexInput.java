@@ -35,7 +35,7 @@ import org.apache.lucene.util.GroupVIntUtil;
  */
 @SuppressWarnings("preview")
 abstract class MemorySegmentIndexInput extends IndexInput
-    implements RandomAccessInput, MemorySegmentAccess {
+    implements RandomAccessInput, MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);

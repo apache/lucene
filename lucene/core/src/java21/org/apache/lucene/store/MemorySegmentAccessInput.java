@@ -24,8 +24,10 @@ import java.lang.foreign.MemorySegment;
  *
  * <p>Expert API, allows access to the backing memory.
  */
-public interface MemorySegmentAccess {
+public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
 
   /** Returns the memory segment for a given position and length, or null. */
   MemorySegment segmentSliceOrNull(long pos, int len) throws IOException;
+
+  MemorySegmentAccessInput clone();
 }

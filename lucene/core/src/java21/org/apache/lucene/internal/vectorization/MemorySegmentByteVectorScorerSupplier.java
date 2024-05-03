@@ -22,7 +22,7 @@ import java.util.Optional;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.MemorySegmentAccess;
+import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -35,8 +35,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
   final int vectorByteSize;
   final int dims;
   final int maxOrd;
-  final IndexInput input;
-  final MemorySegmentAccess memorySegmentAccess;
+  final MemorySegmentAccessInput input;
 
   final RandomAccessVectorValues values; // to support ordToDoc/getAcceptOrds
   final byte[] scratch1, scratch2;
@@ -55,27 +54,30 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
       IndexInput input,
       RandomAccessVectorValues values) {
     input = FilterIndexInput.unwrap(input);
-    if (!(input instanceof MemorySegmentAccess)) {
+    if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
     }
     checkInvariants(maxOrd, vectorByteSize, input);
     return switch (type) {
       case DOT_PRODUCT -> Optional.of(
-          new DotProductByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, input, values));
+          new DotProductByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
       case EUCLIDEAN -> Optional.of(
-          new EuclideanByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, input, values));
+          new EuclideanByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
       case MAXIMUM_INNER_PRODUCT -> Optional.empty(); // TODO: implement MAXIMUM_INNER_PRODUCT
       case COSINE -> Optional.empty(); // TODO: implement Cosine
     };
   }
 
   MemorySegmentByteVectorScorerSupplier(
-      int dims, int maxOrd, int vectorByteSize, IndexInput input, RandomAccessVectorValues values) {
+      int dims,
+      int maxOrd,
+      int vectorByteSize,
+      MemorySegmentAccessInput input,
+      RandomAccessVectorValues values) {
     this.vectorByteSize = vectorByteSize;
     this.dims = dims;
     this.maxOrd = maxOrd;
     this.input = input;
-    this.memorySegmentAccess = (MemorySegmentAccess) input;
     this.values = values;
     scratch1 = new byte[vectorByteSize];
     scratch2 = new byte[vectorByteSize];
@@ -96,10 +98,9 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
   protected final MemorySegment getSegment(int ord, byte[] scratch) throws IOException {
     checkOrdinal(ord, maxOrd);
     int byteOffset = ord * vectorByteSize; // TODO: random + meta size
-    MemorySegment seg = memorySegmentAccess.segmentSliceOrNull(byteOffset, vectorByteSize);
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
-      input.seek(byteOffset);
-      input.readBytes(scratch, 0, vectorByteSize);
+      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
       seg = MemorySegment.ofArray(scratch);
     }
     return seg;
