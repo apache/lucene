@@ -43,7 +43,7 @@ import org.openjdk.jmh.annotations.*;
 @Measurement(iterations = 5, time = 1)
 // engage some noise reduction
 @Fork(
-    value = 1, // TODO restore to 3,
+    value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorScorerBenchmark {
 
