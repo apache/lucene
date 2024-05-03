@@ -70,7 +70,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
     byte[][] vectors =
         new byte[][] {
           new byte[] {(byte) 0b10101110, (byte) 0b01010111},
-          new byte[] {(byte) 0b11110000, (byte) 0b00001111},
+          new byte[] {(byte) 0b11111000, (byte) 0b00001111},
           new byte[] {(byte) 0b11001100, (byte) 0b00110011},
           new byte[] {(byte) 0b11111111, (byte) 0b00000000},
           new byte[] {(byte) 0b00000000, (byte) 0b00000000}
@@ -99,7 +99,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
         assertEquals("2", fields.document(topDocs.scoreDocs[1].doc).get("id"));
         assertEquals(0.625, topDocs.scoreDocs[1].score, 1e-12);
         assertEquals("1", fields.document(topDocs.scoreDocs[2].doc).get("id"));
-        assertEquals(0.5, topDocs.scoreDocs[2].score, 1e-12);
+        assertEquals(0.5625, topDocs.scoreDocs[2].score, 1e-12);
       }
     }
   }
