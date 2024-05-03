@@ -154,7 +154,18 @@ class DrillSidewaysQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        throw new UnsupportedOperationException();
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            // We can only run as a top scorer:
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            throw new UnsupportedOperationException();
+          }
+        };
       }
 
       @Override

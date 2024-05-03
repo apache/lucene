@@ -84,7 +84,17 @@ public class TestBooleanScorer extends LuceneTestCase {
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          throw new UnsupportedOperationException();
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public long cost() {
+              throw new UnsupportedOperationException();
+            }
+          };
         }
 
         @Override

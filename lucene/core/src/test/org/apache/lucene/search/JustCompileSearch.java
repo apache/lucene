@@ -257,7 +257,7 @@ final class JustCompileSearch {
 
         @Override
         public long cost() {
-          return 0;
+          throw new UnsupportedOperationException(UNSUPPORTED_MSG);
         }
       };
     }
