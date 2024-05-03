@@ -24,7 +24,6 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.internal.vectorization.MemorySegmentAccess;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 

@@ -15,17 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.codecs.hnsw;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
-/** A provider of FlatVectorsScorer. */
+/**
+ * A utility class that provides access to the default FlatVectorsScorer.
+ *
+ * @lucene.experimental
+ */
 public class FlatVectorScorerProvider {
 
-  /** Returns the default FlatVectorsScorer. TODO: find a better name than default. */
+  /** Returns the default FlatVectorsScorer. */
   public static FlatVectorsScorer createDefault() {
     if (isPanamaVectorUtilSupportEnabled()) {
       // we only enable this scorer if the Panama vector provider is also enabled
@@ -49,8 +52,12 @@ public class FlatVectorScorerProvider {
 
   private static boolean isPanamaVectorUtilSupportEnabled() {
     var name = VectorizationProvider.getInstance().getClass().getSimpleName();
-    assert name.equals("PanamaVectorizationProvider")
-        || name.equals("DefaultVectorizationProvider");
+    assert assertExpectedProvider(name);
     return name.equals("PanamaVectorizationProvider");
+  }
+
+  static boolean assertExpectedProvider(String name) {
+    return name.equals("PanamaVectorizationProvider")
+        || name.equals("DefaultVectorizationProvider");
   }
 }

@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerProvider;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.store.Directory;

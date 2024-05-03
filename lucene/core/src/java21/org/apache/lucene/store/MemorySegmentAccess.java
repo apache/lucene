@@ -14,12 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 
-/** Provides access to the backing memory segment. */
+/**
+ * Provides access to the backing memory segment.
+ *
+ * <p>Expert API, allows access to the backing memory.
+ */
 public interface MemorySegmentAccess {
 
   /** Returns the memory segment for a given position and length, or null. */

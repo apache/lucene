@@ -180,7 +180,7 @@ public abstract class VectorizationProvider {
   private static final Set<String> VALID_CALLERS =
       Set.of(
           "org.apache.lucene.util.VectorUtil",
-          "org.apache.lucene.internal.vectorization.FlatVectorScorerProvider");
+          "org.apache.lucene.codecs.hnsw.FlatVectorScorerProvider");
 
   private static void ensureCaller() {
     final boolean validCaller =
