@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorScorerProvider;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.store.Directory;
@@ -43,7 +42,8 @@ import org.junit.BeforeClass;
 public class TestVectorScorer extends LuceneTestCase {
 
   static final FlatVectorsScorer DEFAULT_SCORER = new DefaultFlatVectorScorer();
-  static final FlatVectorsScorer MEMSEG_SCORER = FlatVectorScorerProvider.lookup();
+  static final FlatVectorsScorer MEMSEG_SCORER =
+      VectorizationProvider.lookup(true).newFlatVectorScorer();
 
   @BeforeClass
   public static void beforeClass() throws Exception {
