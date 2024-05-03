@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.distribution;
 
-import static org.hamcrest.Matchers.is;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.Configuration;
