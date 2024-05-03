@@ -21,6 +21,7 @@ import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,14 +56,17 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
    * checked which is being used before a loop instead of calling {@link #increment} for each
    * iteration.
    */
-  protected final int[] values;
+  protected int[] values;
 
   /**
    * Sparse ordinal values.
    *
    * @see #values for why protected.
    */
-  protected final IntIntHashMap sparseValues;
+  protected IntIntHashMap sparseValues;
+
+  /** Have value counters been initialized. */
+  boolean initialized;
 
   /**
    * Constructor that defaults the aggregation function to {@link
@@ -91,14 +95,24 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       AssociationAggregationFunction aggregationFunction,
       FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config);
+    super(indexFieldName, taxoReader, config, fc);
     this.aggregationFunction = aggregationFunction;
+  }
 
+  @Override
+  boolean hasValues() {
+    return initialized;
+  }
+
+  void initializeValueCounters() {
+    if (initialized) {
+      return;
+    }
+    initialized = true;
+    assert sparseValues == null && values == null;
     if (useHashTable(fc, taxoReader)) {
       sparseValues = new IntIntHashMap();
-      values = null;
     } else {
-      sparseValues = null;
       values = new int[taxoReader.getSize()];
     }
   }
@@ -160,6 +174,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Rolls up any single-valued hierarchical dimensions. */
   protected void rollup() throws IOException {
+    if (initialized == false) {
+      return;
+    }
+
     // Rollup any necessary dims:
     ParallelTaxonomyArrays.IntArray children = null;
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -214,7 +232,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     if (ord < 0) {
       return -1;
     }
-    return getValue(ord);
+    return initialized ? getValue(ord) : 0;
   }
 
   @Override
@@ -223,6 +241,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
     if (dimOrd == -1) {
+      return null;
+    }
+
+    if (initialized == false) {
       return null;
     }
 
@@ -289,6 +311,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
     if (dimOrd == -1) {
+      return null;
+    }
+
+    if (initialized == false) {
       return null;
     }
 
@@ -375,6 +401,10 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     if (topNDims <= 0 || topNChildren <= 0) {
       throw new IllegalArgumentException("topN must be > 0");
+    }
+
+    if (initialized == false) {
+      return Collections.emptyList();
     }
 
     // get children and siblings ordinal array from TaxonomyFacets
