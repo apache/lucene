@@ -113,8 +113,10 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   /** Encodes/decodes numeric vector fields */
   public abstract KnnVectorsFormat knnVectorsFormat();
 
-  /** Encodes/decodes multi-field data cubes index */
-  public abstract DataCubesFormat dataCubesFormat();
+  /** Encodes/decodes multi-field data cubes index TODO : remove this default impl later */
+  public DataCubesFormat dataCubesFormat() {
+    return DataCubesFormat.EMPTY;
+  }
 
   /** looks up a codec by name */
   public static Codec forName(String name) {

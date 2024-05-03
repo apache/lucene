@@ -25,7 +25,6 @@ import org.apache.lucene.backward_codecs.lucene60.Lucene60PointsFormat;
 import org.apache.lucene.backward_codecs.lucene70.Lucene70SegmentInfoFormat;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
-import org.apache.lucene.codecs.DataCubesFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -132,10 +131,5 @@ public class Lucene80Codec extends Codec {
   @Override
   public final KnnVectorsFormat knnVectorsFormat() {
     return KnnVectorsFormat.EMPTY;
-  }
-
-  @Override
-  public DataCubesFormat dataCubesFormat() {
-    return DataCubesFormat.EMPTY;
   }
 }
