@@ -20,9 +20,9 @@ import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-final class DotProduct extends MemorySegmentByteVectorScorerSupplier {
+final class DotProductByteVectorScorerSupplier extends MemorySegmentByteVectorScorerSupplier {
 
-  DotProduct(
+  DotProductByteVectorScorerSupplier(
       int dims, int maxOrd, int vectorByteSize, IndexInput input, RandomAccessVectorValues values) {
     super(dims, maxOrd, vectorByteSize, input, values);
   }
@@ -35,7 +35,8 @@ final class DotProduct extends MemorySegmentByteVectorScorerSupplier {
   }
 
   @Override
-  public DotProduct copy() throws IOException {
-    return new DotProduct(dims, maxOrd, vectorByteSize, input.clone(), values);
+  public DotProductByteVectorScorerSupplier copy() throws IOException {
+    return new DotProductByteVectorScorerSupplier(
+        dims, maxOrd, vectorByteSize, input.clone(), values);
   }
 }

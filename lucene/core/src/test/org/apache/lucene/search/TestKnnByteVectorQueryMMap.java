@@ -22,7 +22,6 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 
-@com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
 public class TestKnnByteVectorQueryMMap extends TestKnnByteVectorQuery {
 
   @Override

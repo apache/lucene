@@ -20,9 +20,9 @@ import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-final class Euclidean extends MemorySegmentByteVectorScorerSupplier {
+final class EuclideanByteVectorScorerSupplier extends MemorySegmentByteVectorScorerSupplier {
 
-  Euclidean(
+  EuclideanByteVectorScorerSupplier(
       int dims, int maxOrd, int vectorByteSize, IndexInput input, RandomAccessVectorValues values) {
     super(dims, maxOrd, vectorByteSize, input, values);
   }
@@ -34,7 +34,8 @@ final class Euclidean extends MemorySegmentByteVectorScorerSupplier {
   }
 
   @Override
-  public Euclidean copy() throws IOException {
-    return new Euclidean(dims, maxOrd, vectorByteSize, input.clone(), values);
+  public EuclideanByteVectorScorerSupplier copy() throws IOException {
+    return new EuclideanByteVectorScorerSupplier(
+        dims, maxOrd, vectorByteSize, input.clone(), values);
   }
 }

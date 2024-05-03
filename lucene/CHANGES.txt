@@ -328,6 +328,8 @@ Optimizations
 * GITHUB#13321: Improve compressed int4 quantized vector search by utilizing SIMD inline with the decompression
   process. (Ben Trent)
 
+* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 

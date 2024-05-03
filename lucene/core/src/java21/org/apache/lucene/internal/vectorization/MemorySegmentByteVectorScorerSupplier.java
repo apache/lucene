@@ -30,7 +30,8 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /** A scorer of vectors whose element size is byte. */
 public abstract sealed class MemorySegmentByteVectorScorerSupplier
-    implements RandomVectorScorerSupplier, RandomVectorScorer permits DotProduct, Euclidean {
+    implements RandomVectorScorerSupplier, RandomVectorScorer
+    permits DotProductByteVectorScorerSupplier, EuclideanByteVectorScorerSupplier {
   final int vectorByteSize;
   final int dims;
   final int maxOrd;
@@ -59,8 +60,10 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
     checkInvariants(maxOrd, vectorByteSize, input);
     return switch (type) {
-      case DOT_PRODUCT -> Optional.of(new DotProduct(dims, maxOrd, vectorByteSize, input, values));
-      case EUCLIDEAN -> Optional.of(new Euclidean(dims, maxOrd, vectorByteSize, input, values));
+      case DOT_PRODUCT -> Optional.of(
+          new DotProductByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, input, values));
+      case EUCLIDEAN -> Optional.of(
+          new EuclideanByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, input, values));
       case MAXIMUM_INNER_PRODUCT -> Optional.empty(); // TODO: implement MAXIMUM_INNER_PRODUCT
       case COSINE -> Optional.empty(); // TODO: implement Cosine
     };
