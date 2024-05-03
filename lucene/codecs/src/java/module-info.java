@@ -15,10 +15,13 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
+
 /** Lucene codecs and postings formats */
 module org.apache.lucene.codecs {
   requires org.apache.lucene.core;
 
+  exports org.apache.lucene.codecs.bitvectors;
   exports org.apache.lucene.codecs.blockterms;
   exports org.apache.lucene.codecs.blocktreeords;
   exports org.apache.lucene.codecs.bloom;
@@ -27,6 +30,8 @@ module org.apache.lucene.codecs {
   exports org.apache.lucene.codecs.uniformsplit;
   exports org.apache.lucene.codecs.uniformsplit.sharedterms;
 
+  provides org.apache.lucene.codecs.KnnVectorsFormat with
+      HnswBitVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat,
       org.apache.lucene.codecs.bloom.BloomFilteringPostingsFormat,

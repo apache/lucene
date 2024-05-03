@@ -19,10 +19,11 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
-import org.apache.lucene.codecs.FlatVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
@@ -101,7 +102,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
    * numbers here will use an inordinate amount of heap
    */
-  static final int MAXIMUM_MAX_CONN = 512;
+  public static final int MAXIMUM_MAX_CONN = 512;
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
@@ -111,7 +112,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
    * 3200`
    */
-  static final int MAXIMUM_BEAM_WIDTH = 3200;
+  public static final int MAXIMUM_BEAM_WIDTH = 3200;
 
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
@@ -137,7 +138,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /** The format for storing, reading, merging vectors on disk */
-  private static final FlatVectorsFormat flatVectorsFormat = new Lucene99FlatVectorsFormat();
+  private static final FlatVectorsFormat flatVectorsFormat =
+      new Lucene99FlatVectorsFormat(new DefaultFlatVectorScorer());
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;

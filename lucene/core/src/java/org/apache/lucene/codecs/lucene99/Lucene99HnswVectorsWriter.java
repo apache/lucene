@@ -25,9 +25,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -127,7 +128,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FieldWriter<?> newField =
-        FieldWriter.create(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
+        FieldWriter.create(
+            flatVectorWriter.getFlatVectorScorer(),
+            fieldInfo,
+            M,
+            beamWidth,
+            segmentWriteState.infoStream);
     fields.add(newField);
     return flatVectorWriter.addField(fieldInfo, newField);
   }
@@ -549,13 +555,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
 
-    static FieldWriter<?> create(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+    static FieldWriter<?> create(
+        FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE:
-          return new FieldWriter<byte[]>(fieldInfo, M, beamWidth, infoStream);
+          return new FieldWriter<byte[]>(scorer, fieldInfo, M, beamWidth, infoStream);
         case FLOAT32:
-          return new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream);
+          return new FieldWriter<float[]>(scorer, fieldInfo, M, beamWidth, infoStream);
         default:
           throw new IllegalStateException(
               "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
@@ -563,25 +570,27 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     @SuppressWarnings("unchecked")
-    FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+    FieldWriter(
+        FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, fieldInfo.getVectorDimension());
       final RandomVectorScorerSupplier scorerSupplier;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE:
           scorerSupplier =
-              RandomVectorScorerSupplier.createBytes(
-                  (RandomAccessVectorValues<byte[]>) raVectors,
-                  fieldInfo.getVectorSimilarityFunction());
+              scorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(),
+                  RandomAccessVectorValues.fromBytes(
+                      (List<byte[]>) vectors, fieldInfo.getVectorDimension()));
           break;
         case FLOAT32:
           scorerSupplier =
-              RandomVectorScorerSupplier.createFloats(
-                  (RandomAccessVectorValues<float[]>) raVectors,
-                  fieldInfo.getVectorSimilarityFunction());
+              scorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(),
+                  RandomAccessVectorValues.fromFloats(
+                      (List<float[]>) vectors, fieldInfo.getVectorDimension()));
           break;
         default:
           throw new IllegalStateException(
@@ -628,36 +637,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           + (long) vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
           + hnswGraphBuilder.getGraph().ramBytesUsed();
-    }
-  }
-
-  private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
-    private final List<T> vectors;
-    private final int dim;
-
-    RAVectorValues(List<T> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public T vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RandomAccessVectorValues<T> copy() throws IOException {
-      return this;
     }
   }
 }

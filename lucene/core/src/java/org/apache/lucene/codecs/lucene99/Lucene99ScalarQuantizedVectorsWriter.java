@@ -30,11 +30,12 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatFieldVectorsWriter;
-import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocIDMerger;
@@ -59,7 +60,6 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
-import org.apache.lucene.util.quantization.ScalarQuantizedRandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -98,18 +98,57 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final FlatVectorsWriter rawVectorDelegate;
   private final byte bits;
   private final boolean compress;
+  private final int version;
   private boolean finished;
+
+  public Lucene99ScalarQuantizedVectorsWriter(
+      SegmentWriteState state,
+      Float confidenceInterval,
+      FlatVectorsWriter rawVectorDelegate,
+      FlatVectorsScorer scorer)
+      throws IOException {
+    this(
+        state,
+        Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
+        confidenceInterval,
+        (byte) 7,
+        false,
+        rawVectorDelegate,
+        scorer);
+  }
 
   public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       Float confidenceInterval,
       byte bits,
       boolean compress,
-      FlatVectorsWriter rawVectorDelegate)
+      FlatVectorsWriter rawVectorDelegate,
+      FlatVectorsScorer scorer)
       throws IOException {
+    this(
+        state,
+        Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS,
+        confidenceInterval,
+        bits,
+        compress,
+        rawVectorDelegate,
+        scorer);
+  }
+
+  private Lucene99ScalarQuantizedVectorsWriter(
+      SegmentWriteState state,
+      int version,
+      Float confidenceInterval,
+      byte bits,
+      boolean compress,
+      FlatVectorsWriter rawVectorDelegate,
+      FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     this.confidenceInterval = confidenceInterval;
     this.bits = bits;
     this.compress = compress;
+    this.version = version;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -132,13 +171,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       CodecUtil.writeIndexHeader(
           meta,
           Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           quantizedVectorData,
           Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -301,9 +340,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     meta.writeInt(count);
     if (count > 0) {
       assert Float.isFinite(lowerQuantile) && Float.isFinite(upperQuantile);
-      meta.writeInt(confidenceInterval == null ? -1 : Float.floatToIntBits(confidenceInterval));
-      meta.writeByte(bits);
-      meta.writeByte(compress ? (byte) 1 : (byte) 0);
+      if (version >= Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
+        meta.writeInt(confidenceInterval == null ? -1 : Float.floatToIntBits(confidenceInterval));
+        meta.writeByte(bits);
+        meta.writeByte(compress ? (byte) 1 : (byte) 0);
+      } else {
+        meta.writeInt(
+            Float.floatToIntBits(
+                confidenceInterval == null
+                    ? calculateDefaultConfidenceInterval(field.getVectorDimension())
+                    : confidenceInterval));
+      }
       meta.writeInt(Float.floatToIntBits(lowerQuantile));
       meta.writeInt(Float.floatToIntBits(upperQuantile));
     }
@@ -453,10 +500,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(quantizationDataInput);
-      float confidenceInterval =
-          this.confidenceInterval == null
-              ? calculateDefaultConfidenceInterval(fieldInfo.getVectorDimension())
-              : this.confidenceInterval;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -476,13 +519,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             segmentWriteState.directory.deleteFile(tempQuantizedVectorData.getName());
           },
           docsWithField.cardinality(),
-          new ScalarQuantizedRandomVectorScorerSupplier(
+          vectorsScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(),
-              mergedQuantizationState,
               new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
-                  bits,
+                  mergedQuantizationState,
                   compress,
                   quantizationDataInput)));
     } finally {
@@ -1057,12 +1099,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   static final class ScalarQuantizedCloseableRandomVectorScorerSupplier
       implements CloseableRandomVectorScorerSupplier {
 
-    private final ScalarQuantizedRandomVectorScorerSupplier supplier;
+    private final RandomVectorScorerSupplier supplier;
     private final Closeable onClose;
     private final int numVectors;
 
     ScalarQuantizedCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, ScalarQuantizedRandomVectorScorerSupplier supplier) {
+        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
       this.numVectors = numVectors;

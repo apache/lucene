@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
 
-abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T> {
+abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues {
 
   protected final int dimension;
   protected final T[] denseValues;
@@ -52,7 +52,6 @@ abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T
     return dimension;
   }
 
-  @Override
   public T vectorValue(int targetOrd) {
     return denseValues[targetOrd];
   }

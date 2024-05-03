@@ -33,6 +33,8 @@ New Features
 * GITHUB#13268: Add ability for UnifiedHighlighter to highlight a field based on combined matches from multiple fields.
   (Mayya Sharipova, Jim Ferenczi)
 
+* GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
+  new Hnsw format for binary quantized vectors. (Ben Trent)
 
 Improvements
 ---------------------
@@ -61,6 +63,8 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 
@@ -92,6 +96,9 @@ Optimizations
 
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
+
+* GITHUB#13321: Improve compressed int4 quantized vector search by utilizing SIMD inline with the decompression
+  process. (Ben Trent)
 
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)

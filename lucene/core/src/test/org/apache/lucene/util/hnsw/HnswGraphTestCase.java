@@ -38,6 +38,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -85,6 +86,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
+  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -107,39 +109,26 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract Field knnVectorField(String name, T vector, VectorSimilarityFunction similarityFunction);
 
-  abstract RandomAccessVectorValues<T> circularVectorValues(int nDoc);
+  abstract RandomAccessVectorValues circularVectorValues(int nDoc);
 
   abstract T getTargetVector();
 
-  @SuppressWarnings("unchecked")
-  protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues<T> vectors)
+  protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues vectors)
       throws IOException {
-    switch (getVectorEncoding()) {
-      case BYTE:
-        return RandomVectorScorerSupplier.createBytes(
-            (RandomAccessVectorValues<byte[]>) vectors, similarityFunction);
-
-      case FLOAT32:
-        return RandomVectorScorerSupplier.createFloats(
-            (RandomAccessVectorValues<float[]>) vectors, similarityFunction);
-
-      default:
-        throw new IllegalArgumentException("unknown vector encoding=" + getVectorEncoding());
-    }
+    return flatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectors);
   }
 
-  @SuppressWarnings("unchecked")
-  protected RandomVectorScorer buildScorer(RandomAccessVectorValues<T> vectors, T query)
+  protected RandomVectorScorer buildScorer(RandomAccessVectorValues vectors, T query)
       throws IOException {
-    RandomAccessVectorValues<T> vectorsCopy = vectors.copy();
+    RandomAccessVectorValues vectorsCopy = vectors.copy();
     switch (getVectorEncoding()) {
       case BYTE:
-        return RandomVectorScorer.createBytes(
-            (RandomAccessVectorValues<byte[]>) vectorsCopy, similarityFunction, (byte[]) query);
+        return flatVectorScorer.getRandomVectorScorer(
+            similarityFunction, vectorsCopy, (byte[]) query);
 
       case FLOAT32:
-        return RandomVectorScorer.createFloats(
-            (RandomAccessVectorValues<float[]>) vectorsCopy, similarityFunction, (float[]) query);
+        return flatVectorScorer.getRandomVectorScorer(
+            similarityFunction, vectorsCopy, (float[]) query);
 
       default:
         throw new IllegalArgumentException("unknown vector encoding=" + getVectorEncoding());
@@ -434,7 +423,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testAknnDiverse() throws IOException {
     int nDoc = 100;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -466,7 +455,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testSearchWithAcceptOrds() throws IOException {
     int nDoc = 100;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
@@ -491,7 +480,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testSearchWithSelectiveAcceptOrds() throws IOException {
     int nDoc = 100;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
@@ -684,7 +673,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testVisitedLimit() throws IOException {
     int nDoc = 500;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -719,7 +708,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int M = randomIntBetween(4, 96);
 
     similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
-    RandomAccessVectorValues<T> vectors = vectorValues(size, dim);
+    RandomAccessVectorValues vectors = vectorValues(size, dim);
 
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder =
@@ -1048,7 +1037,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
     private final int size;
     private final float[] value;
 
@@ -1107,7 +1096,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues
-      implements RandomAccessVectorValues<byte[]> {
+      implements RandomAccessVectorValues.Bytes {
     private final int size;
     private final float[] value;
     private final byte[] bValue;

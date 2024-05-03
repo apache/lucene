@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.hnsw;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -41,8 +41,20 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  */
 public abstract class FlatVectorsReader implements Closeable, Accountable {
 
+  /** Scorer for flat vectors */
+  protected final FlatVectorsScorer vectorScorer;
+
   /** Sole constructor */
-  protected FlatVectorsReader() {}
+  protected FlatVectorsReader(FlatVectorsScorer vectorsScorer) {
+    this.vectorScorer = vectorsScorer;
+  }
+
+  /**
+   * @return the {@link FlatVectorsScorer} for this reader.
+   */
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return vectorScorer;
+  }
 
   /**
    * Returns a {@link RandomVectorScorer} for the given field and target vector.
