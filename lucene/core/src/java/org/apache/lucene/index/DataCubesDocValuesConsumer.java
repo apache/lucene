@@ -115,7 +115,7 @@ public abstract class DataCubesDocValuesConsumer extends DocValuesConsumer {
   }
 
   /** Create the DataCubes index based on the DocValues and flushes the indices to disk */
-  public abstract void flush(DataCubesConfig compositeConfig) throws IOException;
+  public abstract void flush(DataCubesConfig dataCubesConfig) throws IOException;
 
   /** Merges in the DataCubes fields from the readers in <code>mergeState</code>. */
   @Override

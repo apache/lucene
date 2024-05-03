@@ -17,6 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -28,24 +30,24 @@ import org.apache.lucene.store.DataOutput;
 public class DataCubeField {
 
   private final String name;
-  private final Set<String> dims;
-  private final Set<String> metrics;
+  private final Set<String> dimensionFields;
+  private final List<MetricField> metricFields;
 
   /** Sole constructor */
-  public DataCubeField(String name, Set<String> dims, Set<String> metrics) {
+  public DataCubeField(String name, Set<String> dimensionFields, List<MetricField> metricFields) {
     this.name = name;
-    this.dims = dims;
-    this.metrics = metrics;
+    this.dimensionFields = dimensionFields;
+    this.metricFields = metricFields;
   }
 
   /** Returns set of dimensions associated with this DataCubeField */
-  public Set<String> getDims() {
-    return dims;
+  public Set<String> getDimensionFields() {
+    return dimensionFields;
   }
 
   /** Returns set of metrics associated with this DataCubeField */
-  public Set<String> getMetrics() {
-    return metrics;
+  public List<MetricField> getMetricFields() {
+    return metricFields;
   }
 
   /** Returns name of this DataCubeField */
@@ -56,6 +58,20 @@ public class DataCubeField {
   /** Returns name of this DataCubeFieldProvider */
   public String getProviderName() {
     return Provider.NAME;
+  }
+
+  /** Metric field which encapsulates name and associated aggregation function */
+  public static class MetricField {
+    private final String name;
+    // TODO : if we make this enum, how to enable it for extensions
+    // in custom formats - so keeping it as string for now
+    private final String metricFunction;
+
+    /** sole constructor */
+    public MetricField(String name, String metricFunction) {
+      this.name = name;
+      this.metricFunction = metricFunction;
+    }
   }
 
   /** Provider for DataCubeField */
@@ -72,9 +88,14 @@ public class DataCubeField {
     /** Reads DataCubeField from DataInput */
     @Override
     public DataCubeField readDataCubeField(DataInput in) throws IOException {
-      DataCubeField cf =
-          new DataCubeField(in.readString(), in.readSetOfStrings(), in.readSetOfStrings());
-      return cf;
+      String name = in.readString();
+      Set<String> dimensionFields = in.readSetOfStrings();
+      List<MetricField> metricFields = new ArrayList<>();
+      int metricFieldsCount = in.readVInt();
+      for (int i = 0; i < metricFieldsCount; i++) {
+        metricFields.add(new MetricField(in.readString(), in.readString()));
+      }
+      return new DataCubeField(name, dimensionFields, metricFields);
     }
 
     /** Writes DataCubeField to DataOutput */
@@ -87,7 +108,11 @@ public class DataCubeField {
   /** Serializes DataCubeField to DataOutput */
   private void serialize(DataOutput out) throws IOException {
     out.writeString(name);
-    out.writeSetOfStrings(dims);
-    out.writeSetOfStrings(metrics);
+    out.writeSetOfStrings(dimensionFields);
+    out.writeVInt(metricFields.size());
+    for (MetricField metricfield : metricFields) {
+      out.writeString(metricfield.name);
+      out.writeString(metricfield.metricFunction);
+    }
   }
 }

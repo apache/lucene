@@ -14,22 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.lucene910;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.SegmentInfoFormat;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DataCubeField;
+import org.apache.lucene.index.DataCubeFieldProvider;
+import org.apache.lucene.index.DataCubesConfig;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexSorter;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SortFieldProvider;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Version;
 
 /**
- * Lucene 9.9 Segment info format.
+ * TODO: make this default latest segment info format and move lucene99 segmentInfo format to
+ * backward codec Lucene 9.10 Segment info format.
  *
  * <p>Files:
  *
@@ -53,6 +67,10 @@ import org.apache.lucene.util.Version;
  *       SortField
  *   <li>SortField --&gt; {@link DataOutput#writeString String} sort class, followed by a per-sort
  *       bytestream (see {@link SortFieldProvider#readSortField(DataInput)})
+ *   <li>DataCubesConfig --&gt; {@link DataOutput#writeVInt Int32} count, followed by {@code count}
+ *   <li>DataCubeField --&gt; {@link DataOutput#writeString String} dataCube class, followed by a
+ *       per-datacubefield bytestream (see {@link
+ *       DataCubeFieldProvider#writeDataCubeField(DataCubeField, DataOutput)})
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -75,7 +93,7 @@ import org.apache.lucene.util.Version;
  * @see SegmentInfos
  * @lucene.experimental
  */
-public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
+public class Lucene910SegmentInfoFormat extends SegmentInfoFormat {
 
   /** File extension used to store {@link SegmentInfo}. */
   public static final String SI_EXTENSION = "si";
@@ -85,7 +103,7 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
   static final int VERSION_CURRENT = VERSION_START;
 
   /** Sole constructor. */
-  public Lucene99SegmentInfoFormat() {}
+  public Lucene910SegmentInfoFormat() {}
 
   @Override
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
@@ -149,6 +167,21 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
       indexSort = null;
     }
 
+    DataCubesConfig dataCubesConfig;
+    int numDataCubeFields = input.readVInt();
+    if (numDataCubeFields > 0) {
+      DataCubeField[] dataCubeFields = new DataCubeField[numDataCubeFields];
+      for (int i = 0; i < numDataCubeFields; i++) {
+        String name = input.readString();
+        dataCubeFields[i] = DataCubeFieldProvider.forName(name).readDataCubeField(input);
+      }
+      dataCubesConfig = new DataCubesConfig(dataCubeFields);
+    } else if (numDataCubeFields < 0) {
+      throw new CorruptIndexException("invalid datacube field count: " + numDataCubeFields, input);
+    } else {
+      dataCubesConfig = null;
+    }
+
     SegmentInfo si =
         new SegmentInfo(
             dir,
@@ -162,7 +195,8 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
             diagnostics,
             segmentID,
             attributes,
-            indexSort);
+            indexSort,
+            dataCubesConfig);
     si.setFiles(files);
     return si;
   }
@@ -231,6 +265,15 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
       }
       output.writeString(sorter.getProviderName());
       SortFieldProvider.write(sortField, output);
+    }
+
+    DataCubesConfig dataCubesConfig = si.getDataCubesConfig();
+    int numDataCubeFields = dataCubesConfig == null ? 0 : dataCubesConfig.getFields().length;
+    output.writeVInt(numDataCubeFields);
+    for (int i = 0; i < numDataCubeFields; ++i) {
+      DataCubeField dataCubeField = dataCubesConfig.getFields()[i];
+      output.writeString(dataCubeField.getProviderName());
+      DataCubeFieldProvider.write(dataCubeField, output);
     }
   }
 }

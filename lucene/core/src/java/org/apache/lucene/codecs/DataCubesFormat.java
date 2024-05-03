@@ -52,7 +52,7 @@ public abstract class DataCubesFormat implements NamedSPILoader.NamedSPI {
    * segments
    */
   public abstract DataCubesDocValuesConsumer fieldsConsumer(
-      SegmentWriteState state, DataCubesConfig compositeConfig) throws IOException;
+      SegmentWriteState state, DataCubesConfig dataCubesConfig) throws IOException;
 
   /** A {@code DataCubesFormat} that has nothing indexed */
   public static final DataCubesFormat EMPTY =
@@ -64,7 +64,7 @@ public abstract class DataCubesFormat implements NamedSPILoader.NamedSPI {
 
         @Override
         public DataCubesDocValuesConsumer fieldsConsumer(
-            SegmentWriteState state, DataCubesConfig compositeConfig) throws IOException {
+            SegmentWriteState state, DataCubesConfig dataCubesConfig) throws IOException {
           throw new UnsupportedOperationException("Attempt to write EMPTY DataCube values");
         }
       };
