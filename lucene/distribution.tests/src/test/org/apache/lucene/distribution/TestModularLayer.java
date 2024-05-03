@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.distribution;
 
+import static org.hamcrest.Matchers.is;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.Configuration;
@@ -355,7 +357,15 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
               if (isInternal) {
                 Assertions.assertThat(export.targets())
-                    .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+                    .as("We only support qualified exports of internal packages")
+                    .isNotEmpty();
+                var allowable =
+                    List.of("org.apache.lucene.test_framework", "org.apache.lucene.benchmark.jmh");
+                for (String target : export.targets()) {
+                  Assertions.assertThat(allowable.contains(target))
+                      .as("Qualified export to unexpected package: " + target)
+                      .isEqualTo(true);
+                }
               }
               return isInternal;
             });

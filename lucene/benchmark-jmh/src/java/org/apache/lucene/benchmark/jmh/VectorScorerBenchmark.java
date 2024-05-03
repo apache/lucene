@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.hnsw.FlatVectorScorerProvider;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -71,11 +71,12 @@ public class VectorScorerBenchmark {
     in = dir.openInput("vector.data", IOContext.DEFAULT);
     vectorValues = vectorValues(size, 2, in);
     scorer =
-        FlatVectorScorerProvider.createDefault()
+        VectorizationProvider.getInstance()
+            .newFlatVectorScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues);
 
     // Ensure we're using the right vector scorer
-    var name = FlatVectorScorerProvider.createDefault().getClass().getSimpleName();
+    var name = VectorizationProvider.getInstance().newFlatVectorScorer().getClass().getSimpleName();
     if (Object.class.getModule().getLayer().findModule("jdk.incubator.vector").isPresent()) {
       if (!name.equals("MemorySegmentFlatVectorsScorer")) {
         throw new AssertionError("expected MemorySegmentFlatVectorsScorer, got:" + name);
