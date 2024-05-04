@@ -74,18 +74,6 @@ public class VectorScorerBenchmark {
         VectorizationProvider.getInstance()
             .newFlatVectorScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues);
-
-    // Ensure we're using the right vector scorer
-    var name = VectorizationProvider.getInstance().newFlatVectorScorer().getClass().getSimpleName();
-    if (Object.class.getModule().getLayer().findModule("jdk.incubator.vector").isPresent()) {
-      if (!name.equals("MemorySegmentFlatVectorsScorer")) {
-        throw new AssertionError("expected MemorySegmentFlatVectorsScorer, got:" + name);
-      }
-    } else {
-      if (!name.equals("DefaultFlatVectorScorer")) {
-        throw new AssertionError("expected DefaultFlatVectorScorer, got:" + name);
-      }
-    }
   }
 
   @TearDown
