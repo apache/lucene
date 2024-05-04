@@ -35,6 +35,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -493,7 +494,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(float[] target) {
-      return new VectorScorer.FloatVectorScorer(this, target, similarityFunction);
+      OffHeapFloatVectorValues values = this.copy();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return values.similarityFunction.compare(values.vectorValue(), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return values;
+        }
+      };
     }
   }
 

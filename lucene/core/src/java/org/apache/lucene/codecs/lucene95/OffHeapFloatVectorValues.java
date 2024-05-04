@@ -177,17 +177,18 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
+      DenseOffHeapVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return randomVectorScorer.score(doc);
+          return randomVectorScorer.score(copy.doc);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return DenseOffHeapVectorValues.this;
+          return copy;
         }
       };
     }
@@ -284,17 +285,18 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
+      SparseOffHeapVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return randomVectorScorer.score(disi.index());
+          return randomVectorScorer.score(copy.disi.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return SparseOffHeapVectorValues.this;
+          return copy;
         }
       };
     }

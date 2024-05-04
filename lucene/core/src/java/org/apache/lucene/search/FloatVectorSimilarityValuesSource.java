@@ -45,6 +45,7 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
     }
     return new DoubleValues() {
       private final VectorScorer scorer = vectorValues.scorer(queryVector);
+      private final DocIdSetIterator iterator = scorer.iterator();
 
       @Override
       public double doubleValue() throws IOException {
@@ -53,10 +54,19 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        return doc >= vectorValues.docID()
-            && (vectorValues.docID() == doc || vectorValues.advance(doc) == doc);
+        return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
       }
     };
+  }
+
+  @Override
+  public VectorScorer getScorer(LeafReaderContext ctx) throws IOException {
+    final FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+    if (vectorValues == null) {
+      FloatVectorValues.checkField(ctx.reader(), fieldName);
+      return null;
+    }
+    return vectorValues.scorer(queryVector);
   }
 
   @Override

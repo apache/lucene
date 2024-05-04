@@ -36,26 +36,13 @@ class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
   }
 
   @Override
-  public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+  public VectorScorer getScorer(LeafReaderContext ctx) throws IOException {
     final ByteVectorValues vectorValues = ctx.reader().getByteVectorValues(fieldName);
     if (vectorValues == null) {
       ByteVectorValues.checkField(ctx.reader(), fieldName);
-      return DoubleValues.EMPTY;
+      return null;
     }
-    return new DoubleValues() {
-      private final VectorScorer scorer = vectorValues.scorer(queryVector);
-
-      @Override
-      public double doubleValue() throws IOException {
-        return scorer.score();
-      }
-
-      @Override
-      public boolean advanceExact(int doc) throws IOException {
-        return doc >= vectorValues.docID()
-            && (vectorValues.docID() == doc || vectorValues.advance(doc) == doc);
-      }
-    };
+    return vectorValues.scorer(queryVector);
   }
 
   @Override

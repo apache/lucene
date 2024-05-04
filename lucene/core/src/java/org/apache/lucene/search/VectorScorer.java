@@ -17,9 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -41,58 +38,4 @@ public interface VectorScorer {
    * @return a {@link DocIdSetIterator} over the documents.
    */
   DocIdSetIterator iterator();
-
-  /** A scorer for byte vector values. */
-  class ByteVectorScorer implements VectorScorer {
-    private final byte[] query;
-    private final ByteVectorValues values;
-    private final VectorSimilarityFunction similarity;
-
-    public ByteVectorScorer(
-        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarity) {
-      this.similarity = similarity;
-      this.values = values;
-      this.query = query;
-    }
-
-    /**
-     * Advance the instance to the given document ID and return true if there is a value for that
-     * document.
-     */
-    @Override
-    public DocIdSetIterator iterator() {
-      return values;
-    }
-
-    @Override
-    public float score() throws IOException {
-      assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
-      return similarity.compare(query, values.vectorValue());
-    }
-  }
-
-  /** A scorer for float vector values. */
-  class FloatVectorScorer implements VectorScorer {
-    private final float[] query;
-    private final FloatVectorValues values;
-    private final VectorSimilarityFunction similarity;
-
-    public FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      this.similarity = similarity;
-      this.query = query;
-      this.values = values;
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
-      return values;
-    }
-
-    @Override
-    public float score() throws IOException {
-      assert values.docID() != -1 : getClass().getSimpleName() + " is not positioned";
-      return similarity.compare(query, values.vectorValue());
-    }
-  }
 }

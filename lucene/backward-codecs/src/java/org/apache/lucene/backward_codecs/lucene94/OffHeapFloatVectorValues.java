@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -73,11 +74,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     slice.readFloats(value, 0, value.length);
     lastOrd = targetOrd;
     return value;
-  }
-
-  @Override
-  public VectorScorer scorer(float[] query) {
-    return new VectorScorer.FloatVectorScorer(this, query, vectorSimilarityFunction);
   }
 
   static OffHeapFloatVectorValues load(
@@ -144,7 +140,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() throws IOException {
+    public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
           dimension, size, slice.clone(), vectorSimilarityFunction, byteSize);
     }
@@ -152,6 +148,22 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      DenseOffHeapVectorValues values = this.copy();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return values.vectorSimilarityFunction.compare(values.vectorValue(), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return values;
+        }
+      };
     }
   }
 
@@ -208,7 +220,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() throws IOException {
+    public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
           fieldEntry, dataIn, slice.clone(), vectorSimilarityFunction, byteSize);
     }
@@ -232,6 +244,22 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
         @Override
         public int length() {
           return size;
+        }
+      };
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      SparseOffHeapVectorValues values = this.copy();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return values.vectorSimilarityFunction.compare(values.vectorValue(), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return values;
         }
       };
     }

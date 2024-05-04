@@ -309,6 +309,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       readAllVectors();
     }
 
+    private SimpleTextFloatVectorValues(SimpleTextFloatVectorValues other) {
+      this.entry = other.entry;
+      this.in = other.in.clone();
+      this.values = other.values;
+      this.curOrd = other.curOrd;
+    }
+
     @Override
     public int dimension() {
       return entry.dimension;
@@ -353,7 +360,21 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(float[] target) {
-      return new VectorScorer.FloatVectorScorer(this, target, entry.similarityFunction());
+      SimpleTextFloatVectorValues simpleTextFloatVectorValues =
+          new SimpleTextFloatVectorValues(this);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return entry
+              .similarityFunction()
+              .compare(simpleTextFloatVectorValues.vectorValue(), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return simpleTextFloatVectorValues;
+        }
+      };
     }
 
     private void readAllVectors() throws IOException {
@@ -393,6 +414,15 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       binaryValue.length = binaryValue.bytes.length;
       curOrd = -1;
       readAllVectors();
+    }
+
+    private SimpleTextByteVectorValues(SimpleTextByteVectorValues other) {
+      this.entry = other.entry;
+      this.in = other.in.clone();
+      this.values = other.values;
+      this.binaryValue = new BytesRef(entry.dimension);
+      this.binaryValue.length = binaryValue.bytes.length;
+      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -440,7 +470,20 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(byte[] target) {
-      return new VectorScorer.ByteVectorScorer(this, target, entry.similarityFunction);
+      SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return entry
+              .similarityFunction()
+              .compare(simpleTextByteVectorValues.vectorValue(), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return simpleTextByteVectorValues;
+        }
+      };
     }
 
     private void readAllVectors() throws IOException {

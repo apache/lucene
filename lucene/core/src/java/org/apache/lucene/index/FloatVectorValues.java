@@ -79,7 +79,9 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
 
   /**
    * Return a {@link VectorScorer} for the given query vector and the current {@link
-   * FloatVectorValues}
+   * FloatVectorValues}. The iterator for the scorer is not the same instance as the iterator for
+   * this {@link FloatVectorValues}. It is a copy, and iteration over the scorer will not affect the
+   * iteration of this {@link FloatVectorValues}.
    *
    * @param query the query vector
    * @return a {@link VectorScorer} instance

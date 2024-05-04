@@ -78,7 +78,9 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Return a {@link VectorScorer} for the given query vector.
+   * Return a {@link VectorScorer} for the given query vector. The iterator for the scorer is not
+   * the same instance as the iterator for this {@link ByteVectorValues}. It is a copy, and
+   * iteration over the scorer will not affect the iteration of this {@link ByteVectorValues}.
    *
    * @param query the query vector
    * @return a {@link VectorScorer} instance

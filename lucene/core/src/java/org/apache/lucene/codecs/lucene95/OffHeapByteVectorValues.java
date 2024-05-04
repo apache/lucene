@@ -182,17 +182,18 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
+      DenseOffHeapVectorValues copy = copy();
       RandomVectorScorer scorer =
-          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return scorer.score(doc);
+          return scorer.score(copy.doc);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return DenseOffHeapVectorValues.this;
+          return copy;
         }
       };
     }
@@ -295,17 +296,18 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
+      SparseOffHeapVectorValues copy = copy();
       RandomVectorScorer scorer =
-          flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return scorer.score(disi.index());
+          return scorer.score(copy.disi.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return SparseOffHeapVectorValues.this;
+          return copy;
         }
       };
     }
