@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -71,8 +71,7 @@ public class VectorScorerBenchmark {
     in = dir.openInput("vector.data", IOContext.DEFAULT);
     vectorValues = vectorValues(size, 2, in);
     scorer =
-        VectorizationProvider.getInstance()
-            .newFlatVectorScorer()
+        FlatVectorScorerUtil.newFlatVectorScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues);
   }
 

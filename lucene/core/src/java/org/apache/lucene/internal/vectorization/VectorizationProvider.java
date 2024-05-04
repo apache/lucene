@@ -182,8 +182,7 @@ public abstract class VectorizationProvider {
   // add all possible callers here as FQCN:
   private static final Set<String> VALID_CALLERS =
       Set.of(
-          "org.apache.lucene.benchmark.jmh.VectorScorerBenchmark",
-          "org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat",
+          "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil");
 
   private static void ensureCaller() {

@@ -355,15 +355,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
               if (isInternal) {
                 Assertions.assertThat(export.targets())
-                    .as("We only support qualified exports of internal packages")
-                    .isNotEmpty();
-                var allowable =
-                    List.of("org.apache.lucene.test_framework", "org.apache.lucene.benchmark.jmh");
-                for (String target : export.targets()) {
-                  Assertions.assertThat(allowable.contains(target))
-                      .as("Qualified export to unexpected package: " + target)
-                      .isEqualTo(true);
-                }
+                    .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
               }
               return isInternal;
             });
