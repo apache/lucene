@@ -92,8 +92,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     return windowMin >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : windowMin;
   }
 
-  private void scoreWindow(
-      LeafCollector collector, Bits acceptDocs, int min, int max)
+  private void scoreWindow(LeafCollector collector, Bits acceptDocs, int min, int max)
       throws IOException {
     if (lead1.docID() < min) {
       lead1.advance(min);
@@ -112,7 +111,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
       final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
       if (isMaxScoreLoad == false && hasMinCompetitiveScore) {
-        maxWindowScore = getMaxScore(doc, max-1);
+        maxWindowScore = getMaxScore(doc, max - 1);
         if (maxWindowScore < scorable.minCompetitiveScore) {
           // no hits are competitive
           return;
