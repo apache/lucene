@@ -40,6 +40,20 @@ public class FilterIndexInput extends IndexInput {
     return in;
   }
 
+  /**
+   * Unwraps all test FilterIndexInputs until the first non-test FilterIndexInput IndexInput
+   * instance and returns it
+   */
+  public static IndexInput unwrapOnlyTest(IndexInput in) {
+    while (in instanceof FilterIndexInput
+        && in.getClass().getName().equals("org.apache.lucene.tests.store.MockIndexInputWrapper")) {
+      in = ((FilterIndexInput) in).in;
+    }
+    return in;
+  }
+
+  // org.apache.lucene.tests.store.MockIndexInputWrapper"
+
   protected final IndexInput in;
 
   /** Creates a FilterIndexInput with a resource description and wrapped delegate IndexInput */

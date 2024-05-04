@@ -53,7 +53,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
       VectorSimilarityFunction type,
       IndexInput input,
       RandomAccessVectorValues values) {
-    input = FilterIndexInput.unwrap(input);
+    input = FilterIndexInput.unwrapOnlyTest(input);
     if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
     }
