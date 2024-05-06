@@ -35,11 +35,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  * not thread-safe, this allows to share per-thread state and temporary scratch buffers.
  */
 public abstract sealed class MemorySegmentByteVectorScorerSupplier
-    implements RandomVectorScorerSupplier, RandomVectorScorer
-    permits CosineByteVectorScorerSupplier,
-        DotProductByteVectorScorerSupplier,
-        EuclideanByteVectorScorerSupplier,
-        MaxInnerProductByteVectorScorerSupplier {
+    implements RandomVectorScorerSupplier, RandomVectorScorer {
   final int vectorByteSize;
   final int dims;
   final int maxOrd;
@@ -67,15 +63,12 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
     checkInvariants(maxOrd, vectorByteSize, input);
     return switch (type) {
-      case COSINE -> Optional.of(
-          new CosineByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
+      case COSINE -> Optional.of(new Cosine(dims, maxOrd, vectorByteSize, msInput, values));
       case DOT_PRODUCT -> Optional.of(
-          new DotProductByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
-      case EUCLIDEAN -> Optional.of(
-          new EuclideanByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
+          new DotProduct(dims, maxOrd, vectorByteSize, msInput, values));
+      case EUCLIDEAN -> Optional.of(new Euclidean(dims, maxOrd, vectorByteSize, msInput, values));
       case MAXIMUM_INNER_PRODUCT -> Optional.of(
-          new MaxInnerProductByteVectorScorerSupplier(
-              dims, maxOrd, vectorByteSize, msInput, values));
+          new MaxInnerProduct(dims, maxOrd, vectorByteSize, msInput, values));
     };
   }
 
@@ -141,5 +134,101 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
   @Override
   public final Bits getAcceptOrds(Bits acceptDocs) {
     return values.getAcceptOrds(acceptDocs);
+  }
+
+  static final class Cosine extends MemorySegmentByteVectorScorerSupplier {
+
+    Cosine(
+        int dims,
+        int maxOrd,
+        int vectorByteSize,
+        MemorySegmentAccessInput input,
+        RandomAccessVectorValues values) {
+      super(dims, maxOrd, vectorByteSize, input, values);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      float raw = PanamaVectorUtilSupport.cosine(first, getSegment(node, scratch2));
+      return (1 + raw) / 2;
+    }
+
+    @Override
+    public Cosine copy() throws IOException {
+      return new Cosine(dims, maxOrd, vectorByteSize, input.clone(), values);
+    }
+  }
+
+  static final class DotProduct extends MemorySegmentByteVectorScorerSupplier {
+
+    DotProduct(
+        int dims,
+        int maxOrd,
+        int vectorByteSize,
+        MemorySegmentAccessInput input,
+        RandomAccessVectorValues values) {
+      super(dims, maxOrd, vectorByteSize, input, values);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+      float raw = PanamaVectorUtilSupport.dotProduct(first, getSegment(node, scratch2));
+      return 0.5f + raw / (float) (dims * (1 << 15));
+    }
+
+    @Override
+    public DotProduct copy() throws IOException {
+      return new DotProduct(dims, maxOrd, vectorByteSize, input.clone(), values);
+    }
+  }
+
+  static final class Euclidean extends MemorySegmentByteVectorScorerSupplier {
+
+    Euclidean(
+        int dims,
+        int maxOrd,
+        int vectorByteSize,
+        MemorySegmentAccessInput input,
+        RandomAccessVectorValues values) {
+      super(dims, maxOrd, vectorByteSize, input, values);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      float raw = PanamaVectorUtilSupport.squareDistance(first, getSegment(node, scratch2));
+      return 1 / (1f + raw);
+    }
+
+    @Override
+    public Euclidean copy() throws IOException {
+      return new Euclidean(dims, maxOrd, vectorByteSize, input.clone(), values);
+    }
+  }
+
+  static final class MaxInnerProduct extends MemorySegmentByteVectorScorerSupplier {
+
+    MaxInnerProduct(
+        int dims,
+        int maxOrd,
+        int vectorByteSize,
+        MemorySegmentAccessInput input,
+        RandomAccessVectorValues values) {
+      super(dims, maxOrd, vectorByteSize, input, values);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      float raw = PanamaVectorUtilSupport.dotProduct(first, getSegment(node, scratch2));
+      if (raw < 0) {
+        return 1 / (1 + -1 * raw);
+      }
+      return raw + 1;
+    }
+
+    @Override
+    public MaxInnerProduct copy() throws IOException {
+      return new MaxInnerProduct(dims, maxOrd, vectorByteSize, input.clone(), values);
+    }
   }
 }
