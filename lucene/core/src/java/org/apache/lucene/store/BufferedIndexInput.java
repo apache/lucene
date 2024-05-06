@@ -20,9 +20,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -58,7 +57,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   // reading bytes.
   private ByteBuffer buffer = EMPTY_BYTEBUFFER; // initialized lazily
   private ByteBuffer prefetchBuffer = EMPTY_BYTEBUFFER;
-  private Future<Integer> pendingPrefetch; // only non-null if there is a pending prefetch()
+  private FutureTask<Void> pendingPrefetch; // only non-null if there is a pending prefetch()
 
   private long bufferStart = 0; // position in file of buffer
 
@@ -357,9 +356,8 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   private boolean finishPendingPrefetch() throws IOException {
     if (pendingPrefetch != null) {
-      final int i;
       try {
-        i = pendingPrefetch.get();
+        pendingPrefetch.get();
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
@@ -371,12 +369,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
         prefetchBuffer.flip();
         buffer = prefetchBuffer;
         prefetchBuffer = EMPTY_BYTEBUFFER;
-      }
-
-      if (i < 0) {
-        // be defensive here, even though we checked before hand, something could have changed
-        throw new EOFException(
-            "read past EOF: " + this + " buffer: " + prefetchBuffer + " length: " + length());
       }
 
       return buffer.hasRemaining();
@@ -419,9 +411,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     final int limit = (int) Math.min(length - bufferStart, prefetchBuffer.capacity());
     assert limit > 0;
     prefetchBuffer.limit(limit);
-    // Note: The read operation may read fewer bytes than requested. This is ok.
-    pendingPrefetch = readInternalAsync(prefetchBuffer);
-    // Only swap buffers if we successfully scheduled an async read.
+
+    FutureTask<Void> pendingPrefetch =
+        new FutureTask<>(
+            () -> {
+              readInternal(prefetchBuffer);
+              return null;
+            });
+    Thread.startVirtualThread(pendingPrefetch::run);
+
+    // We could schedule a background read successfully, now update state
+    this.pendingPrefetch = pendingPrefetch;
     this.prefetchBuffer = prefetchBuffer;
     this.buffer = EMPTY_BYTEBUFFER; // trigger refill on next read()
   }
@@ -432,16 +432,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
    * @param b the buffer to read bytes into
    */
   protected abstract void readInternal(ByteBuffer b) throws IOException;
-
-  /**
-   * Expert: implements asynchronous buffer refill. Unlike {@link #readInternal}, this may read less
-   * than {@link ByteBuffer#remaining()} bytes.
-   */
-  protected Future<Integer> readInternalAsync(ByteBuffer b) throws IOException {
-    CompletableFuture<Integer> res = new CompletableFuture<>();
-    res.complete(0);
-    return res;
-  }
 
   @Override
   public final long getFilePointer() {
