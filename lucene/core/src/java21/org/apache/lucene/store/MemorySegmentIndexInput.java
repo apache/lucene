@@ -326,12 +326,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
     final NativeAccess nativeAccess = this.nativeAccess.get();
 
-    // If at the boundary between two slices, move to the next one.
+    // If at the boundary between two chunks, move to the next one.
     seek(getFilePointer());
     try {
-      // nocommit: how to retrieve the page size? and disable prefetching if the page size is not
-      // 4kB?
-      final long offsetInPage = (curSegment.address() + curPosition) & 0x0FFF;
+      final long offsetInPage = (curSegment.address() + curPosition) % nativeAccess.getPageSize();
       if (offsetInPage > curPosition) {
         // The start of the page is outside of this segment.
         return;
