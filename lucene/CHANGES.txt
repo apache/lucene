@@ -162,8 +162,6 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
-* GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
-
 Bug Fixes
 ---------------------
 
@@ -404,6 +402,8 @@ Optimizations
 * GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
 
 * GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
+
+* GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
 
 Bug Fixes
 ---------------------

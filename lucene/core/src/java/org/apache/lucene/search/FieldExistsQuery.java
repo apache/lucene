@@ -240,10 +240,12 @@ public class FieldExistsQuery extends Query {
           return super.count(context);
         } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
           if (reader.hasDeletions() == false) {
-            return switch (fieldInfo.getVectorEncoding()) {
-              case FLOAT32 -> reader.getFloatVectorValues(field).size();
-              case BYTE -> reader.getByteVectorValues(field).size();
-            };
+            final DocIdSetIterator values =
+                switch (fieldInfo.getVectorEncoding()) {
+                  case FLOAT32 -> reader.getFloatVectorValues(field);
+                  case BYTE -> reader.getByteVectorValues(field);
+                };
+            return values == null ? 0 : Math.toIntExact(values.cost());
           }
           return super.count(context);
         } else if (fieldInfo.getDocValuesType()
