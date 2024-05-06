@@ -4949,7 +4949,9 @@ public class TestIndexWriter extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        writer.addDocument(new Document());
+        Document d = new Document();
+        d.add(new TextField("f", "a", Field.Store.NO));
+        writer.addDocument(d);
       }
       IllegalArgumentException iae =
           expectThrows(
@@ -5055,6 +5057,21 @@ public class TestIndexWriter extends LuceneTestCase {
       assertEquals(
           "can't add [parent] as non parent document field; this IndexWriter is configured with [parent] as parent document field",
           iae.getMessage());
+    }
+  }
+
+  public void testParentFieldEmptyIndex() throws IOException {
+    try (Directory dir = newMockDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        writer.commit();
+      }
+      IndexWriterConfig iwc2 = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc2.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc2)) {
+        writer.commit();
+      }
     }
   }
 }
