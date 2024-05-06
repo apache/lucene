@@ -67,9 +67,8 @@ public enum VectorSimilarityFunction {
    * should only use this function if you need to preserve the original vectors and cannot normalize
    * them in advance. The similarity score is normalised to assure it is positive.
    *
-   * @Deprecated Use MAXIMUM_INNER_PRODUCT or DOT_PRODUCT instead
+   * @deprecated Use MAXIMUM_INNER_PRODUCT or DOT_PRODUCT instead
    */
-
   @Deprecated
   COSINE {
     @Override
