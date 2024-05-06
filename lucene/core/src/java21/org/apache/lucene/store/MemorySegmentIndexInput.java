@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
@@ -50,6 +51,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   final int chunkSizePower;
   final Arena arena;
   final MemorySegment[] segments;
+  final Optional<NativeAccess> nativeAccess;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -61,12 +63,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      Optional<NativeAccess> nativeAccess) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     if (segments.length == 1) {
-      return new SingleSegmentImpl(resourceDescription, arena, segments[0], length, chunkSizePower);
+      return new SingleSegmentImpl(
+          resourceDescription, arena, segments[0], length, chunkSizePower, nativeAccess);
     } else {
-      return new MultiSegmentImpl(resourceDescription, arena, segments, 0, length, chunkSizePower);
+      return new MultiSegmentImpl(
+          resourceDescription, arena, segments, 0, length, chunkSizePower, nativeAccess);
     }
   }
 
@@ -75,7 +80,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      Optional<NativeAccess> nativeAccess) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -83,6 +89,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     this.chunkSizePower = chunkSizePower;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
+    this.nativeAccess = nativeAccess;
   }
 
   void ensureOpen() {
@@ -311,6 +318,41 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public void prefetch() throws IOException {
+    ensureOpen();
+
+    if (nativeAccess.isEmpty()) {
+      return;
+    }
+    final NativeAccess nativeAccess = this.nativeAccess.get();
+
+    // If at the boundary between two slices, move to the next one.
+    seek(getFilePointer());
+    try {
+      // nocommit: how to retrieve the page size? and disable prefetching if the page size is not
+      // 4kB?
+      final long offsetInPage = (curSegment.address() + curPosition) & 0x0FFF;
+      if (offsetInPage > curPosition) {
+        // The start of the page is outside of this segment.
+        return;
+      }
+      MemorySegment currentPageSlice =
+          curSegment.asSlice(curPosition - offsetInPage, offsetInPage + 1);
+      // Tell the OS we'll need this page. nocommit: do we need to restore the original read advice?
+      // Source code for madvise.c suggests we don't since WILL_NEED only triggers read-ahead
+      // without updating the state of the virtual mapping?
+      // https://github.com/torvalds/linux/blob/master/mm/madvise.c
+      nativeAccess.madvise(currentPageSlice, ReadAdvice.WILL_NEED);
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException e) {
+      throw new EOFException("Read past EOF: " + this);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public byte readByte(long pos) throws IOException {
     try {
       final int si = (int) (pos >> chunkSizePower);
@@ -491,7 +533,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           null, // clones don't have an Arena, as they can't close)
           slices[0].asSlice(offset, length),
           length,
-          chunkSizePower);
+          chunkSizePower,
+          nativeAccess);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -499,7 +542,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           slices,
           offset,
           length,
-          chunkSizePower);
+          chunkSizePower,
+          nativeAccess);
     }
   }
 
@@ -539,8 +583,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         Arena arena,
         MemorySegment segment,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, new MemorySegment[] {segment}, length, chunkSizePower);
+        int chunkSizePower,
+        Optional<NativeAccess> nativeAccess) {
+      super(
+          resourceDescription,
+          arena,
+          new MemorySegment[] {segment},
+          length,
+          chunkSizePower,
+          nativeAccess);
       this.curSegmentIndex = 0;
     }
 
@@ -626,8 +677,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, segments, length, chunkSizePower);
+        int chunkSizePower,
+        Optional<NativeAccess> nativeAccess) {
+      super(resourceDescription, arena, segments, length, chunkSizePower, nativeAccess);
       this.offset = offset;
       try {
         seek(0L);

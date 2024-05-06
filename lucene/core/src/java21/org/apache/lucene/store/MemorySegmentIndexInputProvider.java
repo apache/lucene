@@ -59,9 +59,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
                   context.readAdvice(),
                   chunkSizePower,
                   preload,
-                  fileSize),
+                  fileSize,
+                  nativeAccess),
               fileSize,
-              chunkSizePower);
+              chunkSizePower,
+              nativeAccess);
       success = true;
       return in;
     } finally {
@@ -88,7 +90,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       ReadAdvice readAdvice,
       int chunkSizePower,
       boolean preload,
-      long length)
+      long length,
+      Optional<NativeAccess> nativeAccess)
       throws IOException {
     if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
       throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);

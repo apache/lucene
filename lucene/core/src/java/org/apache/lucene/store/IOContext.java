@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.store;
 
-import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.util.Constants;
 
@@ -73,6 +74,10 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
     }
+    if (readAdvice == ReadAdvice.WILL_NEED) {
+      throw new IllegalArgumentException(
+          "WILL_NEED is not a valid ReadAdvice for IOContext creation");
+    }
   }
 
   /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
@@ -91,8 +96,17 @@ public record IOContext(
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
   }
 
-  private static final IOContext[] READADVICE_TO_IOCONTEXT =
-      Arrays.stream(ReadAdvice.values()).map(IOContext::new).toArray(IOContext[]::new);
+  private static final Map<ReadAdvice, IOContext> READADVICE_TO_IOCONTEXT =
+      new EnumMap<>(ReadAdvice.class);
+
+  static {
+    for (ReadAdvice advice : ReadAdvice.values()) {
+      if (advice == ReadAdvice.WILL_NEED) {
+        continue;
+      }
+      READADVICE_TO_IOCONTEXT.put(advice, new IOContext(advice));
+    }
+  }
 
   /**
    * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
@@ -102,8 +116,12 @@ public record IOContext(
    * ReadAdvice}s.
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
+    if (readAdvice == ReadAdvice.WILL_NEED) {
+      throw new IllegalArgumentException(
+          "WILL_NEED is not a valid ReadAdvice for IOContext#withReadAdvice");
+    }
     if (context == Context.DEFAULT) {
-      return READADVICE_TO_IOCONTEXT[advice.ordinal()];
+      return Objects.requireNonNull(READADVICE_TO_IOCONTEXT.get(advice));
     } else {
       return this;
     }

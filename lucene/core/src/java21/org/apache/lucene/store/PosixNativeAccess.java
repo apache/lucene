@@ -141,6 +141,7 @@ final class PosixNativeAccess extends NativeAccess {
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
       case RANDOM_PRELOAD -> null;
+      case WILL_NEED -> POSIX_MADV_WILLNEED;
     };
   }
 }
