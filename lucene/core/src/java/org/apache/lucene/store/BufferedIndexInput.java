@@ -418,7 +418,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
               readInternal(prefetchBuffer);
               return null;
             });
-    Thread.startVirtualThread(pendingPrefetch::run);
+    Thread.startVirtualThread(pendingPrefetch);
 
     // We could schedule a background read successfully, now update state
     this.pendingPrefetch = pendingPrefetch;
