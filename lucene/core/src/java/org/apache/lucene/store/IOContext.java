@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.store;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.util.Constants;
 
@@ -74,10 +73,7 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
     }
-    if (readAdvice == ReadAdvice.WILL_NEED) {
-      throw new IllegalArgumentException(
-          "WILL_NEED is not a valid ReadAdvice for IOContext creation");
-    }
+    checkReadAdvice(readAdvice);
   }
 
   /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
@@ -96,17 +92,20 @@ public record IOContext(
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
   }
 
-  private static final Map<ReadAdvice, IOContext> READADVICE_TO_IOCONTEXT =
-      new EnumMap<>(ReadAdvice.class);
+  private static boolean isAllowedReadAdvice(ReadAdvice advice) {
+    return advice != ReadAdvice.WILL_NEED;
+  }
 
-  static {
-    for (ReadAdvice advice : ReadAdvice.values()) {
-      if (advice == ReadAdvice.WILL_NEED) {
-        continue;
-      }
-      READADVICE_TO_IOCONTEXT.put(advice, new IOContext(advice));
+  private static void checkReadAdvice(ReadAdvice advice) {
+    if (false == isAllowedReadAdvice(advice)) {
+      throw new IllegalArgumentException(advice + " is not a valid ReadAdvice for IOContext usage");
     }
   }
+
+  private static final IOContext[] READADVICE_TO_IOCONTEXT =
+      Arrays.stream(ReadAdvice.values())
+          .map(a -> isAllowedReadAdvice(a) ? new IOContext(a) : null)
+          .toArray(IOContext[]::new);
 
   /**
    * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
@@ -116,12 +115,9 @@ public record IOContext(
    * ReadAdvice}s.
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
-    if (readAdvice == ReadAdvice.WILL_NEED) {
-      throw new IllegalArgumentException(
-          "WILL_NEED is not a valid ReadAdvice for IOContext#withReadAdvice");
-    }
+    checkReadAdvice(readAdvice);
     if (context == Context.DEFAULT) {
-      return Objects.requireNonNull(READADVICE_TO_IOCONTEXT.get(advice));
+      return READADVICE_TO_IOCONTEXT[advice.ordinal()];
     } else {
       return this;
     }
