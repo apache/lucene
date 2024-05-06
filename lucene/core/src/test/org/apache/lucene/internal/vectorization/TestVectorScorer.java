@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 import static org.hamcrest.Matchers.equalTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
@@ -83,7 +85,7 @@ public class TestVectorScorer extends LuceneTestCase {
         }
         try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
           var vectorValues = vectorValues(dims, 2, in);
-          for (var sim : List.of(DOT_PRODUCT, EUCLIDEAN)) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
             for (var ords : List.of(List.of(0, 1), List.of(1, 0))) {
               int idx0 = ords.get(0);
               int idx1 = ords.get(1);
@@ -142,7 +144,7 @@ public class TestVectorScorer extends LuceneTestCase {
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         var vectorValues = vectorValues(dims, size, in);
         for (int times = 0; times < TIMES; times++) {
-          for (var sim : List.of(DOT_PRODUCT, EUCLIDEAN)) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
             int idx0 = randomIntBetween(0, size - 1);
             int idx1 = randomIntBetween(0, size - 1); // may be the same as idx0 - which is ok.
 

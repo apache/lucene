@@ -28,10 +28,18 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-/** A scorer of vectors whose element size is byte. */
+/**
+ * A scorer of vectors whose element size is byte.
+ *
+ * <p>This class is both a scorer supplier and a scorer. Since score suppliers and their scorers are
+ * not thread-safe, this allows to share per-thread state and temporary scratch buffers.
+ */
 public abstract sealed class MemorySegmentByteVectorScorerSupplier
     implements RandomVectorScorerSupplier, RandomVectorScorer
-    permits DotProductByteVectorScorerSupplier, EuclideanByteVectorScorerSupplier {
+    permits CosineByteVectorScorerSupplier,
+        DotProductByteVectorScorerSupplier,
+        EuclideanByteVectorScorerSupplier,
+        MaxInnerProductByteVectorScorerSupplier {
   final int vectorByteSize;
   final int dims;
   final int maxOrd;
@@ -59,12 +67,15 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
     checkInvariants(maxOrd, vectorByteSize, input);
     return switch (type) {
+      case COSINE -> Optional.of(
+          new CosineByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
       case DOT_PRODUCT -> Optional.of(
           new DotProductByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
       case EUCLIDEAN -> Optional.of(
           new EuclideanByteVectorScorerSupplier(dims, maxOrd, vectorByteSize, msInput, values));
-      case MAXIMUM_INNER_PRODUCT -> Optional.empty(); // TODO: implement MAXIMUM_INNER_PRODUCT
-      case COSINE -> Optional.empty(); // TODO: implement Cosine
+      case MAXIMUM_INNER_PRODUCT -> Optional.of(
+          new MaxInnerProductByteVectorScorerSupplier(
+              dims, maxOrd, vectorByteSize, msInput, values));
     };
   }
 

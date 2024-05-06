@@ -577,6 +577,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float cosine(byte[] a, byte[] b) {
+    return cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+  }
+
+  public static float cosine(MemorySegment a, MemorySegment b) {
     int i = 0;
     int sum = 0;
     int norm1 = 0;
@@ -584,17 +588,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(a.length);
+        i += BYTE_SPECIES.loopBound((int) a.byteSize());
         ret = cosineBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(a.length);
+        i += BYTE_SPECIES.loopBound((int) a.byteSize());
         ret = cosineBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(a.byteSize() - ByteVector.SPECIES_64.length());
         ret = cosineBody128(a, b, i);
       }
       sum += ret[0];
@@ -603,9 +607,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      byte elem1 = a[i];
-      byte elem2 = b[i];
+    for (; i < a.byteSize(); i++) {
+      byte elem1 = a.get(JAVA_BYTE, i);
+      byte elem2 = b.get(JAVA_BYTE, i);
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -614,13 +618,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (512 bit vectors) */
-  private float[] cosineBody512(byte[] a, byte[] b, int limit) {
+  private static float[] cosineBody512(MemorySegment a, MemorySegment b, int limit) {
     IntVector accSum = IntVector.zero(INT_SPECIES);
     IntVector accNorm1 = IntVector.zero(INT_SPECIES);
     IntVector accNorm2 = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromArray(BYTE_SPECIES, a, i);
-      ByteVector vb8 = ByteVector.fromArray(BYTE_SPECIES, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
@@ -644,13 +648,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (256 bit vectors) */
-  private float[] cosineBody256(byte[] a, byte[] b, int limit) {
+  private static float[] cosineBody256(MemorySegment a, MemorySegment b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
 
       // 16-bit multiply, and add into accumulators
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
@@ -669,13 +673,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (128 bit vectors) */
-  private float[] cosineBody128(byte[] a, byte[] b, int limit) {
+  private static float[] cosineBody128(MemorySegment a, MemorySegment b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
-      ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-      ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
+      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
 
       // process first half only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
