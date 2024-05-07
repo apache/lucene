@@ -1439,12 +1439,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           default -> assertTrue(docValues.advanceExact(doc));
         }
         assertEquals(doc, docValues.docID());
-        assertEquals(storedValues.length, docValues.docValueCount());
         int repeats = 1 + random().nextInt(3);
         for (int r = 0; r < repeats; r++) {
           if (r > 0 || random().nextBoolean()) {
             assertTrue(docValues.advanceExact(doc));
           }
+          assertEquals(storedValues.length, docValues.docValueCount());
           for (int v = 0; v < docValues.docValueCount(); v++) {
             assertEquals(storedValues[v], Long.toString(docValues.nextValue()));
           }
@@ -1458,12 +1458,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           String[] storedValues = storedFields.document(doc).getValues(storedField);
           if (docValues.advanceExact(doc)) {
             assertEquals(doc, docValues.docID());
-            assertEquals(storedValues.length, docValues.docValueCount());
             int repeats = 1 + random().nextInt(3);
             for (int r = 0; r < repeats; r++) {
               if (r > 0 || random().nextBoolean()) {
                 assertTrue(docValues.advanceExact(doc));
               }
+              assertEquals(storedValues.length, docValues.docValueCount());
               for (int v = 0; v < docValues.docValueCount(); v++) {
                 assertEquals(storedValues[v], Long.toString(docValues.nextValue()));
               }
@@ -1493,6 +1493,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               if (r > 0 || random().nextBoolean()) {
                 assertTrue(docValues.advanceExact(doc));
               }
+              assertEquals(storedValues.length, docValues.docValueCount());
               for (int v = 0; v < docValues.docValueCount(); v++) {
                 assertEquals(storedValues[v], Long.toString(docValues.nextValue()));
               }
