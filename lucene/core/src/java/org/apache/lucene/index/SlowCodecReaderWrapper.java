@@ -98,7 +98,7 @@ public final class SlowCodecReaderWrapper {
         @Override
         public DataCubesProducer<?> getDataCubesProducer() {
           reader.ensureOpen();
-          return readerToDataCubeProducer(reader);
+          return dataCubeValuesToReader(reader);
         }
 
         @Override
@@ -313,15 +313,13 @@ public final class SlowCodecReaderWrapper {
     };
   }
 
-  private static DataCubesProducer<Object> readerToDataCubeProducer(final LeafReader reader) {
+  private static DataCubesProducer<Object> dataCubeValuesToReader(final LeafReader reader) {
     return new DataCubesProducer<>() {
       @Override
       public void checkIntegrity() throws IOException {}
 
       @Override
       public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
-        // TODO : change this
-        // return reader.getAggregatedDocValues();
         return reader.getDataCubeValues(field);
       }
 

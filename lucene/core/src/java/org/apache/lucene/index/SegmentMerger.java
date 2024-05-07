@@ -294,7 +294,7 @@ final class SegmentMerger {
 
   private void mergeDataCubes(
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
-    try (DataCubesDocValuesConsumer consumer =
+    try (DataCubesConsumer consumer =
         codec
             .dataCubesFormat()
             .fieldsConsumer(segmentWriteState, mergeState.segmentInfo.getDataCubesConfig())) {

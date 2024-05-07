@@ -280,15 +280,6 @@ final class IndexingChain implements Accountable {
       infoStream.message(
           "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write norms");
     }
-    SegmentReadState readState =
-        new SegmentReadState(
-            state.directory,
-            state.segmentInfo,
-            state.fieldInfos,
-            IOContext.DEFAULT,
-            state.segmentSuffix);
-
-    // This must be called before writeDocValues because this uses docValuesWriter
     DataCubesConfig dataCubesConfig = state.segmentInfo.getDataCubesConfig();
     t0 = System.nanoTime();
     writeDataCubes(state, sortMap, dataCubesConfig);
@@ -296,6 +287,13 @@ final class IndexingChain implements Accountable {
       infoStream.message(
           "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write dataCubes");
     }
+    SegmentReadState readState =
+        new SegmentReadState(
+            state.directory,
+            state.segmentInfo,
+            state.fieldInfos,
+            IOContext.DEFAULT,
+            state.segmentSuffix);
 
     t0 = System.nanoTime();
     writeDocValues(state, sortMap);
@@ -422,69 +420,23 @@ final class IndexingChain implements Accountable {
       SegmentWriteState state, Sorter.DocMap sortMap, DataCubesConfig dataCubesConfig)
       throws IOException {
     if (dataCubesConfig == null) return;
-    DataCubesDocValuesConsumer dataCubeDocValuesConsumer = null;
+    DataCubesConsumer dataCubesConsumer = null;
     boolean success = false;
+    LeafReader docValuesReader = getDocValuesLeafReader();
     try {
-      for (int i = 0; i < fieldHash.length; i++) {
-        PerField perField = fieldHash[i];
-        while (perField != null) {
-          if (perField.docValuesWriter != null) {
-            if (perField.fieldInfo.getDocValuesType() == DocValuesType.NONE) {
-              // BUG
-              throw new AssertionError(
-                  "segment="
-                      + state.segmentInfo
-                      + ": field=\""
-                      + perField.fieldInfo.name
-                      + "\" has no docValues but wrote them");
-            }
-            if (dataCubeDocValuesConsumer == null) {
-              // lazy init
-              DataCubesFormat fmt = state.segmentInfo.getCodec().dataCubesFormat();
-              dataCubeDocValuesConsumer = fmt.fieldsConsumer(state, dataCubesConfig);
-            }
-            perField.docValuesWriter.flush(state, sortMap, dataCubeDocValuesConsumer);
-          } else if (perField.fieldInfo != null
-              && perField.fieldInfo.getDocValuesType() != DocValuesType.NONE) {
-            // BUG
-            throw new AssertionError(
-                "segment="
-                    + state.segmentInfo
-                    + ": field=\""
-                    + perField.fieldInfo.name
-                    + "\" has docValues but did not write them");
-          }
-          perField = perField.next;
-        }
+      DataCubesFormat fmt = state.segmentInfo.getCodec().dataCubesFormat();
+      dataCubesConsumer = fmt.fieldsConsumer(state, dataCubesConfig);
+      // This creates the data cubes structures
+      if (dataCubesConsumer != null) {
+        dataCubesConsumer.flush(state, dataCubesConfig, docValuesReader, sortMap);
       }
-      // IMPORTANT : This call creates the data cubes structures
-      if (dataCubeDocValuesConsumer != null) {
-        dataCubeDocValuesConsumer.flush(dataCubesConfig);
-      }
-
-      // TODO: catch missing DV fields here?  else we have
-      // null/"" depending on how docs landed in segments?
-      // but we can't detect all cases, and we should leave
-      // this behavior undefined. dv is not "schemaless": it's column-stride.
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(dataCubeDocValuesConsumer);
+        IOUtils.close(dataCubesConsumer);
       } else {
-        IOUtils.closeWhileHandlingException(dataCubeDocValuesConsumer);
+        IOUtils.closeWhileHandlingException(dataCubesConsumer);
       }
-    }
-
-    if (state.fieldInfos.hasDocValues() == false) {
-      if (dataCubeDocValuesConsumer != null) {
-        // BUG
-        throw new AssertionError(
-            "segment=" + state.segmentInfo + ": fieldInfos has no docValues but wrote them");
-      }
-    } else if (dataCubeDocValuesConsumer == null) {
-      // BUG
-      throw new AssertionError(
-          "segment=" + state.segmentInfo + ": fieldInfos has docValues but did not wrote them");
     }
   }
 

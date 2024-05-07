@@ -102,11 +102,6 @@ public abstract class FilterCodecReader extends CodecReader {
   }
 
   @Override
-  public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
-    return in.getDataCubeValues(field);
-  }
-
-  @Override
   public DataCubesProducer<?> getDataCubesProducer() {
     return in.getDataCubesProducer();
   }

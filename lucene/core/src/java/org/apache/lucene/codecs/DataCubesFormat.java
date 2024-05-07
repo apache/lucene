@@ -18,7 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import org.apache.lucene.index.DataCubesConfig;
-import org.apache.lucene.index.DataCubesDocValuesConsumer;
+import org.apache.lucene.index.DataCubesConsumer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.NamedSPILoader;
@@ -43,15 +43,14 @@ public abstract class DataCubesFormat implements NamedSPILoader.NamedSPI {
   public abstract DataCubesProducer<?> fieldsProducer(SegmentReadState state) throws IOException;
 
   /**
-   * Returns a {@link org.apache.lucene.index.DataCubesDocValuesConsumer} to write dataCubesValues
-   * to the index based on docValues NOTE: by the time this call returns, it must hold open any
-   * files it will need to use; else, those files may be deleted. Additionally, required files may
-   * be deleted during the execution of this call before there is a chance to open them. Under these
-   * circumstances an IOException should be thrown by the implementation. IOExceptions are expected
-   * and will automatically cause a retry of the segment opening logic with the newly revised
-   * segments
+   * Returns a {@link DataCubesConsumer} to write dataCubesValues to the index based on docValues
+   * NOTE: by the time this call returns, it must hold open any files it will need to use; else,
+   * those files may be deleted. Additionally, required files may be deleted during the execution of
+   * this call before there is a chance to open them. Under these circumstances an IOException
+   * should be thrown by the implementation. IOExceptions are expected and will automatically cause
+   * a retry of the segment opening logic with the newly revised segments
    */
-  public abstract DataCubesDocValuesConsumer fieldsConsumer(
+  public abstract DataCubesConsumer fieldsConsumer(
       SegmentWriteState state, DataCubesConfig dataCubesConfig) throws IOException;
 
   /** A {@code DataCubesFormat} that has nothing indexed */
@@ -63,7 +62,7 @@ public abstract class DataCubesFormat implements NamedSPILoader.NamedSPI {
         }
 
         @Override
-        public DataCubesDocValuesConsumer fieldsConsumer(
+        public DataCubesConsumer fieldsConsumer(
             SegmentWriteState state, DataCubesConfig dataCubesConfig) throws IOException {
           throw new UnsupportedOperationException("Attempt to write EMPTY DataCube values");
         }

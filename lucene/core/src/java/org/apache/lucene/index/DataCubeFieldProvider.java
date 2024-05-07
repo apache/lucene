@@ -89,7 +89,7 @@ public abstract class DataCubeFieldProvider implements NamedSPILoader.NamedSPI {
   /**
    * Writes a DataCubeField to a DataOutput
    *
-   * <p>This is used to record index sort information in segment headers
+   * <p>This is used to record DataCubeField information in segment headers
    */
   public abstract void writeDataCubeField(DataCubeField cf, DataOutput out) throws IOException;
 }

@@ -250,7 +250,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public DataCubeValues<?> getDataCubeValues(String field) throws IOException {
+  public final DataCubeValues<?> getDataCubeValues(String field) throws IOException {
     ensureOpen();
     return getDataCubesProducer().getDataCubeValues(field);
   }
