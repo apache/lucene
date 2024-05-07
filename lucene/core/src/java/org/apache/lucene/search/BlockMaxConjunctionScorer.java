@@ -110,15 +110,16 @@ final class BlockMaxConjunctionScorer extends Scorer {
       }
 
       private void moveToNextBlock(int target) throws IOException {
-        upTo = advanceShallow(target);
-        maxScore = getMaxScore(upTo);
+        if (minScore == 0) {
+          upTo = target;
+          maxScore = Float.POSITIVE_INFINITY;
+        } else {
+          upTo = advanceShallow(target);
+          maxScore = getMaxScore(upTo);
+        }
       }
 
       private int advanceTarget(int target) throws IOException {
-        if (minScore <= 0) {
-          return target;
-        }
-
         if (target > upTo) {
           moveToNextBlock(target);
         }
@@ -170,6 +171,8 @@ final class BlockMaxConjunctionScorer extends Scorer {
               continue;
             }
           }
+
+          assert doc <= upTo;
 
           // then find agreement with other iterators
           for (int i = 1; i < approximations.length; ++i) {

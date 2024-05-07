@@ -57,12 +57,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     scorer2 = this.scorers[1];
     this.sumOfOtherClauses = new double[this.scorers.length];
     for (int i = 0; i < sumOfOtherClauses.length; i++) {
-      sumOfOtherClauses[i] = Double.MAX_VALUE;
+      sumOfOtherClauses[i] = Double.POSITIVE_INFINITY;
     }
     this.maxDoc = maxDoc;
   }
 
-  public float getMaxScore(int windowMin, int windowMax) throws IOException {
+  public float computeMaxScore(int windowMin, int windowMax) throws IOException {
     for (int i = 0; i < scorers.length; ++i) {
       scorers[i].advanceShallow(windowMin);
     }
@@ -89,9 +89,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
 
-      double maxWindowScore = Double.MAX_VALUE;
+      double maxWindowScore = Double.POSITIVE_INFINITY;
       if (0 < scorable.minCompetitiveScore) {
-        maxWindowScore = getMaxScore(windowMin, windowMax);
+        maxWindowScore = computeMaxScore(windowMin, windowMax);
       }
       scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
       windowMin = Math.max(lead1.docID(), windowMax + 1);
