@@ -1450,6 +1450,58 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           }
         }
       }
+      // jump with advanceExact
+      int iters = 1 + random().nextInt(3);
+      for (int i = 0; i < iters; i++) {
+        docValues = reader.getSortedNumericDocValues(dvField);
+        for (int doc = random().nextInt(leaf.reader().maxDoc()); doc < reader.maxDoc(); doc++) {
+          String[] storedValues = storedFields.document(doc).getValues(storedField);
+          if (docValues.advanceExact(doc)) {
+            assertEquals(doc, docValues.docID());
+            assertEquals(storedValues.length, docValues.docValueCount());
+            int repeats = 1 + random().nextInt(3);
+            for (int r = 0; r < repeats; r++) {
+              if (r > 0 || random().nextBoolean()) {
+                assertTrue(docValues.advanceExact(doc));
+              }
+              for (int v = 0; v < docValues.docValueCount(); v++) {
+                assertEquals(storedValues[v], Long.toString(docValues.nextValue()));
+              }
+            }
+          } else {
+            assertArrayEquals(new String[0], storedValues);
+          }
+          doc += random().nextInt(5); // skip some docs
+        }
+      }
+      // jump with advance
+      for (int i = 0; i < iters; i++) {
+        docValues = reader.getSortedNumericDocValues(dvField);
+        int doc = random().nextInt(leaf.reader().maxDoc());
+        while (doc != NO_MORE_DOCS) {
+          int nextDoc = docValues.advance(doc);
+          // no stored fields in between
+          for (int d = doc; d < (nextDoc == NO_MORE_DOCS ? reader.maxDoc() : nextDoc); d++) {
+            String[] storedValues = storedFields.document(d).getValues(storedField);
+            assertArrayEquals(new String[0], storedValues);
+          }
+          doc = nextDoc;
+          if (doc != NO_MORE_DOCS) {
+            String[] storedValues = storedFields.document(doc).getValues(storedField);
+            int repeats = 1 + random().nextInt(3);
+            for (int r = 0; r < repeats; r++) {
+              if (r > 0 || random().nextBoolean()) {
+                assertTrue(docValues.advanceExact(doc));
+              }
+              for (int v = 0; v < docValues.docValueCount(); v++) {
+                assertEquals(storedValues[v], Long.toString(docValues.nextValue()));
+              }
+            }
+            doc = nextDoc + 1;
+            doc += random().nextInt(5); // skip some docs
+          }
+        }
+      }
     }
   }
 
@@ -2298,6 +2350,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         }
         continue;
       }
+      // sequentially
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
         String[] storedValues = storedFields.document(doc).getValues(storedField);
         if (storedValues.length == 0) {
@@ -2319,6 +2372,60 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           for (int v = 0; v < docValues.docValueCount(); v++) {
             long ord = docValues.nextOrd();
             assertEquals(storedValues[v], docValues.lookupOrd(ord).utf8ToString());
+          }
+        }
+      }
+      // jump with advanceExact
+      int iters = 1 + random().nextInt(3);
+      for (int i = 0; i < iters; i++) {
+        docValues = reader.getSortedSetDocValues(dvField);
+        for (int doc = random().nextInt(leaf.reader().maxDoc()); doc < reader.maxDoc(); doc++) {
+          String[] storedValues = storedFields.document(doc).getValues(storedField);
+          if (docValues.advanceExact(doc)) {
+            assertEquals(doc, docValues.docID());
+            assertEquals(storedValues.length, docValues.docValueCount());
+            int repeats = 1 + random().nextInt(3);
+            for (int r = 0; r < repeats; r++) {
+              if (r > 0 || random().nextBoolean()) {
+                assertTrue(docValues.advanceExact(doc));
+              }
+              for (int v = 0; v < docValues.docValueCount(); v++) {
+                long ord = docValues.nextOrd();
+                assertEquals(storedValues[v], docValues.lookupOrd(ord).utf8ToString());
+              }
+            }
+          } else {
+            assertArrayEquals(new String[0], storedValues);
+          }
+          doc += random().nextInt(5); // skip some docs
+        }
+      }
+      // jump with advance
+      for (int i = 0; i < iters; i++) {
+        docValues = reader.getSortedSetDocValues(dvField);
+        int doc = random().nextInt(leaf.reader().maxDoc());
+        while (doc != NO_MORE_DOCS) {
+          int nextDoc = docValues.advance(doc);
+          // no stored fields in between
+          for (int d = doc; d < (nextDoc == NO_MORE_DOCS ? reader.maxDoc() : nextDoc); d++) {
+            String[] storedValues = storedFields.document(d).getValues(storedField);
+            assertArrayEquals(new String[0], storedValues);
+          }
+          doc = nextDoc;
+          if (doc != NO_MORE_DOCS) {
+            int repeats = 1 + random().nextInt(3);
+            String[] storedValues = storedFields.document(doc).getValues(storedField);
+            for (int r = 0; r < repeats; r++) {
+              if (r > 0 || random().nextBoolean()) {
+                assertTrue(docValues.advanceExact(doc));
+              }
+              for (int v = 0; v < docValues.docValueCount(); v++) {
+                long ord = docValues.nextOrd();
+                assertEquals(storedValues[v], docValues.lookupOrd(ord).utf8ToString());
+              }
+            }
+            doc = nextDoc + 1;
+            doc += random().nextInt(5); // skip some docs
           }
         }
       }
