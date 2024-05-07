@@ -33,13 +33,21 @@ import org.openjdk.jmh.annotations.*;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
+  static void compressBytes(byte[] raw, byte[] compressed) {
+    for (int i = 0; i < compressed.length; ++i) {
+      int v = (raw[i] << 4) | raw[compressed.length + i];
+      compressed[i] = (byte) v;
+    }
+  }
 
   private byte[] bytesA;
   private byte[] bytesB;
   private byte[] halfBytesA;
   private byte[] halfBytesB;
+  private byte[] halfBytesBPacked;
   private float[] floatsA;
   private float[] floatsB;
+  private int expectedhalfByteDotProduct;
 
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
@@ -55,11 +63,18 @@ public class VectorUtilBenchmark {
     random.nextBytes(bytesB);
     // random half byte arrays for binary methods
     // this means that all values must be between 0 and 15
+    expectedhalfByteDotProduct = 0;
     halfBytesA = new byte[size];
     halfBytesB = new byte[size];
     for (int i = 0; i < size; ++i) {
       halfBytesA[i] = (byte) random.nextInt(16);
       halfBytesB[i] = (byte) random.nextInt(16);
+      expectedhalfByteDotProduct += halfBytesA[i] * halfBytesB[i];
+    }
+    // pack the half byte arrays
+    if (size % 2 == 0) {
+      halfBytesBPacked = new byte[(size + 1) >> 1];
+      compressBytes(halfBytesB, halfBytesBPacked);
     }
 
     // random float arrays for float methods
@@ -113,6 +128,31 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryHalfByteVector() {
     return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+  }
+
+  @Benchmark
+  public int binaryHalfByteScalarPacked() {
+    if (size % 2 != 0) {
+      throw new RuntimeException("Size must be even for this benchmark");
+    }
+    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedhalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteVectorPacked() {
+    if (size % 2 != 0) {
+      throw new RuntimeException("Size must be even for this benchmark");
+    }
+    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedhalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+    }
+    return v;
   }
 
   @Benchmark
