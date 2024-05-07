@@ -56,6 +56,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     scorer1 = this.scorers[0];
     scorer2 = this.scorers[1];
     this.sumOfOtherClauses = new double[this.scorers.length];
+    for (int i = 0; i < sumOfOtherClauses.length; i++) {
+      sumOfOtherClauses[i] = Double.MAX_VALUE;
+    }
     this.maxDoc = maxDoc;
   }
 
@@ -85,22 +88,31 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
-      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1);
+
+      double maxWindowScore = Double.MAX_VALUE;
+      if (0 < scorable.minCompetitiveScore) {
+        maxWindowScore = getMaxScore(windowMin, windowMax);
+      }
+      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
       windowMin = Math.max(lead1.docID(), windowMax + 1);
     }
 
     return windowMin >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : windowMin;
   }
 
-  private void scoreWindow(LeafCollector collector, Bits acceptDocs, int min, int max)
+  private void scoreWindow(
+      LeafCollector collector, Bits acceptDocs, int min, int max, float maxWindowScore)
       throws IOException {
+    if (maxWindowScore < scorable.minCompetitiveScore) {
+      // no hits are competitive
+      return;
+    }
+
     if (lead1.docID() < min) {
       lead1.advance(min);
     }
 
-    double sumOfOtherMaxScoresAt1 = 0;
-    boolean isMaxScoreLoad = false;
-    float maxWindowScore = 0;
+    final double sumOfOtherMaxScoresAt1 = sumOfOtherClauses[1];
 
     advanceHead:
     for (int doc = lead1.docID(); doc < max; ) {
@@ -109,21 +121,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         continue;
       }
 
-      final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
-      if (isMaxScoreLoad == false && hasMinCompetitiveScore) {
-        maxWindowScore = getMaxScore(doc, max - 1);
-        if (maxWindowScore < scorable.minCompetitiveScore) {
-          // no hits are competitive
-          return;
-        }
-        sumOfOtherMaxScoresAt1 = sumOfOtherClauses[1];
-        isMaxScoreLoad = true;
-      }
-
       // Compute the score as we find more matching clauses, in order to skip advancing other
       // clauses if the total score has no chance of being competitive. This works well because
       // computing a score is usually cheaper than decoding a full block of postings and
       // frequencies.
+      final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
       double currentScore;
       if (hasMinCompetitiveScore) {
         currentScore = scorer1.score();
@@ -187,7 +189,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       scorable.score = (float) currentScore;
       collector.collect(doc);
       // The collect() call may have updated the minimum competitive score.
-      if (hasMinCompetitiveScore && maxWindowScore < scorable.minCompetitiveScore) {
+      if (maxWindowScore < scorable.minCompetitiveScore) {
         // no more hits are competitive
         return;
       }
