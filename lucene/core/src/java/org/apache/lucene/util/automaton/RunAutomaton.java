@@ -131,6 +131,7 @@ public abstract class RunAutomaton implements Accountable {
   }
 
   /** Returns a string representation of this automaton. */
+  // TODO: Is it necessary to add matchAllSuffix to toString?.
   @Override
   public String toString() {
     StringBuilder b = new StringBuilder();
@@ -242,6 +243,7 @@ public abstract class RunAutomaton implements Accountable {
     if (size != other.size) return false;
     if (!Arrays.equals(points, other.points)) return false;
     if (!accept.equals(other.accept)) return false;
+    if (!matchAllSuffix.equals(other.matchAllSuffix)) return false;
     if (!Arrays.equals(transitions, other.transitions)) return false;
     return true;
   }
@@ -250,6 +252,7 @@ public abstract class RunAutomaton implements Accountable {
   public long ramBytesUsed() {
     return BASE_RAM_BYTES
         + accept.ramBytesUsed()
+        + matchAllSuffix.ramBytesUsed()
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(classmap)
         + RamUsageEstimator.sizeOfObject(points)
