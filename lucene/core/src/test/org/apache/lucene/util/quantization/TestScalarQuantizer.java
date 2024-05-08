@@ -28,7 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestScalarQuantizer extends LuceneTestCase {
 
-  public void testQuantizeAndDeQuantize() throws IOException {
+  public void testQuantizeAndDeQuantize7Bit() throws IOException {
     int dims = 128;
     int numVecs = 100;
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
@@ -40,15 +40,26 @@ public class TestScalarQuantizer extends LuceneTestCase {
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
+    byte maxDimValue = -128;
+    byte minDimValue = 127;
     for (int i = 0; i < numVecs; i++) {
       scalarQuantizer.quantize(floats[i], quantized, similarityFunction);
       scalarQuantizer.deQuantize(quantized, dequantized);
       scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
       for (int j = 0; j < dims; j++) {
+        if (quantized[j] > maxDimValue) {
+          maxDimValue = quantized[j];
+        }
+        if (quantized[j] < minDimValue) {
+          minDimValue = quantized[j];
+        }
         assertEquals(dequantized[j], floats[i][j], 0.02);
         assertEquals(quantized[j], requantized[j]);
       }
     }
+    // int7 should always quantize to 0-127
+    assertTrue(minDimValue >= (byte) 0);
+    assertTrue(maxDimValue <= (byte) 127);
   }
 
   public void testQuantiles() {
@@ -124,7 +135,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
   }
 
-  public void testFromVectorsAutoInterval() throws IOException {
+  public void testFromVectorsAutoInterval4Bit() throws IOException {
     int dims = 128;
     int numVecs = 100;
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
@@ -138,15 +149,26 @@ public class TestScalarQuantizer extends LuceneTestCase {
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
+    byte maxDimValue = -128;
+    byte minDimValue = 127;
     for (int i = 0; i < numVecs; i++) {
       scalarQuantizer.quantize(floats[i], quantized, similarityFunction);
       scalarQuantizer.deQuantize(quantized, dequantized);
       scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
       for (int j = 0; j < dims; j++) {
+        if (quantized[j] > maxDimValue) {
+          maxDimValue = quantized[j];
+        }
+        if (quantized[j] < minDimValue) {
+          minDimValue = quantized[j];
+        }
         assertEquals(dequantized[j], floats[i][j], 0.2);
         assertEquals(quantized[j], requantized[j]);
       }
     }
+    // int4 should always quantize to 0-15
+    assertTrue(minDimValue >= (byte) 0);
+    assertTrue(maxDimValue <= (byte) 15);
   }
 
   static void shuffleArray(float[] ar) {
