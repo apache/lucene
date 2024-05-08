@@ -318,8 +318,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
-  public void prefetch() throws IOException {
+  public void prefetch(long length) throws IOException {
     ensureOpen();
+
+    Objects.checkFromIndexSize(getFilePointer(), length, length());
 
     if (nativeAccess.isEmpty()) {
       return;
@@ -329,18 +331,30 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     // If at the boundary between two chunks, move to the next one.
     seek(getFilePointer());
     try {
-      final long offsetInPage = (curSegment.address() + curPosition) % nativeAccess.getPageSize();
-      if (offsetInPage > curPosition) {
-        // The start of the page is outside of this segment.
+      // Compute the intersection of the current segment and the region that should be prefetched.
+      long offset = curPosition;
+      if (offset + length > curSegment.byteSize()) {
+        // Only prefetch bytes that are stored in the current segment. There may be bytes on the
+        // next segment but this case is rare enough that we don't try to optimize it and keep
+        // things simple instead.
+        length = curSegment.byteSize() - curPosition;
+      }
+      // Now align offset with the page size, this is required for madvise.
+      // Compute the offset of the current position in the OS's page.
+      final long offsetInPage = (curSegment.address() + offset) % nativeAccess.getPageSize();
+      offset -= offsetInPage;
+      length += offsetInPage;
+      if (offset < 0) {
+        // The start of the page is outside of this segment, ignore.
         return;
       }
-      MemorySegment currentPageSlice =
-          curSegment.asSlice(curPosition - offsetInPage, offsetInPage + 1);
+
+      MemorySegment prefetchSlice = curSegment.asSlice(offset, length);
       // Tell the OS we'll need this page. nocommit: do we need to restore the original read advice?
       // Source code for madvise.c suggests we don't since WILL_NEED only triggers read-ahead
       // without updating the state of the virtual mapping?
       // https://github.com/torvalds/linux/blob/master/mm/madvise.c
-      nativeAccess.madviseWillNeed(currentPageSlice);
+      nativeAccess.madviseWillNeed(prefetchSlice);
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {

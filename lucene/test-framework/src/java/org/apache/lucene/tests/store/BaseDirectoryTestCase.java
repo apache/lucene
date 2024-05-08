@@ -1543,7 +1543,8 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           final int startPointer = (int) in.getFilePointer();
           assertTrue(startPointer < in.length());
           if (random().nextBoolean()) {
-            in.prefetch();
+            final long prefetchLength = TestUtil.nextLong(random(), 1, in.length() - startPointer);
+            in.prefetch(prefetchLength);
           }
           assertEquals(startPointer, in.getFilePointer());
           switch (random().nextInt(100)) {
