@@ -107,10 +107,14 @@ allprojects {
           // vectorization related
           [propName: 'tests.vectorsize',
              value: { ->
-               RandomPicks.randomFrom(new Random(projectSeedLong), ["128", "256", "512"])
+               isCIBuild ? "" : RandomPicks.randomFrom(new Random(projectSeedLong), ["", "128", "256", "512"])
              },
              description: "Sets preferred vector size in bits."],
-          [propName: 'tests.forceintegervectors', value: "true", description: "Forces use of integer vectors even when slow."],
+          [propName: 'tests.forceintegervectors',
+             value: { ->
+                 isCIBuild ? false : true
+             },
+             description: "Forces use of integer vectors even when slow."],
       ]
     }
   }
