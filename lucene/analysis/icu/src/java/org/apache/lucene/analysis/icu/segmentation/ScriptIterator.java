@@ -113,13 +113,12 @@ final class ScriptIterator {
 
       /*
        * From UTR #24: Implementations that determine the boundaries between
-       * characters of given scripts should never break between a non-spacing
+       * characters of given scripts should never break between a combining
        * mark and its base character. Thus for boundary determinations and
-       * similar sorts of processing, a non-spacing mark — whatever its script
+       * similar sorts of processing, a combining mark — whatever its script
        * value — should inherit the script value of its base character.
        */
-      if (isSameScript(scriptCode, sc)
-          || UCharacter.getType(ch) == ECharacterCategory.NON_SPACING_MARK) {
+      if (isSameScript(scriptCode, sc, ch) || isCombiningMark(ch)) {
         index += UTF16.getCharCount(ch);
 
         /*
@@ -139,10 +138,22 @@ final class ScriptIterator {
   }
 
   /** Determine if two scripts are compatible. */
-  private static boolean isSameScript(int scriptOne, int scriptTwo) {
-    return scriptOne <= UScript.INHERITED
-        || scriptTwo <= UScript.INHERITED
-        || scriptOne == scriptTwo;
+  private static boolean isSameScript(int currentScript, int script, int codepoint) {
+    // same scripts match
+    // inherited/common are compatible with any script
+    // codepoints with the current script in Script_Extensions match
+    return currentScript == script
+        || currentScript <= UScript.INHERITED
+        || script <= UScript.INHERITED
+        || UScript.hasScript(codepoint, currentScript);
+  }
+
+  /** Determine if codepoint is a combining mark (General_Category of Mc, Mn, Me) */
+  private static boolean isCombiningMark(int codepoint) {
+    int type = UCharacter.getType(codepoint);
+    return type == ECharacterCategory.COMBINING_SPACING_MARK
+        || type == ECharacterCategory.NON_SPACING_MARK
+        || type == ECharacterCategory.ENCLOSING_MARK;
   }
 
   /**

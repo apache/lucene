@@ -60,7 +60,9 @@ public class TestSimilarity extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             store,
-            newIndexWriterConfig(new MockAnalyzer(random())).setSimilarity(new SimpleSimilarity()));
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setSimilarity(new SimpleSimilarity())
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     Document d1 = new Document();
     d1.add(newTextField("field", "a c", Field.Store.YES));

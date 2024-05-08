@@ -58,6 +58,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -128,7 +129,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context);
+      fieldsStream = d.openInput(fieldsStreamFN, context.withReadAdvice(ReadAdvice.RANDOM));
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -163,7 +164,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       FieldsIndexReader fieldsIndexReader =
           new FieldsIndexReader(
-              d, si.name, segmentSuffix, INDEX_EXTENSION, INDEX_CODEC_NAME, si.getId(), metaIn);
+              d,
+              si.name,
+              segmentSuffix,
+              INDEX_EXTENSION,
+              INDEX_CODEC_NAME,
+              si.getId(),
+              metaIn,
+              context);
       indexReader = fieldsIndexReader;
       maxPointer = fieldsIndexReader.getMaxPointer();
 

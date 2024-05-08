@@ -166,18 +166,18 @@ public class TestMoreLikeThis extends LuceneTestCase {
     List<BooleanClause> clauses = query.clauses();
 
     assertTrue(clauses.size() == 2);
-    Term term = ((TermQuery) clauses.get(0).getQuery()).getTerm();
+    Term term = ((TermQuery) clauses.get(0).query()).getTerm();
     assertTrue(term.text().equals("all"));
-    term = ((TermQuery) clauses.get(1).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(1).query()).getTerm();
     assertTrue(term.text().equals("tenth"));
 
     query = (BooleanQuery) mlt.like("one_percent", new StringReader("tenth all all"));
     clauses = query.clauses();
 
     assertTrue(clauses.size() == 2);
-    term = ((TermQuery) clauses.get(0).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(0).query()).getTerm();
     assertTrue(term.text().equals("all"));
-    term = ((TermQuery) clauses.get(1).getQuery()).getTerm();
+    term = ((TermQuery) clauses.get(1).query()).getTerm();
     assertTrue(term.text().equals("tenth"));
 
     // clean up
@@ -203,7 +203,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
         "Expected " + originalValues.size() + " clauses.", originalValues.size(), clauses.size());
 
     for (BooleanClause clause : clauses) {
-      BoostQuery bq = (BoostQuery) clause.getQuery();
+      BoostQuery bq = (BoostQuery) clause.query();
       TermQuery tq = (TermQuery) bq.getQuery();
       Float termBoost = originalValues.get(tq.getTerm().text());
       assertNotNull("Expected term " + tq.getTerm().text(), termBoost);
@@ -230,7 +230,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     Collection<BooleanClause> clauses = query.clauses();
 
     for (BooleanClause clause : clauses) {
-      BoostQuery bq = (BoostQuery) clause.getQuery();
+      BoostQuery bq = (BoostQuery) clause.query();
       TermQuery tq = (TermQuery) bq.getQuery();
       originalValues.put(tq.getTerm().text(), bq.getBoost());
     }
@@ -260,7 +260,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     Collection<BooleanClause> clauses = query.clauses();
     assertEquals("Expected 2 clauses only!", 2, clauses.size());
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       assertTrue(
           Arrays.asList(new Term("text", "lucene"), new Term("text", "apache")).contains(term));
     }
@@ -284,7 +284,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     Collection<BooleanClause> clauses = query.clauses();
     assertEquals("Expected 1 clauses only!", 1, clauses.size());
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       assertEquals(new Term(mltField1, "lucene"), term);
     }
     analyzer.close();
@@ -319,7 +319,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
 
     // None of the Not Expected terms is in the query
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       assertFalse(
           "Unexpected term '" + term + "' found in query terms", unexpectedTerms.contains(term));
     }
@@ -358,7 +358,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     Collection<BooleanClause> clauses = query.clauses();
     HashSet<Term> clausesTerms = new HashSet<>();
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       clausesTerms.add(term);
     }
 
@@ -366,7 +366,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
 
     // None of the Not Expected terms is in the query
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       assertFalse(
           "Unexpected term '" + term + "' found in query terms", unexpectedTerms.contains(term));
     }
@@ -422,7 +422,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
       expectedTerms[idx++] = new Term("text", text);
     }
     for (BooleanClause clause : clauses) {
-      Term term = ((TermQuery) clause.getQuery()).getTerm();
+      Term term = ((TermQuery) clause.query()).getTerm();
       assertTrue(Arrays.asList(expectedTerms).contains(term));
     }
 
@@ -587,7 +587,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     final double boost10 =
         ((BooleanQuery) mlt.like("text", new StringReader("lucene|10 release|1")))
             .clauses().stream()
-                .map(BooleanClause::getQuery)
+                .map(BooleanClause::query)
                 .map(BoostQuery.class::cast)
                 .filter(x -> ((TermQuery) x.getQuery()).getTerm().text().equals("lucene"))
                 .mapToDouble(BoostQuery::getBoost)
@@ -596,7 +596,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
     final double boost1 =
         ((BooleanQuery) mlt.like("text", new StringReader("lucene|1 release|1")))
             .clauses().stream()
-                .map(BooleanClause::getQuery)
+                .map(BooleanClause::query)
                 .map(BoostQuery.class::cast)
                 .filter(x -> ((TermQuery) x.getQuery()).getTerm().text().equals("lucene"))
                 .mapToDouble(BoostQuery::getBoost)

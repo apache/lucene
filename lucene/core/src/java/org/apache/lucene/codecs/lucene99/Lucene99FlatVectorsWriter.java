@@ -27,10 +27,11 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatFieldVectorsWriter;
-import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -44,8 +45,10 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -69,7 +72,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  public Lucene99FlatVectorsWriter(SegmentWriteState state) throws IOException {
+  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -283,10 +288,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
-      // copy the temporary file vectors to the actual data file
+      // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
+      // Note: don't use the context from the state, which is a flush/merge context, not expecting
+      // to perform random reads.
       vectorDataInput =
           segmentWriteState.directory.openInput(
-              tempVectorData.getName(), segmentWriteState.context);
+              tempVectorData.getName(), IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM));
+      // copy the temporary file vectors to the actual data file
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -300,20 +308,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> RandomVectorScorerSupplier.createBytes(
+            case BYTE -> vectorsScorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
                 new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                     fieldInfo.getVectorDimension(),
                     docsWithField.cardinality(),
                     finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Byte.BYTES),
-                fieldInfo.getVectorSimilarityFunction());
-            case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
+                    fieldInfo.getVectorDimension() * Byte.BYTES));
+            case FLOAT32 -> vectorsScorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
                 new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                     fieldInfo.getVectorDimension(),
                     docsWithField.cardinality(),
                     finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Float.BYTES),
-                fieldInfo.getVectorSimilarityFunction());
+                    fieldInfo.getVectorDimension() * Float.BYTES));
           };
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {

@@ -22,6 +22,7 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -109,7 +110,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(
+        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 

@@ -53,7 +53,7 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   @Override
   public long length() {
     ensureOpen();
-    return in.size();
+    return in.length();
   }
 
   @Override
@@ -215,7 +215,7 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   public IndexInput clone() {
     ensureOpen();
     ByteBuffersIndexInput cloned =
-        new ByteBuffersIndexInput(in.slice(0, in.size()), "(clone of) " + toString());
+        new ByteBuffersIndexInput(in.slice(0, in.length()), "(clone of) " + toString());
     try {
       cloned.seek(getFilePointer());
     } catch (IOException e) {

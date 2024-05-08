@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -937,6 +938,7 @@ public class TestIndexWriter extends LuceneTestCase {
                     @Override
                     protected boolean isOK(Throwable th) {
                       return th instanceof AlreadyClosedException
+                          || th instanceof RejectedExecutionException
                           || (th instanceof IllegalStateException
                               && th.getMessage()
                                   .contains("this writer hit an unrecoverable error"));
@@ -3027,7 +3029,7 @@ public class TestIndexWriter extends LuceneTestCase {
         writer.commit();
         assertEquals(1, writer.getDocStats().maxDoc);
         // now check that we moved to 3
-        dir.openInput("segments_3", IOContext.READ).close();
+        dir.openInput("segments_3", IOContext.DEFAULT).close();
       }
       reader.close();
       in.close();
@@ -4849,7 +4851,9 @@ public class TestIndexWriter extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        writer.addDocument(new Document());
+        Document d = new Document();
+        d.add(new TextField("f", "a", Field.Store.NO));
+        writer.addDocument(d);
       }
       IllegalArgumentException iae =
           expectThrows(
@@ -4955,6 +4959,21 @@ public class TestIndexWriter extends LuceneTestCase {
       assertEquals(
           "can't add [parent] as non parent document field; this IndexWriter is configured with [parent] as parent document field",
           iae.getMessage());
+    }
+  }
+
+  public void testParentFieldEmptyIndex() throws IOException {
+    try (Directory dir = newMockDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        writer.commit();
+      }
+      IndexWriterConfig iwc2 = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc2.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc2)) {
+        writer.commit();
+      }
     }
   }
 }
