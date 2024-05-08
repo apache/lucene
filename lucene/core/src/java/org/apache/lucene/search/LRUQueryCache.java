@@ -101,12 +101,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final ReentrantReadWriteLock.ReadLock readLock;
   private final ReentrantReadWriteLock.WriteLock writeLock;
   private final float skipCacheFactor;
+  private final LongAdder hitCount;
+  private final LongAdder missCount;
 
   // these variables are volatile so that we do not need to sync reads
   // but increments need to be performed under the lock
   private volatile long ramBytesUsed;
-  private volatile LongAdder hitCount;
-  private volatile LongAdder missCount;
   private volatile long cacheCount;
   private volatile long cacheSize;
 
@@ -919,7 +919,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (writeLock.tryLock() == false) {
+      if (readLock.tryLock() == false) {
         return in.bulkScorer(context);
       }
 
@@ -927,7 +927,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       try {
         cached = get(in.getQuery(), cacheHelper);
       } finally {
-        writeLock.unlock();
+        readLock.unlock();
       }
 
       if (cached == null) {
