@@ -106,15 +106,14 @@ allprojects {
           [propName: 'tests.bwcdir', value: null, description: "Data for backward-compatibility indexes."],
           // vectorization related
           [propName: 'tests.vectorsize',
-             value: { ->
-               isCIBuild ? "" : RandomPicks.randomFrom(new Random(projectSeedLong), ["", "128", "256", "512"])
-             },
-             description: "Sets preferred vector size in bits."],
+           value: { -> testsDefaultVectorizationRequested() ? 'default' :
+            RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"]) },
+           description: "Sets preferred vector size in bits."],
           [propName: 'tests.forceintegervectors',
-             value: { ->
-                 isCIBuild ? false : true
-             },
-             description: "Forces use of integer vectors even when slow."],
+            value: { -> !testsDefaultVectorizationRequested() },
+            description: "Forces use of integer vectors even when slow."],
+          [propName: 'tests.defaultvectorization', value: false,
+            description: "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors)."],
       ]
     }
   }
@@ -176,6 +175,8 @@ allprojects {
         // and not the test JVM itself.
         systemProperties testOptionsResolved
 
+        jvmArgs Commandline.translateCommandline(testOptionsResolved['tests.jvmargs'])
+      
         if (Boolean.parseBoolean(testOptionsResolved['tests.asserts'])) {
           jvmArgs("-ea", "-esa")
         } else {

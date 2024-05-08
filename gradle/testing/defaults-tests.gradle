@@ -51,7 +51,7 @@ allprojects {
            includeInReproLine: false
           ],
           [propName: 'tests.jvmargs',
-           value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", isCIBuild ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
+           value: { -> envOrDefault("TEST_JVM_ARGS", (isCIBuild || testsDefaultVectorizationRequested()) ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
            description: "Arguments passed to each forked JVM."],
           // Other settings.
           [propName: 'tests.neverUpToDate', value: true,
@@ -66,6 +66,8 @@ allprojects {
         }
         return propertyOrDefault(option.propName, option.value)
       }
+      
+      testsDefaultVectorizationRequested = { -> Boolean.parseBoolean(resolvedTestOption('tests.defaultvectorization')) }
 
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
@@ -116,8 +118,6 @@ allprojects {
 
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
-      jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
-      
       // Up to JDK-15 we have to enforce --illegal-access=deny, because we want no code to access
       // JDK internals; JDK-16 and later will default to deny, see https://openjdk.java.net/jeps/396:
       if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
