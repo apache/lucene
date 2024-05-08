@@ -122,17 +122,26 @@ final class PosixNativeAccess extends NativeAccess {
 
   @Override
   public void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException {
-    // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
-    if (segment.byteSize() == 0L) {
-      return; // empty segments should be excluded, because they may have no address at all
-    }
     final Integer advice = mapReadAdvice(readAdvice);
     if (advice == null) {
       return; // do nothing
     }
+    madvise(segment, advice);
+  }
+
+  @Override
+  public void madviseWillNeed(MemorySegment segment) throws IOException {
+    madvise(segment, POSIX_MADV_WILLNEED);
+  }
+
+  private void madvise(MemorySegment segment, int advice) throws IOException {
+    // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
+    if (segment.byteSize() == 0L) {
+      return; // empty segments should be excluded, because they may have no address at all
+    }
     final int ret;
     try {
-      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
+      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice);
     } catch (Throwable th) {
       throw new AssertionError(th);
     }
@@ -153,7 +162,6 @@ final class PosixNativeAccess extends NativeAccess {
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
       case RANDOM_PRELOAD -> null;
-      case WILL_NEED -> POSIX_MADV_WILLNEED;
     };
   }
 

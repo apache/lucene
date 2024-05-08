@@ -340,7 +340,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       // Source code for madvise.c suggests we don't since WILL_NEED only triggers read-ahead
       // without updating the state of the virtual mapping?
       // https://github.com/torvalds/linux/blob/master/mm/madvise.c
-      nativeAccess.madvise(currentPageSlice, ReadAdvice.WILL_NEED);
+      nativeAccess.madviseWillNeed(currentPageSlice);
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {

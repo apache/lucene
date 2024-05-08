@@ -27,6 +27,11 @@ abstract class NativeAccess {
   /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
   public abstract void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException;
 
+  /**
+   * Invoke the {@code madvise} call for the given {@link MemorySegment} with {@code MADV_WILLNEED}.
+   */
+  public abstract void madviseWillNeed(MemorySegment segment) throws IOException;
+
   /** Returns native page size. */
   public abstract int getPageSize();
 

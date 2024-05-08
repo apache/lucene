@@ -73,7 +73,6 @@ public record IOContext(
       throw new IllegalArgumentException(
           "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
     }
-    checkReadAdvice(readAdvice);
   }
 
   /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
@@ -92,20 +91,8 @@ public record IOContext(
     this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
   }
 
-  private static boolean isAllowedReadAdvice(ReadAdvice advice) {
-    return advice != ReadAdvice.WILL_NEED;
-  }
-
-  private static void checkReadAdvice(ReadAdvice advice) {
-    if (false == isAllowedReadAdvice(advice)) {
-      throw new IllegalArgumentException(advice + " is not a valid ReadAdvice for IOContext usage");
-    }
-  }
-
   private static final IOContext[] READADVICE_TO_IOCONTEXT =
-      Arrays.stream(ReadAdvice.values())
-          .map(a -> isAllowedReadAdvice(a) ? new IOContext(a) : null)
-          .toArray(IOContext[]::new);
+      Arrays.stream(ReadAdvice.values()).map(IOContext::new).toArray(IOContext[]::new);
 
   /**
    * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
@@ -115,7 +102,6 @@ public record IOContext(
    * ReadAdvice}s.
    */
   public IOContext withReadAdvice(ReadAdvice advice) {
-    checkReadAdvice(readAdvice);
     if (context == Context.DEFAULT) {
       return READADVICE_TO_IOCONTEXT[advice.ordinal()];
     } else {
