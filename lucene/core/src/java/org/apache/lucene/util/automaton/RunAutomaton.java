@@ -106,7 +106,7 @@ public abstract class RunAutomaton implements Accountable {
     assert automaton.isAccept(state);
     Transition transition = new Transition();
     int numTransitions = automaton.getNumTransitions(state);
-    // Apply to PrefixQuery, TermRangeQuery.
+    // Apply to PrefixQuery, TermRangeQuery, custom binary Automata.
     if (numTransitions == 1) {
       automaton.getTransition(state, 0, transition);
       if (transition.dest == state && transition.min == 0 && transition.max == alphabetSize - 1) {
@@ -114,7 +114,7 @@ public abstract class RunAutomaton implements Accountable {
       }
     }
 
-    // Apply to RegexpQuery, WildcardQuery, custom Automata.
+    // Apply to RegexpQuery, WildcardQuery.
     // TODO Track other transitions.
     for (int i = 0; i < numTransitions; i++) {
       automaton.getTransition(state, i, transition);
