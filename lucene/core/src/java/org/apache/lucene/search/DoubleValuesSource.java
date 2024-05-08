@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.DoubleToLongFunction;
 import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
@@ -185,6 +186,26 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    */
   public static DoubleValues similarityToQueryVector(
       LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
+    return similarityToQueryVector(ctx, queryVector, vectorField, null);
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the byte query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector byte query vector
+   * @param vectorField knn byte field name
+   * @param similarityFunction similarity function to be used
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx,
+      byte[] queryVector,
+      String vectorField,
+      BiFunction<byte[], byte[], Float> similarityFunction)
+      throws IOException {
     if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
         != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
@@ -193,7 +214,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
               + " does not have the expected vector encoding: "
               + VectorEncoding.BYTE);
     }
-    return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+    return new ByteVectorSimilarityValuesSource(queryVector, vectorField, similarityFunction)
+        .getValues(ctx, null);
   }
 
   /**
@@ -208,6 +230,26 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    */
   public static DoubleValues similarityToQueryVector(
       LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
+    return similarityToQueryVector(ctx, queryVector, vectorField, null);
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the float query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector float query vector
+   * @param vectorField knn float field name
+   * @param similarityFunction similarity function to be used
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx,
+      float[] queryVector,
+      String vectorField,
+      BiFunction<float[], float[], Float> similarityFunction)
+      throws IOException {
     if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
         != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
@@ -216,7 +258,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
               + " does not have the expected vector encoding: "
               + VectorEncoding.FLOAT32);
     }
-    return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+    return new FloatVectorSimilarityValuesSource(queryVector, vectorField, similarityFunction)
+        .getValues(ctx, null);
   }
 
   /**

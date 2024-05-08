@@ -20,9 +20,9 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
@@ -32,9 +32,13 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
   private final float[] queryVector;
 
-  public FloatVectorSimilarityValuesSource(float[] vector, String fieldName) {
+  private BiFunction<float[], float[], Float> similarityFunction;
+
+  public FloatVectorSimilarityValuesSource(
+      float[] vector, String fieldName, BiFunction<float[], float[], Float> function) {
     super(fieldName);
     this.queryVector = vector;
+    this.similarityFunction = function;
   }
 
   @Override
@@ -44,12 +48,14 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       FloatVectorValues.checkField(ctx.reader(), fieldName);
       return DoubleValues.EMPTY;
     }
-    VectorSimilarityFunction function =
-        ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
+    if (similarityFunction == null) {
+      similarityFunction =
+          ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction()::compare;
+    }
     return new DoubleValues() {
       @Override
       public double doubleValue() throws IOException {
-        return function.compare(queryVector, vectorValues.vectorValue());
+        return similarityFunction.apply(queryVector, vectorValues.vectorValue());
       }
 
       @Override
