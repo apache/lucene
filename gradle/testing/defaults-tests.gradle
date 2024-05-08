@@ -67,7 +67,7 @@ allprojects {
         return propertyOrDefault(option.propName, option.value)
       }
       
-      testsDefaultVectorizationRequested = { -> Boolean.parseBoolean(resolvedTestOption('tests.defaultvectorization')) }
+      testsDefaultVectorizationRequested = { -> Boolean.parseBoolean(resolvedTestOption('tests.defaultvectorization') as String) }
 
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
