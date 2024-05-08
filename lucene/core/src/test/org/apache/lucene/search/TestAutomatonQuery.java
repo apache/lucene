@@ -88,13 +88,13 @@ public class TestAutomatonQuery extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(writer);
     Automaton automaton =
         Automata.makeBinaryInterval(newBytesRef("reg"), true, newBytesRef("rest"), true);
-    AutomatonQuery query = new AutomatonQuery(new Term("category"), automaton);
+    AutomatonQuery query = new AutomatonQuery(new Term("category"), automaton, true);
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(3, hits.length);
 
     automaton = Automata.makeBinaryInterval(newBytesRef("tea"), true, newBytesRef("team"), true);
-    query = new AutomatonQuery(new Term("category"), automaton);
+    query = new AutomatonQuery(new Term("category"), automaton, true);
     searcher = newSearcher(reader);
     hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(2, hits.length);
