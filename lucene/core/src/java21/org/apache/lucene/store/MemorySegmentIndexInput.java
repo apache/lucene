@@ -45,13 +45,13 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+  private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
 
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
   final Arena arena;
   final MemorySegment[] segments;
-  final Optional<NativeAccess> nativeAccess;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -63,15 +63,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower,
-      Optional<NativeAccess> nativeAccess) {
+      int chunkSizePower) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     if (segments.length == 1) {
-      return new SingleSegmentImpl(
-          resourceDescription, arena, segments[0], length, chunkSizePower, nativeAccess);
+      return new SingleSegmentImpl(resourceDescription, arena, segments[0], length, chunkSizePower);
     } else {
-      return new MultiSegmentImpl(
-          resourceDescription, arena, segments, 0, length, chunkSizePower, nativeAccess);
+      return new MultiSegmentImpl(resourceDescription, arena, segments, 0, length, chunkSizePower);
     }
   }
 
@@ -80,8 +77,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower,
-      Optional<NativeAccess> nativeAccess) {
+      int chunkSizePower) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -89,7 +85,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     this.chunkSizePower = chunkSizePower;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
-    this.nativeAccess = nativeAccess;
   }
 
   void ensureOpen() {
@@ -323,10 +318,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     Objects.checkFromIndexSize(getFilePointer(), length, length());
 
-    if (nativeAccess.isEmpty()) {
+    if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
-    final NativeAccess nativeAccess = this.nativeAccess.get();
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     // If at the boundary between two chunks, move to the next one.
     seek(getFilePointer());
@@ -541,8 +536,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           null, // clones don't have an Arena, as they can't close)
           slices[0].asSlice(offset, length),
           length,
-          chunkSizePower,
-          nativeAccess);
+          chunkSizePower);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -550,8 +544,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           slices,
           offset,
           length,
-          chunkSizePower,
-          nativeAccess);
+          chunkSizePower);
     }
   }
 
@@ -591,15 +584,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         Arena arena,
         MemorySegment segment,
         long length,
-        int chunkSizePower,
-        Optional<NativeAccess> nativeAccess) {
-      super(
-          resourceDescription,
-          arena,
-          new MemorySegment[] {segment},
-          length,
-          chunkSizePower,
-          nativeAccess);
+        int chunkSizePower) {
+      super(resourceDescription, arena, new MemorySegment[] {segment}, length, chunkSizePower);
       this.curSegmentIndex = 0;
     }
 
@@ -685,9 +671,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower,
-        Optional<NativeAccess> nativeAccess) {
-      super(resourceDescription, arena, segments, length, chunkSizePower, nativeAccess);
+        int chunkSizePower) {
+      super(resourceDescription, arena, segments, length, chunkSizePower);
       this.offset = offset;
       try {
         seek(0L);

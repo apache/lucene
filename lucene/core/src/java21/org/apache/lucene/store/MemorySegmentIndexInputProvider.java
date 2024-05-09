@@ -62,8 +62,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
                   fileSize,
                   nativeAccess),
               fileSize,
-              chunkSizePower,
-              nativeAccess);
+              chunkSizePower);
       success = true;
       return in;
     } finally {
