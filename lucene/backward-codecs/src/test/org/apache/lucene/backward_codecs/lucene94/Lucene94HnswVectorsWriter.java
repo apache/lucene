@@ -440,6 +440,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                     fieldInfo.getVectorDimension(),
                     docsWithField.cardinality(),
                     vectorDataInput,
+                    fieldInfo.getVectorSimilarityFunction(),
                     byteSize);
             RandomVectorScorerSupplier scorerBytesSupplier =
                 defaultFlatVectorScorer.getRandomVectorScorerSupplier(
@@ -457,6 +458,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                     fieldInfo.getVectorDimension(),
                     docsWithField.cardinality(),
                     vectorDataInput,
+                    fieldInfo.getVectorSimilarityFunction(),
                     byteSize);
             RandomVectorScorerSupplier scorerSupplier =
                 defaultFlatVectorScorer.getRandomVectorScorerSupplier(

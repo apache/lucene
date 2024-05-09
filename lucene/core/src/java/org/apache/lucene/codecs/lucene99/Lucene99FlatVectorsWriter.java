@@ -346,7 +346,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                       fieldInfo.getVectorDimension(),
                       docsWithField.cardinality(),
                       finalVectorDataInput,
-                      fieldInfo.getVectorDimension() * Byte.BYTES));
+                      fieldInfo.getVectorDimension() * Byte.BYTES,
+                      vectorsScorer,
+                      fieldInfo.getVectorSimilarityFunction()));
           break;
         case FLOAT32:
           randomVectorScorerSupplier =
@@ -356,7 +358,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                       fieldInfo.getVectorDimension(),
                       docsWithField.cardinality(),
                       finalVectorDataInput,
-                      fieldInfo.getVectorDimension() * Float.BYTES));
+                      fieldInfo.getVectorDimension() * Float.BYTES,
+                      vectorsScorer,
+                      fieldInfo.getVectorSimilarityFunction()));
           break;
         default:
           throw new IllegalArgumentException(

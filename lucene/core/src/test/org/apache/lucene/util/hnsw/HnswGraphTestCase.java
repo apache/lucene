@@ -70,6 +70,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -1092,6 +1093,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     public float[] vectorValue(int ord) {
       return unitVector2d(ord / (double) size, value);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
@@ -1156,6 +1162,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         bValue[i] = (byte) (value[i] * 127);
       }
       return bValue;
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
     }
   }
 
