@@ -16,12 +16,16 @@
  */
 package org.apache.lucene.codecs.hnsw;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -50,12 +54,12 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
     byte[] vec2 = new byte[] {32, 32, 32, 32};
 
     try (Directory dir = new MMapDirectory(createTempDir(getTestName()))) {
-      try (IndexOutput out = dir.createOutput("testFoo", IOContext.DEFAULT)) {
+      try (IndexOutput out = dir.createOutput("testMultipleScorers", IOContext.DEFAULT)) {
         out.writeBytes(vec0, 0, vec0.length);
         out.writeBytes(vec1, 0, vec1.length);
         out.writeBytes(vec2, 0, vec2.length);
       }
-      try (IndexInput in = dir.openInput("testFoo", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput("testMultipleScorers", IOContext.DEFAULT)) {
         var vectorValues = vectorValues(4, 3, in);
         var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         var ss = factory.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
@@ -64,9 +68,28 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
         var firstScore = scorerAgainstOrd0.score(1);
         // ensure that the creation of another scorer does not disturb previous scorers
         var scorerAgainstOrd2 = ss.scorer(2);
+        assertThat(ss.scorer(2), equalTo(scorerAgainstOrd2)); // just to avoid unused warnings
         var scoreAgain = scorerAgainstOrd0.score(1);
 
         assertThat(scoreAgain, equalTo(firstScore));
+      }
+    }
+  }
+
+  public void testCheckDimensions() throws IOException {
+    byte[] vec0 = new byte[4];
+    try (Directory dir = new MMapDirectory(createTempDir(getTestName()))) {
+      try (IndexOutput out = dir.createOutput("testCheckDimensions", IOContext.DEFAULT)) {
+        out.writeBytes(vec0, 0, vec0.length);
+      }
+      try (IndexInput in = dir.openInput("testCheckDimensions", IOContext.DEFAULT)) {
+        var vectorValues = vectorValues(4, 1, in);
+        var factory = FlatVectorScorerUtil.newFlatVectorScorer();
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> factory.getRandomVectorScorer(sim, vectorValues, new byte[5]));
+        }
       }
     }
   }
