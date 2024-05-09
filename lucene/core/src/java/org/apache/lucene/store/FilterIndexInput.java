@@ -59,8 +59,6 @@ public class FilterIndexInput extends IndexInput {
     return in;
   }
 
-  // org.apache.lucene.tests.store.MockIndexInputWrapper"
-
   protected final IndexInput in;
 
   /** Creates a FilterIndexInput with a resource description and wrapped delegate IndexInput */
