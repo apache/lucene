@@ -258,6 +258,9 @@ New Features
 * GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
   new Hnsw format for binary quantized vectors. (Ben Trent)
 
+* GITHUB#13181: Add new VectorScorer interface to vector value iterators. This allows for vector codecs to supply
+  simpler and more optimized vector scoring when iterating vector values directly. (Ben Trent)
+
 Improvements
 ---------------------
 
