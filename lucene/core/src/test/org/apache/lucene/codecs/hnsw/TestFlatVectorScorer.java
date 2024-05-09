@@ -37,7 +37,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
-public class TestFlatVectorScorerUtil extends LuceneTestCase {
+public class TestFlatVectorScorer extends LuceneTestCase {
 
   public void testDefaultOrMemSegScorer() {
     var scorer = FlatVectorScorerUtil.newFlatVectorScorer();
@@ -47,19 +47,28 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
         is(oneOf("DefaultFlatVectorScorer()", "MemorySegmentFlatVectorsScorer()")));
   }
 
-  // Tests that the creation of another scorer does not disturb previous scorers
   public void testMultipleScorers() throws IOException {
+    testMultipleScorersImpl(TestFlatVectorScorer::newDirectory);
+  }
+
+  public void testMultipleScorersMMap() throws IOException {
+    testMultipleScorersImpl(() -> new MMapDirectory(createTempDir(getTestName())));
+  }
+
+  // Tests that the creation of another scorer does not disturb previous scorers
+  void testMultipleScorersImpl(ThrowingSupplier<Directory> newDirectory) throws IOException {
     byte[] vec0 = new byte[] {0, 0, 0, 0};
     byte[] vec1 = new byte[] {1, 1, 1, 1};
-    byte[] vec2 = new byte[] {32, 32, 32, 32};
+    byte[] vec2 = new byte[] {15, 15, 15, 15};
 
-    try (Directory dir = new MMapDirectory(createTempDir(getTestName()))) {
-      try (IndexOutput out = dir.createOutput("testMultipleScorers", IOContext.DEFAULT)) {
+    String fileName = getTestName();
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
         out.writeBytes(vec0, 0, vec0.length);
         out.writeBytes(vec1, 0, vec1.length);
         out.writeBytes(vec2, 0, vec2.length);
       }
-      try (IndexInput in = dir.openInput("testMultipleScorers", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         var vectorValues = vectorValues(4, 3, in);
         var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         var ss = factory.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
@@ -77,12 +86,21 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
   }
 
   public void testCheckDimensions() throws IOException {
+    testCheckDimensionsImpl(TestFlatVectorScorer::newDirectory);
+  }
+
+  public void testCheckDimensionsMMap() throws IOException {
+    testCheckDimensionsImpl(() -> new MMapDirectory(createTempDir(getTestName())));
+  }
+
+  void testCheckDimensionsImpl(ThrowingSupplier<Directory> newDirectory) throws IOException {
     byte[] vec0 = new byte[4];
-    try (Directory dir = new MMapDirectory(createTempDir(getTestName()))) {
-      try (IndexOutput out = dir.createOutput("testCheckDimensions", IOContext.DEFAULT)) {
+    String fileName = getTestName();
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
         out.writeBytes(vec0, 0, vec0.length);
       }
-      try (IndexInput in = dir.openInput("testCheckDimensions", IOContext.DEFAULT)) {
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         var vectorValues = vectorValues(4, 1, in);
         var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
@@ -102,5 +120,10 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
       throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("test", 0, in.length()), dims);
+  }
+
+  @FunctionalInterface
+  interface ThrowingSupplier<T> {
+    T get() throws IOException;
   }
 }
