@@ -112,8 +112,7 @@ allprojects {
           [propName: 'tests.forceintegervectors',
             value: { -> testsDefaultVectorizationRequested() ? false : (randomVectorSize != 'default') },
             description: "Forces use of integer vectors even when slow."],
-          [propName: 'tests.defaultvectorization',
-            value: { -> (randomVectorSize == 'default') },
+          [propName: 'tests.defaultvectorization', value: false,
             description: "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors)."],
       ]
     }
