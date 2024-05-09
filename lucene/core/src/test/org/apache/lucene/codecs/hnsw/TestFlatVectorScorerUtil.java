@@ -67,8 +67,8 @@ public class TestFlatVectorScorerUtil extends LuceneTestCase {
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
         // ensure that the creation of another scorer does not disturb previous scorers
+        @SuppressWarnings("unused")
         var scorerAgainstOrd2 = ss.scorer(2);
-        assertThat(ss.scorer(2), equalTo(scorerAgainstOrd2)); // just to avoid unused warnings
         var scoreAgain = scorerAgainstOrd0.score(1);
 
         assertThat(scoreAgain, equalTo(firstScore));
