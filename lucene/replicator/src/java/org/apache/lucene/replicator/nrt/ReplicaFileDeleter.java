@@ -17,6 +17,8 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static org.apache.lucene.index.IndexWriter.WRITE_LOCK_NAME;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +59,7 @@ class ReplicaFileDeleter {
     Matcher m = IndexFileNames.CODEC_FILE_PATTERN.matcher("");
     for (String fileName : files) {
       m.reset(fileName);
-      if (!fileName.endsWith("write.lock")
+      if (!fileName.endsWith(WRITE_LOCK_NAME)
           && (m.matches()
               || fileName.startsWith(IndexFileNames.SEGMENTS)
               || fileName.startsWith(IndexFileNames.PENDING_SEGMENTS))) {
