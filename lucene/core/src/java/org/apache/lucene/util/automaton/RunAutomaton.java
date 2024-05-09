@@ -75,7 +75,7 @@ public abstract class RunAutomaton implements Accountable {
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
-        if (canMatchAllSuffix(n)) {
+        if (detectMatchAllSuffix(n)) {
           matchAllSuffix.set(n);
         }
       }
@@ -101,8 +101,8 @@ public abstract class RunAutomaton implements Accountable {
     }
   }
 
-  /** Returns true if this state can accept everything(all remaining suffixes). */
-  private boolean canMatchAllSuffix(int state) {
+  /** Detect whether this state can accept everything(all remaining suffixes). */
+  private boolean detectMatchAllSuffix(int state) {
     assert automaton.isAccept(state);
     Transition transition = new Transition();
     int numTransitions = automaton.getNumTransitions(state);
@@ -123,7 +123,7 @@ public abstract class RunAutomaton implements Accountable {
           return true;
         } else if (automaton.isAccept(transition.dest)) {
           // recurse
-          return canMatchAllSuffix(transition.dest);
+          return detectMatchAllSuffix(transition.dest);
         }
       }
     }
