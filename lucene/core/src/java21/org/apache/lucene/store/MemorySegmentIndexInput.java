@@ -349,11 +349,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         return;
       }
 
-      MemorySegment prefetchSlice = curSegment.asSlice(offset, length);
-      // Tell the OS we'll need this page. nocommit: do we need to restore the original read advice?
-      // Source code for madvise.c suggests we don't since WILL_NEED only triggers read-ahead
-      // without updating the state of the virtual mapping?
-      // https://github.com/torvalds/linux/blob/master/mm/madvise.c
+      final MemorySegment prefetchSlice = curSegment.asSlice(offset, length);
       nativeAccess.madviseWillNeed(prefetchSlice);
     } catch (
         @SuppressWarnings("unused")
