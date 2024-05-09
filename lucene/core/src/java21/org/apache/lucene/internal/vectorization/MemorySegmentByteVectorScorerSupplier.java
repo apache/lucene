@@ -31,8 +31,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 /**
  * A scorer of vectors whose element size is byte.
  *
- * <p>This class is both a scorer supplier and a scorer. Since score suppliers and their scorers are
- * not thread-safe, this allows to share per-thread state and temporary scratch buffers.
+ * <p>This class is both a scorer supplier and a scorer.
  */
 public abstract sealed class MemorySegmentByteVectorScorerSupplier
     implements RandomVectorScorerSupplier, RandomVectorScorer {
@@ -116,9 +115,13 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
   }
 
   @Override
+  public abstract MemorySegmentByteVectorScorerSupplier copy() throws IOException;
+
+  @Override
   public final RandomVectorScorer scorer(int ord) throws IOException {
-    first = getSegment(ord, scratch1);
-    return this;
+    var copy = copy();
+    copy.first = copy.getSegment(ord, copy.scratch1);
+    return copy;
   }
 
   @Override

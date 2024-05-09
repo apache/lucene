@@ -31,7 +31,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
-import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.Throughput)
@@ -54,7 +54,7 @@ public class VectorScorerBenchmark {
   IndexInput in;
   RandomAccessVectorValues vectorValues;
   byte[] vec1, vec2;
-  RandomVectorScorerSupplier scorer;
+  RandomVectorScorer scorer;
 
   @Setup(Level.Iteration)
   public void init() throws IOException {
@@ -72,7 +72,8 @@ public class VectorScorerBenchmark {
     vectorValues = vectorValues(size, 2, in);
     scorer =
         FlatVectorScorerUtil.newFlatVectorScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues);
+            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
+            .scorer(0);
   }
 
   @TearDown
@@ -82,15 +83,13 @@ public class VectorScorerBenchmark {
 
   @Benchmark
   public float binaryDotProductDefault() throws IOException {
-    // score twice to invalidate and re-read the vector at the first position
-    return scorer.scorer(0).score(1) + scorer.scorer(1).score(0);
+    return scorer.score(1);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryDotProductMemSeg() throws IOException {
-    // score twice to invalidate and re-read the vector at the first position
-    return scorer.scorer(0).score(1) + scorer.scorer(1).score(0);
+    return scorer.score(1);
   }
 
   static RandomAccessVectorValues vectorValues(int dims, int size, IndexInput in)
