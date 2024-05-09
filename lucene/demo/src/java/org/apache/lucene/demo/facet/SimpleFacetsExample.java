@@ -228,7 +228,7 @@ public class SimpleFacetsExample {
     System.out.println("Author: " + results1.get(0));
     System.out.println("Publish Date: " + results1.get(1));
 
-    System.out.println("Facet counting example (combined facets and search):");
+    /*System.out.println("Facet counting example (combined facets and search):");
     System.out.println("-----------------------");
     List<FacetResult> results = example.runSearch();
     System.out.println("Author: " + results.get(0));
@@ -243,5 +243,6 @@ public class SimpleFacetsExample {
     for (FacetResult result : example.runDrillSideways()) {
       System.out.println(result);
     }
+    */
   }
 }

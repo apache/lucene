@@ -1,8 +1,8 @@
 package org.apache.lucene.facet.sandbox;
 
-import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.sandbox.abstracts.FacetCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
+import org.apache.lucene.facet.sandbox.abstracts.FacetRollup;
 import org.apache.lucene.search.CollectorManager;
 
 import java.io.IOException;
@@ -17,12 +17,14 @@ public class FacetFieldCollectorManager<V extends FacetRecorder> implements Coll
 
     private final FacetCutter facetCutter;
     private final V facetRecorder;
+    private final FacetRollup facetRollup;
 
     /**
      * Create collector for a cutter + recorder pair
      */
-    public FacetFieldCollectorManager(FacetCutter facetCutter, V facetRecorder) {
+    public FacetFieldCollectorManager(FacetCutter facetCutter, FacetRollup facetRollup, V facetRecorder) {
         this.facetCutter = facetCutter;
+        this.facetRollup = facetRollup;
         this.facetRecorder = facetRecorder;
     }
 
@@ -33,13 +35,7 @@ public class FacetFieldCollectorManager<V extends FacetRecorder> implements Coll
 
     @Override
     public V reduce(Collection<FacetFieldCollector> collectors) throws IOException {
-        // TODO: implement
-        // TODO: do rollup if needed; but how do we decide that rollup is needed?
-        //  Options:
-        //  - Do rollup here, so FacetFieldCollectorManager should have a property that says that rollup is required.
-        //    Or maybe that's FacetCutter that can have this property?
-        //  - Do rollup during OrdIterators chaining phase - but I don't think it's a good idea, as client has to
-        //    know when the rollup is required.
-        return null;
+        facetRecorder.reduce(facetRollup);
+        return this.facetRecorder;
     }
 }

@@ -1,13 +1,22 @@
 package org.apache.lucene.facet.sandbox.taxonomy;
 
+import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.sandbox.abstracts.FacetCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
+import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
+import org.apache.lucene.facet.sandbox.abstracts.FacetRollup;
+import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
+import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
+import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * {@link FacetCutter} for SortedNumericDocValues field.
@@ -15,13 +24,49 @@ import java.util.List;
  *  Cons: Less obvious for users what to use for taxonomy.
  */
 
-public class TaxonomyFacetsCutter implements FacetCutter {
+public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
+    //private final String indexFieldName;
+    private final FacetsConfig facetsConfig;
+    private final TaxonomyReader taxoReader;
     private final String indexFieldName;
-    private List<TaxonomyLeafFacetCutterMultiValue> leafCutters = new ArrayList<>();// TODO: init when first added?
 
-    TaxonomyFacetsCutter(String indexFieldName) {
+    // TODO: init when first added?
+    private List<TaxonomyLeafFacetCutterMultiValue> leafCutters = new ArrayList<>();
+
+    private ParallelTaxonomyArrays.IntArray parents;
+    private ParallelTaxonomyArrays.IntArray children;
+    private ParallelTaxonomyArrays.IntArray siblings;
+
+    /**
+     * Create {@link FacetCutter} for taxonomy facets.
+     */
+    public TaxonomyFacetsCutter(String indexFieldName, FacetsConfig facetsConfig, TaxonomyReader taxoReader) {
+        this.facetsConfig = facetsConfig;
         this.indexFieldName = indexFieldName;
+        this.taxoReader = taxoReader;
+    }
+
+    /**
+     * Returns int[] mapping each ordinal to its first child; this is a large array and is computed
+     * (and then saved) the first time this method is invoked.
+     */
+    ParallelTaxonomyArrays.IntArray getChildren() throws IOException {
+        if (children == null) {
+            children = taxoReader.getParallelTaxonomyArrays().children();
+        }
+        return children;
+    }
+
+    /**
+     * Returns int[] mapping each ordinal to its next sibling; this is a large array and is computed
+     * (and then saved) the first time this method is invoked.
+     */
+    ParallelTaxonomyArrays.IntArray getSiblings() throws IOException {
+        if (siblings == null) {
+            siblings = taxoReader.getParallelTaxonomyArrays().siblings();
+        }
+        return siblings;
     }
 
     @Override
@@ -36,6 +81,55 @@ public class TaxonomyFacetsCutter implements FacetCutter {
 
         // TODO: does unwrapping Single valued makes things any faster? We still need to wrap it into FacetLeafCutter
         // NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
+    }
+
+    @Override
+    public OrdinalIterator getDimOrds() {
+        // Rollup any necessary dims:
+        Iterator<Map.Entry<String, FacetsConfig.DimConfig>> dimensions = facetsConfig.getDimConfigs()
+                .entrySet()
+                .iterator();
+        return new OrdinalIterator() {
+            @Override
+            public int nextOrd() throws IOException {
+                while (dimensions.hasNext()) {
+                    Map.Entry<String, FacetsConfig.DimConfig> ent = dimensions.next();
+                    String dim = ent.getKey();
+                    FacetsConfig.DimConfig ft = ent.getValue();
+                    if (ft.hierarchical && ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
+                        int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
+                        // It can be -1 if this field was declared in the
+                        // config but never indexed:
+                        if (dimRootOrd != TaxonomyReader.INVALID_ORDINAL) {
+                            return dimRootOrd;
+                        }
+                    }
+                }
+                return NO_MORE_ORDS;
+            }
+        };
+    }
+
+    @Override
+    public OrdinalIterator getChildrenOrds(final int parentOrd) throws IOException {
+        ParallelTaxonomyArrays.IntArray children = getChildren();
+        ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+        return new OrdinalIterator() {
+            int currentChild = parentOrd;
+            @Override
+            public int nextOrd() throws IOException {
+                // TODO: kinda ugly, can this be simpler?
+                if (currentChild == parentOrd) {
+                    currentChild = children.get(currentChild);
+                } else {
+                    currentChild = siblings.get(currentChild);
+                }
+                if (currentChild != TaxonomyReader.INVALID_ORDINAL) {
+                    return currentChild;
+                }
+                return NO_MORE_ORDS;
+            }
+        };
     }
 
     private static class TaxonomyLeafFacetCutterMultiValue implements FacetLeafCutter {

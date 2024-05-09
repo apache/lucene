@@ -13,16 +13,16 @@ import java.io.IOException;
 public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
 
     // TODO: do we want to have something like ChainOrdinalIterators to chain multiple iterators?
-    //  Or are we find that we chain them manually every time?
+    //  Or are we fine with chaining them manually every time?
     private final OrdinalIterator sourceOrds;
     private final ParallelTaxonomyArrays.IntArray parents;
     private final int parentOrd;
 
     /** Create */
-    public TaxonomyChildrenOrdinalIterator(FacetRecorder facetRecorder,
+    public TaxonomyChildrenOrdinalIterator(OrdinalIterator sourceOrds,
                                            ParallelTaxonomyArrays.IntArray parents,
                                            int parentOrd) {
-        this.sourceOrds = facetRecorder.recordedOrds();
+        this.sourceOrds = sourceOrds;
         this.parents = parents;
         this.parentOrd = parentOrd;
     }

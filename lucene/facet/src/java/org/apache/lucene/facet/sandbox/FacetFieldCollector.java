@@ -35,7 +35,8 @@ public class FacetFieldCollector implements Collector {
 
     @Override
     public ScoreMode scoreMode() {
-        // TODO: ???
-        return null;
+        // TODO: We don't need to ever keep scores, do we?
+        // return keepScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+        return ScoreMode.COMPLETE_NO_SCORES;
     }
 }

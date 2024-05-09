@@ -2,14 +2,14 @@ package org.apache.lucene.facet.sandbox.abstracts;
 
 import org.apache.lucene.index.LeafReaderContext;
 
+import java.io.IOException;
+
 /**
  * Registers which payload we need for a field, and then
  * generates per leaf payload class that computes the payload.
  * TODO: do we need FacetRecorderManager similar to CollectorManager, e.g. is getLeafRecorder always thread safe?
- * TODO: we need a method to reduce (merge) results from leafs.
  */
 public interface FacetRecorder {
-
     /**
      * Get leaf recorder.
      */
@@ -23,11 +23,10 @@ public interface FacetRecorder {
 
     /**
      * Reduce leaf recorder results into this recorder.
+     * If facetRollup is not null, it also rolls up values.
+     *
+     * @throws UnsupportedOperationException if facetRollup is not null and {@link FacetRollup#getDimOrds()} returns at least one
+     *  dimension ord, but this type of record can't be rolled up.
      */
-    //void reduce();
-
-    /**
-     * Rollup
-     */
-    //void rollup(int fromOrd, int toOrd);
+    void reduce(FacetRollup facetRollup) throws IOException;
 }
