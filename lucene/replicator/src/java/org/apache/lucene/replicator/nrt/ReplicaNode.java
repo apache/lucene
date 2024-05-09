@@ -383,7 +383,6 @@ public abstract class ReplicaNode extends Node {
 
       // write and fsync a new segments_N
       infos.commit(dir);
-      deleter.checkpoint(infos);
 
       // Notify current infos (which may have changed while we were doing dir.sync above) what
       // generation we are up to; this way future
@@ -401,6 +400,8 @@ public abstract class ReplicaNode extends Node {
               + commitData);
       deleter.incRef(Collections.singletonList(segmentsFileName));
       message("top: commit decRef lastCommitFiles=" + lastCommitFiles);
+      
+      deleter.checkpoint(infos);
       deleter.decRef(lastCommitFiles);
       lastCommitFiles.clear();
       lastCommitFiles.addAll(indexFiles);

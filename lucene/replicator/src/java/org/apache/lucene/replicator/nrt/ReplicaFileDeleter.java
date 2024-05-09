@@ -17,8 +17,6 @@
 
 package org.apache.lucene.replicator.nrt;
 
-import static org.apache.lucene.index.IndexWriter.WRITE_LOCK_NAME;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,6 +28,7 @@ import java.util.regex.Matcher;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexDeletionPolicy;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FileDeleter;
@@ -39,6 +38,14 @@ class ReplicaFileDeleter {
   private final Directory dir;
   private final Node node;
   private final IndexDeletionPolicy policy;
+  /* Holds all commits (segments_N) currently in the index.
+   * This will have just 1 commit if you are using the
+   * default delete policy (KeepOnlyLastCommitDeletionPolicy).
+   * Other policies may leave commit points live for longer
+   * in which case this list would be longer than 1: */
+  private final List<IndexCommit> commits = new ArrayList<>();
+  /* Commits that the IndexDeletionPolicy have decided to delete: */
+  private List<CommitPoint> commitsToDelete = new ArrayList<>();
 
   public ReplicaFileDeleter(Node node, Directory dir, IndexDeletionPolicy policy)
       throws IOException {
@@ -54,12 +61,11 @@ class ReplicaFileDeleter {
               }
             }));
 
-    List<IndexCommit> commits = new ArrayList<>();
     String[] files = dir.listAll();
     Matcher m = IndexFileNames.CODEC_FILE_PATTERN.matcher("");
     for (String fileName : files) {
       m.reset(fileName);
-      if (!fileName.endsWith(WRITE_LOCK_NAME)
+      if (!fileName.endsWith(IndexWriter.WRITE_LOCK_NAME)
           && (m.matches()
               || fileName.startsWith(IndexFileNames.SEGMENTS)
               || fileName.startsWith(IndexFileNames.PENDING_SEGMENTS))) {
@@ -72,7 +78,11 @@ class ReplicaFileDeleter {
           // incref all files it refers to:
           node.message("init: load commit \"" + fileName + "\"");
           SegmentInfos sis = SegmentInfos.readCommit(dir, fileName);
-          CommitPoint commitPoint = new CommitPoint(dir, sis);
+          for (String sfileName : sis.files(true)) {
+            fileDeleter.incRef(sfileName);
+          }
+
+          CommitPoint commitPoint = new CommitPoint(commitsToDelete, dir, sis);
           commits.add(commitPoint);
         }
       }
@@ -81,8 +91,8 @@ class ReplicaFileDeleter {
   }
 
   public void checkpoint(SegmentInfos sis) throws IOException {
-    CommitPoint commitPoint = new CommitPoint(dir, sis);
-    policy.onCommit(Collections.singletonList(commitPoint));
+    commits.add(new CommitPoint(commitsToDelete, dir, sis));
+    policy.onCommit(commits);
   }
 
   public synchronized void incRef(Collection<String> fileNames) throws IOException {
@@ -135,6 +145,7 @@ class ReplicaFileDeleter {
 
   private static final class CommitPoint extends IndexCommit {
 
+    private Collection<CommitPoint> commitsToDelete;
     private Directory directory;
     private String segmentsFileName;
     private boolean deleted;
@@ -143,7 +154,10 @@ class ReplicaFileDeleter {
     final Map<String, String> userData;
     private final int segmentCount;
 
-    public CommitPoint(Directory directory, SegmentInfos segmentInfos) throws IOException {
+    public CommitPoint(
+        Collection<CommitPoint> commitsToDelete, Directory directory, SegmentInfos segmentInfos)
+        throws IOException {
+      this.commitsToDelete = commitsToDelete;
       this.directory = directory;
       userData = segmentInfos.getUserData();
       segmentsFileName = segmentInfos.getSegmentsFileName();
@@ -171,6 +185,7 @@ class ReplicaFileDeleter {
     public void delete() {
       if (!deleted) {
         deleted = true;
+        commitsToDelete.add(this);
       }
     }
 
