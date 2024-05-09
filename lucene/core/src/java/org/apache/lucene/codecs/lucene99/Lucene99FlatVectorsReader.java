@@ -185,6 +185,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + VectorEncoding.FLOAT32);
     }
     return OffHeapFloatVectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -206,6 +208,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -223,6 +227,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
@@ -241,6 +247,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,

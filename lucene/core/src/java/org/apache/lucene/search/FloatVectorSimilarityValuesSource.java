@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
@@ -44,20 +43,30 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       FloatVectorValues.checkField(ctx.reader(), fieldName);
       return DoubleValues.EMPTY;
     }
-    VectorSimilarityFunction function =
-        ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
     return new DoubleValues() {
+      private final VectorScorer scorer = vectorValues.scorer(queryVector);
+      private final DocIdSetIterator iterator = scorer.iterator();
+
       @Override
       public double doubleValue() throws IOException {
-        return function.compare(queryVector, vectorValues.vectorValue());
+        return scorer.score();
       }
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        return doc >= vectorValues.docID()
-            && (vectorValues.docID() == doc || vectorValues.advance(doc) == doc);
+        return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
       }
     };
+  }
+
+  @Override
+  public VectorScorer getScorer(LeafReaderContext ctx) throws IOException {
+    final FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+    if (vectorValues == null) {
+      FloatVectorValues.checkField(ctx.reader(), fieldName);
+      return null;
+    }
+    return vectorValues.scorer(queryVector);
   }
 
   @Override
