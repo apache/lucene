@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -101,7 +102,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      return new ByteVectorScorer(vectors2, vectors1.vectorValue(ord), similarityFunction);
+      byte[] ba = vectors1.vectorValue(ord);
+      return new ByteVectorScorer(
+          vectors2, ArrayUtil.copyOfSubArray(ba, 0, ba.length), similarityFunction);
     }
 
     @Override
@@ -128,7 +131,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      return new FloatVectorScorer(vectors2, vectors1.vectorValue(ord), similarityFunction);
+      float[] fa = vectors1.vectorValue(ord);
+      return new FloatVectorScorer(
+          vectors2, ArrayUtil.copyOfSubArray(fa, 0, fa.length), similarityFunction);
     }
 
     @Override
