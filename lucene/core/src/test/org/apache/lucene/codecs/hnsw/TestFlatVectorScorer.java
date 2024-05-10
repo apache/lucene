@@ -24,9 +24,17 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -37,41 +45,61 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "")
 public class TestFlatVectorScorer extends LuceneTestCase {
+
+  static volatile AtomicInteger count = new AtomicInteger();
+  final FlatVectorsScorer flatVectorsScorer;
+  final ThrowingSupplier<Directory> newDirectory;
+
+  public TestFlatVectorScorer(
+      FlatVectorsScorer flatVectorsScorer, ThrowingSupplier<Directory> newDirectory) {
+    this.flatVectorsScorer = flatVectorsScorer;
+    this.newDirectory = newDirectory;
+  }
+
+  @ParametersFactory
+  public static Iterable<Object[]> parametersFactory() {
+    var scorers =
+        List.of(
+            new DefaultFlatVectorScorer(),
+            new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
+            FlatVectorScorerUtil.newFlatVectorScorer());
+    var dirs =
+        List.<ThrowingSupplier<Directory>>of(
+            TestFlatVectorScorer::newDirectory,
+            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
+
+    List<Object[]> objs = new ArrayList<>();
+    for (var scorer : scorers) {
+      for (var dir : dirs) {
+        objs.add(new Object[] {scorer, dir});
+      }
+    }
+    return objs;
+  }
 
   public void testDefaultOrMemSegScorer() {
     var scorer = FlatVectorScorerUtil.newFlatVectorScorer();
-    System.out.println("HEGO: " + scorer);
     assertThat(
         scorer.toString(),
         is(oneOf("DefaultFlatVectorScorer()", "MemorySegmentFlatVectorsScorer()")));
   }
 
-  public void testMultipleScorers() throws IOException {
-    testMultipleScorersImpl(TestFlatVectorScorer::newDirectory);
-  }
-
-  public void testMultipleScorersMMap() throws IOException {
-    testMultipleScorersImpl(() -> new MMapDirectory(createTempDir(getTestName())));
-  }
-
   // Tests that the creation of another scorer does not disturb previous scorers
-  void testMultipleScorersImpl(ThrowingSupplier<Directory> newDirectory) throws IOException {
+  public void testMultipleByteScorers() throws IOException {
     byte[] vec0 = new byte[] {0, 0, 0, 0};
     byte[] vec1 = new byte[] {1, 1, 1, 1};
     byte[] vec2 = new byte[] {15, 15, 15, 15};
 
-    String fileName = getTestName();
+    String fileName = "testMultipleByteScorers";
     try (Directory dir = newDirectory.get()) {
       try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
-        out.writeBytes(vec0, 0, vec0.length);
-        out.writeBytes(vec1, 0, vec1.length);
-        out.writeBytes(vec2, 0, vec2.length);
+        out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = vectorValues(4, 3, in);
-        var factory = FlatVectorScorerUtil.newFlatVectorScorer();
-        var ss = factory.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
+        var vectorValues = byteVectorValues(4, 3, in);
+        var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
 
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
@@ -85,23 +113,42 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
-  public void testCheckDimensions() throws IOException {
-    testCheckDimensionsImpl(TestFlatVectorScorer::newDirectory);
+  // Tests that the creation of another scorer does not disturb previous scorers
+  public void testMultipleFloatScorers() throws IOException {
+    float[] vec0 = new float[] {0, 0, 0, 0};
+    float[] vec1 = new float[] {1, 1, 1, 1};
+    float[] vec2 = new float[] {15, 15, 15, 15};
+
+    String fileName = "testMultipleFloatScorers";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * Float.BYTES * 3);
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        var vectorValues = floatVectorValues(4, 3, in);
+        var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
+
+        var scorerAgainstOrd0 = ss.scorer(0);
+        var firstScore = scorerAgainstOrd0.score(1);
+        // ensure that the creation of another scorer does not disturb previous scorers
+        @SuppressWarnings("unused")
+        var scorerAgainstOrd2 = ss.scorer(2);
+        var scoreAgain = scorerAgainstOrd0.score(1);
+
+        assertThat(scoreAgain, equalTo(firstScore));
+      }
+    }
   }
 
-  public void testCheckDimensionsMMap() throws IOException {
-    testCheckDimensionsImpl(() -> new MMapDirectory(createTempDir(getTestName())));
-  }
-
-  void testCheckDimensionsImpl(ThrowingSupplier<Directory> newDirectory) throws IOException {
+  public void testCheckByteDimensions() throws IOException {
     byte[] vec0 = new byte[4];
-    String fileName = getTestName();
+    String fileName = "testCheckByteDimensions";
     try (Directory dir = newDirectory.get()) {
       try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
         out.writeBytes(vec0, 0, vec0.length);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = vectorValues(4, 1, in);
+        var vectorValues = byteVectorValues(4, 1, in);
         var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
           expectThrows(
@@ -112,18 +159,67 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
+  public void testCheckFloatDimensions() throws IOException {
+    float[] vec0 = new float[4];
+    String fileName = "testCheckFloatDimensions";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        out.writeBytes(concat(vec0), 0, vec0.length * Float.BYTES);
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        var vectorValues = floatVectorValues(4, 1, in);
+        var factory = FlatVectorScorerUtil.newFlatVectorScorer();
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> factory.getRandomVectorScorer(sim, vectorValues, new float[5]));
+        }
+      }
+    }
+  }
+
+  static RandomAccessVectorValues byteVectorValues(int dims, int size, IndexInput in)
+      throws IOException {
+    return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+        dims, size, in.slice("byteValues", 0, in.length()), dims);
+  }
+
+  static RandomAccessVectorValues floatVectorValues(int dims, int size, IndexInput in)
+      throws IOException {
+    return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+        dims, size, in.slice("floatValues", 0, in.length()), dims * Float.BYTES);
+  }
+
+  /** Concatenates float arrays as byte[]. */
+  public static byte[] concat(float[]... arrays) throws IOException {
+    var bb = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      for (var fa : arrays) {
+        for (var f : fa) {
+          bb.putFloat(0, f);
+          baos.write(bb.array());
+        }
+      }
+      return baos.toByteArray();
+    }
+  }
+
+  /** Concatenates byte arrays. */
+  public static byte[] concat(byte[]... arrays) throws IOException {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      for (var ba : arrays) {
+        baos.write(ba);
+      }
+      return baos.toByteArray();
+    }
+  }
+
   public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
     MatcherAssert.assertThat("", actual, matcher);
   }
 
-  static RandomAccessVectorValues vectorValues(int dims, int size, IndexInput in)
-      throws IOException {
-    return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims);
-  }
-
   @FunctionalInterface
-  interface ThrowingSupplier<T> {
+  public interface ThrowingSupplier<T> {
     T get() throws IOException;
   }
 }
