@@ -292,6 +292,8 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
+
 * GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
