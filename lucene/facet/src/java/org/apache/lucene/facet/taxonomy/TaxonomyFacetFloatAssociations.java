@@ -183,8 +183,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
             float value = (float) functionValues.doubleValue();
             for (int i = 0; i < scratch.length; i++) {
               int ord = scratch.ints[i];
-              float newValue = aggregationFunction.aggregate(values[ord], value);
-              values[ord] = newValue;
+              float currentValue = getValue(ord);
+              float newValue = aggregationFunction.aggregate(currentValue, value);
+              setValue(ord, newValue);
+              setCount(ord, getCount(ord) + 1);
             }
           }
         }

@@ -55,9 +55,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
    */
   protected IntIntHashMap sparseValues;
 
-  /** Have value counters been initialized. */
-  boolean initialized;
-
   /**
    * Constructor that defaults the aggregation function to {@link
    * AssociationAggregationFunction#SUM}.
