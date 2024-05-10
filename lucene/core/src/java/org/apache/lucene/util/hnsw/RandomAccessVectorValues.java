@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -40,6 +41,17 @@ public interface RandomAccessVectorValues {
    * access different values at once, to avoid overwriting the underlying vector returned.
    */
   RandomAccessVectorValues copy() throws IOException;
+
+  /**
+   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
+   * available
+   */
+  default IndexInput getSlice() {
+    return null;
+  }
+
+  /** Returns the byte length of the vector values. */
+  int getVectorByteLength();
 
   /**
    * Translates vector ordinal to the correct document ID. By default, this is an identity function.
@@ -72,6 +84,12 @@ public interface RandomAccessVectorValues {
      * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
      */
     float[] vectorValue(int targetOrd) throws IOException;
+
+    /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
+    @Override
+    default int getVectorByteLength() {
+      return dimension() * Float.BYTES;
+    }
   }
 
   /** Byte vector values. */
@@ -85,6 +103,12 @@ public interface RandomAccessVectorValues {
      * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
      */
     byte[] vectorValue(int targetOrd) throws IOException;
+
+    /** Returns the vector byte length, defaults to dimension multiplied by byte size */
+    @Override
+    default int getVectorByteLength() {
+      return dimension() * Byte.BYTES;
+    }
   }
 
   /**
@@ -107,12 +131,12 @@ public interface RandomAccessVectorValues {
       }
 
       @Override
-      public float[] vectorValue(int targetOrd) throws IOException {
+      public float[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
       }
 
       @Override
-      public RandomAccessVectorValues.Floats copy() throws IOException {
+      public RandomAccessVectorValues.Floats copy() {
         return this;
       }
     };
@@ -138,12 +162,12 @@ public interface RandomAccessVectorValues {
       }
 
       @Override
-      public byte[] vectorValue(int targetOrd) throws IOException {
+      public byte[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
       }
 
       @Override
-      public RandomAccessVectorValues.Bytes copy() throws IOException {
+      public RandomAccessVectorValues.Bytes copy() {
         return this;
       }
     };
