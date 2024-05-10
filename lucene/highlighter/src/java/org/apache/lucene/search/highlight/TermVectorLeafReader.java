@@ -103,6 +103,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -215,7 +216,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public LeafMetaData getMetaData() {
-    return new LeafMetaData(Version.LATEST.major, null, null);
+    return new LeafMetaData(Version.LATEST.major, null, null, false);
   }
 
   @Override

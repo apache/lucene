@@ -509,6 +509,14 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     return flushDeletes.getAndSet(false);
   }
 
+  /**
+   * Check whether deletes need to be applied. This can be used as a pre-flight check before calling
+   * {@link #getAndResetApplyAllDeletes()} to make sure that a single thread applies deletes.
+   */
+  public boolean getApplyAllDeletes() {
+    return flushDeletes.get();
+  }
+
   public void setApplyAllDeletes() {
     flushDeletes.set(true);
   }
@@ -562,10 +570,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         // Insert a gap in seqNo of current active thread count, in the worst case each of those
         // threads now have one operation in flight.  It's fine
         // if we have some sequence numbers that were never assigned:
-        DocumentsWriterDeleteQueue newQueue =
-            documentsWriter.deleteQueue.advanceQueue(perThreadPool.size());
-        seqNo = documentsWriter.deleteQueue.getMaxSeqNo();
-        documentsWriter.resetDeleteQueue(newQueue);
+        seqNo = documentsWriter.resetDeleteQueue(perThreadPool.size());
       } finally {
         perThreadPool.unlockNewWriters();
       }

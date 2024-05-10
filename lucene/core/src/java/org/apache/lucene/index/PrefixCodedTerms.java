@@ -115,7 +115,7 @@ public class PrefixCodedTerms implements Accountable {
 
     private TermIterator(long delGen, ByteBuffersDataInput input) {
       this.input = input;
-      end = input.size();
+      end = input.length();
       this.delGen = delGen;
     }
 

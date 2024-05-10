@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AutomatonToTokenStream;
 import org.apache.lucene.analysis.CharArraySet;
@@ -84,16 +83,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             12,
-            new Token[] {
-              token("wtf", 1, 1, 0, 3),
-              token("what", 0, 1, 0, 3),
-              token("wow", 0, 1, 0, 3),
-              token("the", 1, 1, 0, 3),
-              token("that's", 0, 1, 0, 3),
-              token("fudge", 1, 1, 0, 3),
-              token("funny", 0, 1, 0, 3),
-              token("happened", 1, 1, 4, 12)
-            });
+            token("wtf", 1, 1, 0, 3),
+            token("what", 0, 1, 0, 3),
+            token("wow", 0, 1, 0, 3),
+            token("the", 1, 1, 0, 3),
+            token("that's", 0, 1, 0, 3),
+            token("fudge", 1, 1, 0, 3),
+            token("funny", 0, 1, 0, 3),
+            token("happened", 1, 1, 4, 12));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -116,16 +113,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             12,
-            new Token[] {
-              token("wtf", 1, 5, 0, 3),
-              token("what", 0, 1, 0, 3),
-              token("wow", 0, 3, 0, 3),
-              token("the", 1, 1, 0, 3),
-              token("fudge", 1, 3, 0, 3),
-              token("that's", 1, 1, 0, 3),
-              token("funny", 1, 1, 0, 3),
-              token("happened", 1, 1, 4, 12)
-            });
+            token("wtf", 1, 5, 0, 3),
+            token("what", 0, 1, 0, 3),
+            token("wow", 0, 3, 0, 3),
+            token("the", 1, 1, 0, 3),
+            token("fudge", 1, 3, 0, 3),
+            token("that's", 1, 1, 0, 3),
+            token("funny", 1, 1, 0, 3),
+            token("happened", 1, 1, 4, 12));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -149,16 +144,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             12,
-            new Token[] {
-              token("what", 1, 1, 0, 3),
-              token("wow", 0, 3, 0, 3),
-              token("wtf", 0, 5, 0, 3),
-              token("the", 1, 1, 0, 3),
-              token("fudge", 1, 3, 0, 3),
-              token("that's", 1, 1, 0, 3),
-              token("funny", 1, 1, 0, 3),
-              token("happened", 1, 1, 4, 12)
-            });
+            token("what", 1, 1, 0, 3),
+            token("wow", 0, 3, 0, 3),
+            token("wtf", 0, 5, 0, 3),
+            token("the", 1, 1, 0, 3),
+            token("fudge", 1, 3, 0, 3),
+            token("that's", 1, 1, 0, 3),
+            token("funny", 1, 1, 0, 3),
+            token("happened", 1, 1, 4, 12));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -182,14 +175,12 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             20,
-            new Token[] {
-              token("wizard", 1, 1, 0, 6),
-              token("wizard_of_oz", 0, 3, 0, 12),
-              token("of", 1, 1, 7, 9),
-              token("oz", 1, 1, 10, 12),
-              token("oz_screams", 0, 2, 10, 20),
-              token("screams", 1, 1, 13, 20),
-            });
+            token("wizard", 1, 1, 0, 6),
+            token("wizard_of_oz", 0, 3, 0, 12),
+            token("of", 1, 1, 7, 9),
+            token("oz", 1, 1, 10, 12),
+            token("oz_screams", 0, 2, 10, 20),
+            token("screams", 1, 1, 13, 20));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -209,12 +200,10 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             22,
-            new Token[] {
-              token("hello", 1, 1, 0, 5),
-              token("pseudo", 1, 1, 6, 12),
-              token("world", 1, 1, 13, 18),
-              token("fun", 1, 1, 19, 22),
-            });
+            token("hello", 1, 1, 0, 5),
+            token("pseudo", 1, 1, 6, 12),
+            token("world", 1, 1, 13, 18),
+            token("fun", 1, 1, 19, 22));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -234,9 +223,9 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             13,
-            new Token[] {
-              token("hello", 1, 1, 0, 5), token("hole", 2, 1, 6, 10), token("fun", 1, 1, 11, 13),
-            });
+            token("hello", 1, 1, 0, 5),
+            token("hole", 2, 1, 6, 10),
+            token("fun", 1, 1, 11, 13));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -259,9 +248,9 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             12,
-            new Token[] {
-              token("wizard", 1, 1, 0, 6), token("woz", 0, 3, 0, 12), token("oz", 2, 1, 10, 12),
-            });
+            token("wizard", 1, 1, 0, 6),
+            token("woz", 0, 3, 0, 12),
+            token("oz", 2, 1, 10, 12));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -282,9 +271,9 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             27,
-            new Token[] {
-              token("dog", 1, 3, 0, 5), token("puppy", 0, 3, 0, 5), token("flies", 3, 1, 6, 11),
-            });
+            token("dog", 1, 3, 0, 5),
+            token("puppy", 0, 3, 0, 5),
+            token("flies", 3, 1, 6, 11));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -305,20 +294,18 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             11,
-            new Token[] {
-              token("a", 1, 1, 0, 1),
-              token("b", 0, 2, 0, 1),
-              token("a", 1, 2, 2, 3),
-              token("b", 1, 2, 2, 3),
-              token("a", 1, 2, 4, 5),
-              token("b", 1, 2, 4, 5),
-              token("a", 1, 2, 6, 7),
-              token("b", 1, 2, 6, 7),
-              token("a", 1, 2, 8, 9),
-              token("b", 1, 2, 8, 9),
-              token("a", 1, 2, 10, 11),
-              token("b", 1, 2, 10, 11),
-            });
+            token("a", 1, 1, 0, 1),
+            token("b", 0, 2, 0, 1),
+            token("a", 1, 2, 2, 3),
+            token("b", 1, 2, 2, 3),
+            token("a", 1, 2, 4, 5),
+            token("b", 1, 2, 4, 5),
+            token("a", 1, 2, 6, 7),
+            token("b", 1, 2, 6, 7),
+            token("a", 1, 2, 8, 9),
+            token("b", 1, 2, 8, 9),
+            token("a", 1, 2, 10, 11),
+            token("b", 1, 2, 10, 11));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -340,9 +327,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   public void testAltPathFirstStepHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            3,
-            new Token[] {token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("c", 1, 1, 2, 3)});
+            0, 3, token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("c", 1, 1, 2, 3));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -356,7 +341,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         3);
   }
 
-  // Last node in an alt path fixes outputnode of long path. In this graph the follow up node fixes
+  // Last node in an alt path fixes output node of long path. In this graph the follow-up node fixes
   // that.
   // incorrect pos length of abc = 1
   public void testAltPathLastStepHole() throws Exception {
@@ -364,12 +349,10 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             4,
-            new Token[] {
-              token("abc", 1, 3, 0, 3),
-              token("a", 0, 1, 0, 1),
-              token("b", 1, 1, 1, 2),
-              token("d", 2, 1, 3, 4)
-            });
+            token("abc", 1, 3, 0, 3),
+            token("a", 0, 1, 0, 1),
+            token("b", 1, 1, 1, 2),
+            token("d", 2, 1, 3, 4));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -389,9 +372,9 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             28,
-            new Token[] {
-              token("hello", 1, 1, 0, 5), token("hole", 5, 1, 20, 24), token("fun", 1, 1, 25, 28),
-            });
+            token("hello", 1, 1, 0, 5),
+            token("hole", 5, 1, 20, 24),
+            token("fun", 1, 1, 25, 28));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -411,9 +394,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   public void testAltPathLastStepLongHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            4,
-            new Token[] {token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("d", 3, 1, 3, 4)});
+            0, 4, token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("d", 3, 1, 3, 4));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -434,9 +415,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   public void testAltPathLastStepHoleWithoutEndToken() throws Exception {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            2,
-            new Token[] {token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("b", 1, 1, 1, 2)});
+            0, 2, token("abc", 1, 3, 0, 3), token("a", 0, 1, 0, 1), token("b", 1, 1, 1, 2));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -457,9 +436,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   public void testAltPathLastStepHoleFollowedByHole() throws Exception {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            5,
-            new Token[] {token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("e", 3, 1, 4, 5)});
+            0, 5, token("abc", 1, 3, 0, 3), token("b", 1, 1, 1, 2), token("e", 3, 1, 4, 5));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -480,14 +457,12 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             5,
-            new Token[] {
-              token("abc", 1, 3, 0, 3),
-              token("a", 0, 1, 0, 1),
-              token("b", 1, 1, 1, 2),
-              token("cde", 1, 3, 2, 5),
-              token("d", 1, 1, 3, 4),
-              token("e", 1, 1, 4, 5)
-            });
+            token("abc", 1, 3, 0, 3),
+            token("a", 0, 1, 0, 1),
+            token("b", 1, 1, 1, 2),
+            token("cde", 1, 3, 2, 5),
+            token("d", 1, 1, 3, 4),
+            token("e", 1, 1, 4, 5));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -509,13 +484,11 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             5,
-            new Token[] {
-              token("abc", 1, 3, 0, 3),
-              token("b", 1, 1, 1, 2),
-              token("cde", 1, 3, 2, 5),
-              token("d", 1, 1, 3, 4),
-              token("e", 1, 1, 4, 5)
-            });
+            token("abc", 1, 3, 0, 3),
+            token("b", 1, 1, 1, 2),
+            token("cde", 1, 3, 2, 5),
+            token("d", 1, 1, 3, 4),
+            token("e", 1, 1, 4, 5));
 
     TokenStream out = new FlattenGraphFilter(in);
 
@@ -531,7 +504,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
 
   // When the first token is a hole there is no original token to offset from.
   public void testFirstTokenHole() throws Exception {
-    TokenStream in = new CannedTokenStream(0, 9, new Token[] {token("start", 2, 1, 0, 5)});
+    TokenStream in = new CannedTokenStream(0, 9, token("start", 2, 1, 0, 5));
     TokenStream out = new FlattenGraphFilter(in);
 
     assertTokenStreamContents(
@@ -547,13 +520,11 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             9,
-            new Token[] {
-              token("a", 1, 1, 4, 8),
-              token("abc", 0, 3, 4, 7),
-              token("cd", 2, 2, 6, 8),
-              token("d", 1, 1, 7, 8),
-              token("e", 1, 1, 8, 9)
-            });
+            token("a", 1, 1, 4, 8),
+            token("abc", 0, 3, 4, 7),
+            token("cd", 2, 2, 6, 8),
+            token("d", 1, 1, 7, 8),
+            token("e", 1, 1, 8, 9));
     TokenStream out = new FlattenGraphFilter(in);
     assertTokenStreamContents(
         out,
@@ -568,11 +539,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
   public void testShingledGapAltPath() throws Exception {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            4,
-            new Token[] {
-              token("abc", 1, 3, 0, 3), token("abcd", 0, 4, 0, 4), token("cd", 2, 2, 2, 4),
-            });
+            0, 4, token("abc", 1, 3, 0, 3), token("abcd", 0, 4, 0, 4), token("cd", 2, 2, 2, 4));
     TokenStream out = new FlattenGraphFilter(in);
     assertTokenStreamContents(
         out,
@@ -591,16 +558,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new CannedTokenStream(
             0,
             7,
-            new Token[] {
-              token("a", 1, 1, 0, 1),
-              token("ab", 0, 2, 0, 2),
-              token("abcdef", 0, 6, 0, 6),
-              token("abcd", 0, 4, 0, 4),
-              token("bcdef", 1, 5, 1, 7),
-              token("def", 2, 3, 4, 7),
-              token("e", 1, 1, 5, 6),
-              token("f", 1, 1, 6, 7)
-            });
+            token("a", 1, 1, 0, 1),
+            token("ab", 0, 2, 0, 2),
+            token("abcdef", 0, 6, 0, 6),
+            token("abcd", 0, 4, 0, 4),
+            token("bcdef", 1, 5, 1, 7),
+            token("def", 2, 3, 4, 7),
+            token("e", 1, 1, 5, 6),
+            token("f", 1, 1, 6, 7));
     TokenStream out = new FlattenGraphFilter(in);
     assertTokenStreamContents(
         out,
@@ -611,17 +576,14 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new int[] {1, 1, 3, 1, 2, 1, 1, 1},
         7);
   }
+
   // This graph can create a disconnected input node that is farther ahead in the output than its
   // subsequent input node.
   // Exceptions: Free too early or dropped tokens.
   public void testShingleWithLargeLeadingGap() throws IOException {
     TokenStream in =
         new CannedTokenStream(
-            0,
-            6,
-            new Token[] {
-              token("abcde", 1, 5, 0, 5), token("ef", 4, 2, 4, 6), token("f", 1, 1, 5, 6),
-            });
+            0, 6, token("abcde", 1, 5, 0, 5), token("ef", 4, 2, 4, 6), token("f", 1, 1, 5, 6));
     TokenStream out = new FlattenGraphFilter(in);
     assertTokenStreamContents(
         out,
@@ -779,7 +741,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     }
     acceptStrings.sort(Comparator.naturalOrder());
 
-    acceptStrings = acceptStrings.stream().limit(wordCount).collect(Collectors.toList());
+    acceptStrings = acceptStrings.stream().limit(wordCount).toList();
     Automaton nonFlattenedAutomaton = Automata.makeStringUnion(acceptStrings);
 
     TokenStream ts = AutomatonToTokenStream.toTokenStream(nonFlattenedAutomaton);

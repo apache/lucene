@@ -26,24 +26,25 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsWriter;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -261,7 +262,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        int[] sortedNodes = Lucene95HnswVectorsWriter.getSortedNodes(graph.getNodesOnLevel(level));
+        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
         meta.writeInt(sortedNodes.length); // number of nodes on a level
         if (level > 0) {
           for (int node : sortedNodes) {
@@ -273,32 +274,29 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues.Floats vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
-
+    DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
     // build graph
-    HnswGraphBuilder<float[]> hnswGraphBuilder =
-        HnswGraphBuilder.create(
-            vectorValues,
-            VectorEncoding.FLOAT32,
-            similarityFunction,
-            M,
-            beamWidth,
-            HnswGraphBuilder.randSeed);
+    RandomVectorScorerSupplier scorerSupplier =
+        defaultFlatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
+    HnswGraphBuilder hnswGraphBuilder =
+        HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
+
+    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.size());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      int[] sortedNodes = Lucene95HnswVectorsWriter.getSortedNodes(graph.getNodesOnLevel(level));
+      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
       for (int node : sortedNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
+        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         for (int i = 0; i < size; i++) {
           int nnode = nnodes[i];

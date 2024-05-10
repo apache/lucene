@@ -20,7 +20,31 @@ package org.apache.lucene.util;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
-/** Utilities for computations with numeric arrays */
+/**
+ * Utilities for computations with numeric arrays, especially algebraic operations like vector dot
+ * products. This class uses SIMD vectorization if the corresponding Java module is available and
+ * enabled. To enable vectorized code, pass {@code --add-modules jdk.incubator.vector} to Java's
+ * command line.
+ *
+ * <p>It will use CPU's <a href="https://en.wikipedia.org/wiki/Fused_multiply%E2%80%93add">FMA
+ * instructions</a> if it is known to perform faster than separate multiply+add. This requires at
+ * least Hotspot C2 enabled, which is the default for OpenJDK based JVMs.
+ *
+ * <p>To explicitly disable or enable FMA usage, pass the following system properties:
+ *
+ * <ul>
+ *   <li>{@code -Dlucene.useScalarFMA=(auto|true|false)} for scalar operations
+ *   <li>{@code -Dlucene.useVectorFMA=(auto|true|false)} for vectorized operations (with vector
+ *       incubator module)
+ * </ul>
+ *
+ * <p>The default is {@code auto}, which enables this for known CPU types and JVM settings. If
+ * Hotspot C2 is disabled, FMA and vectorization are <strong>not</strong> used.
+ *
+ * <p>Vectorization and FMA is only supported for Hotspot-based JVMs; it won't work on OpenJ9-based
+ * JVMs unless they provide {@link com.sun.management.HotSpotDiagnosticMXBean}. Please also make
+ * sure that you have the {@code jdk.management} module enabled in modularized applications.
+ */
 public final class VectorUtil {
 
   private static final VectorUtilSupport IMPL =
@@ -106,21 +130,21 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = 0.0f;
-    int dim = v.length;
-    for (float x : v) {
-      squareSum += x * x;
-    }
-    if (squareSum == 0) {
+    double l1norm = IMPL.dotProduct(v, v);
+    if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    double length = Math.sqrt(squareSum);
+    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
     for (int i = 0; i < dim; i++) {
-      v[i] /= length;
+      v[i] /= (float) l2norm;
     }
     return v;
   }
@@ -149,6 +173,60 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return IMPL.dotProduct(a, b);
+  }
+
+  public static int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
+  }
+
+  /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
   }
 
   /**

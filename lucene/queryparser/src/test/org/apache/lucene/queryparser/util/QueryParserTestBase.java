@@ -654,7 +654,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   private String escapeDateString(String s) {
-    if (s.indexOf(" ") > -1) {
+    if (s.indexOf(' ') > -1) {
       return "\"" + s + "\"";
     } else {
       return s;
@@ -1145,7 +1145,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     BooleanQuery bq = (BooleanQuery) getQuery("+*:* -*:*", qp);
     assertEquals(2, bq.clauses().size());
     for (BooleanClause clause : bq) {
-      assertTrue(clause.getQuery() instanceof MatchAllDocsQuery);
+      assertTrue(clause.query() instanceof MatchAllDocsQuery);
     }
   }
 

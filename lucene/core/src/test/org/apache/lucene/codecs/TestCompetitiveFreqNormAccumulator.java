@@ -83,6 +83,71 @@ public class TestCompetitiveFreqNormAccumulator extends LuceneTestCase {
     assertEquals(List.copyOf(expected), List.copyOf(acc.getCompetitiveFreqNormPairs()));
   }
 
+  public void testCopy() {
+    CompetitiveImpactAccumulator acc = new CompetitiveImpactAccumulator();
+    CompetitiveImpactAccumulator copiedAcc = new CompetitiveImpactAccumulator();
+    CompetitiveImpactAccumulator mergedAcc = new CompetitiveImpactAccumulator();
+
+    acc.add(3, 5);
+    copiedAcc.copy(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(acc.getCompetitiveFreqNormPairs()));
+
+    mergedAcc.addAll(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
+
+    acc.add(10, 10000);
+    copiedAcc.copy(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(acc.getCompetitiveFreqNormPairs()));
+
+    mergedAcc.clear();
+    mergedAcc.addAll(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
+
+    acc.add(5, 200);
+    copiedAcc.copy(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(acc.getCompetitiveFreqNormPairs()));
+
+    mergedAcc.clear();
+    mergedAcc.addAll(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
+
+    acc.add(20, -100);
+    copiedAcc.copy(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(acc.getCompetitiveFreqNormPairs()));
+
+    mergedAcc.clear();
+    mergedAcc.addAll(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
+
+    acc.add(30, -3);
+    copiedAcc.copy(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(acc.getCompetitiveFreqNormPairs()));
+
+    mergedAcc.clear();
+    mergedAcc.addAll(acc);
+    assertEquals(
+        List.copyOf(copiedAcc.getCompetitiveFreqNormPairs()),
+        List.copyOf(mergedAcc.getCompetitiveFreqNormPairs()));
+  }
+
   public void testOmitFreqs() {
     CompetitiveImpactAccumulator acc = new CompetitiveImpactAccumulator();
 

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.queryparser.surround.query;
+
 /* Create basic queries to be used during rewrite.
  * The basic queries are TermQuery and SpanTermQuery.
  * An exception can be thrown when too many of these are used.

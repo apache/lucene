@@ -66,6 +66,7 @@ public class QueryBuilder {
   public static class TermAndBoost {
     /** the term */
     public final BytesRef term;
+
     /** the boost */
     public final float boost;
 
@@ -623,7 +624,7 @@ public class QueryBuilder {
     }
     BooleanQuery bq = builder.build();
     if (bq.clauses().size() == 1) {
-      return bq.clauses().get(0).getQuery();
+      return bq.clauses().get(0).query();
     }
     return bq;
   }

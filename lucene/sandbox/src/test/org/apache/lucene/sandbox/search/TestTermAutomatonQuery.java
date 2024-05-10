@@ -264,14 +264,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TokenStream ts =
         new CannedTokenStream(
-            new Token[] {
-              token("fast", 1, 1),
-              token("speedy", 0, 1),
-              token("wi", 1, 1),
-              token("wifi", 0, 2),
-              token("fi", 1, 1),
-              token("network", 1, 1)
-            });
+            token("fast", 1, 1),
+            token("speedy", 0, 1),
+            token("wi", 1, 1),
+            token("wifi", 0, 2),
+            token("fi", 1, 1),
+            token("network", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -322,11 +320,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s2, true);
     q.addAnyTransition(s0, s1);
     q.addTransition(s1, s2, "b");
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          q.finish();
-        });
+    expectThrows(IllegalStateException.class, q::finish);
   }
 
   public void testInvalidTrailWithAny() throws Exception {
@@ -337,11 +331,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s2, true);
     q.addTransition(s0, s1, "b");
     q.addAnyTransition(s1, s2);
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          q.finish();
-        });
+    expectThrows(IllegalStateException.class, q::finish);
   }
 
   public void testAnyFromTokenStream() throws Exception {
@@ -369,13 +359,11 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TokenStream ts =
         new CannedTokenStream(
-            new Token[] {
-              token("comes", 1, 1),
-              token("comes", 0, 2),
-              token("*", 1, 1),
-              token("sun", 1, 1),
-              token("moon", 0, 1)
-            });
+            token("comes", 1, 1),
+            token("comes", 0, 2),
+            token("*", 1, 1),
+            token("sun", 1, 1),
+            token("moon", 0, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -443,9 +431,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
           public TokenStreamComponents createComponents(String fieldName) {
             MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true, 100);
             tokenizer.setEnableChecks(true);
-            TokenFilter filt = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
-            filt = new RandomSynonymFilter(filt);
-            return new TokenStreamComponents(tokenizer, filt);
+            TokenFilter filter = new MockTokenFilter(tokenizer, MockTokenFilter.EMPTY_STOPSET);
+            filter = new RandomSynonymFilter(filter);
+            return new TokenStreamComponents(tokenizer, filter);
           }
         };
 
@@ -570,14 +558,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
         System.out.println("FAILED:");
         for (String id : hits1Docs) {
           if (hits2Docs.contains(id) == false) {
-            System.out.println(
-                String.format(Locale.ROOT, "  id=%3s matched but should not have", id));
+            System.out.printf(Locale.ROOT, "  id=%3s matched but should not have%n", id);
           }
         }
         for (String id : hits2Docs) {
           if (hits1Docs.contains(id) == false) {
-            System.out.println(
-                String.format(Locale.ROOT, "  id=%3s did not match but should have", id));
+            System.out.printf(Locale.ROOT, "  id=%3s did not match but should have%n", id);
           }
         }
         throw ae;
@@ -598,7 +584,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   private static class RandomQuery extends Query {
     private final long seed;
-    private float density;
+    private final float density;
 
     // density should be 0.0 ... 1.0
     public RandomQuery(long seed, float density) {
@@ -731,11 +717,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher s = newSearcher(r);
 
-    TokenStream ts =
-        new CannedTokenStream(
-            new Token[] {
-              token("a", 1, 1),
-            });
+    TokenStream ts = new CannedTokenStream(token("a", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
@@ -756,11 +738,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher s = newSearcher(r);
 
-    TokenStream ts =
-        new CannedTokenStream(
-            new Token[] {
-              token("a", 1, 1), token("x", 1, 1),
-            });
+    TokenStream ts = new CannedTokenStream(token("a", 1, 1), token("x", 1, 1));
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());

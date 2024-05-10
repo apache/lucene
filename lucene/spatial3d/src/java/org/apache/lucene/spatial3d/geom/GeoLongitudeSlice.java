@@ -29,18 +29,25 @@ import java.io.OutputStream;
 class GeoLongitudeSlice extends GeoBaseBBox {
   /** The left longitude of the slice */
   protected final double leftLon;
+
   /** The right longitude of the slice */
   protected final double rightLon;
+
   /** The left plane of the slice */
   protected final SidedPlane leftPlane;
+
   /** The right plane of the slice */
   protected final SidedPlane rightPlane;
+
   /** Backing plane (for narrow angles) */
   protected final SidedPlane backingPlane;
+
   /** The notable points for the slice (north and south poles) */
   protected final GeoPoint[] planePoints;
+
   /** The center point of the slice */
   protected final GeoPoint centerPoint;
+
   /** A point on the edge of the slice */
   protected final GeoPoint[] edgePoints;
 

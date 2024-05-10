@@ -120,7 +120,7 @@ public class PackedInts {
       throw new IllegalArgumentException("Unknown format id: " + id);
     }
 
-    private Format(int id) {
+    Format(int id) {
       this.id = id;
     }
 
@@ -149,11 +149,7 @@ public class PackedInts {
       assert bitsPerValue >= 0 && bitsPerValue <= 64 : bitsPerValue;
       final long byteCount = byteCount(packedIntsVersion, valueCount, bitsPerValue);
       assert byteCount < 8L * Integer.MAX_VALUE;
-      if ((byteCount % 8) == 0) {
-        return (int) (byteCount / 8);
-      } else {
-        return (int) (byteCount / 8 + 1);
-      }
+      return (int) ((byteCount + 7) >>> 3);
     }
 
     /** Tests whether the provided number of bits per value is supported by the format. */
@@ -231,7 +227,7 @@ public class PackedInts {
   }
 
   /** A decoder for packed integers. */
-  public static interface Decoder {
+  public interface Decoder {
 
     /**
      * The minimum number of long blocks to encode in a single iteration, when using long encoding.
@@ -299,7 +295,7 @@ public class PackedInts {
   }
 
   /** An encoder for packed integers. */
-  public static interface Encoder {
+  public interface Encoder {
 
     /**
      * The minimum number of long blocks to encode in a single iteration, when using long encoding.
@@ -400,18 +396,22 @@ public class PackedInts {
   }
 
   /** Run-once iterator interface, to decode previously saved PackedInts. */
-  public static interface ReaderIterator {
+  public interface ReaderIterator {
     /** Returns next value */
     long next() throws IOException;
+
     /**
      * Returns at least 1 and at most <code>count</code> next values, the returned ref MUST NOT be
      * modified
      */
     LongsRef next(int count) throws IOException;
+
     /** Returns number of bits per value */
     int getBitsPerValue();
+
     /** Returns number of values */
     int size();
+
     /** Returns the current position */
     int ord();
   }
@@ -562,10 +562,20 @@ public class PackedInts {
   /** A {@link Reader} which has all its values equal to 0 (bitsPerValue = 0). */
   public static final class NullReader extends Reader {
 
+    private static final NullReader DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE =
+        new NullReader(PackedLongValues.DEFAULT_PAGE_SIZE);
+
     private final int valueCount;
 
+    public static NullReader forCount(int valueCount) {
+      if (valueCount == PackedLongValues.DEFAULT_PAGE_SIZE) {
+        return DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE;
+      }
+      return new NullReader(valueCount);
+    }
+
     /** Sole constructor. */
-    public NullReader(int valueCount) {
+    private NullReader(int valueCount) {
       this.valueCount = valueCount;
     }
 
@@ -590,8 +600,10 @@ public class PackedInts {
 
     @Override
     public long ramBytesUsed() {
-      return RamUsageEstimator.alignObjectSize(
-          RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
+      return valueCount == PackedLongValues.DEFAULT_PAGE_SIZE
+          ? 0
+          : RamUsageEstimator.alignObjectSize(
+              RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + Integer.BYTES);
     }
   }
 

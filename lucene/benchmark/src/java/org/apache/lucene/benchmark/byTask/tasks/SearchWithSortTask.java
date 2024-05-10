@@ -54,12 +54,12 @@ public class SearchWithSortTask extends ReadTask {
       } else if (field.equals("score")) {
         sortField0 = SortField.FIELD_SCORE;
       } else {
-        int index = field.lastIndexOf(":");
+        int index = field.lastIndexOf(':');
         String fieldName;
         String typeString;
         if (index != -1) {
           fieldName = field.substring(0, index);
-          typeString = field.substring(1 + index, field.length());
+          typeString = field.substring(1 + index);
         } else {
           throw new RuntimeException("You must specify the sort type ie page:int,subject:string");
         }

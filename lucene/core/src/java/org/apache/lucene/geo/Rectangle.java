@@ -36,10 +36,13 @@ import static org.apache.lucene.util.SloppyMath.cos;
 public class Rectangle extends LatLonGeometry {
   /** maximum longitude value (in degrees) */
   public final double minLat;
+
   /** minimum longitude value (in degrees) */
   public final double minLon;
+
   /** maximum latitude value (in degrees) */
   public final double maxLat;
+
   /** minimum latitude value (in degrees) */
   public final double maxLon;
 

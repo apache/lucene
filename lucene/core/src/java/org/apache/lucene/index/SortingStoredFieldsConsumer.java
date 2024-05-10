@@ -49,7 +49,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             @Override
             public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
                 throws IOException {
-              out.copyBytes(buffersInput, buffersInput.size());
+              out.copyBytes(buffersInput, buffersInput.length());
             }
           };
         }
@@ -61,7 +61,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void decompress(
                 DataInput in, int originalLength, int offset, int length, BytesRef bytes)
                 throws IOException {
-              bytes.bytes = ArrayUtil.grow(bytes.bytes, length);
+              bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, length);
               in.skipBytes(offset);
               in.readBytes(bytes.bytes, 0, length);
               bytes.offset = 0;
@@ -101,9 +101,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =
-        codec
-            .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+        codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
       CopyVisitor visitor = new CopyVisitor(sortWriter);
@@ -137,6 +135,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
 
     CopyVisitor(StoredFieldsWriter writer) {
       this.writer = writer;
+    }
+
+    @Override
+    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+      writer.writeField(fieldInfo, value, length);
     }
 
     @Override

@@ -94,6 +94,11 @@ class QueryProfilerWeight extends FilterWeight {
           timer.stop();
         }
       }
+
+      @Override
+      public void setTopLevelScoringClause() throws IOException {
+        subQueryScorerSupplier.setTopLevelScoringClause();
+      }
     };
   }
 

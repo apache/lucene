@@ -86,6 +86,17 @@ public class TestRegExp extends LuceneTestCase {
     }
   }
 
+  public void testParseIllegalRepeatExp() {
+    // out of order
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("a{99,11}");
+            });
+    assertTrue(expected.getMessage().contains("out of order"));
+  }
+
   static String randomDocValue(int minLength) {
     String charPalette = "AAAaaaBbbCccc123456 \t";
     StringBuilder sb = new StringBuilder();
@@ -108,7 +119,7 @@ public class TestRegExp extends LuceneTestCase {
 
     // Add any head to the result, unchanged
     if (substitutionPoint > 0) {
-      result.append(docValue.substring(0, substitutionPoint));
+      result.append(docValue, 0, substitutionPoint);
     }
 
     // Modify the middle...
@@ -131,11 +142,11 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 3:
         // Star-replace all ab sequences.
-        result.append(replacementPart.replaceAll("ab", ".*"));
+        result.append(replacementPart.replace("ab", ".*"));
         break;
       case 4:
         // .-replace all b chars
-        result.append(replacementPart.replaceAll("b", "."));
+        result.append(replacementPart.replace("b", "."));
         break;
       case 5:
         // length-limited stars {1,2}
@@ -154,7 +165,7 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 8:
         // NOT a character - replace all b's with "not a"
-        result.append(replacementPart.replaceAll("b", "[^a]"));
+        result.append(replacementPart.replace("b", "[^a]"));
         break;
       case 9:
         // Make whole part repeatable 1 or more times
@@ -211,7 +222,6 @@ public class TestRegExp extends LuceneTestCase {
         caseSensitiveQuery
             ? Pattern.compile(regexPattern)
             : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
-    ;
     Matcher matcher = pattern.matcher(docValue);
     assertTrue(
         "Java regex " + regexPattern + " did not match doc value " + docValue, matcher.matches());

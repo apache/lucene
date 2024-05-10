@@ -55,11 +55,12 @@ public class TestTermQuery extends LuceneTestCase {
     final CompositeReaderContext context;
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
+      IndexSearcher searcher = new IndexSearcher(context);
+      QueryUtils.checkEqual(
+          new TermQuery(new Term("foo", "bar")),
+          new TermQuery(
+              new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));
     }
-    QueryUtils.checkEqual(
-        new TermQuery(new Term("foo", "bar")),
-        new TermQuery(
-            new Term("foo", "bar"), TermStates.build(context, new Term("foo", "bar"), true)));
   }
 
   public void testCreateWeightDoesNotSeekIfScoresAreNotNeeded() throws IOException {
@@ -100,8 +101,7 @@ public class TestTermQuery extends LuceneTestCase {
     assertEquals(1, totalHits);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     totalHits = searcher.search(queryWithContext, DummyTotalHitCountCollector.createManager());
     assertEquals(1, totalHits);
 
@@ -160,10 +160,10 @@ public class TestTermQuery extends LuceneTestCase {
     w.addDocument(new Document());
 
     DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     assertNotNull(queryWithContext.getTermStates());
     IOUtils.close(reader, w, dir);
   }
@@ -288,5 +288,4 @@ public class TestTermQuery extends LuceneTestCase {
       return in.getReaderCacheHelper();
     }
   }
-  ;
 }

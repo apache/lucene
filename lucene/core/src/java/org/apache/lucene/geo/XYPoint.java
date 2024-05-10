@@ -35,6 +35,7 @@ public final class XYPoint extends XYGeometry {
 
   /** latitude coordinate */
   private final float x;
+
   /** longitude coordinate */
   private final float y;
 
@@ -64,7 +65,7 @@ public final class XYPoint extends XYGeometry {
     if (this == o) return true;
     if (!(o instanceof XYPoint)) return false;
     XYPoint point = (XYPoint) o;
-    return point.x == x && point.y == y;
+    return Float.compare(point.x, x) == 0 && Float.compare(point.y, y) == 0;
   }
 
   @Override

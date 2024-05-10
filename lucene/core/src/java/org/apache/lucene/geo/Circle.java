@@ -33,8 +33,10 @@ package org.apache.lucene.geo;
 public final class Circle extends LatLonGeometry {
   /** Center latitude */
   private final double lat;
+
   /** Center longitude */
   private final double lon;
+
   /** radius in meters */
   private final double radiusMeters;
 
@@ -75,7 +77,9 @@ public final class Circle extends LatLonGeometry {
     if (this == o) return true;
     if (!(o instanceof Circle)) return false;
     Circle circle = (Circle) o;
-    return lat == circle.lat && lon == circle.lon && radiusMeters == circle.radiusMeters;
+    return Double.compare(lat, circle.lat) == 0
+        && Double.compare(lon, circle.lon) == 0
+        && Double.compare(radiusMeters, circle.radiusMeters) == 0;
   }
 
   @Override

@@ -25,16 +25,13 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
-
-  private MockAnalyzer indexAnalyzer =
-      new MockAnalyzer(random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase;
+public class TestUnifiedHighlighterReanalysis extends UnifiedHighlighterTestBase {
+  public TestUnifiedHighlighterReanalysis() {
+    super(randomFieldType(random()));
+  }
 
   @Test
   public void testWithoutIndexSearcher() throws IOException {

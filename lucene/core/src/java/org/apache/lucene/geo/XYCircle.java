@@ -33,8 +33,10 @@ import static org.apache.lucene.geo.XYEncodingUtils.checkVal;
 public final class XYCircle extends XYGeometry {
   /** Center x */
   private final float x;
+
   /** Center y */
   private final float y;
+
   /** radius */
   private final float radius;
 
@@ -76,7 +78,9 @@ public final class XYCircle extends XYGeometry {
     if (this == o) return true;
     if (!(o instanceof XYCircle)) return false;
     XYCircle circle = (XYCircle) o;
-    return x == circle.x && y == circle.y && radius == circle.radius;
+    return Float.compare(x, circle.x) == 0
+        && Float.compare(y, circle.y) == 0
+        && Float.compare(radius, circle.radius) == 0;
   }
 
   @Override

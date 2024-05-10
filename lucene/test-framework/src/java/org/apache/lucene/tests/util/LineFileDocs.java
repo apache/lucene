@@ -29,22 +29,28 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 
@@ -53,6 +59,35 @@ import org.apache.lucene.util.IOUtils;
  * created by benchmark's WriteLineDoc task
  */
 public class LineFileDocs implements Closeable {
+  /**
+   * Converts date formats for europarl ("2023-02-23") and enwiki ("12-JAN-2010 12:32:45.000") into
+   * {@link LocalDateTime}.
+   */
+  public static final Function<String, LocalDateTime> DATE_FIELD_VALUE_TO_LOCALDATETIME =
+      new Function<>() {
+        final DateTimeFormatter euroParl =
+            new DateTimeFormatterBuilder()
+                .parseStrict()
+                .parseCaseInsensitive()
+                .appendPattern("uuuu-MM-dd")
+                .toFormatter(Locale.ROOT);
+
+        final DateTimeFormatter enwiki =
+            new DateTimeFormatterBuilder()
+                .parseStrict()
+                .parseCaseInsensitive()
+                .appendPattern("dd-MMM-uuuu HH:mm:ss['.'SSS]")
+                .toFormatter(Locale.ROOT);
+
+        @Override
+        public LocalDateTime apply(String s) {
+          if (s.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) {
+            return euroParl.parse(s, LocalDate::from).atStartOfDay();
+          } else {
+            return enwiki.parse(s, LocalDateTime::from);
+          }
+        }
+      };
 
   private BufferedReader reader;
   private static final int BUFFER_SIZE = 1 << 16; // 64K
@@ -199,17 +234,16 @@ public class LineFileDocs implements Closeable {
     final Document doc;
     final Field titleTokenized;
     final Field title;
-    final Field titleDV;
     final Field body;
     final Field id;
     final Field idNum;
-    final Field idNumDV;
     final Field date;
+    final Field pageViews;
 
     public DocState() {
       doc = new Document();
 
-      title = new StringField("title", "", Field.Store.NO);
+      title = new KeywordField("title", "", Field.Store.NO);
       doc.add(title);
 
       FieldType ft = new FieldType(TextField.TYPE_STORED);
@@ -227,16 +261,15 @@ public class LineFileDocs implements Closeable {
       id = new StringField("docid", "", Field.Store.YES);
       doc.add(id);
 
-      idNum = new IntPoint("docid_int", 0);
+      idNum = new IntField("docid_int", 0, Field.Store.NO);
       doc.add(idNum);
 
       date = new StringField("date", "", Field.Store.YES);
       doc.add(date);
 
-      titleDV = new SortedDocValuesField("titleDV", new BytesRef());
-      idNumDV = new NumericDocValuesField("docid_intDV", 0);
-      doc.add(titleDV);
-      doc.add(idNumDV);
+      // A numeric DV field that can be used for DV updates
+      pageViews = new NumericDocValuesField("page_views", 0L);
+      doc.add(pageViews);
     }
   }
 
@@ -274,20 +307,15 @@ public class LineFileDocs implements Closeable {
       throw new RuntimeException("line: [" + line + "] is in an invalid format !");
     }
 
-    docState.body.setStringValue(line.substring(1 + spot2, line.length()));
+    docState.body.setStringValue(line.substring(1 + spot2));
     final String title = line.substring(0, spot);
     docState.title.setStringValue(title);
-    if (docState.titleDV != null) {
-      docState.titleDV.setBytesValue(new BytesRef(title));
-    }
     docState.titleTokenized.setStringValue(title);
     docState.date.setStringValue(line.substring(1 + spot, spot2));
     final int i = id.getAndIncrement();
     docState.id.setStringValue(Integer.toString(i));
     docState.idNum.setIntValue(i);
-    if (docState.idNumDV != null) {
-      docState.idNumDV.setLongValue(i);
-    }
+    docState.pageViews.setLongValue(random.nextInt(10_000));
 
     if (random.nextInt(5) == 4) {
       // Make some sparse fields

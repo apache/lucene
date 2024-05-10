@@ -33,6 +33,7 @@ public final class Point extends LatLonGeometry {
 
   /** latitude coordinate */
   private final double lat;
+
   /** longitude coordinate */
   private final double lon;
 
@@ -64,7 +65,7 @@ public final class Point extends LatLonGeometry {
     if (this == o) return true;
     if (!(o instanceof Point)) return false;
     Point point = (Point) o;
-    return point.lat == lat && point.lon == lon;
+    return Double.compare(point.lat, lat) == 0 && Double.compare(point.lon, lon) == 0;
   }
 
   @Override

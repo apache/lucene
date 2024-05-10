@@ -20,11 +20,17 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends AbstractMockVectorValues<float[]> {
+class MockVectorValues extends AbstractMockVectorValues<float[]>
+    implements RandomAccessVectorValues.Floats {
   private final float[] scratch;
 
   static MockVectorValues fromValues(float[][] values) {
-    int dimension = values[0].length;
+    float[] firstNonNull = null;
+    int j = 0;
+    while (firstNonNull == null && j < values.length) {
+      firstNonNull = values[j++];
+    }
+    int dimension = firstNonNull.length;
     int maxDoc = values.length;
     float[][] denseValues = new float[maxDoc][];
     int count = 0;

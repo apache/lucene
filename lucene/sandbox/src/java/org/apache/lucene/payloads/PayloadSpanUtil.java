@@ -75,7 +75,7 @@ public class PayloadSpanUtil {
     if (query instanceof BooleanQuery) {
       for (BooleanClause clause : (BooleanQuery) query) {
         if (!clause.isProhibited()) {
-          queryToSpanQuery(clause.getQuery(), payloads);
+          queryToSpanQuery(clause.query(), payloads);
         }
       }
 

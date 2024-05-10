@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -28,10 +30,11 @@ import java.util.Objects;
 public final class FieldInfo {
   /** Field's name */
   public final String name;
+
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType = DocValuesType.NONE;
+  private DocValuesType docValuesType;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -41,7 +44,7 @@ public final class FieldInfo {
   private final IndexOptions indexOptions;
   private boolean storePayloads; // whether this field stores payloads together with term positions
 
-  private final Map<String, String> attributes;
+  private Map<String, String> attributes;
 
   private long dvGen;
 
@@ -61,6 +64,8 @@ public final class FieldInfo {
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
+
+  private final boolean isParentField;
 
   /**
    * Sole constructor.
@@ -83,7 +88,8 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean softDeletesField) {
+      boolean softDeletesField,
+      boolean isParentField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
@@ -110,6 +116,7 @@ public final class FieldInfo {
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
+    this.isParentField = isParentField;
     this.checkConsistency();
   }
 
@@ -204,6 +211,13 @@ public final class FieldInfo {
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
+    }
+
+    if (softDeletesField && isParentField) {
+      throw new IllegalArgumentException(
+          "field can't be used as soft-deletes field and parent document field (field: '"
+              + name
+              + "')");
     }
   }
 
@@ -601,7 +615,7 @@ public final class FieldInfo {
   }
 
   /** Get a codec attribute value, or null if it does not exist */
-  public String getAttribute(String key) {
+  public synchronized String getAttribute(String key) {
     return attributes.get(key);
   }
 
@@ -616,12 +630,17 @@ public final class FieldInfo {
    * If the value of the attributes for a same field is changed between the documents, the behaviour
    * after merge is undefined.
    */
-  public String putAttribute(String key, String value) {
-    return attributes.put(key, value);
+  public synchronized String putAttribute(String key, String value) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    String oldValue = newMap.put(key, value);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
+    return oldValue;
   }
 
   /** Returns internal codec attributes map. */
-  public Map<String, String> attributes() {
+  public synchronized Map<String, String> attributes() {
     return attributes;
   }
 
@@ -631,5 +650,13 @@ public final class FieldInfo {
    */
   public boolean isSoftDeletesField() {
     return softDeletesField;
+  }
+
+  /**
+   * Returns true if this field is configured and used as the parent document field field. See
+   * {@link IndexWriterConfig#setParentField(String)}
+   */
+  public boolean isParentField() {
+    return isParentField;
   }
 }

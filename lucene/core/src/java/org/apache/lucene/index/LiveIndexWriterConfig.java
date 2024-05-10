@@ -84,7 +84,7 @@ public class LiveIndexWriterConfig {
   protected volatile int perThreadHardLimitMB;
 
   /** True if segment flushes should use compound file format */
-  protected volatile boolean useCompoundFile = IndexWriterConfig.DEFAULT_USE_COMPOUND_FILE_SYSTEM;
+  protected volatile boolean useCompoundFile;
 
   /** True if calls to {@link IndexWriter#close()} should first do a commit. */
   protected boolean commitOnClose = IndexWriterConfig.DEFAULT_COMMIT_ON_CLOSE;
@@ -97,6 +97,9 @@ public class LiveIndexWriterConfig {
 
   /** The field names involved in the index sort */
   protected Set<String> indexSortFields = Collections.emptySet();
+
+  /** parent document field */
+  protected String parentField = null;
 
   /**
    * if an indexing thread should check for pending flushes on update in order to help out on a full
@@ -458,6 +461,11 @@ public class LiveIndexWriterConfig {
     return eventListener;
   }
 
+  /** Returns the parent document field name if configured. */
+  public String getParentField() {
+    return parentField;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -486,6 +494,7 @@ public class LiveIndexWriterConfig {
     sb.append("maxFullFlushMergeWaitMillis=").append(getMaxFullFlushMergeWaitMillis()).append("\n");
     sb.append("leafSorter=").append(getLeafSorter()).append("\n");
     sb.append("eventListener=").append(getIndexWriterEventListener()).append("\n");
+    sb.append("parentField=").append(getParentField()).append("\n");
     return sb.toString();
   }
 }

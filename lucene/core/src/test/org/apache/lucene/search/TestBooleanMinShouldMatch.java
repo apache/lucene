@@ -93,9 +93,9 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertEquals("result count", expected, h.length);
     // System.out.println("TEST: now check");
     // bs2
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(1000, null, Integer.MAX_VALUE);
-    ScoreDoc[] h2 = s.search(q, manager).scoreDocs;
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
+    ScoreDoc[] h2 = s.search(q, collectorManager).scoreDocs;
     if (expected != h2.length) {
       printHits(getTestName(), h2, s);
     }
@@ -320,7 +320,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
           public void postCreate(BooleanQuery.Builder q) {
             int opt = 0;
             for (BooleanClause clause : q.build().clauses()) {
-              if (clause.getOccur() == BooleanClause.Occur.SHOULD) opt++;
+              if (clause.occur() == BooleanClause.Occur.SHOULD) opt++;
             }
             q.setMinimumNumberShouldMatch(random().nextInt(opt + 2));
             if (random().nextBoolean()) {

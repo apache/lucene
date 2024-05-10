@@ -23,19 +23,17 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.logging.Logger;
+import java.util.Optional;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
-  public MemorySegmentIndexInputProvider() {
-    var log = Logger.getLogger(getClass().getName());
-    log.info(
-        "Using MemorySegmentIndexInput with Java 21; to disable start with -D"
-            + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
-            + "=false");
+  private final Optional<NativeAccess> nativeAccess;
+
+  MemorySegmentIndexInputProvider() {
+    this.nativeAccess = NativeAccess.getImplementation();
   }
 
   @Override
@@ -54,7 +52,14 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(arena, resourceDescription, fc, chunkSizePower, preload, fileSize),
+              map(
+                  arena,
+                  resourceDescription,
+                  fc,
+                  context.readAdvice(),
+                  chunkSizePower,
+                  preload,
+                  fileSize),
               fileSize,
               chunkSizePower);
       success = true;
@@ -72,19 +77,15 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public boolean isUnmapSupported() {
-    return true;
-  }
-
-  @Override
-  public String getUnmapNotSupportedReason() {
-    return null;
+  public boolean supportsMadvise() {
+    return nativeAccess.isPresent();
   }
 
   private final MemorySegment[] map(
       Arena arena,
       String resourceDescription,
       FileChannel fc,
+      ReadAdvice readAdvice,
       int chunkSizePower,
       boolean preload,
       long length)
@@ -109,8 +110,12 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
+      // if preload apply it without madvise.
+      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
       if (preload) {
         segment.load();
+      } else if (nativeAccess.isPresent() && chunkSizePower >= 21) {
+        nativeAccess.get().madvise(segment, readAdvice);
       }
       segments[segNr] = segment;
       startOffset += segSize;

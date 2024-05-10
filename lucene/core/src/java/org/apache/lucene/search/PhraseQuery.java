@@ -21,10 +21,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -402,10 +401,10 @@ public class PhraseQuery extends Query {
   /**
    * A guess of the average number of simple operations for the initial seek and buffer refill per
    * document for the positions of a term. See also {@link
-   * Lucene90PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
+   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
    *
    * <p>Aside: Instead of being constant this could depend among others on {@link
-   * Lucene90PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
+   * Lucene99PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
    * TermsEnum#totalTermFreq()}, {@link DocIdSetIterator#cost()} (expected number of matching docs),
    * {@link LeafReader#maxDoc()} (total number of docs in the segment), and the seek time and block
    * size of the device storing the index.
@@ -414,7 +413,7 @@ public class PhraseQuery extends Query {
 
   /**
    * Number of simple operations in {@link
-   * Lucene90PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
+   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
    * is done.
    */
   private static final int TERM_OPS_PER_POS = 7;
@@ -451,13 +450,12 @@ public class PhraseQuery extends Query {
           throw new IllegalStateException(
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
-        final IndexReaderContext context = searcher.getTopReaderContext();
         states = new TermStates[terms.length];
         TermStatistics[] termStats = new TermStatistics[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];
-          states[i] = TermStates.build(context, term, scoreMode.needsScores());
+          states[i] = TermStates.build(searcher, term, scoreMode.needsScores());
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {

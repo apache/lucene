@@ -23,7 +23,7 @@ import opennlp.tools.chunker.ChunkerModel;
 
 /** Supply OpenNLP Chunking tool Requires binary models from OpenNLP project on SourceForge. */
 public class NLPChunkerOp {
-  private ChunkerME chunker = null;
+  private final ChunkerME chunker;
 
   public NLPChunkerOp(ChunkerModel chunkerModel) throws IOException {
     chunker = new ChunkerME(chunkerModel);

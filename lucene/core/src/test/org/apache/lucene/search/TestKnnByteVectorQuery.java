@@ -22,6 +22,7 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -87,6 +88,21 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     assertNotSame(queryVectorBytes, q1.getTargetCopy());
   }
 
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = new MatchAllDocsQuery();
+      }
+      AbstractKnnVectorQuery query =
+          new KnnFloatVectorQuery("field", new float[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
+    }
+  }
+
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
@@ -94,7 +110,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(
+        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 

@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -55,29 +54,29 @@ final class FreqProxTermsWriter extends TermsHash {
     // Process any pending Term deletes for this newly
     // flushed segment:
     if (state.segUpdates != null && state.segUpdates.deleteTerms.size() > 0) {
-      Map<Term, Integer> segDeletes = state.segUpdates.deleteTerms;
-      List<Term> deleteTerms = new ArrayList<>(segDeletes.keySet());
-      Collections.sort(deleteTerms);
+
+      BufferedUpdates.DeletedTerms segDeletes = state.segUpdates.deleteTerms;
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
-      for (Term deleteTerm : deleteTerms) {
-        DocIdSetIterator postings = iterator.nextTerm(deleteTerm.field(), deleteTerm.bytes());
-        if (postings != null) {
-          int delDocLimit = segDeletes.get(deleteTerm);
-          assert delDocLimit < PostingsEnum.NO_MORE_DOCS;
-          int doc;
-          while ((doc = postings.nextDoc()) < delDocLimit) {
-            if (state.liveDocs == null) {
-              state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
-              state.liveDocs.set(0, state.segmentInfo.maxDoc());
+
+      segDeletes.forEachOrdered(
+          (term, docId) -> {
+            DocIdSetIterator postings = iterator.nextTerm(term.field(), term.bytes());
+            if (postings != null) {
+              assert docId < PostingsEnum.NO_MORE_DOCS;
+              int doc;
+              while ((doc = postings.nextDoc()) < docId) {
+                if (state.liveDocs == null) {
+                  state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
+                  state.liveDocs.set(0, state.segmentInfo.maxDoc());
+                }
+                if (state.liveDocs.get(doc)) {
+                  state.delCountOnFlush++;
+                  state.liveDocs.clear(doc);
+                }
+              }
             }
-            if (state.liveDocs.get(doc)) {
-              state.delCountOnFlush++;
-              state.liveDocs.clear(doc);
-            }
-          }
-        }
-      }
+          });
     }
   }
 

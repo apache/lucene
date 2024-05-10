@@ -21,12 +21,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -36,6 +34,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Elements.Origin;
 import javax.tools.Diagnostic;
 
 import com.sun.source.doctree.DocCommentTree;
@@ -75,8 +74,7 @@ public class MissingDoclet extends StandardDoclet {
   
   @Override
   public Set<Doclet.Option> getSupportedOptions() {
-    Set<Doclet.Option> options = new HashSet<>();
-    options.addAll(super.getSupportedOptions());
+    Set<Doclet.Option> options = new HashSet<>(super.getSupportedOptions());
     options.add(new Doclet.Option() {
       @Override
       public int getArgumentCount() {
@@ -240,9 +238,13 @@ public class MissingDoclet extends StandardDoclet {
       case CLASS:
       case INTERFACE:
       case ENUM:
+      case RECORD:
       case ANNOTATION_TYPE:
         if (level(element) >= CLASS) {
           checkComment(element);
+          if (element instanceof TypeElement te && element.getKind() == ElementKind.RECORD && level(element) >= METHOD) {
+            checkRecordParameters(te, docTrees.getDocCommentTree(element));
+          }
           for (var subElement : element.getEnclosedElements()) {
             // don't recurse into enclosed types, otherwise we'll double-check since they are already in the included docTree
             if (subElement.getKind() == ElementKind.METHOD || 
@@ -259,7 +261,7 @@ public class MissingDoclet extends StandardDoclet {
       case CONSTRUCTOR:
       case FIELD:
       case ENUM_CONSTANT:
-        if (level(element) >= METHOD && !isSyntheticEnumMethod(element)) {
+        if (level(element) >= METHOD && !isSyntheticMethod(element)) {
           checkComment(element);
         }
         break;
@@ -269,11 +271,20 @@ public class MissingDoclet extends StandardDoclet {
   }
 
   /**
-   * Return true if the method is synthetic enum method (values/valueOf).
-   * According to the doctree documentation, the "included" set never includes synthetic elements.
+   * Return true if the method is synthetic enum (values/valueOf) or record accessor method.
+   * According to the doctree documentation, the "included" set never includes synthetic/mandated elements.
    * UweSays: It should not happen but it happens!
    */
-  private boolean isSyntheticEnumMethod(Element element) {
+  private boolean isSyntheticMethod(Element element) {
+    // exclude all not explicitely declared methods
+    if (elementUtils.getOrigin(element) != Origin.EXPLICIT) {
+      return true;
+    }
+    // exclude record accessors
+    if (element instanceof ExecutableElement ex && elementUtils.recordComponentFor(ex) != null) {
+      return true;
+    }
+    // exclude special enum methods
     String simpleName = element.getSimpleName().toString();
     if (simpleName.equals("values") || simpleName.equals("valueOf")) {
       if (element.getEnclosingElement().getKind() == ElementKind.ENUM) {
@@ -319,8 +330,8 @@ public class MissingDoclet extends StandardDoclet {
         error(element, "comment is really a license");
       }
     }
-    if (level >= PARAMETER) {
-      checkParameters(element, tree);
+    if (level >= PARAMETER && element instanceof ExecutableElement execEle) {
+      checkMethodParameters(execEle, tree);
     }
   }
 
@@ -380,25 +391,37 @@ public class MissingDoclet extends StandardDoclet {
     return result;
   }
 
+  /** Returns all {@code @param} parameters we see in the javadocs of the element */
+  private Set<String> getDocParameters(DocCommentTree tree) {
+    return Stream.ofNullable(tree)
+      .flatMap(t -> t.getBlockTags().stream())
+      .filter(ParamTree.class::isInstance)
+      .map(tag -> ((ParamTree)tag).getName().getName().toString())
+      .collect(Collectors.toSet());
+  }
+  
   /** Checks there is a corresponding "param" tag for each method parameter */
-  private void checkParameters(Element element, DocCommentTree tree) {
-    if (element instanceof ExecutableElement) {
-      // record each @param that we see
-      Set<String> seenParameters = new HashSet<>();
-      if (tree != null) {
-        for (var tag : tree.getBlockTags()) {
-          if (tag instanceof ParamTree) {
-            var name = ((ParamTree)tag).getName().getName().toString();
-            seenParameters.add(name);
-          }
-        }
+  private void checkMethodParameters(ExecutableElement element, DocCommentTree tree) {
+    // record each @param that we see
+    var seenParameters = getDocParameters(tree);
+    // now compare the method's formal parameter list against it
+    for (var param : element.getParameters()) {
+      var name = param.getSimpleName().toString();
+      if (!seenParameters.contains(name)) {
+        error(element, "missing javadoc @param for parameter '" + name + "'");
       }
-      // now compare the method's formal parameter list against it
-      for (var param : ((ExecutableElement)element).getParameters()) {
-        var name = param.getSimpleName().toString();
-        if (!seenParameters.contains(name)) {
-          error(element, "missing javadoc @param for parameter '" + name + "'");
-        }
+    }
+  }
+  
+  /** Checks there is a corresponding "param" tag for each record component */
+  private void checkRecordParameters(TypeElement element, DocCommentTree tree) {
+    // record each @param that we see
+    var seenParameters = getDocParameters(tree);
+    // now compare the record components against it
+    for (var comp : element.getRecordComponents()) {
+      var name = comp.getSimpleName().toString();
+      if (!seenParameters.contains(name)) {
+        error(element, "missing javadoc @param for record component '" + name + "'");
       }
     }
   }
@@ -410,7 +433,7 @@ public class MissingDoclet extends StandardDoclet {
       case MODULE:
       case PACKAGE:
         // for modules/packages, we don't have filename + line number, fully qualify
-        fullMessage.append(element.toString());
+        fullMessage.append(element);
         break;
       case METHOD:
       case CONSTRUCTOR:

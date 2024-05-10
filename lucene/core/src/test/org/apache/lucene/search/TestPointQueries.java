@@ -374,6 +374,10 @@ public class TestPointQueries extends LuceneTestCase {
     doTestRandomLongs(1000);
   }
 
+  public void testRandomLongsBig() throws Exception {
+    doTestRandomLongs(20_000);
+  }
+
   private void doTestRandomLongs(int count) throws Exception {
 
     int numValues = TestUtil.nextInt(random(), count, count * 2);
@@ -434,7 +438,13 @@ public class TestPointQueries extends LuceneTestCase {
       dir = newMaybeVirusCheckingDirectory();
     }
 
-    int missingPct = random().nextInt(100);
+    /*
+    The point range query chooses only considers using an inverse BKD visitor if
+    there is exactly one value per document. If any document misses a value that
+    code is not exercised. Using a nextBoolean() here increases the likelihood
+    that there is no missing values, making the test more likely to test that code.
+    */
+    int missingPct = random().nextBoolean() ? 0 : random().nextInt(100);
     int deletedPct = random().nextInt(100);
     if (VERBOSE) {
       System.out.println("  missingPct=" + missingPct);
@@ -2452,6 +2462,39 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
 
     r.close();
+    dir.close();
+  }
+
+  public void testRangeQuerySkipsNonMatchingSegments() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new IntPoint("field", 2));
+    doc.add(new IntPoint("field2d", 1, 3));
+    w.addDocument(doc);
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = IntPoint.newRangeQuery("field", 0, 1);
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field", 3, 4);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field2d", new int[] {0, 0}, new int[] {2, 2});
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newRangeQuery("field2d", new int[] {2, 2}, new int[] {4, 4});
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    reader.close();
+    w.close();
     dir.close();
   }
 }

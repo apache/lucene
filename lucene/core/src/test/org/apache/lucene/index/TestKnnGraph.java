@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.randSeed;
@@ -29,10 +30,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -48,6 +50,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -77,37 +80,38 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
-    codec =
-        new Lucene95Codec() {
-          @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-          }
-        };
-
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     vectorEncoding = randomVectorEncoding();
-
+    boolean quantized = randomBoolean();
     codec =
-        new Lucene95Codec() {
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return quantized
+                    ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                        M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
+                    : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+              }
+            };
           }
         };
 
-    if (vectorEncoding == VectorEncoding.FLOAT32) {
-      float32Codec = codec;
-    } else {
-      float32Codec =
-          new Lucene95Codec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-            }
-          };
-    }
+    float32Codec =
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
+          @Override
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+              }
+            };
+          }
+        };
   }
 
   private VectorEncoding randomVectorEncoding() {
@@ -393,8 +397,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene95HnswVectorsReader vectorReader =
-            (Lucene95HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene99HnswVectorsReader vectorReader =
+            (Lucene99HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }

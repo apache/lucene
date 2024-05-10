@@ -64,7 +64,7 @@ public class ShapeTestUtil {
     }
   }
 
-  public static XYPoint nextPoint() {
+  public static XYPoint nextXYPoint() {
     Random random = random();
     float x = nextFloat(random);
     float y = nextFloat(random);
@@ -99,10 +99,10 @@ public class ShapeTestUtil {
     final float[] polyY = new float[4];
     polyX[0] = box.minX;
     polyY[0] = box.minY;
-    polyX[1] = box.minX;
+    polyX[1] = box.maxX;
     polyY[1] = box.minY;
-    polyX[2] = box.minX;
-    polyY[2] = box.minY;
+    polyX[2] = box.maxX;
+    polyY[2] = box.maxY;
     polyX[3] = box.minX;
     polyY[3] = box.minY;
     return new XYPolygon(polyX, polyY);
@@ -142,12 +142,12 @@ public class ShapeTestUtil {
     final float[] polyY = new float[5];
     polyX[0] = box.minX;
     polyY[0] = box.minY;
-    polyX[1] = box.minX;
+    polyX[1] = box.maxX;
     polyY[1] = box.minY;
-    polyX[2] = box.minX;
-    polyY[2] = box.minY;
+    polyX[2] = box.maxX;
+    polyY[2] = box.maxY;
     polyX[3] = box.minX;
-    polyY[3] = box.minY;
+    polyY[3] = box.maxY;
     polyX[4] = box.minX;
     polyY[4] = box.minY;
     return new XYPolygon(polyX, polyY);

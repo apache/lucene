@@ -20,11 +20,17 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 
-class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
+class MockByteVectorValues extends AbstractMockVectorValues<byte[]>
+    implements RandomAccessVectorValues.Bytes {
   private final byte[] scratch;
 
   static MockByteVectorValues fromValues(byte[][] values) {
-    int dimension = values[0].length;
+    byte[] firstNonNull = null;
+    int j = 0;
+    while (firstNonNull == null && j < values.length) {
+      firstNonNull = values[j++];
+    }
+    int dimension = firstNonNull.length;
     int maxDoc = values.length;
     byte[][] denseValues = new byte[maxDoc][];
     int count = 0;
@@ -48,6 +54,11 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
         dimension,
         ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
         numVectors);
+  }
+
+  @Override
+  public byte[] vectorValue(int ord) {
+    return values[ord];
   }
 
   @Override

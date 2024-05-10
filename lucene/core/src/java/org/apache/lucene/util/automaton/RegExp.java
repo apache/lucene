@@ -420,14 +420,19 @@ public class RegExp {
   // Immutable parsed state
   /** The type of expression */
   public final Kind kind;
+
   /** Child expressions held by a container type expression */
   public final RegExp exp1, exp2;
+
   /** String expression */
   public final String s;
+
   /** Character expression */
   public final int c;
+
   /** Limits for repeatable type expressions */
   public final int min, max, digits;
+
   /** Extents for range type expressions */
   public final int from, to;
 
@@ -456,6 +461,7 @@ public class RegExp {
   public RegExp(String s, int syntax_flags) throws IllegalArgumentException {
     this(s, syntax_flags, 0);
   }
+
   /**
    * Constructs new <code>RegExp</code> from a string.
    *
@@ -1122,6 +1128,10 @@ public class RegExp {
           if (start != pos) m = Integer.parseInt(originalString.substring(start, pos));
         } else m = n;
         if (!match('}')) throw new IllegalArgumentException("expected '}' at position " + pos);
+        if (m != -1 && n > m) {
+          throw new IllegalArgumentException(
+              "invalid repetition range(out of order): " + n + ".." + m);
+        }
         if (m == -1) e = makeRepeat(flags, e, n);
         else e = makeRepeat(flags, e, n, m);
       }
