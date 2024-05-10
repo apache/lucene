@@ -163,9 +163,11 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
   }
 
+  /** An accumulator for an integer aggregated value. */
   protected class IntAggregatedValue extends AggregatedValue {
     private int value;
 
+    /** Sole constructor. */
     public IntAggregatedValue(int value) {
       this.value = value;
     }

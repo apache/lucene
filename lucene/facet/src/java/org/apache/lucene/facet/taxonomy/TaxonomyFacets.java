@@ -131,6 +131,7 @@ public abstract class TaxonomyFacets extends Facets {
   /** Have value counters been initialized. */
   boolean initialized;
 
+  /** Defines comparison between aggregated values. */
   protected Comparator<Number> valueComparator;
 
   /**
@@ -171,6 +172,7 @@ public abstract class TaxonomyFacets extends Facets {
     return sumTotalHits < maxDoc / 10;
   }
 
+  /** If not done already, initialize the data structures storing counts. */
   protected void initializeValueCounters() {
     if (initialized) {
       return;
@@ -458,10 +460,15 @@ public abstract class TaxonomyFacets extends Facets {
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
+  /**
+   * Set the value for a {@link org.apache.lucene.facet.TopOrdAndNumberQueue.OrdAndValue} to the one
+   * corresponding to the given ordinal.
+   */
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
   }
 
+  /** Insert an ordinal and the value corresponding to it into the queue. */
   protected TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
       TopOrdAndNumberQueue q, TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     if (incomingOrdAndValue == null) {
@@ -474,12 +481,16 @@ public abstract class TaxonomyFacets extends Facets {
     return incomingOrdAndValue;
   }
 
+  /** An accumulator for an aggregated value. */
   protected abstract static class AggregatedValue {
     /** Aggregate the value corresponding to the given ordinal into this value. */
     public abstract void aggregate(int ord);
 
     /** Retrieve the encapsulated value. */
     public abstract Number get();
+
+    /** Default constructor. */
+    public AggregatedValue() {}
   }
 
   private class AggregatedCount extends AggregatedValue {
@@ -500,6 +511,7 @@ public abstract class TaxonomyFacets extends Facets {
     }
   }
 
+  /** Initialize an accumulator. */
   protected AggregatedValue newAggregatedValue() {
     return new AggregatedCount(0);
   }

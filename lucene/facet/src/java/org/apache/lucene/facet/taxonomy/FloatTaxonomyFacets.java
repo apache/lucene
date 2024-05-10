@@ -146,9 +146,11 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     ((TopOrdAndFloatQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
   }
 
+  /** An accumulator for a float aggregated value. */
   protected class FloatAggregatedValue extends AggregatedValue {
     private float value;
 
+    /** Sole constructor. */
     public FloatAggregatedValue(float value) {
       this.value = value;
     }
