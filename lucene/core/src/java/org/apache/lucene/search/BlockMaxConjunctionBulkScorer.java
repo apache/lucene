@@ -62,21 +62,21 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.maxDoc = maxDoc;
   }
 
-  public float computeMaxScore(int windowMin, int windowMax) throws IOException {
+  private float computeMaxScore(int windowMin, int windowMax) throws IOException {
     for (int i = 0; i < scorers.length; ++i) {
       scorers[i].advanceShallow(windowMin);
     }
 
-    double maxWindowScore = 0;
+    float maxWindowScore = 0;
     for (int i = 0; i < scorers.length; ++i) {
-      double maxClauseScore = scorers[i].getMaxScore(windowMax);
+      float maxClauseScore = scorers[i].getMaxScore(windowMax);
       sumOfOtherClauses[i] = maxClauseScore;
       maxWindowScore += maxClauseScore;
     }
     for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
       sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
     }
-    return (float) maxWindowScore;
+    return maxWindowScore;
   }
 
   @Override
@@ -89,11 +89,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
 
-      double maxWindowScore = Double.POSITIVE_INFINITY;
+      float maxWindowScore = Float.POSITIVE_INFINITY;
       if (0 < scorable.minCompetitiveScore) {
         maxWindowScore = computeMaxScore(windowMin, windowMax);
       }
-      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
+      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
       windowMin = Math.max(lead1.docID(), windowMax + 1);
     }
 
