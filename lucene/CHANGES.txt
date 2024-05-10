@@ -323,8 +323,6 @@ Optimizations
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
 
-* GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
-
 Bug Fixes
 ---------------------
 
