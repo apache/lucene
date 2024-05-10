@@ -179,8 +179,8 @@ public class StringValueFacetCounts extends Facets {
     validateDimAndPathForGetChildren(dim, path);
 
     topN = Math.min(topN, cardinality);
-    TopOrdAndIntQueue q = null;
-    TopOrdAndIntQueue.OrdAndInt reuse = null;
+    TopOrdAndIntNumberQueue q = null;
+    TopOrdAndIntNumberQueue.OrdAndInt reuse = null;
     int bottomCount = 0;
     int bottomOrd = Integer.MAX_VALUE;
     int childCount = 0; // total number of labels with non-zero count
@@ -193,16 +193,16 @@ public class StringValueFacetCounts extends Facets {
         if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
           if (q == null) {
             // Lazy init for sparse case:
-            q = new TopOrdAndIntQueue(topN);
+            q = new TopOrdAndIntNumberQueue(topN);
           }
           if (reuse == null) {
-            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+            reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.newOrdAndValue();
           }
           reuse.ord = ord;
           reuse.value = count;
-          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
+          reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.insertWithOverflow(reuse);
           if (q.size() == topN) {
-            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
+            bottomCount = ((TopOrdAndIntNumberQueue.OrdAndInt) q.top()).value;
             bottomOrd = q.top().ord;
           }
         }
@@ -215,16 +215,16 @@ public class StringValueFacetCounts extends Facets {
           if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
             if (q == null) {
               // Lazy init for sparse case:
-              q = new TopOrdAndIntQueue(topN);
+              q = new TopOrdAndIntNumberQueue(topN);
             }
             if (reuse == null) {
-              reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+              reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.newOrdAndValue();
             }
             reuse.ord = i;
             reuse.value = count;
-            reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
+            reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.insertWithOverflow(reuse);
             if (q.size() == topN) {
-              bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
+              bottomCount = ((TopOrdAndIntNumberQueue.OrdAndInt) q.top()).value;
               bottomOrd = q.top().ord;
             }
           }
@@ -235,7 +235,7 @@ public class StringValueFacetCounts extends Facets {
     int resultCount = q == null ? 0 : q.size();
     LabelAndValue[] labelValues = new LabelAndValue[resultCount];
     for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndIntQueue.OrdAndInt ordAndValue = (TopOrdAndIntQueue.OrdAndInt) q.pop();
+      TopOrdAndIntNumberQueue.OrdAndInt ordAndValue = (TopOrdAndIntNumberQueue.OrdAndInt) q.pop();
       final BytesRef term = docValues.lookupOrd(ordAndValue.ord);
       labelValues[i] = new LabelAndValue(term.utf8ToString(), ordAndValue.value);
     }

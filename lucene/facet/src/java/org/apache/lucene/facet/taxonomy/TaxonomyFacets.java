@@ -35,7 +35,8 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
-import org.apache.lucene.facet.TopOrdAndIntQueue;
+import org.apache.lucene.facet.TopOrdAndFloatNumberQueue;
+import org.apache.lucene.facet.TopOrdAndIntNumberQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -150,7 +151,7 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
+  protected boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
     if (taxoReader.getSize() < 1024) {
       // small number of unique values: use an array
       return false;
@@ -295,11 +296,11 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /**
-   * Return a {@link TopOrdAndNumberQueue} of the appropriate type, i.e. a {@link TopOrdAndIntQueue}
-   * or a {@link org.apache.lucene.facet.TopOrdAndFloatQueue}.
+   * Return a {@link TopOrdAndNumberQueue} of the appropriate type, i.e. a {@link
+   * TopOrdAndIntNumberQueue} or a {@link TopOrdAndFloatNumberQueue}.
    */
   protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
-    return new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
+    return new TopOrdAndIntNumberQueue(Math.min(taxoReader.getSize(), topN));
   }
 
   // TODO: We don't need this if we're okay with having an integer -1 in the results even for float
@@ -310,7 +311,7 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  void rollup() throws IOException {
+  protected void rollup() throws IOException {
     if (initialized == false) {
       return;
     }
@@ -465,7 +466,7 @@ public abstract class TaxonomyFacets extends Facets {
    * corresponding to the given ordinal.
    */
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
-    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
+    ((TopOrdAndIntNumberQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
   }
 
   /** Insert an ordinal and the value corresponding to it into the queue. */

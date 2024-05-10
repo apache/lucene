@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.TopOrdAndIntQueue;
+import org.apache.lucene.facet.TopOrdAndIntNumberQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 
 /**
@@ -157,7 +157,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
-    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
+    ((TopOrdAndIntNumberQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
   }
 
   /** An accumulator for an integer aggregated value. */
