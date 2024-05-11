@@ -176,11 +176,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
         // No fields are missing, use byNumber.
         values = Arrays.asList(byNumber);
       } else {
-        // The below code is faster than Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
-        // mainly when the input FieldInfo[] is sorted, when reading a segment.
-        FieldInfo[] sortedFieldInfos = ArrayUtil.copyOfSubArray(infos, 0, infos.length);
-        Arrays.sort(sortedFieldInfos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
-        values = Arrays.asList(sortedFieldInfos);
+        if (!fieldNumberStrictlyAscending) {
+          // The below code is faster than Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
+          // mainly when the input FieldInfo[] is small compared to maxFieldNumber.
+          Arrays.sort(infos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
+        }
+        values = Arrays.asList(infos);
       }
     }
   }
