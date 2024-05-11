@@ -520,6 +520,18 @@ public abstract class PointRangeQuery extends Query {
               }
 
               @Override
+              public boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
+                  throws IOException {
+                int matchState = matchesWithState(packedValue, sortedDim);
+                if (matchState == PointValues.MatchState.MATCH) {
+                  matchingNodeCount[0]++;
+                } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+                  return false;
+                }
+                return true;
+              }
+
+              @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
                 return nodeComparator.apply(minPackedValue, maxPackedValue);
               }
