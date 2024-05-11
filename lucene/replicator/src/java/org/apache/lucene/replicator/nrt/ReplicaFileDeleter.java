@@ -93,6 +93,8 @@ class ReplicaFileDeleter {
   public void checkpoint(SegmentInfos sis) throws IOException {
     commits.add(new CommitPoint(commitsToDelete, dir, sis));
     policy.onCommit(commits);
+    System.out.println("commits:"+commits);
+    System.out.println("commitsToDelete:"+commitsToDelete);
   }
 
   public synchronized void incRef(Collection<String> fileNames) throws IOException {
