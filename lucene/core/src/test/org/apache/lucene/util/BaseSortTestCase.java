@@ -49,7 +49,7 @@ public abstract class BaseSortTestCase extends LuceneTestCase {
 
   public void assertSorted(Entry[] original, Entry[] sorted) {
     assertEquals(original.length, sorted.length);
-    Entry[] actuallySorted = ArrayUtil.copyOf(original);
+    Entry[] actuallySorted = ArrayUtil.copyArray(original);
     Arrays.sort(actuallySorted);
     for (int i = 0; i < original.length; ++i) {
       assertEquals(actuallySorted[i].value, sorted[i].value);

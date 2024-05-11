@@ -626,7 +626,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static byte[] copyOf(byte[] array) {
+  public static byte[] copyArray(byte[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -646,7 +646,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static char[] copyOf(char[] array) {
+  public static char[] copyArray(char[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -666,7 +666,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static short[] copyOf(short[] array) {
+  public static short[] copyArray(short[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -686,7 +686,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static int[] copyOf(int[] array) {
+  public static int[] copyArray(int[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -706,7 +706,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static long[] copyOf(long[] array) {
+  public static long[] copyArray(long[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -726,7 +726,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static float[] copyOf(float[] array) {
+  public static float[] copyArray(float[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -746,7 +746,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static double[] copyOf(double[] array) {
+  public static double[] copyArray(double[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
@@ -766,7 +766,7 @@ public final class ArrayUtil {
   /**
    * Copies an array into a new array.
    */
-  public static <T> T[] copyOf(T[] array) {
+  public static <T> T[] copyArray(T[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
 
