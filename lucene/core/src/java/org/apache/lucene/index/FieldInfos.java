@@ -67,7 +67,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
   /** Iterator in ascending order of field number. */
   private final Collection<FieldInfo> values;
 
-  /** Constructs a new FieldInfos from an array of FieldInfo objects */
+  /**
+   * Constructs a new FieldInfos from an array of FieldInfo objects. The array can be used directly
+   * as the backing structure.
+   */
   public FieldInfos(FieldInfo[] infos) {
     boolean hasVectors = false;
     boolean hasPostings = false;
@@ -149,19 +152,19 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.parentField = parentField;
 
     if (fieldNumberStrictlyAscending && maxFieldNumber == infos.length - 1) {
-      // The input FieldInfo[] contains all fields numbered from 0 to infos.length - 1 and they are
+      // The input FieldInfo[] contains all fields numbered from 0 to infos.length - 1, and they are
       // sorted, use it directly. This is an optimization when reading a segment with all fields
       // since the FieldInfo[] is sorted.
-      byNumber = infos; // We could copy the input array, but do we need to?
+      byNumber = infos;
       values = Arrays.asList(byNumber);
     } else {
       byNumber = new FieldInfo[maxFieldNumber + 1];
       for (FieldInfo fieldInfo : infos) {
-        FieldInfo previous = byNumber[fieldInfo.number];
-        if (previous != null) {
+        FieldInfo existing = byNumber[fieldInfo.number];
+        if (existing != null) {
           throw new IllegalArgumentException(
               "duplicate field numbers: "
-                  + previous.name
+                  + existing.name
                   + " and "
                   + fieldInfo.name
                   + " have: "
