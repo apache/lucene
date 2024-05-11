@@ -50,10 +50,7 @@ class MockVectorValues extends AbstractMockVectorValues<float[]>
   @Override
   public MockVectorValues copy() {
     return new MockVectorValues(
-        ArrayUtil.copyArray(values),
-        dimension,
-        ArrayUtil.copyArray(denseValues),
-        numVectors);
+        ArrayUtil.copyArray(values), dimension, ArrayUtil.copyArray(denseValues), numVectors);
   }
 
   @Override

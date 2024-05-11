@@ -50,10 +50,7 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]>
   @Override
   public MockByteVectorValues copy() {
     return new MockByteVectorValues(
-        ArrayUtil.copyArray(values),
-        dimension,
-        ArrayUtil.copyArray(denseValues),
-        numVectors);
+        ArrayUtil.copyArray(values), dimension, ArrayUtil.copyArray(denseValues), numVectors);
   }
 
   @Override

@@ -623,9 +623,7 @@ public final class ArrayUtil {
     }.select(from, to, k);
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static byte[] copyArray(byte[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -643,9 +641,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static char[] copyArray(char[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -663,9 +659,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static short[] copyArray(short[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -683,9 +677,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static int[] copyArray(int[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -703,9 +695,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static long[] copyArray(long[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -723,9 +713,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static float[] copyArray(float[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -743,9 +731,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static double[] copyArray(double[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
@@ -763,9 +749,7 @@ public final class ArrayUtil {
     return copy;
   }
 
-  /**
-   * Copies an array into a new array.
-   */
+  /** Copies an array into a new array. */
   public static <T> T[] copyArray(T[] array) {
     return copyOfSubArray(array, 0, array.length);
   }
