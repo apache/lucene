@@ -501,7 +501,7 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final TermState state = states[i].get(context);
+          final TermState state = states[i].get(context).get();
           if (state == null) {
             /* term doesnt exist in this segment */
             assert termNotInReader(reader, t) : "no termstate found but term exists in reader";

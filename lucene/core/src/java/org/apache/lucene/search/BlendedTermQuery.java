@@ -316,7 +316,7 @@ public final class BlendedTermQuery extends Query {
     List<LeafReaderContext> leaves = readerContext.leaves();
     TermStates newCtx = new TermStates(readerContext);
     for (int i = 0; i < leaves.size(); ++i) {
-      TermState termState = ctx.get(leaves.get(i));
+      TermState termState = ctx.get(leaves.get(i)).get();
       if (termState == null) {
         continue;
       }

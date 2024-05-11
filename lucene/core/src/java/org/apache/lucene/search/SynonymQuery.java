@@ -281,7 +281,7 @@ public final class SynonymQuery extends Query {
       List<ImpactsEnum> impacts = new ArrayList<>();
       List<Float> termBoosts = new ArrayList<>();
       for (int i = 0; i < terms.length; i++) {
-        TermState state = termStates[i].get(context);
+        TermState state = termStates[i].get(context).get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(terms[i].term, state);

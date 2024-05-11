@@ -17,10 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TaskExecutor;
 
@@ -179,15 +181,39 @@ public final class TermStates {
    * @return the {@link TermState} for the given readers ord or <code>null</code> if no {@link
    *     TermState} for the reader was registered
    */
-  public TermState get(LeafReaderContext ctx) throws IOException {
+  public Supplier<TermState> get(LeafReaderContext ctx) throws IOException {
     assert ctx.ord >= 0 && ctx.ord < states.length;
-    if (term == null) return states[ctx.ord];
+    if (term == null) return () -> states[ctx.ord];
     if (this.states[ctx.ord] == null) {
-      TermsEnum te = loadTermsEnum(ctx, term);
-      this.states[ctx.ord] = te == null ? EMPTY_TERMSTATE : te.termState();
+      final Terms terms = Terms.getTerms(ctx.reader(), term.field());
+      final TermsEnum termsEnum = terms.iterator();
+      termsEnum.prepareSeekExact(term.bytes());
+      return () -> {
+        if (this.states[ctx.ord] == null) {
+          try {
+            TermState state = null;
+            if (termsEnum.seekExact(term.bytes())) {
+              state = termsEnum.termState();
+            }
+            this.states[ctx.ord] = state == null ? EMPTY_TERMSTATE : state;
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+        TermState state = this.states[ctx.ord];
+        if (state == EMPTY_TERMSTATE) {
+          return null;
+        }
+        return state;
+      };
     }
-    if (this.states[ctx.ord] == EMPTY_TERMSTATE) return null;
-    return this.states[ctx.ord];
+    return () -> {
+      TermState state = this.states[ctx.ord];
+      if (state == EMPTY_TERMSTATE) {
+        return null;
+      }
+      return state;
+    };
   }
 
   /**

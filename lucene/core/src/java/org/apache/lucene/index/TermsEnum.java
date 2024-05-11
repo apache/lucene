@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
@@ -60,6 +61,15 @@ public abstract class TermsEnum implements BytesRefIterator {
    * @return true if the term is found; return false if the enum is unpositioned.
    */
   public abstract boolean seekExact(BytesRef text) throws IOException;
+
+  /**
+   * Prepare a future call to {@link #seekExact}. This typically calls {@link IndexInput#prefetch}
+   * on the right range of bytes under the hood so that the next call to {@link #seekExact} is
+   * faster. This can be used to parallelize I/O across multiple terms by calling {@link
+   * #prepareSeekExact} on multiple terms enums before calling {@link #seekExact(BytesRef)} on the
+   * same {@link TermsEnum}s.
+   */
+  public void prepareSeekExact(BytesRef text) throws IOException {}
 
   /**
    * Seeks to the specified term, if it exists, or to the next (ceiling) term. Returns SeekStatus to

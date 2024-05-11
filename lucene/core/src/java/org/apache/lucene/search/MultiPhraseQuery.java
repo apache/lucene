@@ -277,7 +277,7 @@ public class MultiPhraseQuery extends Query {
           List<PostingsEnum> postings = new ArrayList<>();
 
           for (Term term : terms) {
-            TermState termState = termStates.get(term).get(context);
+            TermState termState = termStates.get(term).get(context).get();
             if (termState != null) {
               termsEnum.seekExact(term.bytes(), termState);
               postings.add(

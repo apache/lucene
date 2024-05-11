@@ -31,6 +31,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.fst.BytesRefFSTEnum;
+import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Util;
 
@@ -305,6 +307,31 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   private boolean setEOF() {
     eof = true;
     return true;
+  }
+
+  @Override
+  public void prepareSeekExact(BytesRef target) throws IOException {
+    if (fr.index == null) {
+      throw new IllegalStateException("terms index was not loaded");
+    }
+
+    if (fr.size() == 0 || target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0) {
+      return;
+    }
+
+    // TODO: should we try to reuse the current state of this terms enum when applicable?
+    BytesRefFSTEnum<BytesRef> indexEnum = new BytesRefFSTEnum<>(fr.index);
+    InputOutput<BytesRef> output = indexEnum.seekFloor(target);
+    final long code =
+        fr.readVLongOutput(
+            new ByteArrayDataInput(
+                output.output.bytes, output.output.offset, output.output.length));
+    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
+    initIndexInput();
+    final long fp = in.getFilePointer();
+    in.seek(fpSeek);
+    in.prefetch(1); // TODO: could we know the length of the block?
+    in.seek(fp); // TODO: do we actually need to do this?
   }
 
   @Override

@@ -415,7 +415,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
                 + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.getKey());
-        TermState state = termStates.get(context);
+        TermState state = termStates.get(context).get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(term, state);

@@ -387,7 +387,7 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext);
+        TermState termState = termStates.get(leafReaderContext).get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;

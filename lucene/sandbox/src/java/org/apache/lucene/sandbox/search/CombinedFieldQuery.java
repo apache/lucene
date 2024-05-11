@@ -404,7 +404,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
       for (int i = 0; i < fieldTerms.length; i++) {
-        TermState state = termStates[i].get(context);
+        TermState state = termStates[i].get(context).get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(fieldTerms[i].field()).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);

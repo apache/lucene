@@ -17,7 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -119,18 +121,34 @@ public class TermQuery extends Query {
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
 
-      final TermsEnum termsEnum = getTermsEnum(context);
-      if (termsEnum == null) {
-        return null;
-      }
-      final int docFreq = termsEnum.docFreq();
+      final Supplier<TermState> stateSupplier = termStates.get(context);
 
       return new ScorerSupplier() {
 
+        private TermsEnum termsEnum;
         private boolean topLevelScoringClause = false;
+
+        private TermsEnum getTermsEnum() throws IOException {
+          if (termsEnum == null) {
+            TermState state = stateSupplier.get();
+            if (state == null) {
+              return null;
+            }
+            termsEnum = context.reader().terms(term.field()).iterator();
+            termsEnum.seekExact(term.bytes(), state);
+          }
+          return termsEnum;
+        }
 
         @Override
         public Scorer get(long leadCost) throws IOException {
+          TermsEnum termsEnum = getTermsEnum();
+          if (termsEnum == null) {
+            // nocommit: should we start allowing ScorerSupplier#get to return null?
+            return new ConstantScoreScorer(
+                TermWeight.this, 0f, scoreMode, DocIdSetIterator.empty());
+          }
+
           LeafSimScorer scorer =
               new LeafSimScorer(simScorer, context.reader(), term.field(), scoreMode.needsScores());
           if (scoreMode == ScoreMode.TOP_SCORES) {
@@ -150,7 +168,12 @@ public class TermQuery extends Query {
 
         @Override
         public long cost() {
-          return docFreq;
+          try {
+            TermsEnum te = getTermsEnum();
+            return te == null ? 0 : te.docFreq();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
         }
 
         @Override
@@ -183,7 +206,7 @@ public class TermQuery extends Query {
       assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
-      final TermState state = termStates.get(context);
+      final TermState state = termStates.get(context).get();
       if (state == null) { // term is not present in that reader
         assert termNotInReader(context.reader(), term)
             : "no termstate found but term exists in reader term=" + term;
