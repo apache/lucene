@@ -209,7 +209,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     int i = 0;
     float[] offsets = new float[floats.length];
     for (float[] f : floats) {
-      float[] v = ArrayUtil.copyOfSubArray(f, 0, f.length);
+      float[] v = ArrayUtil.copyOf(f);
       VectorUtil.l2normalize(v);
       quantized[i] = new byte[v.length];
       offsets[i] = scalarQuantizer.quantize(v, quantized[i], similarityFunction);
@@ -226,7 +226,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
         if (curDoc == -1 || curDoc >= floats.length) {
           throw new IOException("Current doc not set or too many iterations");
         }
-        float[] v = ArrayUtil.copyOfSubArray(floats[curDoc], 0, floats[curDoc].length);
+        float[] v = ArrayUtil.copyOf(floats[curDoc]);
         VectorUtil.l2normalize(v);
         return v;
       }
