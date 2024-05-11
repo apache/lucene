@@ -624,6 +624,13 @@ public final class ArrayUtil {
   }
 
   /**
+   * Copies an array into a new array.
+   */
+  public static byte[] copyOf(byte[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
+  /**
    * Copies the specified range of the given array into a new sub array.
    *
    * @param array the input array
@@ -634,6 +641,13 @@ public final class ArrayUtil {
     final byte[] copy = new byte[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /**
+   * Copies an array into a new array.
+   */
+  public static char[] copyOf(char[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -650,6 +664,13 @@ public final class ArrayUtil {
   }
 
   /**
+   * Copies an array into a new array.
+   */
+  public static short[] copyOf(short[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
+  /**
    * Copies the specified range of the given array into a new sub array.
    *
    * @param array the input array
@@ -660,6 +681,13 @@ public final class ArrayUtil {
     final short[] copy = new short[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /**
+   * Copies an array into a new array.
+   */
+  public static int[] copyOf(int[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -676,6 +704,13 @@ public final class ArrayUtil {
   }
 
   /**
+   * Copies an array into a new array.
+   */
+  public static long[] copyOf(long[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
+  /**
    * Copies the specified range of the given array into a new sub array.
    *
    * @param array the input array
@@ -686,6 +721,13 @@ public final class ArrayUtil {
     final long[] copy = new long[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /**
+   * Copies an array into a new array.
+   */
+  public static float[] copyOf(float[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -702,6 +744,13 @@ public final class ArrayUtil {
   }
 
   /**
+   * Copies an array into a new array.
+   */
+  public static double[] copyOf(double[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
+  /**
    * Copies the specified range of the given array into a new sub array.
    *
    * @param array the input array
@@ -712,6 +761,13 @@ public final class ArrayUtil {
     final double[] copy = new double[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /**
+   * Copies an array into a new array.
+   */
+  public static <T> T[] copyOf(T[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
