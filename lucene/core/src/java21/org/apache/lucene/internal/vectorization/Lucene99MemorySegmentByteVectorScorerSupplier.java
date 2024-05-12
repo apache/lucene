@@ -28,7 +28,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /** A score supplier of vectors whose element size is byte. */
-public abstract sealed class MemorySegmentByteVectorScorerSupplier
+public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     implements RandomVectorScorerSupplier {
   final int vectorByteSize;
   final int maxOrd;
@@ -55,7 +55,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     };
   }
 
-  MemorySegmentByteVectorScorerSupplier(
+  Lucene99MemorySegmentByteVectorScorerSupplier(
       MemorySegmentAccessInput input, RandomAccessVectorValues values) {
     this.input = input;
     this.values = values;
@@ -101,7 +101,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     return seg;
   }
 
-  static final class CosineSupplier extends MemorySegmentByteVectorScorerSupplier {
+  static final class CosineSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     CosineSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
       super(input, values);
@@ -126,7 +126,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  static final class DotProductSupplier extends MemorySegmentByteVectorScorerSupplier {
+  static final class DotProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     DotProductSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
       super(input, values);
@@ -153,7 +153,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  static final class EuclideanSupplier extends MemorySegmentByteVectorScorerSupplier {
+  static final class EuclideanSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     EuclideanSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
       super(input, values);
@@ -179,7 +179,7 @@ public abstract sealed class MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  static final class MaxInnerProductSupplier extends MemorySegmentByteVectorScorerSupplier {
+  static final class MaxInnerProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     MaxInnerProductSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
       super(input, values);

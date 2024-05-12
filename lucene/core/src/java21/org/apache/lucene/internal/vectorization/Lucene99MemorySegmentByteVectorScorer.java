@@ -10,7 +10,7 @@ import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
-abstract sealed class MemorySegmentByteVectorScorer
+abstract sealed class Lucene99MemorySegmentByteVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
   final int vectorByteSize;
@@ -22,7 +22,7 @@ abstract sealed class MemorySegmentByteVectorScorer
    * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
    * returned.
    */
-  public static Optional<MemorySegmentByteVectorScorer> create(
+  public static Optional<Lucene99MemorySegmentByteVectorScorer> create(
       VectorSimilarityFunction type,
       IndexInput input,
       RandomAccessVectorValues values,
@@ -41,7 +41,7 @@ abstract sealed class MemorySegmentByteVectorScorer
     };
   }
 
-  MemorySegmentByteVectorScorer(
+  Lucene99MemorySegmentByteVectorScorer(
       MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] queryVector) {
     super(values);
     this.input = input;
@@ -75,7 +75,7 @@ abstract sealed class MemorySegmentByteVectorScorer
     }
   }
 
-  static final class CosineScorer extends MemorySegmentByteVectorScorer {
+  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
     CosineScorer(MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
       super(input, values, query);
     }
@@ -88,7 +88,7 @@ abstract sealed class MemorySegmentByteVectorScorer
     }
   }
 
-  static final class DotProductScorer extends MemorySegmentByteVectorScorer {
+  static final class DotProductScorer extends Lucene99MemorySegmentByteVectorScorer {
     DotProductScorer(
         MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
       super(input, values, query);
@@ -103,7 +103,7 @@ abstract sealed class MemorySegmentByteVectorScorer
     }
   }
 
-  static final class EuclideanScorer extends MemorySegmentByteVectorScorer {
+  static final class EuclideanScorer extends Lucene99MemorySegmentByteVectorScorer {
     EuclideanScorer(MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
       super(input, values, query);
     }
@@ -116,7 +116,7 @@ abstract sealed class MemorySegmentByteVectorScorer
     }
   }
 
-  static final class MaxInnerProductScorer extends MemorySegmentByteVectorScorer {
+  static final class MaxInnerProductScorer extends Lucene99MemorySegmentByteVectorScorer {
     MaxInnerProductScorer(
         MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
       super(input, values, query);

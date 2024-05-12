@@ -38,7 +38,7 @@ public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
     // currently only supports binary vectors
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
-          MemorySegmentByteVectorScorerSupplier.create(
+          Lucene99MemorySegmentByteVectorScorerSupplier.create(
               similarityType, vectorValues.getSlice(), vectorValues);
       if (scorer.isPresent()) {
         return scorer.get();
@@ -66,7 +66,7 @@ public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
     checkDimensions(queryVector.length, vectorValues.dimension());
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
-          MemorySegmentByteVectorScorer.create(
+          Lucene99MemorySegmentByteVectorScorer.create(
               similarityType, vectorValues.getSlice(), vectorValues, queryVector);
       if (scorer.isPresent()) {
         return scorer.get();
