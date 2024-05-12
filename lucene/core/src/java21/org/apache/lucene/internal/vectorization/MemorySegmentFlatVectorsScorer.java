@@ -39,12 +39,7 @@ public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
           MemorySegmentByteVectorScorerSupplier.create(
-              vectorValues.dimension(),
-              vectorValues.size(),
-              vectorValues.getVectorByteLength(),
-              similarityType,
-              vectorValues.getSlice(),
-              vectorValues);
+              similarityType, vectorValues.getSlice(), vectorValues);
       if (scorer.isPresent()) {
         return scorer.get();
       }
@@ -64,23 +59,20 @@ public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityType, RandomAccessVectorValues vectorValues, byte[] target)
+      VectorSimilarityFunction similarityType,
+      RandomAccessVectorValues vectorValues,
+      byte[] queryVector)
       throws IOException {
-    checkDimensions(target.length, vectorValues.dimension());
+    checkDimensions(queryVector.length, vectorValues.dimension());
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
-          MemorySegmentByteVectorScorerSupplier.create(
-              vectorValues.dimension(),
-              vectorValues.size(),
-              vectorValues.getVectorByteLength(),
-              similarityType,
-              vectorValues.getSlice(),
-              vectorValues);
+          MemorySegmentByteVectorScorer.create(
+              similarityType, vectorValues.getSlice(), vectorValues, queryVector);
       if (scorer.isPresent()) {
-        return scorer.get().scorer(target);
+        return scorer.get();
       }
     }
-    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
   }
 
   static void checkDimensions(int queryLen, int fieldLen) {
