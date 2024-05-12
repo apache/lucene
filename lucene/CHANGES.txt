@@ -102,6 +102,10 @@ API Changes
   Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
   to MIGRATE.md for further details. (Sanjay Dutt)
 
+* GITHUB#13337: Introduce new `IndexInput#prefetch(long)` API to give a hint to
+  the directory about bytes that are about to be read. (Adrien Grand, Uwe
+  Schindler)
+
 New Features
 ---------------------
 
@@ -258,6 +262,9 @@ New Features
 * GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
   new Hnsw format for binary quantized vectors. (Ben Trent)
 
+* GITHUB#13181: Add new VectorScorer interface to vector value iterators. This allows for vector codecs to supply
+  simpler and more optimized vector scoring when iterating vector values directly. (Ben Trent)
+
 Improvements
 ---------------------
 
@@ -288,6 +295,8 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
 
 * GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 

@@ -31,6 +31,7 @@ import java.util.function.Function;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -84,8 +85,8 @@ public class TestVectorScorer extends LuceneTestCase {
           out.writeBytes(bytes, 0, bytes.length);
         }
         try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-          var vectorValues = vectorValues(dims, 2, in);
           for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            var vectorValues = vectorValues(dims, 2, in, sim);
             for (var ords : List.of(List.of(0, 1), List.of(1, 0))) {
               int idx0 = ords.get(0);
               int idx1 = ords.get(1);
@@ -142,9 +143,9 @@ public class TestVectorScorer extends LuceneTestCase {
       }
 
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = vectorValues(dims, size, in);
         for (int times = 0; times < TIMES; times++) {
           for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            var vectorValues = vectorValues(dims, size, in, sim);
             int idx0 = randomIntBetween(0, size - 1);
             int idx1 = randomIntBetween(0, size - 1); // may be the same as idx0 - which is ok.
 
@@ -167,10 +168,10 @@ public class TestVectorScorer extends LuceneTestCase {
 
   // TODO: add initial offset tests
 
-  static RandomAccessVectorValues vectorValues(int dims, int size, IndexInput in)
-      throws IOException {
+  RandomAccessVectorValues vectorValues(
+      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims);
+        dims, size, in.slice("byteValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
   }
 
   /** Concatenates byte arrays. */

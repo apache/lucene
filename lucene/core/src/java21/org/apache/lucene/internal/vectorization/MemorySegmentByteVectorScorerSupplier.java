@@ -27,9 +27,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-/**
- * A score supplier of vectors whose element size is byte.
- */
+/** A score supplier of vectors whose element size is byte. */
 public abstract sealed class MemorySegmentByteVectorScorerSupplier
     implements RandomVectorScorerSupplier {
   final int vectorByteSize;

@@ -21,9 +21,8 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
@@ -100,11 +99,11 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context) throws IOException {
     @SuppressWarnings("resource")
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    if (vectorValues == null) {
       return null;
     }
-    return VectorScorer.create(context, fi, target);
+    return vectorValues.scorer(target);
   }
 
   @Override

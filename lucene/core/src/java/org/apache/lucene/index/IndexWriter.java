@@ -1122,6 +1122,7 @@ public class IndexWriter
       globalFieldNumberMap = getFieldNumberMap();
       if (create == false
           && conf.getParentField() != null
+          && globalFieldNumberMap.getFieldNames().isEmpty() == false
           && globalFieldNumberMap.getFieldNames().contains(conf.getParentField()) == false) {
         throw new IllegalArgumentException(
             "can't add a parent field to an already existing index without a parent field");

@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -45,7 +46,6 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
-@LuceneTestCase.AwaitsFix(bugUrl = "")
 public class TestFlatVectorScorer extends LuceneTestCase {
 
   static volatile AtomicInteger count = new AtomicInteger();
@@ -98,12 +98,11 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = byteVectorValues(4, 3, in);
+        var vectorValues = byteVectorValues(4, 3, in, EUCLIDEAN);
         var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
 
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
-        // ensure that the creation of another scorer does not disturb previous scorers
         @SuppressWarnings("unused")
         var scorerAgainstOrd2 = ss.scorer(2);
         var scoreAgain = scorerAgainstOrd0.score(1);
@@ -113,7 +112,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
-  // Tests that the creation of another scorer does not disturb previous scorers
+  // Tests that the creation of another scorer does not perturb previous scorers
   public void testMultipleFloatScorers() throws IOException {
     float[] vec0 = new float[] {0, 0, 0, 0};
     float[] vec1 = new float[] {1, 1, 1, 1};
@@ -125,12 +124,11 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * Float.BYTES * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = floatVectorValues(4, 3, in);
+        var vectorValues = floatVectorValues(4, 3, in, EUCLIDEAN);
         var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
 
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
-        // ensure that the creation of another scorer does not disturb previous scorers
         @SuppressWarnings("unused")
         var scorerAgainstOrd2 = ss.scorer(2);
         var scoreAgain = scorerAgainstOrd0.score(1);
@@ -148,12 +146,11 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(vec0, 0, vec0.length);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = byteVectorValues(4, 1, in);
-        var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var vectorValues = byteVectorValues(4, 1, in, sim);
           expectThrows(
               IllegalArgumentException.class,
-              () -> factory.getRandomVectorScorer(sim, vectorValues, new byte[5]));
+              () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new byte[5]));
         }
       }
     }
@@ -167,27 +164,31 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0), 0, vec0.length * Float.BYTES);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = floatVectorValues(4, 1, in);
-        var factory = FlatVectorScorerUtil.newFlatVectorScorer();
         for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var vectorValues = floatVectorValues(4, 1, in, sim);
           expectThrows(
               IllegalArgumentException.class,
-              () -> factory.getRandomVectorScorer(sim, vectorValues, new float[5]));
+              () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new float[5]));
         }
       }
     }
   }
 
-  static RandomAccessVectorValues byteVectorValues(int dims, int size, IndexInput in)
-      throws IOException {
+  RandomAccessVectorValues byteVectorValues(
+      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("byteValues", 0, in.length()), dims);
+        dims, size, in.slice("byteValues", 0, in.length()), dims, flatVectorsScorer, sim);
   }
 
-  static RandomAccessVectorValues floatVectorValues(int dims, int size, IndexInput in)
-      throws IOException {
+  RandomAccessVectorValues floatVectorValues(
+      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("floatValues", 0, in.length()), dims * Float.BYTES);
+        dims,
+        size,
+        in.slice("floatValues", 0, in.length()),
+        dims * Float.BYTES,
+        flatVectorsScorer,
+        sim);
   }
 
   /** Concatenates float arrays as byte[]. */

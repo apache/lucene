@@ -48,7 +48,7 @@ public abstract class VectorizationProvider {
     try {
       vs =
           Stream.ofNullable(System.getProperty("tests.vectorsize"))
-              .filter(Predicate.not(String::isEmpty))
+              .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
     } catch (
