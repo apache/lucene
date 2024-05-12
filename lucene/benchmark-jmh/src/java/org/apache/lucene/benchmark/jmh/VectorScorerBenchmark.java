@@ -23,7 +23,9 @@ import java.nio.file.Files;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -32,6 +34,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.Throughput)
@@ -69,7 +72,7 @@ public class VectorScorerBenchmark {
       out.writeBytes(vec2, 0, vec2.length);
     }
     in = dir.openInput("vector.data", IOContext.DEFAULT);
-    vectorValues = vectorValues(size, 2, in);
+    vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
     scorer =
         FlatVectorScorerUtil.newFlatVectorScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
@@ -92,9 +95,34 @@ public class VectorScorerBenchmark {
     return scorer.score(1);
   }
 
-  static RandomAccessVectorValues vectorValues(int dims, int size, IndexInput in)
-      throws IOException {
+  static RandomAccessVectorValues vectorValues(
+      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims);
+        dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
+  }
+
+  static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {
+
+    @Override
+    public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+        VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(
+        VectorSimilarityFunction similarityFunction,
+        RandomAccessVectorValues vectorValues,
+        float[] target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(
+        VectorSimilarityFunction similarityFunction,
+        RandomAccessVectorValues vectorValues,
+        byte[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 }
