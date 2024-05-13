@@ -1559,8 +1559,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
               break;
             default:
               final int readLength =
-                  TestUtil.nextInt(
-                      random(), 1, (int) Math.min(temp.length, in.length() - offset));
+                  TestUtil.nextInt(random(), 1, (int) Math.min(temp.length, in.length() - offset));
               in.readBytes(temp, 0, readLength);
               assertArrayEquals(
                   ArrayUtil.copyOfSubArray(
