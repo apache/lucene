@@ -1023,7 +1023,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) throws IOException {
       throw new UnsupportedOperationException();
     }
   }
@@ -1096,7 +1096,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -1202,7 +1202,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) throws IOException {
       throw new UnsupportedOperationException();
     }
   }

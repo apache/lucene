@@ -431,7 +431,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      return quantizedVectorValues.vectorScorer(query);
+      return quantizedVectorValues.scorer(query);
     }
   }
 }

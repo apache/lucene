@@ -90,10 +90,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
+    VectorScorer floatVectorScorer = floatVectorValues.scorer(query);
+    if (floatVectorScorer == null) {
+      return NO_RESULTS;
+    }
 
     DiversifyingChildrenVectorScorer vectorScorer =
-        new DiversifyingChildrenVectorScorer(
-            acceptIterator, parentBitSet, floatVectorValues.scorer(query));
+        new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, floatVectorScorer);
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
