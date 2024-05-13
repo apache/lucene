@@ -282,6 +282,8 @@ API Changes
 
 * GITHUB#13145: Deprecate ByteBufferIndexInput as it will be removed in Lucene 10.0. (Uwe Schindler)
 
+* GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
+
 * GITHUB#13422: an explicit dependency on the HPPC library is removed in favor of an internal repackaged copy in
   oal.internal.hppc. If you relied on HPPC as a transitive dependency, you'll have to add it to your project explicitly.
   The HPPC classes now bundled in Lucene core are internal and will have restricted access in future releases, please do
