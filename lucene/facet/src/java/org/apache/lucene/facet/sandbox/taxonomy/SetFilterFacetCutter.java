@@ -4,8 +4,6 @@ package org.apache.lucene.facet.sandbox.taxonomy;
 import com.carrotsearch.hppc.IntSet;
 import org.apache.lucene.facet.sandbox.abstracts.FacetCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
-import org.apache.lucene.facet.sandbox.abstracts.FacetRollup;
-import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
@@ -47,8 +45,8 @@ public final class SetFilterFacetCutter implements FacetCutter {
         }
 
         @Override
-        public void advanceExact(int doc) throws IOException {
-            this.delegate.advanceExact(doc);
+        public boolean advanceExact(int doc) throws IOException {
+            return this.delegate.advanceExact(doc);
         }
 
         @Override
