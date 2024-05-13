@@ -176,7 +176,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
         values = Arrays.asList(byNumber);
       } else {
         if (!fieldNumberStrictlyAscending) {
-          // The below code is faster than Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
+          // The below code is faster than
+          // Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
           // mainly when the input FieldInfo[] is small compared to maxFieldNumber.
           Arrays.sort(infos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
         }
