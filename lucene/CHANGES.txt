@@ -359,7 +359,7 @@ Bug Fixes
 
 * GITHUB#12966: Aggregation facets no longer assume that aggregation values are positive. (Stefan Vodita)
 
-* GITHUB#13356: Ensure negative scores aren not returned from scalar quantization scorer. (Ben Trent)
+* GITHUB#13356: Ensure negative scores are not returned from scalar quantization scorer. (Ben Trent)
 
 Build
 ---------------------
