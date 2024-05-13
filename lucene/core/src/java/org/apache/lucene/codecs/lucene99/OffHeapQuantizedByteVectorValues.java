@@ -268,7 +268,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
@@ -370,7 +370,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) throws IOException {
       SparseOffHeapVectorValues copy = copy();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
@@ -457,8 +457,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public VectorScorer vectorScorer(float[] target) {
-      throw new UnsupportedOperationException();
+    public VectorScorer scorer(float[] target) {
+      return null;
     }
   }
 }

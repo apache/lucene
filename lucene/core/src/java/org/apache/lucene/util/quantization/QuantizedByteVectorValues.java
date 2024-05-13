@@ -53,5 +53,5 @@ public abstract class QuantizedByteVectorValues extends DocIdSetIterator {
    * @param query the query vector
    * @return a {@link VectorScorer} instance
    */
-  public abstract VectorScorer vectorScorer(float[] query) throws IOException;
+  public abstract VectorScorer scorer(float[] query) throws IOException;
 }
