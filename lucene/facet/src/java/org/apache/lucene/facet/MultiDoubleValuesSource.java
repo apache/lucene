@@ -119,10 +119,12 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
+  /** add doc **/
   public final PreciseMultiLongValuesSource toPreciseMultiLongValuesSource() {
     return new PreciseMultiLongValuesSource(this);
   }
 
+  /** add doc **/
   public static class PreciseMultiLongValuesSource extends MultiLongValuesSource {
 
     MultiDoubleValuesSource inner;

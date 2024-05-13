@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/** add doc **/
 public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
     ExclusiveLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
         super(field, longValuesSource, longRanges);

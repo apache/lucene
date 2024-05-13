@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
+/** add doc **/
 public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     MultiLongValuesSource valuesSource;
@@ -26,6 +28,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     // Temporary callers should ensure that passed in single values sources are wrapped
     // TODO: make a common interface for all ValueSources - Long, Double, Multi
+    /** add doc **/
     public static LongRangeFacetCutter create(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
         if (areOverlappingRanges(longRanges)) {
             return new OverlappingLongRangeFacetCutter(field, longValuesSource, longRanges);
@@ -196,12 +199,89 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     }
 
-    public record LongRangeAndPos(LongRange range, int pos) {
-    }
 
-    record InclusiveRange(long start, long end) {
-        public String toString() {
-            return start + " to " + end;
+    /** add doc **/
+    public static final class LongRangeAndPos {
+        private final LongRange range;
+        private final int pos;
+
+        /**
+         * add doc
+         * @param range TODO add doc
+         * @param pos   TODO add doc
+         */
+        public LongRangeAndPos(LongRange range, int pos) {
+            this.range = range;
+            this.pos = pos;
         }
-    }
+
+        /** add doc **/
+        public LongRange range() {
+            return range;
+        }
+
+        /** add doc **/
+        public int pos() {
+            return pos;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (LongRangeAndPos) obj;
+            return Objects.equals(this.range, that.range) &&
+                    this.pos == that.pos;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(range, pos);
+        }
+
+        @Override
+        public String toString() {
+            return "LongRangeAndPos[" +
+                    "range=" + range + ", " +
+                    "pos=" + pos + ']';
+        }
+
+        }
+
+    static final class InclusiveRange {
+        private final long start;
+        private final long end;
+
+        InclusiveRange(long start, long end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public String toString() {
+                return start + " to " + end;
+            }
+
+        public long start() {
+            return start;
+        }
+
+        public long end() {
+            return end;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (InclusiveRange) obj;
+            return this.start == that.start &&
+                    this.end == that.end;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(start, end);
+        }
+
+        }
 }

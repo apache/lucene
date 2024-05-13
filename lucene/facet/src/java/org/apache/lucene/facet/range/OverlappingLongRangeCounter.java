@@ -323,7 +323,7 @@ public class OverlappingLongRangeCounter extends LongRangeCounter {
     // through this node:
     IntArrayList outputs;
 
-    public LongRangeNode(
+    LongRangeNode(
         long start,
         long end,
         LongRangeNode left,
@@ -385,26 +385,6 @@ public class OverlappingLongRangeCounter extends LongRangeCounter {
         left.toString(sb, depth + 1);
         right.toString(sb, depth + 1);
       }
-    }
-
-    public long start() {
-      return start;
-    }
-
-    public long end() {
-      return end;
-    }
-
-    public LongRangeNode left() {
-      return left;
-    }
-
-    public LongRangeNode right() {
-      return right;
-    }
-
-    public List<Integer> outputs() {
-      return outputs;
     }
   }
 }

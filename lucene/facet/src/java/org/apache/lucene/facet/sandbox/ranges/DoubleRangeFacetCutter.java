@@ -9,6 +9,7 @@ import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
 
+/** add doc **/
 public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
     LongRangeFacetCutter longRangeFacetCutter;

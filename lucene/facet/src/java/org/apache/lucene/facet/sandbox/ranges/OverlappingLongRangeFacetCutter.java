@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** add doc **/
 public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     // Uses segment tree optimisation to find all matching ranges for a given value

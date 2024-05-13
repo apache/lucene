@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+/** add doc **/
 public abstract class RangeFacetCutter implements FacetCutter {
     // 1. Takes input - DoubleValuesSource or a LongValuesSource
     // The use case we have currently does DoubleRanges + Double Values

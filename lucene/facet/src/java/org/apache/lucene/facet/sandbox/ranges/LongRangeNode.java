@@ -6,6 +6,9 @@ import org.apache.lucene.facet.range.OverlappingLongRangeCounter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * TODO add doc
+ */
 public final class LongRangeNode {
     final LongRangeNode left;
     final LongRangeNode right;
@@ -21,6 +24,7 @@ public final class LongRangeNode {
     // through this node:
     List<Integer> outputs;
 
+    /** add doc **/
     public LongRangeNode(
             long start,
             long end,
@@ -85,22 +89,27 @@ public final class LongRangeNode {
         }
     }
 
+    /** add doc **/
     public long start() {
         return start;
     }
 
+    /** add doc **/
     public long end() {
         return end;
     }
 
+    /** add doc **/
     public LongRangeNode left() {
         return left;
     }
 
+    /** add doc **/
     public LongRangeNode right() {
         return right;
     }
 
+    /** add doc **/
     public List<Integer> outputs() {
         return outputs;
     }

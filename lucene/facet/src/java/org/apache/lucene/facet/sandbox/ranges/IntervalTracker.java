@@ -5,15 +5,21 @@ import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
 
+/** add doc **/
 public interface IntervalTracker extends OrdinalIterator {
+    /** add doc **/
     void set(int i);
 
+    /** add doc **/
     int size();
 
+    /** add doc **/
     void clear();
 
+    /** add doc **/
     boolean get(int index);
 
+    /** add doc **/
     class SingleIntervalTracker implements IntervalTracker {
 
         int tracker;
@@ -53,6 +59,7 @@ public interface IntervalTracker extends OrdinalIterator {
         }
     }
 
+    /** add doc **/
     class MultiIntervalTracker implements IntervalTracker {
 
         FixedBitSet tracker;
