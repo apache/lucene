@@ -177,6 +177,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       byte[] storedVector = values.vectorValue(vectorOrdinal);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.dotProduct(storedVector, targetBytes);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
@@ -214,6 +216,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
@@ -245,6 +249,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       byte[] storedVector = values.vectorValue(vectorOrdinal);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.int4DotProduct(storedVector, targetBytes);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
