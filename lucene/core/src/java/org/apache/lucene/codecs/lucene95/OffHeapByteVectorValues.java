@@ -376,7 +376,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public VectorScorer scorer(byte[] query) {
-      throw new UnsupportedOperationException();
+      return null;
     }
   }
 }

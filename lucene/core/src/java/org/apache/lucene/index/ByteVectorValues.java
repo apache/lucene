@@ -83,7 +83,7 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    * iteration over the scorer will not affect the iteration of this {@link ByteVectorValues}.
    *
    * @param query the query vector
-   * @return a {@link VectorScorer} instance
+   * @return a {@link VectorScorer} instance or null
    */
   public abstract VectorScorer scorer(byte[] query) throws IOException;
 }

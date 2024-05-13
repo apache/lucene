@@ -92,6 +92,9 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     }
 
     VectorScorer scorer = byteVectorValues.scorer(query);
+    if (scorer == null) {
+      return NO_RESULTS;
+    }
     DiversifyingChildrenFloatKnnVectorQuery.DiversifyingChildrenVectorScorer vectorScorer =
         new DiversifyingChildrenFloatKnnVectorQuery.DiversifyingChildrenVectorScorer(
             acceptIterator, parentBitSet, scorer);
