@@ -917,7 +917,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           payloadByteUpto = skipper.getPayloadByteUpto();
         }
         nextSkipDoc = skipper.getNextSkipDoc();
-      } else if (skipOffset >= 0) {
+      } else {
         // We don't need skip data yet, but we have evidence that advance() is used, so prefetch it
         // in the background.
         if (prefetchedSkipData == false) {
