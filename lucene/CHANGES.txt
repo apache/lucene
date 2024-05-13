@@ -109,6 +109,8 @@ Optimizations
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
 
+* GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
+
 Bug Fixes
 ---------------------
 
