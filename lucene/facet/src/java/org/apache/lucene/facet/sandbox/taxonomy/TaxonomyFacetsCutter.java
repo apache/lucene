@@ -149,9 +149,12 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
         }
 
         @Override
-        public void advanceExact(int doc) throws IOException {
-            multiValued.advanceExact(doc);
-            ordPerDoc = 0;
+        public boolean advanceExact(int doc) throws IOException {
+            if (multiValued.advanceExact(doc)) {
+                ordPerDoc = 0;
+                return true;
+            };
+            return false;
         }
     }
 }
