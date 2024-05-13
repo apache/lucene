@@ -26,6 +26,7 @@ import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SegmentCacheable;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Base class for producing {@link MultiDoubleValues}. See also {@link DoubleValuesSource} for a
@@ -116,6 +117,63 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
   /** Convert to a MultiLongValuesSource by casting the double values to longs */
   public final MultiLongValuesSource toMultiLongValuesSource() {
     return new LongDoubleValuesSource(this);
+  }
+
+  public final PreciseMultiLongValuesSource toPreciseMultiLongValuesSource() {
+    return new PreciseMultiLongValuesSource(this);
+  }
+
+  public static class PreciseMultiLongValuesSource extends MultiLongValuesSource {
+
+    MultiDoubleValuesSource inner;
+
+    PreciseMultiLongValuesSource(MultiDoubleValuesSource inner) {
+      this.inner = inner;
+    }
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return inner.isCacheable(ctx);
+    }
+
+    @Override
+    public MultiLongValues getValues(LeafReaderContext ctx) throws IOException {
+      MultiDoubleValues doubleValues = inner.getValues(ctx);
+
+      return new MultiLongValues() {
+        @Override
+        public long getValueCount() {
+          return doubleValues.getValueCount();
+        }
+
+        @Override
+        public long nextValue() throws IOException {
+          return NumericUtils.doubleToSortableLong(doubleValues.nextValue());
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return doubleValues.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(inner);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      PreciseMultiLongValuesSource that = (PreciseMultiLongValuesSource) o;
+      return Objects.equals(inner, that.inner);
+    }
+
+    @Override
+    public String toString() {
+      return "preciseMultiLong(" + inner.toString() + ")";
+    }
   }
 
   private static class FieldMultiValuedSource extends MultiDoubleValuesSource {

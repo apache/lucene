@@ -32,7 +32,7 @@ import org.apache.lucene.util.FixedBitSet;
  * intervals, although mutually-exclusive, can roll-up to the same requested range. This creates
  * some complexity with how we need to handle multi-valued documents.
  */
-class OverlappingLongRangeCounter extends LongRangeCounter {
+public class OverlappingLongRangeCounter extends LongRangeCounter {
 
   /** segment tree root node */
   private final LongRangeNode root;
@@ -350,7 +350,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     }
 
     /** Recursively assigns range outputs to each node. */
-    void addOutputs(int index, LongRange range) {
+    public void addOutputs(int index, LongRange range) {
       if (start >= range.min && end <= range.max) {
         // Our range is fully included in the incoming
         // range; add to our output list:
@@ -385,6 +385,26 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
         left.toString(sb, depth + 1);
         right.toString(sb, depth + 1);
       }
+    }
+
+    public long start() {
+      return start;
+    }
+
+    public long end() {
+      return end;
+    }
+
+    public LongRangeNode left() {
+      return left;
+    }
+
+    public LongRangeNode right() {
+      return right;
+    }
+
+    public List<Integer> outputs() {
+      return outputs;
     }
   }
 }

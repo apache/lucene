@@ -26,6 +26,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.comparators.DoubleComparator;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Base class for producing {@link DoubleValues}
@@ -115,6 +116,67 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
+  public final LongValuesSource toPreciseLongDoubleValuesSource() {
+    return new PreciseLongDoubleValuesSource(this);
+  }
+
+  private static class PreciseLongDoubleValuesSource extends LongValuesSource {
+
+    private final DoubleValuesSource inner;
+    private PreciseLongDoubleValuesSource(DoubleValuesSource inner) {
+      this.inner = inner;
+    }
+
+    @Override
+    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      DoubleValues in = inner.getValues(ctx, scores);
+
+      return new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          return NumericUtils.doubleToSortableLong(in.doubleValue());
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return in.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public boolean needsScores() {
+      return inner.needsScores();
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(inner);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      PreciseLongDoubleValuesSource that = (PreciseLongDoubleValuesSource) o;
+      return Objects.equals(inner, that.inner);
+    }
+    @Override
+    public String toString() {
+      return "preciseLong(" + inner.toString() + ")";
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      return inner.rewrite(searcher).toLongValuesSource();
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
+    }
+  }
+
   private static class LongDoubleValuesSource extends LongValuesSource {
 
     private final DoubleValuesSource inner;
@@ -169,7 +231,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return inner.rewrite(searcher).toLongValuesSource();
+      return this;
     }
   }
 

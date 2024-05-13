@@ -10,5 +10,5 @@ import java.io.IOException;
  */
 public interface FacetLeafCutter extends OrdinalIterator {
     /** advance to the next doc */
-    void advanceExact(int doc) throws IOException;
+    boolean advanceExact(int doc) throws IOException;
 }

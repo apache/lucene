@@ -38,7 +38,9 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
     @Override
     public void collect(int doc) throws IOException {
-        leafCutter.advanceExact(doc);
+        if (leafCutter.advanceExact(doc) == false) {
+            return;
+        }
         for(int curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS;) {
             leafRecorder.record(doc, curOrd);
             curOrd = leafCutter.nextOrd();
