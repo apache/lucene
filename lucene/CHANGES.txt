@@ -323,6 +323,8 @@ Optimizations
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
 
+* GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
+
 Bug Fixes
 ---------------------
 
