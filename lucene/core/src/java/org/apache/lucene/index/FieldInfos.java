@@ -33,7 +33,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.CollectionUtil;
 
 /**
