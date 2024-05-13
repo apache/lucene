@@ -102,6 +102,10 @@ API Changes
   Additionally, deprecated methods have been removed from ByteBuffersIndexInput, BooleanQuery and others. Please refer
   to MIGRATE.md for further details. (Sanjay Dutt)
 
+* GITHUB#13337: Introduce new `IndexInput#prefetch(long)` API to give a hint to
+  the directory about bytes that are about to be read. (Adrien Grand, Uwe
+  Schindler)
+
 New Features
 ---------------------
 
@@ -151,9 +155,6 @@ Optimizations
   (Peter Gromov)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
-
-* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
-  to count. (Greg Miller)
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
@@ -226,6 +227,8 @@ Other
 
 * GITHUB#13296: Convert the FieldEntry, a static nested class, into a record. (Sanjay Dutt)
 
+* GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
@@ -259,6 +262,9 @@ New Features
 * GITHUB#13288: Make HNSW and Flat storage vector formats easier to extend with new FlatVectorScorer interface. Add
   new Hnsw format for binary quantized vectors. (Ben Trent)
 
+* GITHUB#13181: Add new VectorScorer interface to vector value iterators. This allows for vector codecs to supply
+  simpler and more optimized vector scoring when iterating vector values directly. (Ben Trent)
+
 Improvements
 ---------------------
 
@@ -289,6 +295,8 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
 
 * GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 
@@ -322,6 +330,12 @@ Optimizations
 
 * GITHUB#13284: Per-field doc values and knn vectors readers now use a HashMap internally instead of
   a TreeMap. (Adrien Grand)
+
+* GITHUB#13321: Improve compressed int4 quantized vector search by utilizing SIMD inline with the decompression
+  process. (Ben Trent)
+
+* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
+  to count. (Greg Miller)
 
 * GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
 

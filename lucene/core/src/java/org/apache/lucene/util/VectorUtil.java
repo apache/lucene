@@ -179,7 +179,30 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.int4DotProduct(a, b);
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
   }
 
   /**
