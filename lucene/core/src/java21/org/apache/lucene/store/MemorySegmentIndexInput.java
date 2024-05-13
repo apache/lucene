@@ -343,7 +343,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         return;
       }
 
-      final MemorySegment prefetchSlice = curSegment.asSlice(offset, length);
+      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
       nativeAccess.madviseWillNeed(prefetchSlice);
     } catch (
         @SuppressWarnings("unused")
