@@ -393,7 +393,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // lazy init
           docIn = startDocIn.clone();
         }
-        docIn.seek(docTermStartFP);
+        seekAndPrefetch(docIn, termState);
       }
 
       doc = -1;
@@ -715,7 +715,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // lazy init
           docIn = startDocIn.clone();
         }
-        docIn.seek(docTermStartFP);
+        seekAndPrefetch(docIn, termState);
       }
       posPendingFP = posTermStartFP;
       payPendingFP = payTermStartFP;
@@ -1097,7 +1097,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.docIn = Lucene99PostingsReader.this.docIn.clone();
 
       docFreq = termState.docFreq;
-      docIn.seek(termState.docStartFP);
+      seekAndPrefetch(docIn, termState);
 
       doc = -1;
       accum = 0;
@@ -1318,7 +1318,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
-      docIn.seek(docTermStartFP);
+      seekAndPrefetch(docIn, termState);
       posPendingFP = posTermStartFP;
       posPendingCount = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
@@ -1672,7 +1672,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
-      docIn.seek(docTermStartFP);
+      seekAndPrefetch(docIn, termState);
       posPendingFP = posTermStartFP;
       payPendingFP = payTermStartFP;
       posPendingCount = 0;
@@ -2047,6 +2047,34 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public long cost() {
       return docFreq;
     }
+  }
+
+  private void seekAndPrefetch(IndexInput docIn, IntBlockTermState state) throws IOException {
+    if (docIn.getFilePointer() != state.docStartFP) {
+      // Don't prefetch if the input is already positioned at the right offset, which suggests that
+      // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
+      // logic do its work instead. Note that this heuristic doesn't work for terms that have skip
+      // data, since skip data is stored after the last term, but handling all terms that have <128
+      // docs is a good start already.
+      docIn.seek(state.docStartFP);
+      if (state.skipOffset < 0) {
+        // This postings list is very short as it doesn't have skip data, prefetch the page that
+        // holds the first byte of the postings list.
+        docIn.prefetch(1);
+      } else if (state.skipOffset <= 16_384) {
+        // This postings list is short as it fits on a few pages, prefetch it all, plus one byte to
+        // make sure to include some skip data.
+        docIn.prefetch(state.skipOffset + 1);
+      } else {
+        // Default case: prefetch the page that holds the first byte of postings as well as the page
+        // that holds the first byte of skip data.
+        docIn.prefetch(1);
+        docIn.seek(state.docStartFP + state.skipOffset);
+        docIn.prefetch(1);
+        docIn.seek(state.docStartFP);
+      }
+    }
+    // Note: we don't prefetch positions or offsets, which are less likely to be needed.
   }
 
   @Override
