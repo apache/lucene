@@ -259,6 +259,9 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         VectorScorer scorer,
         DocIdSetIterator acceptDocs,
         float threshold) {
+      if (scorer == null) {
+        return null;
+      }
       float[] cachedScore = new float[1];
       DocIdSetIterator vectorIterator = scorer.iterator();
       DocIdSetIterator conjunction =
