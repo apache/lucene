@@ -19,6 +19,7 @@ package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
 import org.apache.lucene.util.hppc.BitMixer;
+import org.apache.lucene.util.hppc.IntCursor;
 import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
@@ -94,7 +95,7 @@ final class StateSet extends IntSet {
     }
     arrayCache = new int[inner.size()];
     int i = 0;
-    for (IntIntHashMap.IntCursor cursor : inner.keys()) {
+    for (IntCursor cursor : inner.keys()) {
       arrayCache[i++] = cursor.value;
     }
     // we need to sort this array since "equals" method depend on this
@@ -114,7 +115,7 @@ final class StateSet extends IntSet {
       return hashCode;
     }
     hashCode = inner.size();
-    for (IntIntHashMap.IntCursor cursor : inner.keys()) {
+    for (IntCursor cursor : inner.keys()) {
       hashCode += BitMixer.mix(cursor.value);
     }
     hashUpdated = true;
