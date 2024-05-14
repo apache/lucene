@@ -64,6 +64,9 @@ Improvements
 * GITHUB#13202: Early terminate graph and exact searches of AbstractKnnVectorQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
+* GITHUB#12966: Move most of the responsibility from TaxonomyFacets implementations to TaxonomyFacets itself.
+  This reduces code duplication and enables future development. (Stefan Vodita)
+
 Optimizations
 ---------------------
 

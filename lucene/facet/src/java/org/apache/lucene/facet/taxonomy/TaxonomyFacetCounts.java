@@ -72,7 +72,10 @@ public class TaxonomyFacetCounts extends IntTaxonomyFacets {
       while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         ords.get(doc, scratch);
         for (int i = 0; i < scratch.length; i++) {
-          increment(scratch.ints[scratch.offset + i]);
+          int ord = scratch.ints[scratch.offset + i];
+          int count = getCount(ord) + 1;
+          setCount(ord, count);
+          setValue(ord, count);
         }
       }
     }
