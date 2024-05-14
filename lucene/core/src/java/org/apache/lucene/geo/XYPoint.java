@@ -78,7 +78,7 @@ public final class XYPoint extends XYGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("Point(");
+    sb.append("XYPoint(");
     sb.append(x);
     sb.append(",");
     sb.append(y);
