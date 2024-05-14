@@ -211,14 +211,6 @@ abstract class SpatialQuery extends Query {
     final SpatialQuery query = this;
     final SpatialVisitor spatialVisitor = getSpatialVisitor();
     return new ConstantScoreWeight(query, boost) {
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {

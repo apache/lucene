@@ -28,6 +28,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
 
@@ -100,7 +101,7 @@ public class ToChildBlockJoinQuery extends Query {
     // NOTE: acceptDocs applies (and is checked) only in the
     // child document space
     @Override
-    public Scorer scorer(LeafReaderContext readerContext) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext readerContext) throws IOException {
 
       final Scorer parentScorer = in.scorer(readerContext);
 
@@ -117,7 +118,8 @@ public class ToChildBlockJoinQuery extends Query {
         return null;
       }
 
-      return new ToChildBlockJoinScorer(this, parentScorer, parents, doScores);
+      final var scorer = new ToChildBlockJoinScorer(this, parentScorer, parents, doScores);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

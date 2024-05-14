@@ -992,7 +992,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           BitSetIterator bitSetIterator =
               new BitSetIterator(docs, docs.approximateCardinality()) {
                 @Override
@@ -1000,7 +1000,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                   throw new UnsupportedOperationException("reusing BitSet is not supported");
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

@@ -183,16 +183,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      ScorerSupplier supplier = scorerSupplier(context);
-      if (supplier == null) {
-        return null;
-      }
-      supplier.setTopLevelScoringClause();
-      return supplier.get(Long.MAX_VALUE);
-    }
-
-    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       if (weights.size()
           > AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {

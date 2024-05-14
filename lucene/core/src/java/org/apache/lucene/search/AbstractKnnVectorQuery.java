@@ -383,76 +383,78 @@ abstract class AbstractKnnVectorQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
             return null;
           }
-          return new Scorer(this) {
-            final int lower = segmentStarts[context.ord];
-            final int upper = segmentStarts[context.ord + 1];
-            int upTo = -1;
+          final var scorer =
+              new Scorer(this) {
+                final int lower = segmentStarts[context.ord];
+                final int upper = segmentStarts[context.ord + 1];
+                int upTo = -1;
 
-            @Override
-            public DocIdSetIterator iterator() {
-              return new DocIdSetIterator() {
+                @Override
+                public DocIdSetIterator iterator() {
+                  return new DocIdSetIterator() {
+                    @Override
+                    public int docID() {
+                      return docIdNoShadow();
+                    }
+
+                    @Override
+                    public int nextDoc() {
+                      if (upTo == -1) {
+                        upTo = lower;
+                      } else {
+                        ++upTo;
+                      }
+                      return docIdNoShadow();
+                    }
+
+                    @Override
+                    public int advance(int target) throws IOException {
+                      return slowAdvance(target);
+                    }
+
+                    @Override
+                    public long cost() {
+                      return upper - lower;
+                    }
+                  };
+                }
+
+                @Override
+                public float getMaxScore(int docId) {
+                  return maxScore * boost;
+                }
+
+                @Override
+                public float score() {
+                  return scores[upTo] * boost;
+                }
+
+                /**
+                 * move the implementation of docID() into a differently-named method so we can call
+                 * it from DocIDSetIterator.docID() even though this class is anonymous
+                 *
+                 * @return the current docid
+                 */
+                private int docIdNoShadow() {
+                  if (upTo == -1) {
+                    return -1;
+                  }
+                  if (upTo >= upper) {
+                    return NO_MORE_DOCS;
+                  }
+                  return docs[upTo] - context.docBase;
+                }
+
                 @Override
                 public int docID() {
                   return docIdNoShadow();
                 }
-
-                @Override
-                public int nextDoc() {
-                  if (upTo == -1) {
-                    upTo = lower;
-                  } else {
-                    ++upTo;
-                  }
-                  return docIdNoShadow();
-                }
-
-                @Override
-                public int advance(int target) throws IOException {
-                  return slowAdvance(target);
-                }
-
-                @Override
-                public long cost() {
-                  return upper - lower;
-                }
               };
-            }
-
-            @Override
-            public float getMaxScore(int docId) {
-              return maxScore * boost;
-            }
-
-            @Override
-            public float score() {
-              return scores[upTo] * boost;
-            }
-
-            /**
-             * move the implementation of docID() into a differently-named method so we can call it
-             * from DocIDSetIterator.docID() even though this class is anonymous
-             *
-             * @return the current docid
-             */
-            private int docIdNoShadow() {
-              if (upTo == -1) {
-                return -1;
-              }
-              if (upTo >= upper) {
-                return NO_MORE_DOCS;
-              }
-              return docs[upTo] - context.docBase;
-            }
-
-            @Override
-            public int docID() {
-              return docIdNoShadow();
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

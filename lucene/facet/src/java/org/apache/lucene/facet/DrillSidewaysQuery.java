@@ -34,6 +34,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /** Only purpose is to punch through and return a DrillSidewaysScorer */
@@ -152,9 +153,19 @@ class DrillSidewaysQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        // We can only run as a top scorer:
-        throw new UnsupportedOperationException();
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            // We can only run as a top scorer:
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            throw new UnsupportedOperationException();
+          }
+        };
       }
 
       @Override

@@ -28,6 +28,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
@@ -208,7 +209,8 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer scorer;
       SortedDocValues values = context.reader().getSortedDocValues(joinField);
       if (values == null) {
         return null;
@@ -218,17 +220,20 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       if (approximationScorer == null) {
         return null;
       } else if (globalOrds != null) {
-        return new OrdinalMapScorer(
-            this,
-            collector,
-            boost,
-            values,
-            approximationScorer.iterator(),
-            globalOrds.getGlobalOrds(context.ord));
+        scorer =
+            new OrdinalMapScorer(
+                this,
+                collector,
+                boost,
+                values,
+                approximationScorer.iterator(),
+                globalOrds.getGlobalOrds(context.ord));
       } else {
-        return new SegmentOrdinalScorer(
-            this, collector, values, boost, approximationScorer.iterator());
+        scorer =
+            new SegmentOrdinalScorer(
+                this, collector, values, boost, approximationScorer.iterator());
       }
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override
