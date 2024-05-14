@@ -67,6 +67,8 @@ Improvements
 * GITHUB#12966: Move most of the responsibility from TaxonomyFacets implementations to TaxonomyFacets itself.
   This reduces code duplication and enables future development. (Stefan Vodita)
 
+* GITHUB#13362: Add sub query explanations to DisjunctionMaxQuery, if the overall query didn't match. (Tim Grein)
+
 Optimizations
 ---------------------
 
