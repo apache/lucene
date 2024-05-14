@@ -213,12 +213,13 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       boolean match = false;
       double max = 0;
       double otherSum = 0;
-      List<Explanation> subs = new ArrayList<>();
+      List<Explanation> subsOnMatch = new ArrayList<>();
+      List<Explanation> subsOnNoMatch = new ArrayList<>();
       for (Weight wt : weights) {
         Explanation e = wt.explain(context, doc);
         if (e.isMatch()) {
           match = true;
-          subs.add(e);
+          subsOnMatch.add(e);
           double score = e.getValue().doubleValue();
           if (score >= max) {
             otherSum += max;
@@ -226,6 +227,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           } else {
             otherSum += score;
           }
+        } else if (match == false) {
+          subsOnNoMatch.add(e);
         }
       }
       if (match) {
@@ -234,9 +237,9 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
             tieBreakerMultiplier == 0.0f
                 ? "max of:"
                 : "max plus " + tieBreakerMultiplier + " times others of:";
-        return Explanation.match(score, desc, subs);
+        return Explanation.match(score, desc, subsOnMatch);
       } else {
-        return Explanation.noMatch("No matching clause");
+        return Explanation.noMatch("No matching clause", subsOnNoMatch);
       }
     }
   } // end of DisjunctionMaxWeight inner class
