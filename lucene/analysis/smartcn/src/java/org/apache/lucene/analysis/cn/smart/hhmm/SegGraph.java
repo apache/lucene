@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.analysis.cn.smart.hhmm;
 
+import org.apache.lucene.util.hppc.IntObjectHashMap;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Graph representing possible tokens at each start offset in the sentence.
@@ -31,7 +31,7 @@ import java.util.Map;
 class SegGraph {
 
   /** Map of start offsets to ArrayList of tokens at that position */
-  private Map<Integer, ArrayList<SegToken>> tokenListTable = new HashMap<>();
+  private IntObjectHashMap<ArrayList<SegToken>> tokenListTable = new IntObjectHashMap<>();
 
   private int maxStart = -1;
 

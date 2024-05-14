@@ -17,6 +17,8 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import org.apache.lucene.util.hppc.IntObjectHashMap;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +33,7 @@ class StandardObjects {
   static Map<Class<?>, Integer> classRegsitry = new HashMap<>();
 
   /** Registry of codes to corresponding classes */
-  static Map<Integer, Class<?>> codeRegsitry = new HashMap<>();
+  static IntObjectHashMap<Class<?>> codeRegsitry = new IntObjectHashMap<>();
 
   static {
     classRegsitry.put(GeoPoint.class, 0);
