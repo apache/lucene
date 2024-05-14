@@ -19,10 +19,15 @@ public interface IntervalTracker extends OrdinalIterator {
     /** add doc **/
     boolean get(int index);
 
+    /**TODO: add doc**/
+    void freeze();
+
     /** add doc **/
     class SingleIntervalTracker implements IntervalTracker {
 
         int tracker;
+
+        int intervalsWithHit = 0;
 
         SingleIntervalTracker() {
             tracker = NO_MORE_ORDS;
@@ -42,11 +47,19 @@ public interface IntervalTracker extends OrdinalIterator {
         @Override
         public void clear() {
             tracker = -1;
+            intervalsWithHit = 0;
         }
 
         @Override
         public boolean get(int index) {
             return index == tracker;
+        }
+
+        @Override
+        public void freeze() {
+            if (tracker != -1) {
+                intervalsWithHit = 1;
+            }
         }
 
         @Override
@@ -64,10 +77,15 @@ public interface IntervalTracker extends OrdinalIterator {
 
         FixedBitSet tracker;
         int trackerState;
+        int bitFrom;
+
+        int intervalsWithHit;
 
         MultiIntervalTracker(int size) {
             tracker = new FixedBitSet(size);
             trackerState = 0;
+            bitFrom = 0;
+            intervalsWithHit = 0;
         }
 
         @Override
@@ -83,6 +101,9 @@ public interface IntervalTracker extends OrdinalIterator {
         @Override
         public void clear() {
             tracker.clear();
+            bitFrom = 0;
+            trackerState = 0;
+            intervalsWithHit = 0;
         }
 
         @Override
@@ -91,13 +112,19 @@ public interface IntervalTracker extends OrdinalIterator {
         }
 
         @Override
+        public void freeze() {
+            intervalsWithHit = tracker.cardinality();
+        }
+
+        @Override
         public int nextOrd() throws IOException {
-            if (trackerState == tracker.length()) {
+            if (trackerState == intervalsWithHit) {
                 return NO_MORE_ORDS;
             }
-            int pos = tracker.nextSetBit(trackerState);
-            trackerState = pos;
-            return pos;
+            trackerState++;
+            int nextSetBit = tracker.nextSetBit(bitFrom);
+            bitFrom = nextSetBit + 1;
+            return nextSetBit;
         }
     }
 }

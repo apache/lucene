@@ -79,6 +79,9 @@ public class CountRecorder implements FacetRecorder, GetRank {
 
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
+        if (facetRollup == null) {
+            return;
+        }
         // Don't need to do anything now because we collect all to a sync IntIntMap
         // TODO: would that be faster to collect per leaf and then reduce?
         OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();

@@ -5,6 +5,7 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 // TODO: copy over class or change modifiers later
 
+import org.apache.lucene.facet.range.OverlappingLongRangeCounter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -130,52 +131,40 @@ public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     static class OverlappingRangeFacetLeafCutter extends LongRangeFacetLeafCutter {
 
-        boolean isSingleValued = false;
-
         LongRangeNode elementaryIntervalRoot;
+
+        private int elementaryIntervalUpto;
 
         OverlappingRangeFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount, LongRangeNode elementaryIntervalRoot) {
             super(longValues, boundaries, pos, requestedRangeCount);
-            if (longValues.getValueCount() == 1) {
-                isSingleValued = true;
-                // TODO: since we want to retrieve values per doc and we want to count an range just once per doc,
-                // for single valued docs, we can't roll up after seeing all docs, we need to roll up after processing each doc.
-                // Therefore, only one range should be counted ever
-                // should we not create the disjoint ranges and only count a range once if the doc appeared in it?
-                // like the ExclusiveRangeCounter case. Could we save the effort in roll up for this case?
-                requestedIntervalTracker = new IntervalTracker.SingleIntervalTracker();
-            } else {
-                requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
-            }
+            requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
             this.elementaryIntervalRoot = elementaryIntervalRoot;
         }
 
         @Override
         void maybeRollUp(IntervalTracker rollUpInto) {
-            rollUp(elementaryIntervalRoot, -1, rollUpInto);
+            elementaryIntervalUpto = 0;
+            rollupMultiValued(elementaryIntervalRoot);
         }
 
         // Note: combined rollUpSingleValued and rollUpMultiValued from OverlappingLongRangeCounter into 1 rollUp method
-        private int rollUp(LongRangeNode node, int elementaryIntervalUpto, IntervalTracker requestedIntervalsTracker) {
-            if (node.left() != null) {
-                elementaryIntervalUpto = rollUp(node.left(), elementaryIntervalUpto, requestedIntervalsTracker);
-                elementaryIntervalUpto = rollUp(node.right(), elementaryIntervalUpto, requestedIntervalsTracker);
+        private boolean rollupMultiValued(LongRangeNode node) {
+            boolean containedHit;
+            if (node.left != null) {
+                containedHit = rollupMultiValued(node.left);
+                containedHit |= rollupMultiValued(node.right);
             } else {
-                // Leaf
-                int intervalIndex = elementaryIntervalUpto;
-                if (intervalIndex == -1) {
-                    intervalIndex = 0;
-                }
-                 if (elementaryIntervalTracker.get(intervalIndex)) {
-                     elementaryIntervalUpto++;
-                 }
+                // Leaf:
+                containedHit = elementaryIntervalTracker.get(elementaryIntervalUpto);
+                elementaryIntervalUpto++;
             }
-            if (elementaryIntervalUpto != -1 && node.outputs() != null) {
-                for (int rangeIndex : node.outputs()) {
-                    requestedIntervalsTracker.set(rangeIndex);
+            if (containedHit && node.outputs != null) {
+                for (int rangeIndex : node.outputs) {
+                    requestedIntervalTracker.set(rangeIndex);
                 }
-            };
-            return elementaryIntervalUpto;
+            }
+
+            return containedHit;
         }
 
         @Override

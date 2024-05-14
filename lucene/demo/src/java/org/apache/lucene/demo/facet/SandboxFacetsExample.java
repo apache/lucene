@@ -22,12 +22,15 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.facet.MultiLongValuesSource;
+import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.facet.sandbox.FacetFieldCollector;
 import org.apache.lucene.facet.sandbox.FacetFieldCollectorManager;
 import org.apache.lucene.facet.sandbox.abstracts.OrdToComparable;
@@ -36,6 +39,8 @@ import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.facet.sandbox.aggregations.CountRecorder;
 import org.apache.lucene.facet.sandbox.aggregations.OrdRank;
 import org.apache.lucene.facet.sandbox.aggregations.SortOrdinalIterator;
+import org.apache.lucene.facet.sandbox.ranges.LongRangeFacetCutter;
+import org.apache.lucene.facet.sandbox.ranges.RangeOrdToLabels;
 import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyChildrenOrdinalIterator;
 import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyFacetsCutter;
 import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyOrdLabels;
@@ -83,26 +88,31 @@ public class SandboxFacetsExample {
     Document doc = new Document();
     doc.add(new FacetField("Author", "Bob"));
     doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    doc.add(new NumericDocValuesField("Price", 10));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    doc.add(new NumericDocValuesField("Price", 4));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2012", "1", "1"));
+    doc.add(new NumericDocValuesField("Price", 3));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Susan"));
     doc.add(new FacetField("Publish Date", "2012", "1", "7"));
+    doc.add(new NumericDocValuesField("Price", 8));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Frank"));
     doc.add(new FacetField("Publish Date", "1999", "5", "5"));
+    doc.add(new NumericDocValuesField("Price", 9));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     IOUtils.close(indexWriter, taxoWriter);
@@ -164,6 +174,86 @@ public class SandboxFacetsExample {
     IOUtils.close(indexReader, taxoReader);
     return results;
   }
+
+  /** User runs a query and counts facets for exclusive ranges without collecting the matching documents*/
+  List<FacetResult> exclusiveRangesCountFacetsOnly() throws IOException {
+    DirectoryReader indexReader = DirectoryReader.open(indexDir);
+    IndexSearcher searcher = new IndexSearcher(indexReader);
+
+    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("Price");
+
+    // Exclusive ranges example
+    LongRange[] inputRanges = new LongRange[2];
+    inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
+    inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
+
+    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+    CountRecorder countRecorder = new CountRecorder();
+
+    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    CountRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+
+    OrdToComparable<OrdRank> countComparable = new OrdRank.Comparable(countRecorder);
+    OrdinalIterator topByCountOrds = new SortOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
+
+    List<FacetResult> results = new ArrayList<>(2);
+
+    int[] resultOrdinals = topByCountOrds.toArray();
+    FacetLabel[] labels = ordToLabels.getLabels(resultOrdinals);
+    List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
+    for (int i = 0; i < resultOrdinals.length; i++) {
+      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+    }
+
+    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+
+    System.out.println("Computed counts");
+    IOUtils.close(indexReader);
+    return results;
+
+  }
+
+  List<FacetResult> overlappingRangesCountFacetsOnly() throws IOException {
+    DirectoryReader indexReader = DirectoryReader.open(indexDir);
+    IndexSearcher searcher = new IndexSearcher(indexReader);
+
+    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("Price");
+
+    // overlapping ranges example
+    LongRange[] inputRanges = new LongRange[2];
+    inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
+    inputRanges[1] = new LongRange("0-10", 0, true, 10, true);
+
+    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+    CountRecorder countRecorder = new CountRecorder();
+
+    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    CountRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+
+    OrdToComparable<OrdRank> countComparable = new OrdRank.Comparable(countRecorder);
+    OrdinalIterator topByCountOrds = new SortOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
+
+    List<FacetResult> results = new ArrayList<>(2);
+
+    int[] resultOrdinals = topByCountOrds.toArray();
+    FacetLabel[] labels = ordToLabels.getLabels(resultOrdinals);
+    List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
+    for (int i = 0; i < resultOrdinals.length; i++) {
+      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+    }
+
+    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+
+    System.out.println("Computed counts");
+    IOUtils.close(indexReader);
+    return results;
+
+  }
+
 
   /** User runs a query and counts facets.*/
   private List<FacetResult> facetsWithSearch() throws IOException {
@@ -375,6 +465,18 @@ public class SandboxFacetsExample {
     return drillSideways();
   }
 
+  /**TODO: add doc**/
+  public List<FacetResult> runExclusiveRangesCountFacetsOnly() throws IOException {
+    index();
+    return exclusiveRangesCountFacetsOnly();
+  }
+
+  /**TODO: add doc**/
+  public List<FacetResult> runOverlappingRangesCountFacetsOnly() throws IOException {
+    index();
+    return overlappingRangesCountFacetsOnly();
+  }
+
   /** Runs the search and drill-down examples and prints the results. */
   public static void main(String[] args) throws Exception {
     System.out.println("Facet counting example:");
@@ -397,6 +499,18 @@ public class SandboxFacetsExample {
     System.out.println("Facet drill-sideways example (Publish Date/2010):");
     System.out.println("---------------------------------------------");
     for (FacetResult result : example.runDrillSideways()) {
+      System.out.println(result);
+    }
+
+    System.out.println("Facet counting example with exclusive ranges:");
+    System.out.println("---------------------------------------------");
+    for (FacetResult result : example.runExclusiveRangesCountFacetsOnly()) {
+      System.out.println(result);
+    }
+
+    System.out.println("Facet counting example with overlapping ranges:");
+    System.out.println("---------------------------------------------");
+    for (FacetResult result : example.runOverlappingRangesCountFacetsOnly()) {
       System.out.println(result);
     }
   }

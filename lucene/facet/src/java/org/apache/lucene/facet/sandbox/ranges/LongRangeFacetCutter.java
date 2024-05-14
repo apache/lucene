@@ -129,6 +129,13 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             }
             currentDoc = doc;
 
+            if (elementaryIntervalTracker != null) {
+                elementaryIntervalTracker.clear();
+            }
+            if (requestedIntervalTracker != null) {
+                requestedIntervalTracker.clear();
+            }
+
             long numValues = multiLongValues.getValueCount();
 
             int lastIntervalSeen = -1;
@@ -151,8 +158,14 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
                 }
             }
             maybeRollUp(requestedIntervalTracker);
-            elementaryIntervalTracker.clear();
-            requestedIntervalTracker.clear();
+
+            if (elementaryIntervalTracker != null) {
+                elementaryIntervalTracker.freeze();
+            }
+            if (requestedIntervalTracker != null) {
+                requestedIntervalTracker.freeze();
+            }
+
             return true;
         }
 
@@ -185,7 +198,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
                     if (mid == lowerBound) {
                         return mid;
                     } else {
-                        hi = mid + 1;
+                        hi = mid - 1;
                     }
                 } else if (v > boundaries[mid+1]) {
                     lo = mid + 1;
