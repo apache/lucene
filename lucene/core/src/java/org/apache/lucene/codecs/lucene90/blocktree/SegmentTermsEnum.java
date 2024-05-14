@@ -328,10 +328,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 output.output.bytes, output.output.offset, output.output.length));
     final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     initIndexInput();
-    final long fp = in.getFilePointer();
-    in.seek(fpSeek);
-    in.prefetch(1); // TODO: could we know the length of the block?
-    in.seek(fp); // TODO: do we actually need to do this?
+    in.prefetch(fpSeek, 1); // TODO: could we know the length of the block?
   }
 
   @Override
