@@ -131,6 +131,6 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a float.
    */
   public float[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

@@ -128,6 +128,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a byte.
    */
   public byte[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }
