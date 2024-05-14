@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.codecs.perfield;
 
+import static org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat.FIELD_KNN_VECTOR_FORMAT;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -33,17 +32,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -153,6 +142,10 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
             reader.searchNearestVectors(
                 "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
+
+        Map<String, String> attributes = ((SegmentReader) reader).getSegmentInfo().info.getAttributes();
+        assertTrue(attributes.containsKey(FIELD_KNN_VECTOR_FORMAT + "field1"));
+        assertTrue(attributes.containsKey(FIELD_KNN_VECTOR_FORMAT + "field2"));
       }
     }
   }

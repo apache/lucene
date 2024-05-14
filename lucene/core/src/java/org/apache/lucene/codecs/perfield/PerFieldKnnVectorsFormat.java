@@ -63,6 +63,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   /** {@link FieldInfo} attribute name used to store the segment suffix name for each field. */
   public static final String PER_FIELD_SUFFIX_KEY =
       PerFieldKnnVectorsFormat.class.getSimpleName() + ".suffix";
+  static final String FIELD_KNN_VECTOR_FORMAT = "KnnVectorFormat.";
 
   /** Sole constructor. */
   protected PerFieldKnnVectorsFormat() {
@@ -214,7 +215,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
                     "missing attribute: " + PER_FIELD_SUFFIX_KEY + " for field: " + fieldName);
               }
               KnnVectorsFormat format = KnnVectorsFormat.forName(formatName);
-              readState.segmentInfo.putAttribute("KnnVectorFormat." + fieldName, format.getName());
+              readState.segmentInfo.putAttribute(FIELD_KNN_VECTOR_FORMAT + fieldName, format.getName());
               String segmentSuffix =
                   getFullSegmentSuffix(readState.segmentSuffix, getSuffix(formatName, suffix));
               if (!formats.containsKey(segmentSuffix)) {
