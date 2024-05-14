@@ -529,7 +529,8 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     assertEquals(2, explanation.getDetails().length);
   }
 
-  public void testExplainMatch_OneNonMatchingSubQuery_NotIncludedInExplanation() throws IOException {
+  public void testExplainMatch_OneNonMatchingSubQuery_NotIncludedInExplanation()
+      throws IOException {
     // Matches
     Query sub1 = tq("hed", "elephant");
 

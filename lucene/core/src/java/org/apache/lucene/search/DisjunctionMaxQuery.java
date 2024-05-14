@@ -227,7 +227,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           } else {
             otherSum += score;
           }
-        } else if(match == false){
+        } else if (match == false) {
           subsOnNoMatch.add(e);
         }
       }
