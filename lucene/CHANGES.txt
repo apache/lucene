@@ -293,6 +293,8 @@ Improvements
 * GITHUB#12966: Move most of the responsibility from TaxonomyFacets implementations to TaxonomyFacets itself.
   This reduces code duplication and enables future development. (Stefan Vodita)
 
+* GITHUB#13362: Add sub query explanations to DisjunctionMaxQuery, if the overall query didn't match. (Tim Grein)
+
 Optimizations
 ---------------------
 
@@ -337,6 +339,8 @@ Optimizations
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
 
+* GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
+
 Bug Fixes
 ---------------------
 
@@ -358,6 +362,10 @@ Bug Fixes
 * GITHUB#13206: Subtract deleted file size from the cache size of NRTCachingDirectory. (Jean-François Boeuf)
 
 * GITHUB#12966: Aggregation facets no longer assume that aggregation values are positive. (Stefan Vodita)
+
+* GITHUB#13356: Ensure negative scores are not returned from scalar quantization scorer. (Ben Trent)
+
+* GITHUB#13366: Disallow NaN and Inf values in scalar quantization and better handle extreme cases. (Ben Trent)
 
 Build
 ---------------------

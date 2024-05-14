@@ -81,7 +81,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSelector.Type;
@@ -760,22 +760,28 @@ public class TestValueSources extends LuceneTestCase {
           throws IOException {
         return new FilterWeight(in.createWeight(searcher, scoreMode, boost)) {
           @Override
-          public Scorer scorer(LeafReaderContext context) throws IOException {
-            return new FilterScorer(super.scorer(context)) {
-              int lastDocId = -1;
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+            final var subScorer = in.scorer(context);
+            if (subScorer == null) {
+              return null;
+            }
+            final var scorer =
+                new FilterScorer(subScorer) {
+                  int lastDocId = -1;
 
-              @Override
-              public float score() throws IOException {
-                assertTrue("shouldn't re-compute score", lastDocId != docID());
-                this.lastDocId = docID();
-                return super.score();
-              }
+                  @Override
+                  public float score() throws IOException {
+                    assertTrue("shouldn't re-compute score", lastDocId != docID());
+                    this.lastDocId = docID();
+                    return in.score();
+                  }
 
-              @Override
-              public float getMaxScore(int upTo) throws IOException {
-                return in.getMaxScore(upTo);
-              }
-            };
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    return in.getMaxScore(upTo);
+                  }
+                };
+            return new DefaultScorerSupplier(scorer);
           }
         };
       }

@@ -93,7 +93,7 @@ public final class Circle extends LatLonGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("CIRCLE(");
+    sb.append("Circle(");
     sb.append("[" + lat + "," + lon + "]");
     sb.append(" radius = " + radiusMeters + " meters");
     sb.append(')');

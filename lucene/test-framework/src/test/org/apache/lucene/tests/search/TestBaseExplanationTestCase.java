@@ -24,6 +24,7 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 
@@ -123,6 +124,15 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
         }
       }
       return result;
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final var scorer = in.scorer(context);
+      if (scorer == null) {
+        return null;
+      }
+      return new DefaultScorerSupplier(scorer);
     }
   }
 }
