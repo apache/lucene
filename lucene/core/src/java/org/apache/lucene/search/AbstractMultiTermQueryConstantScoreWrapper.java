@@ -212,26 +212,6 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
     }
 
     @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      final Terms terms = context.reader().terms(q.getField());
-      if (terms == null) {
-        return null;
-      }
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
-      if (weightOrIterator == null) {
-        return null;
-      } else if (weightOrIterator.weight != null) {
-        return weightOrIterator.weight.bulkScorer(context);
-      } else {
-        final Scorer scorer = scorerForIterator(weightOrIterator.iterator);
-        if (scorer == null) {
-          return null;
-        }
-        return new DefaultBulkScorer(scorer);
-      }
-    }
-
-    @Override
     public Matches matches(LeafReaderContext context, int doc) throws IOException {
       final Terms terms = context.reader().terms(q.field);
       if (terms == null) {

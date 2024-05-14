@@ -436,18 +436,6 @@ final class BooleanWeight extends Weight {
   }
 
   @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    final BulkScorer bulkScorer = booleanScorer(context);
-    if (bulkScorer != null) {
-      // bulk scoring is applicable, use it
-      return bulkScorer;
-    } else {
-      // use a Scorer-based impl (BS2)
-      return super.bulkScorer(context);
-    }
-  }
-
-  @Override
   public int count(LeafReaderContext context) throws IOException {
     final int numDocs = context.reader().numDocs();
     int positiveCount;

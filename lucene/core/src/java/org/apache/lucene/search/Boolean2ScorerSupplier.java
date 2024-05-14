@@ -25,7 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.stream.Stream;
+
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanWeight.WeightedBooleanClause;
 
 final class Boolean2ScorerSupplier extends ScorerSupplier {
 
@@ -163,6 +166,92 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
               leadCost),
           opt(subs.get(Occur.SHOULD), minShouldMatch, scoreMode, leadCost, false),
           scoreMode);
+    }
+  }
+
+  @Override
+  public BulkScorer getBulkScorer() throws IOException {
+    final BulkScorer bulkScorer = booleanScorer();
+    if (bulkScorer != null) {
+      // bulk scoring is applicable, use it
+      return bulkScorer;
+    } else {
+      // use a Scorer-based impl (BS2)
+      return super.getBulkScorer();
+    }
+  }
+
+  private BulkScorer booleanScorer() {
+    final int numOptionalClauses = subs.get(Occur.SHOULD).size();
+    final int numRequiredClauses = subs.get(Occur.MUST).size() + subs.get(Occur.FILTER).size();
+    
+    BulkScorer positiveScorer;
+    if (numRequiredClauses == 0) {
+      positiveScorer = optionalBulkScorer(context);
+      if (positiveScorer == null) {
+        return null;
+      }
+
+      // TODO: what is the right heuristic here?
+      final long costThreshold;
+      if (query.getMinimumNumberShouldMatch() <= 1) {
+        // when all clauses are optional, use BooleanScorer aggressively
+        // TODO: is there actually a threshold under which we should rather
+        // use the regular scorer?
+        costThreshold = -1;
+      } else {
+        // when a minimum number of clauses should match, BooleanScorer is
+        // going to score all windows that have at least minNrShouldMatch
+        // matches in the window. But there is no way to know if there is
+        // an intersection (all clauses might match a different doc ID and
+        // there will be no matches in the end) so we should only use
+        // BooleanScorer if matches are very dense
+        costThreshold = context.reader().maxDoc() / 3;
+      }
+
+      if (positiveScorer.cost() < costThreshold) {
+        return null;
+      }
+
+    } else if (numRequiredClauses > 0
+        && numOptionalClauses == 0
+        && query.getMinimumNumberShouldMatch() == 0) {
+      positiveScorer = requiredBulkScorer(context);
+    } else {
+      // TODO: there are some cases where BooleanScorer
+      // would handle conjunctions faster than
+      // BooleanScorer2...
+      return null;
+    }
+
+    if (positiveScorer == null) {
+      return null;
+    }
+
+    List<Scorer> prohibited = new ArrayList<>();
+    for (WeightedBooleanClause wc : weightedClauses) {
+      Weight w = wc.weight;
+      BooleanClause c = wc.clause;
+      if (c.isProhibited()) {
+        Scorer scorer = w.scorer(context);
+        if (scorer != null) {
+          prohibited.add(scorer);
+        }
+      }
+    }
+
+    if (prohibited.isEmpty()) {
+      return positiveScorer;
+    } else {
+      Scorer prohibitedScorer =
+          prohibited.size() == 1
+              ? prohibited.get(0)
+              : new DisjunctionSumScorer(this, prohibited, ScoreMode.COMPLETE_NO_SCORES);
+      if (prohibitedScorer.twoPhaseIterator() != null) {
+        // ReqExclBulkScorer can't deal efficiently with two-phased prohibited clauses
+        return null;
+      }
+      return new ReqExclBulkScorer(positiveScorer, prohibitedScorer.iterator());
     }
   }
 

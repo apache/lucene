@@ -148,20 +148,19 @@ public abstract class Weight implements SegmentCacheable {
   public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
   /**
-   * Optional method, to return a {@link BulkScorer} to score the query and send hits to a {@link
-   * Collector}. Only queries that have a different top-level approach need to override this; the
-   * default implementation pulls a normal {@link Scorer} and iterates and collects the resulting
-   * hits which are not marked as deleted.
+   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented as
+   * <pre class="prettyprint">
+   * ScorerSupplier scorerSupplier = scorerSupplier(context);
+   * if (scorerSupplier == null) {
+   *   // No docs match
+   *   return null;
+   * }
    *
-   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
-   *     {@link Scorer}.
-   * @return a {@link BulkScorer} which scores documents and passes them to a collector. Like {@link
-   *     #scorer(LeafReaderContext)}, this method can return null if this query matches no
-   *     documents.
-   * @throws IOException if there is a low-level I/O error
+   * scorerSupplier.setTopLevelScoringClause();
+   * return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
+   * </pre>
    */
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-
+  public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     ScorerSupplier scorerSupplier = scorerSupplier(context);
     if (scorerSupplier == null) {
       // No docs match
@@ -169,7 +168,6 @@ public abstract class Weight implements SegmentCacheable {
     }
 
     scorerSupplier.setTopLevelScoringClause();
-
     return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
   }
 

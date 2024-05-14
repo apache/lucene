@@ -65,16 +65,6 @@ public class IndriAndWeight extends Weight {
   }
 
   @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    Scorer scorer = getScorer(context);
-    if (scorer != null) {
-      BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
-      return bulkScorer;
-    }
-    return null;
-  }
-
-  @Override
   public boolean isCacheable(LeafReaderContext ctx) {
     for (Weight w : weights) {
       if (w.isCacheable(ctx) == false) return false;
