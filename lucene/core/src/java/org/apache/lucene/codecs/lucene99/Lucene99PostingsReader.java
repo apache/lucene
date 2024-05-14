@@ -922,6 +922,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         // in the background.
         if (prefetchedSkipData == false) {
           prefetchSkipData(docIn, docTermStartFP, skipOffset);
+          prefetchedSkipData = true;
         }
       }
       if (docBufferUpto == BLOCK_SIZE) {
