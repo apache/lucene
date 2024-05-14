@@ -23,9 +23,8 @@ import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,7 +33,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -62,11 +61,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   // used only by fieldInfo(int)
   private final FieldInfo[] byNumber;
+  private final HashMap<String, FieldInfo> byName;
 
-  private final HashMap<String, FieldInfo> byName = new HashMap<>();
-  private final Collection<FieldInfo> values; // for an unmodifiable iterator
+  /** Iterator in ascending order of field number. */
+  private final Collection<FieldInfo> values;
 
-  /** Constructs a new FieldInfos from an array of FieldInfo objects */
+  /**
+   * Constructs a new FieldInfos from an array of FieldInfo objects. The array can be used directly
+   * as the backing structure.
+   */
   public FieldInfos(FieldInfo[] infos) {
     boolean hasVectors = false;
     boolean hasPostings = false;
@@ -81,30 +84,21 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    int size = 0; // number of elements in byNumberTemp, number of used array slots
-    FieldInfo[] byNumberTemp = new FieldInfo[10]; // initial array capacity of 10
+    byName = CollectionUtil.newHashMap(infos.length);
+    int maxFieldNumber = -1;
+    boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
-      if (info.number < 0) {
+      int fieldNumber = info.number;
+      if (fieldNumber < 0) {
         throw new IllegalArgumentException(
             "illegal field number: " + info.number + " for field " + info.name);
       }
-      size = info.number >= size ? info.number + 1 : size;
-      if (info.number >= byNumberTemp.length) { // grow array
-        byNumberTemp = ArrayUtil.grow(byNumberTemp, info.number + 1);
+      if (maxFieldNumber < fieldNumber) {
+        maxFieldNumber = fieldNumber;
+      } else {
+        fieldNumberStrictlyAscending = false;
       }
-      FieldInfo previous = byNumberTemp[info.number];
-      if (previous != null) {
-        throw new IllegalArgumentException(
-            "duplicate field numbers: "
-                + previous.name
-                + " and "
-                + info.name
-                + " have: "
-                + info.number);
-      }
-      byNumberTemp[info.number] = info;
-
-      previous = byName.put(info.name, info);
+      FieldInfo previous = byName.put(info.name, info);
       if (previous != null) {
         throw new IllegalArgumentException(
             "duplicate field names: "
@@ -156,15 +150,40 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
-    List<FieldInfo> valuesTemp = new ArrayList<>(infos.length);
-    byNumber = new FieldInfo[size];
-    for (int i = 0; i < size; i++) {
-      byNumber[i] = byNumberTemp[i];
-      if (byNumberTemp[i] != null) {
-        valuesTemp.add(byNumberTemp[i]);
+    if (fieldNumberStrictlyAscending && maxFieldNumber == infos.length - 1) {
+      // The input FieldInfo[] contains all fields numbered from 0 to infos.length - 1, and they are
+      // sorted, use it directly. This is an optimization when reading a segment with all fields
+      // since the FieldInfo[] is sorted.
+      byNumber = infos;
+      values = Arrays.asList(byNumber);
+    } else {
+      byNumber = new FieldInfo[maxFieldNumber + 1];
+      for (FieldInfo fieldInfo : infos) {
+        FieldInfo existing = byNumber[fieldInfo.number];
+        if (existing != null) {
+          throw new IllegalArgumentException(
+              "duplicate field numbers: "
+                  + existing.name
+                  + " and "
+                  + fieldInfo.name
+                  + " have: "
+                  + fieldInfo.number);
+        }
+        byNumber[fieldInfo.number] = fieldInfo;
+      }
+      if (maxFieldNumber == infos.length - 1) {
+        // No fields are missing, use byNumber.
+        values = Arrays.asList(byNumber);
+      } else {
+        if (!fieldNumberStrictlyAscending) {
+          // The below code is faster than
+          // Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
+          // mainly when the input FieldInfo[] is small compared to maxFieldNumber.
+          Arrays.sort(infos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
+        }
+        values = Arrays.asList(infos);
       }
     }
-    values = Collections.unmodifiableCollection(valuesTemp);
   }
 
   /**
@@ -323,10 +342,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     if (fieldNumber < 0) {
       throw new IllegalArgumentException("Illegal field number: " + fieldNumber);
     }
-    if (fieldNumber >= byNumber.length) {
-      return null;
-    }
-    return byNumber[fieldNumber];
+    return fieldNumber >= byNumber.length ? null : byNumber[fieldNumber];
   }
 
   static final class FieldDimensions {

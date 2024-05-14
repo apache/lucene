@@ -20,10 +20,7 @@ package org.apache.lucene.util.hppc;
 import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
 
 import java.util.Arrays;
-import java.util.IllegalFormatException;
 import java.util.Iterator;
-import java.util.Locale;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -631,62 +628,6 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     }
   }
 
-  /** Simplifies the implementation of iterators a bit. Modeled loosely after Google Guava's API. */
-  public abstract static class AbstractIterator<E> implements Iterator<E> {
-    private static final int NOT_CACHED = 0;
-    private static final int CACHED = 1;
-    private static final int AT_END = 2;
-
-    /** Current iterator state. */
-    private int state = NOT_CACHED;
-
-    /** The next element to be returned from {@link #next()} if fetched. */
-    private E nextElement;
-
-    @Override
-    public boolean hasNext() {
-      if (state == NOT_CACHED) {
-        state = CACHED;
-        nextElement = fetch();
-      }
-      return state == CACHED;
-    }
-
-    @Override
-    public E next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-
-      state = NOT_CACHED;
-      return nextElement;
-    }
-
-    /** Default implementation throws {@link UnsupportedOperationException}. */
-    @Override
-    public void remove() {
-      throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Fetch next element. The implementation must return {@link #done()} when all elements have
-     * been fetched.
-     *
-     * @return Returns the next value for the iterator or chain-calls {@link #done()}.
-     */
-    protected abstract E fetch();
-
-    /**
-     * Call when done.
-     *
-     * @return Returns a unique sentinel value to indicate end-of-iteration.
-     */
-    protected final E done() {
-      state = AT_END;
-      return null;
-    }
-  }
-
   @Override
   public IntIntHashMap clone() {
     try {
@@ -947,53 +888,6 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     @Override
     public String toString() {
       return "[cursor, index: " + index + ", key: " + key + ", value: " + value + "]";
-    }
-  }
-
-  /** Forked from HPPC, holding int index and int value */
-  public final class IntCursor {
-    /**
-     * The current value's index in the container this cursor belongs to. The meaning of this index
-     * is defined by the container (usually it will be an index in the underlying storage buffer).
-     */
-    public int index;
-
-    /** The current value. */
-    public int value;
-
-    @Override
-    public String toString() {
-      return "[cursor, index: " + index + ", value: " + value + "]";
-    }
-  }
-
-  /** BufferAllocationException forked from HPPC */
-  @SuppressWarnings("serial")
-  public static class BufferAllocationException extends RuntimeException {
-    public BufferAllocationException(String message) {
-      super(message);
-    }
-
-    public BufferAllocationException(String message, Object... args) {
-      this(message, null, args);
-    }
-
-    public BufferAllocationException(String message, Throwable t, Object... args) {
-      super(formatMessage(message, t, args), t);
-    }
-
-    private static String formatMessage(String message, Throwable t, Object... args) {
-      try {
-        return String.format(Locale.ROOT, message, args);
-      } catch (IllegalFormatException e) {
-        BufferAllocationException substitute =
-            new BufferAllocationException(message + " [ILLEGAL FORMAT, ARGS SUPPRESSED]");
-        if (t != null) {
-          substitute.addSuppressed(t);
-        }
-        substitute.addSuppressed(e);
-        throw substitute;
-      }
     }
   }
 }

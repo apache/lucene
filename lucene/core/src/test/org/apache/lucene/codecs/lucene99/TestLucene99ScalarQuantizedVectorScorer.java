@@ -17,7 +17,12 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.OffHeapQuantizedByteVectorValues.compressBytes;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -32,9 +37,14 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
 
@@ -52,6 +62,95 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
             null);
       }
     };
+  }
+
+  public void testNonZeroScores() throws IOException {
+    for (int bits : new int[] {4, 7}) {
+      for (boolean compress : new boolean[] {true, false}) {
+        vectorNonZeroScoringTest(bits, compress);
+      }
+    }
+  }
+
+  private void vectorNonZeroScoringTest(int bits, boolean compress) throws IOException {
+    try (Directory dir = newDirectory()) {
+      // keep vecs `0` so dot product is `0`
+      byte[] vec1 = new byte[32];
+      byte[] vec2 = new byte[32];
+      if (compress && bits == 4) {
+        byte[] vec1Compressed = new byte[16];
+        byte[] vec2Compressed = new byte[16];
+        compressBytes(vec1, vec1Compressed);
+        compressBytes(vec2, vec2Compressed);
+        vec1 = vec1Compressed;
+        vec2 = vec2Compressed;
+      }
+      String fileName = getTestName() + "-32";
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        // large negative offset to override any query score correction and
+        // ensure negative values that need to be snapped to `0`
+        var negativeOffset = floatToByteArray(-50f);
+        byte[] bytes = concat(vec1, negativeOffset, vec2, negativeOffset);
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      ScalarQuantizer scalarQuantizer = new ScalarQuantizer(0.1f, 0.9f, (byte) bits);
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        Lucene99ScalarQuantizedVectorScorer scorer =
+            new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer());
+        RandomAccessQuantizedByteVectorValues values =
+            new RandomAccessQuantizedByteVectorValues() {
+              @Override
+              public int dimension() {
+                return 32;
+              }
+
+              @Override
+              public int getVectorByteLength() {
+                return compress && bits == 4 ? 16 : 32;
+              }
+
+              @Override
+              public int size() {
+                return 2;
+              }
+
+              @Override
+              public byte[] vectorValue(int ord) {
+                return new byte[32];
+              }
+
+              @Override
+              public float getScoreCorrectionConstant(int ord) {
+                return -50;
+              }
+
+              @Override
+              public RandomAccessQuantizedByteVectorValues copy() throws IOException {
+                return this;
+              }
+
+              @Override
+              public IndexInput getSlice() {
+                return in;
+              }
+
+              @Override
+              public ScalarQuantizer getScalarQuantizer() {
+                return scalarQuantizer;
+              }
+            };
+        float[] queryVector = new float[32];
+        for (int i = 0; i < 32; i++) {
+          queryVector[i] = i * 0.1f;
+        }
+        for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+          RandomVectorScorer randomScorer =
+              scorer.getRandomVectorScorer(function, values, queryVector);
+          assertTrue(randomScorer.score(0) >= 0f);
+          assertTrue(randomScorer.score(1) >= 0f);
+        }
+      }
+    }
   }
 
   public void testScoringCompressedInt4() throws Exception {
@@ -150,6 +249,19 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
       }
       writer.commit();
       writer.forceMerge(1);
+    }
+  }
+
+  private static byte[] floatToByteArray(float value) {
+    return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array();
+  }
+
+  private static byte[] concat(byte[]... arrays) throws IOException {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      for (var ba : arrays) {
+        baos.write(ba);
+      }
+      return baos.toByteArray();
     }
   }
 }

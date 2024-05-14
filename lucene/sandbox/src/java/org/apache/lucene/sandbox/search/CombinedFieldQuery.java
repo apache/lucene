@@ -51,6 +51,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.TermStatistics;
@@ -400,7 +401,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
       for (int i = 0; i < fieldTerms.length; i++) {
@@ -433,7 +434,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
       DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
-      return new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
+      final var scorer = new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

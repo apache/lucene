@@ -42,6 +42,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
@@ -403,8 +404,8 @@ public class TermAutomatonQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer scorer;
       // Initialize the enums; null for a given slot means that term didn't appear in this reader
       EnumAndScorer[] enums = new EnumAndScorer[idToTerm.size()];
 
@@ -426,11 +427,13 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       if (any) {
-        return new TermAutomatonScorer(
-            this, enums, anyTermID, new LeafSimScorer(stats, context.reader(), field, true));
+        scorer =
+            new TermAutomatonScorer(
+                this, enums, anyTermID, new LeafSimScorer(stats, context.reader(), field, true));
       } else {
         return null;
       }
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

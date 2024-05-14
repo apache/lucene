@@ -84,7 +84,7 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
    * iteration of this {@link FloatVectorValues}.
    *
    * @param query the query vector
-   * @return a {@link VectorScorer} instance
+   * @return a {@link VectorScorer} instance or null
    */
   public abstract VectorScorer scorer(float[] query) throws IOException;
 }

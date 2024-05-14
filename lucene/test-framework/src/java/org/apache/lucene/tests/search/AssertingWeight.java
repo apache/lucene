@@ -57,25 +57,6 @@ class AssertingWeight extends FilterWeight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    if (random.nextBoolean()) {
-      final Scorer inScorer = in.scorer(context);
-      assert inScorer == null || inScorer.docID() == -1;
-      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode, false);
-    } else {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      if (random.nextBoolean()) {
-        // Evil: make sure computing the cost has no side effects
-        scorerSupplier.cost();
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-  }
-
-  @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     final ScorerSupplier inScorerSupplier = in.scorerSupplier(context);
     if (inScorerSupplier == null) {

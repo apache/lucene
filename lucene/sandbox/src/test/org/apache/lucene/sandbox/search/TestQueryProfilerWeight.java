@@ -46,11 +46,6 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      return scorerSupplier(context).get(Long.MAX_VALUE);
-    }
-
-    @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) {
       Weight weight = this;
       return new ScorerSupplier() {
