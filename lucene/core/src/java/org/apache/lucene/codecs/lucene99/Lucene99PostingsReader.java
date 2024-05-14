@@ -2087,15 +2087,15 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       if (state.skipOffset < 0) {
         // This postings list is very short as it doesn't have skip data, prefetch the page that
         // holds the first byte of the postings list.
-        docIn.prefetch(1);
+        docIn.prefetch(state.docStartFP, 1);
       } else if (state.skipOffset <= MAX_POSTINGS_SIZE_FOR_FULL_PREFETCH) {
         // This postings list is short as it fits on a few pages, prefetch it all, plus one byte to
         // make sure to include some skip data.
-        docIn.prefetch(state.skipOffset + 1);
+        docIn.prefetch(state.docStartFP, state.skipOffset + 1);
       } else {
         // Default case: prefetch the page that holds the first byte of postings. We'll prefetch
         // skip data when we have evidence that it is used.
-        docIn.prefetch(1);
+        docIn.prefetch(state.docStartFP, 1);
       }
     }
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.
@@ -2106,10 +2106,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     if (skipOffset > MAX_POSTINGS_SIZE_FOR_FULL_PREFETCH) {
       // If skipOffset is less than this value, skip data was already prefetched when doing
       // #seekAndPrefetchPostings
-      long fp = docIn.getFilePointer();
-      docIn.seek(docStartFP + skipOffset);
-      docIn.prefetch(1);
-      docIn.seek(fp);
+      docIn.prefetch(docStartFP + skipOffset, 1);
     }
   }
 
