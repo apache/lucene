@@ -199,7 +199,8 @@ public abstract class IndexInput extends DataInput implements Closeable {
    *
    * <p>The default implementation is a no-op.
    *
+   * @param offset start offset
    * @param length the number of bytes to prefetch
    */
-  public void prefetch(long length) throws IOException {}
+  public void prefetch(long offset, long length) throws IOException {}
 }
