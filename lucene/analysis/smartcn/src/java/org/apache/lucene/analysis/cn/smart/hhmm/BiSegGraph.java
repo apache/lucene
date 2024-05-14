@@ -218,7 +218,8 @@ class BiSegGraph {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    for (IntObjectHashMap.ObjectCursor<ArrayList<SegTokenPair>> segList : tokenPairListTable.values()) {
+    for (IntObjectHashMap.ObjectCursor<ArrayList<SegTokenPair>> segList :
+        tokenPairListTable.values()) {
       for (SegTokenPair pair : segList.value) {
         sb.append(pair).append("\n");
       }
