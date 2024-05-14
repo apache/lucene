@@ -48,7 +48,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         processedQuery = query;
         break;
       case COSINE:
-        float[] queryCopy = ArrayUtil.copyOfSubArray(query, 0, query.length);
+        float[] queryCopy = ArrayUtil.copyArray(query);
         VectorUtil.l2normalize(queryCopy);
         processedQuery = queryCopy;
         break;
