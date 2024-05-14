@@ -363,6 +363,8 @@ Bug Fixes
 
 * GITHUB#13356: Ensure negative scores are not returned from scalar quantization scorer. (Ben Trent)
 
+* GITHUB#13366: Disallow NaN and Inf values in scalar quantization and better handle extreme cases. (Ben Trent)
+
 Build
 ---------------------
 
