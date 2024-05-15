@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -98,7 +97,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
-    private static final int MAX_DISJUNCTION_CLAUSE = 128;
+    private static final long MAX_DISJUNCTION_CLAUSE = 128;
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
@@ -111,7 +110,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     private long minValueAsLong = Long.MIN_VALUE;
     private long maxValueAsLong = Long.MAX_VALUE;
-    private long thresholdAsLong = -1;
+    private Long thresholdAsLong;
 
     private DocIdSetIterator competitiveIterator;
     private long leadCost = -1;
@@ -222,7 +221,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         return;
       }
 
-      if (thresholdAsLong == -1) {
+      if (thresholdAsLong == null) {
         if (dense == false) {
           competitiveIterator = getNumericDocValues(context, field);
           leadCost = Math.min(leadCost, competitiveIterator.cost());
@@ -243,10 +242,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     private void tryReduceDisjunctionClause(CompetitiveIterator iter) {
       int originalSize = iter.disis.size();
-      Predicate<DisiAndMostCompetitiveValue> isCompetitive =
-          d -> d.mostCompetitiveValue <= maxValueAsLong && d.mostCompetitiveValue >= minValueAsLong;
 
-      while (iter.disis.isEmpty() == false && isCompetitive.test(iter.disis.getFirst()) == false) {
+      while (iter.disis.isEmpty() == false
+          && iter.disis.getFirst().mostCompetitiveValue <= maxValueAsLong
+          && iter.disis.getFirst().mostCompetitiveValue >= minValueAsLong) {
         iter.disis.removeFirst();
       }
 
@@ -532,12 +531,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       private int minBlockLength() {
         // bottom value can be much more competitive than thresholdAsLong, recompute the cost.
-        int cost =
-            Math.toIntExact(
-                pointValues.estimatePointCount(
-                    new RangeVisitor(minValueAsLong, maxValueAsLong, -1)));
-        int disjunctionClause = Math.min(MAX_DISJUNCTION_CLAUSE, cost / 512 + 1);
-        return cost / disjunctionClause;
+        long cost =
+            pointValues.estimatePointCount(new RangeVisitor(minValueAsLong, maxValueAsLong, -1));
+        long disjunctionClause = Math.min(MAX_DISJUNCTION_CLAUSE, cost / 512 + 1);
+        return Math.toIntExact(cost / disjunctionClause);
       }
     }
   }
