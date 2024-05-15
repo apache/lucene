@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
@@ -282,7 +283,8 @@ public final class SynonymQuery extends Query {
       List<ImpactsEnum> impacts = new ArrayList<>();
       List<Float> termBoosts = new ArrayList<>();
       for (int i = 0; i < terms.length; i++) {
-        TermState state = termStates[i].get(context).get();
+        Supplier<TermState> supplier = termStates[i].get(context);
+        TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(terms[i].term, state);

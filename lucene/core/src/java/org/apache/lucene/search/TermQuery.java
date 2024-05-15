@@ -122,6 +122,9 @@ public class TermQuery extends Query {
               + ReaderUtil.getTopLevelContext(context);
 
       final Supplier<TermState> stateSupplier = termStates.get(context);
+      if (stateSupplier == null) {
+        return null;
+      }
 
       return new ScorerSupplier() {
 
@@ -196,7 +199,8 @@ public class TermQuery extends Query {
       assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
-      final TermState state = termStates.get(context).get();
+      final Supplier<TermState> supplier = termStates.get(context);
+      final TermState state = supplier == null ? null : supplier.get();
       if (state == null) { // term is not present in that reader
         assert termNotInReader(context.reader(), term)
             : "no termstate found but term exists in reader term=" + term;
@@ -216,11 +220,11 @@ public class TermQuery extends Query {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      TermScorer scorer = (TermScorer) scorer(context);
+      Scorer scorer = scorer(context);
       if (scorer != null) {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
-          float freq = scorer.freq();
+          float freq = ((TermScorer) scorer).freq();
           LeafSimScorer docScorer =
               new LeafSimScorer(simScorer, context.reader(), term.field(), true);
           Explanation freqExplanation =

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -387,7 +388,8 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext).get();
+        Supplier<TermState> supplier = termStates.get(leafReaderContext);
+        TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;

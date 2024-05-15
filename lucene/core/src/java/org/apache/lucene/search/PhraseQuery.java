@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
@@ -501,7 +502,8 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final TermState state = states[i].get(context).get();
+          final Supplier<TermState> supplier = states[i].get(context);
+          final TermState state = supplier == null ? null : supplier.get();
           if (state == null) {
             /* term doesnt exist in this segment */
             assert termNotInReader(reader, t) : "no termstate found but term exists in reader";

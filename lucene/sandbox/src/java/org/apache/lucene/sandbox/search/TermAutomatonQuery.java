@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
@@ -416,7 +417,8 @@ public class TermAutomatonQuery extends Query implements Accountable {
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
                 + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.getKey());
-        TermState state = termStates.get(context).get();
+        Supplier<TermState> supplier = termStates.get(context);
+        TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(term, state);

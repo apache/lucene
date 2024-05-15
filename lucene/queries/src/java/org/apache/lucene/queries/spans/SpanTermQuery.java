@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -135,7 +136,8 @@ public class SpanTermQuery extends SpanQuery {
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
 
-      final TermState state = termStates.get(context).get();
+      final Supplier<TermState> supplier = termStates.get(context);
+      final TermState state = supplier == null ? null : supplier.get();
       if (state == null) { // term is not present in that reader
         assert context.reader().docFreq(term) == 0
             : "no termstate found but term exists in reader term=" + term;

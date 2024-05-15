@@ -18,13 +18,10 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Maintains a {@link IndexReader} {@link TermState} view over {@link IndexReader} instances
@@ -99,40 +96,24 @@ public final class TermStates {
     assert context != null;
     final TermStates perReaderTermState = new TermStates(needsStats ? null : term, context);
     if (needsStats) {
-      TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-      // build the term states concurrently
-      List<Callable<TermStateInfo>> tasks = new ArrayList<>(context.leaves().size());
+      TermsEnum[] termsEnums = new TermsEnum[0];
       for (LeafReaderContext ctx : context.leaves()) {
-        tasks.add(
-            () -> {
-              TermsEnum termsEnum = loadTermsEnum(ctx, term);
-              return termsEnum == null
-                  ? null
-                  : new TermStateInfo(
-                      termsEnum.termState(),
-                      ctx.ord,
-                      termsEnum.docFreq(),
-                      termsEnum.totalTermFreq());
-            });
+        Terms terms = Terms.getTerms(ctx.reader(), term.field());
+        TermsEnum termsEnum = terms.iterator();
+        // Schedule the I/O in the terms dictionary in the background.
+        termsEnum.prepareSeekExact(term.bytes());
+        termsEnums = ArrayUtil.grow(termsEnums, ctx.ord + 1);
+        termsEnums[ctx.ord] = termsEnum;
       }
-      List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
-      for (TermStateInfo info : resultInfos) {
-        if (info != null) {
+      for (int ord = 0; ord < termsEnums.length; ++ord) {
+        TermsEnum termsEnum = termsEnums[ord];
+        if (termsEnum != null && termsEnum.seekExact(term.bytes())) {
           perReaderTermState.register(
-              info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
+              termsEnum.termState(), ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
         }
       }
     }
     return perReaderTermState;
-  }
-
-  private static TermsEnum loadTermsEnum(LeafReaderContext ctx, Term term) throws IOException {
-    final Terms terms = Terms.getTerms(ctx.reader(), term.field());
-    final TermsEnum termsEnum = terms.iterator();
-    if (termsEnum.seekExact(term.bytes())) {
-      return termsEnum;
-    }
-    return null;
   }
 
   /** Clears the {@link TermStates} internal state and removes all registered {@link TermState}s */
@@ -183,9 +164,18 @@ public final class TermStates {
    */
   public Supplier<TermState> get(LeafReaderContext ctx) throws IOException {
     assert ctx.ord >= 0 && ctx.ord < states.length;
-    if (term == null) return () -> states[ctx.ord];
+    if (term == null) {
+      if (states[ctx.ord] == null) {
+        return null;
+      } else {
+        return () -> states[ctx.ord];
+      }
+    }
     if (this.states[ctx.ord] == null) {
-      final Terms terms = Terms.getTerms(ctx.reader(), term.field());
+      final Terms terms = ctx.reader().terms(term.field());
+      if (terms == null) {
+        return null;
+      }
       final TermsEnum termsEnum = terms.iterator();
       termsEnum.prepareSeekExact(term.bytes());
       return () -> {
@@ -255,41 +245,5 @@ public final class TermStates {
     }
 
     return sb.toString();
-  }
-
-  /** Wrapper over TermState, ordinal value, term doc frequency and total term frequency */
-  private static final class TermStateInfo {
-    private final TermState state;
-    private final int ordinal;
-    private final int docFreq;
-    private final long totalTermFreq;
-
-    /** Initialize TermStateInfo */
-    public TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {
-      this.state = state;
-      this.ordinal = ordinal;
-      this.docFreq = docFreq;
-      this.totalTermFreq = totalTermFreq;
-    }
-
-    /** Get term state */
-    public TermState getState() {
-      return state;
-    }
-
-    /** Get ordinal value */
-    public int getOrdinal() {
-      return ordinal;
-    }
-
-    /** Get term doc frequency */
-    public int getDocFreq() {
-      return docFreq;
-    }
-
-    /** Get total term frequency */
-    public long getTotalTermFreq() {
-      return totalTermFreq;
-    }
   }
 }

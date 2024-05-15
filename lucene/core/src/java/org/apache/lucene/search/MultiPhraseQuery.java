@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -277,7 +278,8 @@ public class MultiPhraseQuery extends Query {
           List<PostingsEnum> postings = new ArrayList<>();
 
           for (Term term : terms) {
-            TermState termState = termStates.get(term).get(context).get();
+            Supplier<TermState> supplier = termStates.get(term).get(context);
+            TermState termState = supplier == null ? null : supplier.get();
             if (termState != null) {
               termsEnum.seekExact(term.bytes(), termState);
               postings.add(

@@ -180,7 +180,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     Query query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD) // existing term
-            .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD) // missing term
+            .add(new TermQuery(new Term("missing_field", "baz")), Occur.SHOULD) // missing term
             .build();
 
     // no scores -> term scorer
