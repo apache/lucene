@@ -144,7 +144,6 @@ public class TermQuery extends Query {
         public Scorer get(long leadCost) throws IOException {
           TermsEnum termsEnum = getTermsEnum();
           if (termsEnum == null) {
-            // nocommit: should we start allowing ScorerSupplier#get to return null?
             return new ConstantScoreScorer(
                 TermWeight.this, 0f, scoreMode, DocIdSetIterator.empty());
           }
