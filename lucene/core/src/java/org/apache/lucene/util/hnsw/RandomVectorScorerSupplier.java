@@ -31,6 +31,15 @@ public interface RandomVectorScorerSupplier {
   RandomVectorScorer scorer(int ord) throws IOException;
 
   /**
+   * Returns the score between the given nodes.
+   *
+   * @param firstOrd the ordinal of the first node to compare
+   * @param secondOrd the ordinal of the second node to compare
+   * @return the score between the first second nodes.
+   */
+  float score(int firstOrd, int secondOrd) throws IOException;
+
+  /**
    * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to
    * be used in other threads.
    */

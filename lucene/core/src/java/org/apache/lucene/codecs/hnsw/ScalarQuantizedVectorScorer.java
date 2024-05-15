@@ -166,6 +166,15 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return similarity.score(
+          values.vectorValue(firstOrd),
+          values.getScoreCorrectionConstant(firstOrd),
+          values.vectorValue(secondOrd),
+          values.getScoreCorrectionConstant(secondOrd));
+    }
+
+    @Override
     public RandomVectorScorerSupplier copy() throws IOException {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           similarity, vectorSimilarityFunction, values.copy());

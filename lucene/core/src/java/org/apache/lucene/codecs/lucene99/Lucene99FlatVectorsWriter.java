@@ -503,6 +503,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return supplier.score(firstOrd, secondOrd);
+    }
+
+    @Override
     public RandomVectorScorerSupplier copy() throws IOException {
       return supplier.copy();
     }
