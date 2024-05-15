@@ -35,7 +35,7 @@ public interface RandomVectorScorerSupplier {
    *
    * @param firstOrd the ordinal of the first node to compare
    * @param secondOrd the ordinal of the second node to compare
-   * @return the score between the first second nodes.
+   * @return the score between the first and second nodes
    */
   float score(int firstOrd, int secondOrd) throws IOException;
 
