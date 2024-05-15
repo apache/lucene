@@ -366,7 +366,7 @@ final class IndexingChain implements Accountable {
         while (perField != null) {
           if (perField.pointValuesWriter != null) {
             // We could have initialized pointValuesWriter, but failed to write even a single doc
-            if (perField.pointValuesWriter.getNumDocs() > 0) {
+            if (perField.fieldInfo.getPointDimensionCount() > 0) {
               if (pointsWriter == null) {
                 // lazy init
                 PointsFormat fmt = state.segmentInfo.getCodec().pointsFormat();
