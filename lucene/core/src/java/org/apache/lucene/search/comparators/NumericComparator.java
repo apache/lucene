@@ -244,8 +244,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       int originalSize = iter.disis.size();
 
       while (iter.disis.isEmpty() == false
-          && iter.disis.getFirst().mostCompetitiveValue <= maxValueAsLong
-          && iter.disis.getFirst().mostCompetitiveValue >= minValueAsLong) {
+          && (iter.disis.getFirst().mostCompetitiveValue > maxValueAsLong
+          || iter.disis.getFirst().mostCompetitiveValue < minValueAsLong)) {
         iter.disis.removeFirst();
       }
 
