@@ -398,15 +398,6 @@ public abstract class PointRangeQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public int count(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
 

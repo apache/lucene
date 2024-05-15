@@ -27,6 +27,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -87,12 +88,16 @@ public class RandomApproximationQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final Scorer scorer = in.scorer(context);
-      if (scorer == null) {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer scorer;
+      final var scorerSupplier = in.scorerSupplier(context);
+      if (scorerSupplier == null) {
         return null;
+      } else {
+        final var subScorer = scorerSupplier.get(Long.MAX_VALUE);
+        scorer = new RandomApproximationScorer(subScorer, new Random(random.nextLong()));
       }
-      return new RandomApproximationScorer(scorer, new Random(random.nextLong()));
+      return new DefaultScorerSupplier(scorer);
     }
   }
 
