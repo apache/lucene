@@ -25,6 +25,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
@@ -48,6 +49,9 @@ public class FieldType implements IndexableFieldType {
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+  private int tensorDegree;
+  private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
+  private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.MAX_EUCLIDEAN;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -398,6 +402,36 @@ public class FieldType implements IndexableFieldType {
   @Override
   public VectorSimilarityFunction vectorSimilarityFunction() {
     return vectorSimilarityFunction;
+  }
+
+  /** Enable tensor indexing for fixed degree tensors. Dimensions for individual vectors within
+   * the tensor can vary.
+   *
+   * @param degree Number of vectors in the tensor
+   * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all vectors
+   * @param similarity Used to compare tensors during indexing and search.
+   */
+  public void setTensorAttributes(
+      int degree, VectorEncoding encoding, TensorSimilarityFunction similarity) {
+    checkIfFrozen();
+    if (degree <= 0) {
+      throw new IllegalArgumentException("vector numDimensions must be > 0; got " + degree);
+    }
+    this.tensorDegree = degree;
+    this.tensorEncoding = Objects.requireNonNull(encoding);
+    this.tensorSimilarityFunction = Objects.requireNonNull(similarity);
+  }
+
+  public int tensorDegree() {
+    return tensorDegree;
+  }
+
+  public VectorEncoding tensorEncoding() {
+    return tensorEncoding;
+  }
+
+  public TensorSimilarityFunction tensorSimilarityFunction() {
+    return tensorSimilarityFunction;
   }
 
   /**
