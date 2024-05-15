@@ -155,12 +155,16 @@ public final class TermStates {
   }
 
   /**
-   * Returns the {@link TermState} for a leaf reader context or <code>null</code> if no {@link
-   * TermState} for the context was registered.
+   * Returns a {@link Supplier} for a {@link TermState} for the given {@link LeafReaderContext}.
+   * This may return {@code null} if some cheap checks help figure out that this term doesn't exist
+   * in this leaf. The {@link Supplier} may then also return {@code null} if the term doesn't exist.
+   *
+   * <p>Calling this method typically schedules some I/O in the background, so it is recommended to
+   * retrieve {@link Supplier}s across all required terms first before calling {@link Supplier#get}
+   * on all {@link Supplier}s so that the I/O for these terms can be performed in parallel.
    *
    * @param ctx the {@link LeafReaderContext} to get the {@link TermState} for.
-   * @return the {@link TermState} for the given readers ord or <code>null</code> if no {@link
-   *     TermState} for the reader was registered
+   * @return a Supplier for a TermState.
    */
   public Supplier<TermState> get(LeafReaderContext ctx) throws IOException {
     assert ctx.ord >= 0 && ctx.ord < states.length;
