@@ -51,16 +51,16 @@ public final class GroupVIntUtil {
     dst[offset + 3] = readLongInGroup(in, n4Minus1);
   }
 
-  private static long readLongInGroup(DataInput in, int numBytesMinus1) throws IOException {
+  private static int readLongInGroup(DataInput in, int numBytesMinus1) throws IOException {
     switch (numBytesMinus1) {
       case 0:
-        return in.readByte() & 0xFFL;
+        return in.readByte() & 0xFF;
       case 1:
-        return in.readShort() & 0xFFFFL;
+        return in.readShort() & 0xFFFF;
       case 2:
-        return (in.readShort() & 0xFFFFL) | ((in.readByte() & 0xFFL) << 16);
+        return (in.readShort() & 0xFFFF) | ((in.readByte() & 0xFF) << 16);
       default:
-        return in.readInt() & 0xFFFFFFFFL;
+        return in.readInt();
     }
   }
 
