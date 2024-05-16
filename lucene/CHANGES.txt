@@ -370,6 +370,8 @@ Bug Fixes
 * GITHUB#13369: Fix NRT opening failure when soft deletes are enabled and the document fails to index before a point
   field is written (Ben Trent)
 
+* GITHUB#13378: Fix points writing with no values (Chris Hegarty)
+
 * GITHUB#13374: Fix bug in SQ when just a single vector present (Chris Hegarty)
 
 Build
