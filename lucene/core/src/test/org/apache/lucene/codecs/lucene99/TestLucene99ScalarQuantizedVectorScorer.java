@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.OffHeapQuantizedByteVectorValues.compressBytes;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -255,40 +254,41 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
     }
   }
 
-  private static byte[] floatToByteArray(float value) {
-    return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array();
+  public void testSingleVectorPerSegmentCosine() throws IOException {
+    testSingleVectorPerSegment(VectorSimilarityFunction.COSINE);
   }
 
-  private static byte[] concat(byte[]... arrays) throws IOException {
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      for (var ba : arrays) {
-        baos.write(ba);
-      }
-      return baos.toByteArray();
-    }
+  public void testSingleVectorPerSegmentDot() throws IOException {
+    testSingleVectorPerSegment(VectorSimilarityFunction.DOT_PRODUCT);
   }
 
-  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 1000)
-  public void testSingleVectorPerSegment() throws IOException {
+  public void testSingleVectorPerSegmentEuclidean() throws IOException {
+    testSingleVectorPerSegment(VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  public void testSingleVectorPerSegmentMIP() throws IOException {
+    testSingleVectorPerSegment(VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+  }
+
+  private void testSingleVectorPerSegment(VectorSimilarityFunction sim) throws IOException {
+    var codec = getCodec(7, false);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter writer =
-          new IndexWriter(dir, new IndexWriterConfig().setCodec(getCodec(7, false)))) {
+      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig().setCodec(codec))) {
         Document doc2 = new Document();
-        doc2.add(new KnnFloatVectorField("field", new float[] {0.8f, 0.6f}, DOT_PRODUCT));
+        doc2.add(new KnnFloatVectorField("field", new float[] {0.8f, 0.6f}, sim));
         doc2.add(newTextField("id", "A", Field.Store.YES));
         writer.addDocument(doc2);
         writer.commit();
 
         Document doc1 = new Document();
-        doc1.add(new KnnFloatVectorField("field", new float[] {0.6f, 0.8f}, DOT_PRODUCT));
+        doc1.add(new KnnFloatVectorField("field", new float[] {0.6f, 0.8f}, sim));
         doc1.add(newTextField("id", "B", Field.Store.YES));
         writer.addDocument(doc1);
         writer.commit();
 
         Document doc3 = new Document();
-        doc3.add(new KnnFloatVectorField("field", new float[] {-0.6f, -0.8f}, DOT_PRODUCT));
+        doc3.add(new KnnFloatVectorField("field", new float[] {-0.6f, -0.8f}, sim));
         doc3.add(newTextField("id", "C", Field.Store.YES));
-
         writer.addDocument(doc3);
         writer.commit();
 
@@ -304,6 +304,19 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         assertEquals("A", storedFields.document(hits.scoreDocs[1].doc).get("id"));
         assertEquals("C", storedFields.document(hits.scoreDocs[2].doc).get("id"));
       }
+    }
+  }
+
+  private static byte[] floatToByteArray(float value) {
+    return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array();
+  }
+
+  private static byte[] concat(byte[]... arrays) throws IOException {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      for (var ba : arrays) {
+        baos.write(ba);
+      }
+      return baos.toByteArray();
     }
   }
 }
