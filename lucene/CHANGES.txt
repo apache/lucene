@@ -372,6 +372,8 @@ Bug Fixes
 
 * GITHUB#13378: Fix points writing with no values (Chris Hegarty)
 
+* GITHUB#13374: Fix bug in SQ when just a single vector present in a segment (Chris Hegarty)
+
 Build
 ---------------------
 
