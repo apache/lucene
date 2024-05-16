@@ -2338,6 +2338,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     LeafReader onlyReader = getOnlyLeafReader(r);
     // we mark the failed doc as deleted
     assertEquals(onlyReader.numDeletedDocs(), 1);
+    // there are not points values (rather than an empty set of values)
+    assertNull(onlyReader.getPointValues("field"));
     onlyReader.close();
     w.close();
     dir.close();
