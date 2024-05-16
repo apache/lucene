@@ -373,7 +373,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
       // Group vInt encode the remaining doc deltas and freqs:
       if (writeFreqs) {
         for (int i = 0; i < docBufferUpto; i++) {
-          docDeltaBuffer[i] = (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
+          docDeltaBuffer[i] = (int) (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
         }
       }
       docOut.writeGroupVInts(docDeltaBuffer, docBufferUpto);
