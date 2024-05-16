@@ -153,14 +153,14 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     if (indexHasFreq && decodeFreq) {
       for (int i = 0; i < num; ++i) {
         freqBuffer[i] = docBuffer[i] & 0x01;
-        docBuffer[i] >>= 1;
+        docBuffer[i] = (int) docBuffer[i] >>> 1;
         if (freqBuffer[i] == 0) {
           freqBuffer[i] = docIn.readVInt();
         }
       }
     } else if (indexHasFreq) {
       for (int i = 0; i < num; ++i) {
-        docBuffer[i] >>= 1;
+        docBuffer[i] = (int) docBuffer[i] >>> 1;
       }
     }
   }
