@@ -513,6 +513,10 @@ public class BKDWriter implements Closeable {
 
     pointCount = values.size();
 
+    if (pointCount == 0) {
+      return null;
+    }
+
     final int numLeaves =
         Math.toIntExact((pointCount + config.maxPointsInLeafNode - 1) / config.maxPointsInLeafNode);
     final int numSplits = numLeaves - 1;
