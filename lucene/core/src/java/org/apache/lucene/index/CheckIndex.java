@@ -3754,6 +3754,7 @@ public final class CheckIndex implements Closeable {
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
                 final boolean hasProx = terms.hasOffsets() || terms.hasPositions();
+                int seekExactCounter = 0;
                 BytesRef term;
                 while ((term = termsEnum.next()) != null) {
 
@@ -3761,6 +3762,9 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
+                  if ((seekExactCounter++ & 0xFF) == 0) {
+                    postingsTermsEnum.prepareSeekExact(term);
+                  }
                   if (postingsTermsEnum.seekExact(term) == false) {
                     throw new CheckIndexException(
                         "vector term="
