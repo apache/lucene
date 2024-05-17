@@ -328,9 +328,12 @@ public abstract class DataOutput {
   /**
    * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
    * values that are not enough for a group. we need a long[] because this is what postings are
-   * using, all longs are actually required to be integers.
+   * using, all longs are actually required to be integers. Negative numbers are supported, but
+   * should be avoided.
    *
-   * @param values the values to write
+   * @param values the values to write. Note: if original integer is negative, it should also be
+   *     negative as long, not positive which is greater than Integer.MAX_VALUE, that will cause
+   *     integer overflow exception in {@link Math#toIntExact(long)}.
    * @param limit the number of values to write.
    * @lucene.experimental
    */

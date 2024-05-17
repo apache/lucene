@@ -367,6 +367,8 @@ Bug Fixes
 
 * GITHUB#13366: Disallow NaN and Inf values in scalar quantization and better handle extreme cases. (Ben Trent)
 
+* GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
+
 Build
 ---------------------
 
