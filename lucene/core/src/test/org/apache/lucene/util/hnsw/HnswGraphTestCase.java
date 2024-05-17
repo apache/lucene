@@ -286,7 +286,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> vectors = vectorValues(nDoc, dim);
 
     int M = random().nextInt(10) + 5;
-    int beamWidth = random().nextInt(10) + 5;
+    int beamWidth = random().nextInt(10) + 10;
     VectorSimilarityFunction similarityFunction =
         RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     long seed = random().nextLong();
