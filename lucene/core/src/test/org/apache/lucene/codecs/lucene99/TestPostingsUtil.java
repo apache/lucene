@@ -27,20 +27,21 @@ public class TestPostingsUtil extends LuceneTestCase {
 
   // checks for bug described in https://github.com/apache/lucene/issues/13373
   public void testIntegerOverflow() throws IOException {
-    final long[] docDeltaBuffer = new long[ForUtil.BLOCK_SIZE];
-    final long[] freqBuffer = new long[ForUtil.BLOCK_SIZE];
+    final int size = random().nextInt(1, ForUtil.BLOCK_SIZE);
+    final long[] docDeltaBuffer = new long[size];
+    final long[] freqBuffer = new long[size];
 
     final int delta = 1 << 30;
     docDeltaBuffer[0] = delta;
     try (Directory dir = newDirectory()) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         // In old implementation, this would cause integer overflow exception.
-        PostingsUtil.writeVIntBlock(out, docDeltaBuffer, freqBuffer, ForUtil.BLOCK_SIZE, true);
+        PostingsUtil.writeVIntBlock(out, docDeltaBuffer, freqBuffer, size, true);
       }
-      long[] restoredDocs = new long[ForUtil.BLOCK_SIZE];
-      long[] restoredFreqs = new long[ForUtil.BLOCK_SIZE];
+      long[] restoredDocs = new long[size];
+      long[] restoredFreqs = new long[size];
       try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
-        PostingsUtil.readVIntBlock(in, restoredDocs, restoredFreqs, ForUtil.BLOCK_SIZE, true, true);
+        PostingsUtil.readVIntBlock(in, restoredDocs, restoredFreqs, size, true, true);
       }
       assertEquals(delta, restoredDocs[0]);
     }

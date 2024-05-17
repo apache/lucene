@@ -1468,27 +1468,29 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testGroupVIntOverflow() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
       final int v = 1 << 30;
-      final long[] values = new long[16];
-      final long[] restore = new long[16];
+      final int size = 32;
+      final long[] values = new long[size];
+      final long[] restore = new long[size];
       values[0] = v;
       values[0] <<= 1; // values[0] = 2147483648 as long, but as int it is -2147483648
 
-      // test default implementation of readGroupVInts
-      try (IndexOutput out = dir.createOutput("default", IOContext.DEFAULT)) {
-        out.writeGroupVInts(values, 4);
-      }
-      try (IndexInput in = dir.openInput("default", IOContext.DEFAULT)) {
-        in.readGroupVInts(restore, 4);
-        assertArrayEquals(values, restore);
+      for (int i = 0; i < size; i++) {
+        if (random().nextBoolean()) {
+          values[i] = values[0];
+        }
       }
 
-      // test faster implementation of readGroupVInts
-      IndexOutput out = dir.createOutput("faster", IOContext.DEFAULT);
-      out.writeGroupVInts(values, 16);
+      // a smaller limit value cover default implementation of readGroupVInts
+      // and a bigger limit value cover the faster implementation.
+      final int limit = random().nextInt(1, size);
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeGroupVInts(values, limit);
       out.close();
-      try (IndexInput in = dir.openInput("faster", IOContext.DEFAULT)) {
-        in.readGroupVInts(restore, 16);
-        assertArrayEquals(values, restore);
+      try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
+        in.readGroupVInts(restore, limit);
+        for (int i = 0; i < limit; i++) {
+          assertEquals(values[i], restore[i]);
+        }
       }
 
       values[0] = 0xFFFFFFFFL + 1;
