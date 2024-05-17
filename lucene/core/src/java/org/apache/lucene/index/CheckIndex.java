@@ -1976,6 +1976,17 @@ public final class CheckIndex implements Closeable {
           }
         }
 
+        // Check peekNextNonMatchingDocID returns valid result
+        int postingsEnum = PostingsEnum.NONE;
+        if (hasFreqs) {
+          postingsEnum = PostingsEnum.FREQS;
+        }
+        if (hasPositions) {
+          postingsEnum = PostingsEnum.ALL;
+        }
+        postings = termsEnum.postings(postings, postingsEnum);
+        checkPeekNextNonMatchingDocID(postings);
+
         // Checking score blocks is heavy, we only do it on long postings lists, on every 1024th
         // term or if slow checks are enabled.
         if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS
@@ -2109,6 +2120,9 @@ public final class CheckIndex implements Closeable {
                       + maxFreq);
             }
           }
+
+          impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+          checkPeekNextNonMatchingDocID(impactsEnum);
         }
       }
 
@@ -2371,6 +2385,42 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  private static void checkPeekNextNonMatchingDocID(DocIdSetIterator disi) throws IOException {
+    int lastNextNonMatchingDocID;
+    int lastDocId;
+    while (true) {
+      int nextNonMatchingDocID = disi.peekNextNonMatchingDocID();
+
+      if (nextNonMatchingDocID <= disi.docID()) {
+        throw new CheckIndexException(
+            "Next non matching doc "
+                + nextNonMatchingDocID
+                + " should be larger than current doc "
+                + disi.docID());
+      }
+
+      lastDocId = disi.docID();
+      lastNextNonMatchingDocID = nextNonMatchingDocID;
+      disi.nextDoc();
+
+      if (disi.docID() == NO_MORE_DOCS) {
+        break;
+      }
+
+      if (lastDocId + 1 < disi.docID() && lastDocId + 1 != lastNextNonMatchingDocID) {
+        throw new CheckIndexException(
+            "Invalid lastNextNonMatchingDocId. There is a gap between last doc "
+                + lastDocId
+                + " and next doc "
+                + disi.docID()
+                + ". lastNextNonMatchingDocID should have been "
+                + (lastDocId + 1)
+                + ", but got "
+                + lastNextNonMatchingDocID);
+      }
+    }
   }
 
   private static void checkTermsIntersect(Terms terms, Automaton automaton, BytesRef startTerm)
