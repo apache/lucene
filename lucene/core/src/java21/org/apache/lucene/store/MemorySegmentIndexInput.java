@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
 /**
@@ -57,6 +58,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
+  int consecutivePrefetchHitCount;
 
   public static MemorySegmentIndexInput newInstance(
       String resourceDescription,
@@ -318,6 +320,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     Objects.checkFromIndexSize(offset, length, length());
 
+    if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
+      // We've had enough consecutive hits on the page cache that this number is neither zero nor a
+      // power of two. There is a good chance that a good chunk of this index input is cached in
+      // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
+      // on the next power of two of the counter.
+      return;
+    }
+
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
@@ -344,7 +354,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       }
 
       final MemorySegment prefetchSlice = segment.asSlice(offset, length);
-      nativeAccess.madviseWillNeed(prefetchSlice);
+      if (nativeAccess.mincore(prefetchSlice) == false) {
+        // We have a cache miss on at least one page, let's reset the counter.
+        consecutivePrefetchHitCount = 0;
+        nativeAccess.madviseWillNeed(prefetchSlice);
+      }
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {

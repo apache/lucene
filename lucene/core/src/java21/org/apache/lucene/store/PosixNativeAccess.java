@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
@@ -50,6 +51,7 @@ final class PosixNativeAccess extends NativeAccess {
   public static final int POSIX_MADV_DONTNEED = 4;
 
   private static final MethodHandle MH$posix_madvise;
+  private static final MethodHandle MH$mincore;
   private static final int PAGE_SIZE;
 
   private static final Optional<NativeAccess> INSTANCE;
@@ -64,10 +66,14 @@ final class PosixNativeAccess extends NativeAccess {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
     MethodHandle adviseHandle = null;
+    MethodHandle mincoreHandle = null;
     int pagesize = -1;
     PosixNativeAccess instance = null;
     try {
       adviseHandle = lookupMadvise(linker, stdlib);
+      // TODO: is mincore available on all systems where we need it? Do we need to handle the case
+      // when it's missing?
+      mincoreHandle = lookupMincore(linker, stdlib);
       pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
@@ -88,6 +94,7 @@ final class PosixNativeAccess extends NativeAccess {
       throw new AssertionError(e);
     }
     MH$posix_madvise = adviseHandle;
+    MH$mincore = mincoreHandle;
     PAGE_SIZE = pagesize;
     INSTANCE = Optional.ofNullable(instance);
   }
@@ -102,6 +109,15 @@ final class PosixNativeAccess extends NativeAccess {
             ValueLayout.ADDRESS,
             ValueLayout.JAVA_LONG,
             ValueLayout.JAVA_INT));
+  }
+
+  private static MethodHandle lookupMincore(Linker linker, SymbolLookup stdlib) {
+    return findFunction(
+        linker,
+        stdlib,
+        "mincore",
+        FunctionDescriptor.of(
+            ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
   }
 
   private static MethodHandle lookupGetPageSize(Linker linker, SymbolLookup stdlib) {
@@ -163,6 +179,44 @@ final class PosixNativeAccess extends NativeAccess {
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
       case RANDOM_PRELOAD -> null;
     };
+  }
+
+  @Override
+  public boolean mincore(MemorySegment segment) throws IOException {
+    final long numPages = (segment.byteSize() + getPageSize() - 1) / getPageSize();
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment vec = arena.allocate(numPages);
+      mincore(segment, vec);
+      for (long i = 0; i < numPages; ++i) {
+        byte b = vec.get(ValueLayout.JAVA_BYTE, i);
+        if (b == 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
+  private static void mincore(MemorySegment segment, MemorySegment vec) throws IOException {
+    if (segment.byteSize() == 0L) {
+      return; // empty segments should be excluded, because they may have no address at all
+    }
+    final int ret;
+    try {
+      ret = (int) MH$mincore.invokeExact(segment, segment.byteSize(), vec);
+    } catch (Throwable th) {
+      throw new AssertionError(th);
+    }
+    if (ret != 0) {
+      throw new IOException(
+          String.format(
+              Locale.ENGLISH,
+              "Call to mincore with address=0x%08X, byteSize=%d and vec.byteSize=%d failed with return code %d.",
+              segment.address(),
+              segment.byteSize(),
+              vec.byteSize(),
+              ret));
+    }
   }
 
   @Override
