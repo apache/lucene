@@ -1486,6 +1486,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
       // use more iterations to covers all bpv
       doTestGroupVInt(dir, atLeast(100), 0, 1, 31, 128);
+      // test with negative
       doTestGroupVInt(dir, 5, Integer.MIN_VALUE, 31, 31, 128);
 
       // we use BaseChunkedDirectoryTestCase#testGroupVIntMultiBlocks cover multiple blocks for
