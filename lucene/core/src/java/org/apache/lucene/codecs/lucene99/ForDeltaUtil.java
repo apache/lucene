@@ -55,24 +55,39 @@ public class ForDeltaUtil {
     if (longs[0] == 1 && PForUtil.allEqual(longs)) { // happens with very dense postings
       out.writeByte((byte) 0);
     } else {
-      long or = 0;
+      long or = 0, sum = 1;
       for (long l : longs) {
         or |= l;
+        sum += l;
+        // TODO: check for overflow? These are deltas, it really should not overflow?
+        assert sum < Integer.MAX_VALUE;
       }
       assert or != 0;
       final int bitsPerValue = PackedInts.bitsRequired(or);
-      out.writeByte((byte) bitsPerValue);
-      forUtil.encode(longs, bitsPerValue, out);
+      // TODO: tune me
+      if (longs.length * bitsPerValue >= (int) sum && sum <= 31 * Long.BYTES) {
+        //
+        // sum = bits required in dense bitset;
+        // len (block_size=128) * bitsPerValue = number of bits required in packed encoding
+        DenseUtil.encodeDeltas(longs, (int) sum, out);
+      } else {
+        out.writeByte((byte) bitsPerValue);
+        forUtil.encode(longs, bitsPerValue, out);
+      }
     }
   }
 
   /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  void decodeAndPrefixSum(DataInput in, long base, long[] longs) throws IOException {
+  int decodeAndPrefixSum(DataInput in, long base, long[] longs, PostingBits denseDocs)
+      throws IOException {
     final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
     if (bitsPerValue == 0) {
       prefixSumOfOnes(longs, base);
+    } else if ((bitsPerValue & 0x80) != 0) {
+      DenseUtil.readBlock(bitsPerValue & 0x7f, in, denseDocs);
     } else {
       forUtil.decodeAndPrefixSum(bitsPerValue, in, base, longs);
     }
+    return bitsPerValue;
   }
 }

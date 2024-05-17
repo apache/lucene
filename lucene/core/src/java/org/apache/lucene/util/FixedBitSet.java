@@ -533,6 +533,34 @@ public final class FixedBitSet extends BitSet {
     bits[endWord] |= endmask;
   }
 
+  /**
+   * @param startIndex low end of the range, inclusive
+   * @param endIndex high end of the range, exclusive
+   * @return the number of set (1) bits in the given range
+   */
+  public int count(int startIndex, int endIndex) {
+    assert startIndex >= 0 && startIndex < numBits
+        : "startIndex=" + startIndex + ", numBits=" + numBits;
+    assert endIndex >= 0 && endIndex <= numBits : "endIndex=" + endIndex + ", numBits=" + numBits;
+    if (endIndex <= startIndex) {
+      return 0;
+    }
+    int startWord = startIndex >> 6;
+    int endWord = (endIndex - 1) >> 6;
+
+    long startmask = -1L << startIndex;
+    long endmask = -1L >>> -endIndex;
+
+    if (startWord == endWord) {
+      return Long.bitCount(bits[startWord] & startmask & endmask);
+    }
+    int total = Long.bitCount(bits[startWord] & startmask) + Long.bitCount(bits[endWord] & endmask);
+    for (int word = startWord + 1; word < endWord; word++) {
+      total += Long.bitCount(bits[word]);
+    }
+    return total;
+  }
+
   @Override
   public void clear(int startIndex, int endIndex) {
     assert startIndex >= 0 && startIndex < numBits
