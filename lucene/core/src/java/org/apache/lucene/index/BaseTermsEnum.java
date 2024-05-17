@@ -59,6 +59,11 @@ public abstract class BaseTermsEnum extends TermsEnum {
   }
 
   @Override
+  public void prepareSeekExact(BytesRef text) throws IOException {
+    // no-op by default
+  }
+
+  @Override
   public void seekExact(BytesRef term, TermState state) throws IOException {
     if (!seekExact(term)) {
       throw new IllegalArgumentException("term=" + term + " does not exist");

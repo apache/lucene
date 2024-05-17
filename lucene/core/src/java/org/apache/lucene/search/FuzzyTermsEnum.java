@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.function.Supplier;
+import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -39,7 +40,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * <p>Term enumerations are always ordered by {@link BytesRef#compareTo}. Each term in the
  * enumeration is greater than all that precede it.
  */
-public final class FuzzyTermsEnum extends TermsEnum {
+public final class FuzzyTermsEnum extends BaseTermsEnum {
 
   // NOTE: we can't subclass FilteredTermsEnum here because we need to sometimes change actualEnum:
   private TermsEnum actualEnum;
@@ -322,6 +323,11 @@ public final class FuzzyTermsEnum extends TermsEnum {
   @Override
   public boolean seekExact(BytesRef text) throws IOException {
     return actualEnum.seekExact(text);
+  }
+
+  @Override
+  public void prepareSeekExact(BytesRef text) throws IOException {
+    actualEnum.prepareSeekExact(text);
   }
 
   @Override

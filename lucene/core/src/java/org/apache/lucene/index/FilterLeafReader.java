@@ -161,6 +161,7 @@ public abstract class FilterLeafReader extends LeafReader {
 
   /** Base class for filtering {@link TermsEnum} implementations. */
   public abstract static class FilterTermsEnum extends TermsEnum {
+
     /** The underlying TermsEnum instance. */
     protected final TermsEnum in;
 
@@ -234,6 +235,11 @@ public abstract class FilterLeafReader extends LeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       in.seekExact(term, state);
+    }
+
+    @Override
+    public void prepareSeekExact(BytesRef text) throws IOException {
+      in.prepareSeekExact(text);
     }
 
     @Override

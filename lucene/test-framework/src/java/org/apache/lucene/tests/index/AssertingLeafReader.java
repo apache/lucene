@@ -399,6 +399,14 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void prepareSeekExact(BytesRef text) throws IOException {
+      assertThread("Terms enums", creationThread);
+      assert text.isValid();
+      in.prepareSeekExact(text);
+      state = State.UNPOSITIONED;
+    }
+
+    @Override
     public TermState termState() throws IOException {
       assertThread("Terms enums", creationThread);
       assert state == State.POSITIONED : "termState() called on unpositioned TermsEnum";

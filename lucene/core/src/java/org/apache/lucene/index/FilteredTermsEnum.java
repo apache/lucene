@@ -161,6 +161,16 @@ public abstract class FilteredTermsEnum extends TermsEnum {
    * @throws UnsupportedOperationException In general, subclasses do not support seeking.
    */
   @Override
+  public void prepareSeekExact(BytesRef text) throws IOException {
+    throw new UnsupportedOperationException(getClass().getName() + " does not support seeking");
+  }
+
+  /**
+   * This enum does not support seeking!
+   *
+   * @throws UnsupportedOperationException In general, subclasses do not support seeking.
+   */
+  @Override
   public SeekStatus seekCeil(BytesRef term) throws IOException {
     throw new UnsupportedOperationException(getClass().getName() + " does not support seeking");
   }

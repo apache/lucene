@@ -68,8 +68,14 @@ public abstract class TermsEnum implements BytesRefIterator {
    * faster. This can be used to parallelize I/O across multiple terms by calling {@link
    * #prepareSeekExact} on multiple terms enums before calling {@link #seekExact(BytesRef)} on the
    * same {@link TermsEnum}s.
+   *
+   * <p><b>NOTE</b>: The terms enum is unpositioned after calling this method.
+   *
+   * <p><b>NOTE</b>: It is not necessary to call this method before calling {@link
+   * #seekExact(BytesRef, TermState)}. {@link TermsEnum} implementations are expected to implement
+   * this method in an I/O-free fashion.
    */
-  public void prepareSeekExact(BytesRef text) throws IOException {}
+  public abstract void prepareSeekExact(BytesRef text) throws IOException;
 
   /**
    * Seeks to the specified term, if it exists, or to the next (ceiling) term. Returns SeekStatus to
@@ -188,9 +194,7 @@ public abstract class TermsEnum implements BytesRefIterator {
    * of unused Attributes does not matter.
    */
   public static final TermsEnum EMPTY =
-      new TermsEnum() {
-
-        private AttributeSource atts = null;
+      new BaseTermsEnum() {
 
         @Override
         public SeekStatus seekCeil(BytesRef term) {
@@ -233,19 +237,6 @@ public abstract class TermsEnum implements BytesRefIterator {
         @Override
         public BytesRef next() {
           return null;
-        }
-
-        @Override // make it synchronized here, to prevent double lazy init
-        public synchronized AttributeSource attributes() {
-          if (atts == null) {
-            atts = new AttributeSource();
-          }
-          return atts;
-        }
-
-        @Override
-        public boolean seekExact(BytesRef text) throws IOException {
-          return seekCeil(text) == SeekStatus.FOUND;
         }
 
         @Override
