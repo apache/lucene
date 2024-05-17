@@ -24,14 +24,16 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A hash map of <code>int</code> to <code>int</code>, implemented using open addressing with linear
- * probing for collision resolution.
+ * A hash map of <code>int</code> to <code>Object</code>, implemented using open addressing with
+ * linear probing for collision resolution.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntIntHashMap
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntObjectHashMap
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
-public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Cloneable {
+@SuppressWarnings("unchecked")
+public class IntObjectHashMap<VType>
+    implements Iterable<IntObjectHashMap.IntObjectCursor<VType>>, Cloneable {
 
   public static final int DEFAULT_EXPECTED_ELEMENTS = 4;
 
@@ -58,7 +60,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   public int[] keys;
 
   /** The array holding values. */
-  public int[] values;
+  public Object[] values;
 
   /**
    * The number of stored keys (assigned key slots), excluding the special "empty" key, if any (use
@@ -84,7 +86,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   protected int iterationSeed;
 
   /** New instance with sane defaults. */
-  public IntIntHashMap() {
+  public IntObjectHashMap() {
     this(DEFAULT_EXPECTED_ELEMENTS);
   }
 
@@ -94,7 +96,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    * @param expectedElements The expected number of elements guaranteed not to cause buffer
    *     expansion (inclusive).
    */
-  public IntIntHashMap(int expectedElements) {
+  public IntObjectHashMap(int expectedElements) {
     this(expectedElements, DEFAULT_LOAD_FACTOR);
   }
 
@@ -106,25 +108,25 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    * @param loadFactor The load factor for internal buffers. Insane load factors (zero, full
    *     capacity) are rejected by {@link #verifyLoadFactor(double)}.
    */
-  public IntIntHashMap(int expectedElements, double loadFactor) {
+  public IntObjectHashMap(int expectedElements, double loadFactor) {
     this.loadFactor = verifyLoadFactor(loadFactor);
     iterationSeed = ITERATION_SEED.incrementAndGet();
     ensureCapacity(expectedElements);
   }
 
   /** Create a hash map from all key-value pairs of another container. */
-  public IntIntHashMap(Iterable<? extends IntIntCursor> container) {
+  public IntObjectHashMap(Iterable<? extends IntObjectCursor<? extends VType>> container) {
     this();
     putAll(container);
   }
 
-  public int put(int key, int value) {
+  public VType put(int key, VType value) {
     assert assigned < mask + 1;
 
     final int mask = this.mask;
     if (((key) == 0)) {
       hasEmptyKey = true;
-      int previousValue = values[mask + 1];
+      VType previousValue = (VType) values[mask + 1];
       values[mask + 1] = value;
       return previousValue;
     } else {
@@ -134,7 +136,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       int existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          final int previousValue = values[slot];
+          final VType previousValue = (VType) values[slot];
           values[slot] = value;
           return previousValue;
         }
@@ -149,13 +151,13 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       }
 
       assigned++;
-      return 0;
+      return null;
     }
   }
 
-  public int putAll(Iterable<? extends IntIntCursor> iterable) {
+  public int putAll(Iterable<? extends IntObjectCursor<? extends VType>> iterable) {
     final int count = size();
-    for (IntIntCursor c : iterable) {
+    for (IntObjectCursor<? extends VType> c : iterable) {
       put(c.key, c.value);
     }
     return size() - count;
@@ -174,7 +176,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    * @return <code>true</code> if <code>key</code> did not exist and <code>value</code> was placed
    *     in the map.
    */
-  public boolean putIfAbsent(int key, int value) {
+  public boolean putIfAbsent(int key, VType value) {
     int keyIndex = indexOf(key);
     if (!indexExists(keyIndex)) {
       indexInsert(keyIndex, key, value);
@@ -184,45 +186,11 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     }
   }
 
-  /**
-   * If <code>key</code> exists, <code>putValue</code> is inserted into the map, otherwise any
-   * existing value is incremented by <code>additionValue</code>.
-   *
-   * @param key The key of the value to adjust.
-   * @param putValue The value to put if <code>key</code> does not exist.
-   * @param incrementValue The value to add to the existing value if <code>key</code> exists.
-   * @return Returns the current value associated with <code>key</code> (after changes).
-   */
-  public int putOrAdd(int key, int putValue, int incrementValue) {
-    assert assigned < mask + 1;
-
-    int keyIndex = indexOf(key);
-    if (indexExists(keyIndex)) {
-      putValue = values[keyIndex] + incrementValue;
-      indexReplace(keyIndex, putValue);
-    } else {
-      indexInsert(keyIndex, key, putValue);
-    }
-    return putValue;
-  }
-
-  /**
-   * Adds <code>incrementValue</code> to any existing value for the given <code>key</code> or
-   * inserts <code>incrementValue</code> if <code>key</code> did not previously exist.
-   *
-   * @param key The key of the value to adjust.
-   * @param incrementValue The value to put or add to the existing value if <code>key</code> exists.
-   * @return Returns the current value associated with <code>key</code> (after changes).
-   */
-  public int addTo(int key, int incrementValue) {
-    return putOrAdd(key, incrementValue, incrementValue);
-  }
-
-  public int remove(int key) {
+  public VType remove(int key) {
     final int mask = this.mask;
     if (((key) == 0)) {
       hasEmptyKey = false;
-      int previousValue = values[mask + 1];
+      VType previousValue = (VType) values[mask + 1];
       values[mask + 1] = 0;
       return previousValue;
     } else {
@@ -232,20 +200,20 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       int existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          final int previousValue = values[slot];
+          final VType previousValue = (VType) values[slot];
           shiftConflictingKeys(slot);
           return previousValue;
         }
         slot = (slot + 1) & mask;
       }
 
-      return 0;
+      return null;
     }
   }
 
-  public int get(int key) {
+  public VType get(int key) {
     if (((key) == 0)) {
-      return hasEmptyKey ? values[mask + 1] : 0;
+      return hasEmptyKey ? (VType) values[mask + 1] : null;
     } else {
       final int[] keys = this.keys;
       final int mask = this.mask;
@@ -254,18 +222,18 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       int existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          return values[slot];
+          return (VType) values[slot];
         }
         slot = (slot + 1) & mask;
       }
 
-      return 0;
+      return null;
     }
   }
 
-  public int getOrDefault(int key, int defaultValue) {
+  public VType getOrDefault(int key, VType defaultValue) {
     if (((key) == 0)) {
-      return hasEmptyKey ? values[mask + 1] : defaultValue;
+      return hasEmptyKey ? (VType) values[mask + 1] : defaultValue;
     } else {
       final int[] keys = this.keys;
       final int mask = this.mask;
@@ -274,7 +242,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       int existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          return values[slot];
+          return (VType) values[slot];
         }
         slot = (slot + 1) & mask;
       }
@@ -329,23 +297,23 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     return index >= 0;
   }
 
-  public int indexGet(int index) {
+  public VType indexGet(int index) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
-    return values[index];
+    return (VType) values[index];
   }
 
-  public int indexReplace(int index, int newValue) {
+  public VType indexReplace(int index, int newValue) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
-    int previousValue = values[index];
+    VType previousValue = (VType) values[index];
     values[index] = newValue;
     return previousValue;
   }
 
-  public void indexInsert(int index, int key, int value) {
+  public void indexInsert(int index, int key, VType value) {
     assert index < 0 : "The index must not point at an existing key.";
 
     index = ~index;
@@ -367,11 +335,11 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     }
   }
 
-  public int indexRemove(int index) {
+  public VType indexRemove(int index) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
-    int previousValue = values[index];
+    VType previousValue = (VType) values[index];
     if (index > mask) {
       hasEmptyKey = false;
       values[index] = 0;
@@ -410,7 +378,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   @Override
   public int hashCode() {
     int h = hasEmptyKey ? 0xDEADBEEF : 0;
-    for (IntIntCursor c : this) {
+    for (IntObjectCursor<VType> c : this) {
       h += BitMixer.mix(c.key) + BitMixer.mix(c.value);
     }
     return h;
@@ -422,14 +390,14 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   /** Return true if all keys of some other container exist in this container. */
-  protected boolean equalElements(IntIntHashMap other) {
+  protected boolean equalElements(IntObjectHashMap<?> other) {
     if (other.size() != size()) {
       return false;
     }
 
-    for (IntIntCursor c : other) {
+    for (IntObjectCursor<?> c : other) {
       int key = c.key;
-      if (!containsKey(key) || !((get(key)) == (c.value))) {
+      if (!containsKey(key) || !java.util.Objects.equals(c.value, get(key))) {
         return false;
       }
     }
@@ -446,7 +414,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   public void ensureCapacity(int expectedElements) {
     if (expectedElements > resizeAt || keys == null) {
       final int[] prevKeys = this.keys;
-      final int[] prevValues = this.values;
+      final VType[] prevValues = (VType[]) this.values;
       allocateBuffers(minBufferSize(expectedElements, loadFactor));
       if (prevKeys != null && !isEmpty()) {
         rehash(prevKeys, prevValues);
@@ -463,23 +431,28 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     return iterationSeed = BitMixer.mixPhi(iterationSeed);
   }
 
+  @Override
+  public Iterator<IntObjectCursor<VType>> iterator() {
+    return new EntryIterator();
+  }
+
   /** An iterator implementation for {@link #iterator}. */
-  private final class EntryIterator extends AbstractIterator<IntIntCursor> {
-    private final IntIntCursor cursor;
+  private final class EntryIterator extends AbstractIterator<IntObjectCursor<VType>> {
+    private final IntObjectCursor<VType> cursor;
     private final int increment;
     private int index;
     private int slot;
 
     public EntryIterator() {
-      cursor = new IntIntCursor();
+      cursor = new IntObjectCursor<VType>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
     }
 
     @Override
-    protected IntIntCursor fetch() {
-      final int mask = IntIntHashMap.this.mask;
+    protected IntObjectCursor<VType> fetch() {
+      final int mask = IntObjectHashMap.this.mask;
       while (index <= mask) {
         int existing;
         index++;
@@ -487,7 +460,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
         if (!((existing = keys[slot]) == 0)) {
           cursor.index = slot;
           cursor.key = existing;
-          cursor.value = values[slot];
+          cursor.value = (VType) values[slot];
           return cursor;
         }
       }
@@ -495,17 +468,12 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
       if (index == mask + 1 && hasEmptyKey) {
         cursor.index = index;
         cursor.key = 0;
-        cursor.value = values[index++];
+        cursor.value = (VType) values[index++];
         return cursor;
       }
 
       return done();
     }
-  }
-
-  @Override
-  public Iterator<IntIntCursor> iterator() {
-    return new EntryIterator();
   }
 
   /** Returns a specialized view of the keys of this associated container. */
@@ -514,10 +482,24 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   /** A view of the keys inside this hash map. */
-  public final class KeysContainer extends IntContainer {
+  public final class KeysContainer implements Iterable<IntCursor> {
+
     @Override
     public Iterator<IntCursor> iterator() {
       return new KeysIterator();
+    }
+
+    public int size() {
+      return IntObjectHashMap.this.size();
+    }
+
+    public int[] toArray() {
+      int[] array = new int[size()];
+      int i = 0;
+      for (IntCursor cursor : this) {
+        array[i++] = cursor.value;
+      }
+      return array;
     }
   }
 
@@ -537,7 +519,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
 
     @Override
     protected IntCursor fetch() {
-      final int mask = IntIntHashMap.this.mask;
+      final int mask = IntObjectHashMap.this.mask;
       while (index <= mask) {
         int existing;
         index++;
@@ -562,29 +544,26 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   /**
    * @return Returns a container with all values stored in this map.
    */
-  public IntContainer values() {
+  public ValuesContainer values() {
     return new ValuesContainer();
   }
 
   /** A view over the set of values of this map. */
-  private final class ValuesContainer extends IntContainer {
+  public final class ValuesContainer implements Iterable<ObjectCursor<VType>> {
+
     @Override
-    public Iterator<IntCursor> iterator() {
+    public Iterator<ObjectCursor<VType>> iterator() {
       return new ValuesIterator();
     }
-  }
-
-  /** IntCursor iterable with size and toArray function implemented */
-  public abstract class IntContainer implements Iterable<IntCursor> {
 
     public int size() {
-      return IntIntHashMap.this.size();
+      return IntObjectHashMap.this.size();
     }
 
-    public int[] toArray() {
-      int[] array = new int[size()];
+    public VType[] toArray() {
+      VType[] array = (VType[]) new Object[size()];
       int i = 0;
-      for (IntCursor cursor : this) {
+      for (ObjectCursor<VType> cursor : this) {
         array[i++] = cursor.value;
       }
       return array;
@@ -592,35 +571,35 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   /** An iterator over the set of assigned values. */
-  private final class ValuesIterator extends AbstractIterator<IntCursor> {
-    private final IntCursor cursor;
+  private final class ValuesIterator extends AbstractIterator<ObjectCursor<VType>> {
+    private final ObjectCursor<VType> cursor;
     private final int increment;
     private int index;
     private int slot;
 
     public ValuesIterator() {
-      cursor = new IntCursor();
+      cursor = new ObjectCursor<>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
     }
 
     @Override
-    protected IntCursor fetch() {
-      final int mask = IntIntHashMap.this.mask;
+    protected ObjectCursor<VType> fetch() {
+      final int mask = IntObjectHashMap.this.mask;
       while (index <= mask) {
         index++;
         slot = (slot + increment) & mask;
         if (!((keys[slot]) == 0)) {
           cursor.index = slot;
-          cursor.value = values[slot];
+          cursor.value = (VType) values[slot];
           return cursor;
         }
       }
 
       if (index == mask + 1 && hasEmptyKey) {
         cursor.index = index;
-        cursor.value = values[index++];
+        cursor.value = (VType) values[index++];
         return cursor;
       }
 
@@ -629,10 +608,10 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   @Override
-  public IntIntHashMap clone() {
+  public IntObjectHashMap<VType> clone() {
     try {
       /*  */
-      IntIntHashMap cloned = (IntIntHashMap) super.clone();
+      IntObjectHashMap<VType> cloned = (IntObjectHashMap<VType>) super.clone();
       cloned.keys = keys.clone();
       cloned.values = values.clone();
       cloned.hasEmptyKey = hasEmptyKey;
@@ -650,7 +629,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     buffer.append("[");
 
     boolean first = true;
-    for (IntIntCursor cursor : this) {
+    for (IntObjectCursor<VType> cursor : this) {
       if (!first) {
         buffer.append(", ");
       }
@@ -664,13 +643,13 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   /** Creates a hash map from two index-aligned arrays of key-value pairs. */
-  public static IntIntHashMap from(int[] keys, int[] values) {
+  public static <VType> IntObjectHashMap<VType> from(int[] keys, VType[] values) {
     if (keys.length != values.length) {
       throw new IllegalArgumentException(
           "Arrays of keys and values must have an identical length.");
     }
 
-    IntIntHashMap map = new IntIntHashMap(keys.length);
+    IntObjectHashMap<VType> map = new IntObjectHashMap<>(keys.length);
     for (int i = 0; i < keys.length; i++) {
       map.put(keys[i], values[i]);
     }
@@ -698,12 +677,12 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
   }
 
   /** Rehash from old buffers to new buffers. */
-  protected void rehash(int[] fromKeys, int[] fromValues) {
+  protected void rehash(int[] fromKeys, VType[] fromValues) {
     assert fromKeys.length == fromValues.length && checkPowerOfTwo(fromKeys.length - 1);
 
     // Rehash all stored key/value pairs into the new buffers.
     final int[] keys = this.keys;
-    final int[] values = this.values;
+    final VType[] values = (VType[]) this.values;
     final int mask = this.mask;
     int existing;
 
@@ -732,11 +711,11 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
 
     // Ensure no change is done if we hit an OOM.
     int[] prevKeys = this.keys;
-    int[] prevValues = this.values;
+    VType[] prevValues = (VType[]) this.values;
     try {
       int emptyElementSlot = 1;
       this.keys = (new int[arraySize + emptyElementSlot]);
-      this.values = (new int[arraySize + emptyElementSlot]);
+      this.values = new Object[arraySize + emptyElementSlot];
     } catch (OutOfMemoryError e) {
       this.keys = prevKeys;
       this.values = prevValues;
@@ -757,12 +736,12 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    * assign the pending element to the previous buffer (possibly violating the invariant of having
    * at least one empty slot) and rehash all keys, substituting new buffers at the end.
    */
-  protected void allocateThenInsertThenRehash(int slot, int pendingKey, int pendingValue) {
+  protected void allocateThenInsertThenRehash(int slot, int pendingKey, VType pendingValue) {
     assert assigned == resizeAt && ((keys[slot]) == 0) && !((pendingKey) == 0);
 
     // Try to allocate new buffers first. If we OOM, we leave in a consistent state.
     final int[] prevKeys = this.keys;
-    final int[] prevValues = this.values;
+    final VType[] prevValues = (VType[]) this.values;
     allocateBuffers(nextBufferSize(mask + 1, size(), loadFactor));
     assert this.keys.length > prevKeys.length;
 
@@ -838,7 +817,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    */
   protected void shiftConflictingKeys(int gapSlot) {
     final int[] keys = this.keys;
-    final int[] values = this.values;
+    final VType[] values = (VType[]) this.values;
     final int mask = this.mask;
 
     // Perform shifts of conflicting keys to fill in the gap.
@@ -866,12 +845,12 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
 
     // Mark the last found gap slot without a conflict as empty.
     keys[gapSlot] = 0;
-    values[gapSlot] = 0;
+    values[gapSlot] = null;
     assigned--;
   }
 
   /** Forked from HPPC, holding int index,key and value */
-  public final class IntIntCursor {
+  public static final class IntObjectCursor<VType> {
     /**
      * The current key and value's index in the container this cursor belongs to. The meaning of
      * this index is defined by the container (usually it will be an index in the underlying storage
@@ -883,11 +862,28 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
     public int key;
 
     /** The current value. */
-    public int value;
+    public VType value;
 
     @Override
     public String toString() {
       return "[cursor, index: " + index + ", key: " + key + ", value: " + value + "]";
+    }
+  }
+
+  /** Forked from HPPC, holding int index and Object value */
+  public static final class ObjectCursor<VType> {
+    /**
+     * The current value's index in the container this cursor belongs to. The meaning of this index
+     * is defined by the container (usually it will be an index in the underlying storage buffer).
+     */
+    public int index;
+
+    /** The current value. */
+    public VType value;
+
+    @Override
+    public String toString() {
+      return "[cursor, index: " + index + ", value: " + value + "]";
     }
   }
 }

@@ -365,7 +365,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public VectorScorer scorer(float[] query) {
-      throw new UnsupportedOperationException();
+      return null;
     }
   }
 }

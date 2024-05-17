@@ -50,15 +50,6 @@ class QueryProfilerWeight extends FilterWeight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    ScorerSupplier supplier = scorerSupplier(context);
-    if (supplier == null) {
-      return null;
-    }
-    return supplier.get(Long.MAX_VALUE);
-  }
-
-  @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER);
     timer.start();

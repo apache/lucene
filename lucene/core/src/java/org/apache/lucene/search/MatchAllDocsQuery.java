@@ -32,9 +32,11 @@ public final class MatchAllDocsQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        return new ConstantScoreScorer(
-            this, score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final var scorer =
+            new ConstantScoreScorer(
+                this, score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

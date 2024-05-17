@@ -754,6 +754,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (vectorValues == null) {
             continue;
           }
+          if (vectorValues.size() == 0) {
+            assertNull(vectorValues.scorer(vectorToScore));
+            continue;
+          }
           VectorScorer scorer = vectorValues.scorer(vectorToScore);
           assertNotNull(scorer);
           DocIdSetIterator iterator = scorer.iterator();
@@ -807,6 +811,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         for (LeafReaderContext ctx : reader.leaves()) {
           ByteVectorValues vectorValues = ctx.reader().getByteVectorValues(fieldName);
           if (vectorValues == null) {
+            continue;
+          }
+          if (vectorValues.size() == 0) {
+            assertNull(vectorValues.scorer(vectorToScore));
             continue;
           }
           VectorScorer scorer = vectorValues.scorer(vectorToScore);

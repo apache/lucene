@@ -314,30 +314,29 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
-  public void prefetch(long length) throws IOException {
+  public void prefetch(long offset, long length) throws IOException {
     ensureOpen();
 
-    Objects.checkFromIndexSize(getFilePointer(), length, length());
+    Objects.checkFromIndexSize(offset, length, length());
 
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
-    // If at the boundary between two chunks, move to the next one.
-    seek(getFilePointer());
     try {
+      final MemorySegment segment = segments[(int) (offset >> chunkSizePower)];
+      offset &= chunkSizeMask;
       // Compute the intersection of the current segment and the region that should be prefetched.
-      long offset = curPosition;
-      if (offset + length > curSegment.byteSize()) {
+      if (offset + length > segment.byteSize()) {
         // Only prefetch bytes that are stored in the current segment. There may be bytes on the
         // next segment but this case is rare enough that we don't try to optimize it and keep
         // things simple instead.
-        length = curSegment.byteSize() - curPosition;
+        length = segment.byteSize() - offset;
       }
       // Now align offset with the page size, this is required for madvise.
       // Compute the offset of the current position in the OS's page.
-      final long offsetInPage = (curSegment.address() + offset) % nativeAccess.getPageSize();
+      final long offsetInPage = (segment.address() + offset) % nativeAccess.getPageSize();
       offset -= offsetInPage;
       length += offsetInPage;
       if (offset < 0) {
@@ -345,7 +344,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
         return;
       }
 
-      final MemorySegment prefetchSlice = curSegment.asSlice(offset, length);
+      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
       nativeAccess.madviseWillNeed(prefetchSlice);
     } catch (
         @SuppressWarnings("unused")
