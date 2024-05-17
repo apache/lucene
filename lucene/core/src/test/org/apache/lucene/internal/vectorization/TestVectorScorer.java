@@ -20,13 +20,14 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
-import static org.hamcrest.Matchers.equalTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 import java.util.function.Function;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -41,8 +42,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.junit.BeforeClass;
 
-// @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 10)
 public class TestVectorScorer extends LuceneTestCase {
+
+  private static final double DELTA = 1e-5;
 
   static final FlatVectorsScorer DEFAULT_SCORER = new DefaultFlatVectorScorer();
   static final FlatVectorsScorer MEMSEG_SCORER =
@@ -70,12 +72,11 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   void testSimpleScorer(long maxChunkSize) throws IOException {
-    try (Directory dir = new MMapDirectory(createTempDir(getTestName()), maxChunkSize)) {
+    try (Directory dir = new MMapDirectory(createTempDir("testSimpleScorer"), maxChunkSize)) {
       for (int dims : List.of(31, 32, 33)) {
-        // System.out.println("testing with dim=" + dims);
         // dimensions that, in some scenarios, cross the mmap chunk sizes
         byte[][] vectors = new byte[2][dims];
-        String fileName = getTestName() + "-" + dims;
+        String fileName = "bar-" + dims;
         try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
           for (int i = 0; i < dims; i++) {
             vectors[0][i] = (byte) i;
@@ -95,13 +96,13 @@ public class TestVectorScorer extends LuceneTestCase {
               var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
               float expected = scorer1.scorer(idx0).score(idx1);
               var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-              assertThat(scorer2.scorer(idx0).score(idx1), equalTo(expected));
+              assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
 
               // getRandomVectorScorer
               var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
-              assertThat(scorer3.score(idx1), equalTo(expected));
+              assertEquals(scorer3.score(idx1), expected, DELTA);
               var scorer4 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
-              assertThat(scorer4.score(idx1), equalTo(expected));
+              assertEquals(scorer4.score(idx1), expected, DELTA);
             }
           }
         }
@@ -128,12 +129,11 @@ public class TestVectorScorer extends LuceneTestCase {
 
   void testRandomScorer(long maxChunkSize, Function<Integer, byte[]> byteArraySupplier)
       throws IOException {
-    try (Directory dir = new MMapDirectory(createTempDir(getTestName()), maxChunkSize)) {
+    try (Directory dir = new MMapDirectory(createTempDir("testRandomScorer"), maxChunkSize)) {
       final int dims = randomIntBetween(1, 4096);
       final int size = randomIntBetween(2, 100);
       final byte[][] vectors = new byte[size][];
-      String fileName = getTestName() + "-" + dims;
-      // System.out.println("Testing, maxChunkSize=" + maxChunkSize + ",fn=" + fileName);
+      String fileName = "foo-" + dims;
       try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
         for (int i = 0; i < size; i++) {
           var vec = byteArraySupplier.apply(dims);
@@ -153,25 +153,130 @@ public class TestVectorScorer extends LuceneTestCase {
             var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
             float expected = scorer1.scorer(idx0).score(idx1);
             var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-            assertThat(scorer2.scorer(idx0).score(idx1), equalTo(expected));
+            assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
 
             // getRandomVectorScorer
             var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
-            assertThat(scorer3.score(idx1), equalTo(expected));
+            assertEquals(scorer3.score(idx1), expected, DELTA);
             var scorer4 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
-            assertThat(scorer4.score(idx1), equalTo(expected));
+            assertEquals(scorer4.score(idx1), expected, DELTA);
           }
         }
       }
     }
   }
 
-  // TODO: add initial offset tests
+  public void testRandomSliceSmall() throws IOException {
+    testRandomSliceImpl(30, 64, 1, BYTE_ARRAY_RANDOM_FUNC);
+  }
+
+  public void testRandomSlice() throws IOException {
+    int dims = randomIntBetween(1, 4096);
+    long maxChunkSize = randomLongBetween(32, 128);
+    int size = randomIntBetween(1, 129);
+    testRandomSliceImpl(dims, maxChunkSize, size, BYTE_ARRAY_RANDOM_FUNC);
+  }
+
+  void testRandomSliceImpl(
+      int dims, long maxChunkSize, int initialPadding, Function<Integer, byte[]> byteArraySupplier)
+      throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir("testRandomSliceImpl"), maxChunkSize)) {
+      final int size = randomIntBetween(2, 100);
+      final byte[][] vectors = new byte[size][];
+      String fileName = "baz-" + dims;
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        byte[] ba = new byte[initialPadding];
+        out.writeBytes(ba, 0, ba.length);
+        for (int i = 0; i < size; i++) {
+          var vec = byteArraySupplier.apply(dims);
+          out.writeBytes(vec, 0, vec.length);
+          vectors[i] = vec;
+        }
+      }
+
+      try (var outter = dir.openInput(fileName, IOContext.DEFAULT);
+          var in = outter.slice("slice", initialPadding, outter.length() - initialPadding)) {
+        for (int times = 0; times < TIMES; times++) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            var vectorValues = vectorValues(dims, size, in, sim);
+            int idx0 = randomIntBetween(0, size - 1);
+            int idx1 = randomIntBetween(0, size - 1); // may be the same as idx0 - which is ok.
+
+            // getRandomVectorScorerSupplier
+            var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+            float expected = scorer1.scorer(idx0).score(idx1);
+            var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+            assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+
+            // getRandomVectorScorer
+            var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
+            assertEquals(scorer3.score(idx1), expected, DELTA);
+            var scorer4 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
+            assertEquals(scorer4.score(idx1), expected, DELTA);
+          }
+        }
+      }
+    }
+  }
+
+  // Tests with a large amount of data (> 2GB), which ensures that data offsets do not overflow
+  @Nightly
+  public void testLarge() throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir("testLarge"))) {
+      final int dims = 8192;
+      final int size = 262500;
+      final String fileName = "large-" + dims;
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        for (int i = 0; i < size; i++) {
+          var vec = vector(i, dims);
+          out.writeBytes(vec, 0, vec.length);
+        }
+      }
+
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        assert in.length() > Integer.MAX_VALUE;
+        for (int times = 0; times < TIMES; times++) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            var vectorValues = vectorValues(dims, size, in, sim);
+            int ord1 = randomIntBetween(0, size - 1);
+            int ord2 = size - 1;
+            for (var ords : List.of(List.of(ord1, ord2), List.of(ord2, ord1))) {
+              int idx0 = ords.getFirst();
+              int idx1 = ords.getLast();
+
+              // getRandomVectorScorerSupplier
+              var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+              float expected = scorer1.scorer(idx0).score(idx1);
+              var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+              assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+
+              // getRandomVectorScorer
+              var query = vector(idx0, dims);
+              var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, query);
+              assertEquals(scorer3.score(idx1), expected, DELTA);
+              var scorer4 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, query);
+              assertEquals(scorer4.score(idx1), expected, DELTA);
+            }
+          }
+        }
+      }
+    }
+  }
 
   RandomAccessVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("byteValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
+  }
+
+  // creates the vector based on the given ordinal, which is reproducible given the ord and dims
+  static byte[] vector(int ord, int dims) {
+    var random = new Random(Objects.hash(ord, dims));
+    byte[] ba = new byte[dims];
+    for (int i = 0; i < dims; i++) {
+      ba[i] = (byte) RandomNumbers.randomIntBetween(random, Byte.MIN_VALUE, Byte.MAX_VALUE);
+    }
+    return ba;
   }
 
   /** Concatenates byte arrays. */

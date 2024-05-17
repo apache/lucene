@@ -548,19 +548,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
   }
 
-  public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
-    if (pos + len > length) {
-      throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
-    }
-    final int si = (int) (pos >> chunkSizePower);
-    final MemorySegment seg = segments[si];
-    final long segOffset = pos & chunkSizeMask;
-    if (checkIndex(segOffset + len, seg.byteSize() + 1)) {
-      return seg.asSlice(segOffset, len);
-    }
-    return null;
-  }
-
   static boolean checkIndex(long index, long length) {
     return index >= 0 && index < length;
   }
@@ -752,7 +739,17 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
-      return super.segmentSliceOrNull(pos + offset, len);
+      if (pos + len > length) {
+        throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
+      }
+      pos = pos + offset;
+      final int si = (int) (pos >> chunkSizePower);
+      final MemorySegment seg = segments[si];
+      final long segOffset = pos & chunkSizeMask;
+      if (checkIndex(segOffset + len, seg.byteSize() + 1)) {
+        return seg.asSlice(segOffset, len);
+      }
+      return null;
     }
 
     @Override
