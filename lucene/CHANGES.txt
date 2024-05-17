@@ -367,6 +367,13 @@ Bug Fixes
 
 * GITHUB#13366: Disallow NaN and Inf values in scalar quantization and better handle extreme cases. (Ben Trent)
 
+* GITHUB#13369: Fix NRT opening failure when soft deletes are enabled and the document fails to index before a point
+  field is written (Ben Trent)
+
+* GITHUB#13378: Fix points writing with no values (Chris Hegarty)
+
+* GITHUB#13374: Fix bug in SQ when just a single vector present in a segment (Chris Hegarty)
+
 * GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
 
 Build
