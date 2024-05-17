@@ -1467,12 +1467,10 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   public void testGroupVIntOverflow() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
-      final int v = 1 << 30;
       final int size = 32;
       final long[] values = new long[size];
       final long[] restore = new long[size];
-      values[0] = v;
-      values[0] <<= 1; // values[0] = 2147483648 as long, but as int it is -2147483648
+      values[0] = 1L << 31; // values[0] = 2147483648 as long, but as int it is -2147483648
 
       for (int i = 0; i < size; i++) {
         if (random().nextBoolean()) {

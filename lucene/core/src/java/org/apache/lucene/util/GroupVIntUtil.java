@@ -121,7 +121,7 @@ public final class GroupVIntUtil {
   }
 
   private static int toInt(long value) {
-    if (value < 0 || value > 0xFFFFFFFFL) {
+    if ((Long.compareUnsigned(value, 0xFFFFFFFFL) > 0)) {
       throw new ArithmeticException("integer overflow");
     }
     return (int) value;
