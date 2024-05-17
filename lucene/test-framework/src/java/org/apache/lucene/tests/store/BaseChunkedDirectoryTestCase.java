@@ -53,9 +53,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testGroupVIntMultiBlocks() throws IOException {
     final int maxChunkSize = random().nextInt(64, 512);
     try (Directory dir = getDirectory(createTempDir(), maxChunkSize)) {
-      doTestGroupVInt(dir, 10, 0, 1, 31, 1024);
-      // test with negative
-      doTestGroupVInt(dir, 10, Integer.MIN_VALUE, 31, 31, 1024);
+      doTestGroupVInt(dir, 10, 1, 31, 1024);
     }
   }
 

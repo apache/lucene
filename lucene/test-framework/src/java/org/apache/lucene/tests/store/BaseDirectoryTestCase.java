@@ -1442,19 +1442,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testGroupVIntOverflow() throws IOException {
-    try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
-      final int v = 1 << 30;
-      final long[] values = new long[4];
-      values[0] = v;
-      values[0] <<= 1; // values[0] = 2147483648 as long, but as int it is -2147483648
-
-      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
-      assertThrows(ArithmeticException.class, () -> out.writeGroupVInts(values, 4));
-      out.close();
-    }
-  }
-
   public void testDataTypes() throws IOException {
     final long[] values = new long[] {43, 12345, 123456, 1234567890};
     try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
@@ -1478,16 +1465,44 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testGroupVIntOverflow() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
+      final int v = 1 << 30;
+      final long[] values = new long[16];
+      final long[] restore = new long[16];
+      values[0] = v;
+      values[0] <<= 1; // values[0] = 2147483648 as long, but as int it is -2147483648
+
+      // test default implementation of readGroupVInts
+      try (IndexOutput out = dir.createOutput("default", IOContext.DEFAULT)) {
+        out.writeGroupVInts(values, 4);
+      }
+      try (IndexInput in = dir.openInput("default", IOContext.DEFAULT)) {
+        in.readGroupVInts(restore, 4);
+        assertArrayEquals(values, restore);
+      }
+
+      // test faster implementation of readGroupVInts
+      IndexOutput out = dir.createOutput("faster", IOContext.DEFAULT);
+      out.writeGroupVInts(values, 16);
+      out.close();
+      try (IndexInput in = dir.openInput("faster", IOContext.DEFAULT)) {
+        in.readGroupVInts(restore, 16);
+        assertArrayEquals(values, restore);
+      }
+
+      values[0] = 0xFFFFFFFFL + 1;
+      assertThrows(ArithmeticException.class, () -> out.writeGroupVInts(values, 4));
+    }
+  }
+
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
       // test fallback to default implementation of readGroupVInt
-      doTestGroupVInt(dir, 5, 0, 1, 6, 8);
-      doTestGroupVInt(dir, 5, -8, 3, 3, 8);
+      doTestGroupVInt(dir, 5, 1, 6, 8);
 
       // use more iterations to covers all bpv
-      doTestGroupVInt(dir, atLeast(100), 0, 1, 31, 128);
-      // test with negative
-      doTestGroupVInt(dir, 5, Integer.MIN_VALUE, 31, 31, 128);
+      doTestGroupVInt(dir, atLeast(100), 1, 31, 128);
 
       // we use BaseChunkedDirectoryTestCase#testGroupVIntMultiBlocks cover multiple blocks for
       // ByteBuffersDataInput and MMapDirectory
@@ -1495,8 +1510,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   }
 
   protected void doTestGroupVInt(
-      Directory dir, int iterations, int minValue, int minBpv, int maxBpv, int maxNumValues)
-      throws IOException {
+      Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
     long[] values = new long[maxNumValues];
     int[] numValuesArray = new int[iterations];
     IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
@@ -1507,8 +1521,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       final int bpv = TestUtil.nextInt(random(), minBpv, maxBpv);
       numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
       for (int j = 0; j < numValuesArray[iter]; j++) {
-        values[j] =
-            RandomNumbers.randomIntBetween(random(), minValue, (int) PackedInts.maxValue(bpv));
+        values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
         vIntOut.writeVInt((int) values[j]);
       }
       groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);

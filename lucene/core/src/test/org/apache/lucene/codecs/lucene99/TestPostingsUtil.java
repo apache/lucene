@@ -23,7 +23,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestPostingUtil extends LuceneTestCase {
+public class TestPostingsUtil extends LuceneTestCase {
 
   // checks for bug described in https://github.com/apache/lucene/issues/13373
   public void testIntegerOverflow() throws IOException {
