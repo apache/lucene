@@ -148,6 +148,8 @@ Bug Fixes
 
 * GITHUB#13374: Fix bug in SQ when just a single vector present in a segment (Chris Hegarty)
 
+* GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
+
 Build
 ---------------------
 
