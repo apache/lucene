@@ -19,10 +19,12 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -128,13 +130,7 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        DocIdSetIterator vectorValues =
-            switch (fieldInfo.getVectorEncoding()) {
-              case FLOAT32 -> leaf.getFloatVectorValues(field);
-              case BYTE -> leaf.getByteVectorValues(field);
-            };
-        assert vectorValues != null : "unexpected null vector values";
-        if (vectorValues != null && vectorValues.cost() != leaf.maxDoc()) {
+        if (getVectorValuesSize(fieldInfo, leaf) != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }
@@ -240,12 +236,7 @@ public class FieldExistsQuery extends Query {
           return super.count(context);
         } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
           if (reader.hasDeletions() == false) {
-            final DocIdSetIterator values =
-                switch (fieldInfo.getVectorEncoding()) {
-                  case FLOAT32 -> reader.getFloatVectorValues(field);
-                  case BYTE -> reader.getByteVectorValues(field);
-                };
-            return values == null ? 0 : Math.toIntExact(values.cost());
+            return getVectorValuesSize(fieldInfo, reader);
           }
           return super.count(context);
         } else if (fieldInfo.getDocValuesType()
@@ -284,5 +275,21 @@ public class FieldExistsQuery extends Query {
     return "FieldExistsQuery requires that the field indexes doc values, norms or vectors, but field '"
         + fieldInfo.name
         + "' exists and indexes neither of these data structures";
+  }
+
+  private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {
+    assert fi.name.equals(field);
+    return switch (fi.getVectorEncoding()) {
+      case FLOAT32 -> {
+        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
+        assert floatVectorValues != null : "unexpected null float vector values";
+        yield floatVectorValues == null ? 0 : floatVectorValues.size();
+      }
+      case BYTE -> {
+        ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
+        assert byteVectorValues != null : "unexpected null byte vector values";
+        yield byteVectorValues == null ? 0 : byteVectorValues.size();
+      }
+    };
   }
 }
