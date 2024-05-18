@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -402,7 +403,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldNumbers {
 
-    private final Map<Integer, String> numberToName;
+    private final IntObjectHashMap<String> numberToName;
     private final Map<String, Integer> nameToNumber;
     private final Map<String, IndexOptions> indexOptions;
     // We use this to enforce that a given field never
@@ -431,7 +432,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldNumbers(
         String softDeletesFieldName, String parentFieldName, int indexCreatedVersionMajor) {
       this.nameToNumber = new HashMap<>();
-      this.numberToName = new HashMap<>();
+      this.numberToName = new IntObjectHashMap<>();
       this.indexOptions = new HashMap<>();
       this.docValuesType = new HashMap<>();
       this.dimensions = new HashMap<>();

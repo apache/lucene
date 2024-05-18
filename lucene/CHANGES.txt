@@ -120,6 +120,8 @@ Optimizations
 
 * GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
 
+* GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 

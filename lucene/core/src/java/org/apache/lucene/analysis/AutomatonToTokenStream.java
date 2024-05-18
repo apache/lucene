@@ -19,10 +19,8 @@ package org.apache.lucene.analysis;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -30,6 +28,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** Converts an Automaton into a TokenStream. */
 public class AutomatonToTokenStream {
@@ -66,7 +65,7 @@ public class AutomatonToTokenStream {
     }
 
     LinkedList<RemapNode> noIncomingEdges = new LinkedList<>();
-    Map<Integer, Integer> idToPos = new HashMap<>();
+    IntIntHashMap idToPos = new IntIntHashMap();
     noIncomingEdges.addLast(new RemapNode(0, 0));
     while (noIncomingEdges.isEmpty() == false) {
       RemapNode currState = noIncomingEdges.removeFirst();
