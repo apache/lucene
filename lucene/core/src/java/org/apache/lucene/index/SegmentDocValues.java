@@ -17,15 +17,14 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RefCount;
+import org.apache.lucene.util.hppc.LongObjectHashMap;
 
 /**
  * Manages the {@link DocValuesProducer} held by {@link SegmentReader} and keeps track of their
@@ -33,7 +32,7 @@ import org.apache.lucene.util.RefCount;
  */
 final class SegmentDocValues {
 
-  private final Map<Long, RefCount<DocValuesProducer>> genDVProducers = new HashMap<>();
+  private final LongObjectHashMap<RefCount<DocValuesProducer>> genDVProducers = new LongObjectHashMap<>();
 
   private RefCount<DocValuesProducer> newDocValuesProducer(
       SegmentCommitInfo si, Directory dir, final Long gen, FieldInfos infos) throws IOException {

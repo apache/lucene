@@ -17,10 +17,11 @@
 package org.apache.lucene.facet.range;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+
+import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.LongIntHashMap;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -238,28 +239,28 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     // track the start vs end case separately because if a
     // given point is both, then it must be its own
     // elementary interval:
-    Map<Long, Integer> endsMap = new HashMap<>();
+    LongIntHashMap endsMap = new LongIntHashMap();
 
     endsMap.put(Long.MIN_VALUE, 1);
     endsMap.put(Long.MAX_VALUE, 2);
 
     for (LongRange range : ranges) {
-      Integer cur = endsMap.get(range.min);
-      if (cur == null) {
+      int cur = endsMap.get(range.min);
+      if (cur == 0) {
         endsMap.put(range.min, 1);
       } else {
         endsMap.put(range.min, cur | 1);
       }
       cur = endsMap.get(range.max);
-      if (cur == null) {
+      if (cur == 0) {
         endsMap.put(range.max, 2);
       } else {
         endsMap.put(range.max, cur | 2);
       }
     }
 
-    List<Long> endsList = new ArrayList<>(endsMap.keySet());
-    Collections.sort(endsList);
+    LongArrayList endsList = new LongArrayList(endsMap.keys());
+    Arrays.sort(endsList.buffer, 0, endsList.size());
 
     // Build elementaryIntervals (a 1D Venn diagram):
     List<InclusiveRange> elementaryIntervals = new ArrayList<>();

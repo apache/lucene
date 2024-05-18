@@ -17,11 +17,15 @@
 
 package org.apache.lucene.util.hppc;
 
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
+
 import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.lucene.util.hppc.HashContainers.*;
 
 /**
  * A hash map of <code>int</code> to <code>int</code>, implemented using open addressing with linear
@@ -31,28 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
-public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Cloneable {
+public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Accountable, Cloneable {
 
-  public static final int DEFAULT_EXPECTED_ELEMENTS = 4;
-
-  public static final float DEFAULT_LOAD_FACTOR = 0.75f;
-
-  private static final AtomicInteger ITERATION_SEED = new AtomicInteger();
-
-  /** Minimal sane load factor (99 empty slots per 100). */
-  public static final float MIN_LOAD_FACTOR = 1 / 100.0f;
-
-  /** Maximum sane load factor (1 empty slot per 100). */
-  public static final float MAX_LOAD_FACTOR = 99 / 100.0f;
-
-  /** Minimum hash buffer size. */
-  public static final int MIN_HASH_ARRAY_LENGTH = 4;
-
-  /**
-   * Maximum array size for hash containers (power-of-two and still allocable in Java, not a
-   * negative int).
-   */
-  public static final int MAX_HASH_ARRAY_LENGTH = 0x80000000 >>> 1;
+  private static final long BASE_RAM_BYTES_USED =
+          RamUsageEstimator.shallowSizeOfInstance(IntIntHashMap.class);
 
   /** The array holding keys. */
   public int[] keys;
@@ -461,6 +447,11 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Clon
    */
   protected int nextIterationSeed() {
     return iterationSeed = BitMixer.mixPhi(iterationSeed);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(keys) + RamUsageEstimator.sizeOf(values);
   }
 
   /** An iterator implementation for {@link #iterator}. */
