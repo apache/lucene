@@ -32,19 +32,21 @@ import java.util.Objects;
  * A field that contains multiple (or none) floating-point numeric vectors for each document.
  * Similar to {@link KnnFloatVectorField}, vectors are dense - that is, every dimension of a vector
  * contains an explicit value, stored packed into an array (of type float[]) whose length is
- * the vector dimension. <TODO: add more info>
- *
- * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
- * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
- * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
- * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
- * compare vectors at query time (for example as part of result ranking). A {@link
- * KnnFloatTensorField} may be associated with a search similarity function defining the metric used
- * for nearest-neighbor search among vectors of that field.
+ * the vector dimension. <TODO: add more info>.
  *
  * @lucene.experimental
  */
+// * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
+// * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
+// * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
+// * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
+// * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
+// * compare vectors at query time (for example as part of result ranking). A {@link
+// * KnnFloatTensorField} may be associated with a search similarity function defining the metric used
+// * for nearest-neighbor search among vectors of that field.
+// *
+// * @lucene.experimental
+// */
 public class KnnFloatTensorField extends Field {
 
   private static FieldType createType(List<float[]> t, TensorSimilarityFunction similarityFunction) {
