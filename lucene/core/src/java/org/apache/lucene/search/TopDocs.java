@@ -350,4 +350,12 @@ public class TopDocs {
       return new TopFieldDocs(totalHits, hits, sort.getSort());
     }
   }
+  
+  /**
+   * Reciprocal Rank Fusion method.
+   * 
+   */
+  public static TopDocs rrf(int topN, int k, TopDocs[] hits){
+	
+  }
 }
