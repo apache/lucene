@@ -224,7 +224,7 @@ public abstract class LongValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Class returning a single {@link LongValues} value from a specified field.
+   * Class returning {@link LongValues} value from a specified field.
    *
    * @lucene.internal
    */
