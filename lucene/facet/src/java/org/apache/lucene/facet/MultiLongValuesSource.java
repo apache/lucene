@@ -102,7 +102,7 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     return new DoubleLongValuesSources(this);
   }
 
-  private static class FieldMultiValueSource extends MultiLongValuesSource {
+  public static class FieldMultiValueSource extends MultiLongValuesSource {
     private final String field;
 
     FieldMultiValueSource(String field) {
@@ -128,6 +128,10 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
           return docValues.advanceExact(doc);
         }
       };
+    }
+
+    public String getField() {
+      return field;
     }
 
     @Override

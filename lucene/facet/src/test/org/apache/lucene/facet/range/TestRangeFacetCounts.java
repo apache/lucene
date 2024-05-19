@@ -122,6 +122,94 @@ public class TestRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
+  public void testLongMaxRange_SingleValued_MinAndMaxInclusive() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    String fieldName = "field";
+    NumericDocValuesField field = new NumericDocValuesField(fieldName, 0L);
+    doc.add(field);
+    for (long value = 0; value < 100; value++) {
+      field.setLongValue(value);
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    field.setLongValue(Long.MAX_VALUE);
+    w.addDocument(doc);
+
+    // Also add Long.MIN_VALUE
+    field.setLongValue(Long.MIN_VALUE);
+    w.addDocument(doc);
+
+    // Add doc without the field
+    Document docWithoutField = new Document();
+    docWithoutField.add(new NumericDocValuesField("otherField", 0L));
+    w.addDocument(docWithoutField);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+
+    Query matchAllByMaxRange =
+        new LongRange("all", Long.MIN_VALUE, true, Long.MAX_VALUE, true)
+            .getQuery(null, LongValuesSource.fromLongField(fieldName));
+
+    FacetsCollector result = s.search(matchAllByMaxRange, new FacetsCollectorManager());
+
+    assertEquals(102, numHitsOverAllFacets(result));
+
+    r.close();
+    d.close();
+  }
+
+  public void testLongMaxRange_SingleValued_MinAndMaxExclusive() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    String fieldName = "field";
+    NumericDocValuesField field = new NumericDocValuesField(fieldName, 0L);
+    doc.add(field);
+    for (long value = 0; value < 100; value++) {
+      field.setLongValue(value);
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    field.setLongValue(Long.MAX_VALUE);
+    w.addDocument(doc);
+
+    // Also add Long.MIN_VALUE
+    field.setLongValue(Long.MIN_VALUE);
+    w.addDocument(doc);
+
+    // Add doc without the field
+    Document docWithoutField = new Document();
+    docWithoutField.add(new NumericDocValuesField("otherField", 0L));
+    w.addDocument(docWithoutField);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+
+    Query matchAllByMaxRange =
+        new LongRange("all", Long.MIN_VALUE, false, Long.MAX_VALUE, false)
+            .getQuery(null, LongValuesSource.fromLongField(fieldName));
+
+    FacetsCollector result = s.search(matchAllByMaxRange, new FacetsCollectorManager());
+
+    // As min and max are exclusive the two docs having
+    // Long.MAX_VALUE and Long.MIN_VALUE as values shouldn't match
+    assertEquals(100, numHitsOverAllFacets(result));
+
+    r.close();
+    d.close();
+  }
+
   public void testBasicLongMultiValued() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
@@ -174,6 +262,104 @@ public class TestRangeFacetCounts extends FacetTestCase {
         () -> {
           facets.getTopChildren(0, "field");
         });
+
+    r.close();
+    d.close();
+  }
+
+  public void testLongMaxRange_MultiValued_MinAndMaxInclusive() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    String fieldName = "field";
+    SortedNumericDocValuesField field1 = new SortedNumericDocValuesField(fieldName, 0L);
+    SortedNumericDocValuesField field2 = new SortedNumericDocValuesField(fieldName, 0L);
+    doc.add(field1);
+    doc.add(field2);
+    for (long value = 0; value < 100; value++) {
+      field1.setLongValue(value);
+      field2.setLongValue(value);
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    field1.setLongValue(Long.MAX_VALUE);
+    field2.setLongValue(Long.MAX_VALUE);
+    w.addDocument(doc);
+
+    // Also add Long.MIN_VALUE
+    field1.setLongValue(Long.MIN_VALUE);
+    field2.setLongValue(Long.MIN_VALUE);
+    w.addDocument(doc);
+
+    // Add doc without the field
+    Document docWithoutField = new Document();
+    docWithoutField.add(new NumericDocValuesField("otherField", 0L));
+    w.addDocument(docWithoutField);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+
+    Query matchAllByMaxRange =
+        new LongRange("all", Long.MIN_VALUE, true, Long.MAX_VALUE, true)
+            .getQuery(null, MultiLongValuesSource.fromLongField(fieldName));
+
+    FacetsCollector result = s.search(matchAllByMaxRange, new FacetsCollectorManager());
+
+    assertEquals(102, numHitsOverAllFacets(result));
+
+    r.close();
+    d.close();
+  }
+
+  public void testLongMaxRange_MultiValued_MinAndMaxExclusive() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    String fieldName = "field";
+    SortedNumericDocValuesField field1 = new SortedNumericDocValuesField(fieldName, 0L);
+    SortedNumericDocValuesField field2 = new SortedNumericDocValuesField(fieldName, 0L);
+    doc.add(field1);
+    doc.add(field2);
+    for (long value = 0; value < 100; value++) {
+      field1.setLongValue(value);
+      field2.setLongValue(value);
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    field1.setLongValue(Long.MAX_VALUE);
+    field2.setLongValue(Long.MAX_VALUE);
+    w.addDocument(doc);
+
+    // Also add Long.MIN_VALUE
+    field1.setLongValue(Long.MIN_VALUE);
+    field2.setLongValue(Long.MIN_VALUE);
+    w.addDocument(doc);
+
+    // Add doc without the field
+    Document docWithoutField = new Document();
+    docWithoutField.add(new NumericDocValuesField("otherField", 0L));
+    w.addDocument(docWithoutField);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+
+    Query matchAllByMaxRange =
+        new LongRange("all", Long.MIN_VALUE, false, Long.MAX_VALUE, false)
+            .getQuery(null, MultiLongValuesSource.fromLongField(fieldName));
+
+    FacetsCollector result = s.search(matchAllByMaxRange, new FacetsCollectorManager());
+
+    // As min and max are exclusive the two docs
+    // having Long.MAX_VALUE and Long.MIN_VALUE as values shouldn't match
+    assertEquals(100, numHitsOverAllFacets(result));
 
     r.close();
     d.close();
@@ -1814,5 +2000,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertFalse(
         new DoubleRange("field", -7d, true, 17d, false).hashCode()
             == new DoubleRange("field", -7d, true, 18, false).hashCode());
+  }
+
+  private int numHitsOverAllFacets(FacetsCollector facetsCollector) {
+    return facetsCollector.getMatchingDocs().stream()
+        .map(matchingDocs -> matchingDocs.totalHits)
+        .reduce(Integer::sum)
+        .orElse(0);
   }
 }

@@ -24,6 +24,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -148,6 +149,13 @@ public final class LongRange extends Range {
           return new ValueSourceQuery(range, fastMatchRewritten, valueSource);
         }
       }
+
+      if (valueSource instanceof LongValuesSource.FieldValuesSource fieldSource
+          && range.min == Long.MIN_VALUE
+          && range.max == Long.MAX_VALUE) {
+        return new FieldExistsQuery(fieldSource.getField());
+      }
+
       return super.rewrite(indexSearcher);
     }
 
@@ -247,6 +255,13 @@ public final class LongRange extends Range {
           return new MultiValueSourceQuery(range, fastMatchRewritten, valuesSource);
         }
       }
+
+      if (valuesSource instanceof MultiLongValuesSource.FieldMultiValueSource fieldSource
+          && range.min == Long.MIN_VALUE
+          && range.max == Long.MAX_VALUE) {
+        return new FieldExistsQuery(fieldSource.getField());
+      }
+
       return super.rewrite(indexSearcher);
     }
 

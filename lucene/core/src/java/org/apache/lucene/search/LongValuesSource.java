@@ -223,7 +223,7 @@ public abstract class LongValuesSource implements SegmentCacheable {
     }
   }
 
-  private static class FieldValuesSource extends LongValuesSource {
+  public static class FieldValuesSource extends LongValuesSource {
 
     final String field;
 
@@ -253,6 +253,10 @@ public abstract class LongValuesSource implements SegmentCacheable {
     public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
       final NumericDocValues values = DocValues.getNumeric(ctx.reader(), field);
       return toLongValues(values);
+    }
+
+    public String getField() {
+      return field;
     }
 
     @Override
