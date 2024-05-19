@@ -316,6 +316,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
   @Override
   public void prefetch(long offset, long length) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+
     ensureOpen();
 
     Objects.checkFromIndexSize(offset, length, length());
@@ -328,9 +332,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return;
     }
 
-    if (NATIVE_ACCESS.isEmpty()) {
-      return;
-    }
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     try {
