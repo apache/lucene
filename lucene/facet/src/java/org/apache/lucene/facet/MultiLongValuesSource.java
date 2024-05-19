@@ -135,6 +135,7 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
       };
     }
 
+    /** Get the field name. */
     public String getField() {
       return field;
     }

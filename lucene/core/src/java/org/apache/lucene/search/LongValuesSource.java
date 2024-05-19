@@ -260,6 +260,7 @@ public abstract class LongValuesSource implements SegmentCacheable {
       return toLongValues(values);
     }
 
+    /** Get the field name. */
     public String getField() {
       return field;
     }
