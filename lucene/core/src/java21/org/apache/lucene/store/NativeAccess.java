@@ -32,9 +32,6 @@ abstract class NativeAccess {
    */
   public abstract void madviseWillNeed(MemorySegment segment) throws IOException;
 
-  /** Returns {@code true} if pages from the given {@link MemorySegment} are resident in RAM. */
-  public abstract boolean mincore(MemorySegment segment) throws IOException;
-
   /** Returns native page size. */
   public abstract int getPageSize();
 

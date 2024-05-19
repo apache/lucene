@@ -354,7 +354,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       }
 
       final MemorySegment prefetchSlice = segment.asSlice(offset, length);
-      if (nativeAccess.mincore(prefetchSlice) == false) {
+      if (prefetchSlice.isLoaded() == false) {
         // We have a cache miss on at least one page, let's reset the counter.
         consecutivePrefetchHitCount = 0;
         nativeAccess.madviseWillNeed(prefetchSlice);
