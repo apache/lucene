@@ -341,6 +341,9 @@ Optimizations
 
 * GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
 
+* GITHUB#13383: Rewrite LongRange.ValueSourceQuery and LongRange.MultiValueSourceQuery
+  to FieldExistsQuery on a max range query. (Tim Grein)
+
 Bug Fixes
 ---------------------
 
