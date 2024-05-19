@@ -17,13 +17,12 @@
 package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Caches the doubleVal of another value source in a HashMap so that it is computed only once.
@@ -33,11 +32,11 @@ import org.apache.lucene.search.IndexSearcher;
 public class CachingDoubleValueSource extends DoubleValuesSource {
 
   final DoubleValuesSource source;
-  final Map<Integer, Double> cache;
+  final IntObjectHashMap<Double> cache;
 
   public CachingDoubleValueSource(DoubleValuesSource source) {
     this.source = source;
-    cache = new HashMap<>();
+    cache = new IntObjectHashMap<>();
   }
 
   @Override
