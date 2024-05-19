@@ -102,6 +102,11 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     return new DoubleLongValuesSources(this);
   }
 
+  /**
+   * Class returning {@link MultiLongValues} from a specified field.
+   *
+   * @lucene.internal
+   */
   public static class FieldMultiValueSource extends MultiLongValuesSource {
     private final String field;
 
