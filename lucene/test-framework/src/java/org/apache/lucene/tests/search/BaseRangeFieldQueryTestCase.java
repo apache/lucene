@@ -303,12 +303,12 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
         assertEquals(docID, docIDToID.nextDoc());
         int id = (int) docIDToID.longValue();
         boolean expected;
-        boolean isDeleted = liveDocs != null && liveDocs.get(docID) == false;
-        boolean isMissing = ranges[id][0].isMissing;
+        boolean docDeleted = liveDocs != null && liveDocs.get(docID) == false;
+        boolean rangeMissing = ranges[id][0].isMissing;
 
-        if (isDeleted) {
+        if (docDeleted) {
           expected = false;
-        } else if (isMissing) {
+        } else if (rangeMissing) {
           expected = false;
         } else {
           expected = expectedResult(queryRange, ranges[id], queryType);
@@ -332,8 +332,8 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
             b.append(ranges[id][n]);
           }
           b.append("\n queryType=").append(queryType).append("\n");
-          b.append(" docDeleted?=").append(isDeleted).append("\n");
-          b.append(" rangeMissing?=").append(isMissing);
+          b.append(" docDeleted?=").append(docDeleted).append("\n");
+          b.append(" rangeMissing?=").append(rangeMissing);
           fail("wrong hit (first of possibly more):\n\n" + b);
         }
       }
