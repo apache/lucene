@@ -41,8 +41,6 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.analysis.CachingTokenFilter;
@@ -50,9 +48,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
 
@@ -66,8 +62,12 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  *     "https://github.com/elastic/elasticsearch/blob/7.10/server/src/main/java/org/elasticsearch/index/query/IntervalBuilder.java"
  */
 final class IntervalBuilder {
+
+  private static final IntervalsSource NO_INTERVALS =
+      Intervals.noIntervals("No terms in analyzed text");
+
   static IntervalsSource analyzeText(CachingTokenFilter stream, int maxGaps, boolean ordered)
-          throws IOException {
+      throws IOException {
     assert stream != null;
 
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
@@ -75,7 +75,7 @@ final class IntervalBuilder {
     PositionLengthAttribute posLenAtt = stream.addAttribute(PositionLengthAttribute.class);
 
     if (termAtt == null) {
-      return Intervals.noIntervals("No terms in analyzed text");
+      return NO_INTERVALS;
     }
 
     // phase 1: read through the stream and assess the situation:
@@ -102,7 +102,7 @@ final class IntervalBuilder {
     // formulate a single term, boolean, or phrase.
 
     if (numTokens == 0) {
-      return Intervals.noIntervals("No terms in analyzed text");
+      return NO_INTERVALS;
     } else if (numTokens == 1) {
       // single term
       return analyzeTerm(stream);
@@ -129,9 +129,9 @@ final class IntervalBuilder {
   }
 
   private static IntervalsSource combineSources(
-          List<IntervalsSource> sources, int maxGaps, boolean ordered) {
+      List<IntervalsSource> sources, int maxGaps, boolean ordered) {
     if (sources.size() == 0) {
-      return Intervals.noIntervals("No terms in analyzed text");
+      return NO_INTERVALS;
     }
     if (sources.size() == 1) {
       return sources.get(0);
@@ -141,7 +141,7 @@ final class IntervalBuilder {
       return Intervals.phrase(sourcesArray);
     }
     IntervalsSource inner =
-            ordered ? Intervals.ordered(sourcesArray) : Intervals.unordered(sourcesArray);
+        ordered ? Intervals.ordered(sourcesArray) : Intervals.unordered(sourcesArray);
     if (maxGaps == -1) {
       return inner;
     }
@@ -170,7 +170,7 @@ final class IntervalBuilder {
   }
 
   private static IntervalsSource analyzeSynonyms(TokenStream ts, int maxGaps, boolean ordered)
-          throws IOException {
+      throws IOException {
     List<IntervalsSource> terms = new ArrayList<>();
     List<IntervalsSource> synonyms = new ArrayList<>();
     TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
@@ -235,5 +235,4 @@ final class IntervalBuilder {
     }
     return clauses;
   }
-
 }

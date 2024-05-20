@@ -502,6 +502,7 @@ public final class Intervals {
 
   /**
    * Returns a source that produces no intervals
+   *
    * @param reason A reason string that will appear in the toString output of this source
    */
   public static IntervalsSource noIntervals(String reason) {
