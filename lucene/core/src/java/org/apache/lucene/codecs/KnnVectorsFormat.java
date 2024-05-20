@@ -68,6 +68,19 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
     return name;
   }
 
+  /**
+   * Reloads the KnnVectorsFormat list from the given {@link ClassLoader}.
+   *
+   * <p><b>NOTE:</b> Only new KnnVectorsFormat are added, existing ones are never removed or
+   * replaced.
+   *
+   * <p><em>This method is expensive and should only be called for discovery of new KnnVectorsFormat
+   * on the given classpath/classloader!</em>
+   */
+  public static void reloadKnnVectorsFormat(ClassLoader classloader) {
+    Holder.getLoader().reload(classloader);
+  }
+
   /** looks up a format by name */
   public static KnnVectorsFormat forName(String name) {
     return Holder.getLoader().lookup(name);

@@ -392,6 +392,8 @@ Other
 
 * GITHUB#13385: Make NO_INTERVALS source as public to be used by Lucene clients instead of creating clones themselves (Aniketh Jain)
 
+* GITHUB#13393: Add support for reloading the SPI for KnnVectorsFormat class (Navneet Verma)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
