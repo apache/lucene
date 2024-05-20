@@ -173,7 +173,7 @@ public class SandboxFacetsExample {
     for (String dimension: List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
       OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
-              .parents(), taxoReader.getOrdinal(dimension));
+              .parents(), ordLabels.getOrd(new FacetLabel(dimension)));
       OrdinalIterator topByCountOrds = new SortOrdinalIterator<>(childrenIternator, countComparable, 10);
       // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
       // but OrdinalIterator only allows reading ordinals once.

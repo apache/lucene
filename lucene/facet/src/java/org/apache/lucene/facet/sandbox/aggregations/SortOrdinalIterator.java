@@ -36,6 +36,7 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         //  This is +1 for making OrdinalIterator size base rather than NO_MORE_ORDS base; which is happening
         //  to some Lucene classes already, and there must be good reason to do it?
         //  Note that getAllChildren doesn't use queues, so this is not the reason we are limiting by taxonomy size.
+        // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS
         this.queue = new TopComparableQueue<>(topN);
         T reuse = null;
         for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS;) {

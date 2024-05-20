@@ -1,5 +1,6 @@
 package org.apache.lucene.facet.sandbox.taxonomy;
 
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.sandbox.abstracts.FacetCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
@@ -71,7 +72,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues multiValued = context.reader().getSortedNumericDocValues(indexFieldName);
+        SortedNumericDocValues multiValued = FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
         if (multiValued == null) {
             return null; // TODO: oh not not null!
         }

@@ -30,9 +30,8 @@ public class TaxonomyOrdLabels implements OrdToLabels {
     }
 
     @Override
-    public int getOrd(FacetLabel label) {
-        // TODO
-        throw new UnsupportedOperationException("not yet implemented");
+    public int getOrd(FacetLabel label) throws IOException {
+        return taxoReader.getOrdinal(label);
     }
 
     @Override
