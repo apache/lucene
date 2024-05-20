@@ -28,20 +28,13 @@ import static org.apache.lucene.util.VectorUtil.*;
 public enum TensorSimilarityFunction {
 
   /**
-   * Max Euclidean distance - returns max of pair wise {@link VectorSimilarityFunction#EUCLIDEAN}
-   * distance across corresponding vectors in the two tensors.
+   * SumMax Euclidean distance - returns sum of max pair wise {@link VectorSimilarityFunction#EUCLIDEAN}
+   * distance across vectors in the two tensors.
    */
-  MAX_EUCLIDEAN {
+  SUM_MAX_EUCLIDEAN {
     @Override
     public float compare(List<float[]> t1, List<float[]> t2) {
-      if (t1.size() != t2.size()) {
-        throw new IllegalArgumentException("tensor degrees differ: " + t1.size() + "!=" + t2.size());
-      }
-      float sim = Float.MIN_VALUE;
-      for (int i = 0; i < t1.size(); i++) {
-        sim = Math.max(sim, VectorSimilarityFunction.EUCLIDEAN.compare(t1.get(i), t2.get(i)));
-      }
-      return sim;
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.EUCLIDEAN);
     }
 
 //    @Override
@@ -51,23 +44,16 @@ public enum TensorSimilarityFunction {
   },
 
   /**
-   * Max Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
+   * SumMax Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
    * similarity. In order to use it, all vectors must be normalized, including both document and
    * query vectors. Using dot product with vectors that are not normalized can result in errors or
    * poor search results. Floating point vectors must be normalized to be of unit length, while byte
    * vectors should simply all have the same norm.
    */
-  MAX_DOT_PRODUCT {
+  SUM_MAX_DOT_PRODUCT {
     @Override
     public float compare(List<float[]> t1, List<float[]> t2) {
-      if (t1.size() != t2.size()) {
-        throw new IllegalArgumentException("tensor degrees differ: " + t1.size() + "!=" + t2.size());
-      }
-      float sim = Float.MIN_VALUE;
-      for (int i = 0; i < t1.size(); i++) {
-        sim = Math.max(sim, VectorSimilarityFunction.DOT_PRODUCT.compare(t1.get(i), t2.get(i)));
-      }
-      return sim;
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT);
     }
 
 //    @Override
@@ -77,58 +63,51 @@ public enum TensorSimilarityFunction {
   },
 
   /**
-   * Max Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
-   * vectors to unit length, and instead use {@link TensorSimilarityFunction#MAX_DOT_PRODUCT}. You
+   * SumMax Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
+   * vectors to unit length, and instead use {@link TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT}. You
    * should only use this function if you need to preserve the original vectors and cannot normalize
    * them in advance. The cosine similarity score per vector is normalised to assure it is positive.
    */
-  MAX_COSINE {
+  SUM_MAX_COSINE {
     @Override
     public float compare(List<float[]> t1, List<float[]> t2) {
-      if (t1.size() != t2.size()) {
-        throw new IllegalArgumentException("tensor degrees differ: " + t1.size() + "!=" + t2.size());
-      }
-      float sim = Float.MIN_VALUE;
-      for (int i = 0; i < t1.size(); i++) {
-        sim = Math.max(sim, VectorSimilarityFunction.COSINE.compare(t1.get(i), t2.get(i)));
-      }
-      return sim;
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.COSINE);
     }
 
 //    @Override
 //    public float compare(byte[] v1, byte[] v2) {
 //      return (1 + cosine(v1, v2)) / 2;
 //    }
-  };
+  },
 
-//  /**
-//   * Maximum inner product. This is like {@link TensorSimilarityFunction#DOT_PRODUCT}, but does not
-//   * require normalization of the inputs. Should be used when the embedding vectors store useful
-//   * information within the vector magnitude
-//   */
-//  MAXIMUM_INNER_PRODUCT {
-//    @Override
-//    public float compare(float[] v1, float[] v2) {
-//      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-//    }
-//
+  /**
+   * Sum Maximum inner product. This is like {@link TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT}, but does not
+   * require normalization of the inputs. Should be used when the embedding vectors store useful
+   * information within the vector magnitude
+   */
+  SUM_MAXIMUM_INNER_PRODUCT {
+    @Override
+    public float compare(List<float[]> t1, List<float[]> t2) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    }
+
 //    @Override
 //    public float compare(byte[] v1, byte[] v2) {
 //      return scaleMaxInnerProductScore(dotProduct(v1, v2));
 //    }
-//  };
+  };
 
   /**
-   * Calculates a similarity score between the two vectors with a specified function. Higher
+   * Calculates a similarity score between the two tensors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
    * @param t1 a tensor with non-empty vectors
-   * @param t2 another tensor, of the same degree with corresponding vectors of the same dimension.
-   * @return the value of the similarity function applied to the two vectors
+   * @param t2 another tensor, vectors of the same dimension as t1.
+   * @return the value of the similarity function applied to the two tensors
    */
   public abstract float compare(List<float[]> t1, List<float[]> t2);
 
-//  /**
+//    /**
 //   * Calculates a similarity score between the two vectors with a specified function. Higher
 //   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
 //   * dimension.
@@ -138,4 +117,26 @@ public enum TensorSimilarityFunction {
 //   * @return the value of the similarity function applied to the two vectors
 //   */
 //  public abstract float compare(byte[] v1, byte[] v2);
+
+  /**
+   * Compute MaxSumSimilarity between two tensors.
+   * Returns the sum of maximum similarity found for each vector in the outer tensor against all vectors
+   * in the inner tensor. Uses {@param vectorSimilarityFunction} to compute similarity between two vectors.
+   *
+   * @param outer Outer tensor
+   * @param inner Inner tensor
+   * @param vectorSimilarityFunction Function to compute vector similarity
+   * @return The sum of max similarity between outer - inner vector tensors
+   */
+  public float sumMaxSimilarity(List<float[]> outer, List<float[]> inner, VectorSimilarityFunction vectorSimilarityFunction) {
+    float result = 0f;
+    for (float[] o: outer) {
+      float maxSim = Float.MIN_VALUE;
+      for (float[] i: inner) {
+        maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
+      }
+      result += maxSim;
+    }
+    return result;
+  }
 }
