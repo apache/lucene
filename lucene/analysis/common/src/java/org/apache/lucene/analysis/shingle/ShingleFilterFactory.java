@@ -84,11 +84,13 @@ public class ShingleFilterFactory extends TokenFilterFactory {
 
   @Override
   public ShingleFilter create(TokenStream input) {
-    ShingleFilter r = new ShingleFilter(input, minShingleSize, maxShingleSize);
-    r.setOutputUnigrams(outputUnigrams);
-    r.setOutputUnigramsIfNoShingles(outputUnigramsIfNoShingles);
-    r.setTokenSeparator(tokenSeparator);
-    r.setFillerToken(fillerToken);
-    return r;
+    ShingleFilter filter =
+        new ShingleFilter.Builder(input, minShingleSize, maxShingleSize)
+            .outputUnigrams(outputUnigrams)
+            .outputUnigramsIfNoShingles(outputUnigramsIfNoShingles)
+            .tokenSeparator(tokenSeparator)
+            .fillerToken(fillerToken)
+            .build();
+    return filter;
   }
 }

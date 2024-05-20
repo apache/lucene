@@ -175,9 +175,10 @@ public class FreeTextSuggester extends Lookup {
 
   /**
    * Instantiate, using the provided indexing and lookup analyzers, and specified model (2 = bigram,
-   * 3 = trigram ,etc.). The separator is passed to {@link ShingleFilter#setTokenSeparator} to join
-   * multiple tokens into a single ngram token; it must be an ascii (7-bit-clean) byte. No input
-   * tokens should have this byte, otherwise {@code IllegalArgumentException} is thrown.
+   * 3 = trigram ,etc.). The separator is passed to {@link
+   * org.apache.lucene.analysis.shingle.ShingleFilter.Builder#tokenSeparator} to join multiple
+   * tokens into a single ngram token; it must be an ascii (7-bit-clean) byte. No input tokens
+   * should have this byte, otherwise {@code IllegalArgumentException} is thrown.
    */
   public FreeTextSuggester(
       Analyzer indexAnalyzer, Analyzer queryAnalyzer, int grams, byte separator) {
@@ -226,8 +227,10 @@ public class FreeTextSuggester extends Lookup {
         @Override
         protected TokenStreamComponents wrapComponents(
             String fieldName, TokenStreamComponents components) {
-          ShingleFilter shingles = new ShingleFilter(components.getTokenStream(), 2, grams);
-          shingles.setTokenSeparator(Character.toString((char) separator));
+          ShingleFilter shingles =
+              new ShingleFilter.Builder(components.getTokenStream(), 2, grams)
+                  .tokenSeparator(Character.toString((char) separator))
+                  .build();
           return new TokenStreamComponents(components.getSource(), shingles);
         }
       };

@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * A ShingleFilter constructs shingles (token n-grams) from a token stream. In other words, it
@@ -60,37 +61,37 @@ public final class ShingleFilter extends TokenFilter {
    * The sequence of input stream tokens (or filler tokens, if necessary) that will be composed to
    * form output shingles.
    */
-  private LinkedList<InputWindowToken> inputWindow = new LinkedList<>();
+  private final LinkedList<InputWindowToken> inputWindow = new LinkedList<>();
 
   /** The number of input tokens in the next output token. This is the "n" in "token n-grams". */
-  private CircularSequence gramSize;
+  private final CircularSequence gramSize;
 
   /** Shingle and unigram text is composed here. */
-  private StringBuilder gramBuilder = new StringBuilder();
+  private final StringBuilder gramBuilder = new StringBuilder();
 
   /** The token type attribute value to use - default is "shingle" */
-  private String tokenType = DEFAULT_TOKEN_TYPE;
+  private final String tokenType;
 
   /** The string to use when joining adjacent tokens to form a shingle */
-  private String tokenSeparator = DEFAULT_TOKEN_SEPARATOR;
+  private final String tokenSeparator;
 
   /**
    * The string to insert for each position at which there is no token (i.e., when position
    * increment is greater than one).
    */
-  private char[] fillerToken = DEFAULT_FILLER_TOKEN.toCharArray();
+  private final char[] fillerToken;
 
   /** By default, we output unigrams (individual tokens) as well as shingles (token n-grams). */
-  private boolean outputUnigrams = true;
+  private final boolean outputUnigrams;
 
   /** By default, we don't override behavior of outputUnigrams. */
-  private boolean outputUnigramsIfNoShingles = false;
+  private final boolean outputUnigramsIfNoShingles;
 
   /** maximum shingle size (number of tokens) */
-  private int maxShingleSize;
+  private final int maxShingleSize;
 
   /** minimum shingle size (number of tokens) */
-  private int minShingleSize;
+  private final int minShingleSize;
 
   /**
    * The remaining number of filler tokens to be inserted into the input stream from which shingles
@@ -124,138 +125,17 @@ public final class ShingleFilter extends TokenFilter {
   private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
   private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
-  /**
-   * Constructs a ShingleFilter with the specified shingle size from the {@link TokenStream} <code>
-   * input</code>
-   *
-   * @param input input stream
-   * @param minShingleSize minimum shingle size produced by the filter.
-   * @param maxShingleSize maximum shingle size produced by the filter.
-   */
-  public ShingleFilter(TokenStream input, int minShingleSize, int maxShingleSize) {
-    super(input);
-    setMaxShingleSize(maxShingleSize);
-    setMinShingleSize(minShingleSize);
-  }
-
-  /**
-   * Constructs a ShingleFilter with the specified shingle size from the {@link TokenStream} <code>
-   * input</code>
-   *
-   * @param input input stream
-   * @param maxShingleSize maximum shingle size produced by the filter.
-   */
-  public ShingleFilter(TokenStream input, int maxShingleSize) {
-    this(input, DEFAULT_MIN_SHINGLE_SIZE, maxShingleSize);
-  }
-
-  /**
-   * Construct a ShingleFilter with default shingle size: 2.
-   *
-   * @param input input stream
-   */
-  public ShingleFilter(TokenStream input) {
-    this(input, DEFAULT_MIN_SHINGLE_SIZE, DEFAULT_MAX_SHINGLE_SIZE);
-  }
-
-  /**
-   * Construct a ShingleFilter with the specified token type for shingle tokens and the default
-   * shingle size: 2
-   *
-   * @param input input stream
-   * @param tokenType token type for shingle tokens
-   */
-  public ShingleFilter(TokenStream input, String tokenType) {
-    this(input, DEFAULT_MIN_SHINGLE_SIZE, DEFAULT_MAX_SHINGLE_SIZE);
-    setTokenType(tokenType);
-  }
-
-  /**
-   * Set the type of the shingle tokens produced by this filter. (default: "shingle")
-   *
-   * @param tokenType token tokenType
-   */
-  public void setTokenType(String tokenType) {
-    this.tokenType = Objects.requireNonNull(tokenType, "tokenType");
-  }
-
-  /**
-   * Shall the output stream contain the input tokens (unigrams) as well as shingles? (default:
-   * true.)
-   *
-   * @param outputUnigrams Whether or not the output stream shall contain the input tokens
-   *     (unigrams)
-   */
-  public void setOutputUnigrams(boolean outputUnigrams) {
-    this.outputUnigrams = outputUnigrams;
-    gramSize = new CircularSequence();
-  }
-
-  /**
-   * Shall we override the behavior of outputUnigrams==false for those times when no shingles are
-   * available (because there are fewer than minShingleSize tokens in the input stream)? (default:
-   * false.)
-   *
-   * <p>Note that if outputUnigrams==true, then unigrams are always output, regardless of whether
-   * any shingles are available.
-   *
-   * @param outputUnigramsIfNoShingles Whether or not to output a single unigram when no shingles
-   *     are available.
-   */
-  public void setOutputUnigramsIfNoShingles(boolean outputUnigramsIfNoShingles) {
-    this.outputUnigramsIfNoShingles = outputUnigramsIfNoShingles;
-  }
-
-  /**
-   * Set the max shingle size (default: 2)
-   *
-   * @param maxShingleSize max size of output shingles
-   */
-  public void setMaxShingleSize(int maxShingleSize) {
-    if (maxShingleSize < 2) {
-      throw new IllegalArgumentException("Max shingle size must be >= 2");
-    }
-    this.maxShingleSize = maxShingleSize;
-  }
-
-  /**
-   * Set the min shingle size (default: 2).
-   *
-   * <p>This method requires that the passed in minShingleSize is not greater than maxShingleSize,
-   * so make sure that maxShingleSize is set before calling this method.
-   *
-   * <p>The unigram output option is independent of the min shingle size.
-   *
-   * @param minShingleSize min size of output shingles
-   */
-  public void setMinShingleSize(int minShingleSize) {
-    if (minShingleSize < 2) {
-      throw new IllegalArgumentException("Min shingle size must be >= 2");
-    }
-    if (minShingleSize > maxShingleSize) {
-      throw new IllegalArgumentException("Min shingle size must be <= max shingle size");
-    }
-    this.minShingleSize = minShingleSize;
-    gramSize = new CircularSequence();
-  }
-
-  /**
-   * Sets the string to use when joining adjacent tokens to form a shingle
-   *
-   * @param tokenSeparator used to separate input stream tokens in output shingles
-   */
-  public void setTokenSeparator(String tokenSeparator) {
-    this.tokenSeparator = null == tokenSeparator ? "" : tokenSeparator;
-  }
-
-  /**
-   * Sets the string to insert for each position at which there is no token (i.e., when position
-   * increment is greater than one).
-   *
-   * @param fillerToken string to insert at each position where there is no token
-   */
-  public void setFillerToken(String fillerToken) {
-    this.fillerToken = null == fillerToken ? new char[0] : fillerToken.toCharArray();
+  @IgnoreRandomChains(reason = "This constructor takes a Builder object as an input parameter")
+  public ShingleFilter(Builder builder) {
+    super(builder.input);
+    this.tokenType = builder.tokenType;
+    this.maxShingleSize = builder.maxShingleSize;
+    this.minShingleSize = builder.minShingleSize;
+    this.outputUnigrams = builder.outputUnigrams;
+    this.outputUnigramsIfNoShingles = builder.outputUnigramsIfNoShingles;
+    this.tokenSeparator = builder.tokenSeparator;
+    this.fillerToken = builder.fillerToken;
+    this.gramSize = new CircularSequence();
   }
 
   @Override
@@ -551,6 +431,168 @@ public final class ShingleFilter extends TokenFilter {
       this.attSource = attSource;
       this.termAtt = attSource.getAttribute(CharTermAttribute.class);
       this.offsetAtt = attSource.getAttribute(OffsetAttribute.class);
+    }
+  }
+
+  /** Builder for {@link ShingleFilter} */
+  public static class Builder {
+    private TokenStream input;
+    private boolean outputUnigrams = true;
+    private boolean outputUnigramsIfNoShingles = false;
+    private int maxShingleSize;
+    private int minShingleSize;
+    private String tokenSeparator = DEFAULT_TOKEN_SEPARATOR;
+    private char[] fillerToken = DEFAULT_FILLER_TOKEN.toCharArray();
+    private String tokenType = DEFAULT_TOKEN_TYPE;
+
+    /**
+     * Construct a ShingleFilter with default shingle size: 2.
+     *
+     * @param input input stream
+     */
+    public Builder(TokenStream input) {
+      this(input, DEFAULT_MAX_SHINGLE_SIZE);
+    }
+
+    /**
+     * Constructs a ShingleFilter with the specified shingle size from the {@link TokenStream}
+     * <code>
+     * input</code>
+     *
+     * @param input input stream
+     * @param maxShingleSize maximum shingle size produced by the filter.
+     */
+    public Builder(TokenStream input, int maxShingleSize) {
+      this(input, DEFAULT_MIN_SHINGLE_SIZE, maxShingleSize);
+    }
+
+    /**
+     * Constructs a ShingleFilter with the specified shingle size from the {@link TokenStream}
+     * <code>
+     * input</code>
+     *
+     * @param input input stream
+     * @param minShingleSize minimum shingle size produced by the filter.
+     * @param maxShingleSize maximum shingle size produced by the filter.
+     */
+    public Builder(TokenStream input, int minShingleSize, int maxShingleSize) {
+      this.input = Objects.requireNonNull(input);
+      if (maxShingleSize < 2) {
+        throw new IllegalArgumentException(
+            "Invalid maxShingleSize (" + maxShingleSize + ") - must be at least 2");
+      }
+      this.maxShingleSize = maxShingleSize;
+
+      if (minShingleSize < 2) {
+        throw new IllegalArgumentException(
+            "Invalid minShingleSize (" + minShingleSize + ") - must be at least 2");
+      }
+      if (minShingleSize > maxShingleSize) {
+        throw new IllegalArgumentException(
+            "Invalid minShingleSize ("
+                + minShingleSize
+                + ") - must be no greater than maxShingleSize ("
+                + maxShingleSize
+                + ")");
+      }
+      this.minShingleSize = minShingleSize;
+    }
+
+    /**
+     * Set the type of the shingle tokens produced by this filter. (default: "shingle")
+     *
+     * @param tokenType token tokenType
+     */
+    public Builder tokenType(String tokenType) {
+      this.tokenType = Objects.requireNonNull(tokenType, "tokenType");
+      return this;
+    }
+
+    /**
+     * Shall the output stream contain the input tokens (unigrams) as well as shingles? (default:
+     * true.)
+     *
+     * @param outputUnigrams Whether or not the output stream shall contain the input tokens
+     *     (unigrams)
+     */
+    public Builder outputUnigrams(boolean outputUnigrams) {
+      this.outputUnigrams = outputUnigrams;
+      return this;
+    }
+
+    /**
+     * Shall we override the behavior of outputUnigrams==false for those times when no shingles are
+     * available (because there are fewer than minShingleSize tokens in the input stream)? (default:
+     * false.)
+     *
+     * <p>Note that if outputUnigrams==true, then unigrams are always output, regardless of whether
+     * any shingles are available.
+     *
+     * @param outputUnigramsIfNoShingles Whether or not to output a single unigram when no shingles
+     *     are available.
+     */
+    public Builder outputUnigramsIfNoShingles(boolean outputUnigramsIfNoShingles) {
+      this.outputUnigramsIfNoShingles = outputUnigramsIfNoShingles;
+      return this;
+    }
+
+    /**
+     * Set the max shingle size (default: 2)
+     *
+     * @param maxShingleSize max size of output shingles
+     */
+    public Builder maxShingleSize(int maxShingleSize) {
+      if (maxShingleSize < 2) {
+        throw new IllegalArgumentException("Max shingle size must be >= 2");
+      }
+      this.maxShingleSize = maxShingleSize;
+      return this;
+    }
+
+    /**
+     * Set the min shingle size (default: 2).
+     *
+     * <p>This method requires that the passed in minShingleSize is not greater than maxShingleSize,
+     * so make sure that maxShingleSize is set before calling this method.
+     *
+     * <p>The unigram output option is independent of the min shingle size.
+     *
+     * @param minShingleSize min size of output shingles
+     */
+    public Builder minShingleSize(int minShingleSize) {
+      if (minShingleSize < 2) {
+        throw new IllegalArgumentException("Min shingle size must be >= 2");
+      }
+      if (minShingleSize > maxShingleSize) {
+        throw new IllegalArgumentException("Min shingle size must be <= max shingle size");
+      }
+      this.minShingleSize = minShingleSize;
+      return this;
+    }
+
+    /**
+     * Sets the string to use when joining adjacent tokens to form a shingle
+     *
+     * @param tokenSeparator used to separate input stream tokens in output shingles
+     */
+    public Builder tokenSeparator(String tokenSeparator) {
+      this.tokenSeparator = null == tokenSeparator ? "" : tokenSeparator;
+      return this;
+    }
+
+    /**
+     * Sets the string to insert for each position at which there is no token (i.e., when position
+     * increment is greater than one).
+     *
+     * @param fillerToken string to insert at each position where there is no token
+     */
+    public Builder fillerToken(String fillerToken) {
+      this.fillerToken = null == fillerToken ? new char[0] : fillerToken.toCharArray();
+      return this;
+    }
+
+    public ShingleFilter build() {
+      return new ShingleFilter(this);
     }
   }
 }

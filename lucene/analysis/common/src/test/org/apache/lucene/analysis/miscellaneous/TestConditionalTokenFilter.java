@@ -227,7 +227,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer source = new ClassicTokenizer();
             TokenStream sink =
-                new ConditionalTokenFilter(source, in -> new ShingleFilter(in, 2)) {
+                new ConditionalTokenFilter(source, in -> new ShingleFilter.Builder(in, 2).build()) {
                   @Override
                   protected boolean shouldFilter() throws IOException {
                     return true;
@@ -262,7 +262,8 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer source = new ClassicTokenizer();
             TokenStream sink =
-                new ProtectedTermFilter(protectedTerms, source, in -> new ShingleFilter(in, 2));
+                new ProtectedTermFilter(
+                    protectedTerms, source, in -> new ShingleFilter.Builder(in, 2).build());
             sink = new ValidatingTokenFilter(sink, "1");
             return new TokenStreamComponents(source, sink);
           }
@@ -293,7 +294,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer source = new StandardTokenizer();
-            TokenStream sink = new ShingleFilter(source, 3);
+            TokenStream sink = new ShingleFilter.Builder(source, 3).build();
             sink =
                 new ProtectedTermFilter(
                     protectedTerms,
