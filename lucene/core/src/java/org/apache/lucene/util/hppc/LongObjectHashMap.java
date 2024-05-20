@@ -27,7 +27,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>long</code> to <code>Object</code>, implemented using open addressing with
- * linear probing for collision resolution.
+ * linear probing for collision resolution. Supports null values.
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongObjectHashMap
  *

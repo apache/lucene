@@ -53,12 +53,6 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     return v;
   }
 
-  public long[] asArray(long... elements) {
-    long[] values = (new long[elements.length]);
-    for (int i = 0; i < elements.length; i++) values[i] = elements[i];
-    return values;
-  }
-
   /** Create a new array of a given type and copy the arguments to this array. */
   /*  */
   public final long[] newArray(long... elements) {

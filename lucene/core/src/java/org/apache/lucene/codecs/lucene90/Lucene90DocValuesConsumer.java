@@ -52,7 +52,7 @@ import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
-import org.apache.lucene.util.hppc.LongObjectHashMap;
+import org.apache.lucene.util.hppc.LongIntHashMap;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.packed.DirectWriter;
 
@@ -272,7 +272,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeLong(numValues);
     final int numBitsPerValue;
     boolean doBlocks = false;
-    LongObjectHashMap<Integer> encode = null;
+    LongIntHashMap encode = null;
     if (min >= max) { // meta[-1]: All values are 0
       numBitsPerValue = 0;
       meta.writeInt(-1); // tablesize
@@ -288,7 +288,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         for (Long v : sortedUniqueValues) {
           meta.writeLong(v); // table[] entry
         }
-        encode = new LongObjectHashMap<>();
+        encode = new LongIntHashMap();
         for (int i = 0; i < sortedUniqueValues.length; ++i) {
           encode.put(sortedUniqueValues[i], i);
         }
@@ -338,7 +338,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       int numBitsPerValue,
       long min,
       long gcd,
-      LongObjectHashMap<Integer> encode)
+      LongIntHashMap encode)
       throws IOException {
     DirectWriter writer = DirectWriter.getInstance(data, numValues, numBitsPerValue);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
