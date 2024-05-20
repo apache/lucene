@@ -343,6 +343,9 @@ Optimizations
 
 * GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
 
+* GITHUB#13383: Rewrite LongRange.ValueSourceQuery and LongRange.MultiValueSourceQuery to FieldExistsQuery on a
+  max range query. (Tim Grein)
+
 Bug Fixes
 ---------------------
 

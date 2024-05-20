@@ -102,7 +102,12 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
     return new DoubleLongValuesSources(this);
   }
 
-  private static class FieldMultiValueSource extends MultiLongValuesSource {
+  /**
+   * Class returning {@link MultiLongValues} from a specified field.
+   *
+   * @lucene.internal
+   */
+  public static class FieldMultiValueSource extends MultiLongValuesSource {
     private final String field;
 
     FieldMultiValueSource(String field) {
@@ -128,6 +133,11 @@ public abstract class MultiLongValuesSource implements SegmentCacheable {
           return docValues.advanceExact(doc);
         }
       };
+    }
+
+    /** Get the field name. */
+    public String getField() {
+      return field;
     }
 
     @Override
