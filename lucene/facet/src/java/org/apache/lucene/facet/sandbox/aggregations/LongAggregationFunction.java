@@ -3,28 +3,28 @@ package org.apache.lucene.facet.sandbox.aggregations;
 /**
  * Binary operation for longs.
  */
-public abstract class AssociationLongAggregationFunction {
+public abstract class LongAggregationFunction {
 
     /** TODO */
-    protected AssociationLongAggregationFunction() {
+    protected LongAggregationFunction() {
     }
 
-    abstract long aggregateLong(long existingVal, long newVal);
+    abstract long aggregate(long existingVal, long newVal);
 
     /**
      * Aggregation that computes the maximum value
      */
-    public static final AssociationLongAggregationFunction MAX =
-            new AssociationLongAggregationFunction() {
-                public long aggregateLong(long existingVal, long newVal) {
+    public static final LongAggregationFunction MAX =
+            new LongAggregationFunction() {
+                public long aggregate(long existingVal, long newVal) {
                     return Math.max(existingVal, newVal);
                 }
             };
 
     /** Aggregation that computes the sum */
-    public static final AssociationLongAggregationFunction SUM =
-            new AssociationLongAggregationFunction() {
-                public long aggregateLong(long existingVal, long newVal) {
+    public static final LongAggregationFunction SUM =
+            new LongAggregationFunction() {
+                public long aggregate(long existingVal, long newVal) {
                     try {
                         return Math.addExact(existingVal, newVal);
                     } catch (ArithmeticException ae) {

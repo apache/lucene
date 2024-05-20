@@ -7,7 +7,6 @@ import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRollup;
-import org.apache.lucene.facet.sandbox.abstracts.GetRank;
 import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -19,22 +18,13 @@ import static org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator.NO_MORE_
 /**
  * {@link FacetRecorder} to count facets.
  */
-public class CountRecorder implements FacetRecorder, GetRank {
+public class CountRecorder implements FacetRecorder {
 
     /**
      * Create
      */
     public CountRecorder() {
         super();
-    }
-
-    /**
-     * Get count as rank for given ordinal.
-     */
-    @Override
-    public int getRank(int ord) {
-        // TODO: allow or don't allow missing values?
-        return values.get(ord);
     }
 
     /**
