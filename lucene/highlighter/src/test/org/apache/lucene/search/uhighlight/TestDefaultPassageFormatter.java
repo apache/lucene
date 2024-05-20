@@ -72,6 +72,7 @@ public class TestDefaultPassageFormatter extends LuceneTestCase {
     // test default
     DefaultPassageFormatter formatter = new DefaultPassageFormatter();
     assertEquals(
-            "<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong", formatter.format(passages, content));
+        "<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong",
+        formatter.format(passages, content));
   }
 }
