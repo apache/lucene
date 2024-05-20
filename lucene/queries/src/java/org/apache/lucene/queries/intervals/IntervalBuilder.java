@@ -67,7 +67,7 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  */
 final class IntervalBuilder {
   static IntervalsSource analyzeText(CachingTokenFilter stream, int maxGaps, boolean ordered)
-      throws IOException {
+          throws IOException {
     assert stream != null;
 
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
@@ -75,7 +75,7 @@ final class IntervalBuilder {
     PositionLengthAttribute posLenAtt = stream.addAttribute(PositionLengthAttribute.class);
 
     if (termAtt == null) {
-      return NO_INTERVALS;
+      return Intervals.noIntervals("No terms in analyzed text");
     }
 
     // phase 1: read through the stream and assess the situation:
@@ -102,7 +102,7 @@ final class IntervalBuilder {
     // formulate a single term, boolean, or phrase.
 
     if (numTokens == 0) {
-      return NO_INTERVALS;
+      return Intervals.noIntervals("No terms in analyzed text");
     } else if (numTokens == 1) {
       // single term
       return analyzeTerm(stream);
@@ -129,9 +129,9 @@ final class IntervalBuilder {
   }
 
   private static IntervalsSource combineSources(
-      List<IntervalsSource> sources, int maxGaps, boolean ordered) {
+          List<IntervalsSource> sources, int maxGaps, boolean ordered) {
     if (sources.size() == 0) {
-      return NO_INTERVALS;
+      return Intervals.noIntervals("No terms in analyzed text");
     }
     if (sources.size() == 1) {
       return sources.get(0);
@@ -141,7 +141,7 @@ final class IntervalBuilder {
       return Intervals.phrase(sourcesArray);
     }
     IntervalsSource inner =
-        ordered ? Intervals.ordered(sourcesArray) : Intervals.unordered(sourcesArray);
+            ordered ? Intervals.ordered(sourcesArray) : Intervals.unordered(sourcesArray);
     if (maxGaps == -1) {
       return inner;
     }
@@ -170,7 +170,7 @@ final class IntervalBuilder {
   }
 
   private static IntervalsSource analyzeSynonyms(TokenStream ts, int maxGaps, boolean ordered)
-      throws IOException {
+          throws IOException {
     List<IntervalsSource> terms = new ArrayList<>();
     List<IntervalsSource> synonyms = new ArrayList<>();
     TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
@@ -236,93 +236,4 @@ final class IntervalBuilder {
     return clauses;
   }
 
-  public static final IntervalsSource NO_INTERVALS =
-      new IntervalsSource() {
-        @Override
-        public IntervalIterator intervals(String field, LeafReaderContext ctx) {
-          return new IntervalIterator() {
-            boolean exhausted = false;
-
-            @Override
-            public int start() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int end() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int gaps() {
-              throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int nextInterval() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public float matchCost() {
-              return 0;
-            }
-
-            @Override
-            public int docID() {
-              return exhausted ? NO_MORE_DOCS : -1;
-            }
-
-            @Override
-            public int nextDoc() {
-              exhausted = true;
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public int advance(int target) {
-              exhausted = true;
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public long cost() {
-              return 0;
-            }
-          };
-        }
-
-        @Override
-        public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc) {
-          return null;
-        }
-
-        @Override
-        public void visit(String field, QueryVisitor visitor) {}
-
-        @Override
-        public int minExtent() {
-          return 0;
-        }
-
-        @Override
-        public Collection<IntervalsSource> pullUpDisjunctions() {
-          return Collections.emptyList();
-        }
-
-        @Override
-        public int hashCode() {
-          return 0;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-          return other == this;
-        }
-
-        @Override
-        public String toString() {
-          return "no_match";
-        }
-      };
 }

@@ -115,7 +115,7 @@ public class TestIntervalBuilder extends LuceneTestCase {
   public void testEmptyTokenStream() throws IOException {
     CannedTokenStream ts = new CannedTokenStream();
     IntervalsSource source = IntervalBuilder.analyzeText(new CachingTokenFilter(ts), 0, true);
-    assertSame(IntervalBuilder.NO_INTERVALS, source);
+    assertEquals(Intervals.noIntervals("No terms in analyzed text"), source);
   }
 
   public void testSimpleSynonyms() throws IOException {
@@ -235,18 +235,8 @@ public class TestIntervalBuilder extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(directory);
     LeafReaderContext ctx = reader.leaves().get(0);
 
-    {
-      IntervalIterator it = source.intervals("field", ctx);
-      assertEquals(-1, it.docID());
-      it.nextDoc();
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
-    }
-    {
-      IntervalIterator it = source.intervals("field", ctx);
-      assertEquals(-1, it.docID());
-      it.advance(1);
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
-    }
+    IntervalIterator it = source.intervals("field", ctx);
+    assertNull(it);
 
     reader.close();
     directory.close();
