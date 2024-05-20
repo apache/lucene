@@ -131,6 +131,12 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
+  public void prefetch(long offset, long length) throws IOException {
+    ensureOpen();
+    in.prefetch(offset, length);
+  }
+
+  @Override
   public long length() {
     ensureOpen();
     return in.length();

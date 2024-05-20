@@ -232,15 +232,6 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
-    @Override
     public Matches matches(LeafReaderContext context, int doc) throws IOException {
       final Terms terms = context.reader().terms(q.field);
       if (terms == null) {

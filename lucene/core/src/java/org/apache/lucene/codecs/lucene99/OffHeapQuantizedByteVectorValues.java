@@ -19,10 +19,15 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
@@ -39,6 +44,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   protected final int size;
   protected final int numBytes;
   protected final ScalarQuantizer scalarQuantizer;
+  protected final VectorSimilarityFunction similarityFunction;
+  protected final FlatVectorsScorer vectorsScorer;
   protected final boolean compress;
 
   protected final IndexInput slice;
@@ -85,6 +92,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       int dimension,
       int size,
       ScalarQuantizer scalarQuantizer,
+      VectorSimilarityFunction similarityFunction,
+      FlatVectorsScorer vectorsScorer,
       boolean compress,
       IndexInput slice) {
     this.dimension = dimension;
@@ -100,6 +109,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     this.byteSize = this.numBytes + Float.BYTES;
     byteBuffer = ByteBuffer.allocate(dimension);
     binaryValue = byteBuffer.array();
+    this.similarityFunction = similarityFunction;
+    this.vectorsScorer = vectorsScorer;
   }
 
   @Override
@@ -160,22 +171,39 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       int dimension,
       int size,
       ScalarQuantizer scalarQuantizer,
+      VectorSimilarityFunction similarityFunction,
+      FlatVectorsScorer vectorsScorer,
       boolean compress,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
       IndexInput vectorData)
       throws IOException {
     if (configuration.isEmpty()) {
-      return new EmptyOffHeapVectorValues(dimension);
+      return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
     }
     IndexInput bytesSlice =
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
     if (configuration.isDense()) {
-      return new DenseOffHeapVectorValues(dimension, size, scalarQuantizer, compress, bytesSlice);
+      return new DenseOffHeapVectorValues(
+          dimension,
+          size,
+          scalarQuantizer,
+          compress,
+          similarityFunction,
+          vectorsScorer,
+          bytesSlice);
     } else {
       return new SparseOffHeapVectorValues(
-          configuration, dimension, size, scalarQuantizer, compress, vectorData, bytesSlice);
+          configuration,
+          dimension,
+          size,
+          scalarQuantizer,
+          compress,
+          vectorData,
+          similarityFunction,
+          vectorsScorer,
+          bytesSlice);
     }
   }
 
@@ -192,8 +220,10 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         int size,
         ScalarQuantizer scalarQuantizer,
         boolean compress,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
-      super(dimension, size, scalarQuantizer, compress, slice);
+      super(dimension, size, scalarQuantizer, similarityFunction, vectorsScorer, compress, slice);
     }
 
     @Override
@@ -223,12 +253,36 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, scalarQuantizer, compress, slice.clone());
+          dimension,
+          size,
+          scalarQuantizer,
+          compress,
+          similarityFunction,
+          vectorsScorer,
+          slice.clone());
     }
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      DenseOffHeapVectorValues copy = copy();
+      RandomVectorScorer vectorScorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return vectorScorer.score(copy.doc);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return copy;
+        }
+      };
     }
   }
 
@@ -246,9 +300,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         ScalarQuantizer scalarQuantizer,
         boolean compress,
         IndexInput dataIn,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer,
         IndexInput slice)
         throws IOException {
-      super(dimension, size, scalarQuantizer, compress, slice);
+      super(dimension, size, scalarQuantizer, similarityFunction, vectorsScorer, compress, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -279,7 +335,15 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
-          configuration, dimension, size, scalarQuantizer, compress, dataIn, slice.clone());
+          configuration,
+          dimension,
+          size,
+          scalarQuantizer,
+          compress,
+          dataIn,
+          similarityFunction,
+          vectorsScorer,
+          slice.clone());
     }
 
     @Override
@@ -304,12 +368,40 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         }
       };
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      SparseOffHeapVectorValues copy = copy();
+      RandomVectorScorer vectorScorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return vectorScorer.score(copy.disi.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return copy;
+        }
+      };
+    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
-    public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, new ScalarQuantizer(-1, 1, (byte) 7), false, null);
+    public EmptyOffHeapVectorValues(
+        int dimension,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer) {
+      super(
+          dimension,
+          0,
+          new ScalarQuantizer(-1, 1, (byte) 7),
+          similarityFunction,
+          vectorsScorer,
+          false,
+          null);
     }
 
     private int doc = -1;
@@ -361,6 +453,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
+      return null;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
       return null;
     }
   }

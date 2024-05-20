@@ -29,6 +29,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitSetIterator;
@@ -170,7 +171,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Scorer scorer;
         Terms terms = context.reader().terms(toField);
         if (terms == null) {
           return null;
@@ -181,12 +183,13 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
         TermsEnum segmentTermsEnum = terms.iterator();
         if (multipleValuesPerDocument) {
-          return new MVInOrderScorer(
-              this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer =
+              new MVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         } else {
-          return new SVInOrderScorer(
-              this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer =
+              new SVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         }
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

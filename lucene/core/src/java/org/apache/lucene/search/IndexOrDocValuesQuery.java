@@ -194,15 +194,6 @@ public final class IndexOrDocValuesQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         // Both index and dv query should return the same values, so we can use
         // the index query's cachehelper here

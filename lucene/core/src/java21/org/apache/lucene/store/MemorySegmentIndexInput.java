@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
@@ -44,6 +45,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+  private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
 
   final long length;
   final long chunkSizeMask;
@@ -307,6 +309,48 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       this.curPosition = Objects.checkIndex(pos & chunkSizeMask, curSegment.byteSize() + 1);
     } catch (IndexOutOfBoundsException e) {
       throw handlePositionalIOOBE(e, "seek", pos);
+    }
+  }
+
+  @Override
+  public void prefetch(long offset, long length) throws IOException {
+    ensureOpen();
+
+    Objects.checkFromIndexSize(offset, length, length());
+
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+
+    try {
+      final MemorySegment segment = segments[(int) (offset >> chunkSizePower)];
+      offset &= chunkSizeMask;
+      // Compute the intersection of the current segment and the region that should be prefetched.
+      if (offset + length > segment.byteSize()) {
+        // Only prefetch bytes that are stored in the current segment. There may be bytes on the
+        // next segment but this case is rare enough that we don't try to optimize it and keep
+        // things simple instead.
+        length = segment.byteSize() - offset;
+      }
+      // Now align offset with the page size, this is required for madvise.
+      // Compute the offset of the current position in the OS's page.
+      final long offsetInPage = (segment.address() + offset) % nativeAccess.getPageSize();
+      offset -= offsetInPage;
+      length += offsetInPage;
+      if (offset < 0) {
+        // The start of the page is outside of this segment, ignore.
+        return;
+      }
+
+      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
+      nativeAccess.madviseWillNeed(prefetchSlice);
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException e) {
+      throw new EOFException("Read past EOF: " + this);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
     }
   }
 

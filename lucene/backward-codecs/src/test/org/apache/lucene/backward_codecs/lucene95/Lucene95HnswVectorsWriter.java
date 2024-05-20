@@ -70,6 +70,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   private final IndexOutput meta, vectorData, vectorIndex;
   private final int M;
   private final int beamWidth;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -437,7 +438,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
-        DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
         final RandomVectorScorerSupplier scorerSupplier;
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE:
@@ -448,7 +448,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize));
+                        byteSize,
+                        defaultFlatVectorScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
             break;
           case FLOAT32:
             scorerSupplier =
@@ -458,7 +460,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize));
+                        byteSize,
+                        defaultFlatVectorScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
             break;
           default:
             throw new IllegalArgumentException(
@@ -667,6 +671,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
     private final HnswGraphBuilder hnswGraphBuilder;
+    private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
     private int lastDocID = -1;
     private int node = 0;
@@ -697,7 +702,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> defaultFlatVectorScorer.getRandomVectorScorerSupplier(

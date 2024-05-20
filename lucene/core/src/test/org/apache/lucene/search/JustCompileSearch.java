@@ -248,8 +248,18 @@ final class JustCompileSearch {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) {
-      throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+        }
+
+        @Override
+        public long cost() {
+          throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+        }
+      };
     }
 
     @Override

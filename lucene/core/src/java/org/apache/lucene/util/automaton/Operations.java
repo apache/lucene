@@ -48,6 +48,7 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hppc.BitMixer;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Automata operations.
@@ -573,7 +574,7 @@ public final class Operations {
     PointTransitions[] points = new PointTransitions[5];
 
     private static final int HASHMAP_CUTOVER = 30;
-    private final HashMap<Integer, PointTransitions> map = new HashMap<>();
+    private final IntObjectHashMap<PointTransitions> map = new IntObjectHashMap<>();
     private boolean useHash = false;
 
     private PointTransitions next(int point) {

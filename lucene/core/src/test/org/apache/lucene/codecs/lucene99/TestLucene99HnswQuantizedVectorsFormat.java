@@ -36,6 +36,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -75,6 +78,41 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         return format;
       }
     };
+  }
+
+  public void testQuantizationScoringEdgeCase() throws Exception {
+    float[][] vectors = new float[][] {{0.6f, 0.8f}, {0.8f, 0.6f}, {-0.6f, -0.8f}};
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setCodec(
+                        new Lucene99Codec() {
+                          @Override
+                          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                            return new Lucene99HnswScalarQuantizedVectorsFormat(
+                                16, 100, 1, (byte) 7, false, 0.9f, null);
+                          }
+                        }))) {
+      for (float[] vector : vectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+        w.commit();
+      }
+      w.forceMerge(1);
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        TopKnnCollector topKnnCollector = new TopKnnCollector(5, Integer.MAX_VALUE);
+        r.searchNearestVectors("f", new float[] {0.6f, 0.8f}, topKnnCollector, null);
+        TopDocs topDocs = topKnnCollector.topDocs();
+        assertEquals(3, topDocs.totalHits.value);
+        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+          assertTrue(scoreDoc.score >= 0f);
+        }
+      }
+    }
   }
 
   public void testQuantizedVectorsWriteAndRead() throws Exception {

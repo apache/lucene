@@ -405,7 +405,7 @@ public class TestIntIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntIntHashMap.IntCursor c : map.keys()) {
+    for (IntCursor c : map.keys()) {
       assertEquals(map.keys[c.index], c.value);
       counted++;
     }
@@ -581,7 +581,7 @@ public class TestIntIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntIntHashMap.IntCursor c : map.values()) {
+    for (IntCursor c : map.values()) {
       assertEquals(map.values[c.index], c.value);
       counted++;
     }

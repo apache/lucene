@@ -98,7 +98,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       return null;
     }
 
