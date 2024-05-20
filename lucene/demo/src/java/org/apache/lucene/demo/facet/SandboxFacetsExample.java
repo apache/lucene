@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
@@ -33,11 +34,14 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.facet.sandbox.FacetFieldCollector;
 import org.apache.lucene.facet.sandbox.FacetFieldCollectorManager;
+import org.apache.lucene.facet.sandbox.MultiFacetsRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.OrdToComparable;
 import org.apache.lucene.facet.sandbox.abstracts.OrdToLabels;
 import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.facet.sandbox.aggregations.ComparableUtils;
 import org.apache.lucene.facet.sandbox.aggregations.CountRecorder;
+import org.apache.lucene.facet.sandbox.aggregations.LongAggregationsFacetRecorder;
+import org.apache.lucene.facet.sandbox.aggregations.Reducer;
 import org.apache.lucene.facet.sandbox.aggregations.SortOrdinalIterator;
 import org.apache.lucene.facet.sandbox.ranges.LongRangeFacetCutter;
 import org.apache.lucene.facet.sandbox.ranges.RangeOrdToLabels;
@@ -53,7 +57,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.CollectorOwner;
+import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.TopDocs;
@@ -63,6 +69,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 
 import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
+import static org.apache.lucene.facet.sandbox.aggregations.ComparableUtils.rankCountOrdToComparable;
 
 /** Demo for sandbox faceting. */
 public class SandboxFacetsExample {
@@ -89,30 +96,40 @@ public class SandboxFacetsExample {
     doc.add(new FacetField("Author", "Bob"));
     doc.add(new FacetField("Publish Date", "2010", "10", "15"));
     doc.add(new NumericDocValuesField("Price", 10));
+    doc.add(new NumericDocValuesField("Units", 9));
+    doc.add(new DoubleDocValuesField("Popularity", 3.5d));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2010", "10", "20"));
     doc.add(new NumericDocValuesField("Price", 4));
+    doc.add(new NumericDocValuesField("Units", 2));
+    doc.add(new DoubleDocValuesField("Popularity", 4.1D));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Lisa"));
     doc.add(new FacetField("Publish Date", "2012", "1", "1"));
     doc.add(new NumericDocValuesField("Price", 3));
+    doc.add(new NumericDocValuesField("Units", 5));
+    doc.add(new DoubleDocValuesField("Popularity", 3.9D));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Susan"));
     doc.add(new FacetField("Publish Date", "2012", "1", "7"));
     doc.add(new NumericDocValuesField("Price", 8));
+    doc.add(new NumericDocValuesField("Units", 7));
+    doc.add(new DoubleDocValuesField("Popularity", 4D));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Frank"));
     doc.add(new FacetField("Publish Date", "1999", "5", "5"));
     doc.add(new NumericDocValuesField("Price", 9));
+    doc.add(new NumericDocValuesField("Units", 6));
+    doc.add(new DoubleDocValuesField("Popularity", 4.9D));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
     IOUtils.close(indexWriter, taxoWriter);
@@ -257,6 +274,82 @@ public class SandboxFacetsExample {
 
   }
 
+  List<FacetResult> exclusiveRangesAggregationFacets() throws IOException {
+    DirectoryReader indexReader = DirectoryReader.open(indexDir);
+    IndexSearcher searcher = new IndexSearcher(indexReader);
+
+    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("Price");
+
+    // Exclusive ranges example
+    LongRange[] inputRanges = new LongRange[2];
+    inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
+    inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
+
+    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+
+    // initialise the aggregations to be computed - a values source + reducer
+    LongValuesSource[] longValuesSources = new LongValuesSource[2];
+    Reducer[] reducers = new Reducer[2];
+    // popularity:max
+    longValuesSources[0] = DoubleValuesSource.fromDoubleField("Popularity").toLongValuesSource();
+    reducers[0] = Reducer.MAX;
+    // units:sum
+    longValuesSources[1] = LongValuesSource.fromLongField("Units");
+    reducers[1] = Reducer.SUM;
+
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
+
+    CountRecorder countRecorder = new CountRecorder();
+
+    // Compute both counts and aggregations
+    MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
+
+    FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, multiFacetsRecorder);
+    MultiFacetsRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+
+    // Get recorded ords - use either count/aggregations recorder
+    OrdinalIterator recordedOrds = longAggregationsFacetRecorder.recordedOrds();
+
+    // We don't actually need to use FacetResult, it is up to client what to do with the results.
+    // Here we just want to demo that we can still do FacetResult as well
+    List<FacetResult> results = new ArrayList<>(2);
+    OrdToComparable<ComparableUtils.LongIntOrdComparable> ordToComparable;
+    OrdinalIterator topOrds;
+    int[] resultOrdinals;
+    FacetLabel[] labels;
+    List<LabelAndValue> labelsAndValues;
+
+    // Sort results by units:sum and tie-break by count
+    ordToComparable = rankCountOrdToComparable(countRecorder,
+            longAggregationsFacetRecorder, 1);
+    topOrds = new SortOrdinalIterator<>(recordedOrds, ordToComparable, 10);
+
+    resultOrdinals = topOrds.toArray();
+    labels = ordToLabels.getLabels(resultOrdinals);
+    labelsAndValues = new ArrayList<>(labels.length);
+    for (int i = 0; i < resultOrdinals.length; i++) {
+      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 1)));
+    }
+    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+
+    // note: previous ordinal iterator was exhausted
+    recordedOrds = longAggregationsFacetRecorder.recordedOrds();
+    // Sort results by popularity:max and tie-break by count
+    ordToComparable = rankCountOrdToComparable(countRecorder, longAggregationsFacetRecorder, 0);
+    topOrds = new SortOrdinalIterator<>(recordedOrds, ordToComparable, 10);
+    resultOrdinals = topOrds.toArray();
+    labels = ordToLabels.getLabels(resultOrdinals);
+    labelsAndValues = new ArrayList<>(labels.length);
+    for (int i = 0; i < resultOrdinals.length; i++) {
+      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 0)));
+    }
+    // TODO: is the tie-break by ord correct? Right now, it gives the higher ord as output
+    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+
+    return results;
+  }
 
   /** User runs a query and counts facets.*/
   private List<FacetResult> facetsWithSearch() throws IOException {
@@ -483,6 +576,12 @@ public class SandboxFacetsExample {
     return overlappingRangesCountFacetsOnly();
   }
 
+  /**TODO: add doc**/
+  public List<FacetResult> runExclusiveRangesAggregationFacets() throws IOException {
+    index();
+    return exclusiveRangesAggregationFacets();
+  }
+
   /** Runs the search and drill-down examples and prints the results. */
   public static void main(String[] args) throws Exception {
     System.out.println("Facet counting example:");
@@ -517,6 +616,12 @@ public class SandboxFacetsExample {
     System.out.println("Facet counting example with overlapping ranges:");
     System.out.println("---------------------------------------------");
     for (FacetResult result : example.runOverlappingRangesCountFacetsOnly()) {
+      System.out.println(result);
+    }
+
+    System.out.println("Facet aggregation example with exclusive ranges:");
+    System.out.println("---------------------------------------------");
+    for (FacetResult result : example.runExclusiveRangesAggregationFacets()) {
       System.out.println(result);
     }
   }

@@ -1,5 +1,7 @@
 package org.apache.lucene.facet.sandbox.abstracts;
 
+import java.io.IOException;
+
 /** Facets, that don't contain hits anymore, but */
 public interface FacetLeafRecorder {
 
@@ -8,7 +10,7 @@ public interface FacetLeafRecorder {
      * @param docId
      * @param facetId
      */
-    void record(int docId, int facetId);
+    void record(int docId, int facetId) throws IOException;
 
     /** Finish collection
      * TODO: do we really need it? */

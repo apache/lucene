@@ -20,8 +20,13 @@ public final class MultiFacetsRecorder implements FacetRecorder {
         this.delegates = delegates;
     }
     @Override
-    public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) {
-        FacetLeafRecorder[] leafDelegates = Arrays.stream(delegates).map(k -> getLeafRecorder(context)).toArray(FacetLeafRecorder[]::new);
+    public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
+//        TODO: find out why streams gives StackOverFlowError?
+//        FacetLeafRecorder[] leafDelegates = Arrays.stream(delegates).map(k -> getLeafRecorder(context)).toArray(FacetLeafRecorder[]::new);
+        FacetLeafRecorder[] leafDelegates = new FacetLeafRecorder[delegates.length];
+        for (int i=0; i < delegates.length; i++) {
+            leafDelegates[i] = delegates[i].getLeafRecorder(context);
+        }
         return new MultiFacetsLeafRecorder(leafDelegates);
     }
 
@@ -47,7 +52,7 @@ public final class MultiFacetsRecorder implements FacetRecorder {
         }
 
         @Override
-        public void record(int docId, int facetId) {
+        public void record(int docId, int facetId) throws IOException {
             for (FacetLeafRecorder leafRecorder: delegates) {
                 leafRecorder.record(docId, facetId);
             }

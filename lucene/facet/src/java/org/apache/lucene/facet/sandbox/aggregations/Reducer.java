@@ -1,4 +1,4 @@
-package org.apache.lucene.facet.sandbox.aggregations.context;
+package org.apache.lucene.facet.sandbox.aggregations;
 
 /**TODO: add doc**/
 public interface Reducer {

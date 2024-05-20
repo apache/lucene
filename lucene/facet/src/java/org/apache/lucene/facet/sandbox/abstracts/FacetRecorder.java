@@ -13,14 +13,13 @@ public interface FacetRecorder {
     /**
      * Get leaf recorder.
      */
-    FacetLeafRecorder getLeafRecorder(LeafReaderContext context);
+    FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
 
     /**
      * Return next collected ordinal, or {@link FacetLeafCutter#NO_MORE_ORDS}
      * TODO: do we really need that here? Should it live somewhere else?
      */
     OrdinalIterator recordedOrds();
-
     /**
      * Reduce leaf recorder results into this recorder.
      * If facetRollup is not null, it also rolls up values.

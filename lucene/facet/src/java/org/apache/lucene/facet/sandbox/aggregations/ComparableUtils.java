@@ -86,7 +86,7 @@ public class ComparableUtils {
                 }
                 reuse.ord = ord;
                 reuse.secondaryRank = countRecorder.getCount(ord);
-                reuse.primaryRank = longAggregationsFacetRecorder.getAggregation(ord, aggregationId);
+                reuse.primaryRank = longAggregationsFacetRecorder.getRecordedValue(ord, aggregationId);
                 return reuse;
             }
         };

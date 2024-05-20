@@ -70,6 +70,7 @@ public class CountRecorder implements FacetRecorder {
         };
     }
 
+
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
         if (facetRollup == null) {
