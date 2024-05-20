@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.cn.smart.Utility;
 import org.apache.lucene.util.hppc.IntObjectHashMap;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /**
  * Graph representing possible token pairs (bigrams) at each start offset in the sentence.
@@ -218,7 +219,7 @@ class BiSegGraph {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    for (IntObjectHashMap.ObjectCursor<ArrayList<SegTokenPair>> segList :
+    for (ObjectCursor<ArrayList<SegTokenPair>> segList :
         tokenPairListTable.values()) {
       for (SegTokenPair pair : segList.value) {
         sb.append(pair).append("\n");

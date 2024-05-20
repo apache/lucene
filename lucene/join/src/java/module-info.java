@@ -16,8 +16,10 @@
  */
 
 /** Index-time and Query-time joins for normalized content */
+@SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.join {
   requires org.apache.lucene.core;
+  requires com.carrotsearch.hppc;
 
   exports org.apache.lucene.search.join;
 }
