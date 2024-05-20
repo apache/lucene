@@ -110,6 +110,18 @@ public interface IndexableFieldType {
   /** The {@link VectorSimilarityFunction} of the field's vector value */
   VectorSimilarityFunction vectorSimilarityFunction();
 
+  /** Rank of the tensor */
+  int tensorRank();
+
+  /** Dimensions for each vector in the tensor */
+  int tensorDimension();
+
+  /** The {@link VectorEncoding} for vectors in the field's tensor values */
+  VectorEncoding tensorEncoding();
+
+  /** The {@link TensorSimilarityFunction} for a field's tensor value */
+  TensorSimilarityFunction tensorSimilarityFunction();
+
   /**
    * Attributes for the field type.
    *

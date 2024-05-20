@@ -49,7 +49,8 @@ public class FieldType implements IndexableFieldType {
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-  private int tensorDegree;
+  private int tensorRank;
+  private int tensorDimension;
   private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
   private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.MAX_EUCLIDEAN;
   private Map<String, String> attributes;
@@ -72,6 +73,10 @@ public class FieldType implements IndexableFieldType {
     this.vectorDimension = ref.vectorDimension();
     this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
+    this.tensorRank = ref.tensorRank();
+    this.tensorDimension = ref.tensorDimension();
+    this.tensorEncoding = ref.tensorEncoding();
+    this.tensorSimilarityFunction = ref.tensorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -407,23 +412,26 @@ public class FieldType implements IndexableFieldType {
   /** Enable tensor indexing for fixed degree tensors. Dimensions for individual vectors within
    * the tensor can vary.
    *
-   * @param degree Number of vectors in the tensor
+   * @param rank Rank of the tensor
+   * @param dimension Dimension of each vector in the tensor
    * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all vectors
    * @param similarity Used to compare tensors during indexing and search.
    */
   public void setTensorAttributes(
-      int degree, VectorEncoding encoding, TensorSimilarityFunction similarity) {
+      int rank, int dimension, VectorEncoding encoding, TensorSimilarityFunction similarity) {
     checkIfFrozen();
-    if (degree <= 0) {
-      throw new IllegalArgumentException("vector numDimensions must be > 0; got " + degree);
-    }
-    this.tensorDegree = degree;
+    this.tensorRank = rank;
+    this.tensorDimension = dimension;
     this.tensorEncoding = Objects.requireNonNull(encoding);
     this.tensorSimilarityFunction = Objects.requireNonNull(similarity);
   }
 
-  public int tensorDegree() {
-    return tensorDegree;
+  public int tensorRank() {
+    return tensorRank;
+  }
+
+  public int tensorDimension() {
+    return tensorDimension;
   }
 
   public VectorEncoding tensorEncoding() {

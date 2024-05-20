@@ -29,10 +29,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A field that contains multiple (or none) floating-point numeric vectors for each document.
+ * A field that contains one or more floating-point numeric vectors for each document.
  * Similar to {@link KnnFloatVectorField}, vectors are dense - that is, every dimension of a vector
  * contains an explicit value, stored packed into an array (of type float[]) whose length is
- * the vector dimension. <TODO: add more info>.
+ * the vector dimension.
+ * Only rank 2 tensors are currently supported. All vectors in a tensor field are required to have
+ * the same dimension, although different documents can have different number of vectors.
+ * The {@link TensorSimilarityFunction} may be used to compare tensors at query time, or during indexing
+ * for generating a nearest neighbour graph (such as the HNSW graph).
+ * TODO: Value retrieved from ?? what iterators are supported? random access?
  *
  * @lucene.experimental
  */
@@ -49,24 +54,25 @@ import java.util.Objects;
 // */
 public class KnnFloatTensorField extends Field {
 
+  private static final int rank = 2;
+
   private static FieldType createType(List<float[]> t, TensorSimilarityFunction similarityFunction) {
     if (t == null) {
       throw new IllegalArgumentException("tensor value must not be null");
     }
-    int degree = t.size();
-    if (degree == 0) {
+    if (t.size() == 0) {
       throw new IllegalArgumentException("cannot index an empty tensor");
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }
-    for (int i = 0; i < t.size(); i++) {
-      if (t.get(i).length == 0) {
-        throw new IllegalArgumentException("empty vector found at index (" + i + "). Tensor cannot have empty vectors");
-      }
+    if (t.get(0).length == 0) {
+      throw new IllegalArgumentException("empty vector found at index 0. Tensor cannot have empty vectors");
     }
+    int dimension = t.get(0).length;
+    checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setTensorAttributes(degree, VectorEncoding.FLOAT32, similarityFunction);
+    type.setTensorAttributes(rank, dimension, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
     return type;
   }
@@ -74,14 +80,13 @@ public class KnnFloatTensorField extends Field {
   /**
    * A convenience method for creating a tensor field type.
    *
-   * @param degree Number of vectors in each tensor
-   * @param similarityFunction a function defining tensor proximity.
+   * @param dimension Dimension of vectors in the tensor
+   * @param similarityFunction a function to compute similarity between two tensors
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
-  public static FieldType createFieldType(
-      int degree, VectorSimilarityFunction similarityFunction) {
+  public static FieldType createFieldType(int dimension, TensorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setVectorAttributes(degree, VectorEncoding.FLOAT32, similarityFunction);
+    type.setTensorAttributes(rank, dimension, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
     return type;
   }
@@ -99,82 +104,86 @@ public class KnnFloatTensorField extends Field {
   }
 
   /**
-   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
-   * be unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more
+   * values. Tensors of a single field share the same dimension and similarity function.
    *
    * @param name field name
-   * @param vector value
-   * @param similarityFunction a function defining vector proximity.
+   * @param tensor value
+   * @param similarityFunction a function defining tensor proximity.
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
   public KnnFloatTensorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction));
-    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+      String name, List<float[]> tensor, TensorSimilarityFunction similarityFunction) {
+    super(name, createType(tensor, similarityFunction));
+    tensor.forEach(VectorUtil::checkFinite);
+    fieldsData = tensor;
   }
 
   /**
-   * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) similarity. Fields are
-   * single-valued: each document has either one value or no value. Vectors of a single field share
-   * the same dimension and similarity function.
+   * Creates a numeric tensor field with the default EUCLIDEAN_HNSW (L2) similarity. Vectors within a single
+   * tensor field share the same dimension and similarity function.
    *
    * @param name field name
-   * @param vector value
+   * @param tensor value
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+  public KnnFloatTensorField(String name, List<float[]> tensor) {
+    this(name, tensor, TensorSimilarityFunction.MAX_EUCLIDEAN);
   }
 
   /**
-   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and similarity function.
+   * Creates a numeric tensor field. Vectors of a single tensor share the same dimension and similarity function.
    *
    * @param name field name
-   * @param vector value
+   * @param tensor value
    * @param fieldType field type
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(String name, float[] vector, FieldType fieldType) {
+  public KnnFloatTensorField(String name, List<float[]> tensor, FieldType fieldType) {
     super(name, fieldType);
-    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
+    if (fieldType.tensorEncoding() != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
-          "Attempt to create a vector for field "
+          "Attempt to create a tensor for field "
               + name
-              + " using float[] but the field encoding is "
+              + " using List<float[]> but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    Objects.requireNonNull(vector, "vector value must not be null");
-    if (vector.length != fieldType.vectorDimension()) {
-      throw new IllegalArgumentException(
-          "The number of vector dimensions does not match the field type");
+    Objects.requireNonNull(tensor, "tensor value must not be null");
+    if (fieldType.tensorRank() != rank) {
+      throw new UnsupportedOperationException("Only tensors of rank = " + rank + "are supported");
     }
-    fieldsData = VectorUtil.checkFinite(vector);
+    checkDimensions(tensor, fieldType.tensorDimension());
+    tensor.forEach(VectorUtil::checkFinite);
+    fieldsData = tensor;
   }
 
-  /** Return the vector value of this field */
-  public float[] vectorValue() {
-    return (float[]) fieldsData;
+  /** Return the tensor value of this field */
+  public List<float[]> vectorValue() {
+    return (List<float[]>) fieldsData;
   }
 
   /**
-   * Set the vector value of this field
+   * Set the tensor value of this field
    *
-   * @param value the value to set; must not be null, and length must match the field type
+   * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setVectorValue(float[] value) {
-    if (value == null) {
-      throw new IllegalArgumentException("value must not be null");
+  public void setVectorValue(List<float[]> value) {
+    if (value == null || value.isEmpty()) {
+      throw new IllegalArgumentException("value must not be null or empty");
     }
-    if (value.length != type.vectorDimension()) {
-      throw new IllegalArgumentException(
-          "value length " + value.length + " must match field dimension " + type.vectorDimension());
-    }
+    checkDimensions(value, type.tensorDimension());
     fieldsData = value;
+  }
+
+  private static void checkDimensions(List<float[]> tensor, int dimensions) {
+    for(float[] val: tensor) {
+      if (val.length != dimensions) {
+        throw new IllegalArgumentException("All vectors in the tensor should have the " +
+            "same dimension value as configured in the fieldType");
+      }
+    }
   }
 }
