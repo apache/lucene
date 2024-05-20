@@ -17,14 +17,13 @@
 
 package org.apache.lucene.util.hppc;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
+import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
+import static org.apache.lucene.util.hppc.HashContainers.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
-
-import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
-import static org.apache.lucene.util.hppc.HashContainers.*;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>long</code> to <code>Object</code>, implemented using open addressing with
@@ -39,7 +38,7 @@ public class LongObjectHashMap<VType>
     implements Iterable<LongObjectHashMap.LongObjectCursor<VType>>, Accountable, Cloneable {
 
   private static final long BASE_RAM_BYTES_USED =
-          RamUsageEstimator.shallowSizeOfInstance(LongObjectHashMap.class);
+      RamUsageEstimator.shallowSizeOfInstance(LongObjectHashMap.class);
 
   /** The array holding keys. */
   public long[] keys;

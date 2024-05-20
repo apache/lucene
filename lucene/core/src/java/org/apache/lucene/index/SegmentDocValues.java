@@ -32,7 +32,8 @@ import org.apache.lucene.util.hppc.LongObjectHashMap;
  */
 final class SegmentDocValues {
 
-  private final LongObjectHashMap<RefCount<DocValuesProducer>> genDVProducers = new LongObjectHashMap<>();
+  private final LongObjectHashMap<RefCount<DocValuesProducer>> genDVProducers =
+      new LongObjectHashMap<>();
 
   private RefCount<DocValuesProducer> newDocValuesProducer(
       SegmentCommitInfo si, Directory dir, final Long gen, FieldInfos infos) throws IOException {

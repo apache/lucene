@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.search.join;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Locale;
 import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.LongFloatHashMap;
 import com.carrotsearch.hppc.LongHashSet;
 import com.carrotsearch.hppc.LongIntHashMap;
 import com.carrotsearch.hppc.cursors.LongCursor;
 import com.carrotsearch.hppc.procedures.LongFloatProcedure;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Locale;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
@@ -157,47 +157,47 @@ public final class JoinUtil {
     if (scoreMode == ScoreMode.Max) {
       scoreAggregator =
           (key, score) -> {
-          int index = aggregatedScores.indexOf(key);
-          if (index < 0) {
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
               aggregatedScores.indexInsert(index, key, score);
-          } else {
+            } else {
               float currentScore = aggregatedScores.indexGet(index);
               aggregatedScores.indexReplace(index, Math.max(currentScore, score));
-          }
-      };
+            }
+          };
     } else if (scoreMode == ScoreMode.Min) {
       scoreAggregator =
           (key, score) -> {
-              int index = aggregatedScores.indexOf(key);
-              if (index < 0) {
-                  aggregatedScores.indexInsert(index, key, score);
-              } else {
-                  float currentScore = aggregatedScores.indexGet(index);
-                  aggregatedScores.indexReplace(index, Math.min(currentScore, score));
-              }
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              aggregatedScores.indexInsert(index, key, score);
+            } else {
+              float currentScore = aggregatedScores.indexGet(index);
+              aggregatedScores.indexReplace(index, Math.min(currentScore, score));
+            }
           };
     } else if (scoreMode == ScoreMode.Total) {
       scoreAggregator =
           (key, score) -> {
-              int index = aggregatedScores.indexOf(key);
-              if (index < 0) {
-                  aggregatedScores.indexInsert(index, key, score);
-              } else {
-                  float currentScore = aggregatedScores.indexGet(index);
-                  aggregatedScores.indexReplace(index, currentScore + score);
-              }
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              aggregatedScores.indexInsert(index, key, score);
+            } else {
+              float currentScore = aggregatedScores.indexGet(index);
+              aggregatedScores.indexReplace(index, currentScore + score);
+            }
           };
     } else if (scoreMode == ScoreMode.Avg) {
       scoreAggregator =
           (key, score) -> {
-              int index = aggregatedScores.indexOf(key);
-              if (index < 0) {
-                  aggregatedScores.indexInsert(index, key, score);
-              } else {
-                  float currentScore = aggregatedScores.indexGet(index);
-                  aggregatedScores.indexReplace(index, currentScore + score);
-              }
-              occurrences.addTo(key, 1);
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              aggregatedScores.indexInsert(index, key, score);
+            } else {
+              float currentScore = aggregatedScores.indexGet(index);
+              aggregatedScores.indexReplace(index, currentScore + score);
+            }
+            occurrences.addTo(key, 1);
           };
     } else {
       scoreAggregator =
@@ -358,7 +358,8 @@ public final class JoinUtil {
             public BytesRef next() {
               if (iterator.hasNext()) {
                 LongCursor value = iterator.next();
-                FloatPoint.encodeDimension(Float.intBitsToFloat((int) value.value), encoded.bytes, 0);
+                FloatPoint.encodeDimension(
+                    Float.intBitsToFloat((int) value.value), encoded.bytes, 0);
                 if (needsScore) {
                   score = joinScorer.apply(value.value);
                 }

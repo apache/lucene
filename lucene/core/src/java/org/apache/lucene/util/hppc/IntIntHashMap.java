@@ -17,15 +17,13 @@
 
 package org.apache.lucene.util.hppc;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
-
 import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
+import static org.apache.lucene.util.hppc.HashContainers.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
-
-import static org.apache.lucene.util.hppc.HashContainers.*;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>int</code> to <code>int</code>, implemented using open addressing with linear
@@ -38,7 +36,7 @@ import static org.apache.lucene.util.hppc.HashContainers.*;
 public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Accountable, Cloneable {
 
   private static final long BASE_RAM_BYTES_USED =
-          RamUsageEstimator.shallowSizeOfInstance(IntIntHashMap.class);
+      RamUsageEstimator.shallowSizeOfInstance(IntIntHashMap.class);
 
   /** The array holding keys. */
   public int[] keys;

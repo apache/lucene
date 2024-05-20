@@ -16,12 +16,11 @@
  */
 package org.apache.lucene.facet.range;
 
+import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.LongIntHashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.LongIntHashMap;
 import org.apache.lucene.util.FixedBitSet;
 
 /**

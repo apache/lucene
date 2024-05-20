@@ -17,14 +17,13 @@
 
 package org.apache.lucene.util.hppc;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.After;
+import org.junit.Test;
 
 /**
  * Tests for {@link LongObjectHashMap}.
@@ -126,7 +125,8 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     return elements;
   }
 
-  private void assertSameMap(final LongObjectHashMap<Object> c1, final LongObjectHashMap<Object> c2) {
+  private void assertSameMap(
+      final LongObjectHashMap<Object> c1, final LongObjectHashMap<Object> c2) {
     assertEquals(c1.size(), c2.size());
 
     for (LongObjectHashMap.LongObjectCursor entry : c1) {
