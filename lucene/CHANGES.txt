@@ -362,6 +362,8 @@ Other
 
 * GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
 
+* GITHUB#13385: Make NO_INTERVALS source as public to be used by Lucene clients instead of creating clones themselves.
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
