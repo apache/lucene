@@ -18,47 +18,23 @@ package org.apache.lucene.search.uhighlight;
 
 import com.carrotsearch.randomizedtesting.annotations.Name;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;
-import org.apache.lucene.queries.spans.SpanNearQuery;
-import org.apache.lucene.queries.spans.SpanOrQuery;
-import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.MultiPhraseQuery;
-import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.search.PrefixQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.Weight;
-import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.queries.spans.*;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.QueryBuilder;
 import org.junit.After;
 import org.junit.Before;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 // TODO rename to reflect position sensitivity
 public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestBase {
@@ -183,13 +159,15 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
   }
 
   public void testWithSameTermQuery() throws IOException {
-    indexWriter.addDocument(newDoc("Yin yang, yin gap yang"));
+    indexWriter.addDocument(newDoc("Yin yang loooooooooong, yin gap yang yong"));
     initReaderSearcherHighlighter();
 
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("body", "yin")), BooleanClause.Occur.MUST)
-            .add(newPhraseQuery("body", "yin yang"), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "yang")), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "loooooooooong")), BooleanClause.Occur.MUST)
+            .add(newPhraseQuery("body", "yin\\ yang\\ loooooooooong"), BooleanClause.Occur.MUST)
             // add queries for other fields; we shouldn't highlight these because of that.
             .add(new TermQuery(new Term("title", "yang")), BooleanClause.Occur.SHOULD)
             .build();
@@ -199,9 +177,9 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
         false); // We don't want duplicates from "Yin" being in TermQuery & PhraseQuery.
     String[] snippets = highlighter.highlight("body", query, topDocs);
     if (highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES)) {
-      assertArrayEquals(new String[] {"<b>Yin yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(new String[]{"<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"}, snippets);
     } else {
-      assertArrayEquals(new String[] {"<b>Yin</b> <b>yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(new String[]{"<b>Yin</b> <b>yang</b> <b>loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"}, snippets);
     }
   }
 
