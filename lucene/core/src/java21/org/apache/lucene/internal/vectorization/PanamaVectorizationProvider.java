@@ -77,7 +77,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public FlatVectorsScorer newFlatVectorScorer() {
-    return new MemorySegmentFlatVectorsScorer(new DefaultFlatVectorScorer());
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return new MemorySegmentFlatVectorsScorer(DefaultFlatVectorScorer.INSTANCE);
   }
 }

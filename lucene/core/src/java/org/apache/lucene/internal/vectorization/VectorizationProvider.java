@@ -92,7 +92,7 @@ public abstract class VectorizationProvider {
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
 
-  public abstract FlatVectorsScorer newFlatVectorScorer();
+  public abstract FlatVectorsScorer getFlatVectorScorer();
 
   // *** Lookup mechanism: ***
 

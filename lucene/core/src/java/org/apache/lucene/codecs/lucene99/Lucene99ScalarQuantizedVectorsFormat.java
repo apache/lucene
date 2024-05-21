@@ -102,7 +102,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
     this.compress = compress;
-    this.flatVectorScorer = new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer());
+    this.flatVectorScorer =
+        new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {

@@ -35,7 +35,7 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public FlatVectorsScorer newFlatVectorScorer() {
-    return new DefaultFlatVectorScorer();
+  public FlatVectorsScorer getFlatVectorScorer() {
+    return DefaultFlatVectorScorer.INSTANCE;
   }
 }

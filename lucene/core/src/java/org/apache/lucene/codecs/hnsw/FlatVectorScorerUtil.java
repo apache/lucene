@@ -35,6 +35,6 @@ public final class FlatVectorScorerUtil {
    * on certain platforms. Otherwise, a DefaultFlatVectorScorer is returned.
    */
   public static FlatVectorsScorer newFlatVectorScorer() {
-    return IMPL.newFlatVectorScorer();
+    return IMPL.getFlatVectorScorer();
   }
 }

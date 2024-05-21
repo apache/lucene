@@ -55,9 +55,9 @@ public class TestVectorScorer extends LuceneTestCase {
 
   private static final double DELTA = 1e-5;
 
-  static final FlatVectorsScorer DEFAULT_SCORER = new DefaultFlatVectorScorer();
+  static final FlatVectorsScorer DEFAULT_SCORER = DefaultFlatVectorScorer.INSTANCE;
   static final FlatVectorsScorer MEMSEG_SCORER =
-      VectorizationProvider.lookup(true).newFlatVectorScorer();
+      VectorizationProvider.lookup(true).getFlatVectorScorer();
 
   @BeforeClass
   public static void beforeClass() throws Exception {

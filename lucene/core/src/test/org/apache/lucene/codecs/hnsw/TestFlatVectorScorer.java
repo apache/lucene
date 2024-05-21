@@ -62,7 +62,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
   public static Iterable<Object[]> parametersFactory() {
     var scorers =
         List.of(
-            new DefaultFlatVectorScorer(),
+            DefaultFlatVectorScorer.INSTANCE,
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
             FlatVectorScorerUtil.newFlatVectorScorer());
     var dirs =
