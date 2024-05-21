@@ -14,14 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
 
-description = 'Index-time and Query-time joins for normalized content'
+/**
+ * Provides access to the backing memory segment.
+ *
+ * <p>Expert API, allows access to the backing memory.
+ */
+public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
+  /** Returns the memory segment for a given position and length, or null. */
+  MemorySegment segmentSliceOrNull(long pos, int len) throws IOException;
 
-  moduleTestImplementation project(':lucene:test-framework')
+  MemorySegmentAccessInput clone();
 }

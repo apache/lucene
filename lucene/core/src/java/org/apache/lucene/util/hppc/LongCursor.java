@@ -15,13 +15,21 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+package org.apache.lucene.util.hppc;
 
-description = 'Index-time and Query-time joins for normalized content'
+/** Forked from HPPC, holding int index and long value */
+public final class LongCursor {
+  /**
+   * The current value's index in the container this cursor belongs to. The meaning of this index is
+   * defined by the container (usually it will be an index in the underlying storage buffer).
+   */
+  public int index;
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
+  /** The current value. */
+  public long value;
 
-  moduleTestImplementation project(':lucene:test-framework')
+  @Override
+  public String toString() {
+    return "[cursor, index: " + index + ", value: " + value + "]";
+  }
 }

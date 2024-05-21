@@ -17,6 +17,8 @@
 package org.apache.lucene.codecs.hnsw;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.ByteArrayOutputStream;
@@ -58,8 +60,9 @@ public class TestFlatVectorScorer extends LuceneTestCase {
   public static Iterable<Object[]> parametersFactory() {
     var scorers =
         List.of(
-            new DefaultFlatVectorScorer(),
-            new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()));
+            DefaultFlatVectorScorer.INSTANCE,
+            new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
+            FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
     var dirs =
         List.<ThrowingSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
@@ -74,7 +77,14 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     return objs;
   }
 
-  // Tests that the creation of another scorer does not perturb previous scorers
+  public void testDefaultOrMemSegScorer() {
+    var scorer = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    assertThat(
+        scorer.toString(),
+        is(oneOf("DefaultFlatVectorScorer()", "Lucene99MemorySegmentFlatVectorsScorer()")));
+  }
+
+  // Tests that the creation of another scorer does not disturb previous scorers
   public void testMultipleByteScorers() throws IOException {
     byte[] vec0 = new byte[] {0, 0, 0, 0};
     byte[] vec1 = new byte[] {1, 1, 1, 1};
