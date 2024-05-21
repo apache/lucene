@@ -14,28 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
 
-package org.apache.lucene.internal.vectorization;
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+/**
+ * Provides access to the backing memory segment.
+ *
+ * <p>Expert API, allows access to the backing memory.
+ */
+public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
 
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
+  /** Returns the memory segment for a given position and length, or null. */
+  MemorySegment segmentSliceOrNull(long pos, int len) throws IOException;
 
-  private final VectorUtilSupport vectorUtilSupport;
-
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
+  default void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    for (int i = 0; i < length; i++) {
+      bytes[offset + i] = readByte(pos + i);
+    }
   }
 
-  @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
-  }
+  MemorySegmentAccessInput clone();
 }

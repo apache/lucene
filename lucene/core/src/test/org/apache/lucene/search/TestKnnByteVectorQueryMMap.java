@@ -14,28 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-package org.apache.lucene.internal.vectorization;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
-
-  private final VectorUtilSupport vectorUtilSupport;
-
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
-  }
+public class TestKnnByteVectorQueryMMap extends TestKnnByteVectorQuery {
 
   @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
+  protected BaseDirectoryWrapper newDirectoryForTest() {
+    try {
+      return new MockDirectoryWrapper(
+          random(), new MMapDirectory(createTempDir("TestKnnByteVectorQueryMMap")));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }
